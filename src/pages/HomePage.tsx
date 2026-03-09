@@ -19,5 +19,5 @@ export function HomePage() {
       <p className="foot">More platform features are coming soon.</p>
       <div className="brand">MAGE</div>
     </main>
-  )
+  );
 }
