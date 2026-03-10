@@ -39,9 +39,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   color: var(--text);
-  background:
-    radial-gradient(circle at top, rgba(99, 240, 214, 0.08), transparent 30%),
-    linear-gradient(180deg, var(--bg-soft), var(--bg));
+  background: linear-gradient(180deg, var(--bg-soft), var(--bg));
 }
 
 button,
