@@ -1,15 +1,26 @@
 import type { PropsWithChildren } from 'react'
+import { Link, NavLink } from 'react-router-dom'
+
+const navItems = [
+  { label: 'Login', to: '/login' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Presets', to: '/presets' },
+]
 
 export function Layout({ children }: PropsWithChildren) {
   return (
     <>
       <header className="navbar">
         <div className="nav-inner">
-          <div className="logo">MAGE</div>
+          <Link className="logo" to="/">
+            MAGE
+          </Link>
           <nav className="nav-links" aria-label="Primary">
-            <a href="/login">Login</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/presets">Presets</a>
+            {navItems.map((item) => (
+              <NavLink key={item.to} to={item.to}>
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
         </div>
       </header>

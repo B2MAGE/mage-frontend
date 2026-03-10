@@ -25,6 +25,7 @@
 }
 
 .logo {
+  text-decoration: none;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -45,6 +46,10 @@
 }
 
 .nav-links a:hover {
+  color: var(--accent);
+}
+
+.nav-links a[aria-current='page'] {
   color: var(--accent);
 }
 
@@ -135,6 +140,20 @@
 .demo-link:hover {
   transform: translateY(-1px);
   box-shadow: 0 14px 36px rgba(99, 240, 214, 0.22);
+}
+
+.foot {
+  margin-top: 22px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.brand {
+  margin-top: 30px;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 @media (max-width: 560px) {
