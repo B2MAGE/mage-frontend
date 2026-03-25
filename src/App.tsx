@@ -2,6 +2,7 @@ import './App.css'
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
+import { MageLabPage } from './pages/MageLabPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 
 const placeholderRoutes = [
@@ -27,6 +28,7 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/lab" element={<MageLabPage />} />
         {placeholderRoutes.map((route) => (
           <Route
             key={route.path}

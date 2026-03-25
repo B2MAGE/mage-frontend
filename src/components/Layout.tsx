@@ -5,6 +5,7 @@ const navItems = [
   { label: 'Login', to: '/login' },
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Presets', to: '/presets' },
+  { label: 'Lab', to: '/lab' },
 ]
 
 export function Layout({ children }: PropsWithChildren) {
