@@ -215,6 +215,7 @@ const presetCatalog: PresetShowcase[] = [
 ]
 
 const defaultPreset = presetCatalog[0]
+const mageStudioSubscribers = '184K subscribers'
 
 function getPresetShowcase(presetId: number): PresetShowcase {
   return (
@@ -293,7 +294,9 @@ export function MageLabPage() {
 
         startTransition(() => {
           setIsReady(true)
-          setStatus(appliedPreset ? `${defaultPreset.title} is ready to preview.` : 'Engine ready. Default scene loaded.')
+          setStatus(
+            appliedPreset ? 'Choose a local file or paste a direct audio URL.' : 'Engine ready. Choose a track to start audio playback.',
+          )
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown engine error'
@@ -358,7 +361,6 @@ export function MageLabPage() {
   const applyEmbeddedPresetById = async (nextPresetId: number) => {
     const mageModule = moduleRef.current ?? (await import('@mage-engine'))
     moduleRef.current = mageModule
-    const preset = getPresetShowcase(nextPresetId)
 
     const ok = withEngine((engine) => mageModule.applyEmbeddedPreset(engine, nextPresetId))
 
@@ -370,7 +372,6 @@ export function MageLabPage() {
       startTransition(() => {
         setSelectedPresetId(nextPresetId)
       })
-      setStatus(`${preset.title} is live.`)
       return true
     }
 
@@ -379,8 +380,6 @@ export function MageLabPage() {
   }
 
   const handlePresetSelection = async (nextPresetId: number) => {
-    const preset = getPresetShowcase(nextPresetId)
-    setStatus(`Loading ${preset.title}...`)
     await applyEmbeddedPresetById(nextPresetId)
   }
 
@@ -498,13 +497,6 @@ export function MageLabPage() {
 
             <div className="mage-watch__summary">
               <h1 className="mage-watch__title">{selectedPreset.title}</h1>
-              <p className="mage-watch__stats">
-                {selectedPreset.plays}
-                <span aria-hidden="true"> / </span>
-                {selectedPreset.published}
-                <span aria-hidden="true"> / </span>
-                Preset {selectedPreset.id}
-              </p>
             </div>
 
             <div className="mage-watch__channel-row">
@@ -512,7 +504,7 @@ export function MageLabPage() {
                 <div className="mage-channel-card__avatar">{selectedPreset.creator.slice(0, 1)}</div>
                 <div className="mage-channel-card__copy">
                   <strong>{selectedPreset.creator}</strong>
-                  <span>{selectedPreset.creatorRole}</span>
+                  <span>{mageStudioSubscribers}</span>
                 </div>
               </div>
 
@@ -529,9 +521,11 @@ export function MageLabPage() {
               <div className="mage-watch__description-bar">
                 <span className="mage-watch__description-pill">{selectedPreset.plays}</span>
                 <span className="mage-watch__description-pill">{selectedPreset.published}</span>
-                <span className="mage-watch__description-pill">{audioSourceLabel}</span>
-                <span className="mage-watch__description-pill" data-ready={isReady}>
-                  {status}
+                <span
+                  className="mage-watch__description-pill mage-watch__description-pill--truncate"
+                  title={audioSourceLabel}
+                >
+                  {audioSourceLabel}
                 </span>
               </div>
               <p>{selectedPreset.teaser}</p>
@@ -612,6 +606,9 @@ export function MageLabPage() {
                 Close
               </button>
             </div>
+            <p className="mage-audio-modal__status" role="status">
+              {status}
+            </p>
 
             <div className="mage-audio-modal__stack">
               <section className="mage-audio-modal__option">
