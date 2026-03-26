@@ -3,22 +3,13 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { RegisterPage } from './pages/RegisterPage'
 
 const placeholderRoutes = [
   {
     path: '/login',
     title: 'Login is coming soon.',
     description: 'Frontend routing is in place. This placeholder will become the sign-in experience.',
-  },
-  {
-    path: '/dashboard',
-    title: 'Dashboard is coming soon.',
-    description: 'Frontend routing is in place. This placeholder will become the platform dashboard.',
-  },
-  {
-    path: '/presets',
-    title: 'Presets are coming soon.',
-    description: 'Frontend routing is in place. This placeholder will become the presets management page.',
   },
 ]
 
@@ -27,6 +18,7 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
         {placeholderRoutes.map((route) => (
           <Route
             key={route.path}
