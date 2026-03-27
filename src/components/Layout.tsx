@@ -2,9 +2,8 @@ import type { PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 
 const navItems = [
+  { label: 'Register', to: '/register' },
   { label: 'Login', to: '/login' },
-  { label: 'Dashboard', to: '/dashboard' },
-  { label: 'Presets', to: '/presets' },
 ]
 
 export function Layout({ children }: PropsWithChildren) {

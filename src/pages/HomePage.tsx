@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { PlaceholderPage } from './PlaceholderPage'
 
 export function HomePage() {
@@ -5,16 +6,11 @@ export function HomePage() {
     <PlaceholderPage
       eyebrow="In Development"
       title="MAGE is taking shape."
-      description="The full platform is on the way. For now, you can explore the live rendering demo."
+      description="The full platform is on the way. The registration flow is the first real account experience now taking shape."
       action={
-        <a
-          className="demo-link"
-          href="https://bsiscoe.github.io/MAGE/"
-          target="_blank"
-          rel="noreferrer"
-        >
-          View Live Demo
-        </a>
+        <Link className="demo-link" to="/register">
+          Create an Account
+        </Link>
       }
     />
   )
