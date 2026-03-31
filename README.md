@@ -15,25 +15,34 @@ Then open `http://localhost:5173`.
 
 ## Local backend configuration
 
-The registration and login pages submit to:
+For local development, the Vite dev server proxies these backend routes to `http://localhost:8080`:
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `GET /users/me`
+- `/presets/*`
 
-If `VITE_API_BASE_URL` is set, the frontend posts to:
+With the proxy in place, the frontend can keep using same-origin requests such as `/auth/login` while the backend runs separately on port `8080`.
+
+No frontend environment variables are required for this local proxy-based setup.
+
+To run the backend locally, start the backend stack from the `mage-backend` repository with:
+
+```bash
+docker compose up --build
+```
+
+The backend quick-start and local run details are documented in `mage-backend/docs/getting-started.md`.
+
+`VITE_API_BASE_URL` is still supported for deployed or intentionally cross-origin setups. When it is set, the frontend sends requests directly to that origin instead of using the local Vite proxy:
 
 ```text
 ${VITE_API_BASE_URL}/auth/register
 ${VITE_API_BASE_URL}/auth/login
+${VITE_API_BASE_URL}/users/me
 ```
 
-If `VITE_API_BASE_URL` is not set, the pages fall back to same-origin `/auth/register` and `/auth/login`.
-
-For local development with the backend running on port `8080`, create a `.env.local` file:
-
-```bash
-VITE_API_BASE_URL=http://localhost:8080
-```
+Leave `VITE_API_BASE_URL` unset for normal localhost development so the proxy handles auth and current-user requests.
 
 ## Routing
 

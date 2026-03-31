@@ -25,6 +25,8 @@ The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, request
 
 When a stored access token exists, the frontend bootstraps auth state by calling `${VITE_API_BASE_URL}/users/me` or same-origin `/users/me`.
 
+For normal localhost development, the Vite dev server proxies same-origin `/auth/login` and `/users/me` requests to `http://localhost:8080`.
+
 ## UI behavior
 
 - Requires email and password before submission
