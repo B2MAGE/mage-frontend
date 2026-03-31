@@ -149,6 +149,13 @@
   box-shadow: none;
 }
 
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
 .secondary-link {
   color: var(--text);
   text-decoration: none;
@@ -218,6 +225,15 @@
 .register-panel {
   border-radius: 32px;
   padding: 36px 32px;
+}
+
+.login-hero {
+  background:
+    radial-gradient(circle at 20% 24%, rgba(118, 196, 255, 0.2), transparent 24%),
+    radial-gradient(circle at 78% 74%, rgba(99, 240, 214, 0.2), transparent 26%),
+    radial-gradient(circle at 82% 22%, rgba(255, 224, 102, 0.14), transparent 18%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    var(--panel);
 }
 
 .register-badge {
@@ -329,12 +345,28 @@
   color: #ffb7c2;
 }
 
+.field-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(155, 177, 171, 0.92);
+}
+
 .form-alert {
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid rgba(255, 140, 153, 0.28);
   background: rgba(98, 16, 31, 0.32);
   color: #ffd1d8;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.form-note {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 240, 214, 0.2);
+  background: rgba(16, 66, 59, 0.28);
+  color: #d5faf3;
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -347,6 +379,17 @@
 .register-footnote {
   margin: 20px 0 0;
   color: var(--muted);
+}
+
+.home-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .register-success {
