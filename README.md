@@ -2,7 +2,7 @@
 
 Frontend for the MAGE project, built with React, TypeScript, and Vite.
 
-Right now this app contains the first real account-management flows for the platform: registration and login pages backed by the Spring Boot authentication API.
+Right now this app contains the first real account-management flows for the platform: registration and login pages backed by the Spring Boot authentication API plus a shared frontend auth session.
 
 ## Run locally
 
@@ -67,11 +67,13 @@ The login flow lives at `/login` and currently supports:
 - email and password inputs
 - client-side validation before submission
 - loading and disabled submit state during the request
-- success confirmation after a successful login response
+- storing the returned `accessToken` in shared frontend auth state
+- restoring the authenticated user on refresh through `GET /users/me`
 - backend validation and invalid-credential error messaging in the UI
+- logout from the shared app shell
 - responsive layout for desktop and mobile
 
-The page submits credentials to `POST /auth/login` and reflects the backend response in the UI. The returned `accessToken` is not persisted yet, so protected-session state and post-login navigation are still future work.
+The page submits credentials to `POST /auth/login`, persists the returned `accessToken`, and uses `GET /users/me` during app bootstrap when a stored token exists. Authenticated frontend requests can reuse the stored bearer token through the shared auth helper.
 
 Additional implementation notes are in `docs/login-page.md`.
 
@@ -88,5 +90,6 @@ Additional implementation notes are in `docs/login-page.md`.
 - Landing page for the MAGE platform
 - Registration page connected to the backend registration endpoint
 - Login page connected to the backend login endpoint
+- Shared frontend auth session with token persistence, bootstrap restore, and logout
 - Header navigation between pages without full page reloads
 - Live demo link: `https://bsiscoe.github.io/MAGE/`

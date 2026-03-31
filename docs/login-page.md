@@ -4,7 +4,7 @@ The login page is available at `/login`.
 
 ## Purpose
 
-This page handles the local email-and-password sign-in flow in the frontend. It validates credentials on the client, submits them to the backend login endpoint, and reflects backend success or failure in the UI.
+This page handles the local email-and-password sign-in flow in the frontend. It validates credentials on the client, submits them to the backend login endpoint, persists the returned access token, and restores the signed-in user through the shared auth session.
 
 ## API contract
 
@@ -23,28 +23,48 @@ Request body:
 
 The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/auth/login`. When it is not set, the page uses same-origin `/auth/login`.
 
+When a stored access token exists, the frontend bootstraps auth state by calling `${VITE_API_BASE_URL}/users/me` or same-origin `/users/me`.
+
 ## UI behavior
 
 - Requires email and password before submission
 - Validates email format on the client
 - Disables the submit button while the request is in flight
-- Shows a success state after a successful login response
+- Stores the returned `accessToken` in browser storage after a successful login response
+- Restores the authenticated user on refresh through `GET /users/me`
 - Shows backend validation errors from `details`
 - Shows invalid-credential or generic form errors when login fails
+- Clears invalid or expired stored tokens automatically
+- Shows logout in the shared app header when the user is signed in
 
-## Current limitation
+## Shared auth session
 
-The backend returns an `accessToken` for a successful login response, but the frontend does not persist that token yet. Protected session state and post-login navigation still need a follow-up implementation step.
+The shared frontend auth provider currently:
+
+- persists the login `accessToken` in browser storage
+- boots auth state on app load
+- calls `GET /users/me` when a stored token exists
+- clears the stored token if the backend responds with `401`
+- provides a shared authenticated request helper that sends `Authorization: Bearer <accessToken>`
+- exposes logout that clears the stored token and shared auth state
 
 ## Test coverage
 
 `src/pages/LoginPage.test.tsx` covers:
 
 - client-side validation without network submission
-- successful submission, including loading and success states
+- successful submission, including loading, auth-session storage, and success states
 - request payload trimming and endpoint usage
 - invalid-credential error handling from the backend
 - backend validation-detail handling for the form fields
+
+`src/auth/AuthContext.test.tsx` covers:
+
+- `GET /users/me` during app bootstrap when a stored token exists
+- restoring the authenticated user from a valid stored session
+- clearing invalid stored tokens on `401`
+- logout clearing shared auth state and browser storage
+- authenticated requests sending the bearer token and clearing auth state on `401`
 
 Run the tests with:
 
