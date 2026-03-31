@@ -24,6 +24,8 @@ Request body:
 
 The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/auth/register`. When it is not set, the page uses same-origin `/auth/register`.
 
+For normal localhost development, the Vite dev server proxies same-origin `/auth/register` requests to `http://localhost:8080`.
+
 ## UI behavior
 
 - Requires display name, email, and password before submission
