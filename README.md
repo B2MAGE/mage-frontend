@@ -2,7 +2,7 @@
 
 Frontend for the MAGE project, built with React, TypeScript, and Vite.
 
-Right now this app contains the first real account flow for the platform: a user registration page backed by the Spring Boot authentication API.
+Right now this app contains the first real account-management flows for the platform: registration and login pages backed by the Spring Boot authentication API.
 
 ## Run locally
 
@@ -15,15 +15,19 @@ Then open `http://localhost:5173`.
 
 ## Local backend configuration
 
-The registration page submits to `POST /auth/register`.
+The registration and login pages submit to:
+
+- `POST /auth/register`
+- `POST /auth/login`
 
 If `VITE_API_BASE_URL` is set, the frontend posts to:
 
 ```text
 ${VITE_API_BASE_URL}/auth/register
+${VITE_API_BASE_URL}/auth/login
 ```
 
-If `VITE_API_BASE_URL` is not set, the page falls back to same-origin `/auth/register`.
+If `VITE_API_BASE_URL` is not set, the pages fall back to same-origin `/auth/register` and `/auth/login`.
 
 For local development with the backend running on port `8080`, create a `.env.local` file:
 
@@ -56,6 +60,21 @@ The registration flow lives at `/register` and currently supports:
 
 Additional implementation notes are in `docs/registration-page.md`.
 
+## Login page
+
+The login flow lives at `/login` and currently supports:
+
+- email and password inputs
+- client-side validation before submission
+- loading and disabled submit state during the request
+- success confirmation after a successful login response
+- backend validation and invalid-credential error messaging in the UI
+- responsive layout for desktop and mobile
+
+The page submits credentials to `POST /auth/login` and reflects the backend response in the UI. The returned `accessToken` is not persisted yet, so protected-session state and post-login navigation are still future work.
+
+Additional implementation notes are in `docs/login-page.md`.
+
 ## Scripts
 
 - `npm run dev` starts the local development server
@@ -68,6 +87,6 @@ Additional implementation notes are in `docs/registration-page.md`.
 
 - Landing page for the MAGE platform
 - Registration page connected to the backend registration endpoint
-- Placeholder login route
+- Login page connected to the backend login endpoint
 - Header navigation between pages without full page reloads
 - Live demo link: `https://bsiscoe.github.io/MAGE/`
