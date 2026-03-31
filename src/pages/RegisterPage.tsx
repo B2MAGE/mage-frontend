@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { buildApiUrl } from '../lib/api'
 
 type RegistrationFormValues = {
   displayName: string
@@ -54,16 +55,6 @@ function validateRegistrationForm(values: RegistrationFormValues): RegistrationF
   }
 
   return errors
-}
-
-function buildRegisterUrl() {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
-
-  if (!baseUrl) {
-    return '/auth/register'
-  }
-
-  return `${baseUrl.replace(/\/+$/, '')}/auth/register`
 }
 
 async function parseApiError(response: Response) {
@@ -125,7 +116,7 @@ export function RegisterPage() {
     setErrors({})
 
     try {
-      const response = await fetch(buildRegisterUrl(), {
+      const response = await fetch(buildApiUrl('/auth/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

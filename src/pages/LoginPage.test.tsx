@@ -2,12 +2,16 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { AUTH_SESSION_STORAGE_KEY, AuthProvider } from '../auth/AuthContext'
+import { buildApiUrl } from '../lib/api'
 import { LoginPage } from './LoginPage'
 
 function renderLoginPage() {
   return render(
     <MemoryRouter>
-      <LoginPage />
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
     </MemoryRouter>,
   )
 }
@@ -55,7 +59,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/auth/login',
+      buildApiUrl('/auth/login'),
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -72,7 +76,10 @@ describe('LoginPage', () => {
     resolveResponse?.(
       new Response(
         JSON.stringify({
+          userId: 14,
           email: 'user@example.com',
+          displayName: 'Existing User',
+          authProvider: 'LOCAL',
           accessToken: 'issued-login-token',
         }),
         {
@@ -85,9 +92,10 @@ describe('LoginPage', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: /your credentials were accepted/i }),
+      await screen.findByRole('heading', { name: /your session is active/i }),
     ).toBeInTheDocument()
     expect(screen.getByText(/login for user@example.com completed successfully/i)).toBeInTheDocument()
+    expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain('issued-login-token')
   })
 
   it('shows backend invalid-credential errors clearly to the user', async () => {

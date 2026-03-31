@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { buildApiUrl } from '../lib/api'
 import { RegisterPage } from './RegisterPage'
 
 function renderRegisterPage() {
@@ -49,7 +50,7 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/auth/register',
+      buildApiUrl('/auth/register'),
       expect.objectContaining({
         method: 'POST',
         headers: {

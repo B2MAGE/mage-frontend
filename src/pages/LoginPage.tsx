@@ -1,6 +1,8 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth, type AuthenticatedUser } from '../auth/AuthContext'
+import { buildApiUrl } from '../lib/api'
 
 type LoginFormValues = {
   email: string
@@ -46,16 +48,6 @@ function validateLoginForm(values: LoginFormValues): LoginFormErrors {
   return errors
 }
 
-function buildLoginUrl() {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
-
-  if (!baseUrl) {
-    return '/auth/login'
-  }
-
-  return `${baseUrl.replace(/\/+$/, '')}/auth/login`
-}
-
 async function parseApiError(response: Response) {
   try {
     const payload = (await response.json()) as ApiErrorResponse
@@ -66,15 +58,14 @@ async function parseApiError(response: Response) {
 }
 
 export function LoginPage() {
+  const { accessToken, completeLoginSession, isAuthenticated, isRestoringSession, user } = useAuth()
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [successEmail, setSuccessEmail] = useState('')
 
   const formNoticeId = useId()
 
-  const isSubmitDisabled = isSubmitting || isSuccess
+  const isSubmitDisabled = isSubmitting || isAuthenticated
 
   function handleChange(field: keyof LoginFormValues, nextValue: string) {
     setValues((currentValues) => ({
@@ -114,7 +105,7 @@ export function LoginPage() {
     setErrors({})
 
     try {
-      const response = await fetch(buildLoginUrl(), {
+      const response = await fetch(buildApiUrl('/auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,8 +133,26 @@ export function LoginPage() {
       }
 
       const payload = (await response.json().catch(() => null)) as LoginResponse | null
-      setIsSuccess(true)
-      setSuccessEmail(payload?.email ?? trimmedValues.email)
+      const accessToken = payload?.accessToken?.trim()
+
+      if (!accessToken) {
+        setErrors({
+          form: 'Login did not return an access token. Please try again.',
+        })
+        return
+      }
+
+      const authenticatedUser: AuthenticatedUser = {
+        userId: payload?.userId ?? null,
+        email: payload?.email ?? trimmedValues.email,
+        displayName: payload?.displayName ?? payload?.email ?? trimmedValues.email,
+        authProvider: payload?.authProvider ?? 'LOCAL',
+      }
+
+      completeLoginSession({
+        accessToken,
+        user: authenticatedUser,
+      })
       setValues(initialValues)
     } catch {
       setErrors({
@@ -171,18 +180,18 @@ export function LoginPage() {
       </section>
 
       <section className="register-panel" aria-labelledby="login-title">
-        {isSuccess ? (
+        {isAuthenticated && user ? (
           <div className="register-success" role="status" aria-live="polite">
             <div className="eyebrow">Login Complete</div>
-            <h2 id="login-title">Your credentials were accepted.</h2>
+            <h2 id="login-title">Your session is active.</h2>
             <p className="register-copy">
-              {successEmail
-                ? `The login for ${successEmail} completed successfully.`
+              {user.email
+                ? `The login for ${user.email} completed successfully.`
                 : 'Your login completed successfully.'}
             </p>
             <p className="register-copy">
-              The backend issued an access token for this account. Protected app navigation can
-              build on that in the next step.
+              The shared frontend auth session has stored your access token and can restore this
+              user across refreshes.
             </p>
             <div className="register-actions">
               <Link className="demo-link" to="/">
@@ -192,6 +201,14 @@ export function LoginPage() {
                 Create another account
               </Link>
             </div>
+          </div>
+        ) : isRestoringSession && accessToken ? (
+          <div className="register-success" role="status" aria-live="polite">
+            <div className="eyebrow">Restoring Session</div>
+            <h2 id="login-title">Checking your saved login.</h2>
+            <p className="register-copy">
+              MAGE found a stored access token and is verifying it with the backend.
+            </p>
           </div>
         ) : (
           <>
