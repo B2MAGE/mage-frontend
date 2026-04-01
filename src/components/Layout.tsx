@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 
 const navItems = [
+  { label: 'Presets', to: '/presets' },
   { label: 'Register', to: '/register' },
   { label: 'Login', to: '/login' },
 ]

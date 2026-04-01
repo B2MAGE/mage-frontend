@@ -38,6 +38,7 @@ The app uses `react-router-dom` with `BrowserRouter` for clean client-side URLs.
 Available routes:
 
 - `/`
+- `/presets`
 - `/register`
 - `/login`
 
@@ -56,6 +57,17 @@ The registration flow lives at `/register` and currently supports:
 
 Additional implementation notes are in `docs/registration-page.md`.
 
+## Presets page
+
+The presets page lives at `/presets` and supports:
+
+- browsing all presets as a responsive card grid
+- filtering presets by tag using a horizontal tag pill bar
+- skeleton loading states while data is fetched
+- empty state messaging when no presets match the current filter
+- error state with retry for failed API requests
+- responsive layout for desktop and mobile
+
 ## Scripts
 
 - `npm run dev` starts the local development server
@@ -68,6 +80,7 @@ Additional implementation notes are in `docs/registration-page.md`.
 
 - Landing page for the MAGE platform
 - Registration page connected to the backend registration endpoint
+- Presets page with tag-based filtering
 - Placeholder login route
 - Header navigation between pages without full page reloads
 - Live demo link: `https://bsiscoe.github.io/MAGE/`

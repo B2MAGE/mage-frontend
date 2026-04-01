@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { PresetsPage } from './pages/PresetsPage'
 import { RegisterPage } from './pages/RegisterPage'
 
 const placeholderRoutes = [
@@ -19,6 +20,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/presets" element={<PresetsPage />} />
         {placeholderRoutes.map((route) => (
           <Route
             key={route.path}

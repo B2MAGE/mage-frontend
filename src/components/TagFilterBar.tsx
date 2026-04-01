@@ -1,0 +1,44 @@
+import type { TagResponse } from '../api'
+
+type TagFilterBarProps = {
+  tags: TagResponse[]
+  activeTag: string | null
+  onTagSelect: (tag: string | null) => void
+  isLoading: boolean
+}
+
+const skeletonCount = 5
+
+export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFilterBarProps) {
+  if (isLoading) {
+    return (
+      <div className="tag-filter-bar" aria-label="Tag filters loading">
+        {Array.from({ length: skeletonCount }, (_, i) => (
+          <span key={i} className="tag-pill tag-pill--skeleton" aria-hidden="true" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="tag-filter-bar" role="toolbar" aria-label="Filter presets by tag">
+      <button
+        className={`tag-pill${activeTag === null ? ' tag-pill--active' : ''}`}
+        aria-pressed={activeTag === null}
+        onClick={() => onTagSelect(null)}
+      >
+        All
+      </button>
+      {tags.map((tag) => (
+        <button
+          key={tag.tagId}
+          className={`tag-pill${activeTag === tag.name ? ' tag-pill--active' : ''}`}
+          aria-pressed={activeTag === tag.name}
+          onClick={() => onTagSelect(tag.name)}
+        >
+          {tag.name}
+        </button>
+      ))}
+    </div>
+  )
+}
