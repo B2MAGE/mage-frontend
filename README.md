@@ -2,7 +2,7 @@
 
 Frontend for the MAGE project, built with React, TypeScript, and Vite.
 
-Right now this app contains the first real account flow for the platform: a user registration page backed by the Spring Boot authentication API.
+Right now this app contains the first real account-management flows for the platform: registration and login pages backed by the Spring Boot authentication API plus a shared frontend auth session.
 
 ## Run locally
 
@@ -15,21 +15,34 @@ Then open `http://localhost:5173`.
 
 ## Local backend configuration
 
-The registration page submits to `POST /auth/register`.
+For local development, the Vite dev server proxies these backend routes to `http://localhost:8080`:
 
-If `VITE_API_BASE_URL` is set, the frontend posts to:
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /users/me`
+- `/presets/*`
+
+With the proxy in place, the frontend can keep using same-origin requests such as `/auth/login` while the backend runs separately on port `8080`.
+
+No frontend environment variables are required for this local proxy-based setup.
+
+To run the backend locally, start the backend stack from the `mage-backend` repository with:
+
+```bash
+docker compose up --build
+```
+
+The backend quick-start and local run details are documented in `mage-backend/docs/getting-started.md`.
+
+`VITE_API_BASE_URL` is still supported for deployed or intentionally cross-origin setups. When it is set, the frontend sends requests directly to that origin instead of using the local Vite proxy:
 
 ```text
 ${VITE_API_BASE_URL}/auth/register
+${VITE_API_BASE_URL}/auth/login
+${VITE_API_BASE_URL}/users/me
 ```
 
-If `VITE_API_BASE_URL` is not set, the page falls back to same-origin `/auth/register`.
-
-For local development with the backend running on port `8080`, create a `.env.local` file:
-
-```bash
-VITE_API_BASE_URL=http://localhost:8080
-```
+Leave `VITE_API_BASE_URL` unset for normal localhost development so the proxy handles auth and current-user requests.
 
 ## Routing
 
@@ -56,6 +69,23 @@ The registration flow lives at `/register` and currently supports:
 
 Additional implementation notes are in `docs/registration-page.md`.
 
+## Login page
+
+The login flow lives at `/login` and currently supports:
+
+- email and password inputs
+- client-side validation before submission
+- loading and disabled submit state during the request
+- storing the returned `accessToken` in shared frontend auth state
+- restoring the authenticated user on refresh through `GET /users/me`
+- backend validation and invalid-credential error messaging in the UI
+- logout from the shared app shell
+- responsive layout for desktop and mobile
+
+The page submits credentials to `POST /auth/login`, persists the returned `accessToken`, and uses `GET /users/me` during app bootstrap when a stored token exists. Authenticated frontend requests can reuse the stored bearer token through the shared auth helper.
+
+Additional implementation notes are in `docs/login-page.md`.
+
 ## Scripts
 
 - `npm run dev` starts the local development server
@@ -68,6 +98,7 @@ Additional implementation notes are in `docs/registration-page.md`.
 
 - Landing page for the MAGE platform
 - Registration page connected to the backend registration endpoint
-- Placeholder login route
+- Login page connected to the backend login endpoint
+- Shared frontend auth session with token persistence, bootstrap restore, and logout
 - Header navigation between pages without full page reloads
 - Live demo link: `https://bsiscoe.github.io/MAGE/`

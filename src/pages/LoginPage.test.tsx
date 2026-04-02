@@ -2,34 +2,43 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { AUTH_SESSION_STORAGE_KEY, AuthProvider } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
-import { RegisterPage } from './RegisterPage'
+import { LoginPage } from './LoginPage'
 
-function renderRegisterPage() {
+function renderLoginPage() {
   return render(
     <MemoryRouter>
-      <RegisterPage />
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
     </MemoryRouter>,
   )
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/display name/i), ' New User ')
   await user.type(screen.getByLabelText(/^email$/i), ' user@example.com ')
   await user.type(screen.getByLabelText(/password/i), 'secret-value')
 }
 
-describe('RegisterPage', () => {
-  it('shows client-side validation errors without calling the API', async () => {
+describe('LoginPage', () => {
+  it('renders email and password inputs', () => {
+    renderLoginPage()
+
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+  })
+
+  it('shows required-field validation errors', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const user = userEvent.setup()
 
-    renderRegisterPage()
+    renderLoginPage()
 
-    await user.click(screen.getByRole('button', { name: /create account/i }))
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
 
-    expect(await screen.findByText('Display name is required.')).toBeInTheDocument()
-    expect(screen.getByText('Email is required.')).toBeInTheDocument()
+    expect(await screen.findByText('Email is required.')).toBeInTheDocument()
     expect(screen.getByText('Password is required.')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
@@ -44,50 +53,59 @@ describe('RegisterPage', () => {
     )
     const user = userEvent.setup()
 
-    renderRegisterPage()
+    renderLoginPage()
 
     await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create account/i }))
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      buildApiUrl('/auth/register'),
+      buildApiUrl('/auth/login'),
       expect.objectContaining({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          displayName: 'New User',
           email: 'user@example.com',
           password: 'secret-value',
         }),
       }),
     )
-    expect(screen.getByRole('button', { name: /creating account/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled()
 
     resolveResponse?.(
-      new Response(JSON.stringify({ email: 'user@example.com', created: true }), {
-        status: 201,
-        headers: {
-          'Content-Type': 'application/json',
+      new Response(
+        JSON.stringify({
+          userId: 14,
+          email: 'user@example.com',
+          displayName: 'Existing User',
+          authProvider: 'LOCAL',
+          accessToken: 'issued-login-token',
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
         },
-      }),
+      ),
     )
 
     expect(
-      await screen.findByRole('heading', { name: /your account request was submitted/i }),
+      await screen.findByRole('heading', { name: /your session is active/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/registration for user@example.com completed successfully/i)).toBeInTheDocument()
+    expect(screen.getByText(/login for user@example.com completed successfully/i)).toBeInTheDocument()
+    expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain('issued-login-token')
   })
 
-  it('shows backend conflict errors clearly to the user', async () => {
+  it('shows backend invalid-credential errors clearly to the user', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
-          message: 'An account already exists for that email address.',
+          message: 'Email or password is incorrect.',
         }),
         {
-          status: 409,
+          status: 401,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -96,24 +114,23 @@ describe('RegisterPage', () => {
     )
     const user = userEvent.setup()
 
-    renderRegisterPage()
+    renderLoginPage()
 
     await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create account/i }))
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(
-      await screen.findByText('An account already exists for that email address.'),
+      await screen.findByText('Email or password is incorrect.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /create account/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeEnabled()
   })
 
   it('maps backend validation details onto the form fields', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
-          message: 'Registration failed. Please review your information and try again.',
+          message: 'Request validation failed.',
           details: {
-            displayName: 'displayName must not be blank',
             email: 'email must not be blank',
             password: 'password must not be blank',
           },
@@ -128,13 +145,12 @@ describe('RegisterPage', () => {
     )
     const user = userEvent.setup()
 
-    renderRegisterPage()
+    renderLoginPage()
 
     await fillValidForm(user)
-    await user.click(screen.getByRole('button', { name: /create account/i }))
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
 
-    expect(await screen.findByText('displayName must not be blank')).toBeInTheDocument()
-    expect(screen.getByText('email must not be blank')).toBeInTheDocument()
+    expect(await screen.findByText('email must not be blank')).toBeInTheDocument()
     expect(screen.getByText('password must not be blank')).toBeInTheDocument()
   })
 })
