@@ -11,6 +11,13 @@ export function HomePage() {
         eyebrow="Authenticated"
         title={`Welcome back, ${user.displayName}.`}
         description={`Your shared MAGE session is active for ${user.email}. Protected requests can now reuse the stored bearer token.`}
+        action={
+          <div className="home-actions">
+            <Link className="demo-link" to="/my-presets">
+              View My Presets
+            </Link>
+          </div>
+        }
         footnote="Use Log out in the header to clear the stored auth session."
       />
     )
