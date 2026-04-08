@@ -5,8 +5,12 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "baseUrl": ".",
     "types": ["vite/client"],
     "skipLibCheck": true,
+    "paths": {
+      "@mage/engine": ["../mage-engine/mage-engine.mjs"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

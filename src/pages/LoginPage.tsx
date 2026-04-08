@@ -1,125 +1,131 @@
-import { useId, useState } from 'react'
-import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth, type AuthenticatedUser } from '../auth/AuthContext'
-import { buildApiUrl } from '../lib/api'
+import { useId, useState } from "react";
+import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
+import { useAuth, type AuthenticatedUser } from "../auth/AuthContext";
+import { buildApiUrl } from "../lib/api";
 
 type LoginFormValues = {
-  email: string
-  password: string
-}
+  email: string;
+  password: string;
+};
 
-type LoginFormErrors = Partial<Record<keyof LoginFormValues | 'form', string>>
+type LoginFormErrors = Partial<Record<keyof LoginFormValues | "form", string>>;
 
 type LoginResponse = {
-  userId?: number
-  email?: string
-  displayName?: string
-  authProvider?: string
-  accessToken?: string
-}
+  userId?: number;
+  email?: string;
+  displayName?: string;
+  authProvider?: string;
+  accessToken?: string;
+};
 
 type ApiErrorResponse = {
-  code?: string
-  message?: string
-  details?: Record<string, string>
-}
+  code?: string;
+  message?: string;
+  details?: Record<string, string>;
+};
 
 const initialValues: LoginFormValues = {
-  email: '',
-  password: '',
-}
+  email: "",
+  password: "",
+};
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validateLoginForm(values: LoginFormValues): LoginFormErrors {
-  const errors: LoginFormErrors = {}
+  const errors: LoginFormErrors = {};
 
   if (!values.email.trim()) {
-    errors.email = 'Email is required.'
+    errors.email = "Email is required.";
   } else if (!emailPattern.test(values.email.trim())) {
-    errors.email = 'Enter a valid email address.'
+    errors.email = "Enter a valid email address.";
   }
 
   if (!values.password) {
-    errors.password = 'Password is required.'
+    errors.password = "Password is required.";
   }
 
-  return errors
+  return errors;
 }
 
 async function parseApiError(response: Response) {
   try {
-    const payload = (await response.json()) as ApiErrorResponse
-    return payload
+    const payload = (await response.json()) as ApiErrorResponse;
+    return payload;
   } catch {
-    return null
+    return null;
   }
 }
 
 export function LoginPage() {
-  const { accessToken, completeLoginSession, isAuthenticated, isRestoringSession, user } = useAuth()
-  const [values, setValues] = useState(initialValues)
-  const [errors, setErrors] = useState<LoginFormErrors>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const {
+    accessToken,
+    completeLoginSession,
+    isAuthenticated,
+    isRestoringSession,
+    user,
+  } = useAuth();
+  const [values, setValues] = useState(initialValues);
+  const [errors, setErrors] = useState<LoginFormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const formNoticeId = useId()
+  const formNoticeId = useId();
 
-  const isSubmitDisabled = isSubmitting || isAuthenticated
+  const isSubmitDisabled = isSubmitting || isAuthenticated;
 
   function handleChange(field: keyof LoginFormValues, nextValue: string) {
     setValues((currentValues) => ({
       ...currentValues,
       [field]: nextValue,
-    }))
+    }));
 
     setErrors((currentErrors) => {
       if (!currentErrors[field] && !currentErrors.form) {
-        return currentErrors
+        return currentErrors;
       }
 
       return {
         ...currentErrors,
         [field]: undefined,
         form: undefined,
-      }
-    })
+      };
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
     const trimmedValues = {
       email: values.email.trim(),
       password: values.password,
-    }
+    };
 
-    const nextErrors = validateLoginForm(trimmedValues)
+    const nextErrors = validateLoginForm(trimmedValues);
 
     if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors)
-      return
+      setErrors(nextErrors);
+      return;
     }
 
-    setIsSubmitting(true)
-    setErrors({})
+    setIsSubmitting(true);
+    setErrors({});
 
     try {
-      const response = await fetch(buildApiUrl('/auth/login'), {
-        method: 'POST',
+      const response = await fetch(buildApiUrl("/auth/login"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(trimmedValues),
-      })
+      });
 
       if (!response.ok) {
-        const apiError = await parseApiError(response)
-        const backendDetails = apiError?.details ?? {}
+        const apiError = await parseApiError(response);
+        const backendDetails = apiError?.details ?? {};
         const invalidCredentialsMessage =
           response.status === 401
-            ? apiError?.message ?? 'Email or password is incorrect.'
-            : undefined
+            ? (apiError?.message ?? "Email or password is incorrect.")
+            : undefined;
 
         setErrors({
           email: backendDetails.email,
@@ -127,39 +133,42 @@ export function LoginPage() {
           form:
             invalidCredentialsMessage ??
             apiError?.message ??
-            'Login failed. Please review your information and try again.',
-        })
-        return
+            "Login failed. Please review your information and try again.",
+        });
+        return;
       }
 
-      const payload = (await response.json().catch(() => null)) as LoginResponse | null
-      const accessToken = payload?.accessToken?.trim()
+      const payload = (await response
+        .json()
+        .catch(() => null)) as LoginResponse | null;
+      const accessToken = payload?.accessToken?.trim();
 
       if (!accessToken) {
         setErrors({
-          form: 'Login did not return an access token. Please try again.',
-        })
-        return
+          form: "Login did not return an access token. Please try again.",
+        });
+        return;
       }
 
       const authenticatedUser: AuthenticatedUser = {
         userId: payload?.userId ?? null,
         email: payload?.email ?? trimmedValues.email,
-        displayName: payload?.displayName ?? payload?.email ?? trimmedValues.email,
-        authProvider: payload?.authProvider ?? 'LOCAL',
-      }
+        displayName:
+          payload?.displayName ?? payload?.email ?? trimmedValues.email,
+        authProvider: payload?.authProvider ?? "LOCAL",
+      };
 
       completeLoginSession({
         accessToken,
         user: authenticatedUser,
-      })
-      setValues(initialValues)
+      });
+      setValues(initialValues);
     } catch {
       setErrors({
-        form: 'Login is unavailable right now. Please try again in a moment.',
-      })
+        form: "Login is unavailable right now. Please try again in a moment.",
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -169,8 +178,8 @@ export function LoginPage() {
         <div className="register-badge">Epic E2</div>
         <h1>Welcome back to MAGE.</h1>
         <p className="register-copy">
-          Sign in with your email and password to continue into the platform once the
-          authentication flow is fully connected.
+          Sign in with your email and password to continue into the platform
+          once the authentication flow is fully connected.
         </p>
         <div className="register-highlights" aria-label="Login page highlights">
           <span>Email and password inputs</span>
@@ -187,11 +196,11 @@ export function LoginPage() {
             <p className="register-copy">
               {user.email
                 ? `The login for ${user.email} completed successfully.`
-                : 'Your login completed successfully.'}
+                : "Your login completed successfully."}
             </p>
             <p className="register-copy">
-              The shared frontend auth session has stored your access token and can restore this
-              user across refreshes.
+              The shared frontend auth session has stored your access token and
+              can restore this user across refreshes.
             </p>
             <div className="register-actions">
               <Link className="demo-link" to="/">
@@ -207,7 +216,8 @@ export function LoginPage() {
             <div className="eyebrow">Restoring Session</div>
             <h2 id="login-title">Checking your saved login.</h2>
             <p className="register-copy">
-              MAGE found a stored access token and is verifying it with the backend.
+              MAGE found a stored access token and is verifying it with the
+              backend.
             </p>
           </div>
         ) : (
@@ -228,13 +238,21 @@ export function LoginPage() {
                   autoComplete="email"
                   required
                   value={values.email}
-                  onChange={(event) => handleChange('email', event.target.value)}
+                  onChange={(event) =>
+                    handleChange("email", event.target.value)
+                  }
                   aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'login-email-error' : undefined}
+                  aria-describedby={
+                    errors.email ? "login-email-error" : undefined
+                  }
                   placeholder="you@example.com"
                 />
                 {errors.email ? (
-                  <p className="field-error" id="login-email-error" role="alert">
+                  <p
+                    className="field-error"
+                    id="login-email-error"
+                    role="alert"
+                  >
                     {errors.email}
                   </p>
                 ) : null}
@@ -249,16 +267,26 @@ export function LoginPage() {
                   autoComplete="current-password"
                   required
                   value={values.password}
-                  onChange={(event) => handleChange('password', event.target.value)}
+                  onChange={(event) =>
+                    handleChange("password", event.target.value)
+                  }
                   aria-invalid={Boolean(errors.password)}
-                  aria-describedby={errors.password ? 'login-password-error' : 'login-password-hint'}
+                  aria-describedby={
+                    errors.password
+                      ? "login-password-error"
+                      : "login-password-hint"
+                  }
                   placeholder="Enter your password"
                 />
                 <p className="field-hint" id="login-password-hint">
                   Use the same password you created during registration.
                 </p>
                 {errors.password ? (
-                  <p className="field-error" id="login-password-error" role="alert">
+                  <p
+                    className="field-error"
+                    id="login-password-error"
+                    role="alert"
+                  >
                     {errors.password}
                   </p>
                 ) : null}
@@ -270,13 +298,17 @@ export function LoginPage() {
                 </div>
               ) : null}
 
-              <button className="demo-link register-submit" type="submit" disabled={isSubmitDisabled}>
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+              <button
+                className="demo-link register-submit"
+                type="submit"
+                disabled={isSubmitDisabled}
+              >
+                {isSubmitting ? "Signing in..." : "Sign in"}
               </button>
             </form>
 
             <p className="register-footnote">
-              Need an account?{' '}
+              Need an account?{" "}
               <Link className="secondary-link" to="/register">
                 Create one here
               </Link>
@@ -285,5 +317,5 @@ export function LoginPage() {
         )}
       </section>
     </main>
-  )
+  );
 }
