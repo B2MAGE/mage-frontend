@@ -86,6 +86,18 @@ The page submits credentials to `POST /auth/login`, persists the returned `acces
 
 Additional implementation notes are in `docs/login-page.md`.
 
+## Player component
+
+The frontend now includes a reusable `MagePlayer` React component for embedding the MAGE
+engine inside normal page layouts.
+
+- the component owns engine startup and disposal so pages do not call `initMAGE()` directly
+- pages pass a preset scene blob, typically `preset.sceneData`, through the `sceneBlob` prop
+- empty, loading, and invalid-preset states are rendered in the component instead of crashing
+- the home page includes a live player embed that exercises the wrapper in the browser
+
+Usage notes and an example embed live in `docs/player-component.md`.
+
 ## Scripts
 
 - `npm run dev` starts the local development server
@@ -100,5 +112,6 @@ Additional implementation notes are in `docs/login-page.md`.
 - Registration page connected to the backend registration endpoint
 - Login page connected to the backend login endpoint
 - Shared frontend auth session with token persistence, bootstrap restore, and logout
+- Reusable MAGE player component with a live home-page preview
 - Header navigation between pages without full page reloads
 - Live demo link: `https://bsiscoe.github.io/MAGE/`
