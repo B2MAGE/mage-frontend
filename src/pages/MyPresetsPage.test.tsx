@@ -52,6 +52,15 @@ const mockPresets = [
   },
 ]
 
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
 function storeSession() {
   window.localStorage.setItem(
     AUTH_SESSION_STORAGE_KEY,
@@ -93,14 +102,7 @@ describe('MyPresetsPage', () => {
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(
-          new Response(JSON.stringify(storedUser), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }),
-        )
+        return Promise.resolve(jsonResponse(storedUser))
       }
 
       if (input === buildApiUrl('/users/8/presets')) {
@@ -118,15 +120,11 @@ describe('MyPresetsPage', () => {
     await waitFor(() => expect(resolvePresetsResponse).toBeDefined())
 
     resolvePresetsResponse?.(
-      new Response(JSON.stringify([]), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
+      jsonResponse([]),
     )
 
     expect(await screen.findByText(/no presets yet/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add sample presets/i })).toBeInTheDocument()
   })
 
   it('renders the authenticated users presets and opens the preset detail route', async () => {
@@ -134,36 +132,21 @@ describe('MyPresetsPage', () => {
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(
-          new Response(JSON.stringify(storedUser), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }),
-        )
+        return Promise.resolve(jsonResponse(storedUser))
       }
 
       if (input === buildApiUrl('/users/8/presets')) {
         return Promise.resolve(
-          new Response(
-            JSON.stringify([
-              {
-                id: 12,
-                name: 'Aurora Drift',
-              },
-              {
-                id: 13,
-                name: 'Signal Bloom',
-              },
-            ]),
+          jsonResponse([
             {
-              status: 200,
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              id: 12,
+              name: 'Aurora Drift',
             },
-          ),
+            {
+              id: 13,
+              name: 'Signal Bloom',
+            },
+          ]),
         )
       }
 
@@ -196,25 +179,11 @@ describe('MyPresetsPage', () => {
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(
-          new Response(JSON.stringify(storedUser), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }),
-        )
+        return Promise.resolve(jsonResponse(storedUser))
       }
 
       if (input === buildApiUrl('/users/8/presets')) {
-        return Promise.resolve(
-          new Response(JSON.stringify(mockPresets), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }),
-        )
+        return Promise.resolve(jsonResponse(mockPresets))
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
@@ -248,28 +217,16 @@ describe('MyPresetsPage', () => {
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(
-          new Response(JSON.stringify(storedUser), {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }),
-        )
+        return Promise.resolve(jsonResponse(storedUser))
       }
 
       if (input === buildApiUrl('/users/8/presets')) {
         return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              message: 'Something went wrong.',
-            }),
+          jsonResponse(
             {
-              status: 500,
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              message: 'Something went wrong.',
             },
+            500,
           ),
         )
       }
@@ -283,5 +240,98 @@ describe('MyPresetsPage', () => {
       await screen.findByText(/unable to load presets right now\. please try again in a moment\./i),
     ).toBeInTheDocument()
     expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('adds sample presets from the empty state and reloads the list', async () => {
+    storeSession()
+
+    const createdPresetBodies: Array<Record<string, unknown>> = []
+    let presetListRequestCount = 0
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/users/8/presets')) {
+        presetListRequestCount += 1
+
+        return Promise.resolve(
+          jsonResponse(
+            presetListRequestCount === 1
+              ? []
+              : [
+                  {
+                    id: 21,
+                    name: 'Aurora Drift',
+                    thumbnailRef: 'thumbnails/preset-21.png',
+                  },
+                  {
+                    id: 22,
+                    name: 'Signal Bloom',
+                    thumbnailRef: null,
+                  },
+                  {
+                    id: 23,
+                    name: 'Glacier Echo',
+                    thumbnailRef: 'thumbnails/preset-23.png',
+                  },
+                  {
+                    id: 24,
+                    name: 'Solar Thread',
+                    thumbnailRef: 'thumbnails/preset-24.png',
+                  },
+                ],
+          ),
+        )
+      }
+
+      if (input === buildApiUrl('/presets')) {
+        createdPresetBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
+
+        return Promise.resolve(
+          jsonResponse(
+            {
+              presetId: 20 + createdPresetBodies.length,
+            },
+            201,
+          ),
+        )
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    const user = userEvent.setup()
+
+    renderMyPresetsPage()
+
+    expect(await screen.findByText(/no presets yet/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /add sample presets/i }))
+
+    expect(await screen.findByRole('link', { name: /aurora drift/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
+    expect(createdPresetBodies).toHaveLength(4)
+    expect(presetListRequestCount).toBe(2)
+    expect(createdPresetBodies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Aurora Drift',
+          sceneData: expect.objectContaining({
+            visualizer: expect.objectContaining({
+              shader: 'nebula',
+            }),
+          }),
+        }),
+        expect.objectContaining({
+          name: 'Signal Bloom',
+          sceneData: expect.objectContaining({
+            visualizer: expect.objectContaining({
+              shader: 'pulse',
+            }),
+          }),
+        }),
+      ]),
+    )
   })
 })
