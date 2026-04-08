@@ -5,11 +5,14 @@ import { useAuth } from '../auth/AuthContext'
 type UserPreset = {
   id: number
   name: string
+  thumbnailRef: string | null
 }
 
 type UserPresetResponse = {
   id?: number
+  presetId?: number
   name?: string
+  thumbnailRef?: string | null
 }
 
 function isUserPresetResponse(value: unknown): value is UserPresetResponse {
@@ -22,14 +25,23 @@ function normalizePresets(payload: unknown) {
   }
 
   return payload.reduce<UserPreset[]>((presets, item) => {
-    if (!isUserPresetResponse(item) || typeof item.id !== 'number') {
+    const presetId =
+      isUserPresetResponse(item) && typeof item.id === 'number'
+        ? item.id
+        : isUserPresetResponse(item) && typeof item.presetId === 'number'
+          ? item.presetId
+          : null
+
+    if (!isUserPresetResponse(item) || presetId === null) {
       return presets
     }
 
     presets.push({
-      id: item.id,
+      id: presetId,
       name:
-        typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Preset ${item.id}`,
+        typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Preset ${presetId}`,
+      thumbnailRef:
+        typeof item.thumbnailRef === 'string' && item.thumbnailRef.trim() ? item.thumbnailRef : null,
     })
 
     return presets
@@ -133,6 +145,17 @@ export function MyPresetsPage() {
           <div className="preset-grid" aria-label="My presets">
             {presets.map((preset) => (
               <Link key={preset.id} className="preset-link" to={`/presets/${preset.id}`}>
+                {preset.thumbnailRef ? (
+                  <img
+                    className="preset-thumbnail"
+                    src={preset.thumbnailRef}
+                    alt={`${preset.name} thumbnail`}
+                  />
+                ) : (
+                  <div className="preset-thumbnail-fallback" aria-label={`${preset.name} thumbnail unavailable`}>
+                    No thumbnail available
+                  </div>
+                )}
                 <span className="preset-link-label">{preset.name}</span>
               </Link>
             ))}

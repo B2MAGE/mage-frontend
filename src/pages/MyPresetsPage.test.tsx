@@ -19,6 +19,39 @@ const storedUser: AuthenticatedUser = {
   authProvider: 'LOCAL',
 }
 
+const mockPresets = [
+  {
+    presetId: 1,
+    ownerUserId: 42,
+    name: 'Aurora Drift',
+    sceneData: {
+      visualizer: { shader: 'nebula' },
+    },
+    thumbnailRef: 'thumbnails/preset-1.png',
+    createdAt: '2026-04-06T14:00:00Z',
+  },
+  {
+    presetId: 2,
+    ownerUserId: 42,
+    name: 'Signal Bloom',
+    sceneData: {
+      visualizer: { shader: 'pulse' },
+    },
+    thumbnailRef: null,
+    createdAt: '2026-04-06T14:10:00Z',
+  },
+  {
+    presetId: 3,
+    ownerUserId: 42,
+    name: 'Very Long Preset Name To Test Wrapping In The Card Layout',
+    sceneData: {
+      visualizer: { shader: 'glacier' },
+    },
+    thumbnailRef: 'thumbnails/preset-3.png',
+    createdAt: '2026-04-06T14:20:00Z',
+  },
+]
+
 function storeSession() {
   window.localStorage.setItem(
     AUTH_SESSION_STORAGE_KEY,
@@ -156,6 +189,58 @@ describe('MyPresetsPage', () => {
     await user.click(presetLink)
 
     expect(await screen.findByRole('heading', { name: /preset 12/i })).toBeInTheDocument()
+  })
+
+  it('renders the populated preset state with thumbnails, fallback UI, and navigation', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(storedUser), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }),
+        )
+      }
+
+      if (input === buildApiUrl('/users/8/presets')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(mockPresets), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }),
+        )
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    const user = userEvent.setup()
+
+    renderMyPresetsPage()
+
+    const auroraPreset = await screen.findByRole('link', { name: /aurora drift/i })
+
+    expect(auroraPreset).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /very long preset name to test wrapping in the card layout/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByAltText('Aurora Drift thumbnail')).toBeInTheDocument()
+    expect(
+      screen.getByAltText('Very Long Preset Name To Test Wrapping In The Card Layout thumbnail'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Signal Bloom thumbnail unavailable'),
+    ).toBeInTheDocument()
+
+    await user.click(auroraPreset)
+
+    expect(await screen.findByRole('heading', { name: /preset 1/i })).toBeInTheDocument()
   })
 
   it('shows empty and error states using simple messages', async () => {
