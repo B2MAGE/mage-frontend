@@ -2,9 +2,14 @@ import type { PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
-const navItems = [
+const guestNavItems = [
   { label: 'Register', to: '/register' },
   { label: 'Login', to: '/login' },
+]
+
+const authenticatedNavItems = [
+  { label: 'Home', to: '/' },
+  { label: 'My Presets', to: '/my-presets' },
 ]
 
 export function Layout({ children }: PropsWithChildren) {
@@ -18,14 +23,23 @@ export function Layout({ children }: PropsWithChildren) {
             MAGE
           </Link>
           {isAuthenticated && user ? (
-            <div className="nav-session">
-              <div className="nav-session-copy">
-                <strong>{user.displayName}</strong>
-                <span>{user.email}</span>
+            <div className="nav-auth">
+              <nav className="nav-links" aria-label="Primary">
+                {authenticatedNavItems.map((item) => (
+                  <NavLink key={item.to} to={item.to}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
+              <div className="nav-session">
+                <div className="nav-session-copy">
+                  <strong>{user.displayName}</strong>
+                  <span>{user.email}</span>
+                </div>
+                <button className="nav-logout" type="button" onClick={logout}>
+                  Log out
+                </button>
               </div>
-              <button className="nav-logout" type="button" onClick={logout}>
-                Log out
-              </button>
             </div>
           ) : isRestoringSession && accessToken ? (
             <div className="nav-status" aria-live="polite">
@@ -33,7 +47,7 @@ export function Layout({ children }: PropsWithChildren) {
             </div>
           ) : (
             <nav className="nav-links" aria-label="Primary">
-              {navItems.map((item) => (
+              {guestNavItems.map((item) => (
                 <NavLink key={item.to} to={item.to}>
                   {item.label}
                 </NavLink>

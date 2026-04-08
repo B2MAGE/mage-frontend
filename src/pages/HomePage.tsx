@@ -1,5 +1,5 @@
-import { MagePlayer } from "../components/MagePlayer";
-import type { MageSceneBlob } from "../lib/magePlayerAdapter";
+import { MagePlayer } from '../components/MagePlayer'
+import type { MageSceneBlob } from '../lib/magePlayerAdapter'
 
 const HOME_PAGE_PRESET_SCENE = {
   visualizer: {
@@ -39,7 +39,7 @@ const HOME_PAGE_PRESET_SCENE = {
     autoRotateSpeed: 0.2,
     fov: 75,
   },
-} satisfies MageSceneBlob;
+} satisfies MageSceneBlob
 
 export function HomePage() {
   return (
@@ -47,19 +47,14 @@ export function HomePage() {
       <div className="eyebrow">Preview</div>
       <h1>MAGE</h1>
       <p className="sub">Musical Autonomous Generated Environments</p>
-      <section
-        className="home-preview-section"
-        aria-label="Live preset preview"
-      >
+      <section className="home-preview-section" aria-label="Live preset preview">
         <MagePlayer
           ariaLabel="MAGE live preset preview"
           sceneBlob={HOME_PAGE_PRESET_SCENE}
         />
       </section>
-      <p className="foot">
-        The full platform experience is currently in development.
-      </p>
+      <p className="foot">The full platform experience is currently in development.</p>
       <div className="brand">MAGE</div>
     </main>
-  );
+  )
 }
