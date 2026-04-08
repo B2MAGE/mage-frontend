@@ -1,7 +1,9 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { AuthPage, AuthPageHeader } from '../components/AuthPage'
 import { buildApiUrl } from '../lib/api'
+import { emailPattern, parseApiError } from '../lib/authForm'
 
 type RegistrationFormValues = {
   displayName: string
@@ -19,19 +21,11 @@ type RegistrationResponse = {
   created?: boolean
 }
 
-type ApiErrorResponse = {
-  code?: string
-  message?: string
-  details?: Record<string, string>
-}
-
 const initialValues: RegistrationFormValues = {
   displayName: '',
   email: '',
   password: '',
 }
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validateRegistrationForm(values: RegistrationFormValues): RegistrationFormErrors {
   const errors: RegistrationFormErrors = {}
@@ -57,15 +51,6 @@ function validateRegistrationForm(values: RegistrationFormValues): RegistrationF
   return errors
 }
 
-async function parseApiError(response: Response) {
-  try {
-    const payload = (await response.json()) as ApiErrorResponse
-    return payload
-  } catch {
-    return null
-  }
-}
-
 export function RegisterPage() {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<RegistrationFormErrors>({})
@@ -74,6 +59,7 @@ export function RegisterPage() {
   const [successEmail, setSuccessEmail] = useState('')
 
   const formErrorId = useId()
+  const titleId = 'register-title'
 
   const isSubmitDisabled = isSubmitting || isSuccess
 
@@ -158,32 +144,20 @@ export function RegisterPage() {
   }
 
   return (
-    <main className="register-shell">
-      <section className="register-hero">
-        <div className="register-badge">Epic E2</div>
-        <h1>Build your MAGE account.</h1>
-        <p className="register-copy">
-          Start with a clean registration flow for new users, then expand it as the
-          authentication workstream lands.
-        </p>
-        <div className="register-highlights" aria-label="Registration page highlights">
-          <span>Email, password, and display name</span>
-          <span>Client-side validation</span>
-          <span>Backend-ready submit flow</span>
-        </div>
-      </section>
-
-      <section className="register-panel" aria-labelledby="register-title">
+    <AuthPage titleId={titleId}>
         {isSuccess ? (
-          <div className="register-success" role="status" aria-live="polite">
-            <div className="eyebrow">Registration Complete</div>
-            <h2 id="register-title">Your account request was submitted.</h2>
-            <p className="register-copy">
-              {successEmail
-                ? `The registration for ${successEmail} completed successfully.`
-                : 'Your registration completed successfully.'}
-            </p>
-            <div className="register-actions">
+          <div className="auth-state" role="status" aria-live="polite">
+            <AuthPageHeader
+              description={
+                successEmail
+                  ? `The registration for ${successEmail} completed successfully.`
+                  : 'Your registration completed successfully.'
+              }
+              eyebrow="Registration Complete"
+              title="Your account request was submitted."
+              titleId={titleId}
+            />
+            <div className="auth-actions">
               <Link className="demo-link" to="/login">
                 Continue to Login
               </Link>
@@ -194,13 +168,14 @@ export function RegisterPage() {
           </div>
         ) : (
           <>
-            <div className="eyebrow">Create Account</div>
-            <h2 id="register-title">Register</h2>
-            <p className="register-copy">
-              Use your email address to create a local account for the MAGE platform.
-            </p>
+            <AuthPageHeader
+              description="Use your email address to create a local account for the MAGE platform."
+              eyebrow="Create Account"
+              title="Register"
+              titleId={titleId}
+            />
 
-            <form className="register-form" noValidate onSubmit={handleSubmit}>
+            <form className="auth-form" noValidate onSubmit={handleSubmit}>
               <div className="field-group">
                 <label htmlFor="displayName">Display name</label>
                 <input
@@ -272,12 +247,12 @@ export function RegisterPage() {
                 </div>
               ) : null}
 
-              <button className="demo-link register-submit" type="submit" disabled={isSubmitDisabled}>
+              <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
                 {isSubmitting ? 'Creating account...' : 'Create account'}
               </button>
             </form>
 
-            <p className="register-footnote">
+            <p className="auth-footnote">
               Already have an account?{' '}
               <Link className="secondary-link" to="/login">
                 Go to login
@@ -285,7 +260,6 @@ export function RegisterPage() {
             </p>
           </>
         )}
-      </section>
-    </main>
+    </AuthPage>
   )
 }
