@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthPage, AuthPageHeader } from '../components/AuthPage'
 import { useAuth, type AuthenticatedUser } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
@@ -51,6 +51,7 @@ export function LoginPage() {
     logout,
     user,
   } = useAuth()
+  const navigate = useNavigate()
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -161,6 +162,11 @@ export function LoginPage() {
     }
   }
 
+  function handleLogout() {
+    logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <AuthPage titleId={titleId}>
         {isAuthenticated && user ? (
@@ -171,7 +177,7 @@ export function LoginPage() {
             </h1>
             <p className="auth-welcome-name">{user.displayName}</p>
             <div className="auth-actions">
-              <button className="demo-link auth-submit" type="button" onClick={logout}>
+              <button className="demo-link auth-submit" type="button" onClick={handleLogout}>
                 Log out
               </button>
             </div>

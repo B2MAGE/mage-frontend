@@ -1,5 +1,5 @@
 import { useMemo, useState, type PropsWithChildren } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 const guestNavItems = [
@@ -30,6 +30,7 @@ function splitDisplayName(displayName: string) {
 export function Layout({ children }: PropsWithChildren) {
   const { accessToken, isAuthenticated, isRestoringSession, logout, user } = useAuth()
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false)
+  const navigate = useNavigate()
 
   const accountFields = useMemo(() => {
     if (!user) {
@@ -38,6 +39,12 @@ export function Layout({ children }: PropsWithChildren) {
 
     return splitDisplayName(user.displayName)
   }, [user])
+
+  function handleLogout() {
+    setIsAccountPanelOpen(false)
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <>
@@ -97,7 +104,7 @@ export function Layout({ children }: PropsWithChildren) {
                       <button className="account-action" type="button">
                         Reset password
                       </button>
-                      <button className="nav-logout" type="button" onClick={logout}>
+                      <button className="nav-logout" type="button" onClick={handleLogout}>
                         Log out
                       </button>
                     </div>
