@@ -29,20 +29,26 @@ export function MagePlayer({
   sceneBlob,
 }: MagePlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const playerRef = useRef<MagePlayerController | null>(null)
+  const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
 
   const [loadedSceneBlob, setLoadedSceneBlob] = useState<MageSceneBlob | null>(null)
+  const [playerVersion, setPlayerVersion] = useState(0)
   const [loadError, setLoadError] = useState<{ message: string; sceneBlob: MageSceneBlob } | null>(
     null,
   )
 
   useEffect(() => {
+    latestSceneBlobRef.current = sceneBlob
+  }, [sceneBlob])
+
+  useEffect(() => {
     const canvas = canvasRef.current
 
-    if (!canvas || !sceneBlob) {
+    if (!canvas) {
       return
     }
 
-    let currentPlayer: MagePlayerController | null = null
     let nextPlayer: MagePlayerController | null = null
     let isDisposed = false
     let animationFrameId = 0
@@ -57,24 +63,20 @@ export function MagePlayer({
             return
           }
 
-          nextPlayer.loadSceneBlob(sceneBlob)
-
-          if (isDisposed) {
-            nextPlayer.dispose()
-            return
-          }
-
-          currentPlayer = nextPlayer
-          setLoadError(null)
-          setLoadedSceneBlob(sceneBlob)
+          playerRef.current = nextPlayer
+          setPlayerVersion((currentVersion) => currentVersion + 1)
         } catch (error) {
           nextPlayer?.dispose()
 
           if (!isDisposed) {
-            setLoadError({
-              message: readErrorMessage(error),
-              sceneBlob,
-            })
+            const currentSceneBlob = latestSceneBlobRef.current
+
+            if (currentSceneBlob) {
+              setLoadError({
+                message: readErrorMessage(error),
+                sceneBlob: currentSceneBlob,
+              })
+            }
           }
         }
       })()
@@ -83,9 +85,52 @@ export function MagePlayer({
     return () => {
       isDisposed = true
       window.cancelAnimationFrame(animationFrameId)
-      currentPlayer?.dispose()
+      playerRef.current = null
+      nextPlayer?.dispose()
     }
-  }, [log, sceneBlob])
+  }, [log])
+
+  useEffect(() => {
+    if (!sceneBlob) {
+      return
+    }
+
+    const player = playerRef.current
+
+    if (!player) {
+      return
+    }
+
+    let isCancelled = false
+
+    try {
+      player.loadSceneBlob(sceneBlob)
+
+      queueMicrotask(() => {
+        if (isCancelled) {
+          return
+        }
+
+        setLoadError(null)
+        setLoadedSceneBlob(sceneBlob)
+      })
+    } catch (error) {
+      queueMicrotask(() => {
+        if (isCancelled) {
+          return
+        }
+
+        setLoadError({
+          message: readErrorMessage(error),
+          sceneBlob,
+        })
+      })
+    }
+
+    return () => {
+      isCancelled = true
+    }
+  }, [playerVersion, sceneBlob])
 
   const status: MagePlayerStatus =
     !sceneBlob

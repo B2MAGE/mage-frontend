@@ -43,18 +43,18 @@ const HOME_PAGE_PRESET_SCENE = {
 
 export function HomePage() {
   return (
-    <main className="card home-card">
+    <main className="surface surface--hero home-hero">
       <div className="eyebrow">Preview</div>
       <h1>MAGE</h1>
-      <p className="sub">Musical Autonomous Generated Environments</p>
+      <p className="page-lead">Musical Autonomous Generated Environments</p>
       <section className="home-preview-section" aria-label="Live preset preview">
         <MagePlayer
           ariaLabel="MAGE live preset preview"
           sceneBlob={HOME_PAGE_PRESET_SCENE}
         />
       </section>
-      <p className="foot">The full platform experience is currently in development.</p>
-      <div className="brand">MAGE</div>
+      <p className="page-footnote">The full platform experience is currently in development.</p>
+      <div className="page-mark">MAGE</div>
     </main>
   )
 }

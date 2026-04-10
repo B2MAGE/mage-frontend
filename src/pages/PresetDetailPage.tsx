@@ -14,7 +14,7 @@ export function PresetDetailPage() {
       title={`Preset ${id}`}
       description="This preset detail route is ready for the next preset experience."
       action={
-        <div className="home-actions">
+        <div className="auth-actions">
           <Link className="demo-link" to="/my-presets">
             Back to My Presets
           </Link>
