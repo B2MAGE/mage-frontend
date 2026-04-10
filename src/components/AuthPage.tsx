@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from 'react'
 
 type AuthPageProps = PropsWithChildren<{
+  cardClassName?: string
+  className?: string
   titleId: string
 }>
 
@@ -11,10 +13,17 @@ type AuthPageHeaderProps = {
   titleId: string
 }
 
-export function AuthPage({ children, titleId }: AuthPageProps) {
+function buildClassName(...classNames: Array<string | undefined>) {
+  return classNames.filter(Boolean).join(' ')
+}
+
+export function AuthPage({ cardClassName, children, className, titleId }: AuthPageProps) {
   return (
-    <main className="auth-page">
-      <section className="auth-card" aria-labelledby={titleId}>
+    <main className={buildClassName('auth-page', className)}>
+      <section
+        className={buildClassName('surface surface--form', cardClassName)}
+        aria-labelledby={titleId}
+      >
         {children}
       </section>
     </main>

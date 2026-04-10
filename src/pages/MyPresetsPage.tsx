@@ -240,10 +240,10 @@ export function MyPresetsPage() {
 
   if (isRestoringSession) {
     return (
-      <main className="card">
+      <main className="surface surface--hero">
         <div className="eyebrow">My Presets</div>
         <h1>Loading presets...</h1>
-        <p className="sub">MAGE is restoring your session and loading your saved presets.</p>
+        <p className="page-lead">MAGE is restoring your session and loading your saved presets.</p>
       </main>
     )
   }
@@ -254,25 +254,25 @@ export function MyPresetsPage() {
 
   if (typeof user?.userId !== 'number') {
     return (
-      <main className="card">
+      <main className="surface surface--hero">
         <div className="eyebrow">My Presets</div>
         <h1>Unable to load presets</h1>
-        <p className="sub">Your session is missing the user information needed to load presets.</p>
+        <p className="page-lead">Your session is missing the user information needed to load presets.</p>
       </main>
     )
   }
 
   return (
-    <main className="preset-page">
-      <section className="preset-page-header">
+    <main className="page-stack">
+      <section className="surface surface--page-header">
         <div className="eyebrow">My Presets</div>
         <h1>Saved presets</h1>
-        <p className="sub">
+        <p className="page-lead">
           Browse the presets created by your account and open any preset detail page directly.
         </p>
       </section>
 
-      <section className="preset-page-panel" aria-live="polite">
+      <section className="surface surface--page-panel" aria-live="polite">
         {isLoading ? (
           <p className="preset-status">Loading presets...</p>
         ) : errorMessage ? (
