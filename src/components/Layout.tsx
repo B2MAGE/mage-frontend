@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react'
+import { useMemo, useState, type PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
@@ -12,8 +12,32 @@ const authenticatedNavItems = [
   { label: 'My Presets', to: '/my-presets' },
 ]
 
+function splitDisplayName(displayName: string) {
+  const trimmedDisplayName = displayName.trim()
+
+  if (!trimmedDisplayName) {
+    return { firstName: '', lastName: '' }
+  }
+
+  const [firstName = '', ...remainingParts] = trimmedDisplayName.split(/\s+/)
+
+  return {
+    firstName,
+    lastName: remainingParts.join(' '),
+  }
+}
+
 export function Layout({ children }: PropsWithChildren) {
   const { accessToken, isAuthenticated, isRestoringSession, logout, user } = useAuth()
+  const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false)
+
+  const accountFields = useMemo(() => {
+    if (!user) {
+      return { firstName: '', lastName: '' }
+    }
+
+    return splitDisplayName(user.displayName)
+  }, [user])
 
   return (
     <>
@@ -32,13 +56,53 @@ export function Layout({ children }: PropsWithChildren) {
                 ))}
               </nav>
               <div className="nav-session">
-                <div className="nav-session-copy">
-                  <strong>{user.displayName}</strong>
-                  <span>{user.email}</span>
-                </div>
-                <button className="nav-logout" type="button" onClick={logout}>
-                  Log out
+                <button
+                  className="nav-account-toggle"
+                  type="button"
+                  aria-expanded={isAccountPanelOpen}
+                  aria-controls="account-panel"
+                  onClick={() => setIsAccountPanelOpen((currentValue) => !currentValue)}
+                >
+                  Account
                 </button>
+                {isAccountPanelOpen ? (
+                  <div className="account-panel" id="account-panel">
+                    <div className="account-panel-header">
+                      <strong>My Account</strong>
+                      <span>{user.email}</span>
+                    </div>
+                    <div className="account-panel-fields">
+                      <div className="account-field">
+                        <label htmlFor="account-first-name">First name</label>
+                        <input
+                          id="account-first-name"
+                          name="firstName"
+                          type="text"
+                          defaultValue={accountFields.firstName}
+                          placeholder="First name"
+                        />
+                      </div>
+                      <div className="account-field">
+                        <label htmlFor="account-last-name">Last name</label>
+                        <input
+                          id="account-last-name"
+                          name="lastName"
+                          type="text"
+                          defaultValue={accountFields.lastName}
+                          placeholder="Last name"
+                        />
+                      </div>
+                    </div>
+                    <div className="account-panel-actions">
+                      <button className="account-action" type="button">
+                        Reset password
+                      </button>
+                      <button className="nav-logout" type="button" onClick={logout}>
+                        Log out
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : isRestoringSession && accessToken ? (

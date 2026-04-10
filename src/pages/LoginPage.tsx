@@ -48,11 +48,13 @@ export function LoginPage() {
     completeLoginSession,
     isAuthenticated,
     isRestoringSession,
+    logout,
     user,
   } = useAuth()
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [resetPasswordNotice, setResetPasswordNotice] = useState('')
 
   const formNoticeId = useId()
   const titleId = 'login-title'
@@ -76,6 +78,10 @@ export function LoginPage() {
         form: undefined,
       }
     })
+
+    if (resetPasswordNotice) {
+      setResetPasswordNotice('')
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -158,28 +164,16 @@ export function LoginPage() {
   return (
     <AuthPage titleId={titleId}>
         {isAuthenticated && user ? (
-          <div className="auth-state" role="status" aria-live="polite">
-            <AuthPageHeader
-              description={
-                user.email
-                  ? `The login for ${user.email} completed successfully.`
-                  : 'Your login completed successfully.'
-              }
-              eyebrow="Login Complete"
-              title="Your session is active."
-              titleId={titleId}
-            />
-            <p className="auth-copy">
-              The shared frontend auth session has stored your access token and can restore this
-              user across refreshes.
-            </p>
+          <div className="auth-state auth-state-welcome" role="status" aria-live="polite">
+            <div className="eyebrow">Login Complete</div>
+            <h1 className="auth-title" id={titleId}>
+              Welcome
+            </h1>
+            <p className="auth-welcome-name">{user.displayName}</p>
             <div className="auth-actions">
-              <Link className="demo-link" to="/">
-                Back to Home
-              </Link>
-              <Link className="secondary-link" to="/register">
-                Create another account
-              </Link>
+              <button className="demo-link auth-submit" type="button" onClick={logout}>
+                Log out
+              </button>
             </div>
           </div>
         ) : isRestoringSession && accessToken ? (
@@ -254,6 +248,12 @@ export function LoginPage() {
                 </div>
               ) : null}
 
+              {resetPasswordNotice ? (
+                <div className="form-note" role="status">
+                  {resetPasswordNotice}
+                </div>
+              ) : null}
+
               <button
                 className="demo-link auth-submit"
                 type="submit"
@@ -262,6 +262,21 @@ export function LoginPage() {
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
               </button>
             </form>
+
+            <p className="auth-footnote">
+              Forgot your password?{' '}
+              <button
+                className="auth-link-button"
+                type="button"
+                onClick={() =>
+                  setResetPasswordNotice(
+                    'Password reset is not connected yet, but this option is now available in the frontend.',
+                  )
+                }
+              >
+                Reset it here
+              </button>
+            </p>
 
             <p className="auth-footnote">
               Need an account?{' '}
