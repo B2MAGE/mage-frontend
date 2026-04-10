@@ -3,7 +3,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
   type PropsWithChildren,
 } from 'react'
@@ -111,8 +110,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<StoredAuthSession | null>(null)
   const [isRestoringSession, setIsRestoringSession] = useState(true)
 
-  const hasBootstrappedSession = useRef(false)
-
   function clearSession() {
     window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
     setSession(null)
@@ -144,12 +141,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   useEffect(() => {
-    if (hasBootstrappedSession.current) {
-      return
-    }
-
-    hasBootstrappedSession.current = true
-
     const storedSession = readStoredSession()
 
     if (!storedSession) {
@@ -190,6 +181,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         persistSession(restoredSession)
         setSession(restoredSession)
+      } catch {
+        // Preserve the stored session snapshot when bootstrap verification fails.
       } finally {
         if (isCurrent) {
           setIsRestoringSession(false)
