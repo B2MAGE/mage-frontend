@@ -49,11 +49,15 @@ describe('SettingsPage', () => {
 
     render(<SettingsPage />)
 
-    expect(screen.getByRole('heading', { name: /profile settings/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /profile details/i, level: 1 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /profile details/i, level: 2 })).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/review the account details currently tied to your mage profile/i),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toHaveValue('artist@example.com')
     expect(screen.getByLabelText(/first name/i)).toHaveValue('Preset')
     expect(screen.getByLabelText(/last name/i)).toHaveValue('Artist')
-    expect(screen.getByText('artist@example.com')).toBeInTheDocument()
-    expect(screen.getByText('LOCAL')).toBeInTheDocument()
+    expect(screen.queryByText('LOCAL')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument()
   })
 

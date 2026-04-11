@@ -717,19 +717,29 @@
 }
 
 .settings-page {
-  width: min(1200px, 100%);
+  width: min(760px, 100%);
 }
 
-.settings-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-  gap: 24px;
+.settings-title {
+  margin: 0;
+  font-size: clamp(2.2rem, 5vw, 3.1rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.settings-lead {
+  max-width: 560px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
 }
 
 .settings-section {
   display: grid;
   gap: 18px;
-  padding: 24px;
+  padding: 22px;
+  margin-top: 28px;
 }
 
 .settings-section__header {
@@ -744,46 +754,15 @@
 }
 
 .settings-section__header p,
-.settings-account-list dt,
-.settings-account-list dd,
-.settings-panel-note {
+.settings-section__header p {
   margin: 0;
   color: var(--muted);
   line-height: 1.6;
 }
 
-.settings-form-grid {
+.settings-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-}
-
-.settings-account-list {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-}
-
-.settings-account-list div {
-  display: grid;
-  gap: 4px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.settings-account-list dt {
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.settings-account-list dd {
-  color: var(--text);
-  font-size: 0.96rem;
-  font-weight: 600;
 }
 
 .settings-reset-button {
@@ -2042,10 +2021,6 @@
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
 
-  .settings-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .preset-editor-layout,
   .preset-editor-toolbar {
     grid-template-columns: minmax(0, 1fr);
@@ -2156,10 +2131,6 @@
 
   .settings-section {
     padding: 20px;
-  }
-
-  .settings-form-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .preset-detail-watch .mage-player-shell {
