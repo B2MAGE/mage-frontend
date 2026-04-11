@@ -9,7 +9,7 @@ This page is the first implemented account-management flow in the frontend. It c
 ## API contract
 
 - Method: `POST`
-- Endpoint: `/auth/register`
+- Endpoint: `/api/auth/register`
 - Content type: `application/json`
 
 Request body:
@@ -22,9 +22,9 @@ Request body:
 }
 ```
 
-The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/auth/register`. When it is not set, the page uses same-origin `/auth/register`.
+The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/api/auth/register`. When it is not set, the page uses same-origin `/api/auth/register`.
 
-For normal localhost development, the Vite dev server proxies same-origin `/auth/register` requests to `http://localhost:8080`.
+For normal localhost development, the Vite dev server proxies same-origin `/api` requests to `http://localhost:8080`.
 
 ## UI behavior
 

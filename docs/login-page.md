@@ -9,7 +9,7 @@ This page handles the local email-and-password sign-in flow in the frontend. It 
 ## API contract
 
 - Method: `POST`
-- Endpoint: `/auth/login`
+- Endpoint: `/api/auth/login`
 - Content type: `application/json`
 
 Request body:
@@ -21,11 +21,11 @@ Request body:
 }
 ```
 
-The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/auth/login`. When it is not set, the page uses same-origin `/auth/login`.
+The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/api/auth/login`. When it is not set, the page uses same-origin `/api/auth/login`.
 
-When a stored access token exists, the frontend bootstraps auth state by calling `${VITE_API_BASE_URL}/users/me` or same-origin `/users/me`.
+When a stored access token exists, the frontend bootstraps auth state by calling `${VITE_API_BASE_URL}/api/users/me` or same-origin `/api/users/me`.
 
-For normal localhost development, the Vite dev server proxies same-origin `/auth/login` and `/users/me` requests to `http://localhost:8080`.
+For normal localhost development, the Vite dev server proxies same-origin `/api` requests to `http://localhost:8080`.
 
 ## UI behavior
 
@@ -33,7 +33,7 @@ For normal localhost development, the Vite dev server proxies same-origin `/auth
 - Validates email format on the client
 - Disables the submit button while the request is in flight
 - Stores the returned `accessToken` in browser storage after a successful login response
-- Restores the authenticated user on refresh through `GET /users/me`
+- Restores the authenticated user on refresh through `GET /api/users/me`
 - Shows backend validation errors from `details`
 - Shows invalid-credential or generic form errors when login fails
 - Clears invalid or expired stored tokens automatically
@@ -45,7 +45,7 @@ The shared frontend auth provider currently:
 
 - persists the login `accessToken` in browser storage
 - boots auth state on app load
-- calls `GET /users/me` when a stored token exists
+- calls `GET /api/users/me` when a stored token exists
 - clears the stored token if the backend responds with `401`
 - provides a shared authenticated request helper that sends `Authorization: Bearer <accessToken>`
 - exposes logout that clears the stored token and shared auth state
@@ -62,7 +62,7 @@ The shared frontend auth provider currently:
 
 `src/auth/AuthContext.test.tsx` covers:
 
-- `GET /users/me` during app bootstrap when a stored token exists
+- `GET /api/users/me` during app bootstrap when a stored token exists
 - restoring the authenticated user from a valid stored session
 - clearing invalid stored tokens on `401`
 - logout clearing shared auth state and browser storage
