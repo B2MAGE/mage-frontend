@@ -12,6 +12,22 @@ import { LoginPage } from './LoginPage'
 import { MyPresetsPage } from './MyPresetsPage'
 import { PresetDetailPage } from './PresetDetailPage'
 
+vi.mock('../components/MagePlayer', () => ({
+  MagePlayer: ({
+    ariaLabel,
+    className,
+    sceneBlob,
+  }: {
+    ariaLabel?: string
+    className?: string
+    sceneBlob: unknown
+  }) => (
+    <div aria-label={ariaLabel} className={className} data-testid="mage-player">
+      {sceneBlob ? 'player-ready' : 'no-scene'}
+    </div>
+  ),
+}))
+
 const storedUser: AuthenticatedUser = {
   userId: 8,
   email: 'artist@example.com',
@@ -141,12 +157,30 @@ describe('MyPresetsPage', () => {
             {
               id: 12,
               name: 'Aurora Drift',
+              sceneData: {
+                visualizer: { shader: 'nebula' },
+              },
             },
             {
               id: 13,
               name: 'Signal Bloom',
             },
           ]),
+        )
+      }
+
+      if (input === buildApiUrl('/presets/12')) {
+        return Promise.resolve(
+          jsonResponse({
+            presetId: 12,
+            ownerUserId: 8,
+            name: 'Aurora Drift',
+            sceneData: {
+              visualizer: { shader: 'nebula' },
+            },
+            thumbnailRef: 'thumbnails/preset-12.png',
+            createdAt: '2026-04-06T14:00:00Z',
+          }),
         )
       }
 
@@ -171,7 +205,8 @@ describe('MyPresetsPage', () => {
 
     await user.click(presetLink)
 
-    expect(await screen.findByRole('heading', { name: /preset 12/i })).toBeInTheDocument()
+    expect(await screen.findByTestId('mage-player')).toHaveTextContent('player-ready')
+    expect(screen.getByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
   })
 
   it('renders the populated preset state with thumbnails, fallback UI, and navigation', async () => {
@@ -184,6 +219,21 @@ describe('MyPresetsPage', () => {
 
       if (input === buildApiUrl('/users/8/presets')) {
         return Promise.resolve(jsonResponse(mockPresets))
+      }
+
+      if (input === buildApiUrl('/presets/1')) {
+        return Promise.resolve(
+          jsonResponse({
+            presetId: 1,
+            ownerUserId: 42,
+            name: 'Aurora Drift',
+            sceneData: {
+              visualizer: { shader: 'nebula' },
+            },
+            thumbnailRef: 'thumbnails/preset-1.png',
+            createdAt: '2026-04-06T14:00:00Z',
+          }),
+        )
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
@@ -209,7 +259,8 @@ describe('MyPresetsPage', () => {
 
     await user.click(auroraPreset)
 
-    expect(await screen.findByRole('heading', { name: /preset 1/i })).toBeInTheDocument()
+    expect(await screen.findByTestId('mage-player')).toHaveTextContent('player-ready')
+    expect(screen.getByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
   })
 
   it('shows empty and error states using simple messages', async () => {

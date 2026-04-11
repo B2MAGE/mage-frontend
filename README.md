@@ -53,6 +53,9 @@ Available routes:
 - `/`
 - `/register`
 - `/login`
+- `/my-presets`
+- `/presets/:id`
+- `/create-preset`
 
 Note: direct loads of nested routes in production require the host to rewrite unknown paths back to `index.html`.
 
@@ -98,6 +101,18 @@ engine inside normal page layouts.
 
 Usage notes and an example embed live in `docs/player-component.md`.
 
+## Preset detail page
+
+The preset detail flow lives at `/presets/:id` and currently supports:
+
+- direct loads and internal navigation through the route param
+- fetching preset metadata, thumbnail references, and scene data from `GET /presets/{id}`
+- rendering the embedded `MagePlayer` with the fetched scene blob
+- clear invalid-link, auth-required, not-found, and unavailable states instead of a blank page
+
+In the current backend build, preset detail requests are still authenticated. The route remains
+deep-linkable, and signed-out users receive a clear sign-in-needed state instead of a broken page.
+
 ## Scripts
 
 - `npm run dev` starts the local development server
@@ -113,5 +128,6 @@ Usage notes and an example embed live in `docs/player-component.md`.
 - Login page connected to the backend login endpoint
 - Shared frontend auth session with token persistence, bootstrap restore, and logout
 - Reusable MAGE player component with a live home-page preview
+- Preset detail/player route backed by `GET /presets/{id}` and the shared player wrapper
 - Header navigation between pages without full page reloads
 - Live demo link: `https://bsiscoe.github.io/MAGE/`
