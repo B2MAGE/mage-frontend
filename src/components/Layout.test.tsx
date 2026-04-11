@@ -56,7 +56,7 @@ describe('Layout', () => {
     expect(screen.queryByRole('button', { name: /open account menu/i })).not.toBeInTheDocument()
   })
 
-  it('shows an account dropdown with Home above My Channel and Sign out for authenticated users', async () => {
+  it('shows the main branch account dropdown and routes the identity row to settings', async () => {
     authState = {
       ...authState,
       accessToken: 'token',
@@ -77,11 +77,11 @@ describe('Layout', () => {
 
     await user.click(screen.getByRole('button', { name: /open account menu for preset artist/i }))
 
-    const menuItems = screen.getAllByRole('menuitem')
-
-    expect(menuItems[0]).toHaveTextContent(/home/i)
-    expect(menuItems[0]).toHaveAttribute('href', '/')
-    expect(menuItems[1]).toHaveTextContent(/my channel/i)
+    expect(screen.getByRole('menuitem', { name: /preset artist/i })).toHaveAttribute(
+      'href',
+      '/settings',
+    )
+    expect(screen.getByRole('menuitem', { name: /home/i })).toHaveAttribute('href', '/')
     expect(screen.getByRole('menuitem', { name: /my channel/i })).toHaveAttribute(
       'href',
       '/my-presets',

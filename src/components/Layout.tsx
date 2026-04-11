@@ -172,13 +172,20 @@ export function Layout({ children }: PropsWithChildren) {
                   role="menu"
                 >
                   <div className="nav-menu__header">
-                    <span className="nav-avatar nav-avatar--large" aria-hidden="true">
-                      {profileInitials}
-                    </span>
-                    <div className="nav-menu__identity">
-                      <strong>{profileName}</strong>
-                      <span>{profileEmail}</span>
-                    </div>
+                    <Link
+                      className="nav-menu__profile-link"
+                      onClick={() => setIsAccountMenuOpen(false)}
+                      role="menuitem"
+                      to="/settings"
+                    >
+                      <span className="nav-avatar nav-avatar--large" aria-hidden="true">
+                        {profileInitials}
+                      </span>
+                      <div className="nav-menu__identity">
+                        <strong>{profileName}</strong>
+                        <span>{profileEmail}</span>
+                      </div>
+                    </Link>
                   </div>
 
                   <div className="nav-menu__divider" />
