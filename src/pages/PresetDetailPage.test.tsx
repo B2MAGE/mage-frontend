@@ -100,9 +100,13 @@ describe('PresetDetailPage', () => {
     renderPresetDetailPage()
 
     expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /live player/i })).toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
-    expect(screen.getByRole('link', { name: /back to my presets/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /recommended presets/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
+    expect(screen.getByText(/add a comment as preset artist/i)).toBeInTheDocument()
+    expect(screen.getByText(/now playing/i)).toBeInTheDocument()
 
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenNthCalledWith(
