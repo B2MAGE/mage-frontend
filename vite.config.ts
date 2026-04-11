@@ -19,15 +19,7 @@ export default defineConfig({
       allow: [workspaceRoot],
     },
     proxy: {
-      '/auth': {
-        target: backendProxyTarget,
-        changeOrigin: true,
-      },
-      '/users': {
-        target: backendProxyTarget,
-        changeOrigin: true,
-      },
-      '/presets': {
+      '/api': {
         target: backendProxyTarget,
         changeOrigin: true,
       },
