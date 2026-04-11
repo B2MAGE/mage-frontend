@@ -8,6 +8,9 @@ import { LoginPage } from './pages/LoginPage'
 import { MyPresetsPage } from './pages/MyPresetsPage'
 import { PresetDetailPage } from './pages/PresetDetailPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { CreatePresetPage } from './pages/CreatePresetPage'
+import { SettingsPage } from './pages/SettingsPage'
+
 
 type ProtectedRouteProps = {
   children: ReactElement
@@ -57,6 +60,15 @@ function App() {
             }
           />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/create-preset" element={<CreatePresetPage />} />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </Layout>

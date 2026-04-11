@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -59,28 +60,36 @@ function storeSession(accessToken = 'stored-auth-token') {
   )
 }
 
-function renderAuthHarness() {
-  return render(
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+function renderAuthHarness(options?: { strictMode?: boolean }) {
+  const tree = (
     <MemoryRouter>
       <AuthProvider>
         <AuthHarness />
       </AuthProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
+
+  if (options?.strictMode) {
+    return render(<StrictMode>{tree}</StrictMode>)
+  }
+
+  return render(tree)
 }
 
 describe('AuthProvider', () => {
   it('calls GET /users/me during app bootstrap and restores the authenticated user', async () => {
     storeSession()
 
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(restoredUser), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    )
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(restoredUser))
 
     renderAuthHarness()
 
@@ -105,16 +114,11 @@ describe('AuthProvider', () => {
     storeSession('expired-auth-token')
 
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          message: 'Authentication is required.',
-        }),
+      jsonResponse(
         {
-          status: 401,
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          message: 'Authentication is required.',
         },
+        401,
       ),
     )
 
@@ -131,14 +135,7 @@ describe('AuthProvider', () => {
   it('logout clears the stored token and shared auth state', async () => {
     storeSession()
 
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(restoredUser), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    )
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(restoredUser))
 
     const user = userEvent.setup()
 
@@ -158,25 +155,13 @@ describe('AuthProvider', () => {
 
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(jsonResponse(restoredUser))
       .mockResolvedValueOnce(
-        new Response(JSON.stringify(restoredUser), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            message: 'Authentication is required.',
-          }),
+        jsonResponse(
           {
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            message: 'Authentication is required.',
           },
+          401,
         ),
       )
 
@@ -207,5 +192,31 @@ describe('AuthProvider', () => {
     })
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('signed-out')
+  })
+
+  it('finishes restoring a stored session when mounted in StrictMode', async () => {
+    storeSession()
+
+    const pendingResponses: Array<(value: Response) => void> = []
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          pendingResponses.push(resolve)
+        }),
+    )
+
+    renderAuthHarness({ strictMode: true })
+
+    await waitFor(() => {
+      expect(pendingResponses.length).toBeGreaterThan(0)
+    })
+
+    pendingResponses.forEach((resolveResponse) => {
+      resolveResponse(jsonResponse(restoredUser))
+    })
+
+    expect(await screen.findByText('restored-user@example.com')).toBeInTheDocument()
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated')
   })
 })
