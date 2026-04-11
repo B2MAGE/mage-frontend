@@ -53,11 +53,7 @@ function App() {
           />
           <Route
             path="/presets/:id"
-            element={
-              <ProtectedRoute>
-                <PresetDetailPage />
-              </ProtectedRoute>
-            }
+            element={<PresetDetailPage />}
           />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/create-preset" element={<CreatePresetPage />} />
