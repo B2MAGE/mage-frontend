@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 
 function splitDisplayName(displayName: string) {
@@ -18,14 +18,6 @@ function splitDisplayName(displayName: string) {
 
 export function SettingsPage() {
   const { user } = useAuth()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-
-  useEffect(() => {
-    const nextNameFields = splitDisplayName(user?.displayName ?? '')
-    setFirstName(nextNameFields.firstName)
-    setLastName(nextNameFields.lastName)
-  }, [user?.displayName])
 
   if (!user) {
     return (
@@ -48,43 +40,70 @@ export function SettingsPage() {
           Review the account details currently tied to your MAGE profile.
         </p>
 
-        <section className="surface surface--soft settings-section" aria-label="Profile details">
-          <div className="settings-fields">
-            <div className="field-group">
-              <label htmlFor="settings-email">Email</label>
-              <input id="settings-email" name="email" readOnly type="email" value={user.email} />
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="settings-first-name">First name</label>
-              <input
-                id="settings-first-name"
-                name="firstName"
-                onChange={(event) => setFirstName(event.target.value)}
-                placeholder="First name"
-                type="text"
-                value={firstName}
-              />
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="settings-last-name">Last name</label>
-              <input
-                id="settings-last-name"
-                name="lastName"
-                onChange={(event) => setLastName(event.target.value)}
-                placeholder="Last name"
-                type="text"
-                value={lastName}
-              />
-            </div>
-
-            <button className="preset-secondary-button settings-reset-button" type="button">
-              Reset password
-            </button>
-          </div>
-        </section>
+        <ProfileDetailsForm
+          key={`${user.email}:${user.displayName}`}
+          displayName={user.displayName}
+          email={user.email}
+        />
       </section>
     </main>
+  )
+}
+
+type ProfileDetailsFormProps = {
+  displayName: string
+  email: string
+}
+
+function ProfileDetailsForm({ displayName, email }: ProfileDetailsFormProps) {
+  const [nameFields, setNameFields] = useState(() => splitDisplayName(displayName))
+
+  return (
+    <section className="surface surface--soft settings-section" aria-label="Profile details">
+      <div className="settings-fields">
+        <div className="field-group">
+          <label htmlFor="settings-email">Email</label>
+          <input id="settings-email" name="email" readOnly type="email" value={email} />
+        </div>
+
+        <div className="field-group">
+          <label htmlFor="settings-first-name">First name</label>
+          <input
+            id="settings-first-name"
+            name="firstName"
+            onChange={(event) =>
+              setNameFields((currentFields) => ({
+                ...currentFields,
+                firstName: event.target.value,
+              }))
+            }
+            placeholder="First name"
+            type="text"
+            value={nameFields.firstName}
+          />
+        </div>
+
+        <div className="field-group">
+          <label htmlFor="settings-last-name">Last name</label>
+          <input
+            id="settings-last-name"
+            name="lastName"
+            onChange={(event) =>
+              setNameFields((currentFields) => ({
+                ...currentFields,
+                lastName: event.target.value,
+              }))
+            }
+            placeholder="Last name"
+            type="text"
+            value={nameFields.lastName}
+          />
+        </div>
+
+        <button className="preset-secondary-button settings-reset-button" type="button">
+          Reset password
+        </button>
+      </div>
+    </section>
   )
 }
