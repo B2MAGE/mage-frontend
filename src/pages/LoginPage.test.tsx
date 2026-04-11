@@ -92,9 +92,10 @@ describe('LoginPage', () => {
     )
 
     expect(
-      await screen.findByRole('heading', { name: /your session is active/i }),
+      await screen.findByRole('heading', { name: /^welcome$/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/login for user@example.com completed successfully/i)).toBeInTheDocument()
+    expect(screen.getByText('Existing User')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument()
     expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain('issued-login-token')
   })
 
