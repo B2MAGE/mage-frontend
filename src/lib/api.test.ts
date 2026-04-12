@@ -15,6 +15,12 @@ describe('buildApiUrl', () => {
     expect(buildApiUrl('/api/presets/12')).toBe('/api/presets/12')
   })
 
+  it('supports same-origin production routing when the base url is set to /api', () => {
+    vi.stubEnv('VITE_API_BASE_URL', '/api')
+
+    expect(buildApiUrl('/users/me')).toBe('/api/users/me')
+  })
+
   it('joins the configured base url with the normalized api path', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://mage.example.com/')
 

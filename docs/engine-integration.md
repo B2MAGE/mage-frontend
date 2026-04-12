@@ -2,26 +2,17 @@
 
 ## Overview
 
-The frontend consumes the MAGE engine through a local packaged dependency, not a public npm package from the registry. This is an important repository assumption.
+The frontend consumes the MAGE engine through a vendored packaged dependency, not a public npm package from the registry. This is an important repository assumption.
 
 ## Package Source
 
 The current dependency in `package.json` is:
 
 ```json
-"mage": "file:../mage-engine/mage-1.0.0.tgz"
+"mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
 ```
 
-The workspace is expected to contain:
-
-```text
-MAGE/
-|- mage-backend/
-|- mage-engine/
-`- mage-frontend/
-```
-
-If the `mage-engine` folder or tarball is missing, local installs will fail.
+The tarball is kept inside this repository so local installs, CI, and production image builds do not depend on a sibling checkout.
 
 ## Why The Frontend Uses An Alias
 
@@ -71,6 +62,7 @@ That keeps route components simple and allows backend `sceneData` payloads to be
 These are current package-level caveats worth knowing before making engine-related changes:
 
 - the npm registry package named `mage` is not this engine, so the frontend must keep using the local tarball dependency
+- when the engine package changes, the vendored tarball in `vendor/mage-engine/` must be refreshed intentionally
 - the packaged engine currently emits a build warning for a missing `controltips.png` runtime asset
 - `shader-park-core` emits `eval` warnings during build
 - the engine bundle is large enough to trigger Vite chunk-size warnings
