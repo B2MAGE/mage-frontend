@@ -18,12 +18,6 @@ export default defineConfig({
       'shader-park-core': shaderParkCoreEntry,
     },
   },
-  build: {
-    minify: false,
-    rollupOptions: {
-      treeshake: false,
-    },
-  },
   server: {
     fs: {
       allow: [workspaceRoot],

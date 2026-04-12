@@ -1,5 +1,5 @@
 diff --git a/node_modules/shader-park-core/dist/shader-park-core.esm.js b/node_modules/shader-park-core/dist/shader-park-core.esm.js
-index 56ff647..4759cf2 100644
+index 56ff647..ec2ddb4 100644
 --- a/node_modules/shader-park-core/dist/shader-park-core.esm.js
 +++ b/node_modules/shader-park-core/dist/shader-park-core.esm.js
 @@ -45400,22 +45400,21 @@ function sculptToGLSL(userProvidedSrc) {
@@ -38,26 +38,88 @@ index 56ff647..4759cf2 100644
  
    var error = undefined;
    function revolve2D(sdf) {
-@@ -45526,7 +45525,22 @@ function sculptToGLSL(userProvidedSrc) {
+@@ -45526,7 +45525,84 @@ function sculptToGLSL(userProvidedSrc) {
    var postGeneratedFunctions = replaceMathOps([getSpherical, fresnel, revolve2D, extrude2D, mirrorN, grid, repeatLinear, repeatRadial, scaleShape, vectorContourNoise].map(function (el) {
      return el.toString();
    }).join("\n"));
 -  eval(generatedJSFuncsSource + postGeneratedFunctions + userProvidedSrc);
-+  var previousInput = globalThis.input;
-+  var previousInput2D = globalThis.input2D;
-+  var previousInput2 = globalThis.input2;
-+  var previousMult = globalThis.mult;
-+  globalThis.input = input;
-+  globalThis.input2D = input2D;
-+  globalThis.input2 = input2;
-+  globalThis.mult = mult;
++  var evalGlobals = {
++    time: time,
++    mouse: mouse,
++    normal: normal,
++    mouseIntersection: mouseIntersection,
++    getRayDirection: getRayDirection,
++    mixMat: mixMat,
++    resetMixColor: resetMixColor,
++    union: union,
++    difference: difference,
++    intersect: intersect,
++    blend: blend,
++    mixGeo: mixGeo,
++    overwrite: overwrite,
++    shape: shape,
++    mult: mult,
++    add: add,
++    sub: sub,
++    divide: divide,
++    setSDF: setSDF,
++    getSDF: getSDF,
++    extractSDF: extractSDF,
++    reset: reset,
++    displace: displace,
++    setSpace: setSpace,
++    repeat: repeat,
++    rotateX: rotateX,
++    rotateY: rotateY,
++    rotateZ: rotateZ,
++    mirrorX: mirrorX,
++    mirrorY: mirrorY,
++    mirrorZ: mirrorZ,
++    mirrorXYZ: mirrorXYZ,
++    flipX: flipX,
++    flipY: flipY,
++    flipZ: flipZ,
++    expand: expand,
++    shell: shell,
++    color: color,
++    reflectiveColor: reflectiveColor,
++    metal: metal,
++    shine: shine,
++    fresnel: fresnel,
++    lightDirection: lightDirection,
++    backgroundColor: backgroundColor,
++    noLighting: noLighting,
++    basicLighting: basicLighting,
++    occlusion: occlusion,
++    test: test,
++    input: input,
++    input2D: input2D,
++    getPixelCoord: getPixelCoord,
++    getResolution: getResolution,
++    get2DCoords: get2DCoords,
++    enable2D: enable2D,
++    input2: input2,
++    revolve2D: revolve2D,
++    extrude2D: extrude2D,
++    getSpherical: getSpherical,
++    mirrorN: mirrorN,
++    grid: grid,
++    repeatLinear: repeatLinear,
++    repeatRadial: repeatRadial,
++    scaleShape: scaleShape,
++    vectorContourNoise: vectorContourNoise
++  };
++  var previousEvalGlobals = {};
++  Object.keys(evalGlobals).forEach(function (key) {
++    previousEvalGlobals[key] = globalThis[key];
++    globalThis[key] = evalGlobals[key];
++  });
 +  try {
 +    eval(generatedJSFuncsSource + postGeneratedFunctions + userProvidedSrc);
 +  } finally {
-+    previousInput === undefined ? delete globalThis.input : globalThis.input = previousInput;
-+    previousInput2D === undefined ? delete globalThis.input2D : globalThis.input2D = previousInput2D;
-+    previousInput2 === undefined ? delete globalThis.input2 : globalThis.input2 = previousInput2;
-+    previousMult === undefined ? delete globalThis.mult : globalThis.mult = previousMult;
++    Object.keys(evalGlobals).forEach(function (key) {
++      previousEvalGlobals[key] === undefined ? delete globalThis[key] : globalThis[key] = previousEvalGlobals[key];
++    });
 +  }
    if (enable2DFlag) {
      setSDF(0);
