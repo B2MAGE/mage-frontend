@@ -7,7 +7,7 @@ The MAGE frontend is the React application for browsing, creating, and playing M
 This repository contains the client-side application for the MAGE platform. It is built with React, TypeScript, and Vite, and integrates with:
 
 - the MAGE backend API for authentication and preset persistence
-- the local MAGE engine package for scene playback and preset preview
+- the bundled local MAGE engine package for scene playback and preset preview
 
 The current app includes:
 
@@ -50,19 +50,9 @@ mage-frontend/
 Before running the frontend locally, make sure you have:
 
 - a recent Node.js and npm installation
-- the MAGE engine package available at `../mage-engine/mage-1.0.0.tgz`
 - the backend API running locally if you want full auth and preset flows
 
-The local workspace is expected to look roughly like this:
-
-```text
-MAGE/
-|- mage-backend/
-|- mage-engine/
-`- mage-frontend/
-```
-
-If `../mage-engine/mage-1.0.0.tgz` is missing, `npm install` in this repo will fail.
+The engine package used by the frontend is vendored inside this repository under `vendor/mage-engine/` so the app can build in CI and deployment environments without depending on a sibling workspace checkout.
 
 ## Getting Started
 
@@ -98,6 +88,7 @@ Behavior:
 
 - if `VITE_API_BASE_URL` is unset, the frontend uses the local Vite proxy and sends requests to `/api/*`
 - if `VITE_API_BASE_URL` is set, requests are sent directly to that origin
+- for same-origin production deployments, leaving it unset or building with `VITE_API_BASE_URL=/api` both work
 
 For local development, the Vite dev server proxies `/api` to:
 
@@ -106,6 +97,17 @@ http://localhost:8080
 ```
 
 That proxy is configured in [vite.config.ts](./vite.config.ts).
+
+## Deployment
+
+The supported production strategy is same-origin deployment:
+
+- the frontend is served from the public app origin
+- `/api/*` is routed to the backend by the reverse proxy
+- browser auth traffic stays on one HTTPS origin
+- direct loads of client routes such as `/login` and `/register` require SPA fallback to `index.html`
+
+See [docs/deployment.md](./docs/deployment.md) for the deployment contract and the Coolify-oriented production notes.
 
 ## Available Scripts
 
@@ -162,7 +164,7 @@ Notes:
 The frontend currently consumes the MAGE engine as a local package dependency:
 
 ```json
-"mage": "file:../mage-engine/mage-1.0.0.tgz"
+"mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
 ```
 
 There is one important implementation detail in the frontend today:
@@ -183,6 +185,7 @@ Additional project notes live in `docs/`:
 
 - [docs/README.md](./docs/README.md)
 - [docs/create-preset-page.md](./docs/create-preset-page.md)
+- [docs/deployment.md](./docs/deployment.md)
 - [docs/engine-integration.md](./docs/engine-integration.md)
 - [docs/login-page.md](./docs/login-page.md)
 - [docs/player-component.md](./docs/player-component.md)
