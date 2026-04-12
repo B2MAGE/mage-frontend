@@ -1,3 +1,5 @@
+import { EMBEDDED_SHADER_PRESETS } from './embeddedShaderPresets'
+
 export type PresetSceneData = Record<string, unknown>
 
 export type Vector3Value = {
@@ -92,6 +94,8 @@ export type SceneEditorModel = {
     autoRotateSpeed: number
     base_speed: number
     camTilt: number
+    camOrientationMode: number
+    camOrientationSpeed: number
     easing_speed: number
     fov: number
     minimizing_factor: number
@@ -152,96 +156,12 @@ export const PASS_LABELS: Record<PresetPassId, string> = {
   toonShader: 'Toon',
 }
 
-export const SHADER_PRESETS: ShaderPresetOption[] = [
-  {
-    id: 'aurora-drift',
-    label: 'Aurora Drift',
-    description: 'Layered rings and soft bloom-friendly motion.',
-    shader: `
-      let size = input()
-      let pointerDown = input()
-      time = 0.24 * time
-      size *= 1.1
-      rotateY(mouse.x * -PI * (1.0 + nsin(time)))
-      rotateX(mouse.y * PI * (1.0 + nsin(time)))
-      let rayDir = normalize(getRayDirection())
-      color(vec3(rayDir.x + 0.24, rayDir.y + 0.34, rayDir.z + 0.42))
-      metal(0.45 * size)
-      shine(0.72)
-      rotateY(sin(getRayDirection().y * 7.0 + time))
-      rotateX(cos(getRayDirection().x * 12.0 + time))
-      blend(0.12 + 0.08 * nsin(time * 2.0))
-      boxFrame(vec3(size), size * 0.08)
-      sphere(size * 0.44 - pointerDown * 0.18)
-    `,
-  },
-  {
-    id: 'signal-bloom',
-    label: 'Signal Bloom',
-    description: 'Dense geometric pulses that respond well to glow.',
-    shader: `
-      let size = input()
-      let pointerDown = input()
-      time *= 0.18
-      rotateY(time + mouse.x * PI * 0.7)
-      rotateX(mouse.y * PI * 0.6)
-      color(vec3(0.92, 0.47 + 0.16 * nsin(time), 0.36 + 0.14 * ncos(time)))
-      metal(0.36)
-      shine(0.86)
-      blend(0.08 + 0.04 * nsin(time * 3.0))
-      boxFrame(vec3(size * 0.82 + 0.36), 0.08 + pointerDown * 0.05)
-      rotateZ(time * 0.7)
-      boxFrame(vec3(size * 0.56 + 0.22), 0.03)
-      sphere(0.32 + 0.04 * nsin(time * 4.0))
-    `,
-  },
-  {
-    id: 'glacier-echo',
-    label: 'Glacier Echo',
-    description: 'Cool, reflective framing with slower rotation.',
-    shader: `
-      let size = input()
-      let pointerDown = input()
-      time *= 0.14
-      rotateY(time * 0.4 + mouse.x * PI * 0.5)
-      rotateX(mouse.y * PI * 0.35)
-      let rayDir = normalize(getRayDirection())
-      color(vec3(0.32 + rayDir.z * 0.2, 0.74, 0.96))
-      metal(0.62)
-      shine(0.94)
-      blend(0.06 + 0.03 * ncos(time * 2.0))
-      sphere(0.46 + 0.05 * nsin(time * 2.0) - pointerDown * 0.08)
-      boxFrame(vec3(size * 0.92 + 0.34), 0.04)
-      rotateZ(time * 0.35)
-      boxFrame(vec3(size * 0.64 + 0.18), 0.025)
-    `,
-  },
-  {
-    id: 'solar-thread',
-    label: 'Solar Thread',
-    description: 'Warm radial framing with quick directional motion.',
-    shader: `
-      let size = input()
-      let pointerDown = input()
-      time *= 0.28
-      rotateY(time * 0.9 + mouse.x * PI)
-      rotateX(mouse.y * PI * 0.45)
-      color(vec3(0.98, 0.68 + 0.14 * nsin(time), 0.24))
-      metal(0.4)
-      shine(0.8)
-      blend(0.1 + 0.05 * nsin(time * 5.0))
-      boxFrame(vec3(size * 0.7 + 0.5), 0.06)
-      rotateZ(time * 1.2)
-      boxFrame(vec3(size * 0.5 + 0.24), 0.02 + pointerDown * 0.01)
-      sphere(0.22 + 0.08 * ncos(time * 3.0))
-    `,
-  },
-]
+export const SHADER_PRESETS: ShaderPresetOption[] = [...EMBEDDED_SHADER_PRESETS]
 
 export const TONE_MAPPING_OPTIONS: ToneMappingOption[] = [
   {
     value: 0,
-    label: 'None',
+    label: 'NoTone',
     description: 'No extra tone mapping on the final output.',
   },
   {
@@ -300,6 +220,8 @@ const DEFAULT_SCENE_DATA: SceneEditorModel = {
     base_speed: 0.2,
     easing_speed: 0.6,
     camTilt: 0,
+    camOrientationMode: 0,
+    camOrientationSpeed: 1,
     autoRotate: true,
     autoRotateSpeed: 0.2,
     fov: 75,
@@ -530,6 +452,14 @@ export function getSceneEditorModel(sceneData: PresetSceneData): SceneEditorMode
       base_speed: readNumber(intent.base_speed, defaults.intent.base_speed),
       easing_speed: readNumber(intent.easing_speed, defaults.intent.easing_speed),
       camTilt: readNumber(intent.camTilt, defaults.intent.camTilt),
+      camOrientationMode: readNumber(
+        intent.camOrientationMode,
+        defaults.intent.camOrientationMode,
+      ),
+      camOrientationSpeed: readNumber(
+        intent.camOrientationSpeed,
+        defaults.intent.camOrientationSpeed,
+      ),
       autoRotate: readBoolean(intent.autoRotate, defaults.intent.autoRotate),
       autoRotateSpeed: readNumber(intent.autoRotateSpeed, defaults.intent.autoRotateSpeed),
       fov: readNumber(intent.fov, defaults.intent.fov),

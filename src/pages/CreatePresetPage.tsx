@@ -79,6 +79,10 @@ const EDITOR_SECTIONS: EditorSectionConfig[] = [
     id: "pass-order",
     title: "Pass Order",
   },
+  {
+    id: "advanced",
+    title: "Advanced",
+  },
 ];
 
 const initialSceneData = sanitizeSceneData(createDefaultSceneData());
@@ -179,6 +183,12 @@ const passFlagsById: Partial<Record<PresetPassId, PersistedPassFlag>> = {
   technicolorShader: "technicolor",
 };
 
+const stackOnlyPassLabels = [
+  PASS_LABELS.copyShader,
+  PASS_LABELS.bleachBypassShader,
+  PASS_LABELS.toonShader,
+].join(", ");
+
 function buildShaderOptions(currentShader: string) {
   const matchedPreset = SHADER_PRESETS.find(
     (preset) => preset.shader.trim() === currentShader.trim(),
@@ -250,7 +260,7 @@ function buildToneMappingOptions(currentMethod: number) {
 
 function describePassState(passId: PresetPassId, sceneModel: SceneEditorModel) {
   if (passId === "outputPass") {
-    return "Fixed last";
+    return sceneModel.fx.passes.outputPass ? "Enabled" : "Disabled";
   }
 
   if (passId === "bloom") {
@@ -260,7 +270,7 @@ function describePassState(passId: PresetPassId, sceneModel: SceneEditorModel) {
   const flag = passFlagsById[passId];
 
   if (!flag) {
-    return "Order only";
+    return "Stack only";
   }
 
   return sceneModel.fx.passes[flag] ? "Enabled" : "Disabled";
@@ -624,7 +634,7 @@ export function CreatePresetPage() {
                           Upload File
                         </strong>
                         <span className="preset-thumbnail-choice__description">
-                          Bring in a custom still from your device.
+                          Use a custom image.
                         </span>
                       </button>
 
@@ -642,7 +652,7 @@ export function CreatePresetPage() {
                           Auto-generated
                         </strong>
                         <span className="preset-thumbnail-choice__description">
-                          Start from a generated cover treatment.
+                          Start from a generated cover.
                         </span>
                       </button>
                     </div>
@@ -725,7 +735,7 @@ export function CreatePresetPage() {
 
             {sectionMenuValue === "scene" ? (
               <PresetSection
-                description="Visual identity, environment, and scale."
+                description="Choose the visual style, background environment, and overall size of the scene."
                 title="Scene"
               >
                 <div className="preset-editor-grid preset-editor-grid--3">
@@ -788,12 +798,32 @@ export function CreatePresetPage() {
                     value={sceneModel.visualizer.scale}
                   />
                 </div>
+
+                <div className="field-group">
+                  <label htmlFor="shader-source">Custom Shader</label>
+                  <textarea
+                    className="preset-textarea"
+                    id="shader-source"
+                    onChange={(event) =>
+                      updateBranch("visualizer", (currentVisualizer) => ({
+                        ...currentVisualizer,
+                        shader: event.currentTarget.value,
+                      }))
+                    }
+                    rows={12}
+                    value={sceneModel.visualizer.shader}
+                  />
+                  <p className="field-hint">
+                    This is the actual `visualizer.shader` source that ships in
+                    the preset. Choosing a shader above swaps this text.
+                  </p>
+                </div>
               </PresetSection>
             ) : null}
 
             {sectionMenuValue === "camera" ? (
               <PresetSection
-                description="Position, framing, and lens."
+                description="Set the starting view, framing, and lens settings for the scene."
                 title="Camera"
               >
                 <div className="preset-editor-grid preset-editor-grid--2">
@@ -827,7 +857,7 @@ export function CreatePresetPage() {
                     description="How wide the camera lens feels."
                     formatValue={(value) => formatFixed(value, 0)}
                     id="field-of-view"
-                    label="Field of View"
+                    label="FOV"
                     max={359}
                     min={1}
                     onChange={(nextValue) =>
@@ -844,7 +874,7 @@ export function CreatePresetPage() {
                     description="Displayed in degrees while the engine still stores radians."
                     formatValue={formatDegrees}
                     id="camera-tilt"
-                    label="Camera Tilt"
+                    label="Camera Orientation"
                     max={360}
                     min={0}
                     onChange={(nextValue) =>
@@ -876,10 +906,72 @@ export function CreatePresetPage() {
 
             {sectionMenuValue === "motion" ? (
               <PresetSection
-                description="Rotation and visual shaping."
+                description="Adjust how the scene moves and how strongly it responds to audio and input."
                 title="Motion"
               >
                 <div className="preset-editor-grid preset-editor-grid--2">
+                  <NumberField
+                    description="Overall engine time multiplier."
+                    id="time-multiplier"
+                    label="Time Multiplier"
+                    onChange={(nextValue) =>
+                      updateBranch("intent", (currentIntent) => ({
+                        ...currentIntent,
+                        time_multiplier: nextValue,
+                      }))
+                    }
+                    step={0.05}
+                    value={sceneModel.intent.time_multiplier}
+                  />
+
+                  <SliderField
+                    description="Scales the incoming audio signal before the engine applies its response curve."
+                    id="audio-gain"
+                    label="Audio Gain"
+                    max={2}
+                    min={0.01}
+                    onChange={(nextValue) =>
+                      updateBranch("intent", (currentIntent) => ({
+                        ...currentIntent,
+                        minimizing_factor: nextValue,
+                      }))
+                    }
+                    step={0.01}
+                    value={sceneModel.intent.minimizing_factor}
+                  />
+
+                  <SliderField
+                    description="Shapes how sharply the audio response ramps up. Higher values make peaks more selective."
+                    id="audio-curve"
+                    label="Audio Curve"
+                    max={10}
+                    min={1}
+                    onChange={(nextValue) =>
+                      updateBranch("intent", (currentIntent) => ({
+                        ...currentIntent,
+                        power_factor: nextValue,
+                      }))
+                    }
+                    step={0.1}
+                    value={sceneModel.intent.power_factor}
+                  />
+
+                  <SliderField
+                    description="Controls how much pointer-down influence lingers after release for shaders that read pointer input."
+                    id="pointer-release-hold"
+                    label="Pointer Release Hold"
+                    max={1}
+                    min={0}
+                    onChange={(nextValue) =>
+                      updateBranch("intent", (currentIntent) => ({
+                        ...currentIntent,
+                        pointerDownMultiplier: nextValue,
+                      }))
+                    }
+                    step={0.01}
+                    value={sceneModel.intent.pointerDownMultiplier}
+                  />
+
                   <SliderField
                     description="How quickly the auto rotation travels when enabled."
                     id="rotation-speed"
@@ -897,9 +989,9 @@ export function CreatePresetPage() {
                   />
 
                   <SliderField
-                    description="This shapes and distorts the visual more than it changes speed."
+                    description="Base audio-reactive speed shaping used by the engine."
                     id="base-speed"
-                    label="Distortion"
+                    label="Base Speed"
                     max={0.9}
                     min={0.01}
                     onChange={(nextValue) =>
@@ -910,6 +1002,22 @@ export function CreatePresetPage() {
                     }
                     step={0.01}
                     value={sceneModel.intent.base_speed}
+                  />
+
+                  <SliderField
+                    description="How quickly the reactive size settles toward its latest value."
+                    id="easing-speed"
+                    label="Easing Speed"
+                    max={0.9}
+                    min={0.01}
+                    onChange={(nextValue) =>
+                      updateBranch("intent", (currentIntent) => ({
+                        ...currentIntent,
+                        easing_speed: nextValue,
+                      }))
+                    }
+                    step={0.01}
+                    value={sceneModel.intent.easing_speed}
                   />
 
                   <div className="preset-editor-grid__item--full">
@@ -932,7 +1040,7 @@ export function CreatePresetPage() {
 
             {sectionMenuValue === "effects" ? (
               <PresetSection
-                description="Post-processing and final image shaping."
+                description="Add glow, color treatment, distortion, and other finishing effects."
                 title="Effects"
               >
                 <div className="preset-effects-grid">
@@ -1014,19 +1122,29 @@ export function CreatePresetPage() {
                       </EffectCard>
 
                       <EffectCard
-                        description="Choose the final output roll-off using named tone-mapping options."
+                        description="Control the final output pass and its tone-mapping response."
+                        enabled={sceneModel.fx.passes.outputPass}
+                        onToggle={(nextValue) =>
+                          updateBranch("fx", (currentFx) => ({
+                            ...currentFx,
+                            passes: {
+                              ...currentFx.passes,
+                              outputPass: nextValue,
+                            },
+                          }))
+                        }
                         footer={
                           <p className="preset-effect-footnote">
                             {selectedToneMapping.description}
                           </p>
                         }
-                        title="Tone Mapping"
+                        title="Output Pass"
                       >
                         <div className="preset-editor-grid preset-editor-grid--2">
                           <SelectField
-                            description="Switch between filmic output curves without using numeric ids."
+                            description="Switch between the renderer tone-mapping methods used by NPM-engine."
                             id="tone-mapping-method"
-                            label="Method"
+                            label="Tone Mapping"
                             onChange={(nextValue) =>
                               updateBranch("fx", (currentFx) => ({
                                 ...currentFx,
@@ -1321,7 +1439,7 @@ export function CreatePresetPage() {
 
             {sectionMenuValue === "pass-order" ? (
               <PresetSection
-                description="Reorder the effect stack to control how the image is built. Output stays pinned last."
+                description="Change the order of effects to control how the final image is layered. Output always stays last."
                 title="Pass Order"
               >
                 <ol className="preset-pass-order">
@@ -1366,118 +1484,65 @@ export function CreatePresetPage() {
 
             {sectionMenuValue === "advanced" ? (
               <PresetSection
-                description="Raw engine controls and scene data."
+                description="Edit advanced settings, startup values, and raw preset JSON."
                 title="Advanced"
               >
                 <div className="preset-advanced-stack">
-                  <div className="field-group">
-                    <label>Motion Tuning</label>
-                    <p className="field-hint">
-                      Lower-level motion controls that stay out of the main
-                      authoring flow.
-                    </p>
-                  </div>
-
                   <div className="preset-editor-grid preset-editor-grid--2">
                     <NumberField
-                      description="Overall engine time multiplier."
-                      id="time-speed"
-                      label="Time Speed"
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          time_multiplier: nextValue,
-                        }))
-                      }
-                      step={0.05}
-                      value={sceneModel.intent.time_multiplier}
-                    />
-
-                    <SliderField
-                      description="How quickly movement eases toward its target."
-                      id="smoothness"
-                      label="Smoothness"
-                      max={0.9}
-                      min={0.01}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          easing_speed: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.intent.easing_speed}
-                    />
-
-                    <SliderField
-                      description="Compresses the movement range for tighter motion."
-                      id="compression"
-                      label="Compression"
-                      max={2}
-                      min={0.01}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          minimizing_factor: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.intent.minimizing_factor}
-                    />
-
-                    <SliderField
-                      description="Boosts the overall energy of the response."
-                      id="intensity"
-                      label="Intensity"
-                      max={10}
-                      min={1}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          power_factor: nextValue,
-                        }))
-                      }
-                      step={0.1}
-                      value={sceneModel.intent.power_factor}
-                    />
-
-                    <SliderField
-                      description="Extra motion added during interaction or pointer pressure."
-                      id="interaction-boost"
-                      label="Interaction Boost"
-                      max={1}
+                      description="Experimental compact-preset field exported by the library."
+                      id="camera-orientation-mode"
+                      label="Camera Orientation Mode"
                       min={0}
                       onChange={(nextValue) =>
                         updateBranch("intent", (currentIntent) => ({
                           ...currentIntent,
-                          pointerDownMultiplier: nextValue,
+                          camOrientationMode: Math.max(
+                            0,
+                            Math.round(nextValue),
+                          ),
                         }))
                       }
-                      step={0.01}
-                      value={sceneModel.intent.pointerDownMultiplier}
+                      step={1}
+                      value={sceneModel.intent.camOrientationMode}
+                    />
+
+                    <NumberField
+                      description="Experimental compact-preset field exported by the library."
+                      id="camera-orientation-speed"
+                      label="Camera Orientation Speed"
+                      min={0}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          camOrientationSpeed: nextValue,
+                        }))
+                      }
+                      step={0.1}
+                      value={sceneModel.intent.camOrientationSpeed}
                     />
                   </div>
+
+                  <EffectCard
+                    description="These passes exist in the NPM-engine effect stack, but the compact preset schema does not persist booleans for them yet."
+                    title="Stack-only Passes"
+                  >
+                    <p className="field-hint">
+                      {stackOnlyPassLabels} can still be reordered in{" "}
+                      <strong>Pass Order</strong>. Their enable state is not
+                      currently stored by compact preset JSON, so this page
+                      keeps them informational instead of pretending they are
+                      fully supported.
+                    </p>
+                  </EffectCard>
 
                   <div className="field-group">
-                    <label htmlFor="shader-source">Custom Shader</label>
-                    <textarea
-                      className="preset-textarea"
-                      id="shader-source"
-                      onChange={(event) =>
-                        updateBranch("visualizer", (currentVisualizer) => ({
-                          ...currentVisualizer,
-                          shader: event.currentTarget.value,
-                        }))
-                      }
-                      rows={10}
-                      value={sceneModel.visualizer.shader}
-                    />
+                    <label>Runtime State</label>
                     <p className="field-hint">
-                      Use this only when the preset needs shader code beyond the
-                      curated presets.
+                      Seed low-level engine values for debugging or for presets
+                      that depend on non-default startup state.
                     </p>
                   </div>
-
                   <div className="preset-editor-grid preset-editor-grid--3">
                     <NumberField
                       description="Low-level runtime state."

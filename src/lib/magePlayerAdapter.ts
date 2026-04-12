@@ -19,13 +19,9 @@ type MageEngineModule = {
   initMAGE: (config: {
     autoStart?: boolean
     canvas: HTMLCanvasElement
-    options?: {
-      log?: boolean
-    }
+    log?: boolean
     withControls?: boolean
-  }) => {
-    engine: MageEngineBridge
-  }
+  }) => MageEngineBridge
 }
 
 export type MageSceneBlob = Record<string, unknown>
@@ -67,13 +63,11 @@ export async function createMagePlayer(
   options: { log?: boolean } = {},
 ): Promise<MagePlayerController> {
   const { initMAGE } = await loadMageEngineModule()
-  const { engine } = initMAGE({
+  const engine = initMAGE({
     canvas,
     withControls: false,
     autoStart: false,
-    options: {
-      log: options.log ?? false,
-    },
+    log: options.log ?? false,
   })
 
   engine.start()
