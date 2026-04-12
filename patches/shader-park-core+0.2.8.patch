@@ -1,0 +1,64 @@
+diff --git a/node_modules/shader-park-core/dist/shader-park-core.esm.js b/node_modules/shader-park-core/dist/shader-park-core.esm.js
+index 56ff647..4759cf2 100644
+--- a/node_modules/shader-park-core/dist/shader-park-core.esm.js
++++ b/node_modules/shader-park-core/dist/shader-park-core.esm.js
+@@ -45400,22 +45400,21 @@ function sculptToGLSL(userProvidedSrc) {
+     enable2DFlag = true;
+     return get2DCoords();
+   }
+-
+-  /*
+   function input2(name, x, y) {
+-  console.log('input2',name, x, y);
+-  let uniform = {name, type: 'vec2'};
+-  let out = x;
+-  if(y === undefined) {
+-  	uniform.value = x;
+-  } else {
+-  	out = new vec2(x, y, true);
+-  	uniform.value = out;
+-  }
+-  uniforms.push(uniform);
+-  return out;
++    var uniform = {
++      name: name,
++      type: "vec2"
++    };
++    var out = x;
++    if (y === undefined) {
++      uniform.value = x;
++    } else {
++      out = new vec2(x, y, true);
++      uniform.value = out;
++    }
++    uniforms.push(uniform);
++    return out;
+   }
+-  */
+ 
+   var error = undefined;
+   function revolve2D(sdf) {
+@@ -45526,7 +45525,22 @@ function sculptToGLSL(userProvidedSrc) {
+   var postGeneratedFunctions = replaceMathOps([getSpherical, fresnel, revolve2D, extrude2D, mirrorN, grid, repeatLinear, repeatRadial, scaleShape, vectorContourNoise].map(function (el) {
+     return el.toString();
+   }).join("\n"));
+-  eval(generatedJSFuncsSource + postGeneratedFunctions + userProvidedSrc);
++  var previousInput = globalThis.input;
++  var previousInput2D = globalThis.input2D;
++  var previousInput2 = globalThis.input2;
++  var previousMult = globalThis.mult;
++  globalThis.input = input;
++  globalThis.input2D = input2D;
++  globalThis.input2 = input2;
++  globalThis.mult = mult;
++  try {
++    eval(generatedJSFuncsSource + postGeneratedFunctions + userProvidedSrc);
++  } finally {
++    previousInput === undefined ? delete globalThis.input : globalThis.input = previousInput;
++    previousInput2D === undefined ? delete globalThis.input2D : globalThis.input2D = previousInput2D;
++    previousInput2 === undefined ? delete globalThis.input2 : globalThis.input2 = previousInput2;
++    previousMult === undefined ? delete globalThis.mult : globalThis.mult = previousMult;
++  }
+   if (enable2DFlag) {
+     setSDF(0);
+   }
