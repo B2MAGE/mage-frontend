@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthPage, AuthPageHeader } from '../components/AuthPage'
 import { useAuth, type AuthenticatedUser } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
@@ -21,9 +21,31 @@ type LoginResponse = {
   accessToken?: string
 }
 
+type LoginLocationState = {
+  registrationEmail?: string
+  registrationNotice?: string
+}
+
 const initialValues: LoginFormValues = {
   email: '',
   password: '',
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function readLoginLocationState(state: unknown): LoginLocationState {
+  if (!isRecord(state)) {
+    return {}
+  }
+
+  return {
+    registrationEmail:
+      typeof state.registrationEmail === 'string' ? state.registrationEmail : undefined,
+    registrationNotice:
+      typeof state.registrationNotice === 'string' ? state.registrationNotice : undefined,
+  }
 }
 
 function validateLoginForm(values: LoginFormValues): LoginFormErrors {
@@ -48,19 +70,25 @@ export function LoginPage() {
     completeLoginSession,
     isAuthenticated,
     isRestoringSession,
-    logout,
-    user,
   } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
-  const [values, setValues] = useState(initialValues)
+  const loginLocationState = readLoginLocationState(location.state)
+  const [values, setValues] = useState<LoginFormValues>(() => ({
+    ...initialValues,
+    email: loginLocationState.registrationEmail ?? '',
+  }))
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resetPasswordNotice, setResetPasswordNotice] = useState('')
+  const [registrationNotice, setRegistrationNotice] = useState(
+    loginLocationState.registrationNotice ?? '',
+  )
 
   const formNoticeId = useId()
   const titleId = 'login-title'
 
-  const isSubmitDisabled = isSubmitting || isAuthenticated
+  const isSubmitDisabled = isSubmitting
 
   function handleChange(field: keyof LoginFormValues, nextValue: string) {
     setValues((currentValues) => ({
@@ -82,6 +110,10 @@ export function LoginPage() {
 
     if (resetPasswordNotice) {
       setResetPasswordNotice('')
+    }
+
+    if (registrationNotice) {
+      setRegistrationNotice('')
     }
   }
 
@@ -153,6 +185,7 @@ export function LoginPage() {
         user: authenticatedUser,
       })
       setValues(initialValues)
+      navigate('/settings', { replace: true })
     } catch {
       setErrors({
         form: 'Login is unavailable right now. Please try again in a moment.',
@@ -162,27 +195,13 @@ export function LoginPage() {
     }
   }
 
-  function handleLogout() {
-    logout()
-    navigate('/login', { replace: true })
+  if (isAuthenticated) {
+    return <Navigate replace to="/settings" />
   }
 
   return (
     <AuthPage titleId={titleId}>
-        {isAuthenticated && user ? (
-          <div className="auth-state auth-state-welcome" role="status" aria-live="polite">
-            <div className="eyebrow">Login Complete</div>
-            <h1 className="auth-title" id={titleId}>
-              Welcome
-            </h1>
-            <p className="auth-welcome-name">{user.displayName}</p>
-            <div className="auth-actions">
-              <button className="demo-link auth-submit" type="button" onClick={handleLogout}>
-                Log out
-              </button>
-            </div>
-          </div>
-        ) : isRestoringSession && accessToken ? (
+        {isRestoringSession && accessToken ? (
           <div className="auth-state" role="status" aria-live="polite">
             <AuthPageHeader
               description="MAGE found a stored access token and is verifying it with the backend."
@@ -251,6 +270,12 @@ export function LoginPage() {
               {errors.form ? (
                 <div className="form-alert" id={formNoticeId} role="alert">
                   {errors.form}
+                </div>
+              ) : null}
+
+              {registrationNotice ? (
+                <div className="form-note" role="status">
+                  {registrationNotice}
                 </div>
               ) : null}
 

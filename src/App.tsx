@@ -16,21 +16,39 @@ type ProtectedRouteProps = {
   children: ReactElement
 }
 
+function SessionRestoreState() {
+  return (
+    <main className="card">
+      <div className="eyebrow">Session</div>
+      <h1>Checking your login...</h1>
+      <p className="sub">MAGE is restoring your account before opening this page.</p>
+    </main>
+  )
+}
+
 function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isRestoringSession } = useAuth()
 
   if (isRestoringSession) {
-    return (
-      <main className="card">
-        <div className="eyebrow">Session</div>
-        <h1>Checking your login...</h1>
-        <p className="sub">MAGE is restoring your account before opening this page.</p>
-      </main>
-    )
+    return <SessionRestoreState />
   }
 
   if (!isAuthenticated) {
     return <Navigate replace to="/login" />
+  }
+
+  return children
+}
+
+function GuestOnlyRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, isRestoringSession } = useAuth()
+
+  if (isRestoringSession) {
+    return <SessionRestoreState />
+  }
+
+  if (isAuthenticated) {
+    return <Navigate replace to="/settings" />
   }
 
   return children
@@ -42,7 +60,14 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/login"
+            element={
+              <GuestOnlyRoute>
+                <LoginPage />
+              </GuestOnlyRoute>
+            }
+          />
           <Route
             path="/my-presets"
             element={
@@ -55,7 +80,14 @@ function App() {
             path="/presets/:id"
             element={<PresetDetailPage />}
           />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/register"
+            element={
+              <GuestOnlyRoute>
+                <RegisterPage />
+              </GuestOnlyRoute>
+            }
+          />
           <Route path="/create-preset" element={<CreatePresetPage />} />
           <Route
             path="/settings"
