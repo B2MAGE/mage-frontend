@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { AUTH_SESSION_STORAGE_KEY } from './auth/AuthContext'
 
 vi.mock('./components/Layout', () => ({
   Layout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -37,6 +38,11 @@ vi.mock('./pages/SettingsPage', () => ({
 }))
 
 describe('App routing', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    vi.restoreAllMocks()
+  })
+
   it('allows direct preset detail visits without redirecting to login', async () => {
     render(
       <MemoryRouter initialEntries={['/presets/12']}>
@@ -60,5 +66,93 @@ describe('App routing', () => {
     })
 
     expect(screen.queryByText('Settings page')).not.toBeInTheDocument()
+  })
+
+  it('redirects authenticated users away from login to settings', async () => {
+    window.localStorage.setItem(
+      AUTH_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        accessToken: 'saved-token',
+        user: {
+          userId: 14,
+          email: 'user@example.com',
+          displayName: 'Existing User',
+          authProvider: 'LOCAL',
+        },
+      }),
+    )
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          userId: 14,
+          email: 'user@example.com',
+          displayName: 'Existing User',
+          authProvider: 'LOCAL',
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Settings page')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument()
+  })
+
+  it('redirects authenticated users away from register to settings', async () => {
+    window.localStorage.setItem(
+      AUTH_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        accessToken: 'saved-token',
+        user: {
+          userId: 14,
+          email: 'user@example.com',
+          displayName: 'Existing User',
+          authProvider: 'LOCAL',
+        },
+      }),
+    )
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          userId: 14,
+          email: 'user@example.com',
+          displayName: 'Existing User',
+          authProvider: 'LOCAL',
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+    )
+
+    render(
+      <MemoryRouter initialEntries={['/register']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Settings page')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Register page')).not.toBeInTheDocument()
   })
 })

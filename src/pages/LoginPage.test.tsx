@@ -1,16 +1,33 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { AUTH_SESSION_STORAGE_KEY, AuthProvider } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
 import { LoginPage } from './LoginPage'
 
-function renderLoginPage() {
+type RenderLoginPageOptions = {
+  locationState?: {
+    registrationEmail?: string
+    registrationNotice?: string
+  }
+}
+
+function renderLoginPage(options: RenderLoginPageOptions = {}) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter
+      initialEntries={[
+        {
+          pathname: '/login',
+          state: options.locationState,
+        },
+      ]}
+    >
       <AuthProvider>
-        <LoginPage />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/settings" element={<div>Settings page</div>} />
+        </Routes>
       </AuthProvider>
     </MemoryRouter>,
   )
@@ -43,7 +60,7 @@ describe('LoginPage', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('submits trimmed values, disables the button while loading, and shows success', async () => {
+  it('submits trimmed values, disables the button while loading, and routes to settings', async () => {
     let resolveResponse: ((value: Response) => void) | undefined
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
@@ -91,12 +108,22 @@ describe('LoginPage', () => {
       ),
     )
 
-    expect(
-      await screen.findByRole('heading', { name: /^welcome$/i }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Existing User')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument()
+    expect(await screen.findByText('Settings page')).toBeInTheDocument()
     expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain('issued-login-token')
+  })
+
+  it('prefills the email and shows the registration handoff notice', () => {
+    renderLoginPage({
+      locationState: {
+        registrationEmail: 'new-user@example.com',
+        registrationNotice: 'Account created. Sign in to open your profile.',
+      },
+    })
+
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue('new-user@example.com')
+    expect(
+      screen.getByText('Account created. Sign in to open your profile.'),
+    ).toBeInTheDocument()
   })
 
   it('shows backend invalid-credential errors clearly to the user', async () => {
