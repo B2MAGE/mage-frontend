@@ -1142,7 +1142,7 @@ export function CreatePresetPage() {
                       >
                         <div className="preset-editor-grid preset-editor-grid--2">
                           <SelectField
-                            description="Switch between the renderer tone-mapping methods used by NPM-engine."
+                            description="Switch between the renderer tone-mapping methods used by the MAGE engine."
                             id="tone-mapping-method"
                             label="Tone Mapping"
                             onChange={(nextValue) =>
@@ -1524,7 +1524,7 @@ export function CreatePresetPage() {
                   </div>
 
                   <EffectCard
-                    description="These passes exist in the NPM-engine effect stack, but the compact preset schema does not persist booleans for them yet."
+                    description="These passes exist in the MAGE engine effect stack, but the compact preset schema does not persist booleans for them yet."
                     title="Stack-only Passes"
                   >
                     <p className="field-hint">

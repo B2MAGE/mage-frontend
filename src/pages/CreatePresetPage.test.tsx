@@ -56,7 +56,7 @@ function renderCreatePresetPage() {
 }
 
 describe('CreatePresetPage', () => {
-  it('renders the expanded NPM-engine editor with the full section menu available', async () => {
+  it('renders the expanded MAGE engine editor with the full section menu available', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -119,7 +119,7 @@ describe('CreatePresetPage', () => {
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
   })
 
-  it('keeps the Motion section focused on the persisted NPM-engine motion controls', async () => {
+  it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -228,7 +228,7 @@ describe('CreatePresetPage', () => {
     expect(await screen.findByText('My Presets')).toBeInTheDocument()
   })
 
-  it('surfaces advanced NPM-engine fields and the raw JSON editor in the Advanced section', async () => {
+  it('surfaces advanced MAGE engine fields and the raw JSON editor in the Advanced section', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {

@@ -4,7 +4,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-0',
     label: 'Prism Core',
-    description: 'Bundled NPM-engine preset with layered box frames and a reflective core sphere.',
+    description: 'Bundled engine preset with layered box frames and a reflective core sphere.',
     shader: `
       let size = input()
       let pointerDown = input()
@@ -31,7 +31,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-1',
     label: 'Steel Lattice',
-    description: 'Bundled NPM-engine preset built from stacked grids and box frames.',
+    description: 'Bundled engine preset built from stacked grids and box frames.',
     shader: `
       setMaxIterations(101);
       setStepSize(0.7260629659452175);
@@ -73,7 +73,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-2',
     label: 'Aqua Static',
-    description: 'Bundled NPM-engine preset with noisy box frames and layered grid distortion.',
+    description: 'Bundled engine preset with noisy box frames and layered grid distortion.',
     shader: `
       setMaxIterations(133);
       setStepSize(0.8632297724861512);
@@ -120,7 +120,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-3',
     label: 'Verdant Frames',
-    description: 'Bundled NPM-engine preset with twin box frames and green edge-lit motion.',
+    description: 'Bundled engine preset with twin box frames and green edge-lit motion.',
     shader: `
       setMaxIterations(71);
       setStepSize(0.4414923770441956);
@@ -157,7 +157,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-4',
     label: 'Crimson Reactor',
-    description: 'Bundled NPM-engine preset with framed cylinders, a noisy core sphere, and a grid floor.',
+    description: 'Bundled engine preset with framed cylinders, a noisy core sphere, and a grid floor.',
     shader: `
       setMaxIterations(161);
       setStepSize(0.7431197197400152);
@@ -202,7 +202,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-5',
     label: 'Alloy Capsule',
-    description: 'Bundled NPM-engine preset combining a metallic cylinder shell with a central sphere.',
+    description: 'Bundled engine preset combining a metallic cylinder shell with a central sphere.',
     shader: `
       setMaxIterations(56);
       setStepSize(0.04586632133333666);
@@ -236,7 +236,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-6',
     label: 'Redline Core',
-    description: 'Bundled NPM-engine preset with a dominant sphere, cylinder, and dense grid accent.',
+    description: 'Bundled engine preset with a dominant sphere, cylinder, and dense grid accent.',
     shader: `
       setMaxIterations(198);
       setStepSize(0.8838993805155669);
@@ -275,7 +275,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-7',
     label: 'Violet Matrix',
-    description: 'Bundled NPM-engine preset with layered grids and a saturated violet sphere.',
+    description: 'Bundled engine preset with layered grids and a saturated violet sphere.',
     shader: `
       setMaxIterations(193);
       setStepSize(0.7999169963821687);
@@ -315,7 +315,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-8',
     label: 'Mint Halo',
-    description: 'Bundled NPM-engine preset with a torus frame, noisy grids, and a bright center sphere.',
+    description: 'Bundled engine preset with a torus frame, noisy grids, and a bright center sphere.',
     shader: `
       setMaxIterations(186);
       setStepSize(0.8615043142034936);
@@ -363,7 +363,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-9',
     label: 'Ember Grid',
-    description: 'Bundled NPM-engine preset with orange framing and a tight supporting grid.',
+    description: 'Bundled engine preset with orange framing and a tight supporting grid.',
     shader: `
       setMaxIterations(56);
       setStepSize(0.7549446257595138);
@@ -401,7 +401,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-10',
     label: 'Emerald Ring',
-    description: 'Bundled NPM-engine preset with a torus and box frame at maximum scale.',
+    description: 'Bundled engine preset with a torus and box frame at maximum scale.',
     shader: `
       setMaxIterations(151);
       setStepSize(0.26597607104610804);
@@ -438,7 +438,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-11',
     label: 'Spectrum Relay',
-    description: 'Bundled NPM-engine preset with color-from-ray direction and sparse mixed primitives.',
+    description: 'Bundled engine preset with color-from-ray direction and sparse mixed primitives.',
     shader: `
       setMaxIterations(96);
       setStepSize(0.8497186712056144);
@@ -472,7 +472,7 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
   {
     id: 'embedded-preset-12',
     label: 'Chroma Storm',
-    description: 'Bundled NPM-engine preset with heavy noise expansion, mixed primitives, and rainbow ray coloring.',
+    description: 'Bundled engine preset with heavy noise expansion, mixed primitives, and rainbow ray coloring.',
     shader: `
       setMaxIterations(78);
       setStepSize(0.7369359368566446);
