@@ -8,11 +8,7 @@ declare module '@mage/engine' {
   export function initMAGE(config: {
     autoStart?: boolean
     canvas: HTMLCanvasElement
-    options?: {
-      log?: boolean
-    }
+    log?: boolean
     withControls?: boolean
-  }): {
-    engine: MageEngine
-  }
+  }): MageEngine
 }

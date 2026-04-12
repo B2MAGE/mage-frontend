@@ -56,7 +56,7 @@ function renderCreatePresetPage() {
 }
 
 describe('CreatePresetPage', () => {
-  it('renders the curated editor with the full section menu available', async () => {
+  it('renders the expanded MAGE engine editor with the full section menu available', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -75,10 +75,13 @@ describe('CreatePresetPage', () => {
     expect(screen.queryByRole('heading', { name: /^camera$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^motion$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^effects$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^prism core$/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^chroma storm$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /^aurora drift$/i })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: /pass order/i })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /advanced/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /advanced/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/custom shader/i)).toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('preview-ready')
   })
 
@@ -116,7 +119,7 @@ describe('CreatePresetPage', () => {
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
   })
 
-  it('keeps the Motion section focused on the controls that affect the preset most directly', async () => {
+  it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -133,13 +136,15 @@ describe('CreatePresetPage', () => {
 
     expect(screen.getByRole('heading', { name: /^motion$/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/auto rotate/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/distortion/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/time multiplier/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/audio gain/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/audio curve/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/pointer release hold/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/base speed/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/easing speed/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/rotation speed/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/time speed/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/smoothness/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/compression/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/intensity/i)).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/interaction boost/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
   })
 
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
@@ -166,6 +171,7 @@ describe('CreatePresetPage', () => {
     expect(screen.getByText(/^gamma correction$/i)).toBeInTheDocument()
     expect(screen.getByText(/sharp digital breakups and instability/i)).toBeInTheDocument()
     expect(screen.queryByText(/^additional passes$/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/^output pass$/i)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'pass-order' } })
 
@@ -199,7 +205,7 @@ describe('CreatePresetPage', () => {
     await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
     fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'camera' } })
     expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/camera tilt/i), { target: { value: '90' } })
+    fireEvent.change(screen.getByLabelText(/camera orientation/i), { target: { value: '90' } })
     await user.click(screen.getByRole('button', { name: /create preset/i }))
 
     await waitFor(() => expect(submittedBody).not.toBeNull())
@@ -220,5 +226,27 @@ describe('CreatePresetPage', () => {
     expect(intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
     expect(passOrder.at(-1)).toBe('outputPass')
     expect(await screen.findByText('My Presets')).toBeInTheDocument()
+  })
+
+  it('surfaces advanced MAGE engine fields and the raw JSON editor in the Advanced section', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderCreatePresetPage()
+
+    fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'advanced' } })
+
+    expect(screen.getByRole('heading', { name: /^advanced$/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/camera orientation mode/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/camera orientation speed/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/scene data json/i)).toBeInTheDocument()
+    expect(screen.getByText(/stack-only passes/i)).toBeInTheDocument()
   })
 })
