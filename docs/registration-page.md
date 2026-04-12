@@ -1,18 +1,32 @@
 # Registration Page
 
-The registration page is available at `/register`.
+## Overview
 
-## Purpose
+The registration page creates a local MAGE account through the backend auth API. It performs lightweight client-side validation, submits the registration payload, and then forwards the user to the login page instead of creating a logged-in session automatically.
 
-This page is the first implemented account-management flow in the frontend. It collects local-account credentials, validates them on the client, and submits them to the backend registration endpoint.
+Route:
 
-## API contract
+- `/register`
 
-- Method: `POST`
-- Endpoint: `/api/auth/register`
-- Content type: `application/json`
+Access:
 
-Request body:
+- guest-only
+- authenticated users are redirected away through the shared route guard
+
+## Related Files
+
+- `src/pages/RegisterPage.tsx`
+- `src/lib/api.ts`
+- `src/lib/authForm.ts`
+- `src/pages/RegisterPage.test.tsx`
+
+## Request Flow
+
+Primary request:
+
+- `POST /api/auth/register`
+
+Expected request body:
 
 ```json
 {
@@ -22,29 +36,40 @@ Request body:
 }
 ```
 
-The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/api/auth/register`. When it is not set, the page uses same-origin `/api/auth/register`.
+Requests are built through `buildApiUrl()`. For local development, leave `VITE_API_BASE_URL` unset and use the Vite `/api` proxy described in the repository README.
 
-For normal localhost development, the Vite dev server proxies same-origin `/api` requests to `http://localhost:8080`.
+## User-Facing Behavior
 
-## UI behavior
+- validates display name, email, and password before submission
+- requires a minimum display-name length of `2`
+- requires a minimum password length of `8`
+- disables the submit button while the request is in flight
+- surfaces backend validation details when present
+- surfaces conflict responses such as duplicate-email registration
+- redirects to `/login` on success
+- passes the registered email and a success notice into login page state
 
-- Requires display name, email, and password before submission
-- Validates email format and minimum lengths on the client
-- Disables the submit button while the request is in flight
-- Shows a success state after a successful registration
-- Shows backend validation errors from `details`
-- Shows conflict or generic form errors when registration fails
+## Current Scope
 
-## Test coverage
+The registration page currently supports:
 
-`src/pages/RegisterPage.test.tsx` covers:
+- local account creation
+- client-side validation
+- backend error handling
+- post-registration redirect into login
 
-- client-side validation without network submission
-- successful submission, including loading and success states
-- request payload trimming and endpoint usage
-- conflict error handling from the backend
+It does not currently:
 
-Run the tests with:
+- create an authenticated session on success
+- support OAuth-based sign-up directly from this page
+
+## Tests
+
+Main coverage lives in:
+
+- `src/pages/RegisterPage.test.tsx`
+
+Run it with:
 
 ```bash
 npm run test
