@@ -14,7 +14,7 @@ The current app includes:
 - guest and authenticated account flows
 - a reusable browser-based MAGE player
 - preset listing and preset detail pages
-- a multi-section create preset editor with direct-to-S3 thumbnail uploads
+- a multi-section create preset editor with direct-to-object-storage thumbnail uploads
 - shared auth session restore and protected routes
 
 ## Tech Stack
@@ -158,7 +158,7 @@ Notes:
 
 - user preset listing
 - preset detail screen
-- create preset editor with scene, camera, motion, effects, pass-order, advanced sections, and staged direct-to-S3 thumbnail uploads that only commit on successful preset creation
+- create preset editor with scene, camera, motion, effects, pass-order, advanced sections, and staged direct-to-object-storage thumbnail uploads that only commit on successful preset creation
 - structured scene data authoring for the MAGE engine
 
 ## Engine Integration Notes

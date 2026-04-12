@@ -40,7 +40,7 @@ Those sections write into a structured scene object built around:
 The page submits preset creation through:
 
 - `POST /api/presets/thumbnail/presign`
-- direct browser `PUT` to the returned S3 URL when a thumbnail is selected
+- direct browser `PUT` to the returned object-storage URL when a thumbnail is selected
 - `POST /api/presets`
 
 Current request body:
