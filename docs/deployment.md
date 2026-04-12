@@ -25,8 +25,13 @@ For the supported deployment path:
 The frontend repo includes:
 - a production `Dockerfile`
 - an nginx config with SPA fallback
+- a `postinstall` hook that reapplies local `patch-package` patches during `npm install` and `npm ci`
 
 SPA fallback is required because the app uses `BrowserRouter`, so direct loads of routes like `/login` and `/register` must return `index.html`.
+
+The Shader Park production compatibility fix is expected to come from that checked-in patching step, not from disabling Vite optimizations. Production builds should continue to use the normal `vite build` minification and tree-shaking behavior.
+
+For container builds, the `patches/` directory must be copied into the image before `npm ci` runs. If `npm ci` runs before `patches/` is present, `patch-package` will not apply the Shader Park fix and the deployed bundle can regress to runtime errors such as `input is not defined`.
 
 ## Reverse Proxy Expectations
 

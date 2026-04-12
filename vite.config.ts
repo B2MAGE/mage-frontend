@@ -5,6 +5,9 @@ import { fileURLToPath, URL } from 'node:url'
 const backendProxyTarget = 'http://localhost:8080'
 const workspaceRoot = fileURLToPath(new URL('..', import.meta.url))
 const mageEngineEntry = fileURLToPath(new URL('./node_modules/mage/js/mage-lib.js', import.meta.url))
+const shaderParkCoreEntry = fileURLToPath(
+  new URL('./node_modules/shader-park-core/dist/shader-park-core.esm.js', import.meta.url),
+)
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,6 +15,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@mage/engine': mageEngineEntry,
+      'shader-park-core': shaderParkCoreEntry,
     },
   },
   server: {

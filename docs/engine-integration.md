@@ -30,6 +30,22 @@ Relevant files:
 - `tsconfig.app.json`
 - `src/types/mage-engine.d.ts`
 
+## Shader Park Runtime Compatibility
+
+The current engine package pulls in `shader-park-core` through the bundled browser-facing engine code. The frontend keeps one explicit compatibility patch for that dependency:
+
+- `patches/shader-park-core+0.2.8.patch`
+
+That patch exists because Shader Park executes generated code through `eval(...)` and expects a DSL helper surface to be reachable by name at runtime. Production bundling can otherwise break scene compilation with errors such as `input is not defined`, `time is not defined`, or `rotateY is not defined`.
+
+The frontend does not work around this by disabling Vite production optimizations. Instead:
+
+- `vite.config.ts` aliases `shader-park-core` to the installed ESM bundle
+- `patch-package` reapplies the checked-in Shader Park patch on `npm install` and `npm ci`
+- the patch temporarily exposes the required Shader Park helper bindings on `globalThis` during the `eval(...)` compile step and restores the previous global values afterward
+
+If the Shader Park version changes, revalidate that patch before assuming production builds will continue to render presets correctly.
+
 ## Frontend Boundary
 
 Pages should not import the engine directly. The intended boundary is:
@@ -63,6 +79,7 @@ These are current package-level caveats worth knowing before making engine-relat
 
 - the npm registry package named `mage` is not this engine, so the frontend must keep using the local tarball dependency
 - when the engine package changes, the vendored tarball in `vendor/mage-engine/` must be refreshed intentionally
+- when `shader-park-core` changes, `patches/shader-park-core+0.2.8.patch` must be reviewed and regenerated if needed
 - the packaged engine currently emits a build warning for a missing `controltips.png` runtime asset
 - `shader-park-core` emits `eval` warnings during build
 - the engine bundle is large enough to trigger Vite chunk-size warnings

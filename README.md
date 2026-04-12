@@ -54,6 +54,8 @@ Before running the frontend locally, make sure you have:
 
 The engine package used by the frontend is vendored inside this repository under `vendor/mage-engine/` so the app can build in CI and deployment environments without depending on a sibling workspace checkout.
 
+`npm install` and `npm ci` also reapply the checked-in `patch-package` patches during `postinstall`. That is currently required for the Shader Park production compatibility fix.
+
 ## Getting Started
 
 1. Install frontend dependencies:
@@ -171,6 +173,7 @@ There is one important implementation detail in the frontend today:
 
 - the package root export is not used directly
 - `@mage/engine` is aliased to `node_modules/mage/js/mage-lib.js`
+- `shader-park-core` is aliased to its ESM bundle and patched locally through `patch-package`
 - this keeps the frontend working with the current packaged engine layout
 
 If the engine package export surface changes, check:
@@ -178,6 +181,7 @@ If the engine package export surface changes, check:
 - [vite.config.ts](./vite.config.ts)
 - [tsconfig.app.json](./tsconfig.app.json)
 - [src/lib/magePlayerAdapter.ts](./src/lib/magePlayerAdapter.ts)
+- [patches/shader-park-core+0.2.8.patch](./patches/shader-park-core+0.2.8.patch)
 
 ## Documentation
 
@@ -195,6 +199,7 @@ Additional project notes live in `docs/`:
 
 - the frontend API helper automatically namespaces requests under `/api`
 - the create preset editor is tied to the current engine preset shape
+- production builds use normal Vite optimization behavior; Shader Park compatibility is handled by the checked-in `patch-package` patch rather than by disabling minification or tree-shaking
 - the engine package currently emits build warnings related to missing runtime assets and large bundle size
 
 ## Status
