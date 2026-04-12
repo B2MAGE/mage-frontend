@@ -1,133 +1,199 @@
 # MAGE Frontend
 
-Frontend for the MAGE project, built with React, TypeScript, and Vite.
+The MAGE frontend is the React application for browsing, creating, and playing MAGE scenes in the browser. It provides account flows, preset management screens, the reusable in-app MAGE player, and the preset editor used to author scene data for the engine.
 
-Right now this app contains the first real account-management flows for the platform: registration and login pages backed by the Spring Boot authentication API plus a shared frontend auth session.
+## Overview
 
-## Run locally
+This repository contains the client-side application for the MAGE platform. It is built with React, TypeScript, and Vite, and integrates with:
 
-```bash
-npm install
-npm run dev
-```
+- the MAGE backend API for authentication and preset persistence
+- the local MAGE engine package for scene playback and preset preview
 
-Then open `http://localhost:5173`.
+The current app includes:
 
-## Local backend configuration
+- guest and authenticated account flows
+- a reusable browser-based MAGE player
+- preset listing and preset detail pages
+- a multi-section create preset editor
+- shared auth session restore and protected routes
 
-For local development, the Vite dev server proxies these backend routes to `http://localhost:8080`:
+## Tech Stack
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /users/me`
-- `/presets/*`
+- React 19
+- TypeScript
+- Vite
+- React Router 7
+- Vitest + Testing Library
+- ESLint
+- Local MAGE engine package via `../mage-engine/mage-1.0.0.tgz`
 
-With the proxy in place, the frontend can keep using same-origin requests such as `/auth/login` while the backend runs separately on port `8080`.
-
-No frontend environment variables are required for this local proxy-based setup.
-
-To run the backend locally, start the backend stack from the `mage-backend` repository with:
-
-```bash
-docker compose up --build
-```
-
-The backend quick-start and local run details are documented in `mage-backend/docs/getting-started.md`.
-
-`VITE_API_BASE_URL` is still supported for deployed or intentionally cross-origin setups. When it is set, the frontend sends requests directly to that origin instead of using the local Vite proxy:
+## Repository Structure
 
 ```text
-${VITE_API_BASE_URL}/auth/register
-${VITE_API_BASE_URL}/auth/login
-${VITE_API_BASE_URL}/users/me
+mage-frontend/
+|- docs/              Additional implementation notes
+|- public/            Static assets served by Vite
+|- src/
+|  |- auth/           Shared auth session and account context
+|  |- components/     Reusable UI and player components
+|  |- lib/            Scene editor helpers, API helpers, engine adapter
+|  |- pages/          Route-level screens
+|  |- test/           Shared test setup
+|  `- types/          Local type declarations
+|- .env.example
+|- package.json
+`- vite.config.ts
 ```
 
-Leave `VITE_API_BASE_URL` unset for normal localhost development so the proxy handles auth and current-user requests.
+## Prerequisites
 
-## Routing
+Before running the frontend locally, make sure you have:
 
-The app uses `react-router-dom` with `BrowserRouter` for clean client-side URLs.
+- a recent Node.js and npm installation
+- the MAGE engine package available at `../mage-engine/mage-1.0.0.tgz`
+- the backend API running locally if you want full auth and preset flows
 
-Available routes:
+The local workspace is expected to look roughly like this:
 
-- `/`
-- `/register`
-- `/login`
-- `/my-presets`
-- `/presets/:id`
-- `/create-preset`
+```text
+MAGE/
+|- mage-backend/
+|- mage-engine/
+`- mage-frontend/
+```
 
-Note: direct loads of nested routes in production require the host to rewrite unknown paths back to `index.html`.
+If `../mage-engine/mage-1.0.0.tgz` is missing, `npm install` in this repo will fail.
 
-## Registration page
+## Getting Started
 
-The registration flow lives at `/register` and currently supports:
+1. Install frontend dependencies:
 
-- display name, email, and password inputs
-- client-side validation before submission
-- loading and disabled submit state during the request
-- success confirmation after a successful registration
-- backend validation and conflict error messaging in the UI
-- responsive layout for desktop and mobile
+   ```bash
+   npm install
+   ```
 
-Additional implementation notes are in `docs/registration-page.md`.
+2. Start the backend on `http://localhost:8080`.
 
-## Login page
+3. Start the frontend dev server:
 
-The login flow lives at `/login` and currently supports:
+   ```bash
+   npm run dev
+   ```
 
-- email and password inputs
-- client-side validation before submission
-- loading and disabled submit state during the request
-- storing the returned `accessToken` in shared frontend auth state
-- restoring the authenticated user on refresh through `GET /users/me`
-- backend validation and invalid-credential error messaging in the UI
-- logout from the shared app shell
-- responsive layout for desktop and mobile
+4. Open:
 
-The page submits credentials to `POST /auth/login`, persists the returned `accessToken`, and uses `GET /users/me` during app bootstrap when a stored token exists. Authenticated frontend requests can reuse the stored bearer token through the shared auth helper.
+   ```text
+   http://localhost:5173
+   ```
 
-Additional implementation notes are in `docs/login-page.md`.
+## Configuration
 
-## Player component
+The frontend supports one optional environment variable:
 
-The frontend now includes a reusable `MagePlayer` React component for embedding the MAGE
-engine inside normal page layouts.
+```bash
+VITE_API_BASE_URL=
+```
 
-- the component owns engine startup and disposal so pages do not call `initMAGE()` directly
-- pages pass a preset scene blob, typically `preset.sceneData`, through the `sceneBlob` prop
-- empty, loading, and invalid-preset states are rendered in the component instead of crashing
-- the home page includes a live player embed that exercises the wrapper in the browser
+Behavior:
 
-Usage notes and an example embed live in `docs/player-component.md`.
+- if `VITE_API_BASE_URL` is unset, the frontend uses the local Vite proxy and sends requests to `/api/*`
+- if `VITE_API_BASE_URL` is set, requests are sent directly to that origin
 
-## Preset detail page
+For local development, the Vite dev server proxies `/api` to:
 
-The preset detail flow lives at `/presets/:id` and currently supports:
+```text
+http://localhost:8080
+```
 
-- direct loads and internal navigation through the route param
-- fetching preset metadata, thumbnail references, and scene data from `GET /presets/{id}`
-- rendering the embedded `MagePlayer` with the fetched scene blob
-- clear invalid-link, auth-required, not-found, and unavailable states instead of a blank page
+That proxy is configured in [vite.config.ts](./vite.config.ts).
 
-In the current backend build, preset detail requests are still authenticated. The route remains
-deep-linkable, and signed-out users receive a clear sign-in-needed state instead of a broken page.
+## Available Scripts
 
-## Scripts
-
-- `npm run dev` starts the local development server
+- `npm run dev` starts the Vite development server
 - `npm run build` creates a production build
-- `npm run preview` previews the production build locally
+- `npm run preview` serves the production build locally
 - `npm run lint` runs ESLint
-- `npm run test` runs the frontend test suite with Vitest
+- `npm run test` runs the Vitest suite
 
-## Current status
+## Application Routes
 
-- Landing page for the MAGE platform
-- Registration page connected to the backend registration endpoint
-- Login page connected to the backend login endpoint
-- Shared frontend auth session with token persistence, bootstrap restore, and logout
-- Reusable MAGE player component with a live home-page preview
-- Preset detail/player route backed by `GET /presets/{id}` and the shared player wrapper
-- Header navigation between pages without full page reloads
-- Live demo link: `https://bsiscoe.github.io/MAGE/`
+| Route | Access | Purpose |
+| --- | --- | --- |
+| `/` | Public | Landing page with embedded MAGE preview |
+| `/register` | Guest-only | Account registration |
+| `/login` | Guest-only | Account sign-in |
+| `/my-presets` | Authenticated | User preset library |
+| `/presets/:id` | Public route | Preset detail/player page |
+| `/create-preset` | Public route | Preset editor and live preview |
+| `/settings` | Authenticated | Account settings |
+
+Notes:
+
+- authenticated routes redirect through shared session restore
+- direct loads of nested routes in production require host rewrites back to `index.html`
+- preset creation depends on authenticated backend access when persisting data
+
+## Current Frontend Areas
+
+### Authentication
+
+- registration page with client-side validation
+- login page with bearer-token storage
+- session restore through `GET /api/users/me`
+- guest-only and protected route wrappers
+- account settings page with basic profile details
+
+### MAGE Playback
+
+- reusable `MagePlayer` React component
+- homepage preview powered by the shared player wrapper
+- preset detail page playback
+- create preset live preview
+
+### Preset Flows
+
+- user preset listing
+- preset detail screen
+- create preset editor with scene, camera, motion, effects, pass-order, and advanced sections
+- structured scene data authoring for the MAGE engine
+
+## Engine Integration Notes
+
+The frontend currently consumes the MAGE engine as a local package dependency:
+
+```json
+"mage": "file:../mage-engine/mage-1.0.0.tgz"
+```
+
+There is one important implementation detail in the frontend today:
+
+- the package root export is not used directly
+- `@mage/engine` is aliased to `node_modules/mage/js/mage-lib.js`
+- this keeps the frontend working with the current packaged engine layout
+
+If the engine package export surface changes, check:
+
+- [vite.config.ts](./vite.config.ts)
+- [tsconfig.app.json](./tsconfig.app.json)
+- [src/lib/magePlayerAdapter.ts](./src/lib/magePlayerAdapter.ts)
+
+## Documentation
+
+Additional project notes live in `docs/`:
+
+- [docs/README.md](./docs/README.md)
+- [docs/create-preset-page.md](./docs/create-preset-page.md)
+- [docs/engine-integration.md](./docs/engine-integration.md)
+- [docs/login-page.md](./docs/login-page.md)
+- [docs/player-component.md](./docs/player-component.md)
+- [docs/registration-page.md](./docs/registration-page.md)
+
+## Development Notes
+
+- the frontend API helper automatically namespaces requests under `/api`
+- the create preset editor is tied to the current engine preset shape
+- the engine package currently emits build warnings related to missing runtime assets and large bundle size
+
+## Status
+
+This repository is an active application repo, not a generated starter. The codebase is already wired to real auth flows, real preset routes, and the local MAGE engine package, and should be treated as the main browser client for ongoing frontend product work.

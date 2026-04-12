@@ -1,17 +1,31 @@
 # Player Component
 
-## Purpose
+## Overview
 
-`MagePlayer` is the frontend boundary for embedding the engine in React pages. It keeps
-engine-specific setup out of page components and accepts a preset scene blob through a single
-`sceneBlob` prop.
+`MagePlayer` is the React boundary for rendering MAGE scenes in the browser. Pages should pass a scene blob into the component and let the shared adapter handle engine startup, scene loading, and disposal.
 
-## Example
+## Related Files
+
+- `src/components/MagePlayer.tsx`
+- `src/lib/magePlayerAdapter.ts`
+- `src/types/mage-engine.d.ts`
+- `src/components/MagePlayer.test.tsx`
+
+## Public Interface
+
+`MagePlayer` accepts:
+
+- `sceneBlob`: `MageSceneBlob | null | undefined`
+- `ariaLabel?`: optional canvas label
+- `className?`: optional wrapper class
+- `log?`: optional engine logging flag
+
+Example:
 
 ```tsx
 import { MagePlayer } from '../components/MagePlayer'
 
-export function PresetDetailsPage({ preset }: { preset: { name: string; sceneData: Record<string, unknown> } }) {
+export function PresetDetail({ preset }: { preset: { name: string; sceneData: Record<string, unknown> } }) {
   return (
     <section>
       <h1>{preset.name}</h1>
@@ -21,14 +35,37 @@ export function PresetDetailsPage({ preset }: { preset: { name: string; sceneDat
 }
 ```
 
-## Runtime behavior
+## Expected Scene Data
 
-- `sceneBlob={null}` or `undefined` shows the empty state and does not start the engine
-- a valid scene blob initializes the engine, starts rendering, and disposes cleanly on unmount
-- invalid scene data shows a recoverable error state instead of crashing the page
+The adapter accepts scene blobs that contain at least one engine-recognized root branch such as:
 
-## Integration notes
+- `visualizer`
+- `controls`
+- `intent`
+- `fx`
+- `state`
+- `settings`
+- `audioPath`
 
-- Pass the raw preset scene object returned by the backend. Do not call `initMAGE()` from page code.
-- Keep the engine boundary inside `src/lib/magePlayerAdapter.ts`.
-- If a page replaces the current preset, pass the next `sceneBlob` object to the same `MagePlayer` instance and let the component recreate the engine safely.
+Pages should pass the raw `sceneData` object returned by the backend instead of manually reshaping it in page code.
+
+## Runtime Behavior
+
+- `sceneBlob={null}` or `undefined` shows the empty state
+- the engine is created once the canvas mounts
+- the current scene is applied when both the player and a valid `sceneBlob` are available
+- invalid scene data produces a recoverable error overlay instead of crashing the page
+- the engine instance is disposed on unmount
+
+## Integration Rules
+
+- do not call `initMAGE()` directly from route components
+- keep engine-specific logic inside `src/lib/magePlayerAdapter.ts`
+- if a page swaps presets, pass the next `sceneBlob` to the same `MagePlayer` instance and let the component reload it
+- if engine wiring changes, update the adapter first and keep page code thin
+
+## Tests
+
+Main coverage lives in:
+
+- `src/components/MagePlayer.test.tsx`

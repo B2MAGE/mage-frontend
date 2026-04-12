@@ -1,18 +1,34 @@
 # Login Page
 
-The login page is available at `/login`.
+## Overview
 
-## Purpose
+The login page handles local email-and-password sign-in for the frontend. It validates credentials on the client, exchanges them for a bearer token through the backend, and hands the resulting session to the shared auth provider.
 
-This page handles the local email-and-password sign-in flow in the frontend. It validates credentials on the client, submits them to the backend login endpoint, persists the returned access token, and restores the signed-in user through the shared auth session.
+Route:
 
-## API contract
+- `/login`
 
-- Method: `POST`
-- Endpoint: `/api/auth/login`
-- Content type: `application/json`
+Access:
 
-Request body:
+- guest-only
+- authenticated users are redirected to `/settings`
+
+## Related Files
+
+- `src/pages/LoginPage.tsx`
+- `src/auth/AuthContext.tsx`
+- `src/lib/api.ts`
+- `src/lib/authForm.ts`
+- `src/pages/LoginPage.test.tsx`
+- `src/auth/AuthContext.test.tsx`
+
+## Request Flow
+
+Primary request:
+
+- `POST /api/auth/login`
+
+Expected request body:
 
 ```json
 {
@@ -21,54 +37,54 @@ Request body:
 }
 ```
 
-The page reads `VITE_API_BASE_URL` at runtime. When the variable is set, requests are sent to `${VITE_API_BASE_URL}/api/auth/login`. When it is not set, the page uses same-origin `/api/auth/login`.
+Session bootstrap request:
 
-When a stored access token exists, the frontend bootstraps auth state by calling `${VITE_API_BASE_URL}/api/users/me` or same-origin `/api/users/me`.
+- `GET /api/users/me`
 
-For normal localhost development, the Vite dev server proxies same-origin `/api` requests to `http://localhost:8080`.
+Requests are built through `buildApiUrl()`. For local development, leave `VITE_API_BASE_URL` unset and use the Vite `/api` proxy described in the repository README.
 
-## UI behavior
+## User-Facing Behavior
 
-- Requires email and password before submission
-- Validates email format on the client
-- Disables the submit button while the request is in flight
-- Stores the returned `accessToken` in browser storage after a successful login response
-- Restores the authenticated user on refresh through `GET /api/users/me`
-- Shows backend validation errors from `details`
-- Shows invalid-credential or generic form errors when login fails
-- Clears invalid or expired stored tokens automatically
-- Shows logout in the shared app header when the user is signed in
+- validates required fields before submission
+- validates email format on the client
+- disables the submit button while the request is in flight
+- stores the issued `accessToken` and user snapshot through `completeLoginSession()`
+- redirects to `/settings` after a successful login
+- shows field-level and form-level backend errors when available
+- shows a registration success notice when arriving from the registration flow
+- clears stale or invalid stored sessions when `/api/users/me` returns `401`
 
-## Shared auth session
+## Auth Session Notes
 
-The shared frontend auth provider currently:
+The shared auth provider stores session data under:
 
-- persists the login `accessToken` in browser storage
-- boots auth state on app load
-- calls `GET /api/users/me` when a stored token exists
-- clears the stored token if the backend responds with `401`
-- provides a shared authenticated request helper that sends `Authorization: Bearer <accessToken>`
-- exposes logout that clears the stored token and shared auth state
+```text
+mage.auth.session
+```
 
-## Test coverage
+That provider is responsible for:
 
-`src/pages/LoginPage.test.tsx` covers:
+- persisting the access token
+- restoring the session on app startup
+- verifying the stored token through `GET /api/users/me`
+- exposing `authenticatedFetch()` for protected API calls
+- clearing auth state on logout or invalid-token responses
 
-- client-side validation without network submission
-- successful submission, including loading, auth-session storage, and success states
-- request payload trimming and endpoint usage
-- invalid-credential error handling from the backend
-- backend validation-detail handling for the form fields
+## Failure Modes
 
-`src/auth/AuthContext.test.tsx` covers:
+- `401` from login is surfaced as an invalid-credentials error
+- missing `accessToken` in an otherwise successful response is treated as a frontend error
+- network failures show a generic unavailable message
+- invalid stored sessions are removed automatically during auth bootstrap
 
-- `GET /api/users/me` during app bootstrap when a stored token exists
-- restoring the authenticated user from a valid stored session
-- clearing invalid stored tokens on `401`
-- logout clearing shared auth state and browser storage
-- authenticated requests sending the bearer token and clearing auth state on `401`
+## Tests
 
-Run the tests with:
+Main coverage lives in:
+
+- `src/pages/LoginPage.test.tsx`
+- `src/auth/AuthContext.test.tsx`
+
+Run them with:
 
 ```bash
 npm run test
