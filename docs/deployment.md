@@ -12,6 +12,8 @@ The intended production contract is:
 
 This keeps deployment aligned with the current auth flow and avoids introducing CORS requirements into the supported path.
 
+The one exception is preset thumbnail uploads: when a user selects a thumbnail in the create preset flow, the browser uploads that file directly to S3 using a presigned `PUT` URL issued by the backend.
+
 ## Build-Time API Configuration
 
 The frontend builds API URLs through `buildApiUrl()` in `src/lib/api.ts`.
@@ -19,6 +21,7 @@ The frontend builds API URLs through `buildApiUrl()` in `src/lib/api.ts`.
 For the supported deployment path:
 - leaving `VITE_API_BASE_URL` unset works because requests default to `/api/*`
 - setting `VITE_API_BASE_URL=/api` at build time also works if you want the deployment configuration to be explicit
+- no extra frontend env var is required for thumbnail delivery because the backend persists the final CloudFront-backed `thumbnailRef` URL
 
 ## Container Notes
 
@@ -39,6 +42,7 @@ At the public edge:
 
 - `/` and client routes should go to the frontend container
 - `/api/*` should go to the backend container
+- direct thumbnail uploads should go from the browser to S3, not through the frontend or backend containers
 
 Example:
 
@@ -53,4 +57,4 @@ None of this changes local development:
 
 - `npm run dev` still uses the Vite `/api` proxy
 - local auth flows still target `http://localhost:8080` through that proxy
-- no deployment-only configuration is required for standard local work
+- local thumbnail uploads require the S3 bucket CORS rules to allow your local frontend origin, such as `http://localhost:5173`
