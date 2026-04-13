@@ -16,18 +16,18 @@ export function PlaceholderPage({
   footnote = 'More platform features are coming soon.',
 }: PlaceholderPageProps) {
   return (
-    <main className="card">
+    <main className="surface surface--hero">
       <div className="eyebrow">{eyebrow}</div>
       <h1>{title}</h1>
-      <p className="sub">{description}</p>
+      <p className="page-lead">{description}</p>
       {action ? (
         <>
           <div className="divider" />
           {action}
         </>
       ) : null}
-      <p className="foot">{footnote}</p>
-      <div className="brand">MAGE</div>
+      <p className="page-footnote">{footnote}</p>
+      <div className="page-mark">MAGE</div>
     </main>
   )
 }

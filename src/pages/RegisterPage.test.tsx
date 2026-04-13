@@ -1,13 +1,21 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { AuthProvider } from '../auth/AuthContext'
+import { buildApiUrl } from '../lib/api'
+import { LoginPage } from './LoginPage'
 import { RegisterPage } from './RegisterPage'
 
 function renderRegisterPage() {
   return render(
-    <MemoryRouter>
-      <RegisterPage />
+    <MemoryRouter initialEntries={['/register']}>
+      <AuthProvider>
+        <Routes>
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
+        </Routes>
+      </AuthProvider>
     </MemoryRouter>,
   )
 }
@@ -33,7 +41,7 @@ describe('RegisterPage', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('submits trimmed values, disables the button while loading, and shows success', async () => {
+  it('submits trimmed values, disables the button while loading, and hands the user into login', async () => {
     let resolveResponse: ((value: Response) => void) | undefined
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
@@ -49,7 +57,7 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/auth/register',
+      buildApiUrl('/auth/register'),
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -73,10 +81,11 @@ describe('RegisterPage', () => {
       }),
     )
 
+    expect(await screen.findByRole('heading', { name: /^login$/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue('user@example.com')
     expect(
-      await screen.findByRole('heading', { name: /your account request was submitted/i }),
+      screen.getByText('Account created. Sign in to open your profile.'),
     ).toBeInTheDocument()
-    expect(screen.getByText(/registration for user@example.com completed successfully/i)).toBeInTheDocument()
   })
 
   it('shows backend conflict errors clearly to the user', async () => {

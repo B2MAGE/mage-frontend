@@ -1,4 +1,4 @@
-import type { TagResponse } from '../api'
+import type { TagResponse } from '../lib/api'
 
 type TagFilterBarProps = {
   tags: TagResponse[]
@@ -26,6 +26,7 @@ export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFil
         className={`tag-pill${activeTag === null ? ' tag-pill--active' : ''}`}
         aria-pressed={activeTag === null}
         onClick={() => onTagSelect(null)}
+        type="button"
       >
         All
       </button>
@@ -35,6 +36,7 @@ export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFil
           className={`tag-pill${activeTag === tag.name ? ' tag-pill--active' : ''}`}
           aria-pressed={activeTag === tag.name}
           onClick={() => onTagSelect(tag.name)}
+          type="button"
         >
           {tag.name}
         </button>

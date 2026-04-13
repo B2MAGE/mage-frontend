@@ -1,48 +1,104 @@
 import './App.css'
-import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import type { ReactElement } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { LoginPage } from './pages/LoginPage'
+import { MyPresetsPage } from './pages/MyPresetsPage'
+import { PresetDetailPage } from './pages/PresetDetailPage'
 import { PresetsPage } from './pages/PresetsPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { CreatePresetPage } from './pages/CreatePresetPage'
+import { SettingsPage } from './pages/SettingsPage'
 
-const placeholderRoutes = [
-  {
-    path: '/login',
-    title: 'Login is coming soon.',
-    description: 'Frontend routing is in place. This placeholder will become the sign-in experience.',
-  },
-]
+type ProtectedRouteProps = {
+  children: ReactElement
+}
+
+function SessionRestoreState() {
+  return (
+    <main className="card">
+      <div className="eyebrow">Session</div>
+      <h1>Checking your login...</h1>
+      <p className="sub">MAGE is restoring your account before opening this page.</p>
+    </main>
+  )
+}
+
+function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, isRestoringSession } = useAuth()
+
+  if (isRestoringSession) {
+    return <SessionRestoreState />
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate replace to="/login" />
+  }
+
+  return children
+}
+
+function GuestOnlyRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated, isRestoringSession } = useAuth()
+
+  if (isRestoringSession) {
+    return <SessionRestoreState />
+  }
+
+  if (isAuthenticated) {
+    return <Navigate replace to="/settings" />
+  }
+
+  return children
+}
 
 function App() {
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/presets" element={<PresetsPage />} />
-        {placeholderRoutes.map((route) => (
+    <AuthProvider>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/presets" element={<PresetsPage />} />
           <Route
-            key={route.path}
-            path={route.path}
+            path="/login"
             element={
-              <PlaceholderPage
-                eyebrow="Placeholder"
-                title={route.title}
-                description={route.description}
-                action={
-                  <Link className="demo-link" to="/">
-                    Back to Home
-                  </Link>
-                }
-                footnote="This page exists to verify client-side routing while the real UI is still in development."
-              />
+              <GuestOnlyRoute>
+                <LoginPage />
+              </GuestOnlyRoute>
             }
           />
-        ))}
-        <Route path="*" element={<Navigate replace to="/" />} />
-      </Routes>
-    </Layout>
+          <Route
+            path="/my-presets"
+            element={
+              <ProtectedRoute>
+                <MyPresetsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/presets/:id" element={<PresetDetailPage />} />
+          <Route
+            path="/register"
+            element={
+              <GuestOnlyRoute>
+                <RegisterPage />
+              </GuestOnlyRoute>
+            }
+          />
+          <Route path="/create-preset" element={<CreatePresetPage />} />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate replace to="/" />} />
+        </Routes>
+      </Layout>
+    </AuthProvider>
   )
 }
 

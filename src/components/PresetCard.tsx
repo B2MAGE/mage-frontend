@@ -1,7 +1,8 @@
-import type { PresetResponse } from '../api'
+import { Link } from 'react-router-dom'
+import type { PresetListResponse } from '../lib/api'
 
 type PresetCardProps = {
-  preset: PresetResponse
+  preset: PresetListResponse
 }
 
 function formatRelativeTime(isoDate: string): string {
@@ -22,24 +23,26 @@ function formatRelativeTime(isoDate: string): string {
 
 export function PresetCard({ preset }: PresetCardProps) {
   return (
-    <article className="preset-card" id={`preset-${preset.presetId}`}>
-      <div className="preset-card__thumbnail">
-        {preset.thumbnailRef ? (
-          <img
-            src={preset.thumbnailRef}
-            alt={`Thumbnail for ${preset.name}`}
-            className="preset-card__thumbnail-img"
-          />
-        ) : (
-          <div className="preset-card__thumbnail-placeholder" aria-hidden="true" />
-        )}
-      </div>
-      <div className="preset-card__body">
-        <h3 className="preset-card__name">{preset.name}</h3>
-        <time className="preset-card__time" dateTime={preset.createdAt}>
-          {formatRelativeTime(preset.createdAt)}
-        </time>
-      </div>
-    </article>
+    <Link className="preset-card-link" to={`/presets/${preset.presetId}`}>
+      <article className="preset-card" id={`preset-${preset.presetId}`}>
+        <div className="preset-card__thumbnail">
+          {preset.thumbnailRef ? (
+            <img
+              src={preset.thumbnailRef}
+              alt={`Thumbnail for ${preset.name}`}
+              className="preset-card__thumbnail-img"
+            />
+          ) : (
+            <div className="preset-card__thumbnail-placeholder" aria-hidden="true" />
+          )}
+        </div>
+        <div className="preset-card__body">
+          <h3 className="preset-card__name">{preset.name}</h3>
+          <time className="preset-card__time" dateTime={preset.createdAt}>
+            {formatRelativeTime(preset.createdAt)}
+          </time>
+        </div>
+      </article>
+    </Link>
   )
 }
