@@ -228,6 +228,124 @@ describe('CreatePresetPage', () => {
     expect(await screen.findByText('My Presets')).toBeInTheDocument()
   })
 
+  it('uploads a selected thumbnail before the preset create request is sent', async () => {
+    storeSession()
+
+    const uploadedFiles: File[] = []
+    let presignBody: Record<string, unknown> | null = null
+    let createBody: Record<string, unknown> | null = null
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/presets/thumbnail/presign')) {
+        presignBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return Promise.resolve(
+          jsonResponse({
+            objectKey: 'presets/pending/8/thumbnails/abc123.png',
+            uploadUrl: 'https://upload.example.com/presets/pending/8/thumbnails/abc123.png',
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'image/png',
+            },
+          }),
+        )
+      }
+
+      if (input === 'https://upload.example.com/presets/pending/8/thumbnails/abc123.png') {
+        if (init?.body instanceof File) {
+          uploadedFiles.push(init.body)
+        }
+
+        return Promise.resolve(new Response(null, { status: 200 }))
+      }
+
+      if (input === buildApiUrl('/presets')) {
+        createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
+      target: {
+        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
+      },
+    })
+    await user.click(screen.getByRole('button', { name: /create preset/i }))
+
+    await waitFor(() => expect(presignBody).not.toBeNull())
+
+    expect(presignBody).toMatchObject({
+      filename: 'cover.png',
+      contentType: 'image/png',
+      sizeBytes: 5,
+    })
+    expect(uploadedFiles).toHaveLength(1)
+    expect(uploadedFiles[0].name).toBe('cover.png')
+    expect(createBody).toMatchObject({
+      name: 'Aurora Drift',
+      thumbnailObjectKey: 'presets/pending/8/thumbnails/abc123.png',
+    })
+    expect(await screen.findByText('My Presets')).toBeInTheDocument()
+  })
+
+  it('does not create the preset when thumbnail upload preparation fails', async () => {
+    storeSession()
+
+    let createAttempted = false
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/presets/thumbnail/presign')) {
+        return Promise.resolve(
+          jsonResponse(
+            {
+              code: 'THUMBNAIL_STORAGE_UNAVAILABLE',
+              message: 'Thumbnail storage is unavailable right now.',
+            },
+            503,
+          ),
+        )
+      }
+
+      if (input === buildApiUrl('/presets')) {
+        createAttempted = true
+        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
+      target: {
+        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
+      },
+    })
+    await user.click(screen.getByRole('button', { name: /create preset/i }))
+
+    expect(
+      await screen.findByText(/thumbnail storage is unavailable right now\./i),
+    ).toBeInTheDocument()
+    expect(createAttempted).toBe(false)
+  })
+
   it('surfaces advanced MAGE engine fields and the raw JSON editor in the Advanced section', async () => {
     storeSession()
 

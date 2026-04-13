@@ -14,7 +14,7 @@ The current app includes:
 - guest and authenticated account flows
 - a reusable browser-based MAGE player
 - preset listing and preset detail pages
-- a multi-section create preset editor
+- a multi-section create preset editor with direct-to-object-storage thumbnail uploads
 - shared auth session restore and protected routes
 
 ## Tech Stack
@@ -121,15 +121,15 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 
 ## Application Routes
 
-| Route | Access | Purpose |
-| --- | --- | --- |
-| `/` | Public | Landing page with embedded MAGE preview |
-| `/register` | Guest-only | Account registration |
-| `/login` | Guest-only | Account sign-in |
-| `/my-presets` | Authenticated | User preset library |
-| `/presets/:id` | Public route | Preset detail/player page |
-| `/create-preset` | Public route | Preset editor and live preview |
-| `/settings` | Authenticated | Account settings |
+| Route            | Access        | Purpose                                 |
+| ---------------- | ------------- | --------------------------------------- |
+| `/`              | Public        | Landing page with embedded MAGE preview |
+| `/register`      | Guest-only    | Account registration                    |
+| `/login`         | Guest-only    | Account sign-in                         |
+| `/my-presets`    | Authenticated | User preset library                     |
+| `/presets/:id`   | Public route  | Preset detail/player page               |
+| `/create-preset` | Public route  | Preset editor and live preview          |
+| `/settings`      | Authenticated | Account settings                        |
 
 Notes:
 
@@ -158,7 +158,7 @@ Notes:
 
 - user preset listing
 - preset detail screen
-- create preset editor with scene, camera, motion, effects, pass-order, and advanced sections
+- create preset editor with scene, camera, motion, effects, pass-order, advanced sections, and staged direct-to-object-storage thumbnail uploads that only commit on successful preset creation
 - structured scene data authoring for the MAGE engine
 
 ## Engine Integration Notes
@@ -194,14 +194,3 @@ Additional project notes live in `docs/`:
 - [docs/login-page.md](./docs/login-page.md)
 - [docs/player-component.md](./docs/player-component.md)
 - [docs/registration-page.md](./docs/registration-page.md)
-
-## Development Notes
-
-- the frontend API helper automatically namespaces requests under `/api`
-- the create preset editor is tied to the current engine preset shape
-- production builds use normal Vite optimization behavior; Shader Park compatibility is handled by the checked-in `patch-package` patch rather than by disabling minification or tree-shaking
-- the engine package currently emits build warnings related to missing runtime assets and large bundle size
-
-## Status
-
-This repository is an active application repo, not a generated starter. The codebase is already wired to real auth flows, real preset routes, and the local MAGE engine package, and should be treated as the main browser client for ongoing frontend product work.

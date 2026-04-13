@@ -14,6 +14,7 @@ import {
   Vector3Field,
 } from "../components/PresetEditorControls";
 import { parseApiError } from "../lib/authForm";
+import { uploadNewPresetThumbnail } from "../lib/presetThumbnailUpload";
 import {
   createDefaultSceneData,
   getSceneEditorModel,
@@ -34,7 +35,7 @@ import {
 } from "../lib/presetEditor";
 
 type CreatePresetFormErrors = Partial<
-  Record<"form" | "name" | "sceneData", string>
+  Record<"form" | "name" | "sceneData" | "thumbnail", string>
 >;
 type EditorSectionId =
   | "advanced"
@@ -44,7 +45,7 @@ type EditorSectionId =
   | "pass-order"
   | "scene";
 type EffectCategoryId = "color" | "finish" | "pattern" | "trail";
-type ThumbnailMode = "auto" | "upload";
+type ThumbnailMode = "skip" | "upload";
 
 type AdditionalPassConfig = {
   category: EffectCategoryId;
@@ -188,6 +189,13 @@ const stackOnlyPassLabels = [
   PASS_LABELS.bleachBypassShader,
   PASS_LABELS.toonShader,
 ].join(", ");
+const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
 
 function buildShaderOptions(currentShader: string) {
   const matchedPreset = SHADER_PRESETS.find(
@@ -305,6 +313,26 @@ function validateForm(name: string, sceneDataText: string) {
   };
 }
 
+function validateThumbnailFile(file: File | null) {
+  if (!file) {
+    return "Select a thumbnail image to upload.";
+  }
+
+  if (!ALLOWED_THUMBNAIL_CONTENT_TYPES.has(file.type)) {
+    return "Thumbnail must be a jpeg, png, webp, or gif image.";
+  }
+
+  if (file.size <= 0) {
+    return "Thumbnail file must not be empty.";
+  }
+
+  if (file.size > MAX_THUMBNAIL_BYTES) {
+    return "Thumbnail must not exceed 5 MB.";
+  }
+
+  return null;
+}
+
 export function CreatePresetPage() {
   const { authenticatedFetch } = useAuth();
   const navigate = useNavigate();
@@ -313,7 +341,8 @@ export function CreatePresetPage() {
     useState<EditorSectionId>("scene");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [thumbnailMode, setThumbnailMode] = useState<ThumbnailMode>("auto");
+  const [thumbnailMode, setThumbnailMode] = useState<ThumbnailMode>("skip");
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailFileName, setThumbnailFileName] = useState("");
   const [playlistValue, setPlaylistValue] = useState("");
   const [sceneData, setSceneData] = useState<PresetSceneData>(initialSceneData);
@@ -381,6 +410,14 @@ export function CreatePresetPage() {
     });
   }
 
+  function clearThumbnailSelection() {
+    setThumbnailFile(null);
+    setThumbnailFileName("");
+    if (thumbnailFileInputRef.current) {
+      thumbnailFileInputRef.current.value = "";
+    }
+  }
+
   function applySceneData(nextSceneData: PresetSceneData) {
     const sanitizedSceneData = sanitizeSceneData(nextSceneData);
     setSceneData(sanitizedSceneData);
@@ -404,6 +441,14 @@ export function CreatePresetPage() {
 
   function handleThumbnailModeChange(nextValue: ThumbnailMode) {
     setThumbnailMode(nextValue);
+    if (nextValue === "skip") {
+      clearThumbnailSelection();
+    }
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      thumbnail: undefined,
+      form: undefined,
+    }));
   }
 
   function handleThumbnailUploadClick() {
@@ -425,7 +470,13 @@ export function CreatePresetPage() {
     }
 
     setThumbnailMode("upload");
+    setThumbnailFile(nextFile);
     setThumbnailFileName(nextFile.name);
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      thumbnail: undefined,
+      form: undefined,
+    }));
   }
 
   function handleSectionJump(nextSectionId: EditorSectionId) {
@@ -498,6 +549,12 @@ export function CreatePresetPage() {
       trimmedName,
       sceneDataText,
     );
+    const nextThumbnailError =
+      thumbnailMode === "upload" ? validateThumbnailFile(thumbnailFile) : null;
+
+    if (nextThumbnailError) {
+      nextErrors.thumbnail = nextThumbnailError;
+    }
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -510,12 +567,18 @@ export function CreatePresetPage() {
     setErrors({});
 
     try {
+      const thumbnailObjectKey =
+        thumbnailMode === "upload" && thumbnailFile
+          ? await uploadNewPresetThumbnail(authenticatedFetch, thumbnailFile)
+          : undefined;
+
       const response = await authenticatedFetch("/presets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: trimmedName,
           sceneData: sanitizedSceneData,
+          thumbnailObjectKey,
         }),
       });
 
@@ -532,9 +595,12 @@ export function CreatePresetPage() {
       }
 
       navigate("/my-presets");
-    } catch {
+    } catch (error) {
       setErrors({
-        form: "Preset creation is unavailable right now. Please try again in a moment.",
+        form:
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "Preset creation is unavailable right now. Please try again in a moment.",
       });
     } finally {
       setIsSubmitting(false);
@@ -608,7 +674,7 @@ export function CreatePresetPage() {
                   <label htmlFor={thumbnailInputId}>Thumbnail</label>
                   <div className="preset-thumbnail-picker">
                     <input
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       aria-label="Upload thumbnail file"
                       className="preset-thumbnail-input"
                       id={thumbnailInputId}
@@ -640,19 +706,19 @@ export function CreatePresetPage() {
 
                       <button
                         className={`preset-thumbnail-choice${
-                          thumbnailMode === "auto" ? " is-selected" : ""
+                          thumbnailMode === "skip" ? " is-selected" : ""
                         }`}
-                        onClick={() => handleThumbnailModeChange("auto")}
+                        onClick={() => handleThumbnailModeChange("skip")}
                         type="button"
                       >
                         <span className="preset-thumbnail-choice__eyebrow">
-                          Quick Pick
+                          Optional
                         </span>
                         <strong className="preset-thumbnail-choice__title">
-                          Auto-generated
+                          Skip for Now
                         </strong>
                         <span className="preset-thumbnail-choice__description">
-                          Start from a generated cover.
+                          Create the preset without a thumbnail.
                         </span>
                       </button>
                     </div>
@@ -662,6 +728,16 @@ export function CreatePresetPage() {
                         Selected file: <strong>{thumbnailFileName}</strong>
                       </p>
                     ) : null}
+                    {errors.thumbnail ? (
+                      <p className="field-error" role="alert">
+                        {errors.thumbnail}
+                      </p>
+                    ) : (
+                      <p className="field-hint">
+                        Uploads go directly to S3 and are finalized after the
+                        preset is created.
+                      </p>
+                    )}
                   </div>
                 </div>
 

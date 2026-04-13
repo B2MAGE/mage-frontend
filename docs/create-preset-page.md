@@ -39,6 +39,8 @@ Those sections write into a structured scene object built around:
 
 The page submits preset creation through:
 
+- `POST /api/presets/thumbnail/presign`
+- direct browser `PUT` to the returned object-storage URL when a thumbnail is selected
 - `POST /api/presets`
 
 Current request body:
@@ -52,11 +54,14 @@ Current request body:
     "intent": {},
     "fx": {},
     "state": {}
-  }
+  },
+  "thumbnailObjectKey": "presets/pending/42/thumbnails/abc123.png"
 }
 ```
 
-Submission uses `authenticatedFetch()`, so the save action requires a valid signed-in session even though the route itself is not currently wrapped in a protected route.
+Submission uses `authenticatedFetch()` for backend calls, so the save action requires a valid signed-in session even though the route itself is not currently wrapped in a protected route.
+
+If a thumbnail is selected, the page uploads it before sending the create request. That means a failed thumbnail upload blocks preset creation instead of leaving behind a saved preset without a thumbnail.
 
 ## Live Preview
 
@@ -76,7 +81,8 @@ The page includes metadata controls beyond the persisted payload, but not all of
 At the moment:
 
 - `name` and `sceneData` are submitted
-- description, playlist, and thumbnail picker state are UI-only
+- thumbnail uploads are staged first and only committed when the final preset create request succeeds
+- description and playlist are still UI-only
 - some engine passes exist in the stack but do not have fully persisted boolean support in the compact preset schema
 
 If preset persistence expands on the backend, this page is a likely place for follow-up wiring.
