@@ -93,6 +93,7 @@ Behavior:
 - for same-origin production deployments, leaving it unset or building with `VITE_API_BASE_URL=/api` both work
 
 For local development, the Vite dev server proxies `/api` to:
+
 ```text
 http://localhost:8080
 ```
@@ -120,16 +121,16 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 
 ## Application Routes
 
-| Route            | Access        | Purpose                                 |
-| ---------------- | ------------- | --------------------------------------- |
+| Route            | Access        | Purpose                                               |
+| ---------------- | ------------- | ----------------------------------------------------- |
 | `/`              | Public        | Guest landing page or signed-in preset discovery home |
-| `/presets`       | Public        | Preset discovery with optional tag filter |
-| `/register`      | Guest-only    | Account registration                    |
-| `/login`         | Guest-only    | Account sign-in                         |
-| `/my-presets`    | Authenticated | User preset library                     |
-| `/presets/:id`   | Public route  | Preset detail/player page               |
-| `/create-preset` | Public route  | Preset editor and live preview          |
-| `/settings`      | Authenticated | Account settings                        |
+| `/presets`       | Public        | Preset discovery with optional tag filter             |
+| `/register`      | Guest-only    | Account registration                                  |
+| `/login`         | Guest-only    | Account sign-in                                       |
+| `/my-presets`    | Authenticated | User preset library                                   |
+| `/presets/:id`   | Public route  | Preset detail/player page                             |
+| `/create-preset` | Public route  | Preset editor and live preview                        |
+| `/settings`      | Authenticated | Account settings                                      |
 
 Notes:
 
@@ -161,28 +162,6 @@ Notes:
 - preset detail screen
 - create preset editor with scene, camera, motion, effects, pass-order, advanced sections, and staged direct-to-object-storage thumbnail uploads that only commit on successful preset creation
 - structured scene data authoring for the MAGE engine
-
-## Engine Integration Notes
-
-The frontend currently consumes the MAGE engine as a local package dependency:
-
-```json
-"mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
-```
-
-There is one important implementation detail in the frontend today:
-
-- the package root export is not used directly
-- `@mage/engine` is aliased to `node_modules/mage/js/mage-lib.js`
-- `shader-park-core` is aliased to its ESM bundle and patched locally through `patch-package`
-- this keeps the frontend working with the current packaged engine layout
-
-If the engine package export surface changes, check:
-
-- [vite.config.ts](./vite.config.ts)
-- [tsconfig.app.json](./tsconfig.app.json)
-- [src/lib/magePlayerAdapter.ts](./src/lib/magePlayerAdapter.ts)
-- [patches/shader-park-core+0.2.8.patch](./patches/shader-park-core+0.2.8.patch)
 
 ## Documentation
 
