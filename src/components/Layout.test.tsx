@@ -63,7 +63,7 @@ describe('Layout', () => {
       isAuthenticated: true,
       user: {
         authProvider: 'LOCAL',
-        displayName: 'Preset Artist',
+        displayName: 'Scene Artist',
         email: 'artist@example.com',
         userId: 8,
       },
@@ -73,19 +73,19 @@ describe('Layout', () => {
 
     renderLayout()
 
-    expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/create-preset')
+    expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/create-scene')
 
-    await user.click(screen.getByRole('button', { name: /open account menu for preset artist/i }))
+    await user.click(screen.getByRole('button', { name: /open account menu for scene artist/i }))
 
-    expect(screen.getByRole('menuitem', { name: /preset artist/i })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: /scene artist/i })).toHaveAttribute(
       'href',
       '/settings',
     )
     expect(screen.getByRole('button', { name: /view your channel/i })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /browse/i })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('menuitem', { name: /my presets/i })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: /my scenes/i })).toHaveAttribute(
       'href',
-      '/my-presets',
+      '/my-scenes',
     )
     expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument()
 

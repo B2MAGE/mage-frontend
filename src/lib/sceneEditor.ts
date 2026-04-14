@@ -1,6 +1,6 @@
-import { EMBEDDED_SHADER_PRESETS } from './embeddedShaderPresets'
+import { EMBEDDED_SHADER_SCENES } from './embeddedShaderScenes'
 
-export type PresetSceneData = Record<string, unknown>
+export type SceneData = Record<string, unknown>
 
 export type Vector3Value = {
   x: number
@@ -8,7 +8,7 @@ export type Vector3Value = {
   z: number
 }
 
-export type PresetPassId =
+export type ScenePassId =
   | 'glitchPass'
   | 'bloom'
   | 'RGBShift'
@@ -40,7 +40,7 @@ export type PersistedPassFlag =
   | 'kaleid'
   | 'outputPass'
 
-export type ShaderPresetOption = {
+export type ShaderSceneOption = {
   description: string
   id: string
   label: string
@@ -82,7 +82,7 @@ export type SceneEditorModel = {
         amount: number
       }
     }
-    passOrder: PresetPassId[]
+    passOrder: ScenePassId[]
     passes: Record<PersistedPassFlag, boolean>
     toneMapping: {
       exposure: number
@@ -118,7 +118,7 @@ export type SceneEditorModel = {
   }
 }
 
-const DEFAULT_PASS_ORDER: PresetPassId[] = [
+const DEFAULT_PASS_ORDER: ScenePassId[] = [
   'glitchPass',
   'bloom',
   'RGBShift',
@@ -137,7 +137,7 @@ const DEFAULT_PASS_ORDER: PresetPassId[] = [
   'outputPass',
 ]
 
-export const PASS_LABELS: Record<PresetPassId, string> = {
+export const PASS_LABELS: Record<ScenePassId, string> = {
   RGBShift: 'RGB Shift',
   afterImagePass: 'Afterimage',
   bleachBypassShader: 'Bleach Bypass',
@@ -156,7 +156,7 @@ export const PASS_LABELS: Record<PresetPassId, string> = {
   toonShader: 'Toon',
 }
 
-export const SHADER_PRESETS: ShaderPresetOption[] = [...EMBEDDED_SHADER_PRESETS]
+export const SHADER_SCENES: ShaderSceneOption[] = [...EMBEDDED_SHADER_SCENES]
 
 export const TONE_MAPPING_OPTIONS: ToneMappingOption[] = [
   {
@@ -203,7 +203,7 @@ export const SKYBOX_OPTIONS = Array.from({ length: 10 }, (_, index) => ({
 
 const DEFAULT_SCENE_DATA: SceneEditorModel = {
   visualizer: {
-    shader: SHADER_PRESETS[0].shader,
+    shader: SHADER_SCENES[0].shader,
     skyboxPreset: 6,
     scale: 10,
   },
@@ -309,27 +309,27 @@ function readVector3(value: unknown, fallback: Vector3Value): Vector3Value {
   }
 }
 
-function normalizePassOrder(value: unknown): PresetPassId[] {
+function normalizePassOrder(value: unknown): ScenePassId[] {
   if (!Array.isArray(value)) {
     return [...DEFAULT_PASS_ORDER]
   }
 
-  const nextOrder: PresetPassId[] = []
+  const nextOrder: ScenePassId[] = []
 
   for (const item of value) {
     if (typeof item !== 'string') {
       continue
     }
 
-    if (!DEFAULT_PASS_ORDER.includes(item as PresetPassId)) {
+    if (!DEFAULT_PASS_ORDER.includes(item as ScenePassId)) {
       continue
     }
 
-    if (nextOrder.includes(item as PresetPassId)) {
+    if (nextOrder.includes(item as ScenePassId)) {
       continue
     }
 
-    nextOrder.push(item as PresetPassId)
+    nextOrder.push(item as ScenePassId)
   }
 
   for (const passId of DEFAULT_PASS_ORDER) {
@@ -408,7 +408,7 @@ function createDefaultModel(): SceneEditorModel {
   }
 }
 
-export function createDefaultSceneData(): PresetSceneData {
+export function createDefaultSceneData(): SceneData {
   const defaults = createDefaultModel()
 
   return {
@@ -420,7 +420,7 @@ export function createDefaultSceneData(): PresetSceneData {
   }
 }
 
-export function getSceneEditorModel(sceneData: PresetSceneData): SceneEditorModel {
+export function getSceneEditorModel(sceneData: SceneData): SceneEditorModel {
   const defaults = createDefaultModel()
   const visualizer = readRecord(sceneData.visualizer)
   const controls = readRecord(sceneData.controls)
@@ -525,10 +525,10 @@ export function getSceneEditorModel(sceneData: PresetSceneData): SceneEditorMode
 }
 
 export function mergeSceneEditorBranch<K extends keyof SceneEditorModel>(
-  sceneData: PresetSceneData,
+  sceneData: SceneData,
   branch: K,
   value: SceneEditorModel[K],
-): PresetSceneData {
+): SceneData {
   switch (branch) {
     case 'visualizer': {
       const nextVisualizer = value as SceneEditorModel['visualizer']
@@ -634,7 +634,7 @@ export function mergeSceneEditorBranch<K extends keyof SceneEditorModel>(
   }
 }
 
-export function sanitizeSceneData(sceneData: PresetSceneData): PresetSceneData {
+export function sanitizeSceneData(sceneData: SceneData): SceneData {
   const normalizedModel = getSceneEditorModel(sceneData)
   let nextSceneData = { ...sceneData }
 
@@ -657,7 +657,7 @@ export function parseSceneDataJson(value: string) {
   return parsedValue
 }
 
-export function prettyPrintSceneData(sceneData: PresetSceneData) {
+export function prettyPrintSceneData(sceneData: SceneData) {
   return JSON.stringify(sanitizeSceneData(sceneData), null, 2)
 }
 

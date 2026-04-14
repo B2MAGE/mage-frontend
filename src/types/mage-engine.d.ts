@@ -1,7 +1,7 @@
 declare module '@mage/engine' {
   export type MageEngine = {
     dispose: () => void
-    loadPreset: (preset: unknown) => unknown
+    loadPreset: (scene: unknown) => unknown
     start: () => void
   }
 

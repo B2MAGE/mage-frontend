@@ -1,31 +1,31 @@
-import type { PresetVisibility, StatusFilter } from '../../lib/myPresets'
+import type { SceneVisibility, StatusFilter } from '../../lib/myScenes'
 
-type MyPresetsToolbarProps = {
-  availableStatuses: PresetVisibility[]
+type MyScenesToolbarProps = {
+  availableStatuses: SceneVisibility[]
   sortSummary: string
-  totalPresets: number
+  totalScenes: number
   statusFilter: StatusFilter
   onSelectStatus: (status: StatusFilter) => void
 }
 
-export function MyPresetsToolbar({
+export function MyScenesToolbar({
   availableStatuses,
   sortSummary,
-  totalPresets,
+  totalScenes,
   statusFilter,
   onSelectStatus,
-}: MyPresetsToolbarProps) {
+}: MyScenesToolbarProps) {
   return (
-    <div className="my-presets-board__toolbar">
-      <div className="my-presets-board__summary">
+    <div className="my-scenes-board__toolbar">
+      <div className="my-scenes-board__summary">
         <strong>
-          {totalPresets} preset{totalPresets === 1 ? '' : 's'}
+          {totalScenes} scene{totalScenes === 1 ? '' : 's'}
         </strong>
         <span>{sortSummary}</span>
       </div>
-      <div className="my-presets-board__filters">
+      <div className="my-scenes-board__filters">
         <button
-          className="my-presets-board__chip"
+          className="my-scenes-board__chip"
           data-active={statusFilter === 'All'}
           onClick={() => {
             onSelectStatus('All')
@@ -37,7 +37,7 @@ export function MyPresetsToolbar({
         {availableStatuses.map((status) => (
           <button
             key={status}
-            className="my-presets-board__chip"
+            className="my-scenes-board__chip"
             data-active={statusFilter === status}
             onClick={() => {
               onSelectStatus(status)

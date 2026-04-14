@@ -1,5 +1,5 @@
 import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
-import type { Vector3Value } from '../lib/presetEditor'
+import type { Vector3Value } from '../lib/sceneEditor'
 
 type SectionProps = PropsWithChildren<{
   className?: string
@@ -75,13 +75,13 @@ function FieldShell({
   label: string
 }>) {
   return (
-    <div className="preset-field">
-      <div className="preset-field__label-row">
-        <label className="preset-field__label" htmlFor={htmlFor}>
+    <div className="scene-field">
+      <div className="scene-field__label-row">
+        <label className="scene-field__label" htmlFor={htmlFor}>
           {label}
         </label>
       </div>
-      {description ? <p className="preset-field__description">{description}</p> : null}
+      {description ? <p className="scene-field__description">{description}</p> : null}
       {children}
     </div>
   )
@@ -107,14 +107,14 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
 }
 
-export function PresetSection({ children, className, description, title }: SectionProps) {
+export function SceneSection({ children, className, description, title }: SectionProps) {
   return (
-    <section className={buildClassName('surface surface--soft preset-editor-section', className)}>
-      <div className="preset-editor-section__header">
+    <section className={buildClassName('surface surface--soft scene-editor-section', className)}>
+      <div className="scene-editor-section__header">
         <h2>{title}</h2>
         <p>{description}</p>
       </div>
-      <div className="preset-editor-section__content">{children}</div>
+      <div className="scene-editor-section__content">{children}</div>
     </section>
   )
 }
@@ -130,7 +130,7 @@ export function SelectField({
   return (
     <FieldShell description={description} htmlFor={id} label={label}>
       <select
-        className="preset-select"
+        className="scene-select"
         id={id}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -159,7 +159,7 @@ export function NumberField({
   return (
     <FieldShell description={description} htmlFor={id} label={label}>
       <input
-        className="preset-number-input"
+        className="scene-number-input"
         id={id}
         max={max}
         min={min}
@@ -186,13 +186,13 @@ export function SliderField({
 }: SliderFieldProps) {
   return (
     <FieldShell description={description} htmlFor={id} label={label}>
-      <div className="preset-slider">
-        <div className="preset-slider__header">
+      <div className="scene-slider">
+        <div className="scene-slider__header">
           <strong>{formatSliderValue(value, formatValue)}</strong>
         </div>
-        <div className="preset-slider__controls">
+        <div className="scene-slider__controls">
           <input
-            className="preset-slider__range"
+            className="scene-slider__range"
             id={id}
             max={max}
             min={min}
@@ -202,7 +202,7 @@ export function SliderField({
             value={value}
           />
           <input
-            className="preset-slider__number"
+            className="scene-slider__number"
             max={max}
             min={min}
             onChange={(event) => forwardNumericValue(event, onChange)}
@@ -224,20 +224,20 @@ export function ToggleField({
   onChange,
 }: ToggleFieldProps) {
   return (
-    <label className="preset-toggle" htmlFor={id}>
-      <div className="preset-toggle__copy">
+    <label className="scene-toggle" htmlFor={id}>
+      <div className="scene-toggle__copy">
         <span>{label}</span>
         {description ? <small>{description}</small> : null}
       </div>
-      <span className="preset-toggle__control">
+      <span className="scene-toggle__control">
         <input
           checked={checked}
-          className="preset-toggle__input"
+          className="scene-toggle__input"
           id={id}
           onChange={(event) => onChange(event.currentTarget.checked)}
           type="checkbox"
         />
-        <span className="preset-toggle__track" aria-hidden="true" />
+        <span className="scene-toggle__track" aria-hidden="true" />
       </span>
     </label>
   )
@@ -260,12 +260,12 @@ export function Vector3Field({
 
   return (
     <FieldShell description={description} htmlFor={id} label={label}>
-      <div className="preset-vector-field" id={id}>
+      <div className="scene-vector-field" id={id}>
         {(['x', 'y', 'z'] as Array<keyof Vector3Value>).map((axis) => (
-          <label className="preset-vector-field__axis" key={axis}>
+          <label className="scene-vector-field__axis" key={axis}>
             <span>{axis.toUpperCase()}</span>
             <input
-              className="preset-number-input"
+              className="scene-number-input"
               onChange={(event) => forwardNumericValue(event, (nextValue) => handleAxisChange(axis, nextValue))}
               step={step}
               type="number"

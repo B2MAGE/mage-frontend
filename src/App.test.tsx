@@ -17,24 +17,24 @@ vi.mock('./pages/LoginPage', () => ({
   LoginPage: () => <div>Login page</div>,
 }))
 
-vi.mock('./pages/MyPresetsPage', () => ({
-  MyPresetsPage: () => <div>My presets page</div>,
+vi.mock('./pages/MyScenesPage', () => ({
+  MyScenesPage: () => <div>My scenes page</div>,
 }))
 
-vi.mock('./pages/PresetsPage', () => ({
-  PresetsPage: () => <div>Presets page</div>,
+vi.mock('./pages/ScenesPage', () => ({
+  ScenesPage: () => <div>Scenes page</div>,
 }))
 
-vi.mock('./pages/PresetDetailPage', () => ({
-  PresetDetailPage: () => <div>Preset detail page</div>,
+vi.mock('./pages/SceneDetailPage', () => ({
+  SceneDetailPage: () => <div>Scene detail page</div>,
 }))
 
 vi.mock('./pages/RegisterPage', () => ({
   RegisterPage: () => <div>Register page</div>,
 }))
 
-vi.mock('./pages/CreatePresetPage', () => ({
-  CreatePresetPage: () => <div>Create preset page</div>,
+vi.mock('./pages/CreateScenePage', () => ({
+  CreateScenePage: () => <div>Create scene page</div>,
 }))
 
 vi.mock('./pages/SettingsPage', () => ({
@@ -47,25 +47,25 @@ describe('App routing', () => {
     vi.restoreAllMocks()
   })
 
-  it('allows direct preset detail visits without redirecting to login', async () => {
+  it('allows direct scene detail visits without redirecting to login', async () => {
     render(
-      <MemoryRouter initialEntries={['/presets/12']}>
+      <MemoryRouter initialEntries={['/scenes/12']}>
         <App />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Preset detail page')).toBeInTheDocument()
+    expect(screen.getByText('Scene detail page')).toBeInTheDocument()
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
-  it('allows public visits to the presets discovery page', () => {
+  it('allows public visits to the scenes discovery page', () => {
     render(
-      <MemoryRouter initialEntries={['/presets']}>
+      <MemoryRouter initialEntries={['/scenes']}>
         <App />
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Presets page')).toBeInTheDocument()
+    expect(screen.getByText('Scenes page')).toBeInTheDocument()
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 

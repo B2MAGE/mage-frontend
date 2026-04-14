@@ -1,10 +1,10 @@
-import type { ShaderPresetOption } from './presetEditor'
+import type { ShaderSceneOption } from './sceneEditor'
 
-export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
+export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
   {
-    id: 'embedded-preset-0',
+    id: 'embedded-scene-0',
     label: 'Prism Core',
-    description: 'Bundled engine preset with layered box frames and a reflective core sphere.',
+    description: 'Bundled engine scene with layered box frames and a reflective core sphere.',
     shader: `
       let size = input()
       let pointerDown = input()
@@ -29,9 +29,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-1',
+    id: 'embedded-scene-1',
     label: 'Steel Lattice',
-    description: 'Bundled engine preset built from stacked grids and box frames.',
+    description: 'Bundled engine scene built from stacked grids and box frames.',
     shader: `
       setMaxIterations(101);
       setStepSize(0.7260629659452175);
@@ -71,9 +71,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-2',
+    id: 'embedded-scene-2',
     label: 'Aqua Static',
-    description: 'Bundled engine preset with noisy box frames and layered grid distortion.',
+    description: 'Bundled engine scene with noisy box frames and layered grid distortion.',
     shader: `
       setMaxIterations(133);
       setStepSize(0.8632297724861512);
@@ -118,9 +118,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-3',
+    id: 'embedded-scene-3',
     label: 'Verdant Frames',
-    description: 'Bundled engine preset with twin box frames and green edge-lit motion.',
+    description: 'Bundled engine scene with twin box frames and green edge-lit motion.',
     shader: `
       setMaxIterations(71);
       setStepSize(0.4414923770441956);
@@ -155,9 +155,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-4',
+    id: 'embedded-scene-4',
     label: 'Crimson Reactor',
-    description: 'Bundled engine preset with framed cylinders, a noisy core sphere, and a grid floor.',
+    description: 'Bundled engine scene with framed cylinders, a noisy core sphere, and a grid floor.',
     shader: `
       setMaxIterations(161);
       setStepSize(0.7431197197400152);
@@ -200,9 +200,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-5',
+    id: 'embedded-scene-5',
     label: 'Alloy Capsule',
-    description: 'Bundled engine preset combining a metallic cylinder shell with a central sphere.',
+    description: 'Bundled engine scene combining a metallic cylinder shell with a central sphere.',
     shader: `
       setMaxIterations(56);
       setStepSize(0.04586632133333666);
@@ -234,9 +234,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-6',
+    id: 'embedded-scene-6',
     label: 'Redline Core',
-    description: 'Bundled engine preset with a dominant sphere, cylinder, and dense grid accent.',
+    description: 'Bundled engine scene with a dominant sphere, cylinder, and dense grid accent.',
     shader: `
       setMaxIterations(198);
       setStepSize(0.8838993805155669);
@@ -273,9 +273,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-7',
+    id: 'embedded-scene-7',
     label: 'Violet Matrix',
-    description: 'Bundled engine preset with layered grids and a saturated violet sphere.',
+    description: 'Bundled engine scene with layered grids and a saturated violet sphere.',
     shader: `
       setMaxIterations(193);
       setStepSize(0.7999169963821687);
@@ -313,9 +313,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-8',
+    id: 'embedded-scene-8',
     label: 'Mint Halo',
-    description: 'Bundled engine preset with a torus frame, noisy grids, and a bright center sphere.',
+    description: 'Bundled engine scene with a torus frame, noisy grids, and a bright center sphere.',
     shader: `
       setMaxIterations(186);
       setStepSize(0.8615043142034936);
@@ -361,9 +361,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-9',
+    id: 'embedded-scene-9',
     label: 'Ember Grid',
-    description: 'Bundled engine preset with orange framing and a tight supporting grid.',
+    description: 'Bundled engine scene with orange framing and a tight supporting grid.',
     shader: `
       setMaxIterations(56);
       setStepSize(0.7549446257595138);
@@ -399,9 +399,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-10',
+    id: 'embedded-scene-10',
     label: 'Emerald Ring',
-    description: 'Bundled engine preset with a torus and box frame at maximum scale.',
+    description: 'Bundled engine scene with a torus and box frame at maximum scale.',
     shader: `
       setMaxIterations(151);
       setStepSize(0.26597607104610804);
@@ -436,9 +436,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-11',
+    id: 'embedded-scene-11',
     label: 'Spectrum Relay',
-    description: 'Bundled engine preset with color-from-ray direction and sparse mixed primitives.',
+    description: 'Bundled engine scene with color-from-ray direction and sparse mixed primitives.',
     shader: `
       setMaxIterations(96);
       setStepSize(0.8497186712056144);
@@ -470,9 +470,9 @@ export const EMBEDDED_SHADER_PRESETS: ShaderPresetOption[] = [
     `,
   },
   {
-    id: 'embedded-preset-12',
+    id: 'embedded-scene-12',
     label: 'Chroma Storm',
-    description: 'Bundled engine preset with heavy noise expansion, mixed primitives, and rainbow ray coloring.',
+    description: 'Bundled engine scene with heavy noise expansion, mixed primitives, and rainbow ray coloring.',
     shader: `
       setMaxIterations(78);
       setStepSize(0.7369359368566446);

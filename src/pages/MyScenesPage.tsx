@@ -1,32 +1,32 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { MyPresetsPagination } from '../components/my-presets/MyPresetsPagination'
-import { MyPresetsTable } from '../components/my-presets/MyPresetsTable'
-import { MyPresetsToolbar } from '../components/my-presets/MyPresetsToolbar'
+import { MyScenesPagination } from '../components/my-scenes/MyScenesPagination'
+import { MyScenesTable } from '../components/my-scenes/MyScenesTable'
+import { MyScenesToolbar } from '../components/my-scenes/MyScenesToolbar'
 import {
   buildSortSummary,
-  createDemoPresets,
-  fetchUserPresets,
-  sortPresets,
+  createDemoScenes,
+  fetchUserScenes,
+  sortScenes,
   type SortDirection,
   type SortKey,
   type StatusFilter,
-  type UserPreset,
-} from '../lib/myPresets'
+  type UserScene,
+} from '../lib/myScenes'
 
-export function MyPresetsPage() {
+export function MyScenesPage() {
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
-  const [presets, setPresets] = useState<UserPreset[]>([])
+  const [scenes, setScenes] = useState<UserScene[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isSeedingPresets, setIsSeedingPresets] = useState(false)
+  const [isSeedingScenes, setIsSeedingScenes] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [seedErrorMessage, setSeedErrorMessage] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [sortKey, setSortKey] = useState<SortKey>('updated')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
-  const [selectedPresetIds, setSelectedPresetIds] = useState<number[]>([])
+  const [selectedSceneIds, setSelectedSceneIds] = useState<number[]>([])
   const [rowsPerPage, setRowsPerPage] = useState(30)
   const [pageIndex, setPageIndex] = useState(0)
   const [isRowsPerPageMenuOpen, setIsRowsPerPageMenuOpen] = useState(false)
@@ -41,24 +41,24 @@ export function MyPresetsPage() {
     const userId = user.userId
     let isCurrent = true
 
-    async function loadPresets() {
+    async function loadScenes() {
       setIsLoading(true)
       setErrorMessage('')
 
       try {
-        const nextPresets = await fetchUserPresets(authenticatedFetch, userId)
+        const nextScenes = await fetchUserScenes(authenticatedFetch, userId)
         if (!isCurrent) {
           return
         }
 
-        setPresets(nextPresets)
+        setScenes(nextScenes)
       } catch {
         if (!isCurrent) {
           return
         }
 
-        setPresets([])
-        setErrorMessage('Unable to load presets right now. Please try again in a moment.')
+        setScenes([])
+        setErrorMessage('Unable to load scenes right now. Please try again in a moment.')
       } finally {
         if (isCurrent) {
           setIsLoading(false)
@@ -66,7 +66,7 @@ export function MyPresetsPage() {
       }
     }
 
-    void loadPresets()
+    void loadScenes()
 
     return () => {
       isCurrent = false
@@ -74,10 +74,10 @@ export function MyPresetsPage() {
   }, [authenticatedFetch, isAuthenticated, isRestoringSession, reloadKey, user?.userId])
 
   useEffect(() => {
-    setSelectedPresetIds((currentIds) =>
-      currentIds.filter((presetId) => presets.some((preset) => preset.id === presetId)),
+    setSelectedSceneIds((currentIds) =>
+      currentIds.filter((sceneId) => scenes.some((scene) => scene.id === sceneId)),
     )
-  }, [presets])
+  }, [scenes])
 
   useEffect(() => {
     if (!isRowsPerPageMenuOpen) {
@@ -105,35 +105,35 @@ export function MyPresetsPage() {
     }
   }, [isRowsPerPageMenuOpen])
 
-  const availableStatuses = [...new Set(presets.map((preset) => preset.statusLabel))].sort()
-  const visiblePresets =
+  const availableStatuses = [...new Set(scenes.map((scene) => scene.statusLabel))].sort()
+  const visibleScenes =
     statusFilter === 'All'
-      ? presets
-      : presets.filter((preset) => preset.statusLabel === statusFilter)
-  const sortedPresets = sortPresets(visiblePresets, sortKey, sortDirection)
+      ? scenes
+      : scenes.filter((scene) => scene.statusLabel === statusFilter)
+  const sortedScenes = sortScenes(visibleScenes, sortKey, sortDirection)
   const sortSummary = buildSortSummary(sortKey, sortDirection)
-  const totalPresets = sortedPresets.length
-  const pageCount = Math.max(1, Math.ceil(Math.max(totalPresets, 1) / rowsPerPage))
+  const totalScenes = sortedScenes.length
+  const pageCount = Math.max(1, Math.ceil(Math.max(totalScenes, 1) / rowsPerPage))
   const currentPageIndex = Math.min(pageIndex, pageCount - 1)
-  const pageStart = totalPresets === 0 ? 0 : currentPageIndex * rowsPerPage
-  const pageEnd = Math.min(pageStart + rowsPerPage, totalPresets)
-  const pagedPresets = sortedPresets.slice(pageStart, pageEnd)
-  const selectedPresetIdSet = new Set(selectedPresetIds)
-  const currentPagePresetIds = pagedPresets.map((preset) => preset.id)
-  const allPagePresetsSelected =
-    currentPagePresetIds.length > 0 &&
-    currentPagePresetIds.every((presetId) => selectedPresetIdSet.has(presetId))
-  const somePagePresetsSelected =
-    !allPagePresetsSelected &&
-    currentPagePresetIds.some((presetId) => selectedPresetIdSet.has(presetId))
+  const pageStart = totalScenes === 0 ? 0 : currentPageIndex * rowsPerPage
+  const pageEnd = Math.min(pageStart + rowsPerPage, totalScenes)
+  const pagedScenes = sortedScenes.slice(pageStart, pageEnd)
+  const selectedSceneIdSet = new Set(selectedSceneIds)
+  const currentPageSceneIds = pagedScenes.map((scene) => scene.id)
+  const allPageScenesSelected =
+    currentPageSceneIds.length > 0 &&
+    currentPageSceneIds.every((sceneId) => selectedSceneIdSet.has(sceneId))
+  const somePageScenesSelected =
+    !allPageScenesSelected &&
+    currentPageSceneIds.some((sceneId) => selectedSceneIdSet.has(sceneId))
 
   useEffect(() => {
     if (!selectAllCheckboxRef.current) {
       return
     }
 
-    selectAllCheckboxRef.current.indeterminate = somePagePresetsSelected
-  }, [somePagePresetsSelected])
+    selectAllCheckboxRef.current.indeterminate = somePageScenesSelected
+  }, [somePageScenesSelected])
 
   useEffect(() => {
     setPageIndex((currentIndex) => Math.min(currentIndex, pageCount - 1))
@@ -142,9 +142,9 @@ export function MyPresetsPage() {
   if (isRestoringSession) {
     return (
       <main className="surface surface--hero">
-        <div className="eyebrow">My Presets</div>
-        <h1>Loading presets...</h1>
-        <p className="page-lead">MAGE is restoring your session and loading your saved presets.</p>
+        <div className="eyebrow">My Scenes</div>
+        <h1>Loading scenes...</h1>
+        <p className="page-lead">MAGE is restoring your session and loading your saved scenes.</p>
       </main>
     )
   }
@@ -156,28 +156,28 @@ export function MyPresetsPage() {
   if (typeof user?.userId !== 'number') {
     return (
       <main className="surface surface--hero">
-        <div className="eyebrow">My Presets</div>
-        <h1>Unable to load presets</h1>
-        <p className="page-lead">Your session is missing the user information needed to load presets.</p>
+        <div className="eyebrow">My Scenes</div>
+        <h1>Unable to load scenes</h1>
+        <p className="page-lead">Your session is missing the user information needed to load scenes.</p>
       </main>
     )
   }
 
-  async function handleSeedPresets() {
-    setIsSeedingPresets(true)
+  async function handleSeedScenes() {
+    setIsSeedingScenes(true)
     setSeedErrorMessage('')
 
     try {
-      await createDemoPresets(authenticatedFetch)
+      await createDemoScenes(authenticatedFetch)
       setReloadKey((currentKey) => currentKey + 1)
     } catch (error) {
       setSeedErrorMessage(
         error instanceof Error && error.message
           ? error.message
-          : 'Unable to add sample presets right now. Please try again in a moment.',
+          : 'Unable to add sample scenes right now. Please try again in a moment.',
       )
     } finally {
-      setIsSeedingPresets(false)
+      setIsSeedingScenes(false)
     }
   }
 
@@ -193,76 +193,76 @@ export function MyPresetsPage() {
     setPageIndex(0)
   }
 
-  function handleSelectAllVisiblePresets() {
-    if (allPagePresetsSelected) {
-      setSelectedPresetIds((currentIds) =>
-        currentIds.filter((presetId) => !currentPagePresetIds.includes(presetId)),
+  function handleSelectAllVisibleScenes() {
+    if (allPageScenesSelected) {
+      setSelectedSceneIds((currentIds) =>
+        currentIds.filter((sceneId) => !currentPageSceneIds.includes(sceneId)),
       )
       return
     }
 
-    setSelectedPresetIds((currentIds) => {
+    setSelectedSceneIds((currentIds) => {
       const nextIds = new Set(currentIds)
-      currentPagePresetIds.forEach((presetId) => {
-        nextIds.add(presetId)
+      currentPageSceneIds.forEach((sceneId) => {
+        nextIds.add(sceneId)
       })
       return [...nextIds]
     })
   }
 
-  function handleTogglePresetSelection(presetId: number) {
-    setSelectedPresetIds((currentIds) => {
-      if (currentIds.includes(presetId)) {
-        return currentIds.filter((currentId) => currentId !== presetId)
+  function handleToggleSceneSelection(sceneId: number) {
+    setSelectedSceneIds((currentIds) => {
+      if (currentIds.includes(sceneId)) {
+        return currentIds.filter((currentId) => currentId !== sceneId)
       }
 
-      return [...currentIds, presetId]
+      return [...currentIds, sceneId]
     })
   }
 
   return (
-    <main className="page-stack my-presets-page">
-      <section className="surface surface--page-panel my-presets-panel" aria-live="polite">
-        <header className="my-presets-panel__header">
-          <div className="eyebrow">My Presets</div>
-          <h1 className="my-presets-panel__title">Preset library</h1>
-          <p className="my-presets-panel__lead">
-            Review the presets created by your account and stage edits, organization, or cleanup from one place.
+    <main className="page-stack my-scenes-page">
+      <section className="surface surface--page-panel my-scenes-panel" aria-live="polite">
+        <header className="my-scenes-panel__header">
+          <div className="eyebrow">My Scenes</div>
+          <h1 className="my-scenes-panel__title">Scene library</h1>
+          <p className="my-scenes-panel__lead">
+            Review the scenes created by your account and stage edits, organization, or cleanup from one place.
           </p>
         </header>
 
         {isLoading ? (
-          <p className="preset-status">Loading presets...</p>
+          <p className="scene-status">Loading scenes...</p>
         ) : errorMessage ? (
-          <p className="preset-status preset-status-error">{errorMessage}</p>
-        ) : presets.length === 0 ? (
-          <div className="preset-empty-state">
-            <p className="preset-status">No presets yet</p>
-            <p className="preset-status">
-              Temporary helper: add sample presets to this account so you can preview the list UI.
+          <p className="scene-status scene-status-error">{errorMessage}</p>
+        ) : scenes.length === 0 ? (
+          <div className="scene-empty-state">
+            <p className="scene-status">No scenes yet</p>
+            <p className="scene-status">
+              Temporary helper: add sample scenes to this account so you can preview the list UI.
             </p>
-            <div className="preset-actions">
+            <div className="scene-actions">
               <button
                 type="button"
-                className="preset-action"
+                className="scene-action"
                 onClick={() => {
-                  void handleSeedPresets()
+                  void handleSeedScenes()
                 }}
-                disabled={isSeedingPresets}
+                disabled={isSeedingScenes}
               >
-                {isSeedingPresets ? 'Adding sample presets...' : 'Add sample presets'}
+                {isSeedingScenes ? 'Adding sample scenes...' : 'Add sample scenes'}
               </button>
             </div>
             {seedErrorMessage ? (
-              <p className="preset-status preset-status-error">{seedErrorMessage}</p>
+              <p className="scene-status scene-status-error">{seedErrorMessage}</p>
             ) : null}
           </div>
         ) : (
-          <div className="my-presets-board">
-            <MyPresetsToolbar
+          <div className="my-scenes-board">
+            <MyScenesToolbar
               availableStatuses={availableStatuses}
               sortSummary={sortSummary}
-              totalPresets={sortedPresets.length}
+              totalScenes={sortedScenes.length}
               statusFilter={statusFilter}
               onSelectStatus={(status) => {
                 setStatusFilter(status)
@@ -270,19 +270,19 @@ export function MyPresetsPage() {
               }}
             />
 
-            <MyPresetsTable
-              allPagePresetsSelected={allPagePresetsSelected}
-              pagedPresets={pagedPresets}
+            <MyScenesTable
+              allPageScenesSelected={allPageScenesSelected}
+              pagedScenes={pagedScenes}
               selectAllCheckboxRef={selectAllCheckboxRef}
-              selectedPresetIdSet={selectedPresetIdSet}
+              selectedSceneIdSet={selectedSceneIdSet}
               sortDirection={sortDirection}
               sortKey={sortKey}
               onSort={handleSort}
-              onTogglePresetSelection={handleTogglePresetSelection}
-              onToggleSelectAll={handleSelectAllVisiblePresets}
+              onToggleSceneSelection={handleToggleSceneSelection}
+              onToggleSelectAll={handleSelectAllVisibleScenes}
             />
 
-            <MyPresetsPagination
+            <MyScenesPagination
               currentPageIndex={currentPageIndex}
               isRowsPerPageMenuOpen={isRowsPerPageMenuOpen}
               pageCount={pageCount}
@@ -290,7 +290,7 @@ export function MyPresetsPage() {
               pageStart={pageStart}
               rowsPerPage={rowsPerPage}
               rowsPerPageMenuRef={rowsPerPageMenuRef}
-              totalPresets={totalPresets}
+              totalScenes={totalScenes}
               onGoToFirstPage={() => {
                 setPageIndex(0)
               }}

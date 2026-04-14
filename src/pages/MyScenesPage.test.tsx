@@ -9,8 +9,8 @@ import {
 } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
 import { LoginPage } from './LoginPage'
-import { MyPresetsPage } from './MyPresetsPage'
-import { PresetDetailPage } from './PresetDetailPage'
+import { MyScenesPage } from './MyScenesPage'
+import { SceneDetailPage } from './SceneDetailPage'
 
 vi.mock('../components/MagePlayer', () => ({
   MagePlayer: ({
@@ -31,24 +31,24 @@ vi.mock('../components/MagePlayer', () => ({
 const storedUser: AuthenticatedUser = {
   userId: 8,
   email: 'artist@example.com',
-  displayName: 'Preset Artist',
+  displayName: 'Scene Artist',
   authProvider: 'LOCAL',
 }
 
-const mockPresets = [
+const mockScenes = [
   {
-    presetId: 1,
+    sceneId: 1,
     ownerUserId: 42,
     name: 'Aurora Drift',
     description: 'Soft teal bloom with low-end drift.',
     sceneData: {
       visualizer: { shader: 'nebula' },
     },
-    thumbnailRef: 'thumbnails/preset-1.png',
+    thumbnailRef: 'thumbnails/scene-1.png',
     createdAt: '2026-04-06T14:00:00Z',
   },
   {
-    presetId: 2,
+    sceneId: 2,
     ownerUserId: 42,
     name: 'Signal Bloom',
     sceneData: {
@@ -58,13 +58,13 @@ const mockPresets = [
     createdAt: '2026-04-06T14:10:00Z',
   },
   {
-    presetId: 3,
+    sceneId: 3,
     ownerUserId: 42,
-    name: 'Very Long Preset Name To Test Wrapping In The Card Layout',
+    name: 'Very Long Scene Name To Test Wrapping In The Card Layout',
     sceneData: {
       visualizer: { shader: 'glacier' },
     },
-    thumbnailRef: 'thumbnails/preset-3.png',
+    thumbnailRef: 'thumbnails/scene-3.png',
     createdAt: '2026-04-06T14:20:00Z',
   },
 ]
@@ -88,63 +88,63 @@ function storeSession() {
   )
 }
 
-function renderMyPresetsPage(initialEntries = ['/my-presets']) {
+function renderMyScenesPage(initialEntries = ['/my-scenes']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/my-presets" element={<MyPresetsPage />} />
-          <Route path="/presets/:id" element={<PresetDetailPage />} />
+          <Route path="/my-scenes" element={<MyScenesPage />} />
+          <Route path="/scenes/:id" element={<SceneDetailPage />} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
   )
 }
 
-describe('MyPresetsPage', () => {
+describe('MyScenesPage', () => {
   it('redirects signed-out visitors to login', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
     expect(await screen.findByRole('heading', { name: /login/i })).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('shows a loading state while presets are being fetched', async () => {
+  it('shows a loading state while scenes are being fetched', async () => {
     storeSession()
 
-    let resolvePresetsResponse: ((value: Response) => void) | undefined
+    let resolveScenesResponse: ((value: Response) => void) | undefined
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
+      if (input === buildApiUrl('/users/8/scenes')) {
         return new Promise<Response>((resolve) => {
-          resolvePresetsResponse = resolve
+          resolveScenesResponse = resolve
         })
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
-    expect(await screen.findAllByText(/loading presets/i)).not.toHaveLength(0)
-    await waitFor(() => expect(resolvePresetsResponse).toBeDefined())
+    expect(await screen.findAllByText(/loading scenes/i)).not.toHaveLength(0)
+    await waitFor(() => expect(resolveScenesResponse).toBeDefined())
 
-    resolvePresetsResponse?.(
+    resolveScenesResponse?.(
       jsonResponse([]),
     )
 
-    expect(await screen.findByText(/no presets yet/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add sample presets/i })).toBeInTheDocument()
+    expect(await screen.findByText(/no scenes yet/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add sample scenes/i })).toBeInTheDocument()
   })
 
-  it('renders the authenticated users presets and opens the preset detail route', async () => {
+  it('renders the authenticated users scenes and opens the scene detail route', async () => {
     storeSession()
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -152,7 +152,7 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
+      if (input === buildApiUrl('/users/8/scenes')) {
         return Promise.resolve(
           jsonResponse([
             {
@@ -170,16 +170,16 @@ describe('MyPresetsPage', () => {
         )
       }
 
-      if (input === buildApiUrl('/presets/12')) {
+      if (input === buildApiUrl('/scenes/12')) {
         return Promise.resolve(
           jsonResponse({
-            presetId: 12,
+            sceneId: 12,
             ownerUserId: 8,
             name: 'Aurora Drift',
             sceneData: {
               visualizer: { shader: 'nebula' },
             },
-            thumbnailRef: 'thumbnails/preset-12.png',
+            thumbnailRef: 'thumbnails/scene-12.png',
             createdAt: '2026-04-06T14:00:00Z',
           }),
         )
@@ -189,28 +189,28 @@ describe('MyPresetsPage', () => {
     })
     const user = userEvent.setup()
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenCalledWith(
-        buildApiUrl('/users/8/presets'),
+        buildApiUrl('/users/8/scenes'),
         expect.objectContaining({
           headers: expect.any(Headers),
         }),
       ),
     )
 
-    const presetLink = await screen.findByRole('link', { name: /aurora drift/i })
+    const sceneLink = await screen.findByRole('link', { name: /aurora drift/i })
 
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
 
-    await user.click(presetLink)
+    await user.click(sceneLink)
 
     expect(await screen.findByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
   })
 
-  it('renders the populated preset state with thumbnails, fallback UI, and navigation', async () => {
+  it('renders the populated scene state with thumbnails, fallback UI, and navigation', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -218,20 +218,20 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
-        return Promise.resolve(jsonResponse(mockPresets))
+      if (input === buildApiUrl('/users/8/scenes')) {
+        return Promise.resolve(jsonResponse(mockScenes))
       }
 
-      if (input === buildApiUrl('/presets/1')) {
+      if (input === buildApiUrl('/scenes/1')) {
         return Promise.resolve(
           jsonResponse({
-            presetId: 1,
+            sceneId: 1,
             ownerUserId: 42,
             name: 'Aurora Drift',
             sceneData: {
               visualizer: { shader: 'nebula' },
             },
-            thumbnailRef: 'thumbnails/preset-1.png',
+            thumbnailRef: 'thumbnails/scene-1.png',
             createdAt: '2026-04-06T14:00:00Z',
           }),
         )
@@ -241,14 +241,14 @@ describe('MyPresetsPage', () => {
     })
     const user = userEvent.setup()
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
-    const auroraPreset = await screen.findByRole('link', { name: /aurora drift/i })
+    const auroraScene = await screen.findByRole('link', { name: /aurora drift/i })
 
-    expect(auroraPreset).toBeInTheDocument()
+    expect(auroraScene).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /very long preset name to test wrapping in the card layout/i }),
+      screen.getByRole('link', { name: /very long scene name to test wrapping in the card layout/i }),
     ).toBeInTheDocument()
     expect(screen.getAllByText('Public')).toHaveLength(4)
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
@@ -257,7 +257,7 @@ describe('MyPresetsPage', () => {
     expect(screen.getAllByRole('button', { name: /add description/i })).toHaveLength(2)
     expect(screen.getByAltText('Aurora Drift thumbnail')).toBeInTheDocument()
     expect(
-      screen.getByAltText('Very Long Preset Name To Test Wrapping In The Card Layout thumbnail'),
+      screen.getByAltText('Very Long Scene Name To Test Wrapping In The Card Layout thumbnail'),
     ).toBeInTheDocument()
     expect(
       screen.getByLabelText('Signal Bloom thumbnail unavailable'),
@@ -265,7 +265,7 @@ describe('MyPresetsPage', () => {
     expect(screen.getByText('1-3 of 3')).toBeInTheDocument()
 
     const selectAllCheckbox = screen.getByRole('checkbox', {
-      name: /select all presets on this page/i,
+      name: /select all scenes on this page/i,
     })
 
     await user.click(selectAllCheckbox)
@@ -274,11 +274,11 @@ describe('MyPresetsPage', () => {
     expect(screen.getByRole('checkbox', { name: /select signal bloom/i })).toBeChecked()
     expect(
       screen.getByRole('checkbox', {
-        name: /select very long preset name to test wrapping in the card layout/i,
+        name: /select very long scene name to test wrapping in the card layout/i,
       }),
     ).toBeChecked()
 
-    await user.click(auroraPreset)
+    await user.click(auroraScene)
 
     expect(await screen.findByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
@@ -292,7 +292,7 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
+      if (input === buildApiUrl('/users/8/scenes')) {
         return Promise.resolve(
           jsonResponse(
             {
@@ -306,10 +306,10 @@ describe('MyPresetsPage', () => {
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
     expect(
-      await screen.findByText(/unable to load presets right now\. please try again in a moment\./i),
+      await screen.findByText(/unable to load scenes right now\. please try again in a moment\./i),
     ).toBeInTheDocument()
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
@@ -322,12 +322,12 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
+      if (input === buildApiUrl('/users/8/scenes')) {
         return Promise.resolve(
           jsonResponse([
             {
               id: 31,
-              name: 'Custom Shader Preset',
+              name: 'Custom Shader Scene',
               description: null,
               sceneData: {
                 visualizer: {
@@ -345,9 +345,9 @@ describe('MyPresetsPage', () => {
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
-    expect(await screen.findByText('Custom Shader Preset')).toBeInTheDocument()
+    expect(await screen.findByText('Custom Shader Scene')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add description/i })).toBeInTheDocument()
     expect(screen.queryByText(/let size = input/i)).not.toBeInTheDocument()
   })
@@ -360,22 +360,22 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
-        return Promise.resolve(jsonResponse(mockPresets))
+      if (input === buildApiUrl('/users/8/scenes')) {
+        return Promise.resolve(jsonResponse(mockScenes))
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
     })
     const user = userEvent.setup()
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
     expect(await screen.findByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Public' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Public' }))
 
-    expect(screen.getByText('3 presets')).toBeInTheDocument()
+    expect(screen.getByText('3 scenes')).toBeInTheDocument()
     expect(screen.getAllByText('Public')).toHaveLength(4)
   })
 
@@ -387,7 +387,7 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
+      if (input === buildApiUrl('/users/8/scenes')) {
         return Promise.resolve(
           jsonResponse([
             {
@@ -413,11 +413,11 @@ describe('MyPresetsPage', () => {
     })
     const user = userEvent.setup()
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
     await screen.findByRole('link', { name: /signal bloom/i })
 
-    const titleLinks = () => screen.getAllByRole('link').filter((link) => /\/presets\/\d+$/.test(link.getAttribute('href') ?? '') && !/Open preset preview/i.test(link.getAttribute('aria-label') ?? ''))
+    const titleLinks = () => screen.getAllByRole('link').filter((link) => /\/scenes\/\d+$/.test(link.getAttribute('href') ?? '') && !/Open scene preview/i.test(link.getAttribute('aria-label') ?? ''))
 
     expect(titleLinks().map((link) => link.textContent)).toEqual([
       'Solar Thread',
@@ -467,13 +467,13 @@ describe('MyPresetsPage', () => {
   it('paginates the table and shows the footer controls', async () => {
     storeSession()
 
-    const paginatedPresets = Array.from({ length: 31 }, (_, index) => {
-      const presetNumber = index + 1
-      const day = String(presetNumber).padStart(2, '0')
+    const paginatedScenes = Array.from({ length: 31 }, (_, index) => {
+      const sceneNumber = index + 1
+      const day = String(sceneNumber).padStart(2, '0')
 
       return {
-        id: presetNumber,
-        name: `Preset ${presetNumber}`,
+        id: sceneNumber,
+        name: `Scene ${sceneNumber}`,
         createdAt: `2026-04-${day}T14:00:00Z`,
       }
     })
@@ -483,49 +483,49 @@ describe('MyPresetsPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
-        return Promise.resolve(jsonResponse(paginatedPresets))
+      if (input === buildApiUrl('/users/8/scenes')) {
+        return Promise.resolve(jsonResponse(paginatedScenes))
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
     })
     const user = userEvent.setup()
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
     expect(await screen.findByText('1-30 of 31')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Preset 31' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Preset 1' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Scene 31' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Scene 1' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /go to next page/i }))
 
     expect(await screen.findByText('31-31 of 31')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Preset 1' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Scene 1' })).toBeInTheDocument()
   })
 
-  it('adds sample presets from the empty state and reloads the list', async () => {
+  it('adds sample scenes from the empty state and reloads the list', async () => {
     storeSession()
 
-    const createdPresetBodies: Array<Record<string, unknown>> = []
-    let presetListRequestCount = 0
+    const createdSceneBodies: Array<Record<string, unknown>> = []
+    let sceneListRequestCount = 0
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       if (input === buildApiUrl('/users/me')) {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/users/8/presets')) {
-        presetListRequestCount += 1
+      if (input === buildApiUrl('/users/8/scenes')) {
+        sceneListRequestCount += 1
 
         return Promise.resolve(
           jsonResponse(
-            presetListRequestCount === 1
+            sceneListRequestCount === 1
               ? []
               : [
                   {
                     id: 21,
                     name: 'Aurora Drift',
-                    thumbnailRef: 'thumbnails/preset-21.png',
+                    thumbnailRef: 'thumbnails/scene-21.png',
                   },
                   {
                     id: 22,
@@ -535,25 +535,25 @@ describe('MyPresetsPage', () => {
                   {
                     id: 23,
                     name: 'Glacier Echo',
-                    thumbnailRef: 'thumbnails/preset-23.png',
+                    thumbnailRef: 'thumbnails/scene-23.png',
                   },
                   {
                     id: 24,
                     name: 'Solar Thread',
-                    thumbnailRef: 'thumbnails/preset-24.png',
+                    thumbnailRef: 'thumbnails/scene-24.png',
                   },
                 ],
           ),
         )
       }
 
-      if (input === buildApiUrl('/presets')) {
-        createdPresetBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
+      if (input === buildApiUrl('/scenes')) {
+        createdSceneBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
 
         return Promise.resolve(
           jsonResponse(
             {
-              presetId: 20 + createdPresetBodies.length,
+              sceneId: 20 + createdSceneBodies.length,
             },
             201,
           ),
@@ -564,17 +564,17 @@ describe('MyPresetsPage', () => {
     })
     const user = userEvent.setup()
 
-    renderMyPresetsPage()
+    renderMyScenesPage()
 
-    expect(await screen.findByText(/no presets yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no scenes yet/i)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /add sample presets/i }))
+    await user.click(screen.getByRole('button', { name: /add sample scenes/i }))
 
     expect(await screen.findByRole('link', { name: /aurora drift/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
-    expect(createdPresetBodies).toHaveLength(4)
-    expect(presetListRequestCount).toBe(2)
-    expect(createdPresetBodies).toEqual(
+    expect(createdSceneBodies).toHaveLength(4)
+    expect(sceneListRequestCount).toBe(2)
+    expect(createdSceneBodies).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'Aurora Drift',

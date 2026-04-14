@@ -3,49 +3,49 @@ import { Link } from 'react-router-dom'
 import {
   buildTagRecommendationFilter,
   readRecommendationFilterTag,
-  type RecommendedPresetCard,
+  type RecommendedSceneCard,
   type RecommendationFilter,
-} from '../../lib/presetDetail'
+} from '../../lib/sceneDetail'
 import { ScrollableTagBar } from '../ScrollableTagBar'
 
-type PresetRecommendationRailProps = {
+type SceneRecommendationRailProps = {
   creatorDisplayName: string
-  currentPresetTags: string[]
+  currentSceneTags: string[]
   isLoading: boolean
-  recommendedPresets: RecommendedPresetCard[]
+  recommendedScenes: RecommendedSceneCard[]
   recommendationFilter: RecommendationFilter
   onSelectFilter: (filter: RecommendationFilter) => void
 }
 
-export function PresetRecommendationRail({
+export function SceneRecommendationRail({
   creatorDisplayName,
-  currentPresetTags,
+  currentSceneTags,
   isLoading,
-  recommendedPresets,
+  recommendedScenes,
   recommendationFilter,
   onSelectFilter,
-}: PresetRecommendationRailProps) {
+}: SceneRecommendationRailProps) {
   const activeRecommendationTag = readRecommendationFilterTag(recommendationFilter)
 
   const loadingCopy =
     activeRecommendationTag !== null
-      ? `Loading presets tagged "${activeRecommendationTag}"...`
+      ? `Loading scenes tagged "${activeRecommendationTag}"...`
       : recommendationFilter === 'creator'
-        ? `Loading presets from ${creatorDisplayName}...`
-        : 'Loading related presets...'
+        ? `Loading scenes from ${creatorDisplayName}...`
+        : 'Loading related scenes...'
 
   const emptyCopy =
     activeRecommendationTag !== null
-      ? `No other presets tagged "${activeRecommendationTag}" yet.`
+      ? `No other scenes tagged "${activeRecommendationTag}" yet.`
       : recommendationFilter === 'creator'
-        ? `No other presets from ${creatorDisplayName} yet.`
-        : `No related presets from ${creatorDisplayName} or this preset's tags yet.`
+        ? `No other scenes from ${creatorDisplayName} yet.`
+        : `No related scenes from ${creatorDisplayName} or this scene's tags yet.`
 
   return (
     <aside className="mage-watch__rail">
       <ScrollableTagBar
-        ariaLabel="Filter recommended presets"
-        barClassName="preset-detail-recommendation-filters"
+        ariaLabel="Filter recommended scenes"
+        barClassName="scene-detail-recommendation-filters"
         role="toolbar"
       >
         <button
@@ -68,7 +68,7 @@ export function PresetRecommendationRail({
         >
           From {creatorDisplayName}
         </button>
-        {currentPresetTags.map((tag) => {
+        {currentSceneTags.map((tag) => {
           const tagFilter = buildTagRecommendationFilter(tag)
 
           return (
@@ -89,33 +89,33 @@ export function PresetRecommendationRail({
 
       {isLoading ? (
         <p className="mage-watch__rail-empty">{loadingCopy}</p>
-      ) : recommendedPresets.length === 0 ? (
+      ) : recommendedScenes.length === 0 ? (
         <p className="mage-watch__rail-empty">{emptyCopy}</p>
       ) : (
         <div className="mage-watch__rail-list">
-          {recommendedPresets.map((recommendedPreset) => (
+          {recommendedScenes.map((recommendedScene) => (
             <Link
-              key={recommendedPreset.id}
-              className="mage-preset-card"
-              to={`/presets/${recommendedPreset.id}`}
+              key={recommendedScene.id}
+              className="mage-scene-card"
+              to={`/scenes/${recommendedScene.id}`}
             >
-              {recommendedPreset.thumbnailRef ? (
+              {recommendedScene.thumbnailRef ? (
                 <img
-                  className="mage-preset-card__thumb mage-preset-card__thumb-image"
-                  src={recommendedPreset.thumbnailRef}
-                  alt={`${recommendedPreset.title} thumbnail`}
+                  className="mage-scene-card__thumb mage-scene-card__thumb-image"
+                  src={recommendedScene.thumbnailRef}
+                  alt={`${recommendedScene.title} thumbnail`}
                 />
               ) : (
                 <div
-                  className="mage-preset-card__thumb"
-                  style={{ '--preset-accent': recommendedPreset.accent } as CSSProperties}
+                  className="mage-scene-card__thumb"
+                  style={{ '--scene-accent': recommendedScene.accent } as CSSProperties}
                   aria-hidden="true"
                 />
               )}
-              <div className="mage-preset-card__body">
-                <strong>{recommendedPreset.title}</strong>
-                <span>{recommendedPreset.creator}</span>
-                <span>{recommendedPreset.meta}</span>
+              <div className="mage-scene-card__body">
+                <strong>{recommendedScene.title}</strong>
+                <span>{recommendedScene.creator}</span>
+                <span>{recommendedScene.meta}</span>
               </div>
             </Link>
           ))}

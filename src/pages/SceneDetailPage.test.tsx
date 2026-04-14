@@ -9,8 +9,8 @@ import {
 } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
 import { LoginPage } from './LoginPage'
-import { MyPresetsPage } from './MyPresetsPage'
-import { PresetDetailPage } from './PresetDetailPage'
+import { MyScenesPage } from './MyScenesPage'
+import { SceneDetailPage } from './SceneDetailPage'
 
 vi.mock('../components/MagePlayer', () => ({
   MagePlayer: ({
@@ -31,41 +31,41 @@ vi.mock('../components/MagePlayer', () => ({
 const storedUser: AuthenticatedUser = {
   userId: 8,
   email: 'artist@example.com',
-  displayName: 'Preset Artist',
+  displayName: 'Scene Artist',
   authProvider: 'LOCAL',
 }
 
-const presetResponse = {
-  presetId: 12,
+const sceneResponse = {
+  sceneId: 12,
   ownerUserId: 8,
-  creatorDisplayName: 'Preset Artist',
+  creatorDisplayName: 'Scene Artist',
   name: 'Aurora Drift',
   sceneData: {
     visualizer: {
       shader: 'nebula',
     },
   },
-  thumbnailRef: 'thumbnails/preset-12.png',
+  thumbnailRef: 'thumbnails/scene-12.png',
   createdAt: '2026-04-06T14:00:00Z',
   tags: ['ambient', 'focus-friendly'],
 }
 
-const creatorPresetResponse = {
-  presetId: 16,
+const creatorSceneResponse = {
+  sceneId: 16,
   ownerUserId: 8,
-  creatorDisplayName: 'Preset Artist',
+  creatorDisplayName: 'Scene Artist',
   name: 'Signal Bloom',
   sceneData: {
     visualizer: {
       shader: 'pulse',
     },
   },
-  thumbnailRef: 'thumbnails/preset-16.png',
+  thumbnailRef: 'thumbnails/scene-16.png',
   createdAt: '2026-04-08T14:00:00Z',
 }
 
-const tagPresetResponse = {
-  presetId: 21,
+const tagSceneResponse = {
+  sceneId: 21,
   ownerUserId: 42,
   creatorDisplayName: 'Night Archive',
   name: 'Afterglow Static',
@@ -74,12 +74,12 @@ const tagPresetResponse = {
       shader: 'mist',
     },
   },
-  thumbnailRef: 'thumbnails/preset-21.png',
+  thumbnailRef: 'thumbnails/scene-21.png',
   createdAt: '2026-04-09T14:00:00Z',
 }
 
-const unrelatedPresetResponse = {
-  presetId: 34,
+const unrelatedSceneResponse = {
+  sceneId: 34,
   ownerUserId: 77,
   creatorDisplayName: 'Other Creator',
   name: 'Unrelated Echo',
@@ -88,7 +88,7 @@ const unrelatedPresetResponse = {
       shader: 'echo',
     },
   },
-  thumbnailRef: 'thumbnails/preset-34.png',
+  thumbnailRef: 'thumbnails/scene-34.png',
   createdAt: '2026-04-10T14:00:00Z',
 }
 
@@ -111,11 +111,11 @@ function storeSession() {
   )
 }
 
-function renderPresetDetailPage(initialEntries = ['/presets/12']) {
-  function PresetsRouteProbe() {
+function renderSceneDetailPage(initialEntries = ['/scenes/12']) {
+  function ScenesRouteProbe() {
     const location = useLocation()
 
-    return <div data-testid="presets-route">{location.search}</div>
+    return <div data-testid="scenes-route">{location.search}</div>
   }
 
   return render(
@@ -124,17 +124,17 @@ function renderPresetDetailPage(initialEntries = ['/presets/12']) {
         <Routes>
           <Route path="/" element={<div>Home</div>} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/my-presets" element={<MyPresetsPage />} />
-          <Route path="/presets" element={<PresetsRouteProbe />} />
-          <Route path="/presets/:id" element={<PresetDetailPage />} />
+          <Route path="/my-scenes" element={<MyScenesPage />} />
+          <Route path="/scenes" element={<ScenesRouteProbe />} />
+          <Route path="/scenes/:id" element={<SceneDetailPage />} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
   )
 }
 
-describe('PresetDetailPage', () => {
-  it('loads preset detail on a direct route visit and renders the player', async () => {
+describe('SceneDetailPage', () => {
+  it('loads scene detail on a direct route visit and renders the player', async () => {
     storeSession()
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -142,32 +142,32 @@ describe('PresetDetailPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/presets/12')) {
-        return Promise.resolve(jsonResponse(presetResponse))
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
       }
 
-      if (input === buildApiUrl('/presets')) {
+      if (input === buildApiUrl('/scenes')) {
         return Promise.resolve(
           jsonResponse([
-            presetResponse,
-            creatorPresetResponse,
-            unrelatedPresetResponse,
+            sceneResponse,
+            creatorSceneResponse,
+            unrelatedSceneResponse,
           ]),
         )
       }
 
-      if (input === buildApiUrl('/presets?tag=ambient')) {
-        return Promise.resolve(jsonResponse([presetResponse, tagPresetResponse]))
+      if (input === buildApiUrl('/scenes?tag=ambient')) {
+        return Promise.resolve(jsonResponse([sceneResponse, tagSceneResponse]))
       }
 
-      if (input === buildApiUrl('/presets?tag=focus-friendly')) {
-        return Promise.resolve(jsonResponse([presetResponse, creatorPresetResponse]))
+      if (input === buildApiUrl('/scenes?tag=focus-friendly')) {
+        return Promise.resolve(jsonResponse([sceneResponse, creatorSceneResponse]))
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderPresetDetailPage()
+    renderSceneDetailPage()
 
     expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
@@ -175,10 +175,10 @@ describe('PresetDetailPage', () => {
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
-    expect(screen.getByText(/add a comment as preset artist/i)).toBeInTheDocument()
-    expect(screen.getAllByText('Preset Artist').length).toBeGreaterThan(0)
+    expect(screen.getByText(/add a comment as scene artist/i)).toBeInTheDocument()
+    expect(screen.getAllByText('Scene Artist').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2,999 plays/i).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /from preset artist/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /from scene artist/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^focus-friendly$/i })).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
@@ -190,29 +190,29 @@ describe('PresetDetailPage', () => {
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenNthCalledWith(
         2,
-        buildApiUrl('/presets/12'),
+        buildApiUrl('/scenes/12'),
         expect.objectContaining({
           headers: expect.any(Headers),
         }),
       ),
     )
 
-    const presetRequestHeaders = fetchSpy.mock.calls[1][1]?.headers as Headers
+    const sceneRequestHeaders = fetchSpy.mock.calls[1][1]?.headers as Headers
 
-    expect(presetRequestHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
+    expect(sceneRequestHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
   })
 
-  it('shows a clear error state for an invalid preset route id', async () => {
+  it('shows a clear error state for an invalid scene route id', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
-    renderPresetDetailPage(['/presets/not-a-number'])
+    renderSceneDetailPage(['/scenes/not-a-number'])
 
-    expect(await screen.findByRole('heading', { name: /invalid preset link/i })).toBeInTheDocument()
-    expect(screen.getByText(/missing a valid preset id/i)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /invalid scene link/i })).toBeInTheDocument()
+    expect(screen.getByText(/missing a valid scene id/i)).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('shows a not-found state when the preset request returns 404', async () => {
+  it('shows a not-found state when the scene request returns 404', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -220,11 +220,11 @@ describe('PresetDetailPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/presets/12')) {
+      if (input === buildApiUrl('/scenes/12')) {
         return Promise.resolve(
           jsonResponse(
             {
-              message: 'Preset not found.',
+              message: 'Scene not found.',
             },
             404,
           ),
@@ -234,15 +234,15 @@ describe('PresetDetailPage', () => {
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderPresetDetailPage()
+    renderSceneDetailPage()
 
-    expect(await screen.findByRole('heading', { name: /preset not found/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /scene not found/i })).toBeInTheDocument()
     expect(screen.getByText(/does not exist or is no longer available/i)).toBeInTheDocument()
   })
 
-  it('shows a sign-in-needed state when an unauthenticated preset request is rejected', async () => {
+  it('shows a sign-in-needed state when an unauthenticated scene request is rejected', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
-      if (input === buildApiUrl('/presets/12')) {
+      if (input === buildApiUrl('/scenes/12')) {
         return Promise.resolve(
           jsonResponse(
             {
@@ -256,13 +256,13 @@ describe('PresetDetailPage', () => {
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderPresetDetailPage()
+    renderSceneDetailPage()
 
-    expect(await screen.findByRole('heading', { name: /sign in to view this preset/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /sign in to view this scene/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /go to login/i })).toBeInTheDocument()
   })
 
-  it('shows the real creator name for another users preset', async () => {
+  it('shows the real creator name for another users scene', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -270,10 +270,10 @@ describe('PresetDetailPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/presets/44')) {
+      if (input === buildApiUrl('/scenes/44')) {
         return Promise.resolve(
           jsonResponse({
-            presetId: 44,
+            sceneId: 44,
             ownerUserId: 77,
             creatorDisplayName: 'Peter',
             name: 'Test 3',
@@ -282,18 +282,18 @@ describe('PresetDetailPage', () => {
                 shader: 'nebula',
               },
             },
-            thumbnailRef: 'thumbnails/preset-44.png',
+            thumbnailRef: 'thumbnails/scene-44.png',
             createdAt: '2026-04-06T14:00:00Z',
             tags: ['chill'],
           }),
         )
       }
 
-      if (input === buildApiUrl('/presets')) {
+      if (input === buildApiUrl('/scenes')) {
         return Promise.resolve(
           jsonResponse([
             {
-              presetId: 44,
+              sceneId: 44,
               ownerUserId: 77,
               creatorDisplayName: 'Peter',
               name: 'Test 3',
@@ -302,11 +302,11 @@ describe('PresetDetailPage', () => {
                   shader: 'nebula',
                 },
               },
-              thumbnailRef: 'thumbnails/preset-44.png',
+              thumbnailRef: 'thumbnails/scene-44.png',
               createdAt: '2026-04-06T14:00:00Z',
             },
             {
-              presetId: 45,
+              sceneId: 45,
               ownerUserId: 77,
               creatorDisplayName: 'Peter',
               name: 'Pulse Coast',
@@ -315,18 +315,18 @@ describe('PresetDetailPage', () => {
                   shader: 'nebula',
                 },
               },
-              thumbnailRef: 'thumbnails/preset-45.png',
+              thumbnailRef: 'thumbnails/scene-45.png',
               createdAt: '2026-04-08T14:00:00Z',
             },
           ]),
         )
       }
 
-      if (input === buildApiUrl('/presets?tag=chill')) {
+      if (input === buildApiUrl('/scenes?tag=chill')) {
         return Promise.resolve(
           jsonResponse([
             {
-              presetId: 44,
+              sceneId: 44,
               ownerUserId: 77,
               creatorDisplayName: 'Peter',
               name: 'Test 3',
@@ -335,7 +335,7 @@ describe('PresetDetailPage', () => {
                   shader: 'nebula',
                 },
               },
-              thumbnailRef: 'thumbnails/preset-44.png',
+              thumbnailRef: 'thumbnails/scene-44.png',
               createdAt: '2026-04-06T14:00:00Z',
             },
           ]),
@@ -345,14 +345,14 @@ describe('PresetDetailPage', () => {
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
-    renderPresetDetailPage(['/presets/44'])
+    renderSceneDetailPage(['/scenes/44'])
 
     expect(await screen.findAllByText('Peter')).not.toHaveLength(0)
     expect(screen.getByRole('button', { name: /from peter/i })).toBeInTheDocument()
     expect(screen.queryByText('Talia North')).not.toBeInTheDocument()
   })
 
-  it('shows attached preset tags and routes to the filtered presets grid when clicked', async () => {
+  it('shows attached scene tags and routes to the filtered scenes grid when clicked', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -360,20 +360,20 @@ describe('PresetDetailPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/presets/12')) {
-        return Promise.resolve(jsonResponse(presetResponse))
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
       }
 
-      if (input === buildApiUrl('/presets')) {
-        return Promise.resolve(jsonResponse([presetResponse, creatorPresetResponse]))
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse, creatorSceneResponse]))
       }
 
-      if (input === buildApiUrl('/presets?tag=ambient')) {
-        return Promise.resolve(jsonResponse([presetResponse, tagPresetResponse]))
+      if (input === buildApiUrl('/scenes?tag=ambient')) {
+        return Promise.resolve(jsonResponse([sceneResponse, tagSceneResponse]))
       }
 
-      if (input === buildApiUrl('/presets?tag=focus-friendly')) {
-        return Promise.resolve(jsonResponse([presetResponse, creatorPresetResponse]))
+      if (input === buildApiUrl('/scenes?tag=focus-friendly')) {
+        return Promise.resolve(jsonResponse([sceneResponse, creatorSceneResponse]))
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
@@ -381,24 +381,24 @@ describe('PresetDetailPage', () => {
 
     const user = userEvent.setup()
 
-    renderPresetDetailPage()
+    renderSceneDetailPage()
 
     await screen.findByRole('heading', { name: /aurora drift/i })
     await user.click(screen.getByRole('button', { name: /^show$/i }))
 
     const ambientTagLink = screen.getByRole('link', { name: /^ambient$/i })
-    expect(ambientTagLink).toHaveAttribute('href', '/presets?tag=ambient')
+    expect(ambientTagLink).toHaveAttribute('href', '/scenes?tag=ambient')
     expect(screen.getByRole('link', { name: /^focus-friendly$/i })).toHaveAttribute(
       'href',
-      '/presets?tag=focus-friendly',
+      '/scenes?tag=focus-friendly',
     )
 
     await user.click(ambientTagLink)
 
-    expect(await screen.findByTestId('presets-route')).toHaveTextContent('?tag=ambient')
+    expect(await screen.findByTestId('scenes-route')).toHaveTextContent('?tag=ambient')
   })
 
-  it('filters sidebar recommendations by creator and the current preset tags', async () => {
+  it('filters sidebar recommendations by creator and the current scene tags', async () => {
     storeSession()
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
@@ -406,26 +406,26 @@ describe('PresetDetailPage', () => {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
-      if (input === buildApiUrl('/presets/12')) {
-        return Promise.resolve(jsonResponse(presetResponse))
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
       }
 
-      if (input === buildApiUrl('/presets')) {
+      if (input === buildApiUrl('/scenes')) {
         return Promise.resolve(
           jsonResponse([
-            presetResponse,
-            creatorPresetResponse,
-            unrelatedPresetResponse,
+            sceneResponse,
+            creatorSceneResponse,
+            unrelatedSceneResponse,
           ]),
         )
       }
 
-      if (input === buildApiUrl('/presets?tag=ambient')) {
-        return Promise.resolve(jsonResponse([presetResponse, tagPresetResponse]))
+      if (input === buildApiUrl('/scenes?tag=ambient')) {
+        return Promise.resolve(jsonResponse([sceneResponse, tagSceneResponse]))
       }
 
-      if (input === buildApiUrl('/presets?tag=focus-friendly')) {
-        return Promise.resolve(jsonResponse([presetResponse, creatorPresetResponse]))
+      if (input === buildApiUrl('/scenes?tag=focus-friendly')) {
+        return Promise.resolve(jsonResponse([sceneResponse, creatorSceneResponse]))
       }
 
       throw new Error(`Unexpected request: ${String(input)}`)
@@ -433,12 +433,12 @@ describe('PresetDetailPage', () => {
 
     const user = userEvent.setup()
 
-    renderPresetDetailPage()
+    renderSceneDetailPage()
 
     expect(await screen.findByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /afterglow static/i })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /from preset artist/i }))
+    await user.click(screen.getByRole('button', { name: /from scene artist/i }))
 
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /afterglow static/i })).not.toBeInTheDocument()

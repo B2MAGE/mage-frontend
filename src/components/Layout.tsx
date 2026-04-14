@@ -35,7 +35,7 @@ function ChevronDownIcon() {
   )
 }
 
-function PresetsIcon() {
+function ScenesIcon() {
   return (
     <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
       <path
@@ -164,7 +164,7 @@ export function Layout({ children }: PropsWithChildren) {
           </Link>
           {isAuthenticated && user ? (
             <div className="nav-actions" ref={accountMenuRef}>
-              <Link className="nav-create" to="/create-preset">
+              <Link className="nav-create" to="/create-scene">
                 <span className="nav-create__icon" aria-hidden="true">
                   <CreateIcon />
                 </span>
@@ -235,12 +235,12 @@ export function Layout({ children }: PropsWithChildren) {
                     className="nav-menu__item"
                     onClick={() => setIsAccountMenuOpen(false)}
                     role="menuitem"
-                    to="/my-presets"
+                    to="/my-scenes"
                   >
                     <span className="nav-menu__icon">
-                      <PresetsIcon />
+                      <ScenesIcon />
                     </span>
-                    <span>My Presets</span>
+                    <span>My Scenes</span>
                   </Link>
 
                   <button

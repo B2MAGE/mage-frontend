@@ -22,7 +22,7 @@ export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFil
   }
 
   return (
-    <ScrollableTagBar ariaLabel="Filter presets by tag" role="toolbar">
+    <ScrollableTagBar ariaLabel="Filter scenes by tag" role="toolbar">
       <button
         className={`tag-pill${activeTag === null ? ' tag-pill--active' : ''}`}
         aria-pressed={activeTag === null}

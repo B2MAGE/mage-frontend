@@ -1,11 +1,11 @@
-import { buildApiUrl, fetchPresets, type PresetListResponse } from './api'
+import { buildApiUrl, fetchScenes, type SceneListResponse } from './api'
 import type { MageSceneBlob } from './magePlayerAdapter'
 
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-export type PresetDetailResponse = {
+export type SceneDetailResponse = {
   id?: number
-  presetId?: number
+  sceneId?: number
   ownerUserId?: number
   creatorDisplayName?: string
   name?: string
@@ -15,7 +15,7 @@ export type PresetDetailResponse = {
   tags?: unknown
 }
 
-export type PresetDetail = {
+export type SceneDetail = {
   id: number
   ownerUserId: number | null
   creatorDisplayName: string | null
@@ -26,14 +26,14 @@ export type PresetDetail = {
   tags: string[]
 }
 
-export type PresetDetailErrorCode =
+export type SceneDetailErrorCode =
   | 'auth-required'
   | 'invalid-id'
   | 'invalid-payload'
   | 'not-found'
   | 'unavailable'
 
-export type PresetComment = {
+export type SceneComment = {
   author: string
   handle: string
   posted: string
@@ -50,7 +50,7 @@ export type CreatorProfile = {
   primaryActionLabel?: string
 }
 
-export type PresetEngagement = {
+export type SceneEngagement = {
   playsLabel: string
   upvotesLabel: string
   downvotesLabel: string
@@ -59,7 +59,7 @@ export type PresetEngagement = {
   topicLabel: string
 }
 
-export type PresetDescription = {
+export type SceneDescription = {
   opening: string
   middle: string
   closing: string
@@ -68,7 +68,7 @@ export type PresetDescription = {
   tags: string[]
 }
 
-export type RecommendedPresetCard = {
+export type RecommendedSceneCard = {
   id: number
   title: string
   creator: string
@@ -78,10 +78,10 @@ export type RecommendedPresetCard = {
   ownerUserId: number
 }
 
-export type RecommendedPresetGroups = {
-  all: RecommendedPresetCard[]
-  creator: RecommendedPresetCard[]
-  byTag: Record<string, RecommendedPresetCard[]>
+export type RecommendedSceneGroups = {
+  all: RecommendedSceneCard[]
+  creator: RecommendedSceneCard[]
+  byTag: Record<string, RecommendedSceneCard[]>
 }
 
 export type RecommendationFilter = 'all' | 'creator' | `tag:${string}`
@@ -97,7 +97,7 @@ const creatorProfileBlueprints = [
     displayName: 'Jonah Reed',
     handle: '@jonahreedsignal',
     subscribersLabel: '1.42K subscribers',
-    studioNote: 'Most of my presets start from a music-first pass, then I add texture until the frame feels alive.',
+    studioNote: 'Most of my scenes start from a music-first pass, then I add texture until the frame feels alive.',
   },
   {
     displayName: 'Talia North',
@@ -109,14 +109,14 @@ const creatorProfileBlueprints = [
     displayName: 'Elio Mercer',
     handle: '@elio.mercer',
     subscribersLabel: '986 subscribers',
-    studioNote: 'If a preset looks loud with the volume off, I usually strip it back and start over.',
+    studioNote: 'If a scene looks loud with the volume off, I usually strip it back and start over.',
   },
 ] as const
 
-export class PresetDetailRequestError extends Error {
-  code: PresetDetailErrorCode
+export class SceneDetailRequestError extends Error {
+  code: SceneDetailErrorCode
 
-  constructor(code: PresetDetailErrorCode, message: string) {
+  constructor(code: SceneDetailErrorCode, message: string) {
     super(message)
     this.code = code
   }
@@ -126,7 +126,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function normalizePresetTags(tags: unknown) {
+function normalizeSceneTags(tags: unknown) {
   if (!Array.isArray(tags)) {
     return []
   }
@@ -147,24 +147,24 @@ function normalizePresetTags(tags: unknown) {
   return normalizedTags.filter((tagName, index) => normalizedTags.indexOf(tagName) === index)
 }
 
-function normalizePresetDetail(payload: unknown): PresetDetail | null {
+function normalizeSceneDetail(payload: unknown): SceneDetail | null {
   if (!isRecord(payload)) {
     return null
   }
 
-  const presetId =
-    typeof payload.presetId === 'number'
-      ? payload.presetId
+  const sceneId =
+    typeof payload.sceneId === 'number'
+      ? payload.sceneId
       : typeof payload.id === 'number'
         ? payload.id
         : null
 
-  if (presetId === null || !isRecord(payload.sceneData)) {
+  if (sceneId === null || !isRecord(payload.sceneData)) {
     return null
   }
 
   return {
-    id: presetId,
+    id: sceneId,
     ownerUserId: typeof payload.ownerUserId === 'number' ? payload.ownerUserId : null,
     creatorDisplayName:
       typeof payload.creatorDisplayName === 'string' && payload.creatorDisplayName.trim()
@@ -173,7 +173,7 @@ function normalizePresetDetail(payload: unknown): PresetDetail | null {
     name:
       typeof payload.name === 'string' && payload.name.trim()
         ? payload.name.trim()
-        : `Preset ${presetId}`,
+        : `Scene ${sceneId}`,
     sceneData: payload.sceneData,
     thumbnailRef:
       typeof payload.thumbnailRef === 'string' && payload.thumbnailRef.trim()
@@ -181,11 +181,11 @@ function normalizePresetDetail(payload: unknown): PresetDetail | null {
         : null,
     createdAt:
       typeof payload.createdAt === 'string' && payload.createdAt.trim() ? payload.createdAt : null,
-    tags: normalizePresetTags(payload.tags),
+    tags: normalizeSceneTags(payload.tags),
   }
 }
 
-function readErrorCode(status: number): PresetDetailErrorCode {
+function readErrorCode(status: number): SceneDetailErrorCode {
   if (status === 401) {
     return 'auth-required'
   }
@@ -261,33 +261,33 @@ function formatRelativeAge(createdAt: string | null) {
   return 'Just now'
 }
 
-function normalizeRecommendedPresetList(payload: unknown): PresetListResponse[] {
+function normalizeRecommendedSceneList(payload: unknown): SceneListResponse[] {
   if (!Array.isArray(payload)) {
     return []
   }
 
-  return payload.reduce<PresetListResponse[]>((presets, item) => {
+  return payload.reduce<SceneListResponse[]>((scenes, item) => {
     if (typeof item !== 'object' || item === null) {
-      return presets
+      return scenes
     }
 
-    const candidate = item as Partial<PresetListResponse>
+    const candidate = item as Partial<SceneListResponse>
 
     if (
-      typeof candidate.presetId !== 'number' ||
+      typeof candidate.sceneId !== 'number' ||
       typeof candidate.ownerUserId !== 'number' ||
       typeof candidate.creatorDisplayName !== 'string' ||
       typeof candidate.name !== 'string' ||
       typeof candidate.createdAt !== 'string'
     ) {
-      return presets
+      return scenes
     }
 
-    presets.push({
-      presetId: candidate.presetId,
+    scenes.push({
+      sceneId: candidate.sceneId,
       ownerUserId: candidate.ownerUserId,
       creatorDisplayName: candidate.creatorDisplayName.trim() || 'Unknown creator',
-      name: candidate.name.trim() || `Preset ${candidate.presetId}`,
+      name: candidate.name.trim() || `Scene ${candidate.sceneId}`,
       sceneData:
         typeof candidate.sceneData === 'object' && candidate.sceneData !== null ? candidate.sceneData : {},
       thumbnailRef:
@@ -297,59 +297,59 @@ function normalizeRecommendedPresetList(payload: unknown): PresetListResponse[] 
       createdAt: candidate.createdAt,
     })
 
-    return presets
+    return scenes
   }, [])
 }
 
-function buildRecommendedPlaysLabel(presetId: number) {
-  const plays = 1559 + presetId * 120
+function buildRecommendedPlaysLabel(sceneId: number) {
+  const plays = 1559 + sceneId * 120
   return `${plays.toLocaleString()} plays`
 }
 
-function buildRecommendationAccent(presetId: number) {
+function buildRecommendationAccent(sceneId: number) {
   const accents = ['#63f0d6', '#9fd9ff', '#ffb26b', '#7ef0c0', '#7f9bff']
-  return accents[Math.abs(presetId) % accents.length]
+  return accents[Math.abs(sceneId) % accents.length]
 }
 
-function buildRecommendedPresetsFromList(
-  presets: PresetListResponse[],
-  currentPresetId: number,
-): RecommendedPresetCard[] {
-  const presetsById = new Map<number, RecommendedPresetCard>()
+function buildRecommendedScenesFromList(
+  scenes: SceneListResponse[],
+  currentSceneId: number,
+): RecommendedSceneCard[] {
+  const scenesById = new Map<number, RecommendedSceneCard>()
 
-  presets
-    .filter((preset) => preset.presetId !== currentPresetId)
-    .forEach((preset) => {
-      if (presetsById.has(preset.presetId)) {
+  scenes
+    .filter((scene) => scene.sceneId !== currentSceneId)
+    .forEach((scene) => {
+      if (scenesById.has(scene.sceneId)) {
         return
       }
 
-      presetsById.set(preset.presetId, {
-        id: preset.presetId,
-        title: preset.name,
-        creator: preset.creatorDisplayName,
-        meta: `${buildRecommendedPlaysLabel(preset.presetId)} | ${formatRelativeAge(preset.createdAt)}`,
-        accent: buildRecommendationAccent(preset.presetId),
-        thumbnailRef: preset.thumbnailRef,
-        ownerUserId: preset.ownerUserId,
+      scenesById.set(scene.sceneId, {
+        id: scene.sceneId,
+        title: scene.name,
+        creator: scene.creatorDisplayName,
+        meta: `${buildRecommendedPlaysLabel(scene.sceneId)} | ${formatRelativeAge(scene.createdAt)}`,
+        accent: buildRecommendationAccent(scene.sceneId),
+        thumbnailRef: scene.thumbnailRef,
+        ownerUserId: scene.ownerUserId,
       })
     })
 
-  return [...presetsById.values()]
+  return [...scenesById.values()]
 }
 
-function mergeRecommendedPresetCards(
-  ...presetGroups: RecommendedPresetCard[][]
-): RecommendedPresetCard[] {
-  const presetsById = new Map<number, RecommendedPresetCard>()
+function mergeRecommendedSceneCards(
+  ...sceneGroups: RecommendedSceneCard[][]
+): RecommendedSceneCard[] {
+  const scenesById = new Map<number, RecommendedSceneCard>()
 
-  presetGroups.flat().forEach((preset) => {
-    if (!presetsById.has(preset.id)) {
-      presetsById.set(preset.id, preset)
+  sceneGroups.flat().forEach((scene) => {
+    if (!scenesById.has(scene.id)) {
+      scenesById.set(scene.id, scene)
     }
   })
 
-  return [...presetsById.values()]
+  return [...scenesById.values()]
 }
 
 function slugify(value: string) {
@@ -365,7 +365,7 @@ export function readInitial(value: string) {
   return trimmedValue ? trimmedValue[0].toUpperCase() : 'M'
 }
 
-export function readPresetId(value: string | undefined) {
+export function readSceneId(value: string | undefined) {
   if (!value) {
     return null
   }
@@ -379,36 +379,36 @@ export function readPresetId(value: string | undefined) {
   return parsedValue
 }
 
-export async function fetchPresetDetail(
+export async function fetchSceneDetail(
   authenticatedFetch: AuthenticatedFetch,
   isAuthenticated: boolean,
-  presetId: number,
+  sceneId: number,
 ) {
   const response = isAuthenticated
-    ? await authenticatedFetch(`/presets/${presetId}`)
-    : await fetch(buildApiUrl(`/presets/${presetId}`))
+    ? await authenticatedFetch(`/scenes/${sceneId}`)
+    : await fetch(buildApiUrl(`/scenes/${sceneId}`))
 
   if (!response.ok) {
-    throw new PresetDetailRequestError(
+    throw new SceneDetailRequestError(
       readErrorCode(response.status),
-      `Preset detail request failed with status ${response.status}.`,
+      `Scene detail request failed with status ${response.status}.`,
     )
   }
 
-  const payload = (await response.json().catch(() => null)) as PresetDetailResponse | null
-  const preset = normalizePresetDetail(payload)
+  const payload = (await response.json().catch(() => null)) as SceneDetailResponse | null
+  const scene = normalizeSceneDetail(payload)
 
-  if (!preset) {
-    throw new PresetDetailRequestError(
+  if (!scene) {
+    throw new SceneDetailRequestError(
       'invalid-payload',
-      'Preset detail response is missing the data required to render the player.',
+      'Scene detail response is missing the data required to render the player.',
     )
   }
 
-  return preset
+  return scene
 }
 
-export async function fetchCreatorPresetList(
+export async function fetchCreatorSceneList(
   authenticatedFetch: AuthenticatedFetch,
   isAuthenticated: boolean,
   ownerUserId: number | null,
@@ -417,15 +417,15 @@ export async function fetchCreatorPresetList(
     return []
   }
 
-  const response = await authenticatedFetch(`/users/${ownerUserId}/presets`)
+  const response = await authenticatedFetch(`/users/${ownerUserId}/scenes`)
 
   if (!response.ok) {
-    throw new Error(`Creator preset request failed with status ${response.status}.`)
+    throw new Error(`Creator scene request failed with status ${response.status}.`)
   }
 
   const payload = (await response.json().catch(() => [])) as unknown
 
-  return normalizeRecommendedPresetList(payload)
+  return normalizeRecommendedSceneList(payload)
 }
 
 export function buildTagRecommendationFilter(tag: string): RecommendationFilter {
@@ -436,7 +436,7 @@ export function readRecommendationFilterTag(filter: RecommendationFilter) {
   return filter.startsWith('tag:') ? filter.slice('tag:'.length) : null
 }
 
-export function createEmptyRecommendedPresetGroups(): RecommendedPresetGroups {
+export function createEmptyRecommendedSceneGroups(): RecommendedSceneGroups {
   return {
     all: [],
     creator: [],
@@ -444,69 +444,69 @@ export function createEmptyRecommendedPresetGroups(): RecommendedPresetGroups {
   }
 }
 
-export function buildRecommendedPresetGroups(
-  preset: PresetDetail,
-  allPresets: PresetListResponse[],
-  tagPresetsByTag: Record<string, PresetListResponse[]>,
-): RecommendedPresetGroups {
+export function buildRecommendedSceneGroups(
+  scene: SceneDetail,
+  allScenes: SceneListResponse[],
+  tagScenesByTag: Record<string, SceneListResponse[]>,
+): RecommendedSceneGroups {
   const creatorRecommendations =
-    preset.ownerUserId === null
+    scene.ownerUserId === null
       ? []
-      : buildRecommendedPresetsFromList(
-          allPresets.filter((candidatePreset) => candidatePreset.ownerUserId === preset.ownerUserId),
-          preset.id,
+      : buildRecommendedScenesFromList(
+          allScenes.filter((candidateScene) => candidateScene.ownerUserId === scene.ownerUserId),
+          scene.id,
         )
 
-  const recommendationsByTag = preset.tags.reduce<Record<string, RecommendedPresetCard[]>>(
+  const recommendationsByTag = scene.tags.reduce<Record<string, RecommendedSceneCard[]>>(
     (resolvedRecommendations, tag) => {
-      resolvedRecommendations[tag] = buildRecommendedPresetsFromList(tagPresetsByTag[tag] ?? [], preset.id)
+      resolvedRecommendations[tag] = buildRecommendedScenesFromList(tagScenesByTag[tag] ?? [], scene.id)
       return resolvedRecommendations
     },
     {},
   )
 
   return {
-    all: mergeRecommendedPresetCards(
+    all: mergeRecommendedSceneCards(
       creatorRecommendations,
-      ...preset.tags.map((tag) => recommendationsByTag[tag] ?? []),
+      ...scene.tags.map((tag) => recommendationsByTag[tag] ?? []),
     ),
     creator: creatorRecommendations,
     byTag: recommendationsByTag,
   }
 }
 
-export async function fetchRecommendedPresetGroups(
-  preset: PresetDetail,
-): Promise<RecommendedPresetGroups> {
-  const recommendationRequests = [fetchPresets(), ...preset.tags.map((tag) => fetchPresets(tag))]
-  const [allPresetsResult, ...tagPresetResults] = await Promise.allSettled(recommendationRequests)
+export async function fetchRecommendedSceneGroups(
+  scene: SceneDetail,
+): Promise<RecommendedSceneGroups> {
+  const recommendationRequests = [fetchScenes(), ...scene.tags.map((tag) => fetchScenes(tag))]
+  const [allScenesResult, ...tagSceneResults] = await Promise.allSettled(recommendationRequests)
 
-  const allPresets = allPresetsResult.status === 'fulfilled' ? allPresetsResult.value : []
-  const tagPresetsByTag = preset.tags.reduce<Record<string, PresetListResponse[]>>(
-    (resolvedTagPresets, tag, index) => {
-      const nextTagResult = tagPresetResults[index]
-      resolvedTagPresets[tag] = nextTagResult?.status === 'fulfilled' ? nextTagResult.value : []
-      return resolvedTagPresets
+  const allScenes = allScenesResult.status === 'fulfilled' ? allScenesResult.value : []
+  const tagScenesByTag = scene.tags.reduce<Record<string, SceneListResponse[]>>(
+    (resolvedTagScenes, tag, index) => {
+      const nextTagResult = tagSceneResults[index]
+      resolvedTagScenes[tag] = nextTagResult?.status === 'fulfilled' ? nextTagResult.value : []
+      return resolvedTagScenes
     },
     {},
   )
 
-  return buildRecommendedPresetGroups(preset, allPresets, tagPresetsByTag)
+  return buildRecommendedSceneGroups(scene, allScenes, tagScenesByTag)
 }
 
-export function buildPresetEngagement(preset: PresetDetail): PresetEngagement {
-  const plays = 1559 + preset.id * 120
-  const upvotes = 56 + preset.id * 30
-  const downvotes = 8 + preset.id * 2
-  const saves = 18 + preset.id * 11
+export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
+  const plays = 1559 + scene.id * 120
+  const upvotes = 56 + scene.id * 30
+  const downvotes = 8 + scene.id * 2
+  const saves = 18 + scene.id * 11
 
   return {
     playsLabel: `${plays.toLocaleString()} plays`,
     upvotesLabel: upvotes.toLocaleString(),
     downvotesLabel: downvotes.toLocaleString(),
     savesLabel: saves.toLocaleString(),
-    publishedLabel: `Published ${formatCreatedAt(preset.createdAt)}`,
-    topicLabel: 'Audio-reactive preset',
+    publishedLabel: `Published ${formatCreatedAt(scene.createdAt)}`,
+    topicLabel: 'Audio-reactive scene',
   }
 }
 
@@ -521,26 +521,26 @@ function buildSubscriberLabel(seed: number) {
 }
 
 export function buildCreatorProfile(
-  preset: PresetDetail,
+  scene: SceneDetail,
   viewerDisplayName: string | undefined,
   viewerUserId: number | null | undefined,
 ): CreatorProfile {
-  const resolvedDisplayName = preset.creatorDisplayName?.trim() || viewerDisplayName?.trim() || 'Your Studio'
+  const resolvedDisplayName = scene.creatorDisplayName?.trim() || viewerDisplayName?.trim() || 'Your Studio'
 
-  if (viewerUserId !== null && viewerUserId !== undefined && viewerUserId === preset.ownerUserId) {
+  if (viewerUserId !== null && viewerUserId !== undefined && viewerUserId === scene.ownerUserId) {
     return {
       displayName: resolvedDisplayName,
       handle: `@${slugify(resolvedDisplayName) || 'magecreator'}`,
-      subscribersLabel: buildSubscriberLabel(preset.id),
+      subscribersLabel: buildSubscriberLabel(scene.id),
       studioNote:
-        'I wanted this preset page to feel like something I would actually share, not just a lab route with a player dropped into it.',
+        'I wanted this scene page to feel like something I would actually share, not just a lab route with a player dropped into it.',
       primaryActionLabel: 'Subscribe',
     }
   }
 
   const blueprint =
     creatorProfileBlueprints[
-      Math.abs((preset.ownerUserId ?? preset.id) % creatorProfileBlueprints.length)
+      Math.abs((scene.ownerUserId ?? scene.id) % creatorProfileBlueprints.length)
     ]
 
   return {
@@ -551,28 +551,28 @@ export function buildCreatorProfile(
   }
 }
 
-export function buildPresetDescription(
-  preset: PresetDetail,
+export function buildSceneDescription(
+  scene: SceneDetail,
   creatorProfile: CreatorProfile,
-): PresetDescription {
+): SceneDescription {
   return {
-    opening: `I built ${preset.name} for tracks that need atmosphere without visual clutter. The motion holds back during the intro, then the reflections and bloom open up once the mids start pushing forward.`,
+    opening: `I built ${scene.name} for tracks that need atmosphere without visual clutter. The motion holds back during the intro, then the reflections and bloom open up once the mids start pushing forward.`,
     middle: `${creatorProfile.displayName} tends to tune scenes for patience rather than spectacle, so this one lands best behind slower house, downtempo electronica, mellow garage, and long vocal builds where the frame needs to stay supportive instead of noisy.`,
     closing:
-      'This page is still an early public pass, but the preset render above is the real scene payload. I wanted the surrounding notes, comments, and recommendations to read like a creator page someone would actually spend time on while the rest of the social features catch up.',
+      'This page is still an early public pass, but the scene render above is the real scene payload. I wanted the surrounding notes, comments, and recommendations to read like a creator page someone would actually spend time on while the rest of the social features catch up.',
     bestFor: 'late-night sets, focus mixes, ambient intros',
     builtWith: 'soft bloom, layered fog, reflective passes, restrained drift',
-    tags: preset.tags,
+    tags: scene.tags,
   }
 }
 
-export function buildPresetComments(preset: PresetDetail): PresetComment[] {
+export function buildSceneComments(scene: SceneDetail): SceneComment[] {
   return [
     {
       author: 'Nora Vale',
       handle: '@noravale',
       posted: '2 days ago',
-      text: `Ran ${preset.name} behind a Rhodes sketch last night and it sat exactly where I wanted it. The slower build is what makes it feel intentional.`,
+      text: `Ran ${scene.name} behind a Rhodes sketch last night and it sat exactly where I wanted it. The slower build is what makes it feel intentional.`,
       upvotes: '14',
       downvotes: '1',
     },
@@ -580,7 +580,7 @@ export function buildPresetComments(preset: PresetDetail): PresetComment[] {
       author: 'Cass Mercer',
       handle: '@cassmercer',
       posted: '5 days ago',
-      text: 'The restraint is the best part. Most reactive presets oversell the first beat, but this one gives the track room before the highlights start showing off.',
+      text: 'The restraint is the best part. Most reactive scenes oversell the first beat, but this one gives the track room before the highlights start showing off.',
       upvotes: '9',
       downvotes: '0',
     },
@@ -595,46 +595,46 @@ export function buildPresetComments(preset: PresetDetail): PresetComment[] {
   ]
 }
 
-export function buildRecommendedPresets(
-  preset: PresetDetail,
-  creatorPresets: PresetListResponse[],
-): RecommendedPresetCard[] {
-  return buildRecommendedPresetsFromList(creatorPresets, preset.id)
+export function buildRecommendedScenes(
+  scene: SceneDetail,
+  creatorScenes: SceneListResponse[],
+): RecommendedSceneCard[] {
+  return buildRecommendedScenesFromList(creatorScenes, scene.id)
 }
 
-export function readErrorCopy(errorCode: PresetDetailErrorCode) {
+export function readErrorCopy(errorCode: SceneDetailErrorCode) {
   if (errorCode === 'invalid-id') {
     return {
-      title: 'Invalid preset link',
-      description: 'This route is missing a valid preset id. Check the URL and try again.',
+      title: 'Invalid scene link',
+      description: 'This route is missing a valid scene id. Check the URL and try again.',
     }
   }
 
   if (errorCode === 'auth-required') {
     return {
-      title: 'Sign in to view this preset',
+      title: 'Sign in to view this scene',
       description:
-        'Preset detail requests are still authenticated in this build. Sign in, then reopen this preset route.',
+        'Scene detail requests are still authenticated in this build. Sign in, then reopen this scene route.',
     }
   }
 
   if (errorCode === 'not-found') {
     return {
-      title: 'Preset not found',
-      description: 'This preset does not exist or is no longer available.',
+      title: 'Scene not found',
+      description: 'This scene does not exist or is no longer available.',
     }
   }
 
   if (errorCode === 'invalid-payload') {
     return {
-      title: 'Unable to render this preset',
+      title: 'Unable to render this scene',
       description:
-        'The backend returned preset detail data, but the scene payload is missing fields required by the player.',
+        'The backend returned scene detail data, but the scene payload is missing fields required by the player.',
     }
   }
 
   return {
-    title: 'Unable to load this preset',
-    description: 'MAGE could not load this preset right now. Please try again in a moment.',
+    title: 'Unable to load this scene',
+    description: 'MAGE could not load this scene right now. Please try again in a moment.',
   }
 }

@@ -16,7 +16,7 @@ function createController(overrides: Partial<MagePlayerController> = {}): MagePl
 }
 
 describe('MagePlayer', () => {
-  it('loads a preset scene blob and disposes the engine on unmount', async () => {
+  it('loads a scene blob and disposes the engine on unmount', async () => {
     const controller = createController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
@@ -28,21 +28,21 @@ describe('MagePlayer', () => {
 
     const { unmount } = render(<MagePlayer sceneBlob={sceneBlob} />)
 
-    expect(screen.getByText('Loading preset preview.')).toBeInTheDocument()
+    expect(screen.getByText('Loading scene preview.')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(createMagePlayer).toHaveBeenCalledTimes(1)
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
     })
 
-    expect(screen.queryByText('Loading preset preview.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument()
 
     unmount()
 
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
 
-  it('reuses the same engine instance when the preset scene blob changes', async () => {
+  it('reuses the same engine instance when the scene blob changes', async () => {
     const controller = createController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
@@ -73,7 +73,7 @@ describe('MagePlayer', () => {
     })
   })
 
-  it('shows a recoverable error state when the preset is invalid', async () => {
+  it('shows a recoverable error state when the scene is invalid', async () => {
     const controller = createController({
       loadSceneBlob: vi.fn((sceneBlob: unknown) => {
         if (
@@ -81,7 +81,7 @@ describe('MagePlayer', () => {
           sceneBlob !== null &&
           'invalid' in sceneBlob
         ) {
-          throw new Error('Preset scene data is missing required MAGE fields.')
+          throw new Error('Scene data is missing required MAGE fields.')
         }
       }),
     })
@@ -97,7 +97,7 @@ describe('MagePlayer', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Preset scene data is missing required MAGE fields.',
+      'Scene data is missing required MAGE fields.',
     )
     expect(controller.dispose).not.toHaveBeenCalled()
 
