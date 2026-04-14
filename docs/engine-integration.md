@@ -38,7 +38,7 @@ The current engine package pulls in `shader-park-core` through the bundled brows
 
 That patch exists because Shader Park executes generated code through `eval(...)` and expects a DSL helper surface to be reachable by name at runtime. Production bundling can otherwise break scene compilation with errors such as `input is not defined`, `time is not defined`, or `rotateY is not defined`.
 
-The frontend does not work around this by disabling Vite production optimizations. Instead:
+The frontend works around this by doing the following:
 
 - `vite.config.ts` aliases `shader-park-core` to the installed ESM bundle
 - `patch-package` reapplies the checked-in Shader Park patch on `npm install` and `npm ci`
