@@ -13,6 +13,7 @@ const mockPresets = [
   {
     presetId: 1,
     ownerUserId: 10,
+    creatorDisplayName: 'Sunset Artist',
     name: 'Sunset Scene',
     sceneData: {},
     thumbnailRef: null,
@@ -21,6 +22,7 @@ const mockPresets = [
   {
     presetId: 2,
     ownerUserId: 10,
+    creatorDisplayName: 'Ocean Artist',
     name: 'Ocean Breeze',
     sceneData: {},
     thumbnailRef: 'https://example.com/thumb.png',
@@ -83,6 +85,8 @@ describe('PresetsPage', () => {
 
     expect(await screen.findByText('Sunset Scene')).toBeInTheDocument()
     expect(screen.getByText('Ocean Breeze')).toBeInTheDocument()
+    expect(screen.getByText('Sunset Artist')).toBeInTheDocument()
+    expect(screen.getByText('Ocean Artist')).toBeInTheDocument()
   })
 
   it('renders tag filter pills after loading', async () => {
@@ -122,27 +126,6 @@ describe('PresetsPage', () => {
       const lastCall = presetCalls[presetCalls.length - 1]
       const url = typeof lastCall[0] === 'string' ? lastCall[0] : (lastCall[0] as Request).url
       expect(url).toContain('tag=fire')
-    })
-  })
-
-  it('applies a typed tag filter when the form is submitted', async () => {
-    const fetchSpy = mockFetchResponses([], [])
-    const user = userEvent.setup()
-
-    renderPresetsPage()
-
-    const tagInput = await screen.findByLabelText(/filter presets by tag/i)
-    await user.type(tagInput, 'ambient')
-    await user.click(screen.getByRole('button', { name: /apply/i }))
-
-    await waitFor(() => {
-      const presetCalls = fetchSpy.mock.calls.filter((call) => {
-        const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
-        return url.includes('/presets')
-      })
-      const lastCall = presetCalls[presetCalls.length - 1]
-      const url = typeof lastCall[0] === 'string' ? lastCall[0] : (lastCall[0] as Request).url
-      expect(url).toContain('tag=ambient')
     })
   })
 

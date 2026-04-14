@@ -29,6 +29,7 @@ export function buildApiUrl(path: string) {
 export type PresetListResponse = {
   presetId: number
   ownerUserId: number
+  creatorDisplayName: string
   name: string
   sceneData: Record<string, unknown>
   thumbnailRef: string | null
