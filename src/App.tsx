@@ -7,10 +7,10 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { MyPresetsPage } from './pages/MyPresetsPage'
 import { PresetDetailPage } from './pages/PresetDetailPage'
+import { PresetsPage } from './pages/PresetsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { CreatePresetPage } from './pages/CreatePresetPage'
 import { SettingsPage } from './pages/SettingsPage'
-
 
 type ProtectedRouteProps = {
   children: ReactElement
@@ -48,7 +48,7 @@ function GuestOnlyRoute({ children }: ProtectedRouteProps) {
   }
 
   if (isAuthenticated) {
-    return <Navigate replace to="/settings" />
+    return <Navigate replace to="/" />
   }
 
   return children
@@ -60,6 +60,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/presets" element={<PresetsPage />} />
           <Route
             path="/login"
             element={
@@ -76,10 +77,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/presets/:id"
-            element={<PresetDetailPage />}
-          />
+          <Route path="/presets/:id" element={<PresetDetailPage />} />
           <Route
             path="/register"
             element={

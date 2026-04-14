@@ -26,6 +26,7 @@ function renderLoginPage(options: RenderLoginPageOptions = {}) {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<div>Home page</div>} />
           <Route path="/settings" element={<div>Settings page</div>} />
         </Routes>
       </AuthProvider>
@@ -60,7 +61,7 @@ describe('LoginPage', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('submits trimmed values, disables the button while loading, and routes to settings', async () => {
+  it('submits trimmed values, disables the button while loading, and routes to home', async () => {
     let resolveResponse: ((value: Response) => void) | undefined
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
@@ -108,7 +109,7 @@ describe('LoginPage', () => {
       ),
     )
 
-    expect(await screen.findByText('Settings page')).toBeInTheDocument()
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
     expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain('issued-login-token')
   })
 

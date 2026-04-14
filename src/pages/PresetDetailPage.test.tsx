@@ -37,6 +37,7 @@ const storedUser: AuthenticatedUser = {
 const presetResponse = {
   presetId: 12,
   ownerUserId: 8,
+  creatorDisplayName: 'Preset Artist',
   name: 'Aurora Drift',
   sceneData: {
     visualizer: {
@@ -94,6 +95,27 @@ describe('PresetDetailPage', () => {
         return Promise.resolve(jsonResponse(presetResponse))
       }
 
+      if (input === buildApiUrl('/users/8/presets')) {
+        return Promise.resolve(
+          jsonResponse([
+            presetResponse,
+            {
+              presetId: 16,
+              ownerUserId: 8,
+              creatorDisplayName: 'Preset Artist',
+              name: 'Signal Bloom',
+              sceneData: {
+                visualizer: {
+                  shader: 'pulse',
+                },
+              },
+              thumbnailRef: 'thumbnails/preset-16.png',
+              createdAt: '2026-04-08T14:00:00Z',
+            },
+          ]),
+        )
+      }
+
       throw new Error(`Unexpected request: ${String(input)}`)
     })
 
@@ -102,11 +124,16 @@ describe('PresetDetailPage', () => {
     expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /recommended presets/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
     expect(screen.getByText(/add a comment as preset artist/i)).toBeInTheDocument()
-    expect(screen.getByText(/now playing/i)).toBeInTheDocument()
+    expect(screen.getAllByText('Preset Artist').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/2,999 plays/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /from preset artist/i })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
+    expect(screen.queryByText(/after rain \/ windowlight/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/now playing/i)).not.toBeInTheDocument()
 
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenNthCalledWith(
@@ -181,5 +208,61 @@ describe('PresetDetailPage', () => {
 
     expect(await screen.findByRole('heading', { name: /sign in to view this preset/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /go to login/i })).toBeInTheDocument()
+  })
+
+  it('shows the real creator name for another users preset', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/presets/44')) {
+        return Promise.resolve(
+          jsonResponse({
+            presetId: 44,
+            ownerUserId: 77,
+            creatorDisplayName: 'Peter',
+            name: 'Test 3',
+            sceneData: {
+              visualizer: {
+                shader: 'nebula',
+              },
+            },
+            thumbnailRef: 'thumbnails/preset-44.png',
+            createdAt: '2026-04-06T14:00:00Z',
+          }),
+        )
+      }
+
+      if (input === buildApiUrl('/users/77/presets')) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              presetId: 44,
+              ownerUserId: 77,
+              creatorDisplayName: 'Peter',
+              name: 'Test 3',
+              sceneData: {
+                visualizer: {
+                  shader: 'nebula',
+                },
+              },
+              thumbnailRef: 'thumbnails/preset-44.png',
+              createdAt: '2026-04-06T14:00:00Z',
+            },
+          ]),
+        )
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderPresetDetailPage(['/presets/44'])
+
+    expect(await screen.findAllByText('Peter')).not.toHaveLength(0)
+    expect(screen.getByRole('button', { name: /from peter/i })).toBeInTheDocument()
+    expect(screen.queryByText('Talia North')).not.toBeInTheDocument()
   })
 })

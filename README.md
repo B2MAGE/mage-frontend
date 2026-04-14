@@ -93,7 +93,6 @@ Behavior:
 - for same-origin production deployments, leaving it unset or building with `VITE_API_BASE_URL=/api` both work
 
 For local development, the Vite dev server proxies `/api` to:
-
 ```text
 http://localhost:8080
 ```
@@ -123,7 +122,8 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 
 | Route            | Access        | Purpose                                 |
 | ---------------- | ------------- | --------------------------------------- |
-| `/`              | Public        | Landing page with embedded MAGE preview |
+| `/`              | Public        | Guest landing page or signed-in preset discovery home |
+| `/presets`       | Public        | Preset discovery with optional tag filter |
 | `/register`      | Guest-only    | Account registration                    |
 | `/login`         | Guest-only    | Account sign-in                         |
 | `/my-presets`    | Authenticated | User preset library                     |
@@ -150,13 +150,14 @@ Notes:
 ### MAGE Playback
 
 - reusable `MagePlayer` React component
-- homepage preview powered by the shared player wrapper
+- guest homepage preview powered by the shared player wrapper
 - preset detail page playback
 - create preset live preview
 
 ### Preset Flows
 
 - user preset listing
+- public preset discovery with backend-powered tag filtering
 - preset detail screen
 - create preset editor with scene, camera, motion, effects, pass-order, advanced sections, and staged direct-to-object-storage thumbnail uploads that only commit on successful preset creation
 - structured scene data authoring for the MAGE engine

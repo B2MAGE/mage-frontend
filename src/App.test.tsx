@@ -21,6 +21,10 @@ vi.mock('./pages/MyPresetsPage', () => ({
   MyPresetsPage: () => <div>My presets page</div>,
 }))
 
+vi.mock('./pages/PresetsPage', () => ({
+  PresetsPage: () => <div>Presets page</div>,
+}))
+
 vi.mock('./pages/PresetDetailPage', () => ({
   PresetDetailPage: () => <div>Preset detail page</div>,
 }))
@@ -54,6 +58,17 @@ describe('App routing', () => {
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
+  it('allows public visits to the presets discovery page', () => {
+    render(
+      <MemoryRouter initialEntries={['/presets']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Presets page')).toBeInTheDocument()
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument()
+  })
+
   it('keeps settings behind authentication', async () => {
     render(
       <MemoryRouter initialEntries={['/settings']}>
@@ -68,7 +83,7 @@ describe('App routing', () => {
     expect(screen.queryByText('Settings page')).not.toBeInTheDocument()
   })
 
-  it('redirects authenticated users away from login to settings', async () => {
+  it('redirects authenticated users away from login to home', async () => {
     window.localStorage.setItem(
       AUTH_SESSION_STORAGE_KEY,
       JSON.stringify({
@@ -106,13 +121,13 @@ describe('App routing', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Settings page')).toBeInTheDocument()
+      expect(screen.getByText('Home page')).toBeInTheDocument()
     })
 
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
-  it('redirects authenticated users away from register to settings', async () => {
+  it('redirects authenticated users away from register to home', async () => {
     window.localStorage.setItem(
       AUTH_SESSION_STORAGE_KEY,
       JSON.stringify({
@@ -150,7 +165,7 @@ describe('App routing', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Settings page')).toBeInTheDocument()
+      expect(screen.getByText('Home page')).toBeInTheDocument()
     })
 
     expect(screen.queryByText('Register page')).not.toBeInTheDocument()

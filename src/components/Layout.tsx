@@ -35,27 +35,45 @@ function ChevronDownIcon() {
   )
 }
 
-function ChannelIcon() {
+function PresetsIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
       <path
-        d="M12 12.3a3.7 3.7 0 1 0 0-7.4 3.7 3.7 0 0 0 0 7.4Zm0 2c-3.8 0-6.8 2-6.8 4.5 0 .4.3.7.7.7h12.2c.4 0 .7-.3.7-.7 0-2.5-3-4.5-6.8-4.5Z"
-        fill="currentColor"
+        d="M4.75 6.5A1.75 1.75 0 0 1 6.5 4.75h11A1.75 1.75 0 0 1 19.25 6.5v11a1.75 1.75 0 0 1-1.75 1.75h-11A1.75 1.75 0 0 1 4.75 17.5z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
       />
       <path
-        d="M4.8 3.8h14.4A1.8 1.8 0 0 1 21 5.6v12.8a1.8 1.8 0 0 1-1.8 1.8H4.8A1.8 1.8 0 0 1 3 18.4V5.6a1.8 1.8 0 0 1 1.8-1.8Zm0 1.5a.3.3 0 0 0-.3.3v12.8c0 .2.1.3.3.3h14.4c.2 0 .3-.1.3-.3V5.6a.3.3 0 0 0-.3-.3H4.8Z"
+        d="M7.5 15.45 10.2 12.3a.6.6 0 0 1 .92 0l1.7 2.05a.6.6 0 0 0 .93.02l1.6-1.82a.6.6 0 0 1 .91.02L17.5 14.1"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+      <path
+        d="M8.95 9.25a1.05 1.05 0 1 0 0-.001"
         fill="currentColor"
       />
     </svg>
   )
 }
 
-function HomeIcon() {
+function BrowseIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
       <path
-        d="M12 4.4a1.5 1.5 0 0 1 1 .4l6.2 5.6a1 1 0 1 1-1.4 1.5L17 11.2v6.3a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 17.5v-6.3l-.8.7a1 1 0 0 1-1.4-1.5L11 4.8a1.5 1.5 0 0 1 1-.4Zm-3 5.5v7.1h6v-7.1l-3-2.7-3 2.7Z"
-        fill="currentColor"
+        d="M12 4.75a7.25 7.25 0 1 1 0 14.5 7.25 7.25 0 0 1 0-14.5Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+      />
+      <path
+        stroke="currentColor"
+        d="M12 5.95c1.5 1.43 2.35 3.62 2.35 6.05 0 2.42-.85 4.62-2.35 6.05M12 5.95c-1.5 1.43-2.35 3.62-2.35 6.05 0 2.42.85 4.62 2.35 6.05M5.9 12h12.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
       />
     </svg>
   )
@@ -63,14 +81,20 @@ function HomeIcon() {
 
 function SignOutIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
       <path
-        d="M14.6 7.4a1 1 0 0 1 1.4 0l3.9 3.9a1 1 0 0 1 0 1.4L16 16.6a1 1 0 1 1-1.4-1.4l2.2-2.2H9a1 1 0 1 1 0-2h7.8l-2.2-2.2a1 1 0 0 1 0-1.4Z"
-        fill="currentColor"
+        d="M13.5 7.5 18 12l-4.5 4.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
       />
       <path
-        d="M5 4.5h6.2a1 1 0 1 1 0 2H6.5v11h4.7a1 1 0 1 1 0 2H5A1.5 1.5 0 0 1 3.5 18V6A1.5 1.5 0 0 1 5 4.5Z"
-        fill="currentColor"
+        d="M17.75 12H9.25M10.75 4.75H6.5a1.75 1.75 0 0 0-1.75 1.75v11A1.75 1.75 0 0 0 6.5 19.25h4.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
       />
     </svg>
   )
@@ -183,7 +207,12 @@ export function Layout({ children }: PropsWithChildren) {
                       </span>
                       <div className="nav-menu__identity">
                         <strong>{profileName}</strong>
-                        <span>{profileEmail}</span>
+                        <span className="nav-menu__identity-email" title={profileEmail}>
+                          {profileEmail}
+                        </span>
+                        <button className="nav-menu__channel-link" type="button">
+                          View your channel
+                        </button>
                       </div>
                     </Link>
                   </div>
@@ -197,9 +226,9 @@ export function Layout({ children }: PropsWithChildren) {
                     to="/"
                   >
                     <span className="nav-menu__icon">
-                      <HomeIcon />
+                      <BrowseIcon />
                     </span>
-                    <span>Home</span>
+                    <span>Browse</span>
                   </Link>
 
                   <Link
@@ -209,9 +238,9 @@ export function Layout({ children }: PropsWithChildren) {
                     to="/my-presets"
                   >
                     <span className="nav-menu__icon">
-                      <ChannelIcon />
+                      <PresetsIcon />
                     </span>
-                    <span>My Channel</span>
+                    <span>My Presets</span>
                   </Link>
 
                   <button

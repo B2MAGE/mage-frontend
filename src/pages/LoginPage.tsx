@@ -185,7 +185,7 @@ export function LoginPage() {
         user: authenticatedUser,
       })
       setValues(initialValues)
-      navigate('/settings', { replace: true })
+      navigate('/', { replace: true })
     } catch {
       setErrors({
         form: 'Login is unavailable right now. Please try again in a moment.',
@@ -196,7 +196,7 @@ export function LoginPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate replace to="/settings" />
+    return <Navigate replace to="/" />
   }
 
   return (
