@@ -1361,6 +1361,7 @@
   top: 94px;
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .mage-watch__rail-header {
@@ -3039,6 +3040,8 @@
 .tag-filter-scroller {
   position: relative;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .tag-filter-bar {
@@ -3047,6 +3050,8 @@
   overflow-x: auto;
   padding: 0;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
   scroll-behavior: smooth;
   scrollbar-width: none;
 }
@@ -3116,6 +3121,13 @@
     border-color 0.2s ease;
   white-space: nowrap;
   text-transform: capitalize;
+  text-decoration: none;
+}
+
+.tag-pill:link,
+.tag-pill:visited,
+.tag-pill:hover,
+.tag-pill:active {
   text-decoration: none;
 }
 
