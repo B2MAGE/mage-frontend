@@ -2,7 +2,7 @@
 
 ## Overview
 
-The create preset page is the frontend editor for building MAGE scene data and previewing it live in the browser. It is organized into editor sections that map to the engine's current preset shape while keeping the UI approachable for normal users.
+The create preset page is the frontend editor for building MAGE scene data and previewing it live in the browser.
 
 Route:
 
@@ -65,7 +65,7 @@ If a thumbnail is selected, the page uploads it before sending the create reques
 
 ## Live Preview
 
-The page uses the shared `MagePlayer` component for inline preview. Edits update the structured scene data, and the preview reflects the current in-memory scene blob rather than waiting for a saved backend record.
+The page uses the shared `MagePlayer` component for inline preview. Edits update the structured scene data, and the preview reflects the current in-memory scene blob.
 
 ## Current Data Model Notes
 

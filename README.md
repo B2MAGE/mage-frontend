@@ -52,10 +52,6 @@ Before running the frontend locally, make sure you have:
 - a recent Node.js and npm installation
 - the backend API running locally if you want full auth and preset flows
 
-The engine package used by the frontend is vendored inside this repository under `vendor/mage-engine/` so the app can build in CI and deployment environments without depending on a sibling workspace checkout.
-
-`npm install` and `npm ci` also reapply the checked-in `patch-package` patches during `postinstall`. That is currently required for the Shader Park production compatibility fix.
-
 ## Getting Started
 
 1. Install frontend dependencies:
@@ -102,13 +98,6 @@ That proxy is configured in [vite.config.ts](./vite.config.ts).
 
 ## Deployment
 
-The supported production strategy is same-origin deployment:
-
-- the frontend is served from the public app origin
-- `/api/*` is routed to the backend by the reverse proxy
-- browser auth traffic stays on one HTTPS origin
-- direct loads of client routes such as `/login` and `/register` require SPA fallback to `index.html`
-
 See [docs/deployment.md](./docs/deployment.md) for the deployment contract and the Coolify-oriented production notes.
 
 ## Available Scripts
@@ -131,37 +120,6 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 | `/presets/:id`   | Public route  | Preset detail/player page                             |
 | `/create-preset` | Public route  | Preset editor and live preview                        |
 | `/settings`      | Authenticated | Account settings                                      |
-
-Notes:
-
-- authenticated routes redirect through shared session restore
-- direct loads of nested routes in production require host rewrites back to `index.html`
-- preset creation depends on authenticated backend access when persisting data
-
-## Current Frontend Areas
-
-### Authentication
-
-- registration page with client-side validation
-- login page with bearer-token storage
-- session restore through `GET /api/users/me`
-- guest-only and protected route wrappers
-- account settings page with basic profile details
-
-### MAGE Playback
-
-- reusable `MagePlayer` React component
-- guest homepage preview powered by the shared player wrapper
-- preset detail page playback
-- create preset live preview
-
-### Preset Flows
-
-- user preset listing
-- public preset discovery with backend-powered tag filtering
-- preset detail screen
-- create preset editor with scene, camera, motion, effects, pass-order, advanced sections, and staged direct-to-object-storage thumbnail uploads that only commit on successful preset creation
-- structured scene data authoring for the MAGE engine
 
 ## Documentation
 
