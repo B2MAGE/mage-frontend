@@ -122,7 +122,7 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 
 | Route            | Access        | Purpose                                 |
 | ---------------- | ------------- | --------------------------------------- |
-| `/`              | Public        | Landing page with embedded MAGE preview |
+| `/`              | Public        | Guest landing page or signed-in preset discovery home |
 | `/presets`       | Public        | Preset discovery with optional tag filter |
 | `/register`      | Guest-only    | Account registration                    |
 | `/login`         | Guest-only    | Account sign-in                         |
@@ -150,7 +150,7 @@ Notes:
 ### MAGE Playback
 
 - reusable `MagePlayer` React component
-- homepage preview powered by the shared player wrapper
+- guest homepage preview powered by the shared player wrapper
 - preset detail page playback
 - create preset live preview
 

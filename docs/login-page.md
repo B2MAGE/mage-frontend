@@ -11,7 +11,7 @@ Route:
 Access:
 
 - guest-only
-- authenticated users are redirected to `/settings`
+- authenticated users are redirected to `/`
 
 ## Related Files
 
@@ -49,7 +49,7 @@ Requests are built through `buildApiUrl()`. For local development, leave `VITE_A
 - validates email format on the client
 - disables the submit button while the request is in flight
 - stores the issued `accessToken` and user snapshot through `completeLoginSession()`
-- redirects to `/settings` after a successful login
+- redirects to `/` after a successful login
 - shows field-level and form-level backend errors when available
 - shows a registration success notice when arriving from the registration flow
 - clears stale or invalid stored sessions when `/api/users/me` returns `401`
