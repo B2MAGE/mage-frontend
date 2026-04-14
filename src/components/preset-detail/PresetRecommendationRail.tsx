@@ -1,12 +1,16 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import type {
-  RecommendedPresetCard,
-  RecommendationFilter,
+import {
+  buildTagRecommendationFilter,
+  readRecommendationFilterTag,
+  type RecommendedPresetCard,
+  type RecommendationFilter,
 } from '../../lib/presetDetail'
+import { ScrollableTagBar } from '../ScrollableTagBar'
 
 type PresetRecommendationRailProps = {
   creatorDisplayName: string
+  currentPresetTags: string[]
   isLoading: boolean
   recommendedPresets: RecommendedPresetCard[]
   recommendationFilter: RecommendationFilter
@@ -15,14 +19,35 @@ type PresetRecommendationRailProps = {
 
 export function PresetRecommendationRail({
   creatorDisplayName,
+  currentPresetTags,
   isLoading,
   recommendedPresets,
   recommendationFilter,
   onSelectFilter,
 }: PresetRecommendationRailProps) {
+  const activeRecommendationTag = readRecommendationFilterTag(recommendationFilter)
+
+  const loadingCopy =
+    activeRecommendationTag !== null
+      ? `Loading presets tagged "${activeRecommendationTag}"...`
+      : recommendationFilter === 'creator'
+        ? `Loading presets from ${creatorDisplayName}...`
+        : 'Loading related presets...'
+
+  const emptyCopy =
+    activeRecommendationTag !== null
+      ? `No other presets tagged "${activeRecommendationTag}" yet.`
+      : recommendationFilter === 'creator'
+        ? `No other presets from ${creatorDisplayName} yet.`
+        : `No related presets from ${creatorDisplayName} or this preset's tags yet.`
+
   return (
     <aside className="mage-watch__rail">
-      <div className="tag-filter-bar preset-detail-recommendation-filters" role="toolbar" aria-label="Filter recommended presets">
+      <ScrollableTagBar
+        ariaLabel="Filter recommended presets"
+        barClassName="preset-detail-recommendation-filters"
+        role="toolbar"
+      >
         <button
           className={`tag-pill${recommendationFilter === 'all' ? ' tag-pill--active' : ''}`}
           aria-pressed={recommendationFilter === 'all'}
@@ -43,12 +68,29 @@ export function PresetRecommendationRail({
         >
           From {creatorDisplayName}
         </button>
-      </div>
+        {currentPresetTags.map((tag) => {
+          const tagFilter = buildTagRecommendationFilter(tag)
+
+          return (
+            <button
+              key={tag}
+              className={`tag-pill${recommendationFilter === tagFilter ? ' tag-pill--active' : ''}`}
+              aria-pressed={recommendationFilter === tagFilter}
+              onClick={() => {
+                onSelectFilter(tagFilter)
+              }}
+              type="button"
+            >
+              {tag}
+            </button>
+          )
+        })}
+      </ScrollableTagBar>
 
       {isLoading ? (
-        <p className="mage-watch__rail-empty">Loading presets from {creatorDisplayName}...</p>
+        <p className="mage-watch__rail-empty">{loadingCopy}</p>
       ) : recommendedPresets.length === 0 ? (
-        <p className="mage-watch__rail-empty">No other presets from {creatorDisplayName} yet.</p>
+        <p className="mage-watch__rail-empty">{emptyCopy}</p>
       ) : (
         <div className="mage-watch__rail-list">
           {recommendedPresets.map((recommendedPreset) => (

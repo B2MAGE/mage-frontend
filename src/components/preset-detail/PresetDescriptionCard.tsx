@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { CreatorProfile, PresetDescription, PresetEngagement } from '../../lib/presetDetail'
 
 type PresetDescriptionCardProps = {
@@ -75,13 +76,15 @@ export function PresetDescriptionCard({
             </div>
           </div>
 
-          <div className="tag-filter-bar preset-detail-description-tags" role="toolbar" aria-label="Preset tags">
-            {presetDescription.tags.map((tag) => (
-              <button key={tag} className="tag-pill" type="button">
-                {tag}
-              </button>
-            ))}
-          </div>
+          {presetDescription.tags.length > 0 ? (
+            <div className="tag-filter-bar preset-detail-description-tags" role="toolbar" aria-label="Preset tags">
+              {presetDescription.tags.map((tag) => (
+                <Link key={tag} className="tag-pill" to={`/presets?tag=${encodeURIComponent(tag)}`}>
+                  {tag}
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
           {descriptionToggle}
         </>

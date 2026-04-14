@@ -1361,6 +1361,7 @@
   top: 94px;
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .mage-watch__rail-header {
@@ -2232,6 +2233,121 @@
   gap: 12px;
 }
 
+.preset-tag-editor__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.preset-tag-editor__label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f5fbf9;
+}
+
+.preset-tag-editor__status,
+.preset-tag-editor__picker,
+.preset-tag-editor__selected {
+  display: grid;
+  gap: 10px;
+}
+
+.preset-tag-dropdown {
+  position: relative;
+}
+
+.preset-tag-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 20, 24, 0.92);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.preset-tag-dropdown__search {
+  display: grid;
+  gap: 8px;
+}
+
+.preset-tag-dropdown__search label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(155, 177, 171, 0.88);
+}
+
+.preset-tag-dropdown__options {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.preset-tag-dropdown__option {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 27, 31, 0.94);
+  color: rgba(220, 232, 229, 0.86);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.preset-tag-dropdown__option:hover {
+  background: rgba(26, 63, 67, 0.96);
+  border-color: rgba(99, 240, 214, 0.34);
+  color: #e8fffb;
+}
+
+.preset-tag-dropdown__option:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.preset-tag-dropdown__option--create {
+  border-color: rgba(99, 240, 214, 0.28);
+  background:
+    linear-gradient(135deg, rgba(17, 58, 53, 0.74), rgba(12, 25, 29, 0.96));
+  color: #e8fffb;
+}
+
+.preset-tag-dropdown__option--create:hover {
+  border-color: rgba(99, 240, 214, 0.46);
+  background:
+    linear-gradient(135deg, rgba(24, 79, 73, 0.84), rgba(14, 32, 36, 0.98));
+}
+
+.preset-tag-editor__selected-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(155, 177, 171, 0.88);
+}
+
+.preset-tag-editor__selected-list {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .preset-thumbnail-input {
   display: none;
 }
@@ -2921,11 +3037,22 @@
 
 /* ─── Tag Filter Bar ─────────────────────────────────────────────────── */
 
+.tag-filter-scroller {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
 .tag-filter-bar {
   display: flex;
   gap: 10px;
   overflow-x: auto;
   padding: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  scroll-behavior: smooth;
   scrollbar-width: none;
 }
 
@@ -2933,7 +3060,51 @@
   display: none;
 }
 
+.tag-filter-scroller__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(11, 22, 26, 0.94);
+  color: rgba(232, 255, 251, 0.92);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.tag-filter-scroller__arrow:hover {
+  background: rgba(18, 34, 39, 0.98);
+  border-color: rgba(99, 240, 214, 0.34);
+  color: #efffff;
+}
+
+.tag-filter-scroller__arrow svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.tag-filter-scroller__arrow--left {
+  left: 0;
+}
+
+.tag-filter-scroller__arrow--right {
+  right: 0;
+}
+
 .tag-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   min-height: 38px;
   padding: 8px 16px;
@@ -2950,6 +3121,14 @@
     border-color 0.2s ease;
   white-space: nowrap;
   text-transform: capitalize;
+  text-decoration: none;
+}
+
+.tag-pill:link,
+.tag-pill:visited,
+.tag-pill:hover,
+.tag-pill:active {
+  text-decoration: none;
 }
 
 .tag-pill:hover {

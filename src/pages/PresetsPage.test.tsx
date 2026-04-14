@@ -90,13 +90,21 @@ describe('PresetsPage', () => {
   })
 
   it('renders tag filter pills after loading', async () => {
-    mockFetchResponses()
+    const fetchSpy = mockFetchResponses()
 
     renderPresetsPage()
 
     expect(await screen.findByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'fire' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'water' })).toBeInTheDocument()
+
+    const tagCall = fetchSpy.mock.calls.find((call) => {
+      const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
+      return url.includes('/tags')
+    })
+
+    const tagUrl = typeof tagCall?.[0] === 'string' ? tagCall[0] : (tagCall?.[0] as Request).url
+    expect(tagUrl).toContain('attachedOnly=true')
   })
 
   it('shows empty state when no presets are returned', async () => {

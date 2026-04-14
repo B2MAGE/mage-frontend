@@ -1,4 +1,4 @@
-import { buildApiUrl, type PresetListResponse } from './api'
+import { buildApiUrl, fetchPresets, type PresetListResponse } from './api'
 import type { MageSceneBlob } from './magePlayerAdapter'
 
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -12,6 +12,7 @@ export type PresetDetailResponse = {
   sceneData?: unknown
   thumbnailRef?: string | null
   createdAt?: string
+  tags?: unknown
 }
 
 export type PresetDetail = {
@@ -22,6 +23,7 @@ export type PresetDetail = {
   sceneData: MageSceneBlob
   thumbnailRef: string | null
   createdAt: string | null
+  tags: string[]
 }
 
 export type PresetDetailErrorCode =
@@ -76,7 +78,13 @@ export type RecommendedPresetCard = {
   ownerUserId: number
 }
 
-export type RecommendationFilter = 'all' | 'creator'
+export type RecommendedPresetGroups = {
+  all: RecommendedPresetCard[]
+  creator: RecommendedPresetCard[]
+  byTag: Record<string, RecommendedPresetCard[]>
+}
+
+export type RecommendationFilter = 'all' | 'creator' | `tag:${string}`
 
 const creatorProfileBlueprints = [
   {
@@ -118,6 +126,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function normalizePresetTags(tags: unknown) {
+  if (!Array.isArray(tags)) {
+    return []
+  }
+
+  const normalizedTags = tags.reduce<string[]>((resolvedTags, tag) => {
+    if (typeof tag === 'string' && tag.trim()) {
+      resolvedTags.push(tag.trim())
+      return resolvedTags
+    }
+
+    if (isRecord(tag) && typeof tag.name === 'string' && tag.name.trim()) {
+      resolvedTags.push(tag.name.trim())
+    }
+
+    return resolvedTags
+  }, [])
+
+  return normalizedTags.filter((tagName, index) => normalizedTags.indexOf(tagName) === index)
+}
+
 function normalizePresetDetail(payload: unknown): PresetDetail | null {
   if (!isRecord(payload)) {
     return null
@@ -152,6 +181,7 @@ function normalizePresetDetail(payload: unknown): PresetDetail | null {
         : null,
     createdAt:
       typeof payload.createdAt === 'string' && payload.createdAt.trim() ? payload.createdAt : null,
+    tags: normalizePresetTags(payload.tags),
   }
 }
 
@@ -285,17 +315,41 @@ function buildRecommendedPresetsFromList(
   presets: PresetListResponse[],
   currentPresetId: number,
 ): RecommendedPresetCard[] {
-  return presets
+  const presetsById = new Map<number, RecommendedPresetCard>()
+
+  presets
     .filter((preset) => preset.presetId !== currentPresetId)
-    .map((preset) => ({
-      id: preset.presetId,
-      title: preset.name,
-      creator: preset.creatorDisplayName,
-      meta: `${buildRecommendedPlaysLabel(preset.presetId)} | ${formatRelativeAge(preset.createdAt)}`,
-      accent: buildRecommendationAccent(preset.presetId),
-      thumbnailRef: preset.thumbnailRef,
-      ownerUserId: preset.ownerUserId,
-    }))
+    .forEach((preset) => {
+      if (presetsById.has(preset.presetId)) {
+        return
+      }
+
+      presetsById.set(preset.presetId, {
+        id: preset.presetId,
+        title: preset.name,
+        creator: preset.creatorDisplayName,
+        meta: `${buildRecommendedPlaysLabel(preset.presetId)} | ${formatRelativeAge(preset.createdAt)}`,
+        accent: buildRecommendationAccent(preset.presetId),
+        thumbnailRef: preset.thumbnailRef,
+        ownerUserId: preset.ownerUserId,
+      })
+    })
+
+  return [...presetsById.values()]
+}
+
+function mergeRecommendedPresetCards(
+  ...presetGroups: RecommendedPresetCard[][]
+): RecommendedPresetCard[] {
+  const presetsById = new Map<number, RecommendedPresetCard>()
+
+  presetGroups.flat().forEach((preset) => {
+    if (!presetsById.has(preset.id)) {
+      presetsById.set(preset.id, preset)
+    }
+  })
+
+  return [...presetsById.values()]
 }
 
 function slugify(value: string) {
@@ -374,6 +428,72 @@ export async function fetchCreatorPresetList(
   return normalizeRecommendedPresetList(payload)
 }
 
+export function buildTagRecommendationFilter(tag: string): RecommendationFilter {
+  return `tag:${tag}` as RecommendationFilter
+}
+
+export function readRecommendationFilterTag(filter: RecommendationFilter) {
+  return filter.startsWith('tag:') ? filter.slice('tag:'.length) : null
+}
+
+export function createEmptyRecommendedPresetGroups(): RecommendedPresetGroups {
+  return {
+    all: [],
+    creator: [],
+    byTag: {},
+  }
+}
+
+export function buildRecommendedPresetGroups(
+  preset: PresetDetail,
+  allPresets: PresetListResponse[],
+  tagPresetsByTag: Record<string, PresetListResponse[]>,
+): RecommendedPresetGroups {
+  const creatorRecommendations =
+    preset.ownerUserId === null
+      ? []
+      : buildRecommendedPresetsFromList(
+          allPresets.filter((candidatePreset) => candidatePreset.ownerUserId === preset.ownerUserId),
+          preset.id,
+        )
+
+  const recommendationsByTag = preset.tags.reduce<Record<string, RecommendedPresetCard[]>>(
+    (resolvedRecommendations, tag) => {
+      resolvedRecommendations[tag] = buildRecommendedPresetsFromList(tagPresetsByTag[tag] ?? [], preset.id)
+      return resolvedRecommendations
+    },
+    {},
+  )
+
+  return {
+    all: mergeRecommendedPresetCards(
+      creatorRecommendations,
+      ...preset.tags.map((tag) => recommendationsByTag[tag] ?? []),
+    ),
+    creator: creatorRecommendations,
+    byTag: recommendationsByTag,
+  }
+}
+
+export async function fetchRecommendedPresetGroups(
+  preset: PresetDetail,
+): Promise<RecommendedPresetGroups> {
+  const recommendationRequests = [fetchPresets(), ...preset.tags.map((tag) => fetchPresets(tag))]
+  const [allPresetsResult, ...tagPresetResults] = await Promise.allSettled(recommendationRequests)
+
+  const allPresets = allPresetsResult.status === 'fulfilled' ? allPresetsResult.value : []
+  const tagPresetsByTag = preset.tags.reduce<Record<string, PresetListResponse[]>>(
+    (resolvedTagPresets, tag, index) => {
+      const nextTagResult = tagPresetResults[index]
+      resolvedTagPresets[tag] = nextTagResult?.status === 'fulfilled' ? nextTagResult.value : []
+      return resolvedTagPresets
+    },
+    {},
+  )
+
+  return buildRecommendedPresetGroups(preset, allPresets, tagPresetsByTag)
+}
+
 export function buildPresetEngagement(preset: PresetDetail): PresetEngagement {
   const plays = 1559 + preset.id * 120
   const upvotes = 56 + preset.id * 30
@@ -442,7 +562,7 @@ export function buildPresetDescription(
       'This page is still an early public pass, but the preset render above is the real scene payload. I wanted the surrounding notes, comments, and recommendations to read like a creator page someone would actually spend time on while the rest of the social features catch up.',
     bestFor: 'late-night sets, focus mixes, ambient intros',
     builtWith: 'soft bloom, layered fog, reflective passes, restrained drift',
-    tags: ['ambient', 'slow-bloom', 'focus-friendly', 'late-night', 'magepreset'],
+    tags: preset.tags,
   }
 }
 

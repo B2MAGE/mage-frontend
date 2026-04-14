@@ -36,7 +36,7 @@ export function PresetsPage() {
   useEffect(() => {
     let cancelled = false
 
-    fetchTags()
+    fetchTags({ attachedOnly: true })
       .then((data) => {
         if (!cancelled) {
           setTags(data)
