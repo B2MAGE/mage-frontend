@@ -3,21 +3,21 @@ import { Link } from 'react-router-dom'
 import {
   buildSortAriaLabel,
   formatCompactCount,
-  formatPresetDate,
+  formatSceneDate,
   type SortDirection,
   type SortKey,
-  type UserPreset,
-} from '../../lib/myPresets'
+  type UserScene,
+} from '../../lib/myScenes'
 
-type MyPresetsTableProps = {
-  allPagePresetsSelected: boolean
-  pagedPresets: UserPreset[]
+type MyScenesTableProps = {
+  allPageScenesSelected: boolean
+  pagedScenes: UserScene[]
   selectAllCheckboxRef: RefObject<HTMLInputElement | null>
-  selectedPresetIdSet: Set<number>
+  selectedSceneIdSet: Set<number>
   sortDirection: SortDirection
   sortKey: SortKey
   onSort: (sortKey: SortKey) => void
-  onTogglePresetSelection: (presetId: number) => void
+  onToggleSceneSelection: (sceneId: number) => void
   onToggleSelectAll: () => void
 }
 
@@ -29,7 +29,7 @@ function SortIndicator({
   direction: SortDirection
 }) {
   return (
-    <span className="my-presets-table__sort-indicator" aria-hidden="true">
+    <span className="my-scenes-table__sort-indicator" aria-hidden="true">
       <svg viewBox="0 0 16 16" fill="none">
         <path
           d="M8 3.5 5.25 6.25h5.5L8 3.5Z"
@@ -61,7 +61,7 @@ function SortButton({
 }) {
   return (
     <button
-      className="my-presets-table__sort-button"
+      className="my-scenes-table__sort-button"
       aria-label={buildSortAriaLabel(label, sortKey, activeSortKey, sortDirection)}
       data-active={activeSortKey === sortKey}
       onClick={() => {
@@ -75,33 +75,33 @@ function SortButton({
   )
 }
 
-export function MyPresetsTable({
-  allPagePresetsSelected,
-  pagedPresets,
+export function MyScenesTable({
+  allPageScenesSelected,
+  pagedScenes,
   selectAllCheckboxRef,
-  selectedPresetIdSet,
+  selectedSceneIdSet,
   sortDirection,
   sortKey,
   onSort,
-  onTogglePresetSelection,
+  onToggleSceneSelection,
   onToggleSelectAll,
-}: MyPresetsTableProps) {
+}: MyScenesTableProps) {
   return (
-    <div className="my-presets-scroll">
-      <div className="my-presets-table" aria-label="My presets" role="list">
-        <div className="my-presets-table__head">
-          <div className="my-presets-table__primary-heading">
+    <div className="my-scenes-scroll">
+      <div className="my-scenes-table" aria-label="My scenes" role="list">
+        <div className="my-scenes-table__head">
+          <div className="my-scenes-table__primary-heading">
             <input
               ref={selectAllCheckboxRef}
-              checked={allPagePresetsSelected}
-              className="my-presets-table__checkbox"
+              checked={allPageScenesSelected}
+              className="my-scenes-table__checkbox"
               onChange={onToggleSelectAll}
               type="checkbox"
-              aria-label="Select all presets on this page"
+              aria-label="Select all scenes on this page"
             />
-            <span>Preset</span>
+            <span>Scene</span>
           </div>
-          <span className="my-presets-table__status-heading">Status</span>
+          <span className="my-scenes-table__status-heading">Status</span>
           <SortButton
             activeSortKey={sortKey}
             label="Updated"
@@ -126,70 +126,70 @@ export function MyPresetsTable({
           />
         </div>
 
-        {pagedPresets.map((preset) => (
-          <article key={preset.id} className="my-presets-row" role="listitem">
-            <div className="my-presets-row__primary">
-              <label className="my-presets-row__selection">
+        {pagedScenes.map((scene) => (
+          <article key={scene.id} className="my-scenes-row" role="listitem">
+            <div className="my-scenes-row__primary">
+              <label className="my-scenes-row__selection">
                 <input
-                  checked={selectedPresetIdSet.has(preset.id)}
-                  className="my-presets-table__checkbox"
+                  checked={selectedSceneIdSet.has(scene.id)}
+                  className="my-scenes-table__checkbox"
                   onChange={() => {
-                    onTogglePresetSelection(preset.id)
+                    onToggleSceneSelection(scene.id)
                   }}
                   type="checkbox"
-                  aria-label={`Select ${preset.name}`}
+                  aria-label={`Select ${scene.name}`}
                 />
               </label>
               <Link
-                aria-label="Open preset preview"
-                className="my-presets-row__thumb-link"
-                to={`/presets/${preset.id}`}
+                aria-label="Open scene preview"
+                className="my-scenes-row__thumb-link"
+                to={`/scenes/${scene.id}`}
               >
-                {preset.thumbnailRef ? (
+                {scene.thumbnailRef ? (
                   <img
-                    className="my-presets-row__thumb"
-                    src={preset.thumbnailRef}
-                    alt={`${preset.name} thumbnail`}
+                    className="my-scenes-row__thumb"
+                    src={scene.thumbnailRef}
+                    alt={`${scene.name} thumbnail`}
                   />
                 ) : (
                   <div
-                    className="my-presets-row__thumb-fallback"
-                    aria-label={`${preset.name} thumbnail unavailable`}
+                    className="my-scenes-row__thumb-fallback"
+                    aria-label={`${scene.name} thumbnail unavailable`}
                   >
                     No thumbnail available
                   </div>
                 )}
               </Link>
-              <div className="my-presets-row__copy">
-                <Link className="my-presets-row__title-link" to={`/presets/${preset.id}`}>
-                  <strong>{preset.name}</strong>
+              <div className="my-scenes-row__copy">
+                <Link className="my-scenes-row__title-link" to={`/scenes/${scene.id}`}>
+                  <strong>{scene.name}</strong>
                 </Link>
-                <button className="my-presets-row__description" type="button">
-                  {preset.description ?? 'Add description'}
+                <button className="my-scenes-row__description" type="button">
+                  {scene.description ?? 'Add description'}
                 </button>
               </div>
             </div>
 
-            <div className="my-presets-row__cell my-presets-row__cell--status">
-              <span className="my-presets-row__pill" data-status={preset.statusLabel}>
-                {preset.statusLabel}
+            <div className="my-scenes-row__cell my-scenes-row__cell--status">
+              <span className="my-scenes-row__pill" data-status={scene.statusLabel}>
+                {scene.statusLabel}
               </span>
             </div>
 
-            <div className="my-presets-row__cell">
-              <strong>{formatPresetDate(preset.createdAt)}</strong>
+            <div className="my-scenes-row__cell">
+              <strong>{formatSceneDate(scene.createdAt)}</strong>
             </div>
 
-            <div className="my-presets-row__metric">
-              <strong>{formatCompactCount(preset.viewsCount)}</strong>
+            <div className="my-scenes-row__metric">
+              <strong>{formatCompactCount(scene.viewsCount)}</strong>
             </div>
 
-            <div className="my-presets-row__metric">
-              <strong>{formatCompactCount(preset.commentsCount)}</strong>
+            <div className="my-scenes-row__metric">
+              <strong>{formatCompactCount(scene.commentsCount)}</strong>
             </div>
 
-            <div className="my-presets-row__metric">
-              <strong>{preset.likesRatio}%</strong>
+            <div className="my-scenes-row__metric">
+              <strong>{scene.likesRatio}%</strong>
             </div>
           </article>
         ))}

@@ -11,7 +11,7 @@ const SCENE_BLOB_KEYS = [
 
 type MageEngineBridge = {
   dispose: () => void
-  loadPreset: (preset: unknown) => unknown
+  loadPreset: (scene: unknown) => unknown
   start: () => void
 }
 
@@ -75,15 +75,15 @@ export async function createMagePlayer(
   return {
     loadSceneBlob(sceneBlob) {
       if (!isMageSceneBlob(sceneBlob)) {
-        throw new MagePlayerAdapterError('Preset scene data is missing required MAGE fields.')
+        throw new MagePlayerAdapterError('Scene data is missing required MAGE fields.')
       }
 
       try {
-        const loadedPreset = engine.loadPreset(sceneBlob)
+        const loadedScene = engine.loadPreset(sceneBlob)
 
-        if (!loadedPreset) {
+        if (!loadedScene) {
           throw new MagePlayerAdapterError(
-            'Preset scene data could not be rendered by the MAGE engine.',
+            'Scene data could not be rendered by the MAGE engine.',
           )
         }
       } catch (error) {
@@ -91,7 +91,7 @@ export async function createMagePlayer(
           throw error
         }
 
-        throw new MagePlayerAdapterError('Preset scene data could not be rendered by the MAGE engine.')
+        throw new MagePlayerAdapterError('Scene data could not be rendered by the MAGE engine.')
       }
     },
     dispose() {

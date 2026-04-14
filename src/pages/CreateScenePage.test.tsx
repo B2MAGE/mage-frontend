@@ -8,7 +8,7 @@ import {
   type AuthenticatedUser,
 } from '../auth/AuthContext'
 import { buildApiUrl } from '../lib/api'
-import { CreatePresetPage } from './CreatePresetPage'
+import { CreateScenePage } from './CreateScenePage'
 
 vi.mock('../components/MagePlayer', () => ({
   MagePlayer: ({ sceneBlob }: { sceneBlob: unknown }) => (
@@ -19,7 +19,7 @@ vi.mock('../components/MagePlayer', () => ({
 const storedUser: AuthenticatedUser = {
   userId: 8,
   email: 'artist@example.com',
-  displayName: 'Preset Artist',
+  displayName: 'Scene Artist',
   authProvider: 'LOCAL',
 }
 
@@ -52,7 +52,7 @@ function storeSession() {
   )
 }
 
-function mockCreatePresetPageFetch(
+function mockCreateScenePageFetch(
   handler?: FetchHandler,
   tagsResponse: unknown[] = mockTags,
 ) {
@@ -77,13 +77,13 @@ function mockCreatePresetPageFetch(
   })
 }
 
-function renderCreatePresetPage() {
+function renderCreateScenePage() {
   return render(
-    <MemoryRouter initialEntries={['/create-preset']}>
+    <MemoryRouter initialEntries={['/create-scene']}>
       <AuthProvider>
         <Routes>
-          <Route path="/create-preset" element={<CreatePresetPage />} />
-          <Route path="/my-presets" element={<div>My Presets</div>} />
+          <Route path="/create-scene" element={<CreateScenePage />} />
+          <Route path="/my-scenes" element={<div>My Scenes</div>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -118,15 +118,15 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-describe('CreatePresetPage', () => {
+describe('CreateScenePage', () => {
   it('renders the expanded MAGE engine editor with the full section menu available', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
-    expect(screen.getByRole('heading', { name: /create preset/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /create scene/i })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /basic/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^camera$/i })).not.toBeInTheDocument()
@@ -142,15 +142,15 @@ describe('CreatePresetPage', () => {
     expect(screen.getByTestId('mage-player')).toHaveTextContent('preview-ready')
   })
 
-  it('renders interactive metadata controls beneath the preset name field', async () => {
+  it('renders interactive metadata controls beneath the scene name field', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     fireEvent.change(screen.getByLabelText(/description/i), {
-      target: { value: 'A soft drifting preset for night scenes.' },
+      target: { value: 'A soft drifting scene for night scenes.' },
     })
     fireEvent.change(screen.getByLabelText(/playlists/i), {
       target: { value: 'ambient-atlas' },
@@ -162,7 +162,7 @@ describe('CreatePresetPage', () => {
     })
 
     expect(screen.getByLabelText(/description/i)).toHaveValue(
-      'A soft drifting preset for night scenes.',
+      'A soft drifting scene for night scenes.',
     )
     expect(screen.getByLabelText(/playlists/i)).toHaveValue('ambient-atlas')
     expect(screen.getByText(/selected file:/i)).toBeInTheDocument()
@@ -173,11 +173,11 @@ describe('CreatePresetPage', () => {
   it('loads available tags and lets the user select more than one before saving', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
@@ -193,7 +193,7 @@ describe('CreatePresetPage', () => {
 
     let createTagBody: Record<string, unknown> | null = null
 
-    mockCreatePresetPageFetch((input, init) => {
+    mockCreateScenePageFetch((input, init) => {
       if (input === buildApiUrl('/tags')) {
         createTagBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(jsonResponse({ tagId: 7, name: 'late night' }, 201))
@@ -202,7 +202,7 @@ describe('CreatePresetPage', () => {
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     await addTagFromSearch(user, 'Late Night')
 
@@ -264,7 +264,7 @@ describe('CreatePresetPage', () => {
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     await addTagFromSearch(user, 'Late Night')
 
@@ -273,14 +273,14 @@ describe('CreatePresetPage', () => {
     expect(screen.queryByText(/failed to create tag/i)).not.toBeInTheDocument()
   })
 
-  it('clicking a selected tag pill removes it from the preset', async () => {
+  it('clicking a selected tag pill removes it from the scene', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     await selectExistingTag(user, 'ambient')
     await user.click(screen.getByRole('button', { name: /^ambient$/i }))
@@ -291,9 +291,9 @@ describe('CreatePresetPage', () => {
   it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'motion' } })
 
@@ -313,9 +313,9 @@ describe('CreatePresetPage', () => {
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'effects' } })
 
@@ -342,27 +342,27 @@ describe('CreatePresetPage', () => {
 
     let submittedBody: Record<string, unknown> | null = null
 
-    mockCreatePresetPageFetch((input, init) => {
-      if (input === buildApiUrl('/presets')) {
+    mockCreateScenePageFetch((input, init) => {
+      if (input === buildApiUrl('/scenes')) {
         submittedBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
       }
     })
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'camera' } })
     expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/camera orientation/i), { target: { value: '90' } })
-    await user.click(screen.getByRole('button', { name: /create preset/i }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     await waitFor(() => expect(submittedBody).not.toBeNull())
 
     if (!submittedBody) {
-      throw new Error('Expected preset submission payload to be captured.')
+      throw new Error('Expected scene submission payload to be captured.')
     }
 
     const responseBody: { name: string; sceneData: Record<string, unknown> } = submittedBody
@@ -376,42 +376,42 @@ describe('CreatePresetPage', () => {
     })
     expect(intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
     expect(passOrder.at(-1)).toBe('outputPass')
-    expect(await screen.findByText('My Presets')).toBeInTheDocument()
+    expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('attaches selected tags after the preset is created', async () => {
+  it('attaches selected tags after the scene is created', async () => {
     storeSession()
 
     let createBody: Record<string, unknown> | null = null
     const attachedTagIds: number[] = []
 
-    mockCreatePresetPageFetch((input, init) => {
-      if (input === buildApiUrl('/presets')) {
+    mockCreateScenePageFetch((input, init) => {
+      if (input === buildApiUrl('/scenes')) {
         createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
       }
 
-      if (input === buildApiUrl('/presets/18/tags')) {
+      if (input === buildApiUrl('/scenes/18/tags')) {
         const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
 
         if (typeof payload.tagId === 'number') {
           attachedTagIds.push(payload.tagId)
         }
 
-        return Promise.resolve(jsonResponse({ presetId: 18, tagId: payload.tagId }, 201))
+        return Promise.resolve(jsonResponse({ sceneId: 18, tagId: payload.tagId }, 201))
       }
     })
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
-    await user.click(screen.getByRole('button', { name: /create preset/i }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
 
-    await screen.findByText('My Presets')
+    await screen.findByText('My Scenes')
 
     expect(createBody).toMatchObject({
       name: 'Aurora Drift',
@@ -419,17 +419,17 @@ describe('CreatePresetPage', () => {
     expect(attachedTagIds).toEqual([1, 2])
   })
 
-  it('keeps the created preset in retry mode when one or more tag attachments fail', async () => {
+  it('keeps the created scene in retry mode when one or more tag attachments fail', async () => {
     storeSession()
 
     const attachCalls: number[] = []
 
-    mockCreatePresetPageFetch((input, init) => {
-      if (input === buildApiUrl('/presets')) {
-        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+    mockCreateScenePageFetch((input, init) => {
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
       }
 
-      if (input === buildApiUrl('/presets/18/tags')) {
+      if (input === buildApiUrl('/scenes/18/tags')) {
         const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
 
         if (typeof payload.tagId === 'number') {
@@ -448,41 +448,41 @@ describe('CreatePresetPage', () => {
           )
         }
 
-        return Promise.resolve(jsonResponse({ presetId: 18, tagId: payload.tagId }, 201))
+        return Promise.resolve(jsonResponse({ sceneId: 18, tagId: payload.tagId }, 201))
       }
     })
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
-    await user.click(screen.getByRole('button', { name: /create preset/i }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(
-      await screen.findByText(/preset created, but we couldn't attach focus-friendly\./i),
+      await screen.findByText(/scene created, but we couldn't attach focus-friendly\./i),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /retry tag attachment/i })).toBeInTheDocument()
     expect(screen.getByText(/waiting to retry attachment for:/i)).toBeInTheDocument()
     expect(attachCalls).toEqual([1, 2])
   })
 
-  it('uploads a selected thumbnail before the preset create request is sent', async () => {
+  it('uploads a selected thumbnail before the scene create request is sent', async () => {
     storeSession()
 
     const uploadedFiles: File[] = []
     let presignBody: Record<string, unknown> | null = null
     let createBody: Record<string, unknown> | null = null
 
-    mockCreatePresetPageFetch((input, init) => {
-      if (input === buildApiUrl('/presets/thumbnail/presign')) {
+    mockCreateScenePageFetch((input, init) => {
+      if (input === buildApiUrl('/scenes/thumbnail/presign')) {
         presignBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(
           jsonResponse({
-            objectKey: 'presets/pending/8/thumbnails/abc123.png',
-            uploadUrl: 'https://upload.example.com/presets/pending/8/thumbnails/abc123.png',
+            objectKey: 'scenes/pending/8/thumbnails/abc123.png',
+            uploadUrl: 'https://upload.example.com/scenes/pending/8/thumbnails/abc123.png',
             method: 'PUT',
             headers: {
               'Content-Type': 'image/png',
@@ -491,7 +491,7 @@ describe('CreatePresetPage', () => {
         )
       }
 
-      if (input === 'https://upload.example.com/presets/pending/8/thumbnails/abc123.png') {
+      if (input === 'https://upload.example.com/scenes/pending/8/thumbnails/abc123.png') {
         if (init?.body instanceof File) {
           uploadedFiles.push(init.body)
         }
@@ -499,23 +499,23 @@ describe('CreatePresetPage', () => {
         return Promise.resolve(new Response(null, { status: 200 }))
       }
 
-      if (input === buildApiUrl('/presets')) {
+      if (input === buildApiUrl('/scenes')) {
         createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
       }
     })
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
       target: {
         files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
       },
     })
-    await user.click(screen.getByRole('button', { name: /create preset/i }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     await waitFor(() => expect(presignBody).not.toBeNull())
 
@@ -528,18 +528,18 @@ describe('CreatePresetPage', () => {
     expect(uploadedFiles[0].name).toBe('cover.png')
     expect(createBody).toMatchObject({
       name: 'Aurora Drift',
-      thumbnailObjectKey: 'presets/pending/8/thumbnails/abc123.png',
+      thumbnailObjectKey: 'scenes/pending/8/thumbnails/abc123.png',
     })
-    expect(await screen.findByText('My Presets')).toBeInTheDocument()
+    expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('does not create the preset when thumbnail upload preparation fails', async () => {
+  it('does not create the scene when thumbnail upload preparation fails', async () => {
     storeSession()
 
     let createAttempted = false
 
-    mockCreatePresetPageFetch((input) => {
-      if (input === buildApiUrl('/presets/thumbnail/presign')) {
+    mockCreateScenePageFetch((input) => {
+      if (input === buildApiUrl('/scenes/thumbnail/presign')) {
         return Promise.resolve(
           jsonResponse(
             {
@@ -551,23 +551,23 @@ describe('CreatePresetPage', () => {
         )
       }
 
-      if (input === buildApiUrl('/presets')) {
+      if (input === buildApiUrl('/scenes')) {
         createAttempted = true
-        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
       }
     })
 
     const user = userEvent.setup()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
       target: {
         files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
       },
     })
-    await user.click(screen.getByRole('button', { name: /create preset/i }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(
       await screen.findByText(/thumbnail storage is unavailable right now\./i),
@@ -578,9 +578,9 @@ describe('CreatePresetPage', () => {
   it('surfaces advanced MAGE engine fields and the raw JSON editor in the Advanced section', async () => {
     storeSession()
 
-    mockCreatePresetPageFetch()
+    mockCreateScenePageFetch()
 
-    renderCreatePresetPage()
+    renderCreateScenePage()
 
     fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'advanced' } })
 

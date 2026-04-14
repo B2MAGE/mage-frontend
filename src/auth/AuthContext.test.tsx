@@ -41,7 +41,7 @@ function AuthHarness() {
       <button
         type="button"
         onClick={() => {
-          void authenticatedFetch('/presets')
+          void authenticatedFetch('/scenes')
         }}
       >
         Request protected data
@@ -176,7 +176,7 @@ describe('AuthProvider', () => {
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenNthCalledWith(
         2,
-        buildApiUrl('/presets'),
+        buildApiUrl('/scenes'),
         expect.objectContaining({
           headers: expect.any(Headers),
         }),

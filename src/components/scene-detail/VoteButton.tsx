@@ -34,7 +34,7 @@ export function VoteButton({
 
   return (
     <button aria-label={`${label} ${count}`} className={className} type="button">
-      <span className="preset-detail-vote-button__icon" aria-hidden="true">
+      <span className="scene-detail-vote-button__icon" aria-hidden="true">
         <Icon />
       </span>
       <span>{count}</span>

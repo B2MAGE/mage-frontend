@@ -2,72 +2,72 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { MagePlayer } from '../components/MagePlayer'
-import { PresetCommentsPanel } from '../components/preset-detail/PresetCommentsPanel'
-import { PresetDescriptionCard } from '../components/preset-detail/PresetDescriptionCard'
-import { PresetRecommendationRail } from '../components/preset-detail/PresetRecommendationRail'
-import { PresetDetailState } from '../components/preset-detail/PresetDetailState'
-import { VoteButton } from '../components/preset-detail/VoteButton'
+import { SceneCommentsPanel } from '../components/scene-detail/SceneCommentsPanel'
+import { SceneDescriptionCard } from '../components/scene-detail/SceneDescriptionCard'
+import { SceneRecommendationRail } from '../components/scene-detail/SceneRecommendationRail'
+import { SceneDetailState } from '../components/scene-detail/SceneDetailState'
+import { VoteButton } from '../components/scene-detail/VoteButton'
 import {
   buildCreatorProfile,
-  buildPresetComments,
-  buildPresetDescription,
-  buildPresetEngagement,
-  createEmptyRecommendedPresetGroups,
-  fetchRecommendedPresetGroups,
-  fetchPresetDetail,
-  PresetDetailRequestError,
+  buildSceneComments,
+  buildSceneDescription,
+  buildSceneEngagement,
+  createEmptyRecommendedSceneGroups,
+  fetchRecommendedSceneGroups,
+  fetchSceneDetail,
+  SceneDetailRequestError,
   readErrorCopy,
   readInitial,
-  readPresetId,
+  readSceneId,
   readRecommendationFilterTag,
-  type PresetDetail,
-  type PresetDetailErrorCode,
-  type RecommendedPresetGroups,
+  type SceneDetail,
+  type SceneDetailErrorCode,
+  type RecommendedSceneGroups,
   type RecommendationFilter,
-} from '../lib/presetDetail'
+} from '../lib/sceneDetail'
 
-export function PresetDetailPage() {
+export function SceneDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
-  const [preset, setPreset] = useState<PresetDetail | null>(null)
-  const [errorCode, setErrorCode] = useState<PresetDetailErrorCode | null>(null)
+  const [scene, setScene] = useState<SceneDetail | null>(null)
+  const [errorCode, setErrorCode] = useState<SceneDetailErrorCode | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [recommendedPresetGroups, setRecommendedPresetGroups] = useState<RecommendedPresetGroups>(
-    createEmptyRecommendedPresetGroups(),
+  const [recommendedSceneGroups, setRecommendedSceneGroups] = useState<RecommendedSceneGroups>(
+    createEmptyRecommendedSceneGroups(),
   )
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false)
   const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('all')
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
-  const presetId = readPresetId(id)
+  const sceneId = readSceneId(id)
 
   useEffect(() => {
-    if (presetId === null || isRestoringSession) {
+    if (sceneId === null || isRestoringSession) {
       return
     }
 
-    const nextPresetId = presetId
+    const nextSceneId = sceneId
     let isCurrent = true
 
-    async function loadPreset() {
+    async function loadScene() {
       setIsLoading(true)
       setErrorCode(null)
-      setPreset(null)
+      setScene(null)
 
       try {
-        const nextPreset = await fetchPresetDetail(authenticatedFetch, isAuthenticated, nextPresetId)
+        const nextScene = await fetchSceneDetail(authenticatedFetch, isAuthenticated, nextSceneId)
 
         if (!isCurrent) {
           return
         }
 
-        setPreset(nextPreset)
+        setScene(nextScene)
       } catch (error) {
         if (!isCurrent) {
           return
         }
 
-        setErrorCode(error instanceof PresetDetailRequestError ? error.code : 'unavailable')
+        setErrorCode(error instanceof SceneDetailRequestError ? error.code : 'unavailable')
       } finally {
         if (isCurrent) {
           setIsLoading(false)
@@ -75,45 +75,45 @@ export function PresetDetailPage() {
       }
     }
 
-    void loadPreset()
+    void loadScene()
 
     return () => {
       isCurrent = false
     }
-  }, [authenticatedFetch, isAuthenticated, isRestoringSession, presetId])
+  }, [authenticatedFetch, isAuthenticated, isRestoringSession, sceneId])
 
   useEffect(() => {
     setIsDescriptionExpanded(false)
     setRecommendationFilter('all')
-  }, [preset?.id])
+  }, [scene?.id])
 
   useEffect(() => {
-    if (!preset) {
-      setRecommendedPresetGroups(createEmptyRecommendedPresetGroups())
+    if (!scene) {
+      setRecommendedSceneGroups(createEmptyRecommendedSceneGroups())
       setIsRecommendationsLoading(false)
       return
     }
 
-    const currentPreset = preset
+    const currentScene = scene
     let isCurrent = true
 
-    async function loadRecommendedPresets() {
+    async function loadRecommendedScenes() {
       setIsRecommendationsLoading(true)
 
       try {
-        const nextRecommendedPresetGroups = await fetchRecommendedPresetGroups(currentPreset)
+        const nextRecommendedSceneGroups = await fetchRecommendedSceneGroups(currentScene)
 
         if (!isCurrent) {
           return
         }
 
-        setRecommendedPresetGroups(nextRecommendedPresetGroups)
+        setRecommendedSceneGroups(nextRecommendedSceneGroups)
       } catch {
         if (!isCurrent) {
           return
         }
 
-        setRecommendedPresetGroups(createEmptyRecommendedPresetGroups())
+        setRecommendedSceneGroups(createEmptyRecommendedSceneGroups())
       } finally {
         if (isCurrent) {
           setIsRecommendationsLoading(false)
@@ -121,18 +121,18 @@ export function PresetDetailPage() {
       }
     }
 
-    void loadRecommendedPresets()
+    void loadRecommendedScenes()
 
     return () => {
       isCurrent = false
     }
-  }, [preset])
+  }, [scene])
 
-  if (presetId === null) {
+  if (sceneId === null) {
     const { description, title } = readErrorCopy('invalid-id')
 
     return (
-      <PresetDetailState
+      <SceneDetailState
         title={title}
         description={description}
         actions={
@@ -141,8 +141,8 @@ export function PresetDetailPage() {
               Back to Home
             </Link>
             {isAuthenticated ? (
-              <Link className="secondary-link" to="/my-presets">
-                Back to My Presets
+              <Link className="secondary-link" to="/my-scenes">
+                Back to My Scenes
               </Link>
             ) : null}
           </div>
@@ -153,22 +153,22 @@ export function PresetDetailPage() {
 
   if (isRestoringSession || isLoading) {
     return (
-      <PresetDetailState
-        title="Loading preset..."
+      <SceneDetailState
+        title="Loading scene..."
         description={
           isRestoringSession
-            ? 'MAGE is restoring your session before loading this preset.'
-            : 'MAGE is fetching preset metadata and loading the embedded player.'
+            ? 'MAGE is restoring your session before loading this scene.'
+            : 'MAGE is fetching scene metadata and loading the embedded player.'
         }
       />
     )
   }
 
-  if (errorCode || !preset) {
+  if (errorCode || !scene) {
     const { description, title } = readErrorCopy(errorCode ?? 'unavailable')
 
     return (
-      <PresetDetailState
+      <SceneDetailState
         title={title}
         description={description}
         actions={
@@ -183,8 +183,8 @@ export function PresetDetailPage() {
               </Link>
             )}
             {isAuthenticated ? (
-              <Link className="secondary-link" to="/my-presets">
-                Back to My Presets
+              <Link className="secondary-link" to="/my-scenes">
+                Back to My Scenes
               </Link>
             ) : errorCode !== 'auth-required' ? (
               <Link className="secondary-link" to="/login">
@@ -197,45 +197,45 @@ export function PresetDetailPage() {
     )
   }
 
-  const creatorProfile = buildCreatorProfile(preset, user?.displayName, user?.userId)
-  const engagement = buildPresetEngagement(preset)
-  const presetDescription = buildPresetDescription(preset, creatorProfile)
-  const presetComments = buildPresetComments(preset)
+  const creatorProfile = buildCreatorProfile(scene, user?.displayName, user?.userId)
+  const engagement = buildSceneEngagement(scene)
+  const sceneDescription = buildSceneDescription(scene, creatorProfile)
+  const sceneComments = buildSceneComments(scene)
   const activeRecommendationTag = readRecommendationFilterTag(recommendationFilter)
-  const filteredRecommendedPresets =
+  const filteredRecommendedScenes =
     activeRecommendationTag !== null
-      ? recommendedPresetGroups.byTag[activeRecommendationTag] ?? []
+      ? recommendedSceneGroups.byTag[activeRecommendationTag] ?? []
       : recommendationFilter === 'creator'
-        ? recommendedPresetGroups.creator
-        : recommendedPresetGroups.all
+        ? recommendedSceneGroups.creator
+        : recommendedSceneGroups.all
   const composerInitial = readInitial(user?.displayName ?? 'Guest')
   const composerPrompt = user?.displayName
     ? `Add a comment as ${user.displayName}...`
     : 'Sign in to join the conversation'
 
   return (
-    <main className="preset-detail-page">
-      <section className="mage-watch preset-detail-watch">
+    <main className="scene-detail-page">
+      <section className="mage-watch scene-detail-watch">
         <div className="mage-watch__main">
           <div className="mage-player-shell">
             <div
-              className="mage-stage-frame mage-stage-frame--watch preset-detail-stage"
-              style={{ '--preset-accent': '#63f0d6' } as CSSProperties}
+              className="mage-stage-frame mage-stage-frame--watch scene-detail-stage"
+              style={{ '--scene-accent': '#63f0d6' } as CSSProperties}
             >
               <MagePlayer
-                ariaLabel={`${preset.name} live render`}
-                className="preset-detail-player"
-                sceneBlob={preset.sceneData}
+                ariaLabel={`${scene.name} live render`}
+                className="scene-detail-player"
+                sceneBlob={scene.sceneData}
               />
             </div>
           </div>
 
-          <div className="preset-detail-header">
-            <h1 className="mage-watch__title">{preset.name}</h1>
+          <div className="scene-detail-header">
+            <h1 className="mage-watch__title">{scene.name}</h1>
           </div>
 
-          <section className="preset-detail-social-row">
-            <div className="preset-detail-social-row__creator">
+          <section className="scene-detail-social-row">
+            <div className="scene-detail-social-row__creator">
               <div className="mage-channel-card">
                 <div className="mage-channel-card__avatar" aria-hidden="true">
                   {readInitial(creatorProfile.displayName)}
@@ -247,54 +247,54 @@ export function PresetDetailPage() {
               </div>
 
               {creatorProfile.primaryActionLabel ? (
-                <button className="preset-detail-follow-button" type="button">
+                <button className="scene-detail-follow-button" type="button">
                   {creatorProfile.primaryActionLabel}
                 </button>
               ) : null}
             </div>
 
-            <div className="preset-detail-action-row">
+            <div className="scene-detail-action-row">
               <VoteButton
-                className="preset-detail-action-chip"
+                className="scene-detail-action-chip"
                 count={engagement.upvotesLabel}
                 direction="up"
               />
               <VoteButton
-                className="preset-detail-action-chip"
+                className="scene-detail-action-chip"
                 count={engagement.downvotesLabel}
                 direction="down"
               />
-              <button className="preset-detail-action-chip" type="button">
+              <button className="scene-detail-action-chip" type="button">
                 Share
               </button>
-              <button className="preset-detail-action-chip" type="button">
+              <button className="scene-detail-action-chip" type="button">
                 Save
               </button>
             </div>
           </section>
 
-          <PresetDescriptionCard
+          <SceneDescriptionCard
             creatorProfile={creatorProfile}
             engagement={engagement}
             isDescriptionExpanded={isDescriptionExpanded}
-            presetDescription={presetDescription}
+            sceneDescription={sceneDescription}
             onToggleDescription={() => {
               setIsDescriptionExpanded((currentValue) => !currentValue)
             }}
           />
 
-          <PresetCommentsPanel
-            comments={presetComments}
+          <SceneCommentsPanel
+            comments={sceneComments}
             composerInitial={composerInitial}
             composerPrompt={composerPrompt}
           />
         </div>
 
-        <PresetRecommendationRail
+        <SceneRecommendationRail
           creatorDisplayName={creatorProfile.displayName}
-          currentPresetTags={preset.tags}
+          currentSceneTags={scene.tags}
           isLoading={isRecommendationsLoading}
-          recommendedPresets={filteredRecommendedPresets}
+          recommendedScenes={filteredRecommendedScenes}
           recommendationFilter={recommendationFilter}
           onSelectFilter={setRecommendationFilter}
         />

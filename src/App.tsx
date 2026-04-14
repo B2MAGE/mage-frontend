@@ -5,11 +5,11 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
-import { MyPresetsPage } from './pages/MyPresetsPage'
-import { PresetDetailPage } from './pages/PresetDetailPage'
-import { PresetsPage } from './pages/PresetsPage'
+import { MyScenesPage } from './pages/MyScenesPage'
+import { SceneDetailPage } from './pages/SceneDetailPage'
+import { ScenesPage } from './pages/ScenesPage'
 import { RegisterPage } from './pages/RegisterPage'
-import { CreatePresetPage } from './pages/CreatePresetPage'
+import { CreateScenePage } from './pages/CreateScenePage'
 import { SettingsPage } from './pages/SettingsPage'
 
 type ProtectedRouteProps = {
@@ -60,7 +60,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/presets" element={<PresetsPage />} />
+          <Route path="/scenes" element={<ScenesPage />} />
           <Route
             path="/login"
             element={
@@ -70,14 +70,14 @@ function App() {
             }
           />
           <Route
-            path="/my-presets"
+            path="/my-scenes"
             element={
               <ProtectedRoute>
-                <MyPresetsPage />
+                <MyScenesPage />
               </ProtectedRoute>
             }
           />
-          <Route path="/presets/:id" element={<PresetDetailPage />} />
+          <Route path="/scenes/:id" element={<SceneDetailPage />} />
           <Route
             path="/register"
             element={
@@ -86,7 +86,7 @@ function App() {
               </GuestOnlyRoute>
             }
           />
-          <Route path="/create-preset" element={<CreatePresetPage />} />
+          <Route path="/create-scene" element={<CreateScenePage />} />
           <Route
             path="/settings"
             element={

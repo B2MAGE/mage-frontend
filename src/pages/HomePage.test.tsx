@@ -25,8 +25,8 @@ vi.mock('../components/MagePlayer', () => ({
   MagePlayer: () => <div>Preview player</div>,
 }))
 
-vi.mock('./PresetsPage', () => ({
-  PresetsPage: () => <div>Presets page</div>,
+vi.mock('./ScenesPage', () => ({
+  ScenesPage: () => <div>Scenes page</div>,
 }))
 
 describe('HomePage', () => {
@@ -47,11 +47,11 @@ describe('HomePage', () => {
 
     expect(screen.getByRole('heading', { name: 'MAGE' })).toBeInTheDocument()
     expect(screen.getByText('Preview player')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /browse presets/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /browse scenes/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /create an account/i })).not.toBeInTheDocument()
   })
 
-  it('shows preset discovery for authenticated users', () => {
+  it('shows scene discovery for authenticated users', () => {
     authState = {
       ...authState,
       accessToken: 'token',
@@ -66,7 +66,7 @@ describe('HomePage', () => {
 
     render(<HomePage />)
 
-    expect(screen.getByText('Presets page')).toBeInTheDocument()
+    expect(screen.getByText('Scenes page')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'MAGE' })).not.toBeInTheDocument()
   })
 })

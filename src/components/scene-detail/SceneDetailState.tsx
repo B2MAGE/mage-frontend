@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export function PresetDetailState({
+export function SceneDetailState({
   title,
   description,
   actions,
@@ -11,7 +11,7 @@ export function PresetDetailState({
 }) {
   return (
     <main className="surface surface--hero">
-      <div className="eyebrow">Preset Detail</div>
+      <div className="eyebrow">Scene Detail</div>
       <h1>{title}</h1>
       <p className="page-lead">{description}</p>
       {actions ? (
@@ -20,7 +20,7 @@ export function PresetDetailState({
           {actions}
         </>
       ) : null}
-      <p className="page-footnote">Preset detail routes now resolve through the live player flow.</p>
+      <p className="page-footnote">Scene detail routes now resolve through the live player flow.</p>
       <div className="page-mark">MAGE</div>
     </main>
   )

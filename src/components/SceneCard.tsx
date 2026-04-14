@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import type { PresetListResponse } from '../lib/api'
+import type { SceneListResponse } from '../lib/api'
 
-type PresetCardProps = {
-  preset: PresetListResponse
+type SceneCardProps = {
+  scene: SceneListResponse
 }
 
 function formatRelativeTime(isoDate: string): string {
@@ -26,8 +26,8 @@ function formatRelativeTime(isoDate: string): string {
   return 'Just now'
 }
 
-function formatViewLabel(presetId: number) {
-  const syntheticViews = 1200 + presetId * 183
+function formatViewLabel(sceneId: number) {
+  const syntheticViews = 1200 + sceneId * 183
 
   if (syntheticViews >= 1000000) {
     return `${(syntheticViews / 1000000).toFixed(1)}M renders`
@@ -42,43 +42,47 @@ function formatViewLabel(presetId: number) {
 
 function buildCreatorInitials(name: string) {
   const words = name.split(/\s+/).filter(Boolean)
-  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join('')
+  const initials = words
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('')
+
   return initials || 'MG'
 }
 
-export function PresetCard({ preset }: PresetCardProps) {
-  const creatorName = preset.creatorDisplayName
+export function SceneCard({ scene }: SceneCardProps) {
+  const creatorName = scene.creatorDisplayName
   const creatorInitials = buildCreatorInitials(creatorName)
-  const relativeTime = formatRelativeTime(preset.createdAt)
-  const viewLabel = formatViewLabel(preset.presetId)
+  const relativeTime = formatRelativeTime(scene.createdAt)
+  const viewLabel = formatViewLabel(scene.sceneId)
 
   return (
-    <Link className="preset-card-link" to={`/presets/${preset.presetId}`}>
-      <article className="preset-card" id={`preset-${preset.presetId}`}>
-        <div className="preset-card__thumbnail">
-          {preset.thumbnailRef ? (
+    <Link className="scene-card-link" to={`/scenes/${scene.sceneId}`}>
+      <article className="scene-card" id={`scene-${scene.sceneId}`}>
+        <div className="scene-card__thumbnail">
+          {scene.thumbnailRef ? (
             <img
-              src={preset.thumbnailRef}
-              alt={`Thumbnail for ${preset.name}`}
-              className="preset-card__thumbnail-img"
+              src={scene.thumbnailRef}
+              alt={`Thumbnail for ${scene.name}`}
+              className="scene-card__thumbnail-img"
             />
           ) : (
-            <div className="preset-card__thumbnail-placeholder" aria-hidden="true" />
+            <div className="scene-card__thumbnail-placeholder" aria-hidden="true" />
           )}
         </div>
-        <div className="preset-card__body">
-          <div className="preset-card__avatar" aria-hidden="true">
+        <div className="scene-card__body">
+          <div className="scene-card__avatar" aria-hidden="true">
             {creatorInitials}
           </div>
-          <div className="preset-card__meta">
-            <h3 className="preset-card__name">{preset.name}</h3>
-            <p className="preset-card__creator">{creatorName}</p>
-            <div className="preset-card__stats">
+          <div className="scene-card__meta">
+            <h3 className="scene-card__name">{scene.name}</h3>
+            <p className="scene-card__creator">{creatorName}</p>
+            <div className="scene-card__stats">
               <span>{viewLabel}</span>
-              <span className="preset-card__stats-separator" aria-hidden="true">
-                •
+              <span className="scene-card__stats-separator" aria-hidden="true">
+                &bull;
               </span>
-              <time className="preset-card__time" dateTime={preset.createdAt}>
+              <time className="scene-card__time" dateTime={scene.createdAt}>
                 {relativeTime}
               </time>
             </div>

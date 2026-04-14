@@ -1,9 +1,9 @@
 import { useAuth } from '../auth/AuthContext'
 import { MagePlayer } from '../components/MagePlayer'
 import type { MageSceneBlob } from '../lib/magePlayerAdapter'
-import { PresetsPage } from './PresetsPage'
+import { ScenesPage } from './ScenesPage'
 
-const HOME_PAGE_PRESET_SCENE = {
+const HOME_PAGE_SCENE = {
   visualizer: {
     shader: `
       let size = input()
@@ -47,15 +47,15 @@ export function HomePage() {
   const { accessToken, isAuthenticated, isRestoringSession } = useAuth()
 
   if (isAuthenticated) {
-    return <PresetsPage />
+    return <ScenesPage />
   }
 
   if (isRestoringSession && accessToken) {
     return (
       <main className="surface surface--hero home-hero">
-        <div className="eyebrow">Presets</div>
-        <h1>Loading presets...</h1>
-        <p className="page-lead">MAGE is restoring your account before opening preset discovery.</p>
+        <div className="eyebrow">Scenes</div>
+        <h1>Loading scenes...</h1>
+        <p className="page-lead">MAGE is restoring your account before opening scene discovery.</p>
       </main>
     )
   }
@@ -65,10 +65,10 @@ export function HomePage() {
       <div className="eyebrow">Preview</div>
       <h1>MAGE</h1>
       <p className="page-lead">Musical Autonomous Generated Environments</p>
-      <section className="home-preview-section" aria-label="Live preset preview">
+      <section className="home-preview-section" aria-label="Live scene preview">
         <MagePlayer
-          ariaLabel="MAGE live preset preview"
-          sceneBlob={HOME_PAGE_PRESET_SCENE}
+          ariaLabel="MAGE live scene preview"
+          sceneBlob={HOME_PAGE_SCENE}
         />
       </section>
       <p className="page-footnote">The full platform experience is currently in development.</p>

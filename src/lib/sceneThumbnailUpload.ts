@@ -12,11 +12,11 @@ type PresignedThumbnailUploadResponse = {
   headers?: Record<string, string>;
 };
 
-export async function uploadNewPresetThumbnail(
+export async function uploadNewSceneThumbnail(
   authenticatedFetch: AuthenticatedFetch,
   file: File,
 ) {
-  const presignResponse = await authenticatedFetch("/presets/thumbnail/presign", {
+  const presignResponse = await authenticatedFetch("/scenes/thumbnail/presign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

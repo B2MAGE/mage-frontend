@@ -44,7 +44,7 @@ The frontend works around this by doing the following:
 - `patch-package` reapplies the checked-in Shader Park patch on `npm install` and `npm ci`
 - the patch temporarily exposes the required Shader Park helper bindings on `globalThis` during the `eval(...)` compile step and restores the previous global values afterward
 
-If the Shader Park version changes, revalidate that patch before assuming production builds will continue to render presets correctly.
+If the Shader Park version changes, revalidate that patch before assuming production builds will continue to render scenes correctly.
 
 ## Frontend Boundary
 

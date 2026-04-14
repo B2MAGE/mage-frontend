@@ -100,7 +100,7 @@ function ProfileDetailsForm({ displayName, email }: ProfileDetailsFormProps) {
           />
         </div>
 
-        <button className="preset-secondary-button settings-reset-button" type="button">
+        <button className="scene-secondary-button settings-reset-button" type="button">
           Reset password
         </button>
       </div>

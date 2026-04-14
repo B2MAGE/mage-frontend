@@ -26,8 +26,8 @@ export function buildApiUrl(path: string) {
   return `${normalizedBaseUrl}${apiPath}`
 }
 
-export type PresetListResponse = {
-  presetId: number
+export type SceneListResponse = {
+  sceneId: number
   ownerUserId: number
   creatorDisplayName: string
   name: string
@@ -56,15 +56,15 @@ export async function fetchAvailableTags(options?: FetchTagsOptions): Promise<Ta
   return response.json() as Promise<TagResponse[]>
 }
 
-export async function fetchPresets(tag?: string | null): Promise<PresetListResponse[]> {
+export async function fetchScenes(tag?: string | null): Promise<SceneListResponse[]> {
   const query = tag ? `?tag=${encodeURIComponent(tag)}` : ''
-  const response = await fetch(buildApiUrl(`/presets${query}`))
+  const response = await fetch(buildApiUrl(`/scenes${query}`))
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch presets (${response.status})`)
+    throw new Error(`Failed to fetch scenes (${response.status})`)
   }
 
-  return response.json() as Promise<PresetListResponse[]>
+  return response.json() as Promise<SceneListResponse[]>
 }
 
 export async function fetchTags(options?: FetchTagsOptions): Promise<TagResponse[]> {

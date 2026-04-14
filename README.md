@@ -1,20 +1,20 @@
 # MAGE Frontend
 
-The MAGE frontend is the React application for browsing, creating, and playing MAGE scenes in the browser. It provides account flows, preset management screens, the reusable in-app MAGE player, and the preset editor used to author scene data for the engine.
+The MAGE frontend is the React application for browsing, creating, and playing MAGE scenes in the browser. It provides account flows, scene management screens, the reusable in-app MAGE player, and the scene editor used to author scene data for the engine.
 
 ## Overview
 
 This repository contains the client-side application for the MAGE platform. It is built with React, TypeScript, and Vite, and integrates with:
 
-- the MAGE backend API for authentication and preset persistence
-- the bundled local MAGE engine package for scene playback and preset preview
+- the MAGE backend API for authentication and scene persistence
+- the bundled local MAGE engine package for scene playback and scene preview
 
 The current app includes:
 
 - guest and authenticated account flows
 - a reusable browser-based MAGE player
-- preset listing and preset detail pages
-- a multi-section create preset editor with direct-to-object-storage thumbnail uploads
+- scene listing and scene detail pages
+- a multi-section create scene editor with direct-to-object-storage thumbnail uploads
 - shared auth session restore and protected routes
 
 ## Tech Stack
@@ -50,7 +50,7 @@ mage-frontend/
 Before running the frontend locally, make sure you have:
 
 - a recent Node.js and npm installation
-- the backend API running locally if you want full auth and preset flows
+- the backend API running locally if you want full auth and scene flows
 
 ## Getting Started
 
@@ -112,13 +112,13 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 
 | Route            | Access        | Purpose                                               |
 | ---------------- | ------------- | ----------------------------------------------------- |
-| `/`              | Public        | Guest landing page or signed-in preset discovery home |
-| `/presets`       | Public        | Preset discovery with optional tag filter             |
+| `/`              | Public        | Guest landing page or signed-in scene discovery home |
+| `/scenes`       | Public        | Scene discovery with optional tag filter             |
 | `/register`      | Guest-only    | Account registration                                  |
 | `/login`         | Guest-only    | Account sign-in                                       |
-| `/my-presets`    | Authenticated | User preset library                                   |
-| `/presets/:id`   | Public route  | Preset detail/player page                             |
-| `/create-preset` | Public route  | Preset editor and live preview                        |
+| `/my-scenes`    | Authenticated | User scene library                                   |
+| `/scenes/:id`   | Public route  | Scene detail/player page                             |
+| `/create-scene` | Public route  | Scene editor and live preview                        |
 | `/settings`      | Authenticated | Account settings                                      |
 
 ## Documentation
@@ -126,7 +126,7 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 Additional project notes live in `docs/`:
 
 - [docs/README.md](./docs/README.md)
-- [docs/create-preset-page.md](./docs/create-preset-page.md)
+- [docs/create-scene-page.md](./docs/create-scene-page.md)
 - [docs/deployment.md](./docs/deployment.md)
 - [docs/engine-integration.md](./docs/engine-integration.md)
 - [docs/login-page.md](./docs/login-page.md)

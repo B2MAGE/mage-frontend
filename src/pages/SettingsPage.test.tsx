@@ -41,7 +41,7 @@ describe('SettingsPage', () => {
       isAuthenticated: true,
       user: {
         authProvider: 'LOCAL',
-        displayName: 'Preset Artist',
+        displayName: 'Scene Artist',
         email: 'artist@example.com',
         userId: 8,
       },
@@ -55,7 +55,7 @@ describe('SettingsPage', () => {
       screen.getByText(/review the account details currently tied to your mage profile/i),
     ).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toHaveValue('artist@example.com')
-    expect(screen.getByLabelText(/first name/i)).toHaveValue('Preset')
+    expect(screen.getByLabelText(/first name/i)).toHaveValue('Scene')
     expect(screen.getByLabelText(/last name/i)).toHaveValue('Artist')
     expect(screen.queryByText('LOCAL')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument()

@@ -7,14 +7,14 @@ import { MagePlayer } from "../components/MagePlayer";
 import {
   EffectCard,
   NumberField,
-  PresetSection,
+  SceneSection,
   SelectField,
   SliderField,
   ToggleField,
   Vector3Field,
-} from "../components/PresetEditorControls";
+} from "../components/SceneEditorControls";
 import { parseApiError } from "../lib/authForm";
-import { uploadNewPresetThumbnail } from "../lib/presetThumbnailUpload";
+import { uploadNewSceneThumbnail } from "../lib/sceneThumbnailUpload";
 import {
   fetchAvailableTags,
   type TagResponse,
@@ -27,18 +27,18 @@ import {
   PASS_LABELS,
   prettyPrintSceneData,
   sanitizeSceneData,
-  SHADER_PRESETS,
+  SHADER_SCENES,
   SKYBOX_OPTIONS,
   TONE_MAPPING_OPTIONS,
   toDegrees,
   toRadians,
   type PersistedPassFlag,
-  type PresetPassId,
-  type PresetSceneData,
+  type ScenePassId,
+  type SceneData,
   type SceneEditorModel,
-} from "../lib/presetEditor";
+} from "../lib/sceneEditor";
 
-type CreatePresetFormErrors = Partial<
+type CreateSceneFormErrors = Partial<
   Record<"form" | "name" | "newTag" | "sceneData" | "tags" | "thumbnail", string>
 >;
 type EditorSectionId =
@@ -52,7 +52,7 @@ type EffectCategoryId = "color" | "finish" | "pattern" | "trail";
 type ThumbnailMode = "skip" | "upload";
 
 type PendingTagAttachment = {
-  presetId: number;
+  sceneId: number;
   tagIds: number[];
 };
 
@@ -65,7 +65,7 @@ type AdditionalPassConfig = {
   category: EffectCategoryId;
   description: string;
   flag: PersistedPassFlag;
-  passId: PresetPassId;
+  passId: ScenePassId;
 };
 
 type EditorSectionConfig = {
@@ -183,7 +183,7 @@ const additionalPassesByCategory: Record<
   ),
 };
 
-const passFlagsById: Partial<Record<PresetPassId, PersistedPassFlag>> = {
+const passFlagsById: Partial<Record<ScenePassId, PersistedPassFlag>> = {
   RGBShift: "rgbShift",
   afterImagePass: "afterImage",
   colorifyShader: "colorify",
@@ -225,13 +225,13 @@ function upsertTag(tags: TagResponse[], nextTag: TagResponse) {
   ]);
 }
 
-function parseCreatedPresetId(payload: unknown) {
+function parseCreatedSceneId(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return null;
   }
 
-  const presetId = (payload as { presetId?: unknown }).presetId;
-  return typeof presetId === "number" && presetId > 0 ? presetId : null;
+  const sceneId = (payload as { sceneId?: unknown }).sceneId;
+  return typeof sceneId === "number" && sceneId > 0 ? sceneId : null;
 }
 
 async function loadAvailableTagsFromBackend() {
@@ -239,15 +239,15 @@ async function loadAvailableTagsFromBackend() {
 }
 
 function buildShaderOptions(currentShader: string) {
-  const matchedPreset = SHADER_PRESETS.find(
-    (preset) => preset.shader.trim() === currentShader.trim(),
+  const matchedShaderScene = SHADER_SCENES.find(
+    (shaderScene) => shaderScene.shader.trim() === currentShader.trim(),
   );
-  const options = SHADER_PRESETS.map((preset) => ({
-    label: preset.label,
-    value: preset.id,
+  const options = SHADER_SCENES.map((shaderScene) => ({
+    label: shaderScene.label,
+    value: shaderScene.id,
   }));
 
-  if (!matchedPreset) {
+  if (!matchedShaderScene) {
     options.unshift({
       label: "Custom Shader",
       value: "custom",
@@ -255,9 +255,9 @@ function buildShaderOptions(currentShader: string) {
   }
 
   return {
-    matchedPreset,
+    matchedShaderScene,
     options,
-    value: matchedPreset?.id ?? "custom",
+    value: matchedShaderScene?.id ?? "custom",
   };
 }
 
@@ -307,7 +307,7 @@ function buildToneMappingOptions(currentMethod: number) {
   };
 }
 
-function describePassState(passId: PresetPassId, sceneModel: SceneEditorModel) {
+function describePassState(passId: ScenePassId, sceneModel: SceneEditorModel) {
   if (passId === "outputPass") {
     return sceneModel.fx.passes.outputPass ? "Enabled" : "Disabled";
   }
@@ -326,13 +326,13 @@ function describePassState(passId: PresetPassId, sceneModel: SceneEditorModel) {
 }
 
 function validateForm(name: string, sceneDataText: string) {
-  const errors: CreatePresetFormErrors = {};
-  let parsedSceneData: PresetSceneData | null = null;
+  const errors: CreateSceneFormErrors = {};
+  let parsedSceneData: SceneData | null = null;
 
   if (!name.trim()) {
-    errors.name = "Preset name is required.";
+    errors.name = "Scene name is required.";
   } else if (name.trim().length < 2) {
-    errors.name = "Preset name must be at least 2 characters.";
+    errors.name = "Scene name must be at least 2 characters.";
   }
 
   if (!sceneDataText.trim()) {
@@ -374,7 +374,7 @@ function validateThumbnailFile(file: File | null) {
   return null;
 }
 
-export function CreatePresetPage() {
+export function CreateScenePage() {
   const { authenticatedFetch } = useAuth();
   const navigate = useNavigate();
 
@@ -390,11 +390,11 @@ export function CreatePresetPage() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [tagSearchValue, setTagSearchValue] = useState("");
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
-  const [sceneData, setSceneData] = useState<PresetSceneData>(initialSceneData);
+  const [sceneData, setSceneData] = useState<SceneData>(initialSceneData);
   const [sceneDataText, setSceneDataText] = useState(() =>
     prettyPrintSceneData(initialSceneData),
   );
-  const [errors, setErrors] = useState<CreatePresetFormErrors>({});
+  const [errors, setErrors] = useState<CreateSceneFormErrors>({});
   const [tagsLoading, setTagsLoading] = useState(true);
   const [tagsError, setTagsError] = useState<string | null>(null);
   const [pendingTagAttachment, setPendingTagAttachment] =
@@ -407,7 +407,7 @@ export function CreatePresetPage() {
   const formErrorId = useId();
   const tagSearchInputId = useId();
   const thumbnailInputId = useId();
-  const titleId = "create-preset-title";
+  const titleId = "create-scene-title";
   const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData]);
   const previewSceneData = useMemo(
     () => sanitizeSceneData(sceneData),
@@ -421,7 +421,7 @@ export function CreatePresetPage() {
     () => buildToneMappingOptions(sceneModel.fx.toneMapping.method),
     [sceneModel.fx.toneMapping.method],
   );
-  const selectedShaderPreset = shaderSelection.matchedPreset;
+  const selectedShaderScene = shaderSelection.matchedShaderScene;
   const selectedToneMapping =
     toneMappingSelection.matchedOption ?? TONE_MAPPING_OPTIONS[0];
   const normalizedTagSearchValue = normalizeTagName(tagSearchValue);
@@ -549,7 +549,7 @@ export function CreatePresetPage() {
     );
   }
 
-  function clearErrors(...fields: Array<keyof CreatePresetFormErrors>) {
+  function clearErrors(...fields: Array<keyof CreateSceneFormErrors>) {
     if (fields.length === 0) {
       setErrors({});
       return;
@@ -574,7 +574,7 @@ export function CreatePresetPage() {
     }
   }
 
-  function applySceneData(nextSceneData: PresetSceneData) {
+  function applySceneData(nextSceneData: SceneData) {
     const sanitizedSceneData = sanitizeSceneData(nextSceneData);
     setSceneData(sanitizedSceneData);
     setSceneDataText(prettyPrintSceneData(sanitizedSceneData));
@@ -830,7 +830,7 @@ export function CreatePresetPage() {
     }
   }
 
-  async function attachTagsToPreset(presetId: number, tagIds: number[]) {
+  async function attachTagsToScene(sceneId: number, tagIds: number[]) {
     const failures: TagAttachmentFailure[] = [];
 
     for (const tagId of tagIds) {
@@ -845,7 +845,7 @@ export function CreatePresetPage() {
       }
 
       try {
-        const response = await authenticatedFetch(`/presets/${presetId}/tags`, {
+        const response = await authenticatedFetch(`/scenes/${sceneId}/tags`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -861,7 +861,7 @@ export function CreatePresetPage() {
 
         if (
           response.status === 409 &&
-          apiError?.code === "PRESET_TAG_ALREADY_EXISTS"
+          apiError?.code === "SCENE_TAG_ALREADY_EXISTS"
         ) {
           continue;
         }
@@ -881,14 +881,14 @@ export function CreatePresetPage() {
     return failures;
   }
 
-  function movePass(passId: PresetPassId, direction: -1 | 1) {
+  function movePass(passId: ScenePassId, direction: -1 | 1) {
     if (passId === "outputPass") {
       return;
     }
 
     updateBranch("fx", (currentFx) => {
       const movablePasses = currentFx.passOrder.filter(
-        (currentPassId): currentPassId is Exclude<PresetPassId, "outputPass"> =>
+        (currentPassId): currentPassId is Exclude<ScenePassId, "outputPass"> =>
           currentPassId !== "outputPass",
       );
       const currentIndex = movablePasses.indexOf(passId);
@@ -921,26 +921,26 @@ export function CreatePresetPage() {
       setErrors({});
 
       try {
-        const attachFailures = await attachTagsToPreset(
-          pendingTagAttachment.presetId,
+        const attachFailures = await attachTagsToScene(
+          pendingTagAttachment.sceneId,
           pendingTagAttachment.tagIds,
         );
 
         if (attachFailures.length > 0) {
           setPendingTagAttachment({
-            presetId: pendingTagAttachment.presetId,
+            sceneId: pendingTagAttachment.sceneId,
             tagIds: attachFailures.map((failure) => failure.tagId),
           });
           setErrors({
-            form: `Preset created, but we still couldn't attach ${attachFailures
+            form: `Scene created, but we still couldn't attach ${attachFailures
               .map((failure) => failure.tagName)
-              .join(", ")}. Submit again to retry attachment for the existing preset. Additional editor changes will not be saved in this retry state.`,
+              .join(", ")}. Submit again to retry attachment for the existing scene. Additional editor changes will not be saved in this retry state.`,
           });
           return;
         }
 
         setPendingTagAttachment(null);
-        navigate("/my-presets");
+        navigate("/my-scenes");
       } finally {
         setIsSubmitting(false);
       }
@@ -973,10 +973,10 @@ export function CreatePresetPage() {
     try {
       const thumbnailObjectKey =
         thumbnailMode === "upload" && thumbnailFile
-          ? await uploadNewPresetThumbnail(authenticatedFetch, thumbnailFile)
+          ? await uploadNewSceneThumbnail(authenticatedFetch, thumbnailFile)
           : undefined;
 
-      const response = await authenticatedFetch("/presets", {
+      const response = await authenticatedFetch("/scenes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -993,48 +993,48 @@ export function CreatePresetPage() {
           name: backendDetails.name,
           sceneData: backendDetails.sceneData,
           form:
-            apiError?.message ?? "Failed to create preset. Please try again.",
+            apiError?.message ?? "Failed to create scene. Please try again.",
         });
         return;
       }
 
-      const createdPresetPayload = (await response.json().catch(() => null)) as
+      const createdScenePayload = (await response.json().catch(() => null)) as
         | unknown
         | null;
-      const presetId = parseCreatedPresetId(createdPresetPayload);
+      const sceneId = parseCreatedSceneId(createdScenePayload);
 
-      if (presetId === null) {
+      if (sceneId === null) {
         setErrors({
           form:
-            "Preset was created, but the response did not include the new preset id for tag attachment.",
+            "Scene was created, but the response did not include the new scene id for tag attachment.",
         });
         return;
       }
 
       if (selectedTagIds.length > 0) {
-        const attachFailures = await attachTagsToPreset(presetId, selectedTagIds);
+        const attachFailures = await attachTagsToScene(sceneId, selectedTagIds);
 
         if (attachFailures.length > 0) {
           setPendingTagAttachment({
-            presetId,
+            sceneId,
             tagIds: attachFailures.map((failure) => failure.tagId),
           });
           setErrors({
-            form: `Preset created, but we couldn't attach ${attachFailures
+            form: `Scene created, but we couldn't attach ${attachFailures
               .map((failure) => failure.tagName)
-              .join(", ")}. Submit again to retry attachment for the existing preset. Additional editor changes will not be saved in this retry state.`,
+              .join(", ")}. Submit again to retry attachment for the existing scene. Additional editor changes will not be saved in this retry state.`,
           });
           return;
         }
       }
 
-      navigate("/my-presets");
+      navigate("/my-scenes");
     } catch (error) {
       setErrors({
         form:
           error instanceof Error && error.message.trim()
             ? error.message
-            : "Preset creation is unavailable right now. Please try again in a moment.",
+            : "Scene creation is unavailable right now. Please try again in a moment.",
       });
     } finally {
       setIsSubmitting(false);
@@ -1048,23 +1048,23 @@ export function CreatePresetPage() {
       titleId={titleId}
     >
       <AuthPageHeader
-        description="Build a preset with curated scene controls and effect shaping."
-        eyebrow="Preset Studio"
-        title="Create Preset"
+        description="Build a scene with curated controls and effect shaping."
+        eyebrow="Scene Studio"
+        title="Create Scene"
         titleId={titleId}
       />
 
       <form
         aria-describedby={errors.form ? formErrorId : undefined}
-        className="preset-editor-form"
+        className="scene-editor-form"
         noValidate
         onSubmit={handleSubmit}
       >
-        <div className="preset-editor-layout">
-          <div className="preset-editor-main">
-            <div className="preset-editor-toolbar">
-              <div className="field-group preset-editor-toolbar__name">
-                <label htmlFor="name">Preset Name</label>
+        <div className="scene-editor-layout">
+          <div className="scene-editor-main">
+            <div className="scene-editor-toolbar">
+              <div className="field-group scene-editor-toolbar__name">
+                <label htmlFor="name">Scene Name</label>
                 <input
                   id="name"
                   minLength={2}
@@ -1090,7 +1090,7 @@ export function CreatePresetPage() {
                 )}
               </div>
 
-              <div className="preset-editor-toolbar__metadata">
+              <div className="scene-editor-toolbar__metadata">
                 <div className="field-group">
                   <label htmlFor="description">Description</label>
                   <textarea
@@ -1098,18 +1098,18 @@ export function CreatePresetPage() {
                     onChange={(event) =>
                       setDescription(event.currentTarget.value)
                     }
-                    placeholder="Describe the mood, motion, or moment this preset is built for."
+                    placeholder="Describe the mood, motion, or moment this scene is built for."
                     rows={5}
                     value={description}
                   />
                 </div>
 
                 <div className="field-group">
-                  <div className="preset-tag-editor__header">
-                    <span className="preset-tag-editor__label">Tags</span>
+                  <div className="scene-tag-editor__header">
+                    <span className="scene-tag-editor__label">Tags</span>
                     {pendingTagAttachment ? (
                       <span className="field-hint">
-                        Retry mode for preset #{pendingTagAttachment.presetId}
+                        Retry mode for scene #{pendingTagAttachment.sceneId}
                       </span>
                     ) : null}
                   </div>
@@ -1120,12 +1120,12 @@ export function CreatePresetPage() {
                   </p>
 
                   {tagsError ? (
-                    <div className="preset-tag-editor__status">
+                    <div className="scene-tag-editor__status">
                       <p className="field-error" role="alert">
                         {tagsError}
                       </p>
                       <button
-                        className="preset-secondary-button"
+                        className="scene-secondary-button"
                         disabled={tagsLoading}
                         onClick={() => {
                           void reloadAvailableTags();
@@ -1138,7 +1138,7 @@ export function CreatePresetPage() {
                   ) : null}
 
                   <div
-                    className="preset-tag-editor__picker"
+                    className="scene-tag-editor__picker"
                     role="group"
                     aria-label="Available tags"
                   >
@@ -1160,15 +1160,15 @@ export function CreatePresetPage() {
                       </div>
                     ) : (
                       <div
-                        className="preset-tag-dropdown"
+                        className="scene-tag-dropdown"
                         ref={tagDropdownRef}
                       >
-                        <div className="preset-tag-dropdown__search">
+                        <div className="scene-tag-dropdown__search">
                           <label htmlFor={tagSearchInputId}>
                             Select existing tags
                           </label>
                           <input
-                            aria-controls="preset-tag-dropdown-panel"
+                            aria-controls="scene-tag-dropdown-panel"
                             aria-describedby={
                               errors.newTag ? "tag-editor-error" : undefined
                             }
@@ -1209,16 +1209,16 @@ export function CreatePresetPage() {
 
                         {isTagDropdownOpen ? (
                           <div
-                            className="preset-tag-dropdown__panel"
-                            id="preset-tag-dropdown-panel"
+                            className="scene-tag-dropdown__panel"
+                            id="scene-tag-dropdown-panel"
                           >
                             {filteredSelectableTags.length > 0 ||
                             canCreateTagFromSearch ? (
-                              <div className="preset-tag-dropdown__options">
+                              <div className="scene-tag-dropdown__options">
                                 {filteredSelectableTags.map((tag) => (
                                   <button
                                     key={tag.tagId}
-                                    className="preset-tag-dropdown__option"
+                                    className="scene-tag-dropdown__option"
                                     disabled={isCreatingTag}
                                     onClick={() => toggleTagSelection(tag.tagId)}
                                     type="button"
@@ -1228,7 +1228,7 @@ export function CreatePresetPage() {
                                 ))}
                                 {canCreateTagFromSearch ? (
                                   <button
-                                    className="preset-tag-dropdown__option preset-tag-dropdown__option--create"
+                                    className="scene-tag-dropdown__option scene-tag-dropdown__option--create"
                                     disabled={isCreatingTag}
                                     onClick={() => {
                                       void handleCreateTag();
@@ -1266,12 +1266,12 @@ export function CreatePresetPage() {
                     )}
                   </div>
 
-                  <div className="preset-tag-editor__selected">
-                    <span className="preset-tag-editor__selected-label">
+                  <div className="scene-tag-editor__selected">
+                    <span className="scene-tag-editor__selected-label">
                       Selected tags
                     </span>
                     {selectedTags.length > 0 ? (
-                      <div className="preset-tag-editor__selected-list">
+                      <div className="scene-tag-editor__selected-list">
                         {selectedTags.map((tag) => (
                           <button
                             key={tag.tagId}
@@ -1307,11 +1307,11 @@ export function CreatePresetPage() {
 
                 <div className="field-group">
                   <label htmlFor={thumbnailInputId}>Thumbnail</label>
-                  <div className="preset-thumbnail-picker">
+                  <div className="scene-thumbnail-picker">
                     <input
                       accept="image/jpeg,image/png,image/webp,image/gif"
                       aria-label="Upload thumbnail file"
-                      className="preset-thumbnail-input"
+                      className="scene-thumbnail-input"
                       id={thumbnailInputId}
                       onChange={(event) =>
                         handleThumbnailFileChange(event.currentTarget.files)
@@ -1320,40 +1320,40 @@ export function CreatePresetPage() {
                       type="file"
                     />
 
-                    <div className="preset-thumbnail-picker__grid">
+                    <div className="scene-thumbnail-picker__grid">
                       <button
-                        className={`preset-thumbnail-choice${
+                        className={`scene-thumbnail-choice${
                           thumbnailMode === "upload" ? " is-selected" : ""
                         }`}
                         onClick={handleThumbnailUploadClick}
                         type="button"
                       >
-                        <span className="preset-thumbnail-choice__eyebrow">
+                        <span className="scene-thumbnail-choice__eyebrow">
                           Upload
                         </span>
-                        <strong className="preset-thumbnail-choice__title">
+                        <strong className="scene-thumbnail-choice__title">
                           Upload File
                         </strong>
-                        <span className="preset-thumbnail-choice__description">
+                        <span className="scene-thumbnail-choice__description">
                           Use a custom image.
                         </span>
                       </button>
 
                       <button
-                        className={`preset-thumbnail-choice${
+                        className={`scene-thumbnail-choice${
                           thumbnailMode === "skip" ? " is-selected" : ""
                         }`}
                         onClick={() => handleThumbnailModeChange("skip")}
                         type="button"
                       >
-                        <span className="preset-thumbnail-choice__eyebrow">
+                        <span className="scene-thumbnail-choice__eyebrow">
                           Optional
                         </span>
-                        <strong className="preset-thumbnail-choice__title">
+                        <strong className="scene-thumbnail-choice__title">
                           Skip for Now
                         </strong>
-                        <span className="preset-thumbnail-choice__description">
-                          Create the preset without a thumbnail.
+                        <span className="scene-thumbnail-choice__description">
+                          Create the scene without a thumbnail.
                         </span>
                       </button>
                     </div>
@@ -1374,7 +1374,7 @@ export function CreatePresetPage() {
                 <div className="field-group">
                   <label htmlFor="playlists">Playlists</label>
                   <select
-                    className="preset-select"
+                    className="scene-select"
                     id="playlists"
                     onChange={(event) =>
                       setPlaylistValue(event.currentTarget.value)
@@ -1391,29 +1391,29 @@ export function CreatePresetPage() {
                 </div>
               </div>
 
-              <div className="preset-editor-toolbar__controls">
-                <div className="preset-editor-toolbar__control-group preset-editor-toolbar__control-group--navigation">
-                  <div className="preset-editor-toolbar__control-copy">
-                    <span className="preset-editor-toolbar__eyebrow">
+              <div className="scene-editor-toolbar__controls">
+                <div className="scene-editor-toolbar__control-group scene-editor-toolbar__control-group--navigation">
+                  <div className="scene-editor-toolbar__control-copy">
+                    <span className="scene-editor-toolbar__eyebrow">
                       Navigation
                     </span>
                     <label
-                      className="preset-field__label"
+                      className="scene-field__label"
                       htmlFor="section-jump"
                     >
                       Jump To Section
                     </label>
                   </div>
 
-                  <div className="preset-editor-toolbar__navigation-shell">
+                  <div className="scene-editor-toolbar__navigation-shell">
                     <span
                       aria-hidden="true"
-                      className="preset-editor-toolbar__navigation-icon"
+                      className="scene-editor-toolbar__navigation-icon"
                     >
                       <NavigationIcon />
                     </span>
                     <select
-                      className="preset-select preset-select--navigation"
+                      className="scene-select scene-select--navigation"
                       id="section-jump"
                       onChange={(event) =>
                         handleSectionJump(
@@ -1440,30 +1440,30 @@ export function CreatePresetPage() {
             ) : null}
 
             {sectionMenuValue === "scene" ? (
-              <PresetSection
+              <SceneSection
                 description="Choose the visual style, background environment, and overall size of the scene."
                 title="Scene"
               >
-                <div className="preset-editor-grid preset-editor-grid--3">
+                <div className="scene-editor-grid scene-editor-grid--3">
                   <SelectField
                     description={
-                      selectedShaderPreset?.description ??
+                      selectedShaderScene?.description ??
                       "Custom shader text is currently active."
                     }
                     id="shader"
                     label="Shader"
                     onChange={(nextValue) => {
-                      const nextShaderPreset = SHADER_PRESETS.find(
-                        (preset) => preset.id === nextValue,
+                      const nextShaderScene = SHADER_SCENES.find(
+                        (shaderScene) => shaderScene.id === nextValue,
                       );
 
-                      if (!nextShaderPreset) {
+                      if (!nextShaderScene) {
                         return;
                       }
 
                       updateBranch("visualizer", (currentVisualizer) => ({
                         ...currentVisualizer,
-                        shader: nextShaderPreset.shader,
+                        shader: nextShaderScene.shader,
                       }));
                     }}
                     options={shaderSelection.options}
@@ -1471,7 +1471,7 @@ export function CreatePresetPage() {
                   />
 
                   <SelectField
-                    description="Pick from the bundled skybox presets instead of entering loader-specific values."
+                    description="Pick from the bundled skybox options instead of entering loader-specific values."
                     id="skybox"
                     label="Skybox"
                     onChange={(nextValue) =>
@@ -1508,7 +1508,7 @@ export function CreatePresetPage() {
                 <div className="field-group">
                   <label htmlFor="shader-source">Custom Shader</label>
                   <textarea
-                    className="preset-textarea"
+                    className="scene-textarea"
                     id="shader-source"
                     onChange={(event) =>
                       updateBranch("visualizer", (currentVisualizer) => ({
@@ -1521,18 +1521,18 @@ export function CreatePresetPage() {
                   />
                   <p className="field-hint">
                     This is the actual `visualizer.shader` source that ships in
-                    the preset. Choosing a shader above swaps this text.
+                    the scene. Choosing a shader above swaps this text.
                   </p>
                 </div>
-              </PresetSection>
+              </SceneSection>
             ) : null}
 
             {sectionMenuValue === "camera" ? (
-              <PresetSection
+              <SceneSection
                 description="Set the starting view, framing, and lens settings for the scene."
                 title="Camera"
               >
-                <div className="preset-editor-grid preset-editor-grid--2">
+                <div className="scene-editor-grid scene-editor-grid--2">
                   <Vector3Field
                     description="The camera position in the scene."
                     id="camera-position"
@@ -1547,7 +1547,7 @@ export function CreatePresetPage() {
                   />
 
                   <Vector3Field
-                    description="Where the camera points while the preset loads."
+                    description="Where the camera points while the scene loads."
                     id="camera-target"
                     label="Camera Target"
                     onChange={(nextValue) =>
@@ -1607,15 +1607,15 @@ export function CreatePresetPage() {
                     value={sceneModel.controls.zoom0}
                   />
                 </div>
-              </PresetSection>
+              </SceneSection>
             ) : null}
 
             {sectionMenuValue === "motion" ? (
-              <PresetSection
+              <SceneSection
                 description="Adjust how the scene moves and how strongly it responds to audio and input."
                 title="Motion"
               >
-                <div className="preset-editor-grid preset-editor-grid--2">
+                <div className="scene-editor-grid scene-editor-grid--2">
                   <NumberField
                     description="Overall engine time multiplier."
                     id="time-multiplier"
@@ -1726,7 +1726,7 @@ export function CreatePresetPage() {
                     value={sceneModel.intent.easing_speed}
                   />
 
-                  <div className="preset-editor-grid__item--full">
+                  <div className="scene-editor-grid__item--full">
                     <ToggleField
                       checked={sceneModel.intent.autoRotate}
                       description="Keep the scene gently rotating on its own."
@@ -1741,20 +1741,20 @@ export function CreatePresetPage() {
                     />
                   </div>
                 </div>
-              </PresetSection>
+              </SceneSection>
             ) : null}
 
             {sectionMenuValue === "effects" ? (
-              <PresetSection
+              <SceneSection
                 description="Add glow, color treatment, distortion, and other finishing effects."
                 title="Effects"
               >
-                <div className="preset-effects-grid">
-                  <div className="preset-effects-category">
-                    <h3 className="preset-effects-category__title">
+                <div className="scene-effects-grid">
+                  <div className="scene-effects-category">
+                    <h3 className="scene-effects-category__title">
                       Finish &amp; Output
                     </h3>
-                    <div className="preset-effects-category__grid">
+                    <div className="scene-effects-category__grid">
                       <EffectCard
                         description="Soft glow for bright edges and highlights."
                         enabled={sceneModel.fx.bloom.enabled}
@@ -1769,7 +1769,7 @@ export function CreatePresetPage() {
                         }
                         title="Bloom"
                       >
-                        <div className="preset-editor-grid preset-editor-grid--2">
+                        <div className="scene-editor-grid scene-editor-grid--2">
                           <SliderField
                             description="Glow intensity."
                             id="bloom-strength"
@@ -1840,13 +1840,13 @@ export function CreatePresetPage() {
                           }))
                         }
                         footer={
-                          <p className="preset-effect-footnote">
+                          <p className="scene-effect-footnote">
                             {selectedToneMapping.description}
                           </p>
                         }
                         title="Output Pass"
                       >
-                        <div className="preset-editor-grid preset-editor-grid--2">
+                        <div className="scene-editor-grid scene-editor-grid--2">
                           <SelectField
                             description="Switch between the renderer tone-mapping methods used by the MAGE engine."
                             id="tone-mapping-method"
@@ -1890,11 +1890,11 @@ export function CreatePresetPage() {
                     </div>
                   </div>
 
-                  <div className="preset-effects-category">
-                    <h3 className="preset-effects-category__title">
+                  <div className="scene-effects-category">
+                    <h3 className="scene-effects-category__title">
                       Channel &amp; Motion
                     </h3>
-                    <div className="preset-effects-category__grid">
+                    <div className="scene-effects-category__grid">
                       <EffectCard
                         description="Shift the red, green, and blue channels apart for chromatic distortion."
                         enabled={sceneModel.fx.passes.rgbShift}
@@ -1909,7 +1909,7 @@ export function CreatePresetPage() {
                         }
                         title="RGB Shift"
                       >
-                        <div className="preset-editor-grid preset-editor-grid--2">
+                        <div className="scene-editor-grid scene-editor-grid--2">
                           <SliderField
                             description="Offset amount between color channels."
                             formatValue={(value) => formatFixed(value, 3)}
@@ -2002,11 +2002,11 @@ export function CreatePresetPage() {
                     </div>
                   </div>
 
-                  <div className="preset-effects-category">
-                    <h3 className="preset-effects-category__title">
+                  <div className="scene-effects-category">
+                    <h3 className="scene-effects-category__title">
                       Color &amp; Tone
                     </h3>
-                    <div className="preset-effects-category__grid">
+                    <div className="scene-effects-category__grid">
                       <EffectCard
                         description="Wash the output toward a chosen tint."
                         enabled={sceneModel.fx.passes.colorify}
@@ -2021,21 +2021,21 @@ export function CreatePresetPage() {
                         }
                         title="Colorify"
                       >
-                        <div className="preset-field">
-                          <div className="preset-field__label-row">
+                        <div className="scene-field">
+                          <div className="scene-field__label-row">
                             <label
-                              className="preset-field__label"
+                              className="scene-field__label"
                               htmlFor="colorify-color"
                             >
                               Color
                             </label>
                           </div>
-                          <p className="preset-field__description">
+                          <p className="scene-field__description">
                             Choose the tint used by the colorify pass.
                           </p>
-                          <div className="preset-color-field">
+                          <div className="scene-color-field">
                             <input
-                              className="preset-color-field__picker"
+                              className="scene-color-field__picker"
                               id="colorify-color"
                               onChange={(event) =>
                                 updateBranch("fx", (currentFx) => ({
@@ -2065,11 +2065,11 @@ export function CreatePresetPage() {
                     </div>
                   </div>
 
-                  <div className="preset-effects-category">
-                    <h3 className="preset-effects-category__title">
+                  <div className="scene-effects-category">
+                    <h3 className="scene-effects-category__title">
                       Pattern &amp; Structure
                     </h3>
-                    <div className="preset-effects-category__grid">
+                    <div className="scene-effects-category__grid">
                       <EffectCard
                         description="Mirror the frame into repeating radial segments."
                         enabled={sceneModel.fx.passes.kaleid}
@@ -2084,7 +2084,7 @@ export function CreatePresetPage() {
                         }
                         title="Kaleidoscope"
                       >
-                        <div className="preset-editor-grid preset-editor-grid--2">
+                        <div className="scene-editor-grid scene-editor-grid--2">
                           <SliderField
                             description="The number of mirrored slices in the frame."
                             formatValue={(value) => formatFixed(value, 0)}
@@ -2140,28 +2140,28 @@ export function CreatePresetPage() {
                     </div>
                   </div>
                 </div>
-              </PresetSection>
+              </SceneSection>
             ) : null}
 
             {sectionMenuValue === "pass-order" ? (
-              <PresetSection
+              <SceneSection
                 description="Change the order of effects to control how the final image is layered. Output always stays last."
                 title="Pass Order"
               >
-                <ol className="preset-pass-order">
+                <ol className="scene-pass-order">
                   {sceneModel.fx.passOrder.map((passId, index) => {
                     const isOutputPass = passId === "outputPass";
 
                     return (
-                      <li className="preset-pass-order__item" key={passId}>
-                        <div className="preset-pass-order__copy">
+                      <li className="scene-pass-order__item" key={passId}>
+                        <div className="scene-pass-order__copy">
                           <strong>{PASS_LABELS[passId]}</strong>
                           <span>{describePassState(passId, sceneModel)}</span>
                         </div>
-                        <div className="preset-pass-order__actions">
+                        <div className="scene-pass-order__actions">
                           <button
                             aria-label={`Move ${PASS_LABELS[passId]} up`}
-                            className="preset-order-button"
+                            className="scene-order-button"
                             disabled={isOutputPass || index === 0}
                             onClick={() => movePass(passId, -1)}
                             type="button"
@@ -2170,7 +2170,7 @@ export function CreatePresetPage() {
                           </button>
                           <button
                             aria-label={`Move ${PASS_LABELS[passId]} down`}
-                            className="preset-order-button"
+                            className="scene-order-button"
                             disabled={
                               isOutputPass ||
                               index >= sceneModel.fx.passOrder.length - 2
@@ -2185,18 +2185,18 @@ export function CreatePresetPage() {
                     );
                   })}
                 </ol>
-              </PresetSection>
+              </SceneSection>
             ) : null}
 
             {sectionMenuValue === "advanced" ? (
-              <PresetSection
-                description="Edit advanced settings, startup values, and raw preset JSON."
+              <SceneSection
+                description="Edit advanced settings, startup values, and raw scene JSON."
                 title="Advanced"
               >
-                <div className="preset-advanced-stack">
-                  <div className="preset-editor-grid preset-editor-grid--2">
+                <div className="scene-advanced-stack">
+                  <div className="scene-editor-grid scene-editor-grid--2">
                     <NumberField
-                      description="Experimental compact-preset field exported by the library."
+                      description="Experimental compact scene field exported by the library."
                       id="camera-orientation-mode"
                       label="Camera Orientation Mode"
                       min={0}
@@ -2214,7 +2214,7 @@ export function CreatePresetPage() {
                     />
 
                     <NumberField
-                      description="Experimental compact-preset field exported by the library."
+                      description="Experimental compact scene field exported by the library."
                       id="camera-orientation-speed"
                       label="Camera Orientation Speed"
                       min={0}
@@ -2232,11 +2232,11 @@ export function CreatePresetPage() {
                   <div className="field-group">
                     <label>Runtime State</label>
                     <p className="field-hint">
-                      Seed low-level engine values for debugging or for presets
+                      Seed low-level engine values for debugging or for scenes
                       that depend on non-default startup state.
                     </p>
                   </div>
-                  <div className="preset-editor-grid preset-editor-grid--3">
+                  <div className="scene-editor-grid scene-editor-grid--3">
                     <NumberField
                       description="Low-level runtime state."
                       id="state-size"
@@ -2318,17 +2318,17 @@ export function CreatePresetPage() {
                   </div>
 
                   <div className="field-group">
-                    <div className="preset-advanced-header">
+                    <div className="scene-advanced-header">
                       <div>
                         <label htmlFor="sceneData">Scene Data JSON</label>
                         <p className="field-hint">
                           Raw scene data stays available here. While the JSON is
-                          invalid, the preview keeps the last valid preset
+                          invalid, the preview keeps the last valid scene
                           state.
                         </p>
                       </div>
                       <button
-                        className="preset-secondary-button"
+                        className="scene-secondary-button"
                         onClick={handleFormatJson}
                         type="button"
                       >
@@ -2340,7 +2340,7 @@ export function CreatePresetPage() {
                         errors.sceneData ? "sceneData-error" : "sceneData-hint"
                       }
                       aria-invalid={Boolean(errors.sceneData)}
-                      className="preset-textarea preset-textarea--code"
+                      className="scene-textarea scene-textarea--code"
                       id="sceneData"
                       name="sceneData"
                       onChange={(event) =>
@@ -2361,34 +2361,34 @@ export function CreatePresetPage() {
                     ) : (
                       <p className="field-hint" id="sceneData-hint">
                         Structured controls above keep this JSON in sync with
-                        the current preset.
+                        the current scene.
                       </p>
                     )}
                   </div>
                 </div>
-              </PresetSection>
+              </SceneSection>
             ) : null}
 
             <button
-              className="demo-link auth-submit preset-editor-submit"
+              className="demo-link auth-submit scene-editor-submit"
               disabled={isSubmitting}
               type="submit"
             >
               {isSubmitting
                 ? pendingTagAttachment
                   ? "Retrying tag attachment..."
-                  : "Creating preset..."
+                  : "Creating scene..."
                 : pendingTagAttachment
                   ? "Retry tag attachment"
-                  : "Create preset"}
+                  : "Create scene"}
             </button>
           </div>
 
-          <aside className="preset-editor-preview">
-            <section className="surface surface--soft preset-editor-preview__card">
-              <div className="preset-editor-preview__header">
+          <aside className="scene-editor-preview">
+            <section className="surface surface--soft scene-editor-preview__card">
+              <div className="scene-editor-preview__header">
                 <div>
-                  <span className="preset-editor-toolbar__eyebrow">
+                  <span className="scene-editor-toolbar__eyebrow">
                     Preview
                   </span>
                   <h2>Live Preview</h2>
@@ -2396,7 +2396,7 @@ export function CreatePresetPage() {
               </div>
 
               <MagePlayer
-                className="preset-editor-preview__player"
+                className="scene-editor-preview__player"
                 sceneBlob={previewSceneData}
               />
             </section>

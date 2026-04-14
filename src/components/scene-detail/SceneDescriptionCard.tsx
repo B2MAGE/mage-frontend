@@ -1,31 +1,31 @@
 import { Link } from 'react-router-dom'
-import type { CreatorProfile, PresetDescription, PresetEngagement } from '../../lib/presetDetail'
+import type { CreatorProfile, SceneDescription, SceneEngagement } from '../../lib/sceneDetail'
 
-type PresetDescriptionCardProps = {
+type SceneDescriptionCardProps = {
   creatorProfile: CreatorProfile
-  engagement: PresetEngagement
+  engagement: SceneEngagement
   isDescriptionExpanded: boolean
-  presetDescription: PresetDescription
+  sceneDescription: SceneDescription
   onToggleDescription: () => void
 }
 
-export function PresetDescriptionCard({
+export function SceneDescriptionCard({
   creatorProfile,
   engagement,
   isDescriptionExpanded,
-  presetDescription,
+  sceneDescription,
   onToggleDescription,
-}: PresetDescriptionCardProps) {
+}: SceneDescriptionCardProps) {
   const descriptionToggle = (
     <button
-      className="preset-detail-description-toggle"
+      className="scene-detail-description-toggle"
       type="button"
       aria-expanded={isDescriptionExpanded}
       onClick={onToggleDescription}
     >
       <span>{isDescriptionExpanded ? 'Hide' : 'Show'}</span>
       <span
-        className={`preset-detail-description-toggle__chevron${
+        className={`scene-detail-description-toggle__chevron${
           isDescriptionExpanded ? ' is-expanded' : ''
         }`}
         aria-hidden="true"
@@ -44,42 +44,42 @@ export function PresetDescriptionCard({
   )
 
   return (
-    <section className="preset-detail-description-card">
-      <div className="preset-detail-description-card__meta">
+    <section className="scene-detail-description-card">
+      <div className="scene-detail-description-card__meta">
         <strong>{engagement.playsLabel}</strong>
         <span>{engagement.publishedLabel}</span>
       </div>
-      <div className="preset-detail-description-copy" data-expanded={isDescriptionExpanded}>
-        <p>{presetDescription.opening}</p>
-        <p>{presetDescription.middle}</p>
-        <p>{presetDescription.closing}</p>
+      <div className="scene-detail-description-copy" data-expanded={isDescriptionExpanded}>
+        <p>{sceneDescription.opening}</p>
+        <p>{sceneDescription.middle}</p>
+        <p>{sceneDescription.closing}</p>
       </div>
 
       {isDescriptionExpanded ? (
         <>
-          <div className="preset-detail-note-grid">
-            <div className="preset-detail-note-grid__item">
+          <div className="scene-detail-note-grid">
+            <div className="scene-detail-note-grid__item">
               <span>Studio note</span>
               <strong>{creatorProfile.studioNote}</strong>
             </div>
-            <div className="preset-detail-note-grid__item">
+            <div className="scene-detail-note-grid__item">
               <span>Best for</span>
-              <strong>{presetDescription.bestFor}</strong>
+              <strong>{sceneDescription.bestFor}</strong>
             </div>
-            <div className="preset-detail-note-grid__item">
+            <div className="scene-detail-note-grid__item">
               <span>Built with</span>
-              <strong>{presetDescription.builtWith}</strong>
+              <strong>{sceneDescription.builtWith}</strong>
             </div>
-            <div className="preset-detail-note-grid__item">
+            <div className="scene-detail-note-grid__item">
               <span>Saves</span>
               <strong>{engagement.savesLabel}</strong>
             </div>
           </div>
 
-          {presetDescription.tags.length > 0 ? (
-            <div className="tag-filter-bar preset-detail-description-tags" role="toolbar" aria-label="Preset tags">
-              {presetDescription.tags.map((tag) => (
-                <Link key={tag} className="tag-pill" to={`/presets?tag=${encodeURIComponent(tag)}`}>
+          {sceneDescription.tags.length > 0 ? (
+            <div className="tag-filter-bar scene-detail-description-tags" role="toolbar" aria-label="Scene tags">
+              {sceneDescription.tags.map((tag) => (
+                <Link key={tag} className="tag-pill" to={`/scenes?tag=${encodeURIComponent(tag)}`}>
                   {tag}
                 </Link>
               ))}

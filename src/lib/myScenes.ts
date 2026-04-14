@@ -1,48 +1,48 @@
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-export type PresetVisibility = 'Public' | 'Private' | 'Unlisted' | 'Draft'
+export type SceneVisibility = 'Public' | 'Private' | 'Unlisted' | 'Draft'
 export type SortKey = 'updated' | 'views' | 'likes'
 export type SortDirection = 'asc' | 'desc'
-export type StatusFilter = 'All' | PresetVisibility
+export type StatusFilter = 'All' | SceneVisibility
 
-export type UserPreset = {
+export type UserScene = {
   id: number
   name: string
   thumbnailRef: string | null
   createdAt: string | null
   description: string | null
-  statusLabel: PresetVisibility
+  statusLabel: SceneVisibility
   viewsCount: number
   commentsCount: number
   likesRatio: number
 }
 
-type UserPresetResponse = {
+type UserSceneResponse = {
   id?: number
-  presetId?: number
+  sceneId?: number
   name?: string
   thumbnailRef?: string | null
   createdAt?: string
   description?: string | null
 }
 
-type DemoPresetThumbnail = {
+type DemoSceneThumbnail = {
   background: string
   primary: string
   secondary: string
 }
 
-type DemoPresetRequest = {
+type DemoSceneRequest = {
   name: string
   sceneData: Record<string, unknown>
   thumbnailRef?: string
 }
 
-type DemoPresetBlueprint = Omit<DemoPresetRequest, 'thumbnailRef'> & {
-  thumbnail?: DemoPresetThumbnail
+type DemoSceneBlueprint = Omit<DemoSceneRequest, 'thumbnailRef'> & {
+  thumbnail?: DemoSceneThumbnail
 }
 
-const demoPresetBlueprints: DemoPresetBlueprint[] = [
+const demoSceneBlueprints: DemoSceneBlueprint[] = [
   {
     name: 'Aurora Drift',
     sceneData: {
@@ -110,34 +110,34 @@ const demoPresetBlueprints: DemoPresetBlueprint[] = [
 
 const rowsPerPageOptions = [10, 20, 30] as const
 
-function buildDemoThumbnail({ background, primary, secondary }: DemoPresetThumbnail) {
+function buildDemoThumbnail({ background, primary, secondary }: DemoSceneThumbnail) {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'><rect width='320' height='180' fill='${background}'/><circle cx='86' cy='94' r='52' fill='${primary}'/><circle cx='244' cy='66' r='34' fill='${secondary}' fill-opacity='.88'/></svg>`
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
-const demoPresetRequests: DemoPresetRequest[] = demoPresetBlueprints.map(({ thumbnail, ...preset }) => ({
-  ...preset,
+const demoSceneRequests: DemoSceneRequest[] = demoSceneBlueprints.map(({ thumbnail, ...scene }) => ({
+  ...scene,
   ...(thumbnail ? { thumbnailRef: buildDemoThumbnail(thumbnail) } : {}),
 }))
 
-function isUserPresetResponse(value: unknown): value is UserPresetResponse {
+function isUserSceneResponse(value: unknown): value is UserSceneResponse {
   return typeof value === 'object' && value !== null
 }
 
-function buildViewsCount(presetId: number) {
-  return 18 + presetId * 37
+function buildViewsCount(sceneId: number) {
+  return 18 + sceneId * 37
 }
 
-function buildCommentsCount(presetId: number) {
-  return (presetId * 3) % 17
+function buildCommentsCount(sceneId: number) {
+  return (sceneId * 3) % 17
 }
 
-function buildLikesRatio(presetId: number) {
-  return 92 + (presetId % 7)
+function buildLikesRatio(sceneId: number) {
+  return 92 + (sceneId % 7)
 }
 
-function buildStatusLabel(): PresetVisibility {
+function buildStatusLabel(): SceneVisibility {
   return 'Public'
 }
 
@@ -151,7 +151,7 @@ function parseCreatedAtValue(createdAt: string | null) {
   return Number.isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime()
 }
 
-export function formatPresetDate(createdAt: string | null) {
+export function formatSceneDate(createdAt: string | null) {
   if (!createdAt) {
     return 'Recently'
   }
@@ -193,26 +193,26 @@ export function buildSortSummary(sortKey: SortKey, sortDirection: SortDirection)
   return sortDirection === 'desc' ? 'Highest likes ratio first' : 'Lowest likes ratio first'
 }
 
-export function sortPresets(presets: UserPreset[], sortKey: SortKey, sortDirection: SortDirection) {
+export function sortScenes(scenes: UserScene[], sortKey: SortKey, sortDirection: SortDirection) {
   const direction = sortDirection === 'asc' ? 1 : -1
 
-  return [...presets].sort((leftPreset, rightPreset) => {
+  return [...scenes].sort((leftScene, rightScene) => {
     let leftValue = 0
     let rightValue = 0
 
     if (sortKey === 'updated') {
-      leftValue = parseCreatedAtValue(leftPreset.createdAt)
-      rightValue = parseCreatedAtValue(rightPreset.createdAt)
+      leftValue = parseCreatedAtValue(leftScene.createdAt)
+      rightValue = parseCreatedAtValue(rightScene.createdAt)
     } else if (sortKey === 'views') {
-      leftValue = leftPreset.viewsCount
-      rightValue = rightPreset.viewsCount
+      leftValue = leftScene.viewsCount
+      rightValue = rightScene.viewsCount
     } else {
-      leftValue = leftPreset.likesRatio
-      rightValue = rightPreset.likesRatio
+      leftValue = leftScene.likesRatio
+      rightValue = rightScene.likesRatio
     }
 
     if (leftValue === rightValue) {
-      return leftPreset.name.localeCompare(rightPreset.name)
+      return leftScene.name.localeCompare(rightScene.name)
     }
 
     return (leftValue - rightValue) * direction
@@ -234,27 +234,27 @@ export function buildSortAriaLabel(
     : `Sort by ${label.toLowerCase()} descending`
 }
 
-export function normalizePresets(payload: unknown) {
+export function normalizeScenes(payload: unknown) {
   if (!Array.isArray(payload)) {
     return []
   }
 
-  return payload.reduce<UserPreset[]>((presets, item) => {
-    const presetId =
-      isUserPresetResponse(item) && typeof item.id === 'number'
+  return payload.reduce<UserScene[]>((scenes, item) => {
+    const sceneId =
+      isUserSceneResponse(item) && typeof item.id === 'number'
         ? item.id
-        : isUserPresetResponse(item) && typeof item.presetId === 'number'
-          ? item.presetId
+        : isUserSceneResponse(item) && typeof item.sceneId === 'number'
+          ? item.sceneId
           : null
 
-    if (!isUserPresetResponse(item) || presetId === null) {
-      return presets
+    if (!isUserSceneResponse(item) || sceneId === null) {
+      return scenes
     }
 
-    presets.push({
-      id: presetId,
+    scenes.push({
+      id: sceneId,
       name:
-        typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Preset ${presetId}`,
+        typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Scene ${sceneId}`,
       thumbnailRef:
         typeof item.thumbnailRef === 'string' && item.thumbnailRef.trim() ? item.thumbnailRef : null,
       createdAt:
@@ -262,41 +262,41 @@ export function normalizePresets(payload: unknown) {
       description:
         typeof item.description === 'string' && item.description.trim() ? item.description.trim() : null,
       statusLabel: buildStatusLabel(),
-      viewsCount: buildViewsCount(presetId),
-      commentsCount: buildCommentsCount(presetId),
-      likesRatio: buildLikesRatio(presetId),
+      viewsCount: buildViewsCount(sceneId),
+      commentsCount: buildCommentsCount(sceneId),
+      likesRatio: buildLikesRatio(sceneId),
     })
 
-    return presets
+    return scenes
   }, [])
 }
 
-export async function fetchUserPresets(authenticatedFetch: AuthenticatedFetch, userId: number) {
-  const response = await authenticatedFetch(`/users/${userId}/presets`)
+export async function fetchUserScenes(authenticatedFetch: AuthenticatedFetch, userId: number) {
+  const response = await authenticatedFetch(`/users/${userId}/scenes`)
 
   if (!response.ok) {
-    throw new Error('Unable to load presets.')
+    throw new Error('Unable to load scenes.')
   }
 
   const payload = (await response.json().catch(() => [])) as unknown
 
-  return normalizePresets(payload)
+  return normalizeScenes(payload)
 }
 
-export async function createDemoPresets(authenticatedFetch: AuthenticatedFetch) {
-  for (const preset of demoPresetRequests) {
-    const response = await authenticatedFetch('/presets', {
+export async function createDemoScenes(authenticatedFetch: AuthenticatedFetch) {
+  for (const scene of demoSceneRequests) {
+    const response = await authenticatedFetch('/scenes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(preset),
+      body: JSON.stringify(scene),
     })
 
     if (!response.ok) {
-      throw new Error('Unable to add sample presets right now. Please try again in a moment.')
+      throw new Error('Unable to add sample scenes right now. Please try again in a moment.')
     }
   }
 }
 
-export const MY_PRESETS_ROWS_PER_PAGE_OPTIONS = [...rowsPerPageOptions]
+export const MY_SCENES_ROWS_PER_PAGE_OPTIONS = [...rowsPerPageOptions]

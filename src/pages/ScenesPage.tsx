@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { PresetListResponse, TagResponse } from '../lib/api'
-import { fetchPresets, fetchTags } from '../lib/api'
-import { PresetCard } from '../components/PresetCard'
+import type { SceneListResponse, TagResponse } from '../lib/api'
+import { fetchScenes, fetchTags } from '../lib/api'
+import { SceneCard } from '../components/SceneCard'
 import { TagFilterBar } from '../components/TagFilterBar'
 
 type PageState = 'loading' | 'ready' | 'error'
 
-export function PresetsPage() {
+export function ScenesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [tags, setTags] = useState<TagResponse[]>([])
-  const [presets, setPresets] = useState<PresetListResponse[]>([])
+  const [scenes, setScenes] = useState<SceneListResponse[]>([])
   const [pageState, setPageState] = useState<PageState>('loading')
   const [tagsLoading, setTagsLoading] = useState(true)
   const [reloadVersion, setReloadVersion] = useState(0)
@@ -58,15 +58,15 @@ export function PresetsPage() {
   useEffect(() => {
     let cancelled = false
 
-    async function loadPresets() {
+    async function loadScenes() {
       try {
-        const data = await fetchPresets(activeTag)
+        const data = await fetchScenes(activeTag)
 
         if (cancelled) {
           return
         }
 
-        setPresets(data)
+        setScenes(data)
         setPageState('ready')
       } catch {
         if (!cancelled) {
@@ -75,7 +75,7 @@ export function PresetsPage() {
       }
     }
 
-    void loadPresets()
+    void loadScenes()
 
     return () => {
       cancelled = true
@@ -112,8 +112,8 @@ export function PresetsPage() {
   }
 
   return (
-    <main className="presets-page">
-      <div className="presets-filter-rail">
+    <main className="scenes-page">
+      <div className="scenes-filter-rail">
         <TagFilterBar
           tags={availableTags}
           activeTag={activeTag}
@@ -123,13 +123,13 @@ export function PresetsPage() {
       </div>
 
       {pageState === 'loading' && (
-        <div className="preset-grid" aria-label="Loading presets">
+        <div className="scene-grid" aria-label="Loading scenes">
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="preset-card preset-card--skeleton" aria-hidden="true">
-              <div className="preset-card__thumbnail preset-card__thumbnail--skeleton" />
-              <div className="preset-card__body">
-                <span className="preset-card__avatar preset-card__avatar--skeleton" />
-                <div className="preset-card__meta">
+            <div key={i} className="scene-card scene-card--skeleton" aria-hidden="true">
+              <div className="scene-card__thumbnail scene-card__thumbnail--skeleton" />
+              <div className="scene-card__body">
+                <span className="scene-card__avatar scene-card__avatar--skeleton" />
+                <div className="scene-card__meta">
                   <span className="skeleton-text skeleton-text--title" />
                   <span className="skeleton-text skeleton-text--sub" />
                   <span className="skeleton-text skeleton-text--meta" />
@@ -140,28 +140,28 @@ export function PresetsPage() {
         </div>
       )}
 
-      {pageState === 'ready' && presets.length === 0 && (
-        <div className="presets-empty" role="status">
-          <p>No presets found{activeTag ? ` for "${activeTag}"` : ''}.</p>
-          <p className="presets-empty__hint">
+      {pageState === 'ready' && scenes.length === 0 && (
+        <div className="scenes-empty" role="status">
+          <p>No scenes found{activeTag ? ` for "${activeTag}"` : ''}.</p>
+          <p className="scenes-empty__hint">
             {activeTag
-              ? 'Try selecting a different tag or browse all presets.'
-              : 'Presets will appear here once they are created.'}
+              ? 'Try selecting a different tag or browse all scenes.'
+              : 'Scenes will appear here once they are created.'}
           </p>
         </div>
       )}
 
-      {pageState === 'ready' && presets.length > 0 && (
-        <div className="preset-grid" aria-label="Preset list">
-          {presets.map((preset) => (
-            <PresetCard key={preset.presetId} preset={preset} />
+      {pageState === 'ready' && scenes.length > 0 && (
+        <div className="scene-grid" aria-label="Scene list">
+          {scenes.map((scene) => (
+            <SceneCard key={scene.sceneId} scene={scene} />
           ))}
         </div>
       )}
 
       {pageState === 'error' && (
-        <div className="presets-error" role="alert">
-          <p>Something went wrong loading presets.</p>
+        <div className="scenes-error" role="alert">
+          <p>Something went wrong loading scenes.</p>
           <button className="demo-link" onClick={handleRetry} type="button">
             Try again
           </button>

@@ -12,7 +12,7 @@ The intended production contract is:
 
 This keeps deployment aligned with the current auth flow and avoids introducing CORS requirements into the supported path.
 
-The one exception is preset thumbnail uploads: when a user selects a thumbnail in the create preset flow, the browser uploads that file directly to the configured object-storage provider using a presigned `PUT` URL issued by the backend.
+The one exception is scene thumbnail uploads: when a user selects a thumbnail in the create scene flow, the browser uploads that file directly to the configured object-storage provider using a presigned `PUT` URL issued by the backend.
 
 ## Container Notes
 

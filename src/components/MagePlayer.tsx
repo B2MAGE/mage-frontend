@@ -19,11 +19,11 @@ function readErrorMessage(error: unknown) {
     return error.message
   }
 
-  return 'MAGE could not render this preset.'
+  return 'MAGE could not render this scene.'
 }
 
 export function MagePlayer({
-  ariaLabel = 'MAGE preset preview',
+  ariaLabel = 'MAGE scene preview',
   className,
   log = false,
   sceneBlob,
@@ -141,16 +141,16 @@ export function MagePlayer({
           ? 'ready'
           : 'loading'
 
-  let title = 'No preset selected.'
+  let title = 'No scene selected.'
   let message = 'Pass a scene blob into this player to render it in the browser.'
   let role: 'alert' | 'status' = 'status'
 
   if (status === 'loading') {
-    title = 'Loading preset preview.'
-    message = 'Initializing the MAGE engine and applying the preset scene blob.'
+    title = 'Loading scene preview.'
+    message = 'Initializing the MAGE engine and applying the scene blob.'
   } else if (status === 'error') {
-    title = 'Unable to render this preset.'
-    message = loadError?.message ?? 'MAGE could not render this preset.'
+    title = 'Unable to render this scene.'
+    message = loadError?.message ?? 'MAGE could not render this scene.'
     role = 'alert'
   }
 

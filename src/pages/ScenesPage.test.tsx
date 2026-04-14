@@ -2,16 +2,16 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PresetsPage } from './PresetsPage'
+import { ScenesPage } from './ScenesPage'
 
 const mockTags = [
   { tagId: 1, name: 'fire' },
   { tagId: 2, name: 'water' },
 ]
 
-const mockPresets = [
+const mockScenes = [
   {
-    presetId: 1,
+    sceneId: 1,
     ownerUserId: 10,
     creatorDisplayName: 'Sunset Artist',
     name: 'Sunset Scene',
@@ -20,7 +20,7 @@ const mockPresets = [
     createdAt: new Date().toISOString(),
   },
   {
-    presetId: 2,
+    sceneId: 2,
     ownerUserId: 10,
     creatorDisplayName: 'Ocean Artist',
     name: 'Ocean Breeze',
@@ -30,17 +30,17 @@ const mockPresets = [
   },
 ]
 
-function renderPresetsPage() {
+function renderScenesPage() {
   return render(
-    <MemoryRouter initialEntries={['/presets']}>
-      <PresetsPage />
+    <MemoryRouter initialEntries={['/scenes']}>
+      <ScenesPage />
     </MemoryRouter>,
   )
 }
 
 function mockFetchResponses(
   tagsResponse: unknown[] = mockTags,
-  presetsResponse: unknown[] = mockPresets,
+  scenesResponse: unknown[] = mockScenes,
 ) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
     const url = typeof input === 'string' ? input : (input as Request).url
@@ -55,7 +55,7 @@ function mockFetchResponses(
     }
 
     return Promise.resolve(
-      new Response(JSON.stringify(presetsResponse), {
+      new Response(JSON.stringify(scenesResponse), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
@@ -63,7 +63,7 @@ function mockFetchResponses(
   })
 }
 
-describe('PresetsPage', () => {
+describe('ScenesPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
@@ -73,15 +73,15 @@ describe('PresetsPage', () => {
       () => new Promise(() => {}),
     )
 
-    renderPresetsPage()
+    renderScenesPage()
 
-    expect(screen.getByLabelText(/loading presets/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/loading scenes/i)).toBeInTheDocument()
   })
 
-  it('renders preset cards after successful fetch', async () => {
+  it('renders scene cards after successful fetch', async () => {
     mockFetchResponses()
 
-    renderPresetsPage()
+    renderScenesPage()
 
     expect(await screen.findByText('Sunset Scene')).toBeInTheDocument()
     expect(screen.getByText('Ocean Breeze')).toBeInTheDocument()
@@ -92,7 +92,7 @@ describe('PresetsPage', () => {
   it('renders tag filter pills after loading', async () => {
     const fetchSpy = mockFetchResponses()
 
-    renderPresetsPage()
+    renderScenesPage()
 
     expect(await screen.findByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'fire' })).toBeInTheDocument()
@@ -107,31 +107,31 @@ describe('PresetsPage', () => {
     expect(tagUrl).toContain('attachedOnly=true')
   })
 
-  it('shows empty state when no presets are returned', async () => {
+  it('shows empty state when no scenes are returned', async () => {
     mockFetchResponses(mockTags, [])
 
-    renderPresetsPage()
+    renderScenesPage()
 
-    expect(await screen.findByText(/no presets found/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no scenes found/i)).toBeInTheDocument()
   })
 
-  it('clicking a tag pill filters presets by that tag', async () => {
+  it('clicking a tag pill filters scenes by that tag', async () => {
     const fetchSpy = mockFetchResponses()
     const user = userEvent.setup()
 
-    renderPresetsPage()
+    renderScenesPage()
 
     const fireButton = await screen.findByRole('button', { name: 'fire' })
     await user.click(fireButton)
 
     await waitFor(() => {
-      const presetCalls = fetchSpy.mock.calls.filter(
+      const sceneCalls = fetchSpy.mock.calls.filter(
         (call) => {
           const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
-          return url.includes('/presets')
+          return url.includes('/scenes')
         },
       )
-      const lastCall = presetCalls[presetCalls.length - 1]
+      const lastCall = sceneCalls[sceneCalls.length - 1]
       const url = typeof lastCall[0] === 'string' ? lastCall[0] : (lastCall[0] as Request).url
       expect(url).toContain('tag=fire')
     })
@@ -141,7 +141,7 @@ describe('PresetsPage', () => {
     const fetchSpy = mockFetchResponses()
     const user = userEvent.setup()
 
-    renderPresetsPage()
+    renderScenesPage()
 
     const fireButton = await screen.findByRole('button', { name: 'fire' })
     await user.click(fireButton)
@@ -150,13 +150,13 @@ describe('PresetsPage', () => {
     await user.click(allButton)
 
     await waitFor(() => {
-      const presetCalls = fetchSpy.mock.calls.filter(
+      const sceneCalls = fetchSpy.mock.calls.filter(
         (call) => {
           const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
-          return url.includes('/presets')
+          return url.includes('/scenes')
         },
       )
-      const lastCall = presetCalls[presetCalls.length - 1]
+      const lastCall = sceneCalls[sceneCalls.length - 1]
       const url = typeof lastCall[0] === 'string' ? lastCall[0] : (lastCall[0] as Request).url
       expect(url).not.toContain('tag=')
     })
@@ -180,7 +180,7 @@ describe('PresetsPage', () => {
       )
     })
 
-    renderPresetsPage()
+    renderScenesPage()
 
     expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
