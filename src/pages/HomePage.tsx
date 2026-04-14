@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { MagePlayer } from '../components/MagePlayer'
 import type { MageSceneBlob } from '../lib/magePlayerAdapter'
+import { PresetsPage } from './PresetsPage'
 
 const HOME_PAGE_PRESET_SCENE = {
   visualizer: {
@@ -43,6 +44,22 @@ const HOME_PAGE_PRESET_SCENE = {
 } satisfies MageSceneBlob
 
 export function HomePage() {
+  const { accessToken, isAuthenticated, isRestoringSession } = useAuth()
+
+  if (isAuthenticated) {
+    return <PresetsPage />
+  }
+
+  if (isRestoringSession && accessToken) {
+    return (
+      <main className="surface surface--hero home-hero">
+        <div className="eyebrow">Presets</div>
+        <h1>Loading presets...</h1>
+        <p className="page-lead">MAGE is restoring your account before opening preset discovery.</p>
+      </main>
+    )
+  }
+
   return (
     <main className="surface surface--hero home-hero">
       <div className="eyebrow">Preview</div>
@@ -54,14 +71,6 @@ export function HomePage() {
           sceneBlob={HOME_PAGE_PRESET_SCENE}
         />
       </section>
-      <div className="auth-actions">
-        <Link className="demo-link" to="/presets">
-          Browse presets
-        </Link>
-        <Link className="secondary-link" to="/register">
-          Create an account
-        </Link>
-      </div>
       <p className="page-footnote">The full platform experience is currently in development.</p>
       <div className="page-mark">MAGE</div>
     </main>

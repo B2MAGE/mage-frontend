@@ -83,7 +83,7 @@ describe('App routing', () => {
     expect(screen.queryByText('Settings page')).not.toBeInTheDocument()
   })
 
-  it('redirects authenticated users away from login to settings', async () => {
+  it('redirects authenticated users away from login to home', async () => {
     window.localStorage.setItem(
       AUTH_SESSION_STORAGE_KEY,
       JSON.stringify({
@@ -121,13 +121,13 @@ describe('App routing', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Settings page')).toBeInTheDocument()
+      expect(screen.getByText('Home page')).toBeInTheDocument()
     })
 
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
-  it('redirects authenticated users away from register to settings', async () => {
+  it('redirects authenticated users away from register to home', async () => {
     window.localStorage.setItem(
       AUTH_SESSION_STORAGE_KEY,
       JSON.stringify({
@@ -165,7 +165,7 @@ describe('App routing', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Settings page')).toBeInTheDocument()
+      expect(screen.getByText('Home page')).toBeInTheDocument()
     })
 
     expect(screen.queryByText('Register page')).not.toBeInTheDocument()

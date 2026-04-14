@@ -48,7 +48,7 @@ function GuestOnlyRoute({ children }: ProtectedRouteProps) {
   }
 
   if (isAuthenticated) {
-    return <Navigate replace to="/settings" />
+    return <Navigate replace to="/" />
   }
 
   return children
