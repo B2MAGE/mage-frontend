@@ -41,6 +41,21 @@ export type TagResponse = {
   name: string
 }
 
+export type FetchTagsOptions = {
+  attachedOnly?: boolean
+}
+
+export async function fetchAvailableTags(options?: FetchTagsOptions): Promise<TagResponse[]> {
+  const query = options?.attachedOnly ? '?attachedOnly=true' : ''
+  const response = await fetch(buildApiUrl(`/tags${query}`))
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tags (${response.status})`)
+  }
+
+  return response.json() as Promise<TagResponse[]>
+}
+
 export async function fetchPresets(tag?: string | null): Promise<PresetListResponse[]> {
   const query = tag ? `?tag=${encodeURIComponent(tag)}` : ''
   const response = await fetch(buildApiUrl(`/presets${query}`))
@@ -52,15 +67,9 @@ export async function fetchPresets(tag?: string | null): Promise<PresetListRespo
   return response.json() as Promise<PresetListResponse[]>
 }
 
-export async function fetchTags(): Promise<TagResponse[]> {
+export async function fetchTags(options?: FetchTagsOptions): Promise<TagResponse[]> {
   try {
-    const response = await fetch(buildApiUrl('/tags'))
-
-    if (!response.ok) {
-      return []
-    }
-
-    return (await response.json()) as TagResponse[]
+    return await fetchAvailableTags(options)
   } catch {
     return []
   }

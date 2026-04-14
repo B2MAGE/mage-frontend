@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { AuthPage, AuthPageHeader } from "../components/AuthPage";
@@ -15,6 +15,10 @@ import {
 } from "../components/PresetEditorControls";
 import { parseApiError } from "../lib/authForm";
 import { uploadNewPresetThumbnail } from "../lib/presetThumbnailUpload";
+import {
+  fetchAvailableTags,
+  type TagResponse,
+} from "../lib/api";
 import {
   createDefaultSceneData,
   getSceneEditorModel,
@@ -35,7 +39,7 @@ import {
 } from "../lib/presetEditor";
 
 type CreatePresetFormErrors = Partial<
-  Record<"form" | "name" | "sceneData" | "thumbnail", string>
+  Record<"form" | "name" | "newTag" | "sceneData" | "tags" | "thumbnail", string>
 >;
 type EditorSectionId =
   | "advanced"
@@ -46,6 +50,16 @@ type EditorSectionId =
   | "scene";
 type EffectCategoryId = "color" | "finish" | "pattern" | "trail";
 type ThumbnailMode = "skip" | "upload";
+
+type PendingTagAttachment = {
+  presetId: number;
+  tagIds: number[];
+};
+
+type TagAttachmentFailure = {
+  tagId: number;
+  tagName: string;
+};
 
 type AdditionalPassConfig = {
   category: EffectCategoryId;
@@ -191,6 +205,38 @@ const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set([
   "image/gif",
 ]);
 const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
+const MAX_TAG_NAME_LENGTH = 64;
+const TAG_SKELETON_COUNT = 5;
+
+function normalizeTagName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function sortTags(tags: TagResponse[]) {
+  return [...tags].sort((firstTag, secondTag) =>
+    firstTag.name.localeCompare(secondTag.name),
+  );
+}
+
+function upsertTag(tags: TagResponse[], nextTag: TagResponse) {
+  return sortTags([
+    ...tags.filter((tag) => tag.tagId !== nextTag.tagId),
+    nextTag,
+  ]);
+}
+
+function parseCreatedPresetId(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const presetId = (payload as { presetId?: unknown }).presetId;
+  return typeof presetId === "number" && presetId > 0 ? presetId : null;
+}
+
+async function loadAvailableTagsFromBackend() {
+  return sortTags(await fetchAvailableTags());
+}
 
 function buildShaderOptions(currentShader: string) {
   const matchedPreset = SHADER_PRESETS.find(
@@ -340,15 +386,26 @@ export function CreatePresetPage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailFileName, setThumbnailFileName] = useState("");
   const [playlistValue, setPlaylistValue] = useState("");
+  const [availableTags, setAvailableTags] = useState<TagResponse[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [tagSearchValue, setTagSearchValue] = useState("");
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [sceneData, setSceneData] = useState<PresetSceneData>(initialSceneData);
   const [sceneDataText, setSceneDataText] = useState(() =>
     prettyPrintSceneData(initialSceneData),
   );
   const [errors, setErrors] = useState<CreatePresetFormErrors>({});
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [tagsError, setTagsError] = useState<string | null>(null);
+  const [pendingTagAttachment, setPendingTagAttachment] =
+    useState<PendingTagAttachment | null>(null);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const tagDropdownRef = useRef<HTMLDivElement | null>(null);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const formErrorId = useId();
+  const tagSearchInputId = useId();
   const thumbnailInputId = useId();
   const titleId = "create-preset-title";
   const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData]);
@@ -367,6 +424,110 @@ export function CreatePresetPage() {
   const selectedShaderPreset = shaderSelection.matchedPreset;
   const selectedToneMapping =
     toneMappingSelection.matchedOption ?? TONE_MAPPING_OPTIONS[0];
+  const normalizedTagSearchValue = normalizeTagName(tagSearchValue);
+  const selectedTags = useMemo(
+    () =>
+      availableTags.filter((tag) => selectedTagIds.includes(tag.tagId)),
+    [availableTags, selectedTagIds],
+  );
+  const selectableTags = useMemo(
+    () =>
+      availableTags.filter((tag) => !selectedTagIds.includes(tag.tagId)),
+    [availableTags, selectedTagIds],
+  );
+  const filteredSelectableTags = useMemo(() => {
+    if (!normalizedTagSearchValue) {
+      return selectableTags;
+    }
+
+    return selectableTags.filter((tag) =>
+      tag.name.includes(normalizedTagSearchValue),
+    );
+  }, [normalizedTagSearchValue, selectableTags]);
+  const exactMatchedTag = useMemo(
+    () =>
+      availableTags.find((tag) => tag.name === normalizedTagSearchValue) ?? null,
+    [availableTags, normalizedTagSearchValue],
+  );
+  const isExactMatchedTagSelected =
+    exactMatchedTag !== null && selectedTagIds.includes(exactMatchedTag.tagId);
+  const canCreateTagFromSearch =
+    normalizedTagSearchValue.length > 0 && exactMatchedTag === null;
+  const pendingRetryTags = useMemo(
+    () =>
+      pendingTagAttachment === null
+        ? []
+        : availableTags.filter((tag) =>
+            pendingTagAttachment.tagIds.includes(tag.tagId),
+          ),
+    [availableTags, pendingTagAttachment],
+  );
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadTags() {
+      try {
+        const nextTags = await loadAvailableTagsFromBackend();
+
+        if (!isCurrent) {
+          return;
+        }
+
+        setAvailableTags(nextTags);
+        setTagsError(null);
+      } catch (error) {
+        if (!isCurrent) {
+          return;
+        }
+
+        setAvailableTags([]);
+        setTagsError(
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "Unable to load available tags right now.",
+        );
+      } finally {
+        if (isCurrent) {
+          setTagsLoading(false);
+        }
+      }
+    }
+
+    void loadTags();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isTagDropdownOpen) {
+      return;
+    }
+
+    function handleDocumentMouseDown(event: MouseEvent) {
+      if (!tagDropdownRef.current?.contains(event.target as Node)) {
+        setIsTagDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  }, [isTagDropdownOpen]);
+
+  useEffect(() => {
+    if (!isTagDropdownOpen) {
+      return;
+    }
+
+    if (pendingTagAttachment) {
+      setIsTagDropdownOpen(false);
+    }
+  }, [isTagDropdownOpen, pendingTagAttachment]);
 
   function renderAdditionalPassCard(passConfig: AdditionalPassConfig) {
     return (
@@ -388,7 +549,7 @@ export function CreatePresetPage() {
     );
   }
 
-  function clearErrors(...fields: Array<"form" | "name" | "sceneData">) {
+  function clearErrors(...fields: Array<keyof CreatePresetFormErrors>) {
     if (fields.length === 0) {
       setErrors({});
       return;
@@ -504,6 +665,222 @@ export function CreatePresetPage() {
     }
   }
 
+  async function reloadAvailableTags() {
+    setTagsLoading(true);
+    setTagsError(null);
+
+    try {
+      const nextTags = await loadAvailableTagsFromBackend();
+      setAvailableTags(nextTags);
+    } catch (error) {
+      setAvailableTags([]);
+      setTagsError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Unable to load available tags right now.",
+      );
+    } finally {
+      setTagsLoading(false);
+    }
+  }
+
+  function openTagDropdown() {
+    if (pendingTagAttachment || tagsLoading || isCreatingTag) {
+      return;
+    }
+
+    clearErrors("form", "newTag", "tags");
+    setIsTagDropdownOpen(true);
+  }
+
+  function handleTagSearchChange(nextValue: string) {
+    setTagSearchValue(nextValue);
+    setIsTagDropdownOpen(true);
+    clearErrors("form", "newTag", "tags");
+  }
+
+  function toggleTagSelection(tagId: number) {
+    if (pendingTagAttachment || isCreatingTag) {
+      return;
+    }
+
+    clearErrors("form", "newTag", "tags");
+    setSelectedTagIds((currentTagIds) =>
+      currentTagIds.includes(tagId)
+        ? currentTagIds.filter((currentTagId) => currentTagId !== tagId)
+        : [...currentTagIds, tagId],
+    );
+    setTagSearchValue("");
+    setIsTagDropdownOpen(false);
+  }
+
+  async function handleCreateTag(requestedTagName = tagSearchValue) {
+    if (pendingTagAttachment || isCreatingTag) {
+      return;
+    }
+
+    const normalizedTagName = normalizeTagName(requestedTagName);
+
+    if (!normalizedTagName) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        newTag: "Tag name is required.",
+      }));
+      return;
+    }
+
+    if (normalizedTagName.length > MAX_TAG_NAME_LENGTH) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        newTag: `Tag name must be at most ${MAX_TAG_NAME_LENGTH} characters.`,
+      }));
+      return;
+    }
+
+    const existingTag = availableTags.find(
+      (tag) => tag.name === normalizedTagName,
+    );
+
+    if (existingTag) {
+      setSelectedTagIds((currentTagIds) =>
+        currentTagIds.includes(existingTag.tagId)
+          ? currentTagIds
+          : [...currentTagIds, existingTag.tagId],
+      );
+      setTagSearchValue("");
+      setIsTagDropdownOpen(false);
+      clearErrors("newTag", "form", "tags");
+      return;
+    }
+
+    setIsCreatingTag(true);
+    clearErrors("newTag", "form", "tags");
+
+    try {
+      const response = await authenticatedFetch("/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: normalizedTagName,
+        }),
+      });
+
+      if (response.ok) {
+        const createdTag = (await response.json()) as TagResponse;
+        setAvailableTags((currentTags) => upsertTag(currentTags, createdTag));
+        setTagsError(null);
+        setSelectedTagIds((currentTagIds) =>
+          currentTagIds.includes(createdTag.tagId)
+            ? currentTagIds
+            : [...currentTagIds, createdTag.tagId],
+        );
+        setTagSearchValue("");
+        setIsTagDropdownOpen(false);
+        return;
+      }
+
+      const apiError = await parseApiError(response);
+
+      if (response.status === 409 && apiError?.code === "TAG_ALREADY_EXISTS") {
+        try {
+          const nextTags = await loadAvailableTagsFromBackend();
+          const matchedTag = nextTags.find(
+            (tag) => tag.name === normalizedTagName,
+          );
+
+          setAvailableTags(nextTags);
+          setTagsError(null);
+
+          if (matchedTag) {
+            setSelectedTagIds((currentTagIds) =>
+              currentTagIds.includes(matchedTag.tagId)
+                ? currentTagIds
+                : [...currentTagIds, matchedTag.tagId],
+            );
+            setTagSearchValue("");
+            setIsTagDropdownOpen(false);
+            return;
+          }
+        } catch (error) {
+          setTagsError(
+            error instanceof Error && error.message.trim()
+              ? error.message
+              : "Unable to refresh tags right now.",
+          );
+        }
+      }
+
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        newTag:
+          apiError?.details?.name ??
+          apiError?.message ??
+          "Failed to create tag. Please try again.",
+      }));
+    } catch (error) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        newTag:
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "Failed to create tag. Please try again.",
+      }));
+    } finally {
+      setIsCreatingTag(false);
+    }
+  }
+
+  async function attachTagsToPreset(presetId: number, tagIds: number[]) {
+    const failures: TagAttachmentFailure[] = [];
+
+    for (const tagId of tagIds) {
+      const tag = availableTags.find((availableTag) => availableTag.tagId === tagId);
+
+      if (!tag) {
+        failures.push({
+          tagId,
+          tagName: `tag ${tagId}`,
+        });
+        continue;
+      }
+
+      try {
+        const response = await authenticatedFetch(`/presets/${presetId}/tags`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tagId,
+          }),
+        });
+
+        if (response.ok) {
+          continue;
+        }
+
+        const apiError = await parseApiError(response);
+
+        if (
+          response.status === 409 &&
+          apiError?.code === "PRESET_TAG_ALREADY_EXISTS"
+        ) {
+          continue;
+        }
+
+        failures.push({
+          tagId,
+          tagName: tag.name,
+        });
+      } catch {
+        failures.push({
+          tagId,
+          tagName: tag.name,
+        });
+      }
+    }
+
+    return failures;
+  }
+
   function movePass(passId: PresetPassId, direction: -1 | 1) {
     if (passId === "outputPass") {
       return;
@@ -538,6 +915,38 @@ export function CreatePresetPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (pendingTagAttachment) {
+      setIsSubmitting(true);
+      setErrors({});
+
+      try {
+        const attachFailures = await attachTagsToPreset(
+          pendingTagAttachment.presetId,
+          pendingTagAttachment.tagIds,
+        );
+
+        if (attachFailures.length > 0) {
+          setPendingTagAttachment({
+            presetId: pendingTagAttachment.presetId,
+            tagIds: attachFailures.map((failure) => failure.tagId),
+          });
+          setErrors({
+            form: `Preset created, but we still couldn't attach ${attachFailures
+              .map((failure) => failure.tagName)
+              .join(", ")}. Submit again to retry attachment for the existing preset. Additional editor changes will not be saved in this retry state.`,
+          });
+          return;
+        }
+
+        setPendingTagAttachment(null);
+        navigate("/my-presets");
+      } finally {
+        setIsSubmitting(false);
+      }
+
+      return;
+    }
 
     const trimmedName = name.trim();
     const { errors: nextErrors, parsedSceneData } = validateForm(
@@ -587,6 +996,36 @@ export function CreatePresetPage() {
             apiError?.message ?? "Failed to create preset. Please try again.",
         });
         return;
+      }
+
+      const createdPresetPayload = (await response.json().catch(() => null)) as
+        | unknown
+        | null;
+      const presetId = parseCreatedPresetId(createdPresetPayload);
+
+      if (presetId === null) {
+        setErrors({
+          form:
+            "Preset was created, but the response did not include the new preset id for tag attachment.",
+        });
+        return;
+      }
+
+      if (selectedTagIds.length > 0) {
+        const attachFailures = await attachTagsToPreset(presetId, selectedTagIds);
+
+        if (attachFailures.length > 0) {
+          setPendingTagAttachment({
+            presetId,
+            tagIds: attachFailures.map((failure) => failure.tagId),
+          });
+          setErrors({
+            form: `Preset created, but we couldn't attach ${attachFailures
+              .map((failure) => failure.tagName)
+              .join(", ")}. Submit again to retry attachment for the existing preset. Additional editor changes will not be saved in this retry state.`,
+          });
+          return;
+        }
       }
 
       navigate("/my-presets");
@@ -666,6 +1105,207 @@ export function CreatePresetPage() {
                 </div>
 
                 <div className="field-group">
+                  <div className="preset-tag-editor__header">
+                    <span className="preset-tag-editor__label">Tags</span>
+                    {pendingTagAttachment ? (
+                      <span className="field-hint">
+                        Retry mode for preset #{pendingTagAttachment.presetId}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <p className="field-hint">
+                    Search existing tags. If there is no exact match, add it
+                    from the dropdown before saving.
+                  </p>
+
+                  {tagsError ? (
+                    <div className="preset-tag-editor__status">
+                      <p className="field-error" role="alert">
+                        {tagsError}
+                      </p>
+                      <button
+                        className="preset-secondary-button"
+                        disabled={tagsLoading}
+                        onClick={() => {
+                          void reloadAvailableTags();
+                        }}
+                        type="button"
+                      >
+                        Retry tag load
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div
+                    className="preset-tag-editor__picker"
+                    role="group"
+                    aria-label="Available tags"
+                  >
+                    {tagsLoading ? (
+                      <div
+                        className="tag-filter-bar"
+                        aria-label="Available tags loading"
+                      >
+                        {Array.from(
+                          { length: TAG_SKELETON_COUNT },
+                          (_, index) => (
+                            <span
+                              key={index}
+                              className="tag-pill tag-pill--skeleton"
+                              aria-hidden="true"
+                            />
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className="preset-tag-dropdown"
+                        ref={tagDropdownRef}
+                      >
+                        <div className="preset-tag-dropdown__search">
+                          <label htmlFor={tagSearchInputId}>
+                            Select existing tags
+                          </label>
+                          <input
+                            aria-controls="preset-tag-dropdown-panel"
+                            aria-describedby={
+                              errors.newTag ? "tag-editor-error" : undefined
+                            }
+                            aria-expanded={isTagDropdownOpen}
+                            aria-invalid={Boolean(errors.newTag)}
+                            disabled={
+                              Boolean(pendingTagAttachment) || isCreatingTag
+                            }
+                            id={tagSearchInputId}
+                            onChange={(event) =>
+                              handleTagSearchChange(event.currentTarget.value)
+                            }
+                            onClick={openTagDropdown}
+                            onFocus={openTagDropdown}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter") {
+                                return;
+                              }
+
+                              if (canCreateTagFromSearch) {
+                                event.preventDefault();
+                                void handleCreateTag();
+                                return;
+                              }
+
+                              if (filteredSelectableTags.length === 1) {
+                                event.preventDefault();
+                                toggleTagSelection(
+                                  filteredSelectableTags[0].tagId,
+                                );
+                              }
+                            }}
+                            placeholder="Search or add tags"
+                            type="text"
+                            value={tagSearchValue}
+                          />
+                        </div>
+
+                        {isTagDropdownOpen ? (
+                          <div
+                            className="preset-tag-dropdown__panel"
+                            id="preset-tag-dropdown-panel"
+                          >
+                            {filteredSelectableTags.length > 0 ||
+                            canCreateTagFromSearch ? (
+                              <div className="preset-tag-dropdown__options">
+                                {filteredSelectableTags.map((tag) => (
+                                  <button
+                                    key={tag.tagId}
+                                    className="preset-tag-dropdown__option"
+                                    disabled={isCreatingTag}
+                                    onClick={() => toggleTagSelection(tag.tagId)}
+                                    type="button"
+                                  >
+                                    {tag.name}
+                                  </button>
+                                ))}
+                                {canCreateTagFromSearch ? (
+                                  <button
+                                    className="preset-tag-dropdown__option preset-tag-dropdown__option--create"
+                                    disabled={isCreatingTag}
+                                    onClick={() => {
+                                      void handleCreateTag();
+                                    }}
+                                    type="button"
+                                  >
+                                    {isCreatingTag
+                                      ? `Adding "${normalizedTagSearchValue}"...`
+                                      : `Add tag "${normalizedTagSearchValue}"`}
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : availableTags.length === 0 &&
+                              !normalizedTagSearchValue ? (
+                              <p className="field-hint">
+                                No tags exist yet. Type a name to add the first
+                                one.
+                              </p>
+                            ) : isExactMatchedTagSelected ? (
+                              <p className="field-hint">
+                                That tag is already selected.
+                              </p>
+                            ) : selectableTags.length === 0 ? (
+                              <p className="field-hint">
+                                All available tags are already selected.
+                              </p>
+                            ) : (
+                              <p className="field-hint">
+                                No matching unselected tags.
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="preset-tag-editor__selected">
+                    <span className="preset-tag-editor__selected-label">
+                      Selected tags
+                    </span>
+                    {selectedTags.length > 0 ? (
+                      <div className="preset-tag-editor__selected-list">
+                        {selectedTags.map((tag) => (
+                          <button
+                            key={tag.tagId}
+                            className="tag-pill tag-pill--active"
+                            disabled={Boolean(pendingTagAttachment)}
+                            onClick={() => toggleTagSelection(tag.tagId)}
+                            type="button"
+                          >
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="field-hint">No tags selected yet.</p>
+                    )}
+                  </div>
+
+                  {errors.newTag ? (
+                    <p className="field-error" id="tag-editor-error" role="alert">
+                      {errors.newTag}
+                    </p>
+                  ) : null}
+
+                  {pendingRetryTags.length > 0 ? (
+                    <p className="field-hint">
+                      Waiting to retry attachment for:{" "}
+                      <strong>
+                        {pendingRetryTags.map((tag) => tag.name).join(", ")}
+                      </strong>
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="field-group">
                   <label htmlFor={thumbnailInputId}>Thumbnail</label>
                   <div className="preset-thumbnail-picker">
                     <input
@@ -727,12 +1367,7 @@ export function CreatePresetPage() {
                       <p className="field-error" role="alert">
                         {errors.thumbnail}
                       </p>
-                    ) : (
-                      <p className="field-hint">
-                        Uploads go directly to S3 and are finalized after the
-                        preset is created.
-                      </p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -1739,7 +2374,13 @@ export function CreatePresetPage() {
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? "Creating preset..." : "Create preset"}
+              {isSubmitting
+                ? pendingTagAttachment
+                  ? "Retrying tag attachment..."
+                  : "Creating preset..."
+                : pendingTagAttachment
+                  ? "Retry tag attachment"
+                  : "Create preset"}
             </button>
           </div>
 

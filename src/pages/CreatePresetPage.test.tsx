@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AUTH_SESSION_STORAGE_KEY,
   AuthProvider,
@@ -23,6 +23,16 @@ const storedUser: AuthenticatedUser = {
   authProvider: 'LOCAL',
 }
 
+const mockTags = [
+  { tagId: 1, name: 'ambient' },
+  { tagId: 2, name: 'focus-friendly' },
+]
+
+type FetchHandler = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Response | Promise<Response> | null | undefined
+
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -42,6 +52,31 @@ function storeSession() {
   )
 }
 
+function mockCreatePresetPageFetch(
+  handler?: FetchHandler,
+  tagsResponse: unknown[] = mockTags,
+) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    const method = typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
+
+    if (input === buildApiUrl('/users/me')) {
+      return Promise.resolve(jsonResponse(storedUser))
+    }
+
+    if (input === buildApiUrl('/tags') && method === 'GET') {
+      return Promise.resolve(jsonResponse(tagsResponse))
+    }
+
+    const nextResponse = handler?.(input, init)
+
+    if (nextResponse) {
+      return Promise.resolve(nextResponse)
+    }
+
+    throw new Error(`Unexpected request: ${String(input)}`)
+  })
+}
+
 function renderCreatePresetPage() {
   return render(
     <MemoryRouter initialEntries={['/create-preset']}>
@@ -55,17 +90,39 @@ function renderCreatePresetPage() {
   )
 }
 
+async function selectExistingTag(user: ReturnType<typeof userEvent.setup>, tagName: string) {
+  const searchInput = await screen.findByLabelText(/select existing tags/i)
+
+  await user.click(searchInput)
+  await user.clear(searchInput)
+  await user.type(searchInput, tagName)
+  await user.click(screen.getByRole('button', { name: new RegExp(`^${tagName}$`, 'i') }))
+}
+
+async function addTagFromSearch(user: ReturnType<typeof userEvent.setup>, tagName: string) {
+  const normalizedTagName = tagName.trim().toLowerCase()
+  const searchInput = await screen.findByLabelText(/select existing tags/i)
+
+  await user.click(searchInput)
+  await user.clear(searchInput)
+  await user.type(searchInput, tagName)
+  await user.click(
+    screen.getByRole('button', {
+      name: new RegExp(`^Add tag "${normalizedTagName}"$`, 'i'),
+    }),
+  )
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  window.localStorage.clear()
+})
+
 describe('CreatePresetPage', () => {
   it('renders the expanded MAGE engine editor with the full section menu available', async () => {
     storeSession()
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
-    })
+    mockCreatePresetPageFetch()
 
     renderCreatePresetPage()
 
@@ -88,13 +145,7 @@ describe('CreatePresetPage', () => {
   it('renders interactive metadata controls beneath the preset name field', async () => {
     storeSession()
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
-    })
+    mockCreatePresetPageFetch()
 
     renderCreatePresetPage()
 
@@ -119,16 +170,128 @@ describe('CreatePresetPage', () => {
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
   })
 
-  it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
+  it('loads available tags and lets the user select more than one before saving', async () => {
     storeSession()
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    mockCreatePresetPageFetch()
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await selectExistingTag(user, 'ambient')
+    await selectExistingTag(user, 'focus-friendly')
+
+    expect(screen.queryByLabelText(/create a new tag/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/^selected tags$/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^focus-friendly$/i })).toBeInTheDocument()
+  })
+
+  it('creates a new tag in the editor and auto-selects it after success', async () => {
+    storeSession()
+
+    let createTagBody: Record<string, unknown> | null = null
+
+    mockCreatePresetPageFetch((input, init) => {
+      if (input === buildApiUrl('/tags')) {
+        createTagBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return Promise.resolve(jsonResponse({ tagId: 7, name: 'late night' }, 201))
+      }
+    })
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await addTagFromSearch(user, 'Late Night')
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument())
+
+    expect(createTagBody).toMatchObject({
+      name: 'late night',
+    })
+    expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument()
+  })
+
+  it('selects the existing tag when create-tag returns a duplicate-name conflict', async () => {
+    storeSession()
+
+    let tagListRequestCount = 0
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    fetchSpy.mockImplementation((input, init) => {
+      const method = typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
+
       if (input === buildApiUrl('/users/me')) {
         return Promise.resolve(jsonResponse(storedUser))
       }
 
+      if (input === buildApiUrl('/tags') && method === 'GET') {
+        tagListRequestCount += 1
+
+        const tagList =
+          tagListRequestCount === 1
+            ? [
+                { tagId: 1, name: 'ambient' },
+                { tagId: 2, name: 'focus-friendly' },
+              ]
+            : [
+                { tagId: 1, name: 'ambient' },
+                { tagId: 2, name: 'focus-friendly' },
+                { tagId: 7, name: 'late night' },
+              ]
+
+        return Promise.resolve(
+          jsonResponse(tagList),
+        )
+      }
+
+      if (input === buildApiUrl('/tags') && method === 'POST') {
+        return Promise.resolve(
+          jsonResponse(
+            {
+              code: 'TAG_ALREADY_EXISTS',
+              message: 'A tag with this name already exists.',
+            },
+            409,
+          ),
+        )
+      }
+
       throw new Error(`Unexpected request: ${String(input)}`)
     })
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await addTagFromSearch(user, 'Late Night')
+
+    await waitFor(() => expect(tagListRequestCount).toBeGreaterThanOrEqual(2))
+    expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument()
+    expect(screen.queryByText(/failed to create tag/i)).not.toBeInTheDocument()
+  })
+
+  it('clicking a selected tag pill removes it from the preset', async () => {
+    storeSession()
+
+    mockCreatePresetPageFetch()
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await selectExistingTag(user, 'ambient')
+    await user.click(screen.getByRole('button', { name: /^ambient$/i }))
+
+    expect(screen.getByText(/no tags selected yet\./i)).toBeInTheDocument()
+  })
+
+  it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
+    storeSession()
+
+    mockCreatePresetPageFetch()
 
     renderCreatePresetPage()
 
@@ -150,13 +313,7 @@ describe('CreatePresetPage', () => {
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
     storeSession()
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
-    })
+    mockCreatePresetPageFetch()
 
     renderCreatePresetPage()
 
@@ -185,17 +342,11 @@ describe('CreatePresetPage', () => {
 
     let submittedBody: Record<string, unknown> | null = null
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
+    mockCreatePresetPageFetch((input, init) => {
       if (input === buildApiUrl('/presets')) {
         submittedBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
       }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
     })
 
     const user = userEvent.setup()
@@ -228,6 +379,96 @@ describe('CreatePresetPage', () => {
     expect(await screen.findByText('My Presets')).toBeInTheDocument()
   })
 
+  it('attaches selected tags after the preset is created', async () => {
+    storeSession()
+
+    let createBody: Record<string, unknown> | null = null
+    const attachedTagIds: number[] = []
+
+    mockCreatePresetPageFetch((input, init) => {
+      if (input === buildApiUrl('/presets')) {
+        createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+      }
+
+      if (input === buildApiUrl('/presets/18/tags')) {
+        const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
+
+        if (typeof payload.tagId === 'number') {
+          attachedTagIds.push(payload.tagId)
+        }
+
+        return Promise.resolve(jsonResponse({ presetId: 18, tagId: payload.tagId }, 201))
+      }
+    })
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await selectExistingTag(user, 'ambient')
+    await selectExistingTag(user, 'focus-friendly')
+    await user.click(screen.getByRole('button', { name: /create preset/i }))
+
+    await screen.findByText('My Presets')
+
+    expect(createBody).toMatchObject({
+      name: 'Aurora Drift',
+    })
+    expect(attachedTagIds).toEqual([1, 2])
+  })
+
+  it('keeps the created preset in retry mode when one or more tag attachments fail', async () => {
+    storeSession()
+
+    const attachCalls: number[] = []
+
+    mockCreatePresetPageFetch((input, init) => {
+      if (input === buildApiUrl('/presets')) {
+        return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
+      }
+
+      if (input === buildApiUrl('/presets/18/tags')) {
+        const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
+
+        if (typeof payload.tagId === 'number') {
+          attachCalls.push(payload.tagId)
+        }
+
+        if (payload.tagId === 2) {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                code: 'TAG_ATTACH_FAILED',
+                message: 'Tag attachment is unavailable right now.',
+              },
+              503,
+            ),
+          )
+        }
+
+        return Promise.resolve(jsonResponse({ presetId: 18, tagId: payload.tagId }, 201))
+      }
+    })
+
+    const user = userEvent.setup()
+
+    renderCreatePresetPage()
+
+    await user.type(screen.getByLabelText(/preset name/i), 'Aurora Drift')
+    await selectExistingTag(user, 'ambient')
+    await selectExistingTag(user, 'focus-friendly')
+    await user.click(screen.getByRole('button', { name: /create preset/i }))
+
+    expect(
+      await screen.findByText(/preset created, but we couldn't attach focus-friendly\./i),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /retry tag attachment/i })).toBeInTheDocument()
+    expect(screen.getByText(/waiting to retry attachment for:/i)).toBeInTheDocument()
+    expect(attachCalls).toEqual([1, 2])
+  })
+
   it('uploads a selected thumbnail before the preset create request is sent', async () => {
     storeSession()
 
@@ -235,11 +476,7 @@ describe('CreatePresetPage', () => {
     let presignBody: Record<string, unknown> | null = null
     let createBody: Record<string, unknown> | null = null
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
+    mockCreatePresetPageFetch((input, init) => {
       if (input === buildApiUrl('/presets/thumbnail/presign')) {
         presignBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(
@@ -266,8 +503,6 @@ describe('CreatePresetPage', () => {
         createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
       }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
     })
 
     const user = userEvent.setup()
@@ -303,11 +538,7 @@ describe('CreatePresetPage', () => {
 
     let createAttempted = false
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
+    mockCreatePresetPageFetch((input) => {
       if (input === buildApiUrl('/presets/thumbnail/presign')) {
         return Promise.resolve(
           jsonResponse(
@@ -324,8 +555,6 @@ describe('CreatePresetPage', () => {
         createAttempted = true
         return Promise.resolve(jsonResponse({ presetId: 18 }, 201))
       }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
     })
 
     const user = userEvent.setup()
@@ -349,13 +578,7 @@ describe('CreatePresetPage', () => {
   it('surfaces advanced MAGE engine fields and the raw JSON editor in the Advanced section', async () => {
     storeSession()
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
-    })
+    mockCreatePresetPageFetch()
 
     renderCreatePresetPage()
 
@@ -365,6 +588,6 @@ describe('CreatePresetPage', () => {
     expect(screen.getByLabelText(/camera orientation mode/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/camera orientation speed/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/scene data json/i)).toBeInTheDocument()
-    expect(screen.getByText(/stack-only passes/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /format json/i })).toBeInTheDocument()
   })
 })
