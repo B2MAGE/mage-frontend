@@ -40,6 +40,7 @@ const mockPresets = [
     presetId: 1,
     ownerUserId: 42,
     name: 'Aurora Drift',
+    description: 'Soft teal bloom with low-end drift.',
     sceneData: {
       visualizer: { shader: 'nebula' },
     },
@@ -249,6 +250,11 @@ describe('MyPresetsPage', () => {
     expect(
       screen.getByRole('link', { name: /very long preset name to test wrapping in the card layout/i }),
     ).toBeInTheDocument()
+    expect(screen.getAllByText('Public')).toHaveLength(4)
+    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Public' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /soft teal bloom with low-end drift\./i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /add description/i })).toHaveLength(2)
     expect(screen.getByAltText('Aurora Drift thumbnail')).toBeInTheDocument()
     expect(
       screen.getByAltText('Very Long Preset Name To Test Wrapping In The Card Layout thumbnail'),
@@ -256,6 +262,21 @@ describe('MyPresetsPage', () => {
     expect(
       screen.getByLabelText('Signal Bloom thumbnail unavailable'),
     ).toBeInTheDocument()
+    expect(screen.getByText('1-3 of 3')).toBeInTheDocument()
+
+    const selectAllCheckbox = screen.getByRole('checkbox', {
+      name: /select all presets on this page/i,
+    })
+
+    await user.click(selectAllCheckbox)
+
+    expect(screen.getByRole('checkbox', { name: /select aurora drift/i })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /select signal bloom/i })).toBeChecked()
+    expect(
+      screen.getByRole('checkbox', {
+        name: /select very long preset name to test wrapping in the card layout/i,
+      }),
+    ).toBeChecked()
 
     await user.click(auroraPreset)
 
@@ -291,6 +312,195 @@ describe('MyPresetsPage', () => {
       await screen.findByText(/unable to load presets right now\. please try again in a moment\./i),
     ).toBeInTheDocument()
     expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a description placeholder when no description is stored', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/users/8/presets')) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              id: 31,
+              name: 'Custom Shader Preset',
+              description: null,
+              sceneData: {
+                visualizer: {
+                  shader:
+                    'let size = input() let pointerDown = input() time = 0.3*time rotateY(mouse.x * 2 * PI / 2 * (1+nsin(time)))',
+                },
+              },
+              thumbnailRef: null,
+              createdAt: '2026-04-06T14:00:00Z',
+            },
+          ]),
+        )
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderMyPresetsPage()
+
+    expect(await screen.findByText('Custom Shader Preset')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /add description/i })).toBeInTheDocument()
+    expect(screen.queryByText(/let size = input/i)).not.toBeInTheDocument()
+  })
+
+  it('filters the table with the visible status pills', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/users/8/presets')) {
+        return Promise.resolve(jsonResponse(mockPresets))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    const user = userEvent.setup()
+
+    renderMyPresetsPage()
+
+    expect(await screen.findByRole('button', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Public' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Public' }))
+
+    expect(screen.getByText('3 presets')).toBeInTheDocument()
+    expect(screen.getAllByText('Public')).toHaveLength(4)
+  })
+
+  it('sorts the table when updated, views, and likes headers are clicked', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/users/8/presets')) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              id: 7,
+              name: 'Signal Bloom',
+              createdAt: '2026-04-06T14:10:00Z',
+            },
+            {
+              id: 2,
+              name: 'Aurora Drift',
+              createdAt: '2026-04-06T14:00:00Z',
+            },
+            {
+              id: 13,
+              name: 'Solar Thread',
+              createdAt: '2026-04-06T14:30:00Z',
+            },
+          ]),
+        )
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    const user = userEvent.setup()
+
+    renderMyPresetsPage()
+
+    await screen.findByRole('link', { name: /signal bloom/i })
+
+    const titleLinks = () => screen.getAllByRole('link').filter((link) => /\/presets\/\d+$/.test(link.getAttribute('href') ?? '') && !/Open preset preview/i.test(link.getAttribute('aria-label') ?? ''))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Solar Thread',
+      'Signal Bloom',
+      'Aurora Drift',
+    ])
+    expect(screen.getByText('Newest items first')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /sort by views descending/i }))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Solar Thread',
+      'Signal Bloom',
+      'Aurora Drift',
+    ])
+    expect(screen.getByText('Highest views first')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /sort by views ascending/i }))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Aurora Drift',
+      'Signal Bloom',
+      'Solar Thread',
+    ])
+    expect(screen.getByText('Lowest views first')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /sort by likes \(vs dislikes\) descending/i }))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Solar Thread',
+      'Aurora Drift',
+      'Signal Bloom',
+    ])
+    expect(screen.getByText('Highest likes ratio first')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /sort by updated descending/i }))
+    await user.click(screen.getByRole('button', { name: /sort by updated ascending/i }))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Aurora Drift',
+      'Signal Bloom',
+      'Solar Thread',
+    ])
+    expect(screen.getByText('Oldest items first')).toBeInTheDocument()
+  })
+
+  it('paginates the table and shows the footer controls', async () => {
+    storeSession()
+
+    const paginatedPresets = Array.from({ length: 31 }, (_, index) => {
+      const presetNumber = index + 1
+      const day = String(presetNumber).padStart(2, '0')
+
+      return {
+        id: presetNumber,
+        name: `Preset ${presetNumber}`,
+        createdAt: `2026-04-${day}T14:00:00Z`,
+      }
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/users/8/presets')) {
+        return Promise.resolve(jsonResponse(paginatedPresets))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+    const user = userEvent.setup()
+
+    renderMyPresetsPage()
+
+    expect(await screen.findByText('1-30 of 31')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Preset 31' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Preset 1' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /go to next page/i }))
+
+    expect(await screen.findByText('31-31 of 31')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Preset 1' })).toBeInTheDocument()
   })
 
   it('adds sample presets from the empty state and reloads the list', async () => {

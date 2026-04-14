@@ -1,175 +1,19 @@
-import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-
-type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-
-type UserPreset = {
-  id: number
-  name: string
-  thumbnailRef: string | null
-}
-
-type UserPresetResponse = {
-  id?: number
-  presetId?: number
-  name?: string
-  thumbnailRef?: string | null
-}
-
-type DemoPresetThumbnail = {
-  background: string
-  primary: string
-  secondary: string
-}
-
-type DemoPresetRequest = {
-  name: string
-  sceneData: Record<string, unknown>
-  thumbnailRef?: string
-}
-
-type DemoPresetBlueprint = Omit<DemoPresetRequest, 'thumbnailRef'> & {
-  thumbnail?: DemoPresetThumbnail
-}
-
-const demoPresetBlueprints: DemoPresetBlueprint[] = [
-  {
-    name: 'Aurora Drift',
-    sceneData: {
-      visualizer: {
-        shader: 'nebula',
-      },
-      state: {
-        energy: 0.92,
-        tempo: 118,
-      },
-    },
-    thumbnail: {
-      background: '#06161d',
-      primary: '#63f0d6',
-      secondary: '#ff7a97',
-    },
-  },
-  {
-    name: 'Signal Bloom',
-    sceneData: {
-      visualizer: {
-        shader: 'pulse',
-      },
-      state: {
-        energy: 0.76,
-        tempo: 124,
-      },
-    },
-  },
-  {
-    name: 'Glacier Echo',
-    sceneData: {
-      visualizer: {
-        shader: 'glacier',
-      },
-      state: {
-        energy: 0.58,
-        tempo: 96,
-      },
-    },
-    thumbnail: {
-      background: '#081820',
-      primary: '#7ec8ff',
-      secondary: '#f7ff82',
-    },
-  },
-  {
-    name: 'Solar Thread',
-    sceneData: {
-      visualizer: {
-        shader: 'ember',
-      },
-      state: {
-        energy: 0.84,
-        tempo: 132,
-      },
-    },
-    thumbnail: {
-      background: '#15110a',
-      primary: '#ffb15a',
-      secondary: '#ffd966',
-    },
-  },
-]
-
-function buildDemoThumbnail({ background, primary, secondary }: DemoPresetThumbnail) {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'><rect width='320' height='180' fill='${background}'/><circle cx='86' cy='94' r='52' fill='${primary}'/><circle cx='244' cy='66' r='34' fill='${secondary}' fill-opacity='.88'/></svg>`
-
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-}
-
-const demoPresetRequests: DemoPresetRequest[] = demoPresetBlueprints.map(({ thumbnail, ...preset }) => ({
-  ...preset,
-  ...(thumbnail ? { thumbnailRef: buildDemoThumbnail(thumbnail) } : {}),
-}))
-
-function isUserPresetResponse(value: unknown): value is UserPresetResponse {
-  return typeof value === 'object' && value !== null
-}
-
-function normalizePresets(payload: unknown) {
-  if (!Array.isArray(payload)) {
-    return []
-  }
-
-  return payload.reduce<UserPreset[]>((presets, item) => {
-    const presetId =
-      isUserPresetResponse(item) && typeof item.id === 'number'
-        ? item.id
-        : isUserPresetResponse(item) && typeof item.presetId === 'number'
-          ? item.presetId
-          : null
-
-    if (!isUserPresetResponse(item) || presetId === null) {
-      return presets
-    }
-
-    presets.push({
-      id: presetId,
-      name:
-        typeof item.name === 'string' && item.name.trim() ? item.name.trim() : `Preset ${presetId}`,
-      thumbnailRef:
-        typeof item.thumbnailRef === 'string' && item.thumbnailRef.trim() ? item.thumbnailRef : null,
-    })
-
-    return presets
-  }, [])
-}
-
-async function fetchUserPresets(authenticatedFetch: AuthenticatedFetch, userId: number) {
-  const response = await authenticatedFetch(`/users/${userId}/presets`)
-
-  if (!response.ok) {
-    throw new Error('Unable to load presets.')
-  }
-
-  const payload = (await response.json().catch(() => [])) as unknown
-
-  return normalizePresets(payload)
-}
-
-async function createDemoPresets(authenticatedFetch: AuthenticatedFetch) {
-  for (const preset of demoPresetRequests) {
-    const response = await authenticatedFetch('/presets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(preset),
-    })
-
-    if (!response.ok) {
-      throw new Error('Unable to add sample presets right now. Please try again in a moment.')
-    }
-  }
-}
+import { MyPresetsPagination } from '../components/my-presets/MyPresetsPagination'
+import { MyPresetsTable } from '../components/my-presets/MyPresetsTable'
+import { MyPresetsToolbar } from '../components/my-presets/MyPresetsToolbar'
+import {
+  buildSortSummary,
+  createDemoPresets,
+  fetchUserPresets,
+  sortPresets,
+  type SortDirection,
+  type SortKey,
+  type StatusFilter,
+  type UserPreset,
+} from '../lib/myPresets'
 
 export function MyPresetsPage() {
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
@@ -179,6 +23,15 @@ export function MyPresetsPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [seedErrorMessage, setSeedErrorMessage] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const [sortKey, setSortKey] = useState<SortKey>('updated')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
+  const [selectedPresetIds, setSelectedPresetIds] = useState<number[]>([])
+  const [rowsPerPage, setRowsPerPage] = useState(30)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [isRowsPerPageMenuOpen, setIsRowsPerPageMenuOpen] = useState(false)
+  const selectAllCheckboxRef = useRef<HTMLInputElement | null>(null)
+  const rowsPerPageMenuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (isRestoringSession || !isAuthenticated || typeof user?.userId !== 'number') {
@@ -220,23 +73,71 @@ export function MyPresetsPage() {
     }
   }, [authenticatedFetch, isAuthenticated, isRestoringSession, reloadKey, user?.userId])
 
-  async function handleSeedPresets() {
-    setIsSeedingPresets(true)
-    setSeedErrorMessage('')
+  useEffect(() => {
+    setSelectedPresetIds((currentIds) =>
+      currentIds.filter((presetId) => presets.some((preset) => preset.id === presetId)),
+    )
+  }, [presets])
 
-    try {
-      await createDemoPresets(authenticatedFetch)
-      setReloadKey((currentKey) => currentKey + 1)
-    } catch (error) {
-      setSeedErrorMessage(
-        error instanceof Error && error.message
-          ? error.message
-          : 'Unable to add sample presets right now. Please try again in a moment.',
-      )
-    } finally {
-      setIsSeedingPresets(false)
+  useEffect(() => {
+    if (!isRowsPerPageMenuOpen) {
+      return
     }
-  }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!rowsPerPageMenuRef.current?.contains(event.target as Node)) {
+        setIsRowsPerPageMenuOpen(false)
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsRowsPerPageMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isRowsPerPageMenuOpen])
+
+  const availableStatuses = [...new Set(presets.map((preset) => preset.statusLabel))].sort()
+  const visiblePresets =
+    statusFilter === 'All'
+      ? presets
+      : presets.filter((preset) => preset.statusLabel === statusFilter)
+  const sortedPresets = sortPresets(visiblePresets, sortKey, sortDirection)
+  const sortSummary = buildSortSummary(sortKey, sortDirection)
+  const totalPresets = sortedPresets.length
+  const pageCount = Math.max(1, Math.ceil(Math.max(totalPresets, 1) / rowsPerPage))
+  const currentPageIndex = Math.min(pageIndex, pageCount - 1)
+  const pageStart = totalPresets === 0 ? 0 : currentPageIndex * rowsPerPage
+  const pageEnd = Math.min(pageStart + rowsPerPage, totalPresets)
+  const pagedPresets = sortedPresets.slice(pageStart, pageEnd)
+  const selectedPresetIdSet = new Set(selectedPresetIds)
+  const currentPagePresetIds = pagedPresets.map((preset) => preset.id)
+  const allPagePresetsSelected =
+    currentPagePresetIds.length > 0 &&
+    currentPagePresetIds.every((presetId) => selectedPresetIdSet.has(presetId))
+  const somePagePresetsSelected =
+    !allPagePresetsSelected &&
+    currentPagePresetIds.some((presetId) => selectedPresetIdSet.has(presetId))
+
+  useEffect(() => {
+    if (!selectAllCheckboxRef.current) {
+      return
+    }
+
+    selectAllCheckboxRef.current.indeterminate = somePagePresetsSelected
+  }, [somePagePresetsSelected])
+
+  useEffect(() => {
+    setPageIndex((currentIndex) => Math.min(currentIndex, pageCount - 1))
+  }, [pageCount])
 
   if (isRestoringSession) {
     return (
@@ -262,17 +163,74 @@ export function MyPresetsPage() {
     )
   }
 
-  return (
-    <main className="page-stack">
-      <section className="surface surface--page-header">
-        <div className="eyebrow">My Presets</div>
-        <h1>Saved presets</h1>
-        <p className="page-lead">
-          Browse the presets created by your account and open any preset detail page directly.
-        </p>
-      </section>
+  async function handleSeedPresets() {
+    setIsSeedingPresets(true)
+    setSeedErrorMessage('')
 
-      <section className="surface surface--page-panel" aria-live="polite">
+    try {
+      await createDemoPresets(authenticatedFetch)
+      setReloadKey((currentKey) => currentKey + 1)
+    } catch (error) {
+      setSeedErrorMessage(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Unable to add sample presets right now. Please try again in a moment.',
+      )
+    } finally {
+      setIsSeedingPresets(false)
+    }
+  }
+
+  function handleSort(nextSortKey: SortKey) {
+    if (sortKey === nextSortKey) {
+      setSortDirection((currentDirection) => (currentDirection === 'desc' ? 'asc' : 'desc'))
+      setPageIndex(0)
+      return
+    }
+
+    setSortKey(nextSortKey)
+    setSortDirection('desc')
+    setPageIndex(0)
+  }
+
+  function handleSelectAllVisiblePresets() {
+    if (allPagePresetsSelected) {
+      setSelectedPresetIds((currentIds) =>
+        currentIds.filter((presetId) => !currentPagePresetIds.includes(presetId)),
+      )
+      return
+    }
+
+    setSelectedPresetIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      currentPagePresetIds.forEach((presetId) => {
+        nextIds.add(presetId)
+      })
+      return [...nextIds]
+    })
+  }
+
+  function handleTogglePresetSelection(presetId: number) {
+    setSelectedPresetIds((currentIds) => {
+      if (currentIds.includes(presetId)) {
+        return currentIds.filter((currentId) => currentId !== presetId)
+      }
+
+      return [...currentIds, presetId]
+    })
+  }
+
+  return (
+    <main className="page-stack my-presets-page">
+      <section className="surface surface--page-panel my-presets-panel" aria-live="polite">
+        <header className="my-presets-panel__header">
+          <div className="eyebrow">My Presets</div>
+          <h1 className="my-presets-panel__title">Preset library</h1>
+          <p className="my-presets-panel__lead">
+            Review the presets created by your account and stage edits, organization, or cleanup from one place.
+          </p>
+        </header>
+
         {isLoading ? (
           <p className="preset-status">Loading presets...</p>
         ) : errorMessage ? (
@@ -300,23 +258,60 @@ export function MyPresetsPage() {
             ) : null}
           </div>
         ) : (
-          <div className="preset-grid" aria-label="My presets">
-            {presets.map((preset) => (
-              <Link key={preset.id} className="preset-link" to={`/presets/${preset.id}`}>
-                {preset.thumbnailRef ? (
-                  <img
-                    className="preset-thumbnail"
-                    src={preset.thumbnailRef}
-                    alt={`${preset.name} thumbnail`}
-                  />
-                ) : (
-                  <div className="preset-thumbnail-fallback" aria-label={`${preset.name} thumbnail unavailable`}>
-                    No thumbnail available
-                  </div>
-                )}
-                <span className="preset-link-label">{preset.name}</span>
-              </Link>
-            ))}
+          <div className="my-presets-board">
+            <MyPresetsToolbar
+              availableStatuses={availableStatuses}
+              sortSummary={sortSummary}
+              totalPresets={sortedPresets.length}
+              statusFilter={statusFilter}
+              onSelectStatus={(status) => {
+                setStatusFilter(status)
+                setPageIndex(0)
+              }}
+            />
+
+            <MyPresetsTable
+              allPagePresetsSelected={allPagePresetsSelected}
+              pagedPresets={pagedPresets}
+              selectAllCheckboxRef={selectAllCheckboxRef}
+              selectedPresetIdSet={selectedPresetIdSet}
+              sortDirection={sortDirection}
+              sortKey={sortKey}
+              onSort={handleSort}
+              onTogglePresetSelection={handleTogglePresetSelection}
+              onToggleSelectAll={handleSelectAllVisiblePresets}
+            />
+
+            <MyPresetsPagination
+              currentPageIndex={currentPageIndex}
+              isRowsPerPageMenuOpen={isRowsPerPageMenuOpen}
+              pageCount={pageCount}
+              pageEnd={pageEnd}
+              pageStart={pageStart}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageMenuRef={rowsPerPageMenuRef}
+              totalPresets={totalPresets}
+              onGoToFirstPage={() => {
+                setPageIndex(0)
+              }}
+              onGoToLastPage={() => {
+                setPageIndex(pageCount - 1)
+              }}
+              onGoToNextPage={() => {
+                setPageIndex((currentIndex) => Math.min(pageCount - 1, currentIndex + 1))
+              }}
+              onGoToPreviousPage={() => {
+                setPageIndex((currentIndex) => Math.max(0, currentIndex - 1))
+              }}
+              onSelectRowsPerPage={(option) => {
+                setRowsPerPage(option)
+                setPageIndex(0)
+                setIsRowsPerPageMenuOpen(false)
+              }}
+              onToggleRowsPerPageMenu={() => {
+                setIsRowsPerPageMenuOpen((isOpen) => !isOpen)
+              }}
+            />
           </div>
         )}
       </section>
