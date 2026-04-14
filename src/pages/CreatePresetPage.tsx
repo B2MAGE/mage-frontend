@@ -184,11 +184,6 @@ const passFlagsById: Partial<Record<PresetPassId, PersistedPassFlag>> = {
   technicolorShader: "technicolor",
 };
 
-const stackOnlyPassLabels = [
-  PASS_LABELS.copyShader,
-  PASS_LABELS.bleachBypassShader,
-  PASS_LABELS.toonShader,
-].join(", ");
 const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -1598,19 +1593,6 @@ export function CreatePresetPage() {
                       value={sceneModel.intent.camOrientationSpeed}
                     />
                   </div>
-
-                  <EffectCard
-                    description="These passes exist in the MAGE engine effect stack, but the compact preset schema does not persist booleans for them yet."
-                    title="Stack-only Passes"
-                  >
-                    <p className="field-hint">
-                      {stackOnlyPassLabels} can still be reordered in{" "}
-                      <strong>Pass Order</strong>. Their enable state is not
-                      currently stored by compact preset JSON, so this page
-                      keeps them informational instead of pretending they are
-                      fully supported.
-                    </p>
-                  </EffectCard>
 
                   <div className="field-group">
                     <label>Runtime State</label>

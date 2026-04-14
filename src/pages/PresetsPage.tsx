@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { PresetListResponse, TagResponse } from '../lib/api'
 import { fetchPresets, fetchTags } from '../lib/api'
@@ -13,7 +13,6 @@ export function PresetsPage() {
   const [presets, setPresets] = useState<PresetListResponse[]>([])
   const [pageState, setPageState] = useState<PageState>('loading')
   const [tagsLoading, setTagsLoading] = useState(true)
-  const [tagInput, setTagInput] = useState(searchParams.get('tag') ?? '')
   const [reloadVersion, setReloadVersion] = useState(0)
   const activeTag = useMemo(() => {
     const currentTag = searchParams.get('tag')?.trim()
@@ -87,7 +86,6 @@ export function PresetsPage() {
     const trimmedTag = tag?.trim() ?? ''
     const currentTag = activeTag ?? ''
 
-    setTagInput(trimmedTag)
     setPageState('loading')
 
     if (!trimmedTag) {
@@ -113,58 +111,16 @@ export function PresetsPage() {
     setReloadVersion((currentVersion) => currentVersion + 1)
   }
 
-  function handleApplyTagFilter(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    updateActiveTag(tagInput)
-  }
-
   return (
     <main className="presets-page">
-      <header className="presets-header">
-        <span className="eyebrow">Browse</span>
-        <h1>Presets</h1>
-        <p className="sub">
-          Explore community presets or filter by tag to find what you need.
-        </p>
-      </header>
-
-      <form className="preset-filter-form" onSubmit={handleApplyTagFilter}>
-        <label className="preset-filter-form__label" htmlFor="preset-tag-filter">
-          Filter presets by tag
-        </label>
-        <div className="preset-filter-form__controls">
-          <input
-            id="preset-tag-filter"
-            className="preset-filter-form__input"
-            type="text"
-            value={tagInput}
-            onChange={(event) => setTagInput(event.target.value)}
-            placeholder="Try ambient, water, neon..."
-          />
-          <button className="demo-link preset-filter-form__submit" type="submit">
-            Apply
-          </button>
-          {activeTag ? (
-            <button
-              className="preset-secondary-button preset-filter-form__clear"
-              type="button"
-              onClick={() => updateActiveTag(null)}
-            >
-              Clear
-            </button>
-          ) : null}
-        </div>
-        <p className="preset-filter-form__hint">
-          Backend tag filtering is live. Suggested tags appear below when available.
-        </p>
-      </form>
-
-      <TagFilterBar
-        tags={availableTags}
-        activeTag={activeTag}
-        onTagSelect={updateActiveTag}
-        isLoading={tagsLoading}
-      />
+      <div className="presets-filter-rail">
+        <TagFilterBar
+          tags={availableTags}
+          activeTag={activeTag}
+          onTagSelect={updateActiveTag}
+          isLoading={tagsLoading}
+        />
+      </div>
 
       {pageState === 'loading' && (
         <div className="preset-grid" aria-label="Loading presets">
@@ -172,8 +128,12 @@ export function PresetsPage() {
             <div key={i} className="preset-card preset-card--skeleton" aria-hidden="true">
               <div className="preset-card__thumbnail preset-card__thumbnail--skeleton" />
               <div className="preset-card__body">
-                <span className="skeleton-text skeleton-text--title" />
-                <span className="skeleton-text skeleton-text--sub" />
+                <span className="preset-card__avatar preset-card__avatar--skeleton" />
+                <div className="preset-card__meta">
+                  <span className="skeleton-text skeleton-text--title" />
+                  <span className="skeleton-text skeleton-text--sub" />
+                  <span className="skeleton-text skeleton-text--meta" />
+                </div>
               </div>
             </div>
           ))}

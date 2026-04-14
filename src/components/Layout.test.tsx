@@ -81,8 +81,9 @@ describe('Layout', () => {
       'href',
       '/settings',
     )
-    expect(screen.getByRole('menuitem', { name: /home/i })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('menuitem', { name: /my channel/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /view your channel/i })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /browse/i })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('menuitem', { name: /my presets/i })).toHaveAttribute(
       'href',
       '/my-presets',
     )
