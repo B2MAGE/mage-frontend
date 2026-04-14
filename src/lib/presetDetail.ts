@@ -12,6 +12,7 @@ export type PresetDetailResponse = {
   sceneData?: unknown
   thumbnailRef?: string | null
   createdAt?: string
+  tags?: unknown
 }
 
 export type PresetDetail = {
@@ -22,6 +23,7 @@ export type PresetDetail = {
   sceneData: MageSceneBlob
   thumbnailRef: string | null
   createdAt: string | null
+  tags: string[]
 }
 
 export type PresetDetailErrorCode =
@@ -118,6 +120,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function normalizePresetTags(tags: unknown) {
+  if (!Array.isArray(tags)) {
+    return []
+  }
+
+  const normalizedTags = tags.reduce<string[]>((resolvedTags, tag) => {
+    if (typeof tag === 'string' && tag.trim()) {
+      resolvedTags.push(tag.trim())
+      return resolvedTags
+    }
+
+    if (isRecord(tag) && typeof tag.name === 'string' && tag.name.trim()) {
+      resolvedTags.push(tag.name.trim())
+    }
+
+    return resolvedTags
+  }, [])
+
+  return normalizedTags.filter((tagName, index) => normalizedTags.indexOf(tagName) === index)
+}
+
 function normalizePresetDetail(payload: unknown): PresetDetail | null {
   if (!isRecord(payload)) {
     return null
@@ -152,6 +175,7 @@ function normalizePresetDetail(payload: unknown): PresetDetail | null {
         : null,
     createdAt:
       typeof payload.createdAt === 'string' && payload.createdAt.trim() ? payload.createdAt : null,
+    tags: normalizePresetTags(payload.tags),
   }
 }
 
@@ -442,7 +466,7 @@ export function buildPresetDescription(
       'This page is still an early public pass, but the preset render above is the real scene payload. I wanted the surrounding notes, comments, and recommendations to read like a creator page someone would actually spend time on while the rest of the social features catch up.',
     bestFor: 'late-night sets, focus mixes, ambient intros',
     builtWith: 'soft bloom, layered fog, reflective passes, restrained drift',
-    tags: ['ambient', 'slow-bloom', 'focus-friendly', 'late-night', 'magepreset'],
+    tags: preset.tags,
   }
 }
 
