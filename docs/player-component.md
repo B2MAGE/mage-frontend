@@ -25,17 +25,17 @@ Example:
 ```tsx
 import { MagePlayer } from "../components/MagePlayer";
 
-export function PresetDetail({
-  preset,
+export function SceneDetail({
+  scene,
 }: {
-  preset: { name: string; sceneData: Record<string, unknown> };
+  scene: { name: string; sceneData: Record<string, unknown> };
 }) {
   return (
     <section>
-      <h1>{preset.name}</h1>
+      <h1>{scene.name}</h1>
       <MagePlayer
-        ariaLabel={`${preset.name} preview`}
-        sceneBlob={preset.sceneData}
+        ariaLabel={`${scene.name} preview`}
+        sceneBlob={scene.sceneData}
       />
     </section>
   );
@@ -68,7 +68,7 @@ Pages should pass the raw `sceneData` object returned by the backend instead of 
 
 - do not call `initMAGE()` directly from route components
 - keep engine-specific logic inside `src/lib/magePlayerAdapter.ts`
-- if a page swaps presets, pass the next `sceneBlob` to the same `MagePlayer` instance and let the component reload it
+- if a page swaps scenes, pass the next `sceneBlob` to the same `MagePlayer` instance and let the component reload it
 
 ## Tests
 

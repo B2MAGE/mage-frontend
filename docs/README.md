@@ -4,8 +4,8 @@ This directory holds focused implementation notes for the MAGE frontend. The rep
 
 ## Documents
 
-- [create-preset-page.md](./create-preset-page.md)  
-  Preset editor structure, submission flow, and current persistence limits.
+- [create-scene-page.md](./create-scene-page.md)  
+  Scene editor structure, submission flow, and current persistence limits.
 
 - [deployment.md](./deployment.md)  
   Supported production deployment strategy, reverse-proxy expectations, and container notes.
