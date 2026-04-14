@@ -12,7 +12,7 @@ The current dependency in `package.json` is:
 "mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
 ```
 
-The tarball is kept inside this repository so local installs, CI, and production image builds do not depend on a sibling checkout.
+The tarball is kept inside this repository.
 
 ## Why The Frontend Uses An Alias
 
