@@ -3036,11 +3036,18 @@
 
 /* ─── Tag Filter Bar ─────────────────────────────────────────────────── */
 
+.tag-filter-scroller {
+  position: relative;
+  min-width: 0;
+}
+
 .tag-filter-bar {
   display: flex;
   gap: 10px;
   overflow-x: auto;
   padding: 0;
+  min-width: 0;
+  scroll-behavior: smooth;
   scrollbar-width: none;
 }
 
@@ -3048,7 +3055,51 @@
   display: none;
 }
 
+.tag-filter-scroller__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(11, 22, 26, 0.94);
+  color: rgba(232, 255, 251, 0.92);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.tag-filter-scroller__arrow:hover {
+  background: rgba(18, 34, 39, 0.98);
+  border-color: rgba(99, 240, 214, 0.34);
+  color: #efffff;
+}
+
+.tag-filter-scroller__arrow svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.tag-filter-scroller__arrow--left {
+  left: 0;
+}
+
+.tag-filter-scroller__arrow--right {
+  right: 0;
+}
+
 .tag-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   min-height: 38px;
   padding: 8px 16px;
@@ -3065,6 +3116,7 @@
     border-color 0.2s ease;
   white-space: nowrap;
   text-transform: capitalize;
+  text-decoration: none;
 }
 
 .tag-pill:hover {

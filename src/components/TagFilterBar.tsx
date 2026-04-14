@@ -1,4 +1,5 @@
 import type { TagResponse } from '../lib/api'
+import { ScrollableTagBar } from './ScrollableTagBar'
 
 type TagFilterBarProps = {
   tags: TagResponse[]
@@ -21,7 +22,7 @@ export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFil
   }
 
   return (
-    <div className="tag-filter-bar" role="toolbar" aria-label="Filter presets by tag">
+    <ScrollableTagBar ariaLabel="Filter presets by tag" role="toolbar">
       <button
         className={`tag-pill${activeTag === null ? ' tag-pill--active' : ''}`}
         aria-pressed={activeTag === null}
@@ -41,6 +42,6 @@ export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFil
           {tag.name}
         </button>
       ))}
-    </div>
+    </ScrollableTagBar>
   )
 }

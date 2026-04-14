@@ -6,6 +6,7 @@ import {
   type RecommendedPresetCard,
   type RecommendationFilter,
 } from '../../lib/presetDetail'
+import { ScrollableTagBar } from '../ScrollableTagBar'
 
 type PresetRecommendationRailProps = {
   creatorDisplayName: string
@@ -42,10 +43,10 @@ export function PresetRecommendationRail({
 
   return (
     <aside className="mage-watch__rail">
-      <div
-        className="tag-filter-bar preset-detail-recommendation-filters"
+      <ScrollableTagBar
+        ariaLabel="Filter recommended presets"
+        barClassName="preset-detail-recommendation-filters"
         role="toolbar"
-        aria-label="Filter recommended presets"
       >
         <button
           className={`tag-pill${recommendationFilter === 'all' ? ' tag-pill--active' : ''}`}
@@ -84,7 +85,7 @@ export function PresetRecommendationRail({
             </button>
           )
         })}
-      </div>
+      </ScrollableTagBar>
 
       {isLoading ? (
         <p className="mage-watch__rail-empty">{loadingCopy}</p>
