@@ -12,16 +12,17 @@ import {
   buildPresetComments,
   buildPresetDescription,
   buildPresetEngagement,
-  buildRecommendedPresets,
-  fetchCreatorPresetList,
+  createEmptyRecommendedPresetGroups,
+  fetchRecommendedPresetGroups,
   fetchPresetDetail,
   PresetDetailRequestError,
   readErrorCopy,
   readInitial,
   readPresetId,
+  readRecommendationFilterTag,
   type PresetDetail,
   type PresetDetailErrorCode,
-  type RecommendedPresetCard,
+  type RecommendedPresetGroups,
   type RecommendationFilter,
 } from '../lib/presetDetail'
 
@@ -31,7 +32,9 @@ export function PresetDetailPage() {
   const [preset, setPreset] = useState<PresetDetail | null>(null)
   const [errorCode, setErrorCode] = useState<PresetDetailErrorCode | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [creatorPresets, setCreatorPresets] = useState<RecommendedPresetCard[]>([])
+  const [recommendedPresetGroups, setRecommendedPresetGroups] = useState<RecommendedPresetGroups>(
+    createEmptyRecommendedPresetGroups(),
+  )
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false)
   const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('all')
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
@@ -81,13 +84,12 @@ export function PresetDetailPage() {
 
   useEffect(() => {
     setIsDescriptionExpanded(false)
+    setRecommendationFilter('all')
   }, [preset?.id])
 
   useEffect(() => {
-    const ownerUserId = preset?.ownerUserId ?? null
-
-    if (!preset || ownerUserId === null || !isAuthenticated) {
-      setCreatorPresets([])
+    if (!preset) {
+      setRecommendedPresetGroups(createEmptyRecommendedPresetGroups())
       setIsRecommendationsLoading(false)
       return
     }
@@ -95,23 +97,23 @@ export function PresetDetailPage() {
     const currentPreset = preset
     let isCurrent = true
 
-    async function loadCreatorPresets() {
+    async function loadRecommendedPresets() {
       setIsRecommendationsLoading(true)
 
       try {
-        const nextPresets = await fetchCreatorPresetList(authenticatedFetch, isAuthenticated, ownerUserId)
+        const nextRecommendedPresetGroups = await fetchRecommendedPresetGroups(currentPreset)
 
         if (!isCurrent) {
           return
         }
 
-        setCreatorPresets(buildRecommendedPresets(currentPreset, nextPresets))
+        setRecommendedPresetGroups(nextRecommendedPresetGroups)
       } catch {
         if (!isCurrent) {
           return
         }
 
-        setCreatorPresets([])
+        setRecommendedPresetGroups(createEmptyRecommendedPresetGroups())
       } finally {
         if (isCurrent) {
           setIsRecommendationsLoading(false)
@@ -119,12 +121,12 @@ export function PresetDetailPage() {
       }
     }
 
-    void loadCreatorPresets()
+    void loadRecommendedPresets()
 
     return () => {
       isCurrent = false
     }
-  }, [authenticatedFetch, isAuthenticated, preset])
+  }, [preset])
 
   if (presetId === null) {
     const { description, title } = readErrorCopy('invalid-id')
@@ -199,10 +201,13 @@ export function PresetDetailPage() {
   const engagement = buildPresetEngagement(preset)
   const presetDescription = buildPresetDescription(preset, creatorProfile)
   const presetComments = buildPresetComments(preset)
+  const activeRecommendationTag = readRecommendationFilterTag(recommendationFilter)
   const filteredRecommendedPresets =
-    recommendationFilter === 'creator'
-      ? creatorPresets.filter((recommendedPreset) => recommendedPreset.ownerUserId === preset.ownerUserId)
-      : creatorPresets
+    activeRecommendationTag !== null
+      ? recommendedPresetGroups.byTag[activeRecommendationTag] ?? []
+      : recommendationFilter === 'creator'
+        ? recommendedPresetGroups.creator
+        : recommendedPresetGroups.all
   const composerInitial = readInitial(user?.displayName ?? 'Guest')
   const composerPrompt = user?.displayName
     ? `Add a comment as ${user.displayName}...`
@@ -287,6 +292,7 @@ export function PresetDetailPage() {
 
         <PresetRecommendationRail
           creatorDisplayName={creatorProfile.displayName}
+          currentPresetTags={preset.tags}
           isLoading={isRecommendationsLoading}
           recommendedPresets={filteredRecommendedPresets}
           recommendationFilter={recommendationFilter}

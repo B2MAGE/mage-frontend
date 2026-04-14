@@ -1,4 +1,4 @@
-import { buildApiUrl, type PresetListResponse } from './api'
+import { buildApiUrl, fetchPresets, type PresetListResponse } from './api'
 import type { MageSceneBlob } from './magePlayerAdapter'
 
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
@@ -78,7 +78,13 @@ export type RecommendedPresetCard = {
   ownerUserId: number
 }
 
-export type RecommendationFilter = 'all' | 'creator'
+export type RecommendedPresetGroups = {
+  all: RecommendedPresetCard[]
+  creator: RecommendedPresetCard[]
+  byTag: Record<string, RecommendedPresetCard[]>
+}
+
+export type RecommendationFilter = 'all' | 'creator' | `tag:${string}`
 
 const creatorProfileBlueprints = [
   {
@@ -309,17 +315,41 @@ function buildRecommendedPresetsFromList(
   presets: PresetListResponse[],
   currentPresetId: number,
 ): RecommendedPresetCard[] {
-  return presets
+  const presetsById = new Map<number, RecommendedPresetCard>()
+
+  presets
     .filter((preset) => preset.presetId !== currentPresetId)
-    .map((preset) => ({
-      id: preset.presetId,
-      title: preset.name,
-      creator: preset.creatorDisplayName,
-      meta: `${buildRecommendedPlaysLabel(preset.presetId)} | ${formatRelativeAge(preset.createdAt)}`,
-      accent: buildRecommendationAccent(preset.presetId),
-      thumbnailRef: preset.thumbnailRef,
-      ownerUserId: preset.ownerUserId,
-    }))
+    .forEach((preset) => {
+      if (presetsById.has(preset.presetId)) {
+        return
+      }
+
+      presetsById.set(preset.presetId, {
+        id: preset.presetId,
+        title: preset.name,
+        creator: preset.creatorDisplayName,
+        meta: `${buildRecommendedPlaysLabel(preset.presetId)} | ${formatRelativeAge(preset.createdAt)}`,
+        accent: buildRecommendationAccent(preset.presetId),
+        thumbnailRef: preset.thumbnailRef,
+        ownerUserId: preset.ownerUserId,
+      })
+    })
+
+  return [...presetsById.values()]
+}
+
+function mergeRecommendedPresetCards(
+  ...presetGroups: RecommendedPresetCard[][]
+): RecommendedPresetCard[] {
+  const presetsById = new Map<number, RecommendedPresetCard>()
+
+  presetGroups.flat().forEach((preset) => {
+    if (!presetsById.has(preset.id)) {
+      presetsById.set(preset.id, preset)
+    }
+  })
+
+  return [...presetsById.values()]
 }
 
 function slugify(value: string) {
@@ -396,6 +426,72 @@ export async function fetchCreatorPresetList(
   const payload = (await response.json().catch(() => [])) as unknown
 
   return normalizeRecommendedPresetList(payload)
+}
+
+export function buildTagRecommendationFilter(tag: string): RecommendationFilter {
+  return `tag:${tag}` as RecommendationFilter
+}
+
+export function readRecommendationFilterTag(filter: RecommendationFilter) {
+  return filter.startsWith('tag:') ? filter.slice('tag:'.length) : null
+}
+
+export function createEmptyRecommendedPresetGroups(): RecommendedPresetGroups {
+  return {
+    all: [],
+    creator: [],
+    byTag: {},
+  }
+}
+
+export function buildRecommendedPresetGroups(
+  preset: PresetDetail,
+  allPresets: PresetListResponse[],
+  tagPresetsByTag: Record<string, PresetListResponse[]>,
+): RecommendedPresetGroups {
+  const creatorRecommendations =
+    preset.ownerUserId === null
+      ? []
+      : buildRecommendedPresetsFromList(
+          allPresets.filter((candidatePreset) => candidatePreset.ownerUserId === preset.ownerUserId),
+          preset.id,
+        )
+
+  const recommendationsByTag = preset.tags.reduce<Record<string, RecommendedPresetCard[]>>(
+    (resolvedRecommendations, tag) => {
+      resolvedRecommendations[tag] = buildRecommendedPresetsFromList(tagPresetsByTag[tag] ?? [], preset.id)
+      return resolvedRecommendations
+    },
+    {},
+  )
+
+  return {
+    all: mergeRecommendedPresetCards(
+      creatorRecommendations,
+      ...preset.tags.map((tag) => recommendationsByTag[tag] ?? []),
+    ),
+    creator: creatorRecommendations,
+    byTag: recommendationsByTag,
+  }
+}
+
+export async function fetchRecommendedPresetGroups(
+  preset: PresetDetail,
+): Promise<RecommendedPresetGroups> {
+  const recommendationRequests = [fetchPresets(), ...preset.tags.map((tag) => fetchPresets(tag))]
+  const [allPresetsResult, ...tagPresetResults] = await Promise.allSettled(recommendationRequests)
+
+  const allPresets = allPresetsResult.status === 'fulfilled' ? allPresetsResult.value : []
+  const tagPresetsByTag = preset.tags.reduce<Record<string, PresetListResponse[]>>(
+    (resolvedTagPresets, tag, index) => {
+      const nextTagResult = tagPresetResults[index]
+      resolvedTagPresets[tag] = nextTagResult?.status === 'fulfilled' ? nextTagResult.value : []
+      return resolvedTagPresets
+    },
+    {},
+  )
+
+  return buildRecommendedPresetGroups(preset, allPresets, tagPresetsByTag)
 }
 
 export function buildPresetEngagement(preset: PresetDetail): PresetEngagement {
