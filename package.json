@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "patch-package",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "postinstall": "patch-package",
