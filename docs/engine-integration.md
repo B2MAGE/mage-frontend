@@ -19,10 +19,10 @@ The tarball is kept inside this repository.
 The frontend does not import the package root directly. Instead, `@mage/engine` is aliased to:
 
 ```text
-node_modules/mage/js/mage-lib.js
+node_modules/mage/dist/mage-engine.js
 ```
 
-This alias exists because the current packaged engine layout is not cleanly consumable from its root export.
+This alias exists because the current packaged engine metadata is still not cleanly consumable from its root export. The shipped tarball includes `dist/mage-engine.js`, but its `package.json` still points `exports.import` at an unshipped `dist/mage-engine.mjs`.
 
 Relevant files:
 
@@ -30,21 +30,28 @@ Relevant files:
 - `tsconfig.app.json`
 - `src/types/mage-engine.d.ts`
 
-## Shader Park Runtime Compatibility
+## Types
 
-The current engine package pulls in `shader-park-core` through the bundled browser-facing engine code. The frontend keeps one explicit compatibility patch for that dependency:
+The packaged `dist/mage-engine.d.ts` is present, but it still imports `./MAGEEngine.js`, which is not shipped in the tarball. The frontend therefore keeps a small local declaration shim for `@mage/engine` instead of relying on the package types directly.
 
-- `patches/shader-park-core+0.2.8.patch`
+## Bundled Engine Patch
 
-That patch exists because Shader Park executes generated code through `eval(...)` and expects a DSL helper surface to be reachable by name at runtime. Production bundling can otherwise break scene compilation with errors such as `input is not defined`, `time is not defined`, or `rotateY is not defined`.
+The frontend reapplies a local patch to:
 
-The frontend works around this by doing the following:
+```text
+node_modules/mage/dist/mage-engine.js
+```
 
-- `vite.config.ts` aliases `shader-park-core` to the installed ESM bundle
-- `patch-package` reapplies the checked-in Shader Park patch on `npm install` and `npm ci`
-- the patch temporarily exposes the required Shader Park helper bindings on `globalThis` during the `eval(...)` compile step and restores the previous global values afterward
+This happens through `patch-package` during `npm install` and again before `npm run build`.
 
-If the Shader Park version changes, revalidate that patch before assuming production builds will continue to render scenes correctly.
+The patch preserves the Shader Park runtime compatibility shim that used to live in a separate `shader-park-core` patch before the engine moved to a bundled dist file.
+
+It also fixes the current packaged engine teardown bug where `dispose()` clears engine state without stopping the active `requestAnimationFrame` loop, which can otherwise surface as `Cannot set properties of null (setting 'time')` after unmount.
+
+Relevant files:
+
+- `package.json`
+- `patches/mage+1.0.0.patch`
 
 ## Frontend Boundary
 
@@ -79,9 +86,10 @@ These are current package-level caveats worth knowing before making engine-relat
 
 - the npm registry package named `mage` is not this engine, so the frontend must keep using the local tarball dependency
 - when the engine package changes, the vendored tarball in `vendor/mage-engine/` must be refreshed intentionally
-- when `shader-park-core` changes, `patches/shader-park-core+0.2.8.patch` must be reviewed and regenerated if needed
-- the packaged engine currently emits a build warning for a missing `controltips.png` runtime asset
-- `shader-park-core` emits `eval` warnings during build
+- when the vendored engine tarball changes, `patches/mage+1.0.0.patch` must be reviewed and usually regenerated against the new bundled file
+- the packaged engine root export is still broken, so the frontend must keep aliasing `@mage/engine` to the shipped dist entry file
+- the packaged type file still references an unshipped `MAGEEngine.js`, so `src/types/mage-engine.d.ts` remains the frontend source of truth
+- the bundled engine still emits `eval` warnings during build
 - the engine bundle is large enough to trigger Vite chunk-size warnings
 
 These warnings do not currently block the frontend build, but they are useful context when debugging engine-related issues.
