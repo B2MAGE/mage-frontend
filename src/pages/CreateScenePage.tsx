@@ -402,12 +402,14 @@ export function CreateScenePage() {
   const [errors, setErrors] = useState<CreateSceneFormErrors>({});
   const [tagsLoading, setTagsLoading] = useState(true);
   const [tagsError, setTagsError] = useState<string | null>(null);
+  const [isActionBarStuck, setIsActionBarStuck] = useState(false);
   const [pendingTagAttachment, setPendingTagAttachment] =
     useState<PendingTagAttachment | null>(null);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const tagDropdownRef = useRef<HTMLDivElement | null>(null);
   const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  const actionBarSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const formErrorId = useId();
   const tagSearchInputId = useId();
@@ -544,6 +546,29 @@ export function CreateScenePage() {
       setIsTagDropdownOpen(false);
     }
   }, [isTagDropdownOpen, pendingTagAttachment]);
+
+  useEffect(() => {
+    const sentinel = actionBarSentinelRef.current;
+
+    if (!sentinel || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsActionBarStuck(entry.intersectionRatio < 1);
+      },
+      {
+        threshold: 1,
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   function renderAdditionalPassCard(passConfig: AdditionalPassConfig) {
     return (
@@ -1464,7 +1489,7 @@ export function CreateScenePage() {
                 description="Choose the visual style, background environment, and overall size of the scene."
                 title="Scene"
               >
-                <div className="scene-editor-grid scene-editor-grid--3">
+                <div className="scene-editor-grid">
                   <SelectField
                     description={
                       selectedShaderScene?.description ??
@@ -2389,49 +2414,6 @@ export function CreateScenePage() {
               </SceneSection>
             ) : null}
 
-            <div className="scene-editor-action-bar">
-              <div className="scene-editor-action-bar__meta">
-                <span className="scene-editor-toolbar__eyebrow">Section</span>
-                <strong>{currentSection.title}</strong>
-                <span>
-                  {currentSectionIndex + 1} of {EDITOR_SECTIONS.length}
-                </span>
-              </div>
-
-              <div className="scene-editor-action-bar__buttons">
-                <button
-                  className="scene-secondary-button scene-editor-nav-button"
-                  disabled={!previousSection || isSubmitting}
-                  onClick={() => handleSectionStep(-1)}
-                  type="button"
-                >
-                  Back
-                </button>
-
-                <button
-                  className="scene-secondary-button scene-editor-nav-button"
-                  disabled={!nextSection || isSubmitting}
-                  onClick={() => handleSectionStep(1)}
-                  type="button"
-                >
-                  Next
-                </button>
-
-                <button
-                  className="demo-link auth-submit scene-editor-submit"
-                  disabled={isSubmitting}
-                  type="submit"
-                >
-                  {isSubmitting
-                    ? pendingTagAttachment
-                      ? "Retrying tag attachment..."
-                      : "Creating scene..."
-                    : pendingTagAttachment
-                      ? "Retry tag attachment"
-                      : "Create scene"}
-                </button>
-              </div>
-            </div>
           </div>
 
           <aside className="scene-editor-preview">
@@ -2451,6 +2433,62 @@ export function CreateScenePage() {
               />
             </section>
           </aside>
+
+          <div
+            className={
+              isActionBarStuck
+                ? "scene-editor-action-bar scene-editor-action-bar--stuck"
+                : "scene-editor-action-bar"
+            }
+          >
+            <div className="scene-editor-action-bar__meta">
+              <span className="scene-editor-toolbar__eyebrow">Section</span>
+              <strong>{currentSection.title}</strong>
+              <span>
+                {currentSectionIndex + 1} of {EDITOR_SECTIONS.length}
+              </span>
+            </div>
+
+            <div className="scene-editor-action-bar__buttons">
+              <button
+                className="scene-secondary-button scene-editor-nav-button"
+                disabled={!previousSection || isSubmitting}
+                onClick={() => handleSectionStep(-1)}
+                type="button"
+              >
+                Back
+              </button>
+
+              <button
+                className="scene-secondary-button scene-editor-nav-button"
+                disabled={!nextSection || isSubmitting}
+                onClick={() => handleSectionStep(1)}
+                type="button"
+              >
+                Next
+              </button>
+
+              <button
+                className="demo-link auth-submit scene-editor-submit"
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting
+                  ? pendingTagAttachment
+                    ? "Retrying tag attachment..."
+                    : "Creating scene..."
+                  : pendingTagAttachment
+                    ? "Retry tag attachment"
+                    : "Create scene"}
+              </button>
+            </div>
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="scene-editor-action-bar-sentinel"
+            ref={actionBarSentinelRef}
+          />
         </div>
       </form>
     </AuthPage>
