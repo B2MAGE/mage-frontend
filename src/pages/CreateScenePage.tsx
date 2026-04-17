@@ -42,6 +42,7 @@ type CreateSceneFormErrors = Partial<
   Record<"form" | "name" | "newTag" | "sceneData" | "tags" | "thumbnail", string>
 >;
 type EditorSectionId =
+  | "details"
   | "advanced"
   | "camera"
   | "effects"
@@ -74,6 +75,10 @@ type EditorSectionConfig = {
 };
 
 const EDITOR_SECTIONS: EditorSectionConfig[] = [
+  {
+    id: "details",
+    title: "Details",
+  },
   {
     id: "scene",
     title: "Scene",
@@ -379,7 +384,7 @@ export function CreateScenePage() {
   const navigate = useNavigate();
 
   const [sectionMenuValue, setSectionMenuValue] =
-    useState<EditorSectionId>("scene");
+    useState<EditorSectionId>("details");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnailMode, setThumbnailMode] = useState<ThumbnailMode>("skip");
@@ -1407,10 +1412,10 @@ export function CreateScenePage() {
               </div>
             ) : null}
 
-            {sectionMenuValue === "scene" ? (
+            {sectionMenuValue === "details" ? (
               <SceneSection
-                description="Start with the scene metadata, then tune the visual style and environment."
-                title="Scene"
+                description="Start with the saved scene metadata before moving into the engine controls."
+                title="Details"
               >
                 <div className="scene-editor-stack">
                   {renderSceneNameField()}
@@ -1451,14 +1456,14 @@ export function CreateScenePage() {
                   {renderTagEditor()}
                 </div>
 
-                <div className="scene-editor-section__subheader">
-                  <h3>Visualizer</h3>
-                  <p>
-                    Choose the shader, skybox, and overall scene scale that the
-                    engine will render.
-                  </p>
-                </div>
+              </SceneSection>
+            ) : null}
 
+            {sectionMenuValue === "scene" ? (
+              <SceneSection
+                description="Choose the visual style, background environment, and overall size of the scene."
+                title="Scene"
+              >
                 <div className="scene-editor-grid scene-editor-grid--3">
                   <SelectField
                     description={

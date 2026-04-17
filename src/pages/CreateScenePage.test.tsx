@@ -119,7 +119,7 @@ afterEach(() => {
 })
 
 describe('CreateScenePage', () => {
-  it('renders the expanded MAGE engine editor with the full section menu available', async () => {
+  it('renders the details step first while keeping the full section menu available', async () => {
     storeSession()
 
     mockCreateScenePageFetch()
@@ -128,17 +128,17 @@ describe('CreateScenePage', () => {
 
     expect(screen.getByRole('heading', { name: /create scene/i })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /basic/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^scene$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^camera$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^motion$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^effects$/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /^prism core$/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /^chroma storm$/i })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /^aurora drift$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^details$/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^scene$/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /pass order/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /advanced/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
-    expect(screen.getByLabelText(/custom shader/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('preview-ready')
   })
 
@@ -183,6 +183,7 @@ describe('CreateScenePage', () => {
     const thumbnailField = screen.getByLabelText(/upload thumbnail file/i)
     const tagSearchField = await screen.findByLabelText(/select existing tags/i)
 
+    expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
     expect(
       nameField.compareDocumentPosition(descriptionField) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -356,17 +357,19 @@ describe('CreateScenePage', () => {
 
     const sectionMenu = screen.getByLabelText(/jump to section/i)
 
-    expect(sectionMenu).toHaveValue('scene')
+    expect(sectionMenu).toHaveValue('details')
 
     await user.click(screen.getByRole('button', { name: /^next$/i }))
 
-    expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
-    expect(sectionMenu).toHaveValue('camera')
+    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
+    expect(sectionMenu).toHaveValue('scene')
+    expect(screen.getByLabelText(/custom shader/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^back$/i }))
 
-    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
-    expect(sectionMenu).toHaveValue('scene')
+    expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
+    expect(sectionMenu).toHaveValue('details')
+    expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
   })
 
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
