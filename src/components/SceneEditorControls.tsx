@@ -36,6 +36,7 @@ type SliderFieldProps = NumberFieldProps & {
 }
 
 type ToggleFieldProps = {
+  compact?: boolean
   description?: string
   id: string
   label: string
@@ -76,13 +77,19 @@ function FieldShell({
 }>) {
   return (
     <div className="scene-field">
-      <div className="scene-field__label-row">
-        <label className="scene-field__label" htmlFor={htmlFor}>
-          {label}
-        </label>
+      <div className="scene-field__shell">
+        <div className="scene-field__top">
+          <div className="scene-field__copy">
+            <div className="scene-field__label-row">
+              <label className="scene-field__label" htmlFor={htmlFor}>
+                {label}
+              </label>
+            </div>
+            {description ? <p className="scene-field__description">{description}</p> : null}
+          </div>
+        </div>
+        <div className="scene-field__control">{children}</div>
       </div>
-      {description ? <p className="scene-field__description">{description}</p> : null}
-      {children}
     </div>
   )
 }
@@ -109,7 +116,7 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
 
 export function SceneSection({ children, className, description, title }: SectionProps) {
   return (
-    <section className={buildClassName('surface surface--soft scene-editor-section', className)}>
+    <section className={buildClassName('scene-editor-section', className)}>
       <div className="scene-editor-section__header">
         <h2>{title}</h2>
         <p>{description}</p>
@@ -185,10 +192,20 @@ export function SliderField({
   value,
 }: SliderFieldProps) {
   return (
-    <FieldShell description={description} htmlFor={id} label={label}>
+    <div className="scene-field scene-field--slider">
       <div className="scene-slider">
-        <div className="scene-slider__header">
-          <strong>{formatSliderValue(value, formatValue)}</strong>
+        <div className="scene-slider__top">
+          <div className="scene-slider__copy">
+            <div className="scene-field__label-row">
+              <label className="scene-field__label" htmlFor={id}>
+                {label}
+              </label>
+            </div>
+            {description ? <p className="scene-field__description">{description}</p> : null}
+          </div>
+          <output className="scene-slider__value" htmlFor={id}>
+            {formatSliderValue(value, formatValue)}
+          </output>
         </div>
         <div className="scene-slider__controls">
           <input
@@ -202,6 +219,7 @@ export function SliderField({
             value={value}
           />
           <input
+            aria-label="Numeric value"
             className="scene-slider__number"
             max={max}
             min={min}
@@ -212,34 +230,45 @@ export function SliderField({
           />
         </div>
       </div>
-    </FieldShell>
+    </div>
   )
 }
 
 export function ToggleField({
   checked,
+  compact = false,
   description,
   id,
   label,
   onChange,
 }: ToggleFieldProps) {
   return (
-    <label className="scene-toggle" htmlFor={id}>
-      <div className="scene-toggle__copy">
-        <span>{label}</span>
-        {description ? <small>{description}</small> : null}
+    <div className={buildClassName('scene-toggle-field', compact && 'scene-toggle-field--compact')}>
+      <div className={buildClassName('scene-toggle', compact && 'scene-toggle--compact')}>
+        <div className="scene-toggle__top">
+          <div className="scene-toggle__copy">
+            <div className="scene-toggle__label-row">
+              <label className="scene-toggle__label" htmlFor={id}>
+                {label}
+              </label>
+            </div>
+            {description ? <p className="scene-field__description">{description}</p> : null}
+          </div>
+          <span className="scene-toggle__control">
+            <input
+              checked={checked}
+              className="scene-toggle__input"
+              id={id}
+              onChange={(event) => onChange(event.currentTarget.checked)}
+              type="checkbox"
+            />
+            <label className="scene-toggle__switch" htmlFor={id}>
+              <span className="scene-toggle__track" aria-hidden="true" />
+            </label>
+          </span>
+        </div>
       </div>
-      <span className="scene-toggle__control">
-        <input
-          checked={checked}
-          className="scene-toggle__input"
-          id={id}
-          onChange={(event) => onChange(event.currentTarget.checked)}
-          type="checkbox"
-        />
-        <span className="scene-toggle__track" aria-hidden="true" />
-      </span>
-    </label>
+    </div>
   )
 }
 
@@ -291,25 +320,30 @@ export function EffectCard({
   const toggleId = `${title.toLowerCase().replace(/\s+/g, '-')}-toggle`
 
   return (
-    <section
-      className={buildClassName('surface surface--nested effect-card', !isEnabled && 'is-disabled')}
-    >
-      <div className="effect-card__header">
-        <div>
-          <h3>{title}</h3>
-          <p>{description}</p>
+    <section className={buildClassName('effect-card-group', !isEnabled && 'is-disabled')}>
+      <div className="surface surface--nested effect-card">
+        <div className="effect-card__header">
+          <div>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </div>
+          {onToggle ? (
+            <ToggleField
+              checked={isEnabled}
+              compact
+              id={toggleId}
+              label={isEnabled ? 'On' : 'Off'}
+              onChange={onToggle}
+            />
+          ) : null}
         </div>
-        {onToggle ? (
-          <ToggleField
-            checked={isEnabled}
-            id={toggleId}
-            label={isEnabled ? 'On' : 'Off'}
-            onChange={onToggle}
-          />
-        ) : null}
       </div>
-      {isEnabled && hasContent ? <div className="effect-card__content">{children}</div> : null}
-      {footer ? <div className="effect-card__footer">{footer}</div> : null}
+      {isEnabled && (hasContent || footer) ? (
+        <div className="effect-card__details">
+          {hasContent ? <div className="effect-card__content">{children}</div> : null}
+          {footer ? <div className="effect-card__footer">{footer}</div> : null}
+        </div>
+      ) : null}
     </section>
   )
 }
