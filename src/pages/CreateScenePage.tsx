@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import type { FormEvent, PropsWithChildren, ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -42,8 +42,8 @@ type CreateSceneFormErrors = Partial<
   Record<"form" | "name" | "newTag" | "sceneData" | "tags" | "thumbnail", string>
 >;
 type EditorSectionId =
+  | "confirm"
   | "details"
-  | "advanced"
   | "camera"
   | "effects"
   | "motion"
@@ -100,12 +100,13 @@ const EDITOR_SECTIONS: EditorSectionConfig[] = [
     title: "Pass Order",
   },
   {
-    id: "advanced",
-    title: "Advanced",
+    id: "confirm",
+    title: "Confirm",
   },
 ];
 
 const initialSceneData = sanitizeSceneData(createDefaultSceneData());
+const initialSceneModel = getSceneEditorModel(initialSceneData);
 const PLAYLIST_OPTIONS = [
   {
     label: "Featured Collection",
@@ -274,18 +275,135 @@ function formatDegrees(value: number) {
   return `${Math.round(value)}\u00B0`;
 }
 
-function NavigationIcon() {
+function CheckIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path
-        d="M12 3.8a8.2 8.2 0 1 0 8.2 8.2A8.2 8.2 0 0 0 12 3.8Zm0 14.9a6.7 6.7 0 1 1 6.7-6.7 6.7 6.7 0 0 1-6.7 6.7Z"
-        fill="currentColor"
-      />
-      <path
-        d="M14.9 8.3 9.8 10.6a.8.8 0 0 0-.4.4l-2.3 5.1a.4.4 0 0 0 .5.5l5.1-2.3a.8.8 0 0 0 .4-.4l2.3-5.1a.4.4 0 0 0-.5-.5Zm-2.8 4.8-2.4 1.1 1.1-2.4 2.4-1.1Z"
+        d="m9.55 16.65-4.2-4.2 1.4-1.4 2.8 2.8 7.65-7.65 1.4 1.4Z"
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M11 6h2v8h-2zm0 10h2v2h-2z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function FieldGroupLabel({
+  description,
+  htmlFor,
+  label,
+}: {
+  description?: string;
+  htmlFor?: string;
+  label: string;
+}) {
+  return (
+    <div className="scene-field__copy">
+      <div className="scene-field__label-row">
+        {htmlFor ? (
+          <label className="scene-field__label" htmlFor={htmlFor}>
+            {label}
+          </label>
+        ) : (
+          <span className="scene-field__label">{label}</span>
+        )}
+      </div>
+      {description ? (
+        <p className="scene-field__description">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function CollapsibleEditorGroup({
+  children,
+  hideLabel,
+  id,
+  isOpen,
+  onToggle,
+  showLabel,
+}: PropsWithChildren<{
+  hideLabel?: string;
+  id: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  showLabel?: string;
+}>) {
+  return (
+    <section className="scene-editor-collapsible">
+      <button
+        aria-controls={id}
+        aria-expanded={isOpen}
+        className="scene-editor-collapsible__toggle"
+        onClick={onToggle}
+        type="button"
+      >
+        {isOpen ? hideLabel ?? "Hide Advanced" : showLabel ?? "Show Advanced"}
+      </button>
+
+      {isOpen ? (
+        <div className="scene-editor-collapsible__content" id={id}>
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ConfirmSummarySection({
+  children,
+  title,
+}: PropsWithChildren<{
+  title: string;
+}>) {
+  return (
+    <section className="scene-confirm-section">
+      <h3 className="scene-confirm-section__title">{title}</h3>
+      <dl className="scene-confirm-section__list">{children}</dl>
+    </section>
+  );
+}
+
+function ConfirmSummaryItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="scene-confirm-section__item">
+      <dt className="scene-confirm-section__term">{label}</dt>
+      <dd className="scene-confirm-section__value">{value}</dd>
+    </div>
+  );
+}
+
+function ConfirmSummaryPills({
+  emptyLabel,
+  values,
+}: {
+  emptyLabel: string;
+  values: string[];
+}) {
+  if (values.length === 0) {
+    return <span>{emptyLabel}</span>;
+  }
+
+  return (
+    <span className="scene-confirm-pills">
+      {values.map((value) => (
+        <span className="scene-confirm-pill" key={value}>
+          {value}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -332,31 +450,58 @@ function describePassState(passId: ScenePassId, sceneModel: SceneEditorModel) {
 
 function validateForm(name: string, sceneDataText: string) {
   const errors: CreateSceneFormErrors = {};
-  let parsedSceneData: SceneData | null = null;
+  const nameError = validateSceneName(name);
+  const { error: sceneDataError, parsedSceneData } =
+    validateSceneDataText(sceneDataText);
 
-  if (!name.trim()) {
-    errors.name = "Scene name is required.";
-  } else if (name.trim().length < 2) {
-    errors.name = "Scene name must be at least 2 characters.";
+  if (nameError) {
+    errors.name = nameError;
   }
 
-  if (!sceneDataText.trim()) {
-    errors.sceneData = "Scene data is required.";
-  } else {
-    try {
-      parsedSceneData = parseSceneDataJson(sceneDataText.trim());
-    } catch (error) {
-      errors.sceneData =
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : "Scene data must be valid JSON.";
-    }
+  if (sceneDataError) {
+    errors.sceneData = sceneDataError;
   }
 
   return {
     errors,
     parsedSceneData,
   };
+}
+
+function validateSceneName(name: string) {
+  if (!name.trim()) {
+    return "Scene name is required.";
+  }
+
+  if (name.trim().length < 2) {
+    return "Scene name must be at least 2 characters.";
+  }
+
+  return null;
+}
+
+function validateSceneDataText(sceneDataText: string) {
+  if (!sceneDataText.trim()) {
+    return {
+      error: "Scene data is required.",
+      parsedSceneData: null,
+    };
+  }
+
+  try {
+    return {
+      error: null,
+      parsedSceneData: parseSceneDataJson(sceneDataText.trim()),
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Scene data must be valid JSON.",
+      parsedSceneData: null,
+    };
+  }
 }
 
 function validateThumbnailFile(file: File | null) {
@@ -403,6 +548,16 @@ export function CreateScenePage() {
   const [tagsLoading, setTagsLoading] = useState(true);
   const [tagsError, setTagsError] = useState<string | null>(null);
   const [isActionBarStuck, setIsActionBarStuck] = useState(false);
+  const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false);
+  const [isMotionAdvancedEnabled, setIsMotionAdvancedEnabled] = useState(false);
+  const [cameraAdvancedDraft, setCameraAdvancedDraft] = useState(() => ({
+    camOrientationMode: initialSceneModel.intent.camOrientationMode,
+    camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
+  }));
+  const [motionRuntimeDraft, setMotionRuntimeDraft] = useState(
+    () => initialSceneModel.state,
+  );
+  const [isConfirmJsonOpen, setIsConfirmJsonOpen] = useState(false);
   const [pendingTagAttachment, setPendingTagAttachment] =
     useState<PendingTagAttachment | null>(null);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
@@ -415,10 +570,33 @@ export function CreateScenePage() {
   const tagSearchInputId = useId();
   const thumbnailInputId = useId();
   const titleId = "create-scene-title";
+
+  function buildEffectiveSceneData(sourceSceneData: SceneData) {
+    let nextSceneData = sourceSceneData;
+
+    if (!isCameraAdvancedEnabled) {
+      nextSceneData = mergeSceneEditorBranch(nextSceneData, "intent", {
+        ...getSceneEditorModel(nextSceneData).intent,
+        camOrientationMode: initialSceneModel.intent.camOrientationMode,
+        camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
+      });
+    }
+
+    if (!isMotionAdvancedEnabled) {
+      nextSceneData = mergeSceneEditorBranch(
+        nextSceneData,
+        "state",
+        initialSceneModel.state,
+      );
+    }
+
+    return sanitizeSceneData(nextSceneData);
+  }
+
   const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData]);
   const previewSceneData = useMemo(
-    () => sanitizeSceneData(sceneData),
-    [sceneData],
+    () => buildEffectiveSceneData(sceneData),
+    [sceneData, isCameraAdvancedEnabled, isMotionAdvancedEnabled],
   );
   const shaderSelection = useMemo(
     () => buildShaderOptions(sceneModel.visualizer.shader),
@@ -480,6 +658,18 @@ export function CreateScenePage() {
     currentSectionIndex < EDITOR_SECTIONS.length - 1
       ? EDITOR_SECTIONS[currentSectionIndex + 1]
       : null;
+  const detailsSectionIssueMessages = [
+    validateSceneName(name),
+    thumbnailMode === "upload" ? validateThumbnailFile(thumbnailFile) : null,
+  ].filter((message): message is string => Boolean(message));
+  const confirmSectionIssueMessage = validateSceneDataText(sceneDataText).error;
+  const sectionIssuesById: Partial<Record<EditorSectionId, string | null>> = {
+    confirm: confirmSectionIssueMessage,
+    details:
+      detailsSectionIssueMessages.length > 0
+        ? detailsSectionIssueMessages.join(" ")
+        : null,
+  };
 
   useEffect(() => {
     let isCurrent = true;
@@ -631,6 +821,41 @@ export function CreateScenePage() {
     applySceneData(mergeSceneEditorBranch(sceneData, branch, nextBranch));
   }
 
+  function handleCameraAdvancedToggle(nextValue: boolean) {
+    if (nextValue) {
+      setIsCameraAdvancedEnabled(true);
+      updateBranch("intent", (currentIntent) => ({
+        ...currentIntent,
+        camOrientationMode: cameraAdvancedDraft.camOrientationMode,
+        camOrientationSpeed: cameraAdvancedDraft.camOrientationSpeed,
+      }));
+      return;
+    }
+
+    setCameraAdvancedDraft({
+      camOrientationMode: sceneModel.intent.camOrientationMode,
+      camOrientationSpeed: sceneModel.intent.camOrientationSpeed,
+    });
+    setIsCameraAdvancedEnabled(false);
+    updateBranch("intent", (currentIntent) => ({
+      ...currentIntent,
+      camOrientationMode: initialSceneModel.intent.camOrientationMode,
+      camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
+    }));
+  }
+
+  function handleMotionAdvancedToggle(nextValue: boolean) {
+    if (nextValue) {
+      setIsMotionAdvancedEnabled(true);
+      updateBranch("state", () => motionRuntimeDraft);
+      return;
+    }
+
+    setMotionRuntimeDraft(sceneModel.state);
+    setIsMotionAdvancedEnabled(false);
+    updateBranch("state", () => initialSceneModel.state);
+  }
+
   function handleNameChange(nextValue: string) {
     setName(nextValue);
     clearErrors("name", "form");
@@ -705,7 +930,7 @@ export function CreateScenePage() {
   function handleFormatJson() {
     try {
       const parsedSceneData = parseSceneDataJson(sceneDataText);
-      applySceneData(parsedSceneData);
+      applySceneData(buildEffectiveSceneData(parsedSceneData));
     } catch (error) {
       setErrors((currentErrors) => ({
         ...currentErrors,
@@ -936,7 +1161,7 @@ export function CreateScenePage() {
   function renderSceneNameField() {
     return (
       <div className="field-group">
-        <label htmlFor="name">Scene Name</label>
+        <FieldGroupLabel htmlFor="name" label="Scene Name" />
         <input
           id="name"
           minLength={2}
@@ -966,7 +1191,7 @@ export function CreateScenePage() {
     return (
       <div className="field-group">
         <div className="scene-tag-editor__header">
-          <span className="scene-tag-editor__label">Tags</span>
+          <FieldGroupLabel label="Tags" />
           {pendingTagAttachment ? (
             <span className="field-hint">
               Retry mode for scene #{pendingTagAttachment.sceneId}
@@ -1142,7 +1367,7 @@ export function CreateScenePage() {
   function renderThumbnailField() {
     return (
       <div className="field-group">
-        <label htmlFor={thumbnailInputId}>Thumbnail</label>
+        <FieldGroupLabel htmlFor={thumbnailInputId} label="Thumbnail" />
         <div className="scene-thumbnail-picker">
           <input
             accept="image/jpeg,image/png,image/webp,image/gif"
@@ -1201,6 +1426,241 @@ export function CreateScenePage() {
         </div>
       </div>
     );
+  }
+
+  function renderCameraAdvancedFields() {
+    return (
+      <div className="scene-editor-grid">
+        <NumberField
+          description="Experimental compact scene field exported by the library."
+          id="camera-orientation-mode"
+          label="Camera Orientation Mode"
+          min={0}
+          onChange={(nextValue) =>
+            updateBranch("intent", (currentIntent) => ({
+              ...currentIntent,
+              camOrientationMode: Math.max(0, Math.round(nextValue)),
+            }))
+          }
+          step={1}
+          value={sceneModel.intent.camOrientationMode}
+        />
+
+        <NumberField
+          description="Experimental compact scene field exported by the library."
+          id="camera-orientation-speed"
+          label="Camera Orientation Speed"
+          min={0}
+          onChange={(nextValue) =>
+            updateBranch("intent", (currentIntent) => ({
+              ...currentIntent,
+              camOrientationSpeed: nextValue,
+            }))
+          }
+          step={0.1}
+          value={sceneModel.intent.camOrientationSpeed}
+        />
+      </div>
+    );
+  }
+
+  function renderRuntimeStateFields() {
+    return (
+      <div className="scene-editor-grid">
+        <NumberField
+          description="Low-level runtime state."
+          id="state-size"
+          label="State Size"
+          onChange={(nextValue) =>
+            updateBranch("state", (currentState) => ({
+              ...currentState,
+              size: nextValue,
+            }))
+          }
+          step={0.01}
+          value={sceneModel.state.size}
+        />
+        <NumberField
+          description="Initial runtime pointer state."
+          id="state-pointer-down"
+          label="Pointer Down"
+          onChange={(nextValue) =>
+            updateBranch("state", (currentState) => ({
+              ...currentState,
+              pointerDown: nextValue,
+            }))
+          }
+          step={0.01}
+          value={sceneModel.state.pointerDown}
+        />
+        <NumberField
+          description="Initial smoothed pointer state."
+          id="state-current-pointer-down"
+          label="Current Pointer"
+          onChange={(nextValue) =>
+            updateBranch("state", (currentState) => ({
+              ...currentState,
+              currPointerDown: nextValue,
+            }))
+          }
+          step={0.01}
+          value={sceneModel.state.currPointerDown}
+        />
+        <NumberField
+          description="Initial runtime audio input."
+          id="state-current-audio"
+          label="Current Audio"
+          onChange={(nextValue) =>
+            updateBranch("state", (currentState) => ({
+              ...currentState,
+              currAudio: nextValue,
+            }))
+          }
+          step={0.01}
+          value={sceneModel.state.currAudio}
+        />
+        <NumberField
+          description="Initial runtime time value."
+          id="state-time"
+          label="State Time"
+          onChange={(nextValue) =>
+            updateBranch("state", (currentState) => ({
+              ...currentState,
+              time: nextValue,
+            }))
+          }
+          step={0.01}
+          value={sceneModel.state.time}
+        />
+        <NumberField
+          description="Initial runtime volume multiplier."
+          id="state-volume"
+          label="Volume Multiplier"
+          onChange={(nextValue) =>
+            updateBranch("state", (currentState) => ({
+              ...currentState,
+              volume_multiplier: nextValue,
+            }))
+          }
+          step={0.01}
+          value={sceneModel.state.volume_multiplier}
+        />
+      </div>
+    );
+  }
+
+  function renderRawSceneDataEditor() {
+    return (
+      <div className="field-group">
+        <div className="scene-advanced-header">
+          <div>
+            <FieldGroupLabel
+              description="Inspect and edit the raw scene JSON directly."
+              htmlFor="sceneData"
+              label="Scene Data JSON"
+            />
+            <p className="field-hint">
+              Raw scene data stays available here. While the JSON is invalid,
+              the preview keeps the last valid scene state.
+            </p>
+          </div>
+          <button
+            className="scene-secondary-button"
+            onClick={handleFormatJson}
+            type="button"
+          >
+            Format JSON
+          </button>
+        </div>
+        <textarea
+          aria-describedby={
+            errors.sceneData ? "sceneData-error" : "sceneData-hint"
+          }
+          aria-invalid={Boolean(errors.sceneData)}
+          className="scene-textarea scene-textarea--code"
+          id="sceneData"
+          name="sceneData"
+          onChange={(event) => handleRawSceneDataChange(event.currentTarget.value)}
+          required
+          rows={16}
+          value={sceneDataText}
+        />
+        {errors.sceneData ? (
+          <p className="field-error" id="sceneData-error" role="alert">
+            {errors.sceneData}
+          </p>
+        ) : (
+          <p className="field-hint" id="sceneData-hint">
+            Structured controls above keep this JSON in sync with the current
+            scene.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  function formatOptionalText(value: string) {
+    return value.trim() ? value.trim() : "Not set";
+  }
+
+  function formatVectorSummary(value: { x: number; y: number; z: number }) {
+    return (
+      <span className="scene-confirm-vector">
+        {(["x", "y", "z"] as const).map((axis) => (
+          <span className="scene-confirm-vector__item" key={axis}>
+            <span className="scene-confirm-vector__axis">
+              {axis.toUpperCase()}
+            </span>
+            <span className="scene-confirm-vector__value">
+              {formatFixed(value[axis])}
+            </span>
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  function formatRuntimeStateSummary() {
+    const runtimeStatePairs: Array<[string, number, number]> = [
+      ["Size", sceneModel.state.size, initialSceneModel.state.size] as [
+        string,
+        number,
+        number,
+      ],
+      [
+        "Pointer",
+        sceneModel.state.pointerDown,
+        initialSceneModel.state.pointerDown,
+      ] as [string, number, number],
+      [
+        "Current Pointer",
+        sceneModel.state.currPointerDown,
+        initialSceneModel.state.currPointerDown,
+      ] as [string, number, number],
+      [
+        "Current Audio",
+        sceneModel.state.currAudio,
+        initialSceneModel.state.currAudio,
+      ] as [string, number, number],
+      ["Time", sceneModel.state.time, initialSceneModel.state.time] as [
+        string,
+        number,
+        number,
+      ],
+      [
+        "Volume",
+        sceneModel.state.volume_multiplier,
+        initialSceneModel.state.volume_multiplier,
+      ] as [string, number, number],
+    ].filter(([, value, initialValue]) => value !== initialValue);
+
+    if (runtimeStatePairs.length === 0) {
+      return "Default";
+    }
+
+    return runtimeStatePairs
+      .map(([label, value]) => `${label} ${formatFixed(value)}`)
+      .join(" • ");
   }
 
   function movePass(passId: ScenePassId, direction: -1 | 1) {
@@ -1287,7 +1747,9 @@ export function CreateScenePage() {
       return;
     }
 
-    const sanitizedSceneData = sanitizeSceneData(parsedSceneData ?? sceneData);
+    const sanitizedSceneData = buildEffectiveSceneData(
+      parsedSceneData ?? sceneData,
+    );
 
     setIsSubmitting(true);
     setErrors({});
@@ -1387,46 +1849,54 @@ export function CreateScenePage() {
             <div className="scene-editor-toolbar">
               <div className="scene-editor-toolbar__controls">
                 <div className="scene-editor-toolbar__control-group scene-editor-toolbar__control-group--navigation">
-                  <div className="scene-editor-toolbar__control-copy">
-                    <span className="scene-editor-toolbar__eyebrow">
-                      Navigation
-                    </span>
-                    <label
-                      className="scene-field__label"
-                      htmlFor="section-jump"
-                    >
-                      Jump To Section
-                    </label>
-                    <p className="scene-editor-toolbar__hint">
-                      {currentSectionIndex + 1} of {EDITOR_SECTIONS.length}:{" "}
-                      {currentSection.title}
-                    </p>
-                  </div>
+                  <nav
+                    aria-label="Section navigation"
+                    className="scene-editor-stepper"
+                  >
+                    <ol className="scene-editor-stepper__list">
+                      {EDITOR_SECTIONS.map((section, index) => {
+                        const isActive = section.id === currentSection.id;
+                        const isPrevious = index < currentSectionIndex;
+                        const issueMessage = sectionIssuesById[section.id];
+                        const hasIssues = Boolean(issueMessage);
+                        const isInvalid = isPrevious && hasIssues;
+                        const isComplete = isPrevious && !hasIssues;
 
-                  <div className="scene-editor-toolbar__navigation-shell">
-                    <span
-                      aria-hidden="true"
-                      className="scene-editor-toolbar__navigation-icon"
-                    >
-                      <NavigationIcon />
-                    </span>
-                    <select
-                      className="scene-select scene-select--navigation"
-                      id="section-jump"
-                      onChange={(event) =>
-                        handleSectionJump(
-                          event.currentTarget.value as EditorSectionId,
-                        )
-                      }
-                      value={sectionMenuValue}
-                    >
-                      {EDITOR_SECTIONS.map((section) => (
-                        <option key={section.id} value={section.id}>
-                          {section.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                        return (
+                          <li
+                            className="scene-editor-stepper__item"
+                            key={section.id}
+                          >
+                            <button
+                              aria-current={isActive ? "step" : undefined}
+                              className={
+                                isActive
+                                  ? "scene-editor-stepper__button scene-editor-stepper__button--active"
+                                  : isInvalid
+                                    ? "scene-editor-stepper__button scene-editor-stepper__button--invalid"
+                                  : isComplete
+                                    ? "scene-editor-stepper__button scene-editor-stepper__button--complete"
+                                    : "scene-editor-stepper__button"
+                              }
+                              onClick={() => handleSectionJump(section.id)}
+                              title={isInvalid ? issueMessage ?? undefined : undefined}
+                              type="button"
+                            >
+                              <span className="scene-editor-stepper__label">
+                                {section.title}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                className="scene-editor-stepper__marker"
+                              >
+                                {isInvalid ? <AlertIcon /> : isComplete ? <CheckIcon /> : null}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </nav>
                 </div>
               </div>
             </div>
@@ -1446,7 +1916,7 @@ export function CreateScenePage() {
                   {renderSceneNameField()}
 
                   <div className="field-group">
-                    <label htmlFor="description">Description</label>
+                    <FieldGroupLabel htmlFor="description" label="Description" />
                     <textarea
                       id="description"
                       onChange={(event) =>
@@ -1459,7 +1929,7 @@ export function CreateScenePage() {
                   </div>
 
                   <div className="field-group">
-                    <label htmlFor="playlists">Playlists</label>
+                    <FieldGroupLabel htmlFor="playlists" label="Playlists" />
                     <select
                       className="scene-select"
                       id="playlists"
@@ -1551,7 +2021,11 @@ export function CreateScenePage() {
                 </div>
 
                 <div className="field-group">
-                  <label htmlFor="shader-source">Custom Shader</label>
+                  <FieldGroupLabel
+                    description="Edit the actual shader source saved into visualizer.shader for this scene."
+                    htmlFor="shader-source"
+                    label="Custom Shader"
+                  />
                   <textarea
                     className="scene-textarea"
                     id="shader-source"
@@ -1564,10 +2038,6 @@ export function CreateScenePage() {
                     rows={12}
                     value={sceneModel.visualizer.shader}
                   />
-                  <p className="field-hint">
-                    This is the actual `visualizer.shader` source that ships in
-                    the scene. Choosing a shader above swaps this text.
-                  </p>
                 </div>
               </SceneSection>
             ) : null}
@@ -1577,80 +2047,94 @@ export function CreateScenePage() {
                 description="Set the starting view, framing, and lens settings for the scene."
                 title="Camera"
               >
-                <div className="scene-editor-grid scene-editor-grid--2">
-                  <Vector3Field
-                    description="The camera position in the scene."
-                    id="camera-position"
-                    label="Camera Position"
-                    onChange={(nextValue) =>
-                      updateBranch("controls", (currentControls) => ({
-                        ...currentControls,
-                        position0: nextValue,
-                      }))
-                    }
-                    value={sceneModel.controls.position0}
-                  />
+                <div className="scene-editor-stack">
+                  <div className="scene-editor-grid">
+                    <Vector3Field
+                      description="The camera position in the scene."
+                      id="camera-position"
+                      label="Camera Position"
+                      onChange={(nextValue) =>
+                        updateBranch("controls", (currentControls) => ({
+                          ...currentControls,
+                          position0: nextValue,
+                        }))
+                      }
+                      value={sceneModel.controls.position0}
+                    />
 
-                  <Vector3Field
-                    description="Where the camera points while the scene loads."
-                    id="camera-target"
-                    label="Camera Target"
-                    onChange={(nextValue) =>
-                      updateBranch("controls", (currentControls) => ({
-                        ...currentControls,
-                        target0: nextValue,
-                      }))
-                    }
-                    value={sceneModel.controls.target0}
-                  />
+                    <Vector3Field
+                      description="Where the camera points while the scene loads."
+                      id="camera-target"
+                      label="Camera Target"
+                      onChange={(nextValue) =>
+                        updateBranch("controls", (currentControls) => ({
+                          ...currentControls,
+                          target0: nextValue,
+                        }))
+                      }
+                      value={sceneModel.controls.target0}
+                    />
 
-                  <SliderField
-                    description="How wide the camera lens feels."
-                    formatValue={(value) => formatFixed(value, 0)}
-                    id="field-of-view"
-                    label="FOV"
-                    max={359}
-                    min={1}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        fov: nextValue,
-                      }))
-                    }
-                    step={1}
-                    value={sceneModel.intent.fov}
-                  />
+                    <SliderField
+                      description="How wide the camera lens feels."
+                      formatValue={(value) => formatFixed(value, 0)}
+                      id="field-of-view"
+                      label="FOV"
+                      max={359}
+                      min={1}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          fov: nextValue,
+                        }))
+                      }
+                      step={1}
+                      value={sceneModel.intent.fov}
+                    />
 
-                  <SliderField
-                    description="Displayed in degrees while the engine still stores radians."
-                    formatValue={formatDegrees}
-                    id="camera-tilt"
-                    label="Camera Orientation"
-                    max={360}
-                    min={0}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        camTilt: toRadians(nextValue),
-                      }))
-                    }
-                    step={1}
-                    value={toDegrees(sceneModel.intent.camTilt)}
-                  />
+                    <SliderField
+                      description="Displayed in degrees while the engine still stores radians."
+                      formatValue={formatDegrees}
+                      id="camera-tilt"
+                      label="Camera Orientation"
+                      max={360}
+                      min={0}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          camTilt: toRadians(nextValue),
+                        }))
+                      }
+                      step={1}
+                      value={toDegrees(sceneModel.intent.camTilt)}
+                    />
 
-                  <NumberField
-                    description="Free-form camera zoom for precise framing."
-                    id="zoom"
-                    label="Zoom"
-                    onChange={(nextValue) =>
-                      updateBranch("controls", (currentControls) => ({
-                        ...currentControls,
-                        zoom0: nextValue,
-                      }))
+                    <NumberField
+                      description="Free-form camera zoom for precise framing."
+                      id="zoom"
+                      label="Zoom"
+                      onChange={(nextValue) =>
+                        updateBranch("controls", (currentControls) => ({
+                          ...currentControls,
+                          zoom0: nextValue,
+                        }))
+                      }
+                      step={0.1}
+                      value={sceneModel.controls.zoom0}
+                    />
+                  </div>
+
+                  <CollapsibleEditorGroup
+                    hideLabel="Disable Advanced"
+                    id="camera-advanced-options"
+                    isOpen={isCameraAdvancedEnabled}
+                    onToggle={() =>
+                      handleCameraAdvancedToggle(!isCameraAdvancedEnabled)
                     }
-                    step={0.1}
-                    value={sceneModel.controls.zoom0}
-                  />
+                    showLabel="Enable Advanced"
+                  >
+                    {renderCameraAdvancedFields()}
+                  </CollapsibleEditorGroup>
                 </div>
               </SceneSection>
             ) : null}
@@ -1660,131 +2144,145 @@ export function CreateScenePage() {
                 description="Adjust how the scene moves and how strongly it responds to audio and input."
                 title="Motion"
               >
-                <div className="scene-editor-grid scene-editor-grid--2">
-                  <NumberField
-                    description="Overall engine time multiplier."
-                    id="time-multiplier"
-                    label="Time Multiplier"
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        time_multiplier: nextValue,
-                      }))
-                    }
-                    step={0.05}
-                    value={sceneModel.intent.time_multiplier}
-                  />
-
-                  <SliderField
-                    description="Scales the incoming audio signal before the engine applies its response curve."
-                    id="audio-gain"
-                    label="Audio Gain"
-                    max={2}
-                    min={0.01}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        minimizing_factor: nextValue,
-                      }))
-                    }
-                    step={0.01}
-                    value={sceneModel.intent.minimizing_factor}
-                  />
-
-                  <SliderField
-                    description="Shapes how sharply the audio response ramps up. Higher values make peaks more selective."
-                    id="audio-curve"
-                    label="Audio Curve"
-                    max={10}
-                    min={1}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        power_factor: nextValue,
-                      }))
-                    }
-                    step={0.1}
-                    value={sceneModel.intent.power_factor}
-                  />
-
-                  <SliderField
-                    description="Controls how much pointer-down influence lingers after release for shaders that read pointer input."
-                    id="pointer-release-hold"
-                    label="Pointer Release Hold"
-                    max={1}
-                    min={0}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        pointerDownMultiplier: nextValue,
-                      }))
-                    }
-                    step={0.01}
-                    value={sceneModel.intent.pointerDownMultiplier}
-                  />
-
-                  <SliderField
-                    description="How quickly the auto rotation travels when enabled."
-                    id="rotation-speed"
-                    label="Rotation Speed"
-                    max={50}
-                    min={0.1}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        autoRotateSpeed: nextValue,
-                      }))
-                    }
-                    step={0.1}
-                    value={sceneModel.intent.autoRotateSpeed}
-                  />
-
-                  <SliderField
-                    description="Base audio-reactive speed shaping used by the engine."
-                    id="base-speed"
-                    label="Base Speed"
-                    max={0.9}
-                    min={0.01}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        base_speed: nextValue,
-                      }))
-                    }
-                    step={0.01}
-                    value={sceneModel.intent.base_speed}
-                  />
-
-                  <SliderField
-                    description="How quickly the reactive size settles toward its latest value."
-                    id="easing-speed"
-                    label="Easing Speed"
-                    max={0.9}
-                    min={0.01}
-                    onChange={(nextValue) =>
-                      updateBranch("intent", (currentIntent) => ({
-                        ...currentIntent,
-                        easing_speed: nextValue,
-                      }))
-                    }
-                    step={0.01}
-                    value={sceneModel.intent.easing_speed}
-                  />
-
-                  <div className="scene-editor-grid__item--full">
-                    <ToggleField
-                      checked={sceneModel.intent.autoRotate}
-                      description="Keep the scene gently rotating on its own."
-                      id="auto-rotate"
-                      label="Auto Rotate"
+                <div className="scene-editor-stack">
+                  <div className="scene-editor-grid">
+                    <NumberField
+                      description="Overall engine time multiplier."
+                      id="time-multiplier"
+                      label="Time Multiplier"
                       onChange={(nextValue) =>
                         updateBranch("intent", (currentIntent) => ({
                           ...currentIntent,
-                          autoRotate: nextValue,
+                          time_multiplier: nextValue,
                         }))
                       }
+                      step={0.05}
+                      value={sceneModel.intent.time_multiplier}
                     />
+
+                    <SliderField
+                      description="Scales the incoming audio signal before the engine applies its response curve."
+                      id="audio-gain"
+                      label="Audio Gain"
+                      max={2}
+                      min={0.01}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          minimizing_factor: nextValue,
+                        }))
+                      }
+                      step={0.01}
+                      value={sceneModel.intent.minimizing_factor}
+                    />
+
+                    <SliderField
+                      description="Shapes how sharply the audio response ramps up. Higher values make peaks more selective."
+                      id="audio-curve"
+                      label="Audio Curve"
+                      max={10}
+                      min={1}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          power_factor: nextValue,
+                        }))
+                      }
+                      step={0.1}
+                      value={sceneModel.intent.power_factor}
+                    />
+
+                    <SliderField
+                      description="Controls how much pointer-down influence lingers after release for shaders that read pointer input."
+                      id="pointer-release-hold"
+                      label="Pointer Release Hold"
+                      max={1}
+                      min={0}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          pointerDownMultiplier: nextValue,
+                        }))
+                      }
+                      step={0.01}
+                      value={sceneModel.intent.pointerDownMultiplier}
+                    />
+
+                    <SliderField
+                      description="How quickly the auto rotation travels when enabled."
+                      id="rotation-speed"
+                      label="Rotation Speed"
+                      max={50}
+                      min={0.1}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          autoRotateSpeed: nextValue,
+                        }))
+                      }
+                      step={0.1}
+                      value={sceneModel.intent.autoRotateSpeed}
+                    />
+
+                    <SliderField
+                      description="Base audio-reactive speed shaping used by the engine."
+                      id="base-speed"
+                      label="Base Speed"
+                      max={0.9}
+                      min={0.01}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          base_speed: nextValue,
+                        }))
+                      }
+                      step={0.01}
+                      value={sceneModel.intent.base_speed}
+                    />
+
+                    <SliderField
+                      description="How quickly the reactive size settles toward its latest value."
+                      id="easing-speed"
+                      label="Easing Speed"
+                      max={0.9}
+                      min={0.01}
+                      onChange={(nextValue) =>
+                        updateBranch("intent", (currentIntent) => ({
+                          ...currentIntent,
+                          easing_speed: nextValue,
+                        }))
+                      }
+                      step={0.01}
+                      value={sceneModel.intent.easing_speed}
+                    />
+
+                    <div className="scene-editor-grid__item--full">
+                      <ToggleField
+                        checked={sceneModel.intent.autoRotate}
+                        description="Keep the scene gently rotating on its own."
+                        id="auto-rotate"
+                        label="Auto Rotate"
+                        onChange={(nextValue) =>
+                          updateBranch("intent", (currentIntent) => ({
+                            ...currentIntent,
+                            autoRotate: nextValue,
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
+
+                  <CollapsibleEditorGroup
+                    hideLabel="Disable Advanced"
+                    id="motion-runtime-state"
+                    isOpen={isMotionAdvancedEnabled}
+                    onToggle={() =>
+                      handleMotionAdvancedToggle(!isMotionAdvancedEnabled)
+                    }
+                    showLabel="Enable Advanced"
+                  >
+                    {renderRuntimeStateFields()}
+                  </CollapsibleEditorGroup>
                 </div>
               </SceneSection>
             ) : null}
@@ -1883,11 +2381,6 @@ export function CreateScenePage() {
                               outputPass: nextValue,
                             },
                           }))
-                        }
-                        footer={
-                          <p className="scene-effect-footnote">
-                            {selectedToneMapping.description}
-                          </p>
                         }
                         title="Output Pass"
                       >
@@ -2200,7 +2693,12 @@ export function CreateScenePage() {
                     return (
                       <li className="scene-pass-order__item" key={passId}>
                         <div className="scene-pass-order__copy">
-                          <strong>{PASS_LABELS[passId]}</strong>
+                          <div className="scene-pass-order__header">
+                            <strong>{PASS_LABELS[passId]}</strong>
+                            <span className="scene-pass-order__index">
+                              {index + 1}
+                            </span>
+                          </div>
                           <span>{describePassState(passId, sceneModel)}</span>
                         </div>
                         <div className="scene-pass-order__actions">
@@ -2233,183 +2731,162 @@ export function CreateScenePage() {
               </SceneSection>
             ) : null}
 
-            {sectionMenuValue === "advanced" ? (
+            {sectionMenuValue === "confirm" ? (
               <SceneSection
-                description="Edit advanced settings, startup values, and raw scene JSON."
-                title="Advanced"
+                description="Review the scene setup before creating it and expand the raw JSON only if you need a final low-level check."
+                title="Confirm"
               >
-                <div className="scene-advanced-stack">
-                  <div className="scene-editor-grid scene-editor-grid--2">
-                    <NumberField
-                      description="Experimental compact scene field exported by the library."
-                      id="camera-orientation-mode"
-                      label="Camera Orientation Mode"
-                      min={0}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          camOrientationMode: Math.max(
-                            0,
-                            Math.round(nextValue),
-                          ),
-                        }))
-                      }
-                      step={1}
-                      value={sceneModel.intent.camOrientationMode}
-                    />
+                <div className="scene-editor-stack">
+                  <div className="scene-confirm-summary">
+                    <ConfirmSummarySection title="Details">
+                      <ConfirmSummaryItem
+                        label="Scene Name"
+                        value={formatOptionalText(name)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Description"
+                        value={formatOptionalText(description)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Playlist"
+                        value={
+                          playlistValue
+                            ? PLAYLIST_OPTIONS.find(
+                                (option) => option.value === playlistValue,
+                              )?.label ?? playlistValue
+                            : "Not set"
+                        }
+                      />
+                      <ConfirmSummaryItem
+                        label="Thumbnail"
+                        value={
+                          thumbnailMode === "upload"
+                            ? thumbnailFileName || "Upload selected"
+                            : "Skipped"
+                        }
+                      />
+                      <ConfirmSummaryItem
+                        label="Tags"
+                        value={
+                          <ConfirmSummaryPills
+                            emptyLabel="None selected"
+                            values={selectedTags.map((tag) => tag.name)}
+                          />
+                        }
+                      />
+                    </ConfirmSummarySection>
 
-                    <NumberField
-                      description="Experimental compact scene field exported by the library."
-                      id="camera-orientation-speed"
-                      label="Camera Orientation Speed"
-                      min={0}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          camOrientationSpeed: nextValue,
-                        }))
-                      }
-                      step={0.1}
-                      value={sceneModel.intent.camOrientationSpeed}
-                    />
+                    <ConfirmSummarySection title="Visual Setup">
+                      <ConfirmSummaryItem
+                        label="Shader"
+                        value={selectedShaderScene?.label ?? "Custom Shader"}
+                      />
+                      <ConfirmSummaryItem
+                        label="Skybox"
+                        value={
+                          SKYBOX_OPTIONS.find(
+                            (option) =>
+                              option.value === sceneModel.visualizer.skyboxPreset,
+                          )?.label ?? String(sceneModel.visualizer.skyboxPreset)
+                        }
+                      />
+                      <ConfirmSummaryItem
+                        label="Scale"
+                        value={formatFixed(sceneModel.visualizer.scale, 0)}
+                      />
+                    </ConfirmSummarySection>
+
+                    <ConfirmSummarySection title="Camera">
+                      <ConfirmSummaryItem
+                        label="Position"
+                        value={formatVectorSummary(sceneModel.controls.position0)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Target"
+                        value={formatVectorSummary(sceneModel.controls.target0)}
+                      />
+                      <ConfirmSummaryItem
+                        label="FOV"
+                        value={formatFixed(sceneModel.intent.fov, 0)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Orientation"
+                        value={formatDegrees(toDegrees(sceneModel.intent.camTilt))}
+                      />
+                      <ConfirmSummaryItem
+                        label="Zoom"
+                        value={formatFixed(sceneModel.controls.zoom0)}
+                      />
+                      {isCameraAdvancedEnabled ? (
+                        <ConfirmSummaryItem
+                          label="Advanced Camera"
+                          value={"Mode " + sceneModel.intent.camOrientationMode + ", Speed " + formatFixed(
+                            sceneModel.intent.camOrientationSpeed,
+                          )}
+                        />
+                      ) : null}
+                    </ConfirmSummarySection>
+
+                    <ConfirmSummarySection title="Motion & Effects">
+                      <ConfirmSummaryItem
+                        label="Time Multiplier"
+                        value={formatFixed(sceneModel.intent.time_multiplier)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Audio Gain"
+                        value={formatFixed(sceneModel.intent.minimizing_factor)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Audio Curve"
+                        value={formatFixed(sceneModel.intent.power_factor)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Auto Rotate"
+                        value={sceneModel.intent.autoRotate ? "On" : "Off"}
+                      />
+                      {isMotionAdvancedEnabled ? (
+                        <ConfirmSummaryItem
+                          label="Runtime Seed"
+                          value={formatRuntimeStateSummary()}
+                        />
+                      ) : null}
+                      <ConfirmSummaryItem
+                        label="Tone Mapping"
+                        value={selectedToneMapping.label}
+                      />
+                      <ConfirmSummaryItem
+                        label="Exposure"
+                        value={formatFixed(sceneModel.fx.toneMapping.exposure)}
+                      />
+                      <ConfirmSummaryItem
+                        label="Enabled Passes"
+                        value={
+                          <ConfirmSummaryPills
+                            emptyLabel="No effect passes enabled"
+                            values={sceneModel.fx.passOrder
+                              .filter(
+                                (passId) =>
+                                  describePassState(passId, sceneModel) ===
+                                  "Enabled",
+                              )
+                              .map((passId) => PASS_LABELS[passId])}
+                          />
+                        }
+                      />
+                    </ConfirmSummarySection>
                   </div>
 
-                  <div className="field-group">
-                    <label>Runtime State</label>
-                    <p className="field-hint">
-                      Seed low-level engine values for debugging or for scenes
-                      that depend on non-default startup state.
-                    </p>
-                  </div>
-                  <div className="scene-editor-grid scene-editor-grid--3">
-                    <NumberField
-                      description="Low-level runtime state."
-                      id="state-size"
-                      label="State Size"
-                      onChange={(nextValue) =>
-                        updateBranch("state", (currentState) => ({
-                          ...currentState,
-                          size: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.state.size}
-                    />
-                    <NumberField
-                      description="Initial runtime pointer state."
-                      id="state-pointer-down"
-                      label="Pointer Down"
-                      onChange={(nextValue) =>
-                        updateBranch("state", (currentState) => ({
-                          ...currentState,
-                          pointerDown: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.state.pointerDown}
-                    />
-                    <NumberField
-                      description="Initial smoothed pointer state."
-                      id="state-current-pointer-down"
-                      label="Current Pointer"
-                      onChange={(nextValue) =>
-                        updateBranch("state", (currentState) => ({
-                          ...currentState,
-                          currPointerDown: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.state.currPointerDown}
-                    />
-                    <NumberField
-                      description="Initial runtime audio input."
-                      id="state-current-audio"
-                      label="Current Audio"
-                      onChange={(nextValue) =>
-                        updateBranch("state", (currentState) => ({
-                          ...currentState,
-                          currAudio: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.state.currAudio}
-                    />
-                    <NumberField
-                      description="Initial runtime time value."
-                      id="state-time"
-                      label="State Time"
-                      onChange={(nextValue) =>
-                        updateBranch("state", (currentState) => ({
-                          ...currentState,
-                          time: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.state.time}
-                    />
-                    <NumberField
-                      description="Initial runtime volume multiplier."
-                      id="state-volume"
-                      label="Volume Multiplier"
-                      onChange={(nextValue) =>
-                        updateBranch("state", (currentState) => ({
-                          ...currentState,
-                          volume_multiplier: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.state.volume_multiplier}
-                    />
-                  </div>
-
-                  <div className="field-group">
-                    <div className="scene-advanced-header">
-                      <div>
-                        <label htmlFor="sceneData">Scene Data JSON</label>
-                        <p className="field-hint">
-                          Raw scene data stays available here. While the JSON is
-                          invalid, the preview keeps the last valid scene
-                          state.
-                        </p>
-                      </div>
-                      <button
-                        className="scene-secondary-button"
-                        onClick={handleFormatJson}
-                        type="button"
-                      >
-                        Format JSON
-                      </button>
-                    </div>
-                    <textarea
-                      aria-describedby={
-                        errors.sceneData ? "sceneData-error" : "sceneData-hint"
-                      }
-                      aria-invalid={Boolean(errors.sceneData)}
-                      className="scene-textarea scene-textarea--code"
-                      id="sceneData"
-                      name="sceneData"
-                      onChange={(event) =>
-                        handleRawSceneDataChange(event.currentTarget.value)
-                      }
-                      required
-                      rows={16}
-                      value={sceneDataText}
-                    />
-                    {errors.sceneData ? (
-                      <p
-                        className="field-error"
-                        id="sceneData-error"
-                        role="alert"
-                      >
-                        {errors.sceneData}
-                      </p>
-                    ) : (
-                      <p className="field-hint" id="sceneData-hint">
-                        Structured controls above keep this JSON in sync with
-                        the current scene.
-                      </p>
-                    )}
-                  </div>
+                  <CollapsibleEditorGroup
+                    hideLabel="Hide Raw JSON"
+                    id="confirm-raw-json"
+                    isOpen={isConfirmJsonOpen}
+                    onToggle={() =>
+                      setIsConfirmJsonOpen((currentValue) => !currentValue)
+                    }
+                    showLabel="Show Raw JSON"
+                  >
+                    {renderRawSceneDataEditor()}
+                  </CollapsibleEditorGroup>
                 </div>
               </SceneSection>
             ) : null}

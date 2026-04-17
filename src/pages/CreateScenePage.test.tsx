@@ -133,10 +133,12 @@ describe('CreateScenePage', () => {
     expect(screen.queryByRole('heading', { name: /^camera$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^motion$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^effects$/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /^details$/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /^scene$/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /pass order/i })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /advanced/i })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: /section navigation/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^details$/i })).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('button', { name: /^scene$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^pass order$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^confirm$/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/jump to section/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('preview-ready')
@@ -329,9 +331,11 @@ describe('CreateScenePage', () => {
 
     mockCreateScenePageFetch()
 
+    const user = userEvent.setup()
+
     renderCreateScenePage()
 
-    fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'motion' } })
+    await user.click(screen.getByRole('button', { name: /^motion$/i }))
 
     expect(screen.getByRole('heading', { name: /^motion$/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/auto rotate/i)).toBeInTheDocument()
@@ -355,21 +359,63 @@ describe('CreateScenePage', () => {
 
     renderCreateScenePage()
 
-    const sectionMenu = screen.getByLabelText(/jump to section/i)
+    const detailsStep = screen.getByRole('button', { name: /^details$/i })
+    const sceneStep = screen.getByRole('button', { name: /^scene$/i })
 
-    expect(sectionMenu).toHaveValue('details')
+    expect(detailsStep).toHaveAttribute('aria-current', 'step')
+    expect(sceneStep).not.toHaveAttribute('aria-current')
 
     await user.click(screen.getByRole('button', { name: /^next$/i }))
 
     expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
-    expect(sectionMenu).toHaveValue('scene')
+    expect(sceneStep).toHaveAttribute('aria-current', 'step')
     expect(screen.getByLabelText(/custom shader/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^back$/i }))
 
     expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
-    expect(sectionMenu).toHaveValue('details')
+    expect(detailsStep).toHaveAttribute('aria-current', 'step')
     expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
+  })
+
+  it('switches the shader select to Custom Shader when the source no longer matches a built-in shader', async () => {
+    storeSession()
+
+    mockCreateScenePageFetch()
+
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    await user.click(screen.getByRole('button', { name: /^scene$/i }))
+
+    const shaderSelect = screen.getByLabelText(/^shader$/i)
+    const shaderSource = screen.getByLabelText(/custom shader/i)
+
+    await user.clear(shaderSource)
+    await user.type(shaderSource, 'let customSize = input()')
+
+    expect(shaderSelect).toHaveValue('custom')
+    expect(screen.getByRole('option', { name: /^custom shader$/i })).toBeInTheDocument()
+  })
+
+  it('marks previous required sections as needing attention when you move past them incomplete', async () => {
+    storeSession()
+
+    mockCreateScenePageFetch()
+
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    const detailsStep = screen.getByRole('button', { name: /^details$/i })
+
+    await user.click(screen.getByRole('button', { name: /^scene$/i }))
+
+    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
+    expect(detailsStep).toHaveClass('scene-editor-stepper__button--invalid')
+    expect(detailsStep).not.toHaveClass('scene-editor-stepper__button--complete')
+    expect(detailsStep).toHaveAttribute('title', 'Scene name is required.')
   })
 
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
@@ -377,9 +423,11 @@ describe('CreateScenePage', () => {
 
     mockCreateScenePageFetch()
 
+    const user = userEvent.setup()
+
     renderCreateScenePage()
 
-    fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'effects' } })
+    await user.click(screen.getByRole('button', { name: /^effects$/i }))
 
     expect(screen.getByRole('heading', { name: /^effects$/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^pass order$/i })).not.toBeInTheDocument()
@@ -392,7 +440,7 @@ describe('CreateScenePage', () => {
     expect(screen.queryByText(/^additional passes$/i)).not.toBeInTheDocument()
     expect(screen.getByText(/^output pass$/i)).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'pass-order' } })
+    await user.click(screen.getByRole('button', { name: /^pass order$/i }))
 
     expect(screen.getByRole('heading', { name: /^pass order$/i })).toBeInTheDocument()
     expect(screen.getByText(/^output$/i)).toBeInTheDocument()
@@ -416,7 +464,7 @@ describe('CreateScenePage', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'camera' } })
+    await user.click(screen.getByRole('button', { name: /^camera$/i }))
     expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/camera orientation/i), { target: { value: '90' } })
     await user.click(screen.getByRole('button', { name: /create scene/i }))
@@ -637,18 +685,43 @@ describe('CreateScenePage', () => {
     expect(createAttempted).toBe(false)
   })
 
-  it('surfaces advanced MAGE engine fields and the raw JSON editor in the Advanced section', async () => {
+  it('moves advanced controls into collapsible groups and uses confirm as the final review step', async () => {
     storeSession()
 
     mockCreateScenePageFetch()
 
+    const user = userEvent.setup()
+
     renderCreateScenePage()
 
-    fireEvent.change(screen.getByLabelText(/jump to section/i), { target: { value: 'advanced' } })
+    await user.click(screen.getByRole('button', { name: /^camera$/i }))
 
-    expect(screen.getByRole('heading', { name: /^advanced$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /enable advanced/i }))
     expect(screen.getByLabelText(/camera orientation mode/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/camera orientation speed/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /disable advanced/i }))
+    expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^motion$/i }))
+
+    expect(screen.getByRole('heading', { name: /^motion$/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/state size/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /enable advanced/i }))
+    expect(screen.getByLabelText(/state size/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/volume multiplier/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
+
+    expect(screen.getByRole('heading', { name: /^confirm$/i })).toBeInTheDocument()
+    expect(screen.getByText(/^scene name$/i)).toBeInTheDocument()
+    expect(screen.getByText(/^motion & effects$/i)).toBeInTheDocument()
+    expect(screen.queryByText(/^advanced camera$/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/^runtime seed$/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show shader/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /show raw json/i }))
     expect(screen.getByLabelText(/scene data json/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /format json/i })).toBeInTheDocument()
   })
