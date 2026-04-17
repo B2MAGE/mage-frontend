@@ -20,7 +20,6 @@ The frontend repo includes:
 
 - a production `Dockerfile`
 - an nginx config with SPA fallback
-- a `postinstall` hook that reapplies local `patch-package` patches during `npm install` and `npm ci`
 
 SPA fallback is required because the app uses `BrowserRouter`, so direct loads of routes like `/login` and `/register` must return `index.html`.
 

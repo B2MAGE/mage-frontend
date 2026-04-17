@@ -1,3 +1,5 @@
+import type { MAGEEngineAPI } from '@notrac/mage'
+
 const SCENE_BLOB_KEYS = [
   'audio',
   'audioPath',
@@ -9,10 +11,18 @@ const SCENE_BLOB_KEYS = [
   'visualizer',
 ] as const
 
+const MIN_RUNNING_ENGINE_TIME = 1 / 60
+const DISABLED_ENGINE_CONTROLS = {
+  active: false,
+  integrated: false,
+} as const
+
 type MageEngineBridge = {
-  dispose: () => void
+  dispose: MAGEEngineAPI['dispose']
+  getEngineTime?: MAGEEngineAPI['getEngineTime']
   loadPreset: (scene: unknown) => unknown
-  start: () => void
+  setEngineTime?: (time: number) => boolean
+  start: MAGEEngineAPI['start']
 }
 
 type MageEngineModule = {
@@ -20,7 +30,10 @@ type MageEngineModule = {
     autoStart?: boolean
     canvas: HTMLCanvasElement
     log?: boolean
-    withControls?: boolean
+    withControls?: {
+      active?: boolean
+      integrated?: boolean
+    }
   }) => MageEngineBridge
 }
 
@@ -47,9 +60,27 @@ function isMageSceneBlob(value: unknown): value is MageSceneBlob {
   return SCENE_BLOB_KEYS.some((key) => Object.hasOwn(value, key))
 }
 
+function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob) {
+  const loadedScene = engine.loadPreset(sceneBlob)
+
+  if (!loadedScene) {
+    throw new MagePlayerAdapterError('Scene data could not be rendered by the MAGE engine.')
+  }
+}
+
+function primeEngineTime(engine: MageEngineBridge) {
+  if (
+    typeof engine.getEngineTime === 'function' &&
+    typeof engine.setEngineTime === 'function' &&
+    engine.getEngineTime() <= 0
+  ) {
+    engine.setEngineTime(MIN_RUNNING_ENGINE_TIME)
+  }
+}
+
 async function loadMageEngineModule() {
   if (!mageEngineModulePromise) {
-    mageEngineModulePromise = (import('@mage/engine') as Promise<MageEngineModule>).catch((error) => {
+    mageEngineModulePromise = (import('@notrac/mage') as Promise<MageEngineModule>).catch((error) => {
       mageEngineModulePromise = null
       throw error
     })
@@ -65,9 +96,9 @@ export async function createMagePlayer(
   const { initMAGE } = await loadMageEngineModule()
   const engine = initMAGE({
     canvas,
-    withControls: false,
     autoStart: false,
     log: options.log ?? false,
+    withControls: DISABLED_ENGINE_CONTROLS,
   })
 
   engine.start()
@@ -79,13 +110,11 @@ export async function createMagePlayer(
       }
 
       try {
-        const loadedScene = engine.loadPreset(sceneBlob)
-
-        if (!loadedScene) {
-          throw new MagePlayerAdapterError(
-            'Scene data could not be rendered by the MAGE engine.',
-          )
-        }
+        loadSceneIntoEngine(engine, sceneBlob)
+        // The published engine can stop immediately when it starts from exactly time 0.
+        // Prime the engine just past zero before restarting so the scene can animate.
+        primeEngineTime(engine)
+        engine.start()
       } catch (error) {
         if (error instanceof MagePlayerAdapterError) {
           throw error

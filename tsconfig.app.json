@@ -8,9 +8,6 @@
     "baseUrl": ".",
     "types": ["vite/client"],
     "skipLibCheck": true,
-    "paths": {
-      "@mage/engine": ["./node_modules/mage/dist/mage-engine.js"]
-    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

@@ -7,7 +7,7 @@ The MAGE frontend is the React application for browsing, creating, and playing M
 This repository contains the client-side application for the MAGE platform. It is built with React, TypeScript, and Vite, and integrates with:
 
 - the MAGE backend API for authentication and scene persistence
-- the bundled local MAGE engine package for scene playback and scene preview
+- the published `@notrac/mage` engine package for scene playback and scene preview
 
 The current app includes:
 
@@ -25,7 +25,7 @@ The current app includes:
 - React Router 7
 - Vitest + Testing Library
 - ESLint
-- Local MAGE engine package via `../mage-engine/mage-1.0.0.tgz`
+- Published MAGE engine package via `@notrac/mage`
 
 ## Repository Structure
 
@@ -38,8 +38,7 @@ mage-frontend/
 |  |- components/     Reusable UI and player components
 |  |- lib/            Scene editor helpers, API helpers, engine adapter
 |  |- pages/          Route-level screens
-|  |- test/           Shared test setup
-|  `- types/          Local type declarations
+|  `- test/           Shared test setup
 |- .env.example
 |- package.json
 `- vite.config.ts

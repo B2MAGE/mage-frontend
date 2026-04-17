@@ -2,73 +2,28 @@
 
 ## Overview
 
-The frontend consumes the MAGE engine through a vendored packaged dependency, not a public npm package from the registry. This is an important repository assumption.
+The frontend uses the published `@notrac/mage` package for scene playback and preview.
 
-## Package Source
-
-The current dependency in `package.json` is:
-
-```json
-"mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
-```
-
-The tarball is kept inside this repository.
-
-## Why The Frontend Uses An Alias
-
-The frontend does not import the package root directly. Instead, `@mage/engine` is aliased to:
-
-```text
-node_modules/mage/dist/mage-engine.js
-```
-
-This alias exists because the current packaged engine metadata is still not cleanly consumable from its root export. The shipped tarball includes `dist/mage-engine.js`, but its `package.json` still points `exports.import` at an unshipped `dist/mage-engine.mjs`.
-
-Relevant files:
-
-- `vite.config.ts`
-- `tsconfig.app.json`
-- `src/types/mage-engine.d.ts`
-
-## Types
-
-The packaged `dist/mage-engine.d.ts` is present, but it still imports `./MAGEEngine.js`, which is not shipped in the tarball. The frontend therefore keeps a small local declaration shim for `@mage/engine` instead of relying on the package types directly.
-
-## Bundled Engine Patch
-
-The frontend reapplies a local patch to:
-
-```text
-node_modules/mage/dist/mage-engine.js
-```
-
-This happens through `patch-package` during `npm install` and again before `npm run build`.
-
-The patch preserves the Shader Park runtime compatibility shim that used to live in a separate `shader-park-core` patch before the engine moved to a bundled dist file.
-
-It also fixes the current packaged engine teardown bug where `dispose()` clears engine state without stopping the active `requestAnimationFrame` loop, which can otherwise surface as `Cannot set properties of null (setting 'time')` after unmount.
-
-Relevant files:
-
-- `package.json`
-- `patches/mage+1.0.0.patch`
-
-## Frontend Boundary
-
-Pages should not import the engine directly. The intended boundary is:
+App code should not talk to the engine directly. The intended boundary is:
 
 - page code -> `MagePlayer`
-- `MagePlayer` -> `magePlayerAdapter`
-- `magePlayerAdapter` -> `@mage/engine`
+- `MagePlayer` -> `src/lib/magePlayerAdapter.ts`
+- `magePlayerAdapter` -> `@notrac/mage`
+
+That keeps engine-specific startup, loading, and disposal logic in one place.
+
+## Current Integration
+
+The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, and disposes it on unmount.
 
 Relevant files:
 
 - `src/components/MagePlayer.tsx`
 - `src/lib/magePlayerAdapter.ts`
 
-## Scene Data Expectations
+## Scene Data
 
-The player adapter treats a value as renderable scene data if it contains at least one recognized engine branch such as:
+The adapter accepts backend `sceneData` objects directly. It treats a value as renderable scene data when it contains at least one engine-recognized root branch such as:
 
 - `visualizer`
 - `controls`
@@ -78,18 +33,16 @@ The player adapter treats a value as renderable scene data if it contains at lea
 - `settings`
 - `audioPath`
 
-That keeps route components simple and allows backend `sceneData` payloads to be passed through directly.
+## Why The Adapter Exists
+
+The adapter is doing more than forwarding calls:
+
+- it keeps engine imports out of route components
+- it validates scene blobs before loading
+- it applies the current startup workaround for the published engine so scenes do not stall at time `0`
 
 ## Current Caveats
 
-These are current package-level caveats worth knowing before making engine-related changes:
-
-- the npm registry package named `mage` is not this engine, so the frontend must keep using the local tarball dependency
-- when the engine package changes, the vendored tarball in `vendor/mage-engine/` must be refreshed intentionally
-- when the vendored engine tarball changes, `patches/mage+1.0.0.patch` must be reviewed and usually regenerated against the new bundled file
-- the packaged engine root export is still broken, so the frontend must keep aliasing `@mage/engine` to the shipped dist entry file
-- the packaged type file still references an unshipped `MAGEEngine.js`, so `src/types/mage-engine.d.ts` remains the frontend source of truth
-- the bundled engine still emits `eval` warnings during build
-- the engine bundle is large enough to trigger Vite chunk-size warnings
-
-These warnings do not currently block the frontend build, but they are useful context when debugging engine-related issues.
+- The published package types are still incomplete for the runtime behavior the frontend uses. The adapter keeps a small local bridge type for that gap.
+- The engine bundle still emits `eval` warnings during `vite build`. The build succeeds, but those warnings are coming from the published package.
+- The engine bundle is very large and still triggers Vite chunk-size warnings. That does not block builds, but it is a real startup-cost concern.
