@@ -2,33 +2,39 @@
 
 ## Overview
 
-The frontend consumes the MAGE engine from the published `@notrac/mage` package and keeps a small local integration boundary around it.
+The frontend defaults to the published `@notrac/mage` package and keeps a small local integration boundary around it. It can also switch to the vendored `mage-1.0.0.tgz` package for A/B comparisons.
 
-## Package Source
+## Package Sources
 
-The current dependency in `package.json` is:
+The frontend keeps both engine sources available in `package.json`:
 
 ```json
-"@notrac/mage": "^1.0.1"
+"@notrac/mage": "^1.0.1",
+"mage-local": "file:vendor/mage-engine/mage-1.0.0.tgz"
 ```
 
-The frontend installs this package from the npm registry.
+The published package is the default. The local tarball package is only there so the frontend can be launched against the old bundled engine for comparison.
 
 ## Why The Frontend Uses An Alias
 
-The frontend does not import the package root directly. Instead, `@mage/engine` is aliased to:
+The frontend does not import either package root directly from app code. Instead, `@mage/engine` is aliased by Vite to one of the installed packages:
 
-```text
-node_modules/@notrac/mage/dist/mage-engine.js
-```
+- `@notrac/mage` by default
+- `mage-local` when `VITE_MAGE_ENGINE_SOURCE=local`
 
-This alias preserves a stable frontend import boundary so app code does not depend directly on the external package name.
+This preserves a stable frontend import boundary so app code does not depend directly on either package name.
 
 Relevant files:
 
 - `vite.config.ts`
-- `tsconfig.app.json`
 - `src/types/mage-engine.d.ts`
+
+For comparison runs, use:
+
+- `npm run dev:engine-published`
+- `npm run dev:engine-local`
+
+The matching build scripts are also available if you want to compare production bundles.
 
 ## Types
 
@@ -65,7 +71,7 @@ That keeps route components simple and allows backend `sceneData` payloads to be
 
 These are current package-level caveats worth knowing before making engine-related changes:
 
-- the frontend still keeps the `@mage/engine` alias boundary even though the package is installed from the npm registry
+- the frontend still keeps the `@mage/engine` alias boundary even though the runtime package can change by mode
 - `src/types/mage-engine.d.ts` remains the frontend source of truth for the app-facing engine API surface
 - the bundled engine still emits `eval` warnings during build
 - the engine bundle is large enough to trigger Vite chunk-size warnings
