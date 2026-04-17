@@ -2,27 +2,27 @@
 
 ## Overview
 
-The frontend consumes the MAGE engine through a vendored packaged dependency, not a public npm package from the registry. This is an important repository assumption.
+The frontend consumes the MAGE engine from the published `@notrac/mage` package and keeps a small local integration boundary around it.
 
 ## Package Source
 
 The current dependency in `package.json` is:
 
 ```json
-"mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
+"@notrac/mage": "^1.0.1"
 ```
 
-The tarball is kept inside this repository.
+The frontend installs this package from the npm registry.
 
 ## Why The Frontend Uses An Alias
 
 The frontend does not import the package root directly. Instead, `@mage/engine` is aliased to:
 
 ```text
-node_modules/mage/dist/mage-engine.js
+node_modules/@notrac/mage/dist/mage-engine.js
 ```
 
-This alias exists because the current packaged engine metadata is still not cleanly consumable from its root export. The shipped tarball includes `dist/mage-engine.js`, but its `package.json` still points `exports.import` at an unshipped `dist/mage-engine.mjs`.
+This alias preserves a stable frontend import boundary so app code does not depend directly on the external package name.
 
 Relevant files:
 
@@ -32,26 +32,7 @@ Relevant files:
 
 ## Types
 
-The packaged `dist/mage-engine.d.ts` is present, but it still imports `./MAGEEngine.js`, which is not shipped in the tarball. The frontend therefore keeps a small local declaration shim for `@mage/engine` instead of relying on the package types directly.
-
-## Bundled Engine Patch
-
-The frontend reapplies a local patch to:
-
-```text
-node_modules/mage/dist/mage-engine.js
-```
-
-This happens through `patch-package` during `npm install` and again before `npm run build`.
-
-The patch preserves the Shader Park runtime compatibility shim that used to live in a separate `shader-park-core` patch before the engine moved to a bundled dist file.
-
-It also fixes the current packaged engine teardown bug where `dispose()` clears engine state without stopping the active `requestAnimationFrame` loop, which can otherwise surface as `Cannot set properties of null (setting 'time')` after unmount.
-
-Relevant files:
-
-- `package.json`
-- `patches/mage+1.0.0.patch`
+The published package now ships usable declarations, but the frontend still keeps a small local declaration shim for `@mage/engine` so the app can depend on a narrow, explicit surface area instead of the full engine API.
 
 ## Frontend Boundary
 
@@ -84,11 +65,8 @@ That keeps route components simple and allows backend `sceneData` payloads to be
 
 These are current package-level caveats worth knowing before making engine-related changes:
 
-- the npm registry package named `mage` is not this engine, so the frontend must keep using the local tarball dependency
-- when the engine package changes, the vendored tarball in `vendor/mage-engine/` must be refreshed intentionally
-- when the vendored engine tarball changes, `patches/mage+1.0.0.patch` must be reviewed and usually regenerated against the new bundled file
-- the packaged engine root export is still broken, so the frontend must keep aliasing `@mage/engine` to the shipped dist entry file
-- the packaged type file still references an unshipped `MAGEEngine.js`, so `src/types/mage-engine.d.ts` remains the frontend source of truth
+- the frontend still keeps the `@mage/engine` alias boundary even though the package is installed from the npm registry
+- `src/types/mage-engine.d.ts` remains the frontend source of truth for the app-facing engine API surface
 - the bundled engine still emits `eval` warnings during build
 - the engine bundle is large enough to trigger Vite chunk-size warnings
 

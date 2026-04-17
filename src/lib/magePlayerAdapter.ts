@@ -9,9 +9,13 @@ const SCENE_BLOB_KEYS = [
   'visualizer',
 ] as const
 
+const MIN_RUNNING_ENGINE_TIME = 1 / 60
+
 type MageEngineBridge = {
   dispose: () => void
+  getEngineTime?: () => number
   loadPreset: (scene: unknown) => unknown
+  setEngineTime?: (time: number) => boolean
   start: () => void
 }
 
@@ -86,6 +90,18 @@ export async function createMagePlayer(
             'Scene data could not be rendered by the MAGE engine.',
           )
         }
+
+        // The published engine can stop immediately when it starts from exactly time 0.
+        // Prime the engine just past zero before restarting so the scene can animate.
+        if (
+          typeof engine.getEngineTime === 'function' &&
+          typeof engine.setEngineTime === 'function' &&
+          engine.getEngineTime() <= 0
+        ) {
+          engine.setEngineTime(MIN_RUNNING_ENGINE_TIME)
+        }
+
+        engine.start()
       } catch (error) {
         if (error instanceof MagePlayerAdapterError) {
           throw error

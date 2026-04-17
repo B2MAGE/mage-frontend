@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 const backendProxyTarget = 'http://localhost:8080'
 const workspaceRoot = fileURLToPath(new URL('..', import.meta.url))
-const mageEngineEntry = fileURLToPath(new URL('./node_modules/mage/dist/mage-engine.js', import.meta.url))
+const mageEngineEntry = fileURLToPath(new URL('./node_modules/@notrac/mage/dist/mage-engine.js', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({

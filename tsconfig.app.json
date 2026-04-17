@@ -9,7 +9,7 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
     "paths": {
-      "@mage/engine": ["./node_modules/mage/dist/mage-engine.js"]
+      "@mage/engine": ["./node_modules/@notrac/mage/dist/mage-engine.js"]
     },
 
     /* Bundler mode */
