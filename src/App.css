@@ -2081,6 +2081,12 @@
   gap: 22px;
 }
 
+.scene-editor-stack {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
 .scene-editor-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2189,6 +2195,24 @@
 .scene-editor-section__header p,
 .scene-editor-preview__header p,
 .scene-effect-footnote {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.scene-editor-section__subheader {
+  display: grid;
+  gap: 6px;
+  margin: 24px 0 18px;
+}
+
+.scene-editor-section__subheader h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.scene-editor-section__subheader p {
   margin: 0;
   color: var(--muted);
   line-height: 1.7;
@@ -2738,7 +2762,6 @@
 .scene-editor-submit {
   width: auto;
   min-width: 220px;
-  justify-self: start;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -2747,6 +2770,48 @@
   transform: none;
   background: #7bf4e1;
   box-shadow: 0 10px 30px rgba(99, 240, 214, 0.18);
+}
+
+.scene-editor-action-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 12;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(99, 240, 214, 0.14);
+  border-radius: 22px;
+  background: rgba(5, 14, 16, 0.9);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.scene-editor-action-bar__meta {
+  display: grid;
+  gap: 2px;
+}
+
+.scene-editor-action-bar__meta strong {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.scene-editor-action-bar__meta span:last-child {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.scene-editor-action-bar__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.scene-editor-nav-button {
+  min-width: 108px;
 }
 
 .scene-editor-preview {
@@ -2802,6 +2867,10 @@
 
   .scene-editor-preview__card {
     position: static;
+  }
+
+  .scene-editor-action-bar {
+    bottom: 0;
   }
 }
 
@@ -2859,6 +2928,19 @@
 
   .scene-editor-submit {
     width: 100%;
+  }
+
+  .scene-editor-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .scene-editor-action-bar__buttons {
+    justify-content: stretch;
+  }
+
+  .scene-editor-nav-button {
+    flex: 1;
   }
 
   .scene-pass-order__actions {

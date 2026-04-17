@@ -170,6 +170,41 @@ describe('CreateScenePage', () => {
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
   })
 
+  it('keeps the first section ordered around scene metadata and shows sticky navigation actions', async () => {
+    storeSession()
+
+    mockCreateScenePageFetch()
+
+    renderCreateScenePage()
+
+    const nameField = screen.getByLabelText(/scene name/i)
+    const descriptionField = screen.getByLabelText(/description/i)
+    const playlistsField = screen.getByLabelText(/playlists/i)
+    const thumbnailField = screen.getByLabelText(/upload thumbnail file/i)
+    const tagSearchField = await screen.findByLabelText(/select existing tags/i)
+
+    expect(
+      nameField.compareDocumentPosition(descriptionField) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      descriptionField.compareDocumentPosition(playlistsField) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      playlistsField.compareDocumentPosition(thumbnailField) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      thumbnailField.compareDocumentPosition(tagSearchField) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    expect(screen.getByRole('button', { name: /^back$/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^next$/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /create scene/i })).toBeInTheDocument()
+  })
+
   it('loads available tags and lets the user select more than one before saving', async () => {
     storeSession()
 
@@ -308,6 +343,30 @@ describe('CreateScenePage', () => {
     expect(screen.getByLabelText(/rotation speed/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
+  })
+
+  it('moves between sections with the next and back buttons and keeps the menu in sync', async () => {
+    storeSession()
+
+    mockCreateScenePageFetch()
+
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    const sectionMenu = screen.getByLabelText(/jump to section/i)
+
+    expect(sectionMenu).toHaveValue('scene')
+
+    await user.click(screen.getByRole('button', { name: /^next$/i }))
+
+    expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
+    expect(sectionMenu).toHaveValue('camera')
+
+    await user.click(screen.getByRole('button', { name: /^back$/i }))
+
+    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
+    expect(sectionMenu).toHaveValue('scene')
   })
 
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
