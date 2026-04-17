@@ -9,7 +9,7 @@ const engineMocks = vi.hoisted(() => ({
   start: vi.fn(),
 }))
 
-vi.mock('@mage/engine', () => ({
+vi.mock('@notrac/mage', () => ({
   initMAGE: engineMocks.initMAGE,
 }))
 
@@ -40,6 +40,15 @@ describe('createMagePlayer', () => {
 
     const player = await createMagePlayer(canvas)
 
+    expect(engineMocks.initMAGE).toHaveBeenCalledWith({
+      autoStart: false,
+      canvas,
+      log: false,
+      withControls: {
+        active: false,
+        integrated: false,
+      },
+    })
     expect(engineMocks.start).toHaveBeenCalledTimes(1)
 
     player.loadSceneBlob(sceneBlob)

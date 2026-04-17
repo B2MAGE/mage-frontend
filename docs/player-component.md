@@ -8,7 +8,6 @@
 
 - `src/components/MagePlayer.tsx`
 - `src/lib/magePlayerAdapter.ts`
-- `src/types/mage-engine.d.ts`
 - `src/components/MagePlayer.test.tsx`
 
 ## Public Interface

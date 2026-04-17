@@ -38,8 +38,7 @@ mage-frontend/
 |  |- components/     Reusable UI and player components
 |  |- lib/            Scene editor helpers, API helpers, engine adapter
 |  |- pages/          Route-level screens
-|  |- test/           Shared test setup
-|  `- types/          Local type declarations
+|  `- test/           Shared test setup
 |- .env.example
 |- package.json
 `- vite.config.ts
@@ -103,11 +102,7 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 ## Available Scripts
 
 - `npm run dev` starts the Vite development server
-- `npm run dev:engine-local` starts Vite against the vendored `mage-1.0.0.tgz` package for A/B testing
-- `npm run dev:engine-published` starts Vite against the published `@notrac/mage` package explicitly
 - `npm run build` creates a production build
-- `npm run build:engine-local` builds the app against the vendored engine package
-- `npm run build:engine-published` builds the app against the published engine package explicitly
 - `npm run preview` serves the production build locally
 - `npm run lint` runs ESLint
 - `npm run test` runs the Vitest suite
