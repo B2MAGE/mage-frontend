@@ -16,6 +16,17 @@ vi.mock('@notrac/mage', () => ({
   initMAGE: engineMocks.initMAGE,
 }))
 
+type EngineInstance = {
+  captureThumbnail?: unknown
+  dispose: typeof engineMocks.dispose
+  getEngineTime: typeof engineMocks.getEngineTime
+  loadPreset: typeof engineMocks.loadPreset
+  pause: typeof engineMocks.pause
+  play: typeof engineMocks.play
+  setEngineTime: typeof engineMocks.setEngineTime
+  start: typeof engineMocks.start
+}
+
 describe('createMagePlayer', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -139,26 +150,22 @@ describe('createMagePlayer', () => {
       `,
     )
 
-    let engineInstance: Record<string, unknown> | null = null
+    const engineInstance: EngineInstance = {
+      captureThumbnail: engineMocks.captureThumbnail,
+      dispose: engineMocks.dispose,
+      getEngineTime: engineMocks.getEngineTime,
+      loadPreset: engineMocks.loadPreset,
+      pause: engineMocks.pause,
+      play: engineMocks.play,
+      setEngineTime: engineMocks.setEngineTime,
+      start: engineMocks.start,
+    }
 
-    engineMocks.initMAGE.mockImplementation(() => {
-      engineInstance = {
-        captureThumbnail: engineMocks.captureThumbnail,
-        dispose: engineMocks.dispose,
-        getEngineTime: engineMocks.getEngineTime,
-        loadPreset: engineMocks.loadPreset,
-        pause: engineMocks.pause,
-        play: engineMocks.play,
-        setEngineTime: engineMocks.setEngineTime,
-        start: engineMocks.start,
-      }
-
-      return engineInstance
-    })
+    engineMocks.initMAGE.mockReturnValue(engineInstance)
 
     const player = await createMagePlayer(canvas)
 
-    expect(engineInstance?.captureThumbnail).toBeUndefined()
+    expect(engineInstance.captureThumbnail).toBeUndefined()
     expect(document.querySelector('.mage-embedded-presets')).toHaveAttribute(
       'data-mage-player-ui-suppressed',
       'true',
