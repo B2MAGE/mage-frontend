@@ -14,7 +14,7 @@ That keeps engine-specific startup, loading, and disposal logic in one place.
 
 ## Current Integration
 
-The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, enables mouse-driven canvas interaction, exposes shared play/pause controls, suppresses the package's built-in control chrome, and disposes it on unmount.
+The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, leaves the package's native control system enabled, exposes shared play/pause controls, and disposes it on unmount.
 
 Relevant files:
 
@@ -41,10 +41,11 @@ The adapter is doing more than forwarding calls:
 - it validates scene blobs before loading
 - it applies the current startup workaround for the published engine so scenes do not stall at time `0`
 - it centralizes pause/resume behavior so every embedded `MagePlayer` uses the same playback model
-- it turns on the engine's orbit-style canvas interaction while hiding the package's built-in presets and tweakpane UI
+- it relies on the package's built-in control bootstrap for mouse-driven camera interaction
 
 ## Current Caveats
 
 - The published package types are still incomplete for the runtime behavior the frontend uses. The adapter keeps a small local bridge type for that gap.
 - The engine bundle still emits `eval` warnings during `vite build`. The build succeeds, but those warnings are coming from the published package.
 - The engine bundle is very large and still triggers Vite chunk-size warnings. That does not block builds, but it is a real startup-cost concern.
+- Enabling mouse-driven controls also means the published package may render its own control chrome alongside the app's custom playback bar.
