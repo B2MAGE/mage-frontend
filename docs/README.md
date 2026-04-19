@@ -21,3 +21,6 @@ This directory holds focused implementation notes for the MAGE frontend. The rep
 
 - [registration-page.md](./registration-page.md)  
   Registration flow behavior, redirect path, and backend request shape.
+
+- [settings-page.md](./settings-page.md)  
+  Profile edit flow, save behavior, and authenticated update request shape.

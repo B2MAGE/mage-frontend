@@ -13,10 +13,13 @@ let authState = {
   isAuthenticated: false,
   isRestoringSession: false,
   logout: logoutMock,
+  updateAuthenticatedUser: vi.fn(),
   user: null as null | {
     authProvider: string
     displayName: string
     email: string
+    firstName?: string
+    lastName?: string
     userId: number | null
   },
 }
@@ -45,6 +48,7 @@ describe('Layout', () => {
       isAuthenticated: false,
       isRestoringSession: false,
       logout: logoutMock,
+      updateAuthenticatedUser: vi.fn(),
       user: null,
     }
   })

@@ -16,6 +16,8 @@ type LoginFormErrors = Partial<Record<keyof LoginFormValues | 'form', string>>
 type LoginResponse = {
   userId?: number
   email?: string
+  firstName?: string
+  lastName?: string
   displayName?: string
   authProvider?: string
   accessToken?: string
@@ -176,6 +178,8 @@ export function LoginPage() {
       const authenticatedUser: AuthenticatedUser = {
         userId: payload?.userId ?? null,
         email: payload?.email ?? trimmedValues.email,
+        firstName: payload?.firstName,
+        lastName: payload?.lastName,
         displayName: payload?.displayName ?? payload?.email ?? trimmedValues.email,
         authProvider: payload?.authProvider ?? 'LOCAL',
       }

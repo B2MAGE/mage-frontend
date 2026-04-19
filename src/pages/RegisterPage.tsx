@@ -16,6 +16,8 @@ type RegistrationFormErrors = Partial<Record<keyof RegistrationFormValues | 'for
 type RegistrationResponse = {
   userId?: number
   email?: string
+  firstName?: string
+  lastName?: string
   displayName?: string
   authProvider?: string
   created?: boolean
@@ -26,6 +28,9 @@ const initialValues: RegistrationFormValues = {
   email: '',
   password: '',
 }
+
+const DEFAULT_REGISTRATION_FIRST_NAME = 'NoName'
+const DEFAULT_REGISTRATION_LAST_NAME = 'NoName'
 
 function validateRegistrationForm(values: RegistrationFormValues): RegistrationFormErrors {
   const errors: RegistrationFormErrors = {}
@@ -106,7 +111,11 @@ export function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(trimmedValues),
+        body: JSON.stringify({
+          ...trimmedValues,
+          firstName: DEFAULT_REGISTRATION_FIRST_NAME,
+          lastName: DEFAULT_REGISTRATION_LAST_NAME,
+        }),
       })
 
       if (!response.ok) {

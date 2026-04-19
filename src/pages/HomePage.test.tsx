@@ -9,10 +9,13 @@ let authState = {
   isAuthenticated: false,
   isRestoringSession: false,
   logout: vi.fn(),
+  updateAuthenticatedUser: vi.fn(),
   user: null as null | {
     authProvider: string
     displayName: string
     email: string
+    firstName?: string
+    lastName?: string
     userId: number | null
   },
 }
@@ -38,6 +41,7 @@ describe('HomePage', () => {
       isAuthenticated: false,
       isRestoringSession: false,
       logout: vi.fn(),
+      updateAuthenticatedUser: vi.fn(),
       user: null,
     }
   })

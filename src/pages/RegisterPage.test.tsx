@@ -41,7 +41,7 @@ describe('RegisterPage', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('submits trimmed values, disables the button while loading, and hands the user into login', async () => {
+  it('submits trimmed values with default first and last names, disables the button while loading, and hands the user into login', async () => {
     let resolveResponse: ((value: Response) => void) | undefined
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
@@ -63,13 +63,15 @@ describe('RegisterPage', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          displayName: 'New User',
-          email: 'user@example.com',
-          password: 'secret-value',
-        }),
       }),
     )
+    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
+      firstName: 'NoName',
+      lastName: 'NoName',
+      displayName: 'New User',
+      email: 'user@example.com',
+      password: 'secret-value',
+    })
     expect(screen.getByRole('button', { name: /creating account/i })).toBeDisabled()
 
     resolveResponse?.(

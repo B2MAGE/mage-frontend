@@ -27,7 +27,14 @@ const restoredUser: AuthenticatedUser = {
 }
 
 function AuthHarness() {
-  const { authenticatedFetch, isAuthenticated, isRestoringSession, logout, user } = useAuth()
+  const {
+    authenticatedFetch,
+    isAuthenticated,
+    isRestoringSession,
+    logout,
+    updateAuthenticatedUser,
+    user,
+  } = useAuth()
 
   return (
     <div>
@@ -35,8 +42,26 @@ function AuthHarness() {
         {isRestoringSession ? 'restoring' : isAuthenticated ? 'authenticated' : 'signed-out'}
       </div>
       <div data-testid="auth-user-email">{user?.email ?? 'none'}</div>
+      <div data-testid="auth-user-display-name">{user?.displayName ?? 'none'}</div>
       <button type="button" onClick={logout}>
         Log out
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (!user) {
+            return
+          }
+
+          updateAuthenticatedUser({
+            ...user,
+            firstName: 'Updated',
+            lastName: 'Artist',
+            displayName: 'Updated Artist',
+          })
+        }}
+      >
+        Update profile snapshot
       </button>
       <button
         type="button"
@@ -148,6 +173,33 @@ describe('AuthProvider', () => {
     expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull()
     expect(screen.getByTestId('auth-status')).toHaveTextContent('signed-out')
     expect(screen.getByTestId('auth-user-email')).toHaveTextContent('none')
+  })
+
+  it('persists updated authenticated user details into the stored session', async () => {
+    storeSession()
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(restoredUser))
+
+    const user = userEvent.setup()
+
+    renderAuthHarness()
+
+    expect(await screen.findByText('restored-user@example.com')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /update profile snapshot/i }))
+
+    const persistedSession = JSON.parse(
+      window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY) ?? 'null',
+    ) as { user: AuthenticatedUser | null }
+
+    expect(persistedSession.user).toEqual(
+      expect.objectContaining({
+        firstName: 'Updated',
+        lastName: 'Artist',
+        displayName: 'Updated Artist',
+      }),
+    )
+    expect(screen.getByTestId('auth-user-display-name')).toHaveTextContent('Updated Artist')
   })
 
   it('authenticated requests send the bearer token and clear auth state on a 401', async () => {
