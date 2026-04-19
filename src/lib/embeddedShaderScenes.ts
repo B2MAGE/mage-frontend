@@ -34,8 +34,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene built from stacked grids and box frames.',
     shader: `
       setMaxIterations(101);
-      setStepSize(0.7260629659452175);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -76,8 +74,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with noisy box frames and layered grid distortion.',
     shader: `
       setMaxIterations(133);
-      setStepSize(0.8632297724861512);
-
       let size = input();
       let pointerDown = input();
       time *= 0.131579219319508;
@@ -123,8 +119,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with twin box frames and green edge-lit motion.',
     shader: `
       setMaxIterations(71);
-      setStepSize(0.4414923770441956);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -160,8 +154,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with framed cylinders, a noisy core sphere, and a grid floor.',
     shader: `
       setMaxIterations(161);
-      setStepSize(0.7431197197400152);
-
       let size = input();
       let pointerDown = input();
       time *= 0.15934458017140202;
@@ -205,8 +197,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene combining a metallic cylinder shell with a central sphere.',
     shader: `
       setMaxIterations(56);
-      setStepSize(0.04586632133333666);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -239,8 +229,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with a dominant sphere, cylinder, and dense grid accent.',
     shader: `
       setMaxIterations(198);
-      setStepSize(0.8838993805155669);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -278,8 +266,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with layered grids and a saturated violet sphere.',
     shader: `
       setMaxIterations(193);
-      setStepSize(0.7999169963821687);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -318,8 +304,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with a torus frame, noisy grids, and a bright center sphere.',
     shader: `
       setMaxIterations(186);
-      setStepSize(0.8615043142034936);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -366,8 +350,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with orange framing and a tight supporting grid.',
     shader: `
       setMaxIterations(56);
-      setStepSize(0.7549446257595138);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -404,8 +386,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with a torus and box frame at maximum scale.',
     shader: `
       setMaxIterations(151);
-      setStepSize(0.26597607104610804);
-
       let size = input();
       let pointerDown = input();
       time *= .1;
@@ -441,8 +421,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with color-from-ray direction and sparse mixed primitives.',
     shader: `
       setMaxIterations(96);
-      setStepSize(0.8497186712056144);
-
       let size = input();
       let pointerDown = input();
       time *= 0.663750656570544;
@@ -475,8 +453,6 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene with heavy noise expansion, mixed primitives, and rainbow ray coloring.',
     shader: `
       setMaxIterations(78);
-      setStepSize(0.7369359368566446);
-
       let size = input();
       let pointerDown = input();
       time *= 0.9539348297232683;
