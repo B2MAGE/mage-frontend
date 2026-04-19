@@ -505,6 +505,81 @@
   height: 100%;
 }
 
+.mage-player__controls {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 44px 18px 18px;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 13, 16, 0),
+    rgba(6, 13, 16, 0.12) 20%,
+    rgba(6, 13, 16, 0.7) 74%,
+    rgba(6, 13, 16, 0.92)
+  );
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  z-index: 1;
+}
+
+.mage-player__control-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+
+.mage-player__control-button:hover,
+.mage-player__control-button:focus-visible {
+  background: rgba(99, 240, 214, 0.22);
+  border-color: rgba(99, 240, 214, 0.34);
+  color: var(--accent);
+  outline: none;
+}
+
+.mage-player__control-button:active {
+  transform: translateY(1px);
+}
+
+.mage-player__control-icon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+}
+
+.mage-player__control-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mage-player[data-state="ready"] .mage-player__viewport:hover .mage-player__controls,
+.mage-player[data-state="ready"] .mage-player__viewport:focus-within .mage-player__controls {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .mage-player__overlay {
   position: absolute;
   inset: 0;
@@ -968,6 +1043,10 @@
 
 .scene-detail-stage .mage-player__overlay {
   border-radius: inherit;
+}
+
+.scene-detail-stage .mage-player__controls {
+  padding: 48px 20px 20px;
 }
 
 .mage-watch__summary {
@@ -3455,6 +3534,15 @@
     padding: 22px;
   }
 
+  .mage-player__controls {
+    padding: 34px 14px 14px;
+  }
+
+  .mage-player__control-button {
+    width: 44px;
+    height: 44px;
+  }
+
   .scene-detail-description-card,
   .scene-detail-comments-panel {
     padding: 16px;
@@ -3950,4 +4038,18 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .mage-player[data-state="ready"] .mage-player__controls {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}
+
+[data-mage-player-ui-suppressed="true"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
