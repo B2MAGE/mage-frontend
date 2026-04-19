@@ -17,6 +17,7 @@
 - `sceneBlob`: `MageSceneBlob | null | undefined`
 - `ariaLabel?`: optional canvas label
 - `className?`: optional wrapper class
+- `initialPlayback?`: `'playing' | 'paused'` starting playback mode for the loaded scene
 - `log?`: optional engine logging flag
 
 Example:
@@ -34,6 +35,7 @@ export function SceneDetail({
       <h1>{scene.name}</h1>
       <MagePlayer
         ariaLabel={`${scene.name} preview`}
+        initialPlayback="playing"
         sceneBlob={scene.sceneData}
       />
     </section>
@@ -60,6 +62,13 @@ Pages should pass the raw `sceneData` object returned by the backend instead of 
 - `sceneBlob={null}` or `undefined` shows the empty state
 - the engine is created once the canvas mounts
 - the current scene is applied when both the player and a valid `sceneBlob` are available
+- the player enables the engine's mouse-driven canvas controls by default so users can drag/orbit the scene
+- `initialPlayback="paused"` freezes the scene on its current frame until the user presses `Play`
+- `initialPlayback="playing"` keeps the scene running and shows a `Pause` control instead
+- when the player is ready, hover or keyboard focus reveals a playback bar at the bottom of the viewport
+- on touch devices the playback bar stays visible so the control is not hover-only
+- the playback button toggles shared pause/resume state without remounting the engine instance
+- the package's built-in tweakpane/preset chrome is suppressed so only the app's player UI is shown
 - invalid scene data produces a recoverable error overlay instead of crashing the page
 - the engine instance is disposed on unmount
 
@@ -68,6 +77,13 @@ Pages should pass the raw `sceneData` object returned by the backend instead of 
 - do not call `initMAGE()` directly from route components
 - keep engine-specific logic inside `src/lib/magePlayerAdapter.ts`
 - if a page swaps scenes, pass the next `sceneBlob` to the same `MagePlayer` instance and let the component reload it
+- use `initialPlayback` from route code instead of building page-specific play/pause overlays
+
+## Current Route Defaults
+
+- `HomePage` starts its hero preview in `playing`
+- `SceneDetailPage` starts the main watch player in `playing`
+- `CreateScenePage` starts the editor preview in `playing`
 
 ## Tests
 
