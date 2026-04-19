@@ -62,13 +62,13 @@ Pages should pass the raw `sceneData` object returned by the backend instead of 
 - `sceneBlob={null}` or `undefined` shows the empty state
 - the engine is created once the canvas mounts
 - the current scene is applied when both the player and a valid `sceneBlob` are available
-- the package's native engine controls are enabled, so mouse-driven camera interaction comes from the engine
+- the package's native engine controls are disabled, so the engine's built-in controls UI does not appear
 - `initialPlayback="paused"` freezes the scene on its current frame until the user presses `Play`
 - `initialPlayback="playing"` keeps the scene running and shows a `Pause` control instead
 - when the player is ready, hover or keyboard focus reveals a playback bar at the bottom of the viewport
 - on touch devices the playback bar stays visible so the control is not hover-only
 - the playback button toggles shared pause/resume state without remounting the engine instance
-- native engine UI may appear in addition to the app's custom playback bar while this mode is enabled
+- the app's custom playback bar is the only player UI shown by default
 - invalid scene data produces a recoverable error overlay instead of crashing the page
 - the engine instance is disposed on unmount
 

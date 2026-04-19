@@ -41,7 +41,7 @@ The adapter is doing more than forwarding calls:
 - it validates scene blobs before loading
 - it applies the current startup workaround for the published engine so scenes do not stall at time `0`
 - it centralizes pause/resume behavior so every embedded `MagePlayer` uses the same playback model
-- it relies on the package's built-in control bootstrap for mouse-driven camera interaction
+- it starts the engine without the package's built-in controls bootstrap, so embedded player UI stays frontend-owned
 
 ## Current Caveats
 
