@@ -11,6 +11,8 @@ import { buildApiUrl } from '../lib/api'
 export type AuthenticatedUser = {
   userId: number | null
   email: string
+  firstName?: string
+  lastName?: string
   displayName: string
   authProvider: string
   createdAt?: string
@@ -27,6 +29,7 @@ type AuthContextValue = {
   isAuthenticated: boolean
   isRestoringSession: boolean
   completeLoginSession: (session: StoredAuthSession) => void
+  updateAuthenticatedUser: (user: AuthenticatedUser) => void
   logout: () => void
   authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 }
@@ -37,6 +40,24 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function splitDisplayName(displayName: string) {
+  const trimmedDisplayName = displayName.trim()
+
+  if (!trimmedDisplayName) {
+    return {
+      firstName: '',
+      lastName: '',
+    }
+  }
+
+  const [firstName = '', ...remainingParts] = trimmedDisplayName.split(/\s+/)
+
+  return {
+    firstName,
+    lastName: remainingParts.join(' '),
+  }
 }
 
 function readStoredUser(value: unknown): AuthenticatedUser | null {
@@ -54,10 +75,15 @@ function readStoredUser(value: unknown): AuthenticatedUser | null {
     typeof value.displayName === 'string' && value.displayName.trim()
       ? value.displayName
       : email
+  const derivedNames = splitDisplayName(displayName)
 
   return {
     userId: typeof value.userId === 'number' ? value.userId : null,
     email,
+    firstName:
+      typeof value.firstName === 'string' ? value.firstName : derivedNames.firstName,
+    lastName:
+      typeof value.lastName === 'string' ? value.lastName : derivedNames.lastName,
     displayName,
     authProvider: typeof value.authProvider === 'string' ? value.authProvider : 'LOCAL',
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
@@ -118,6 +144,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   function completeLoginSession(nextSession: StoredAuthSession) {
     persistSession(nextSession)
     setSession(nextSession)
+  }
+
+  function updateAuthenticatedUser(nextUser: AuthenticatedUser) {
+    setSession((currentSession) => {
+      if (!currentSession) {
+        return currentSession
+      }
+
+      const nextSession = {
+        ...currentSession,
+        user: nextUser,
+      }
+
+      persistSession(nextSession)
+      return nextSession
+    })
   }
 
   async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
@@ -203,6 +245,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     isAuthenticated: Boolean(session?.accessToken && session?.user),
     isRestoringSession,
     completeLoginSession,
+    updateAuthenticatedUser,
     logout: clearSession,
     authenticatedFetch,
   }
