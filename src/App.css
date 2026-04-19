@@ -4047,9 +4047,3 @@
     pointer-events: auto;
   }
 }
-
-[data-mage-player-ui-suppressed="true"] {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const engineMocks = vi.hoisted(() => ({
-  captureThumbnail: vi.fn(),
   dispose: vi.fn(),
   getEngineTime: vi.fn(),
   initMAGE: vi.fn(),
@@ -16,17 +15,6 @@ vi.mock('@notrac/mage', () => ({
   initMAGE: engineMocks.initMAGE,
 }))
 
-type EngineInstance = {
-  captureThumbnail?: unknown
-  dispose: typeof engineMocks.dispose
-  getEngineTime: typeof engineMocks.getEngineTime
-  loadPreset: typeof engineMocks.loadPreset
-  pause: typeof engineMocks.pause
-  play: typeof engineMocks.play
-  setEngineTime: typeof engineMocks.setEngineTime
-  start: typeof engineMocks.start
-}
-
 describe('createMagePlayer', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -34,7 +22,6 @@ describe('createMagePlayer', () => {
     document.body.innerHTML = ''
 
     engineMocks.initMAGE.mockReturnValue({
-      captureThumbnail: engineMocks.captureThumbnail,
       dispose: engineMocks.dispose,
       getEngineTime: engineMocks.getEngineTime,
       loadPreset: engineMocks.loadPreset,
@@ -63,7 +50,7 @@ describe('createMagePlayer', () => {
       canvas,
       log: false,
       withControls: {
-        active: true,
+        active: false,
         integrated: false,
       },
     })
@@ -135,53 +122,21 @@ describe('createMagePlayer', () => {
     expect(engineMocks.play).not.toHaveBeenCalled()
   })
 
-  it('suppresses the package control chrome when engine controls are enabled', async () => {
+  it('keeps native engine controls disabled so the shared player owns playback chrome', async () => {
     const { createMagePlayer } = await import('./magePlayerAdapter')
-    const host = document.createElement('div')
     const canvas = document.createElement('canvas')
-    host.appendChild(canvas)
-    document.body.appendChild(host)
-
-    document.body.insertAdjacentHTML(
-      'beforeend',
-      `
-        <div class="mage-embedded-presets"></div>
-        <div><img alt="controls" /></div>
-      `,
-    )
-
-    const engineInstance: EngineInstance = {
-      captureThumbnail: engineMocks.captureThumbnail,
-      dispose: engineMocks.dispose,
-      getEngineTime: engineMocks.getEngineTime,
-      loadPreset: engineMocks.loadPreset,
-      pause: engineMocks.pause,
-      play: engineMocks.play,
-      setEngineTime: engineMocks.setEngineTime,
-      start: engineMocks.start,
-    }
-
-    engineMocks.initMAGE.mockReturnValue(engineInstance)
 
     const player = await createMagePlayer(canvas)
 
-    expect(engineInstance.captureThumbnail).toBeUndefined()
-    expect(document.querySelector('.mage-embedded-presets')).toHaveAttribute(
-      'data-mage-player-ui-suppressed',
-      'true',
-    )
-    expect(document.querySelector('img[alt="controls"]')?.parentElement).toHaveAttribute(
-      'data-mage-player-ui-suppressed',
-      'true',
-    )
-
-    const latePaneHost = document.createElement('div')
-    latePaneHost.className = 'mage-pane-host'
-    document.body.appendChild(latePaneHost)
-
-    await Promise.resolve()
-
-    expect(latePaneHost).toHaveAttribute('data-mage-player-ui-suppressed', 'true')
+    expect(engineMocks.initMAGE).toHaveBeenLastCalledWith({
+      autoStart: false,
+      canvas,
+      log: false,
+      withControls: {
+        active: false,
+        integrated: false,
+      },
+    })
 
     player.dispose()
   })

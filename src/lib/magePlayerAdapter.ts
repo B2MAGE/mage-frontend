@@ -13,24 +13,11 @@ const SCENE_BLOB_KEYS = [
 
 const MIN_RUNNING_ENGINE_TIME = 1 / 60
 const DEFAULT_ENGINE_CONTROLS = {
-  active: true,
+  active: false,
   integrated: false,
 } as const
-const SUPPRESSED_ENGINE_UI_ATTRIBUTE = 'data-mage-player-ui-suppressed'
-const SUPPRESSED_ENGINE_UI_SELECTOR = [
-  '.mage-embedded-presets',
-  '.mage-engine-loading-mask',
-  '.mage-fx-layers-overlay',
-  '.mage-fx-studio-overlay',
-  '.mage-fx-studio-dock',
-  '.mage-pane-host',
-  '.mage-scene-camera-dock',
-  '.mage-dock-launcher',
-].join(', ')
-const SUPPRESSED_ENGINE_TOOLTIP_SELECTOR = 'img[alt="controls"]'
 
 type MageEngineBridge = {
-  captureThumbnail?: MAGEEngineAPI['captureThumbnail']
   dispose: MAGEEngineAPI['dispose']
   getEngineTime?: MAGEEngineAPI['getEngineTime']
   pause: MAGEEngineAPI['pause']
@@ -113,65 +100,6 @@ function applyPlaybackState(
   return playbackState
 }
 
-function markEngineUiAsSuppressed(element: Element | null | undefined) {
-  if (!(element instanceof HTMLElement)) {
-    return
-  }
-
-  element.setAttribute(SUPPRESSED_ENGINE_UI_ATTRIBUTE, 'true')
-  element.style.display = 'none'
-  element.style.pointerEvents = 'none'
-}
-
-function hideEmbeddedEngineUi(canvas: HTMLCanvasElement) {
-  if (typeof document === 'undefined') {
-    return
-  }
-
-  const host = canvas.parentElement
-
-  host
-    ?.querySelectorAll('.mage-pane-host, .mage-engine-loading-mask')
-    .forEach((element) => {
-      markEngineUiAsSuppressed(element)
-    })
-
-  document.querySelectorAll(SUPPRESSED_ENGINE_UI_SELECTOR).forEach((element) => {
-    markEngineUiAsSuppressed(element)
-  })
-
-  document.querySelectorAll(SUPPRESSED_ENGINE_TOOLTIP_SELECTOR).forEach((image) => {
-    markEngineUiAsSuppressed(image.parentElement)
-  })
-}
-
-function suppressEmbeddedEngineUi(canvas: HTMLCanvasElement, engine: MageEngineBridge) {
-  // Enabling engine controls also boots the package's own preset/tweakpane UI.
-  // Disable its thumbnail bootstrap path and hide the generated chrome so the
-  // shared React player keeps sole ownership of the visible controls.
-  engine.captureThumbnail = undefined
-  hideEmbeddedEngineUi(canvas)
-
-  const observationRoot = document.body ?? document.documentElement
-
-  if (!observationRoot || typeof MutationObserver === 'undefined') {
-    return () => {}
-  }
-
-  const observer = new MutationObserver(() => {
-    hideEmbeddedEngineUi(canvas)
-  })
-
-  observer.observe(observationRoot, {
-    childList: true,
-    subtree: true,
-  })
-
-  return () => {
-    observer.disconnect()
-  }
-}
-
 async function loadMageEngineModule() {
   if (!mageEngineModulePromise) {
     mageEngineModulePromise = (import('@notrac/mage') as Promise<MageEngineModule>).catch((error) => {
@@ -194,7 +122,6 @@ export async function createMagePlayer(
     log: options.log ?? false,
     withControls: DEFAULT_ENGINE_CONTROLS,
   })
-  const stopSuppressingEngineUi = suppressEmbeddedEngineUi(canvas, engine)
 
   engine.start()
   let playbackState: MagePlayerPlaybackState = 'playing'
@@ -226,7 +153,6 @@ export async function createMagePlayer(
     },
     setPlaybackState,
     dispose() {
-      stopSuppressingEngineUi()
       engine.dispose()
     },
   }
