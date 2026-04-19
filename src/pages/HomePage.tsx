@@ -68,6 +68,7 @@ export function HomePage() {
       <section className="home-preview-section" aria-label="Live scene preview">
         <MagePlayer
           ariaLabel="MAGE live scene preview"
+          initialPlayback="playing"
           sceneBlob={HOME_PAGE_SCENE}
         />
       </section>

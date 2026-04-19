@@ -11,8 +11,16 @@ import { buildApiUrl } from '../lib/api'
 import { CreateScenePage } from './CreateScenePage'
 
 vi.mock('../components/MagePlayer', () => ({
-  MagePlayer: ({ sceneBlob }: { sceneBlob: unknown }) => (
-    <div data-testid="mage-player">{sceneBlob ? 'preview-ready' : 'no-preview'}</div>
+  MagePlayer: ({
+    initialPlayback,
+    sceneBlob,
+  }: {
+    initialPlayback?: string
+    sceneBlob: unknown
+  }) => (
+    <div data-playback={initialPlayback} data-testid="mage-player">
+      {sceneBlob ? 'preview-ready' : 'no-preview'}
+    </div>
   ),
 }))
 
@@ -142,6 +150,7 @@ describe('CreateScenePage', () => {
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('preview-ready')
+    expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
   })
 
   it('renders interactive metadata controls beneath the scene name field', async () => {

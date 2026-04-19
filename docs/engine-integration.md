@@ -14,7 +14,7 @@ That keeps engine-specific startup, loading, and disposal logic in one place.
 
 ## Current Integration
 
-The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, and disposes it on unmount.
+The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, enables mouse-driven canvas interaction, exposes shared play/pause controls, suppresses the package's built-in control chrome, and disposes it on unmount.
 
 Relevant files:
 
@@ -40,6 +40,8 @@ The adapter is doing more than forwarding calls:
 - it keeps engine imports out of route components
 - it validates scene blobs before loading
 - it applies the current startup workaround for the published engine so scenes do not stall at time `0`
+- it centralizes pause/resume behavior so every embedded `MagePlayer` uses the same playback model
+- it turns on the engine's orbit-style canvas interaction while hiding the package's built-in presets and tweakpane UI
 
 ## Current Caveats
 
