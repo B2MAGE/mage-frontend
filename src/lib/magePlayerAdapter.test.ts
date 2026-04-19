@@ -50,7 +50,7 @@ describe('createMagePlayer', () => {
       canvas,
       log: false,
       withControls: {
-        active: true,
+        active: false,
         integrated: false,
       },
     })
@@ -122,7 +122,7 @@ describe('createMagePlayer', () => {
     expect(engineMocks.play).not.toHaveBeenCalled()
   })
 
-  it('enables native engine controls alongside the shared playback chrome', async () => {
+  it('disables native engine controls so only shared playback chrome is shown', async () => {
     const { createMagePlayer } = await import('./magePlayerAdapter')
     const canvas = document.createElement('canvas')
 
@@ -133,7 +133,7 @@ describe('createMagePlayer', () => {
       canvas,
       log: false,
       withControls: {
-        active: true,
+        active: false,
         integrated: false,
       },
     })

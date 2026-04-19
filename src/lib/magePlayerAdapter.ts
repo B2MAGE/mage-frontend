@@ -13,7 +13,7 @@ const SCENE_BLOB_KEYS = [
 
 const MIN_RUNNING_ENGINE_TIME = 1 / 60
 const DEFAULT_ENGINE_CONTROLS = {
-  active: true,
+  active: false,
   integrated: false,
 } as const
 
