@@ -2,6 +2,9 @@ import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { parseApiError } from '../lib/authForm'
 
+const PROFILE_SAVE_UNAVAILABLE_MESSAGE =
+  'Profile updates are unavailable right now. Please try again in a moment.'
+
 type UserProfileResponse = {
   userId: number | null
   email: string
@@ -42,30 +45,36 @@ export function SettingsPage() {
           lastName={user.lastName ?? ''}
           displayName={user.displayName}
           onSave={async (nameFields) => {
-            const response = await authenticatedFetch('/users/me', {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(nameFields),
-            })
+            try {
+              const response = await authenticatedFetch('/users/me', {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(nameFields),
+              })
 
-            if (!response.ok) {
-              const apiError = await parseApiError(response)
+              if (!response.ok) {
+                const apiError = await parseApiError(response)
+                return {
+                  ok: false as const,
+                  details: apiError?.details ?? {},
+                  message: apiError?.message ?? PROFILE_SAVE_UNAVAILABLE_MESSAGE,
+                }
+              }
+
+              const updatedUser = (await response.json()) as UserProfileResponse
+              updateAuthenticatedUser(updatedUser)
+
+              return {
+                ok: true as const,
+              }
+            } catch {
               return {
                 ok: false as const,
-                details: apiError?.details ?? {},
-                message:
-                  apiError?.message ??
-                  'Profile updates are unavailable right now. Please try again in a moment.',
+                details: {},
+                message: PROFILE_SAVE_UNAVAILABLE_MESSAGE,
               }
-            }
-
-            const updatedUser = (await response.json()) as UserProfileResponse
-            updateAuthenticatedUser(updatedUser)
-
-            return {
-              ok: true as const,
             }
           }}
         />
@@ -151,30 +160,6 @@ function ProfileDetailsForm({
         </div>
 
         <div className="field-group">
-          <label htmlFor="settings-first-name">First name</label>
-          <input
-            id="settings-first-name"
-            name="firstName"
-            onChange={(event) =>
-              setNameFields((currentFields) => ({
-                ...currentFields,
-                firstName: event.target.value,
-              }))
-            }
-            aria-describedby={errors.firstName ? 'settings-first-name-error' : undefined}
-            aria-invalid={Boolean(errors.firstName)}
-            placeholder="First name"
-            type="text"
-            value={nameFields.firstName}
-          />
-          {errors.firstName ? (
-            <p className="field-error" id="settings-first-name-error" role="alert">
-              {errors.firstName}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="field-group">
           <label htmlFor="settings-display-name">Display name</label>
           <input
             id="settings-display-name"
@@ -194,6 +179,30 @@ function ProfileDetailsForm({
           {errors.displayName ? (
             <p className="field-error" id="settings-display-name-error" role="alert">
               {errors.displayName}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="field-group">
+          <label htmlFor="settings-first-name">First name</label>
+          <input
+            id="settings-first-name"
+            name="firstName"
+            onChange={(event) =>
+              setNameFields((currentFields) => ({
+                ...currentFields,
+                firstName: event.target.value,
+              }))
+            }
+            aria-describedby={errors.firstName ? 'settings-first-name-error' : undefined}
+            aria-invalid={Boolean(errors.firstName)}
+            placeholder="First name"
+            type="text"
+            value={nameFields.firstName}
+          />
+          {errors.firstName ? (
+            <p className="field-error" id="settings-first-name-error" role="alert">
+              {errors.firstName}
             </p>
           ) : null}
         </div>
@@ -234,17 +243,22 @@ function ProfileDetailsForm({
           </div>
         ) : null}
 
-        <button
-          className="demo-link auth-submit"
-          disabled={!isDirty || isSubmitting}
-          type="submit"
-        >
-          {isSubmitting ? 'Saving...' : 'Save changes'}
-        </button>
+        <div className="settings-actions">
+          <button
+            className="demo-link auth-submit settings-action-button settings-save-button"
+            disabled={!isDirty || isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? 'Saving...' : 'Save changes'}
+          </button>
 
-        <button className="scene-secondary-button settings-reset-button" type="button">
-          Reset password
-        </button>
+          <button
+            className="scene-secondary-button settings-action-button settings-reset-button"
+            type="button"
+          >
+            Reset password
+          </button>
+        </div>
       </form>
     </section>
   )

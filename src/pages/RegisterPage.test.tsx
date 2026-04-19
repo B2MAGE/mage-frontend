@@ -21,8 +21,6 @@ function renderRegisterPage() {
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/first name/i), ' New ')
-  await user.type(screen.getByLabelText(/last name/i), ' User ')
   await user.type(screen.getByLabelText(/display name/i), ' New User ')
   await user.type(screen.getByLabelText(/^email$/i), ' user@example.com ')
   await user.type(screen.getByLabelText(/password/i), 'secret-value')
@@ -37,15 +35,13 @@ describe('RegisterPage', () => {
 
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
-    expect(await screen.findByText('First name is required.')).toBeInTheDocument()
-    expect(screen.getByText('Last name is required.')).toBeInTheDocument()
     expect(await screen.findByText('Display name is required.')).toBeInTheDocument()
     expect(screen.getByText('Email is required.')).toBeInTheDocument()
     expect(screen.getByText('Password is required.')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
-  it('submits trimmed values, disables the button while loading, and hands the user into login', async () => {
+  it('submits trimmed values with default first and last names, disables the button while loading, and hands the user into login', async () => {
     let resolveResponse: ((value: Response) => void) | undefined
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       () =>
@@ -67,15 +63,15 @@ describe('RegisterPage', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          firstName: 'New',
-          lastName: 'User',
-          displayName: 'New User',
-          email: 'user@example.com',
-          password: 'secret-value',
-        }),
       }),
     )
+    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
+      firstName: 'NoName',
+      lastName: 'NoName',
+      displayName: 'New User',
+      email: 'user@example.com',
+      password: 'secret-value',
+    })
     expect(screen.getByRole('button', { name: /creating account/i })).toBeDisabled()
 
     resolveResponse?.(
@@ -127,8 +123,6 @@ describe('RegisterPage', () => {
         JSON.stringify({
           message: 'Registration failed. Please review your information and try again.',
           details: {
-            firstName: 'firstName must not be blank',
-            lastName: 'lastName must not be blank',
             displayName: 'displayName must not be blank',
             email: 'email must not be blank',
             password: 'password must not be blank',
@@ -149,8 +143,6 @@ describe('RegisterPage', () => {
     await fillValidForm(user)
     await user.click(screen.getByRole('button', { name: /create account/i }))
 
-    expect(await screen.findByText('firstName must not be blank')).toBeInTheDocument()
-    expect(screen.getByText('lastName must not be blank')).toBeInTheDocument()
     expect(await screen.findByText('displayName must not be blank')).toBeInTheDocument()
     expect(screen.getByText('email must not be blank')).toBeInTheDocument()
     expect(screen.getByText('password must not be blank')).toBeInTheDocument()

@@ -6,8 +6,6 @@ import { buildApiUrl } from '../lib/api'
 import { emailPattern, parseApiError } from '../lib/authForm'
 
 type RegistrationFormValues = {
-  firstName: string
-  lastName: string
   displayName: string
   email: string
   password: string
@@ -26,23 +24,16 @@ type RegistrationResponse = {
 }
 
 const initialValues: RegistrationFormValues = {
-  firstName: '',
-  lastName: '',
   displayName: '',
   email: '',
   password: '',
 }
 
+const DEFAULT_REGISTRATION_FIRST_NAME = 'NoName'
+const DEFAULT_REGISTRATION_LAST_NAME = 'NoName'
+
 function validateRegistrationForm(values: RegistrationFormValues): RegistrationFormErrors {
   const errors: RegistrationFormErrors = {}
-
-  if (!values.firstName.trim()) {
-    errors.firstName = 'First name is required.'
-  }
-
-  if (!values.lastName.trim()) {
-    errors.lastName = 'Last name is required.'
-  }
 
   if (!values.displayName.trim()) {
     errors.displayName = 'Display name is required.'
@@ -99,8 +90,6 @@ export function RegisterPage() {
     event.preventDefault()
 
     const trimmedValues = {
-      firstName: values.firstName.trim(),
-      lastName: values.lastName.trim(),
       displayName: values.displayName.trim(),
       email: values.email.trim(),
       password: values.password,
@@ -122,7 +111,11 @@ export function RegisterPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(trimmedValues),
+        body: JSON.stringify({
+          ...trimmedValues,
+          firstName: DEFAULT_REGISTRATION_FIRST_NAME,
+          lastName: DEFAULT_REGISTRATION_LAST_NAME,
+        }),
       })
 
       if (!response.ok) {
@@ -134,8 +127,6 @@ export function RegisterPage() {
             : undefined
 
         setErrors({
-          firstName: backendDetails.firstName,
-          lastName: backendDetails.lastName,
           displayName: backendDetails.displayName,
           email: backendDetails.email,
           password: backendDetails.password,
@@ -176,48 +167,6 @@ export function RegisterPage() {
           />
 
           <form className="auth-form" noValidate onSubmit={handleSubmit}>
-            <div className="field-group">
-              <label htmlFor="firstName">First name</label>
-              <input
-                id="firstName"
-                name="firstName"
-                type="text"
-                autoComplete="given-name"
-                required
-                value={values.firstName}
-                onChange={(event) => handleChange('firstName', event.target.value)}
-                aria-invalid={Boolean(errors.firstName)}
-                aria-describedby={errors.firstName ? 'firstName-error' : undefined}
-                placeholder="Mir"
-              />
-              {errors.firstName ? (
-                <p className="field-error" id="firstName-error" role="alert">
-                  {errors.firstName}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="lastName">Last name</label>
-              <input
-                id="lastName"
-                name="lastName"
-                type="text"
-                autoComplete="family-name"
-                required
-                value={values.lastName}
-                onChange={(event) => handleChange('lastName', event.target.value)}
-                aria-invalid={Boolean(errors.lastName)}
-                aria-describedby={errors.lastName ? 'lastName-error' : undefined}
-                placeholder="Ali"
-              />
-              {errors.lastName ? (
-                <p className="field-error" id="lastName-error" role="alert">
-                  {errors.lastName}
-                </p>
-              ) : null}
-            </div>
-
             <div className="field-group">
               <label htmlFor="displayName">Display name</label>
               <input

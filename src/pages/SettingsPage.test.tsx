@@ -141,6 +141,88 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Profile details saved.')).toBeInTheDocument()
   })
 
+  it('shows backend validation errors when submitted profile values are invalid', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'Request validation failed.',
+            details: {
+              firstName: 'firstName must not be blank',
+              lastName: 'lastName must not be blank',
+              displayName: 'displayName must not be blank',
+            },
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      ),
+      isAuthenticated: true,
+      updateAuthenticatedUser: vi.fn(),
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<SettingsPage />)
+
+    await user.clear(screen.getByLabelText(/first name/i))
+    await user.clear(screen.getByLabelText(/last name/i))
+    await user.clear(screen.getByLabelText(/display name/i))
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(await screen.findByText('firstName must not be blank')).toBeInTheDocument()
+    expect(screen.getByText('lastName must not be blank')).toBeInTheDocument()
+    expect(screen.getByText('displayName must not be blank')).toBeInTheDocument()
+    expect(screen.getByText('Request validation failed.')).toBeInTheDocument()
+    expect(authState.updateAuthenticatedUser).not.toHaveBeenCalled()
+  })
+
+  it('shows a clear error message when the save request fails', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn().mockRejectedValue(new Error('network down')),
+      isAuthenticated: true,
+      updateAuthenticatedUser: vi.fn(),
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<SettingsPage />)
+
+    await user.clear(screen.getByLabelText(/display name/i))
+    await user.type(screen.getByLabelText(/display name/i), 'Updated Artist')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(
+      await screen.findByText('Profile updates are unavailable right now. Please try again in a moment.'),
+    ).toBeInTheDocument()
+    expect(authState.updateAuthenticatedUser).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeEnabled()
+  })
+
   it('shows a fallback state when the page cannot read a signed-in user', () => {
     render(<SettingsPage />)
 
