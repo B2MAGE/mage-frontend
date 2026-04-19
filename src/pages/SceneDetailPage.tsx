@@ -225,6 +225,7 @@ export function SceneDetailPage() {
               <MagePlayer
                 ariaLabel={`${scene.name} live render`}
                 className="scene-detail-player"
+                initialPlayback="playing"
                 sceneBlob={scene.sceneData}
               />
             </div>

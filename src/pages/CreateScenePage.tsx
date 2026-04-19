@@ -524,6 +524,37 @@ function validateThumbnailFile(file: File | null) {
   return null;
 }
 
+function buildEffectiveSceneData(
+  sourceSceneData: SceneData,
+  {
+    isCameraAdvancedEnabled,
+    isMotionAdvancedEnabled,
+  }: {
+    isCameraAdvancedEnabled: boolean;
+    isMotionAdvancedEnabled: boolean;
+  },
+) {
+  let nextSceneData = sourceSceneData;
+
+  if (!isCameraAdvancedEnabled) {
+    nextSceneData = mergeSceneEditorBranch(nextSceneData, "intent", {
+      ...getSceneEditorModel(nextSceneData).intent,
+      camOrientationMode: initialSceneModel.intent.camOrientationMode,
+      camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
+    });
+  }
+
+  if (!isMotionAdvancedEnabled) {
+    nextSceneData = mergeSceneEditorBranch(
+      nextSceneData,
+      "state",
+      initialSceneModel.state,
+    );
+  }
+
+  return sanitizeSceneData(nextSceneData);
+}
+
 export function CreateScenePage() {
   const { authenticatedFetch } = useAuth();
   const navigate = useNavigate();
@@ -571,31 +602,13 @@ export function CreateScenePage() {
   const thumbnailInputId = useId();
   const titleId = "create-scene-title";
 
-  function buildEffectiveSceneData(sourceSceneData: SceneData) {
-    let nextSceneData = sourceSceneData;
-
-    if (!isCameraAdvancedEnabled) {
-      nextSceneData = mergeSceneEditorBranch(nextSceneData, "intent", {
-        ...getSceneEditorModel(nextSceneData).intent,
-        camOrientationMode: initialSceneModel.intent.camOrientationMode,
-        camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-      });
-    }
-
-    if (!isMotionAdvancedEnabled) {
-      nextSceneData = mergeSceneEditorBranch(
-        nextSceneData,
-        "state",
-        initialSceneModel.state,
-      );
-    }
-
-    return sanitizeSceneData(nextSceneData);
-  }
-
   const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData]);
   const previewSceneData = useMemo(
-    () => buildEffectiveSceneData(sceneData),
+    () =>
+      buildEffectiveSceneData(sceneData, {
+        isCameraAdvancedEnabled,
+        isMotionAdvancedEnabled,
+      }),
     [sceneData, isCameraAdvancedEnabled, isMotionAdvancedEnabled],
   );
   const shaderSelection = useMemo(
@@ -930,7 +943,12 @@ export function CreateScenePage() {
   function handleFormatJson() {
     try {
       const parsedSceneData = parseSceneDataJson(sceneDataText);
-      applySceneData(buildEffectiveSceneData(parsedSceneData));
+      applySceneData(
+        buildEffectiveSceneData(parsedSceneData, {
+          isCameraAdvancedEnabled,
+          isMotionAdvancedEnabled,
+        }),
+      );
     } catch (error) {
       setErrors((currentErrors) => ({
         ...currentErrors,
@@ -1747,9 +1765,10 @@ export function CreateScenePage() {
       return;
     }
 
-    const sanitizedSceneData = buildEffectiveSceneData(
-      parsedSceneData ?? sceneData,
-    );
+    const sanitizedSceneData = buildEffectiveSceneData(parsedSceneData ?? sceneData, {
+      isCameraAdvancedEnabled,
+      isMotionAdvancedEnabled,
+    });
 
     setIsSubmitting(true);
     setErrors({});
@@ -2906,6 +2925,7 @@ export function CreateScenePage() {
 
               <MagePlayer
                 className="scene-editor-preview__player"
+                initialPlayback="playing"
                 sceneBlob={previewSceneData}
               />
             </section>

@@ -25,7 +25,9 @@ vi.mock('../auth/AuthContext', () => ({
 }))
 
 vi.mock('../components/MagePlayer', () => ({
-  MagePlayer: () => <div>Preview player</div>,
+  MagePlayer: ({ initialPlayback }: { initialPlayback?: string }) => (
+    <div data-playback={initialPlayback}>Preview player</div>
+  ),
 }))
 
 vi.mock('./ScenesPage', () => ({
@@ -50,7 +52,7 @@ describe('HomePage', () => {
     render(<HomePage />)
 
     expect(screen.getByRole('heading', { name: 'MAGE' })).toBeInTheDocument()
-    expect(screen.getByText('Preview player')).toBeInTheDocument()
+    expect(screen.getByText('Preview player')).toHaveAttribute('data-playback', 'playing')
     expect(screen.queryByRole('link', { name: /browse scenes/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /create an account/i })).not.toBeInTheDocument()
   })

@@ -16,13 +16,20 @@ vi.mock('../components/MagePlayer', () => ({
   MagePlayer: ({
     ariaLabel,
     className,
+    initialPlayback,
     sceneBlob,
   }: {
     ariaLabel?: string
     className?: string
+    initialPlayback?: string
     sceneBlob: unknown
   }) => (
-    <div aria-label={ariaLabel} className={className} data-testid="mage-player">
+    <div
+      aria-label={ariaLabel}
+      className={className}
+      data-playback={initialPlayback}
+      data-testid="mage-player"
+    >
       {sceneBlob ? 'player-ready' : 'no-scene'}
     </div>
   ),
@@ -171,6 +178,7 @@ describe('SceneDetailPage', () => {
 
     expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
+    expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
