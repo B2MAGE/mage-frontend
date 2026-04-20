@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react'
+import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import type { MagePlayerPlaylistTrack } from '../../lib/magePlayerPlaylist'
 import {
   buildTagRecommendationFilter,
   readRecommendationFilterTag,
@@ -7,50 +8,122 @@ import {
   type RecommendationFilter,
 } from '../../lib/sceneDetail'
 import { ScrollableTagBar } from '../ScrollableTagBar'
+import { PlaylistPanel } from './PlaylistPanel'
 
 type SceneRecommendationRailProps = {
   creatorDisplayName: string
   currentSceneTags: string[]
   isLoading: boolean
+  isPlaylistOpen: boolean
+  onClosePlaylist: () => void
+  onPlaylistNameChange: (name: string) => void
+  onReorderTracks: (tracks: MagePlayerPlaylistTrack[]) => void
+  onRemoveTrack: (trackId: string) => void
+  onSelectFilter: (filter: RecommendationFilter) => void
+  onSelectTrack: (trackId: string | null) => void
+  onToggleRepeat: () => void
+  onToggleShuffle: () => void
+  onUpdateTrack: (
+    trackId: string,
+    nextDetails: Partial<Pick<MagePlayerPlaylistTrack, 'album' | 'artist' | 'title'>>,
+  ) => void
+  playlistName: string
+  playlistTracks: MagePlayerPlaylistTrack[]
   recommendedScenes: RecommendedSceneCard[]
   recommendationFilter: RecommendationFilter
-  onSelectFilter: (filter: RecommendationFilter) => void
+  repeatEnabled: boolean
+  selectedTrackId: string | null
+  shuffleEnabled: boolean
+}
+
+function buildLoadingCopy(
+  activeRecommendationTag: string | null,
+  creatorDisplayName: string,
+  recommendationFilter: RecommendationFilter,
+) {
+  if (activeRecommendationTag !== null) {
+    return `Loading scenes tagged "${activeRecommendationTag}"...`
+  }
+
+  if (recommendationFilter === 'creator') {
+    return `Loading scenes from ${creatorDisplayName}...`
+  }
+
+  return 'Loading related scenes...'
+}
+
+function buildEmptyCopy(
+  activeRecommendationTag: string | null,
+  creatorDisplayName: string,
+  recommendationFilter: RecommendationFilter,
+) {
+  if (activeRecommendationTag !== null) {
+    return `No other scenes tagged "${activeRecommendationTag}" yet.`
+  }
+
+  if (recommendationFilter === 'creator') {
+    return `No other scenes from ${creatorDisplayName} yet.`
+  }
+
+  return `No related scenes from ${creatorDisplayName} or this scene's tags yet.`
 }
 
 export function SceneRecommendationRail({
   creatorDisplayName,
   currentSceneTags,
   isLoading,
+  isPlaylistOpen,
+  onClosePlaylist,
+  onPlaylistNameChange,
+  onReorderTracks,
+  onRemoveTrack,
+  onSelectFilter,
+  onSelectTrack,
+  onToggleRepeat,
+  onToggleShuffle,
+  onUpdateTrack,
+  playlistName,
+  playlistTracks,
   recommendedScenes,
   recommendationFilter,
-  onSelectFilter,
+  repeatEnabled,
+  selectedTrackId,
+  shuffleEnabled,
 }: SceneRecommendationRailProps) {
   const activeRecommendationTag = readRecommendationFilterTag(recommendationFilter)
-
-  const loadingCopy =
-    activeRecommendationTag !== null
-      ? `Loading scenes tagged "${activeRecommendationTag}"...`
-      : recommendationFilter === 'creator'
-        ? `Loading scenes from ${creatorDisplayName}...`
-        : 'Loading related scenes...'
-
-  const emptyCopy =
-    activeRecommendationTag !== null
-      ? `No other scenes tagged "${activeRecommendationTag}" yet.`
-      : recommendationFilter === 'creator'
-        ? `No other scenes from ${creatorDisplayName} yet.`
-        : `No related scenes from ${creatorDisplayName} or this scene's tags yet.`
+  const loadingCopy = buildLoadingCopy(
+    activeRecommendationTag,
+    creatorDisplayName,
+    recommendationFilter,
+  )
+  const emptyCopy = buildEmptyCopy(activeRecommendationTag, creatorDisplayName, recommendationFilter)
 
   return (
     <aside className="mage-watch__rail">
+      <PlaylistPanel
+        isOpen={isPlaylistOpen}
+        onClose={onClosePlaylist}
+        onPlaylistNameChange={onPlaylistNameChange}
+        onRemoveTrack={onRemoveTrack}
+        onReorderTracks={onReorderTracks}
+        onSelectTrack={onSelectTrack}
+        onToggleRepeat={onToggleRepeat}
+        onToggleShuffle={onToggleShuffle}
+        onUpdateTrack={onUpdateTrack}
+        playlistName={playlistName}
+        playlistTracks={playlistTracks}
+        repeatEnabled={repeatEnabled}
+        selectedTrackId={selectedTrackId}
+        shuffleEnabled={shuffleEnabled}
+      />
       <ScrollableTagBar
         ariaLabel="Filter recommended scenes"
         barClassName="scene-detail-recommendation-filters"
         role="toolbar"
       >
         <button
-          className={`tag-pill${recommendationFilter === 'all' ? ' tag-pill--active' : ''}`}
           aria-pressed={recommendationFilter === 'all'}
+          className={`tag-pill${recommendationFilter === 'all' ? ' tag-pill--active' : ''}`}
           onClick={() => {
             onSelectFilter('all')
           }}
@@ -59,8 +132,8 @@ export function SceneRecommendationRail({
           All
         </button>
         <button
-          className={`tag-pill${recommendationFilter === 'creator' ? ' tag-pill--active' : ''}`}
           aria-pressed={recommendationFilter === 'creator'}
+          className={`tag-pill${recommendationFilter === 'creator' ? ' tag-pill--active' : ''}`}
           onClick={() => {
             onSelectFilter('creator')
           }}
@@ -74,8 +147,8 @@ export function SceneRecommendationRail({
           return (
             <button
               key={tag}
-              className={`tag-pill${recommendationFilter === tagFilter ? ' tag-pill--active' : ''}`}
               aria-pressed={recommendationFilter === tagFilter}
+              className={`tag-pill${recommendationFilter === tagFilter ? ' tag-pill--active' : ''}`}
               onClick={() => {
                 onSelectFilter(tagFilter)
               }}
@@ -94,22 +167,18 @@ export function SceneRecommendationRail({
       ) : (
         <div className="mage-watch__rail-list">
           {recommendedScenes.map((recommendedScene) => (
-            <Link
-              key={recommendedScene.id}
-              className="mage-scene-card"
-              to={`/scenes/${recommendedScene.id}`}
-            >
+            <Link className="mage-scene-card" key={recommendedScene.id} to={`/scenes/${recommendedScene.id}`}>
               {recommendedScene.thumbnailRef ? (
                 <img
+                  alt={`${recommendedScene.title} thumbnail`}
                   className="mage-scene-card__thumb mage-scene-card__thumb-image"
                   src={recommendedScene.thumbnailRef}
-                  alt={`${recommendedScene.title} thumbnail`}
                 />
               ) : (
                 <div
+                  aria-hidden="true"
                   className="mage-scene-card__thumb"
                   style={{ '--scene-accent': recommendedScene.accent } as CSSProperties}
-                  aria-hidden="true"
                 />
               )}
               <div className="mage-scene-card__body">

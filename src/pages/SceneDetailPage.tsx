@@ -6,6 +6,7 @@ import { SceneCommentsPanel } from '../components/scene-detail/SceneCommentsPane
 import { SceneDescriptionCard } from '../components/scene-detail/SceneDescriptionCard'
 import { SceneRecommendationRail } from '../components/scene-detail/SceneRecommendationRail'
 import { SceneDetailState } from '../components/scene-detail/SceneDetailState'
+import { useScenePlaylistState } from '../components/scene-detail/useScenePlaylistState'
 import { VoteButton } from '../components/scene-detail/VoteButton'
 import {
   buildCreatorProfile,
@@ -38,8 +39,25 @@ export function SceneDetailPage() {
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false)
   const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('all')
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
-
   const sceneId = readSceneId(id)
+  const {
+    handlePlaylistChange,
+    handleRemoveTrack,
+    handleReorderTracks,
+    handleTrackDurationChange,
+    handleUpdateTrack,
+    isPlaylistOpen,
+    isRepeatEnabled,
+    isShuffleEnabled,
+    playlistName,
+    playlistTracks,
+    selectedTrackId,
+    setIsPlaylistOpen,
+    setPlaylistName,
+    setSelectedTrackId,
+    toggleRepeat,
+    toggleShuffle,
+  } = useScenePlaylistState(scene?.sceneData)
 
   useEffect(() => {
     if (sceneId === null || isRestoringSession) {
@@ -226,7 +244,17 @@ export function SceneDetailPage() {
                 ariaLabel={`${scene.name} live render`}
                 className="scene-detail-player"
                 initialPlayback="playing"
+                onPlaylistChange={handlePlaylistChange}
+                onRequestPlaylistOpen={() => {
+                  setIsPlaylistOpen(true)
+                }}
+                onSelectedTrackChange={setSelectedTrackId}
+                onTrackDurationChange={handleTrackDurationChange}
+                playlistTracks={playlistTracks}
+                repeatEnabled={isRepeatEnabled}
                 sceneBlob={scene.sceneData}
+                selectedTrackId={selectedTrackId}
+                shuffleEnabled={isShuffleEnabled}
               />
             </div>
           </div>
@@ -295,8 +323,24 @@ export function SceneDetailPage() {
           creatorDisplayName={creatorProfile.displayName}
           currentSceneTags={scene.tags}
           isLoading={isRecommendationsLoading}
+          isPlaylistOpen={isPlaylistOpen}
+          onClosePlaylist={() => {
+            setIsPlaylistOpen(false)
+          }}
+          onPlaylistNameChange={setPlaylistName}
+          onReorderTracks={handleReorderTracks}
+          onRemoveTrack={handleRemoveTrack}
+          onSelectTrack={setSelectedTrackId}
+          onToggleRepeat={toggleRepeat}
+          onToggleShuffle={toggleShuffle}
+          onUpdateTrack={handleUpdateTrack}
+          playlistName={playlistName}
+          playlistTracks={playlistTracks}
           recommendedScenes={filteredRecommendedScenes}
           recommendationFilter={recommendationFilter}
+          repeatEnabled={isRepeatEnabled}
+          selectedTrackId={selectedTrackId}
+          shuffleEnabled={isShuffleEnabled}
           onSelectFilter={setRecommendationFilter}
         />
       </section>

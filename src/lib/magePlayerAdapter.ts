@@ -20,12 +20,20 @@ const GENERIC_RENDER_ERROR_MESSAGE = 'Scene data could not be rendered by the MA
 
 type MageEngineBridge = {
   dispose: MAGEEngineAPI['dispose']
+  getAudioDuration?: MAGEEngineAPI['getAudioDuration']
+  getAudioTime?: MAGEEngineAPI['getAudioTime']
+  getAudioVolume?: () => number
   getEngineTime?: MAGEEngineAPI['getEngineTime']
+  isAudioLoaded?: MAGEEngineAPI['isAudioLoaded']
+  loadAudio?: MAGEEngineAPI['loadAudio']
   pause: MAGEEngineAPI['pause']
   play: MAGEEngineAPI['play']
   loadPreset: (scene: unknown) => unknown
+  seek?: MAGEEngineAPI['seek']
+  setAudioVolume?: (volume: number) => number
   setEngineTime?: (time: number) => boolean
   start: MAGEEngineAPI['start']
+  unloadAudio?: MAGEEngineAPI['unloadAudio']
 }
 
 type MageEngineModule = {
@@ -44,10 +52,25 @@ export type MageSceneBlob = Record<string, unknown>
 
 export type MagePlayerPlaybackState = 'paused' | 'playing'
 
+export type MagePlayerAudioState = {
+  currentTime: number
+  duration: number
+  hasSource: boolean
+  isLoaded: boolean
+  sourcePath: string | null
+  volume: number
+}
+
 export type MagePlayerController = {
+  clearAudio: () => MagePlayerAudioState
   dispose: () => void
+  getAudioState: () => MagePlayerAudioState
   getPlaybackState: () => MagePlayerPlaybackState
+  loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown) => void
+  resetPlayback: () => MagePlayerPlaybackState
+  seekAudio: (time: number) => MagePlayerAudioState
+  setAudioVolume: (volume: number) => MagePlayerAudioState
   setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
 }
 
@@ -105,12 +128,68 @@ function createSceneRenderError(cause?: unknown) {
   return new MagePlayerAdapterError(`${GENERIC_RENDER_ERROR_MESSAGE} ${details}`, { cause })
 }
 
+function createAudioError(message: string, cause?: unknown) {
+  return new MagePlayerAdapterError(message, { cause })
+}
+
 function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob) {
   const loadedScene = engine.loadPreset(sceneBlob)
 
   if (!loadedScene) {
     throw createSceneRenderError()
   }
+}
+
+function readSceneAudioSource(sceneBlob: MageSceneBlob) {
+  const audioPath = sceneBlob.audioPath
+
+  if (typeof audioPath === 'string' && audioPath.trim()) {
+    return audioPath.trim()
+  }
+
+  const audio = sceneBlob.audio
+
+  if (typeof audio === 'string' && audio.trim()) {
+    return audio.trim()
+  }
+
+  if (isRecord(audio)) {
+    const audioSource = audio.path ?? audio.url
+
+    if (typeof audioSource === 'string' && audioSource.trim()) {
+      return audioSource.trim()
+    }
+  }
+
+  return null
+}
+
+function clampAudioTime(engine: MageEngineBridge, time: number) {
+  const normalizedTime = Number.isFinite(time) ? Math.max(time, 0) : 0
+
+  if (typeof engine.getAudioDuration !== 'function') {
+    return normalizedTime
+  }
+
+  const duration = engine.getAudioDuration()
+
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return normalizedTime
+  }
+
+  return Math.min(normalizedTime, duration)
+}
+
+function clampAudioVolume(volume: number) {
+  if (!Number.isFinite(volume)) {
+    return 1
+  }
+
+  return Math.min(Math.max(volume, 0), 1)
+}
+
+function nowMs() {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now()
 }
 
 function primeEngineTime(engine: MageEngineBridge) {
@@ -164,22 +243,204 @@ export async function createMagePlayer(
 
   engine.start()
   let hasLoadedScene = false
+  let currentSceneBlob: MageSceneBlob | null = null
+  let hasAttachedAudio = false
+  let currentAudioLabel: string | null = null
+  let currentAudioTime = 0
+  let currentAudioVolume = 1
+  let trackedAudioStartedAtMs: number | null = null
   let playbackState: MagePlayerPlaybackState = 'playing'
+
+  function getTrackedAudioDuration() {
+    return typeof engine.getAudioDuration === 'function' ? clampAudioTime(engine, engine.getAudioDuration()) : 0
+  }
+
+  function syncTrackedAudioTime() {
+    if (trackedAudioStartedAtMs === null) {
+      return
+    }
+
+    const elapsedSeconds = Math.max((nowMs() - trackedAudioStartedAtMs) / 1000, 0)
+    const duration = getTrackedAudioDuration()
+
+    currentAudioTime =
+      duration > 0 ? Math.min(currentAudioTime + elapsedSeconds, duration) : currentAudioTime + elapsedSeconds
+    trackedAudioStartedAtMs = duration > 0 && currentAudioTime >= duration ? null : nowMs()
+  }
+
+  function setTrackedAudioTime(nextTime: number) {
+    currentAudioTime =
+      getTrackedAudioDuration() > 0 ? Math.min(clampAudioTime(engine, nextTime), getTrackedAudioDuration()) : Math.max(nextTime, 0)
+  }
+
+  function resumeTrackedAudioTime() {
+    if (typeof engine.isAudioLoaded === 'function' && !engine.isAudioLoaded()) {
+      trackedAudioStartedAtMs = null
+      return
+    }
+
+    trackedAudioStartedAtMs = nowMs()
+  }
+
+  function pauseTrackedAudioTime() {
+    syncTrackedAudioTime()
+    trackedAudioStartedAtMs = null
+  }
+
+  function getAudioState(): MagePlayerAudioState {
+    const sourcePath = hasAttachedAudio ? currentAudioLabel : null
+    const isLoaded =
+      hasAttachedAudio && typeof engine.isAudioLoaded === 'function' ? engine.isAudioLoaded() : false
+    const duration = isLoaded ? getTrackedAudioDuration() : 0
+
+    if (isLoaded) {
+      syncTrackedAudioTime()
+    } else {
+      currentAudioTime = 0
+      trackedAudioStartedAtMs = null
+    }
+
+    const volume =
+      typeof engine.getAudioVolume === 'function'
+        ? clampAudioVolume(engine.getAudioVolume())
+        : currentAudioVolume
+
+    currentAudioVolume = volume
+
+    return {
+      currentTime: duration > 0 ? Math.min(currentAudioTime, duration) : currentAudioTime,
+      duration,
+      hasSource: Boolean(sourcePath),
+      isLoaded,
+      sourcePath,
+      volume,
+    }
+  }
 
   function setPlaybackState(nextPlaybackState: MagePlayerPlaybackState) {
     playbackState = nextPlaybackState
 
-    if (!hasLoadedScene) {
+    if (!hasLoadedScene || !currentSceneBlob) {
       return playbackState
     }
 
-    playbackState = applyPlaybackState(engine, nextPlaybackState)
+    if (nextPlaybackState === 'paused') {
+      playbackState = applyPlaybackState(engine, nextPlaybackState)
+    } else if (hasAttachedAudio) {
+      playbackState = applyPlaybackState(engine, nextPlaybackState)
+    } else {
+      primeEngineTime(engine)
+      engine.start()
+      playbackState = nextPlaybackState
+    }
+
+    if (nextPlaybackState === 'paused') {
+      pauseTrackedAudioTime()
+    } else {
+      resumeTrackedAudioTime()
+    }
+
     return playbackState
   }
 
   return {
+    clearAudio() {
+      if (typeof engine.unloadAudio === 'function') {
+        engine.unloadAudio()
+      }
+
+      hasAttachedAudio = false
+      currentAudioLabel = null
+      currentAudioTime = 0
+      trackedAudioStartedAtMs = null
+
+      return {
+        currentTime: 0,
+        duration: 0,
+        hasSource: false,
+        isLoaded: false,
+        sourcePath: null,
+        volume: currentAudioVolume,
+      }
+    },
+    getAudioState,
     getPlaybackState() {
       return playbackState
+    },
+    async loadAudio(options = {}) {
+      if (!hasLoadedScene || !currentSceneBlob) {
+        throw createAudioError('Load a scene before loading audio.')
+      }
+
+      const savedAudioSource = readSceneAudioSource(currentSceneBlob)
+      const audioSource = options.sourcePath ?? savedAudioSource
+      const audioLabel = options.sourceLabel ?? audioSource ?? null
+
+      if (typeof engine.loadAudio !== 'function') {
+        throw createAudioError('This MAGE engine build does not support audio loading.')
+      }
+
+      if (!audioSource) {
+        throw createAudioError('Choose an audio file or save an audioPath on the scene.')
+      }
+
+      if (typeof engine.unloadAudio === 'function') {
+        engine.unloadAudio()
+      }
+
+      try {
+        hasAttachedAudio = false
+        currentAudioLabel = audioLabel
+        engine.loadAudio(audioSource)
+      } catch (error) {
+        throw createAudioError('Audio could not be loaded from the configured source.', error)
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const startedAt = Date.now()
+
+        function poll() {
+          if (typeof engine.isAudioLoaded === 'function' && engine.isAudioLoaded()) {
+            resolve()
+            return
+          }
+
+          if (Date.now() - startedAt >= 5000) {
+            reject(createAudioError('Audio could not be loaded from the configured source.'))
+            return
+          }
+
+          window.setTimeout(poll, 50)
+        }
+
+        poll()
+      })
+
+      const audioTime =
+        typeof engine.getEngineTime === 'function'
+          ? clampAudioTime(engine, engine.getEngineTime())
+          : 0
+
+      if (typeof engine.seek === 'function') {
+        engine.seek(audioTime)
+      }
+
+      hasAttachedAudio = true
+      setTrackedAudioTime(audioTime)
+
+      if (typeof engine.setAudioVolume === 'function') {
+        currentAudioVolume = clampAudioVolume(engine.setAudioVolume(currentAudioVolume))
+      }
+
+      if (playbackState === 'paused') {
+        pauseTrackedAudioTime()
+        engine.pause()
+      } else {
+        resumeTrackedAudioTime()
+        engine.play()
+      }
+
+      return getAudioState()
     },
     loadSceneBlob(sceneBlob) {
       if (!isMageSceneBlob(sceneBlob)) {
@@ -187,16 +448,78 @@ export async function createMagePlayer(
       }
 
       try {
-        loadSceneIntoEngine(engine, sceneBlob)
+        if (typeof engine.unloadAudio === 'function') {
+          engine.unloadAudio()
+        }
+
+        currentSceneBlob = sceneBlob
+        hasAttachedAudio = false
+        currentAudioLabel = null
+        currentAudioTime = 0
+        trackedAudioStartedAtMs = null
         hasLoadedScene = true
+        loadSceneIntoEngine(engine, sceneBlob)
         playbackState = applyPlaybackState(engine, playbackState)
       } catch (error) {
+        currentSceneBlob = null
+        hasAttachedAudio = false
+        currentAudioLabel = null
+        hasLoadedScene = false
+
         if (error instanceof MagePlayerAdapterError) {
           throw error
         }
 
         throw createSceneRenderError(error)
       }
+    },
+    resetPlayback() {
+      if (!hasLoadedScene || !currentSceneBlob) {
+        throw new MagePlayerAdapterError('Load a scene before resetting playback.')
+      }
+
+      playbackState = 'paused'
+      currentAudioTime = 0
+      trackedAudioStartedAtMs = null
+      loadSceneIntoEngine(engine, currentSceneBlob)
+
+      if (typeof engine.seek === 'function') {
+        engine.seek(0)
+      }
+
+      engine.start()
+      engine.pause()
+      return playbackState
+    },
+    seekAudio(time) {
+      if (!hasLoadedScene || !currentSceneBlob) {
+        throw new MagePlayerAdapterError('Load a scene before seeking audio.')
+      }
+
+      const nextTime = clampAudioTime(engine, time)
+
+      if (typeof engine.seek === 'function') {
+        engine.seek(nextTime)
+      }
+
+      setTrackedAudioTime(nextTime)
+
+      if (playbackState === 'playing') {
+        resumeTrackedAudioTime()
+      } else {
+        trackedAudioStartedAtMs = null
+      }
+
+      return getAudioState()
+    },
+    setAudioVolume(volume) {
+      currentAudioVolume = clampAudioVolume(volume)
+
+      if (typeof engine.setAudioVolume === 'function') {
+        currentAudioVolume = clampAudioVolume(engine.setAudioVolume(currentAudioVolume))
+      }
+
+      return getAudioState()
     },
     setPlaybackState,
     dispose() {

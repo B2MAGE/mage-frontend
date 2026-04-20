@@ -67,7 +67,11 @@ Pages should pass the raw `sceneData` object returned by the backend instead of 
 - `initialPlayback="playing"` keeps the scene running and shows a `Pause` control instead
 - when the player is ready, hover or keyboard focus reveals a playback bar at the bottom of the viewport
 - on touch devices the playback bar stays visible so the control is not hover-only
-- the playback button toggles shared pause/resume state without remounting the engine instance
+- when `audioPath` or compatible root-level audio metadata is present, the playback bar shows the saved audio file name
+- `Load` pulls the saved audio source into the engine on demand instead of auto-loading it on scene mount
+- when a scene has no saved audio source, `Load` opens a device file picker so the user can choose local audio manually
+- the shared play/pause button drives both scene playback state and loaded audio playback
+- `Reset` returns the scene and any loaded audio to the beginning in a paused state
 - the app's custom playback bar is the only player UI shown by default
 - invalid scene data produces a recoverable error overlay instead of crashing the page
 - the engine instance is disposed on unmount
