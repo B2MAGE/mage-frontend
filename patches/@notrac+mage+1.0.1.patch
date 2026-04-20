@@ -1,5 +1,5 @@
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index 13dcc32..3331322 100644
+index 13dcc32..6285874 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
 @@ -71848,6 +71848,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
@@ -19,3 +19,78 @@ index 13dcc32..3331322 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
+@@ -112922,9 +112925,31 @@ var MAGEEngine = class MAGEEngine {
+ 	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
+ 	*/
+ 	getAudioTime() {
++		const duration = this.getAudioDuration();
++		if (duration <= 0) return 0;
++		const resolveAudioTime = (audio, reverse = false) => {
++			if (!audio?.buffer) return null;
++			const offset = Number.isFinite(audio.offset) ? audio.offset : 0;
++			const progress = Number.isFinite(audio._progress) ? audio._progress : 0;
++			const playbackRate = Number.isFinite(audio.playbackRate) ? audio.playbackRate : 1;
++			const startedAt = Number.isFinite(audio._startedAt) ? audio._startedAt : audio.context?.currentTime ?? 0;
++			const liveProgress = audio.isPlaying && audio.context ? Math.max(audio.context.currentTime - startedAt, 0) * playbackRate : 0;
++			const clampedTime = Math.max(0, Math.min(offset + progress + liveProgress, duration));
++			return reverse ? Math.max(duration - clampedTime, 0) : clampedTime;
++		};
++		const nextTime = this.#isReversed ? resolveAudioTime(this.#reversedAudio, true) ?? resolveAudioTime(this.#audio, false) : resolveAudioTime(this.#audio, false) ?? resolveAudioTime(this.#reversedAudio, true);
++		this.#playbackTime = nextTime ?? this.#playbackTime;
+ 		return this.#playbackTime;
+ 	}
+ 	/**
++	* Returns the current master volume for the active audio sources.
++	* @returns {number} Current audio volume between 0 and 1.
++	*/
++	getAudioVolume() {
++		const volume = this.#audio?.getVolume?.() ?? this.#reversedAudio?.getVolume?.() ?? 1;
++		return Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 1) : 1;
++	}
++	/**
+ 	* Seeks to a specific time in the audio.
+ 	* @param {number} time - The time to seek to, in seconds.
+ 	* @returns {boolean} True if the seek was successful, false otherwise.
+@@ -112958,10 +112983,22 @@ var MAGEEngine = class MAGEEngine {
+ 		return this.seek(time);
+ 	}
+ 	/**
++	* Sets the audio volume for the forward and reversed audio sources.
++	* @param {number} volume - The volume to set, clamped between 0 and 1.
++	* @returns {number} The applied volume.
++	*/
++	setAudioVolume(volume) {
++		const nextVolume = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 1) : 1;
++		if (this.#audio) this.#audio.setVolume(nextVolume);
++		if (this.#reversedAudio) this.#reversedAudio.setVolume(nextVolume);
++		return nextVolume;
++	}
++	/**
+ 	* Plays the currently loaded audio if it is not already playing. If no audio is loaded, this method does nothing.
+ 	* @returns {void}
+ 	*/
+ 	play() {
++		if (!this.#isRunning) this.start();
+ 		if (!this.isAudioLoaded()) return;
+ 		if (this.#audio && !this.#audio.isPlaying) this.#audio.play();
+ 	}
+@@ -112972,6 +113009,11 @@ var MAGEEngine = class MAGEEngine {
+ 	pause() {
+ 		if (this.#audio?.isPlaying) this.#audio.pause();
+ 		if (this.#reversedAudio?.isPlaying) this.#reversedAudio.pause();
++		this.#isRunning = false;
++		if (this.#animationFrameId !== null) {
++			cancelAnimationFrame(this.#animationFrameId);
++			this.#animationFrameId = null;
++		}
+ 	}
+ 	/**
+ 	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
+@@ -113310,7 +113352,6 @@ var MAGEEngine = class MAGEEngine {
+ 	*/
+ 	dispose() {
+ 		if (this.#isDisposed) return;
+-		if (!this.#isRunning) return;
+ 		this.#isDisposed = true;
+ 		this.#isRunning = false;
+ 		if (this.#animationFrameId !== null) {
