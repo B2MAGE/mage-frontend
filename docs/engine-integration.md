@@ -14,7 +14,7 @@ That keeps engine-specific startup, loading, and disposal logic in one place.
 
 ## Current Integration
 
-The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, leaves the package's native control system enabled, exposes shared play/pause controls, and disposes it on unmount.
+The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, keeps the package's native control system disabled, exposes shared playback and audio controls, and disposes it on unmount.
 
 Relevant files:
 
@@ -40,7 +40,8 @@ The adapter is doing more than forwarding calls:
 - it keeps engine imports out of route components
 - it validates scene blobs before loading
 - it applies the current startup workaround for the published engine so scenes do not stall at time `0`
-- it centralizes pause/resume behavior so every embedded `MagePlayer` uses the same playback model
+- it centralizes scene pause/resume plus audio load/reset behavior so every embedded `MagePlayer` uses the same playback model
+- it explicitly loads saved `audioPath` metadata on demand because the published engine does not auto-load preset audio sources
 - it starts the engine without the package's built-in controls bootstrap, so embedded player UI stays frontend-owned
 
 ## Current Caveats
