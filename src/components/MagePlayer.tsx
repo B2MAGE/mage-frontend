@@ -309,6 +309,11 @@ export function MagePlayer({
 
     if (tracks.length === 0) {
       try {
+        if (loadedTrackIdRef.current !== null && player.getPlaybackState() !== 'paused') {
+          requestedPlaybackRef.current = 'paused'
+          setPlaybackState(player.setPlaybackState('paused'))
+        }
+
         loadedTrackIdRef.current = null
         setAudioState(player.clearAudio())
         setAudioError(null)

@@ -244,6 +244,7 @@ export async function createMagePlayer(
   engine.start()
   let hasLoadedScene = false
   let currentSceneBlob: MageSceneBlob | null = null
+  let hasAttachedAudio = false
   let currentAudioLabel: string | null = null
   let currentAudioTime = 0
   let currentAudioVolume = 1
@@ -287,8 +288,9 @@ export async function createMagePlayer(
   }
 
   function getAudioState(): MagePlayerAudioState {
-    const sourcePath = currentAudioLabel ?? (currentSceneBlob ? readSceneAudioSource(currentSceneBlob) : null)
-    const isLoaded = typeof engine.isAudioLoaded === 'function' ? engine.isAudioLoaded() : false
+    const sourcePath = hasAttachedAudio ? currentAudioLabel : null
+    const isLoaded =
+      hasAttachedAudio && typeof engine.isAudioLoaded === 'function' ? engine.isAudioLoaded() : false
     const duration = isLoaded ? getTrackedAudioDuration() : 0
 
     if (isLoaded) {
@@ -322,7 +324,15 @@ export async function createMagePlayer(
       return playbackState
     }
 
-    playbackState = applyPlaybackState(engine, nextPlaybackState)
+    if (nextPlaybackState === 'paused') {
+      playbackState = applyPlaybackState(engine, nextPlaybackState)
+    } else if (hasAttachedAudio) {
+      playbackState = applyPlaybackState(engine, nextPlaybackState)
+    } else {
+      primeEngineTime(engine)
+      engine.start()
+      playbackState = nextPlaybackState
+    }
 
     if (nextPlaybackState === 'paused') {
       pauseTrackedAudioTime()
@@ -339,11 +349,19 @@ export async function createMagePlayer(
         engine.unloadAudio()
       }
 
+      hasAttachedAudio = false
       currentAudioLabel = null
       currentAudioTime = 0
       trackedAudioStartedAtMs = null
 
-      return getAudioState()
+      return {
+        currentTime: 0,
+        duration: 0,
+        hasSource: false,
+        isLoaded: false,
+        sourcePath: null,
+        volume: currentAudioVolume,
+      }
     },
     getAudioState,
     getPlaybackState() {
@@ -371,6 +389,7 @@ export async function createMagePlayer(
       }
 
       try {
+        hasAttachedAudio = false
         currentAudioLabel = audioLabel
         engine.loadAudio(audioSource)
       } catch (error) {
@@ -406,6 +425,7 @@ export async function createMagePlayer(
         engine.seek(audioTime)
       }
 
+      hasAttachedAudio = true
       setTrackedAudioTime(audioTime)
 
       if (typeof engine.setAudioVolume === 'function') {
@@ -433,6 +453,7 @@ export async function createMagePlayer(
         }
 
         currentSceneBlob = sceneBlob
+        hasAttachedAudio = false
         currentAudioLabel = null
         currentAudioTime = 0
         trackedAudioStartedAtMs = null
@@ -441,6 +462,7 @@ export async function createMagePlayer(
         playbackState = applyPlaybackState(engine, playbackState)
       } catch (error) {
         currentSceneBlob = null
+        hasAttachedAudio = false
         currentAudioLabel = null
         hasLoadedScene = false
 

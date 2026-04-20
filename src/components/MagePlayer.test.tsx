@@ -360,6 +360,51 @@ describe('MagePlayer', () => {
     expect(screen.getByText('40%')).toBeInTheDocument()
   })
 
+  it('pauses playback and clears audio when the last playlist track is removed', async () => {
+    const controller = createController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+
+    const onlyTrack = {
+      duration: 185,
+      id: 'track-1',
+      name: 'track-one.mp3',
+      sourcePath: 'blob:track-one',
+      sourceType: 'device' as const,
+    }
+    const sceneBlob = {
+      visualizer: {
+        skyboxPreset: 6,
+      },
+    }
+
+    const { rerender } = render(
+      <MagePlayer
+        playlistTracks={[onlyTrack]}
+        sceneBlob={sceneBlob}
+        selectedTrackId={onlyTrack.id}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(controller.loadAudio).toHaveBeenLastCalledWith({
+        sourceLabel: 'track-one.mp3',
+        sourcePath: 'blob:track-one',
+      })
+    })
+
+    vi.mocked(controller.clearAudio).mockClear()
+    vi.mocked(controller.setPlaybackState).mockClear()
+
+    rerender(<MagePlayer playlistTracks={[]} sceneBlob={sceneBlob} selectedTrackId={null} />)
+
+    await waitFor(() => {
+      expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
+      expect(controller.clearAudio).toHaveBeenCalledTimes(1)
+    })
+
+    expect(screen.getByRole('button', { name: /play scene and audio playback/i })).toBeInTheDocument()
+  })
+
   it('advances to the next playlist track when the current track finishes', async () => {
     let playbackState: MagePlayerPlaybackState = 'playing'
     let audioState: MagePlayerAudioState = {

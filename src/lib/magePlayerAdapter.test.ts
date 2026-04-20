@@ -156,6 +156,7 @@ describe('createMagePlayer', () => {
 
     engineMocks.pause.mockClear()
     engineMocks.play.mockClear()
+    engineMocks.start.mockClear()
 
     player.setPlaybackState('paused')
 
@@ -165,7 +166,8 @@ describe('createMagePlayer', () => {
     player.setPlaybackState('playing')
 
     expect(player.getPlaybackState()).toBe('playing')
-    expect(engineMocks.play).toHaveBeenCalledTimes(1)
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
+    expect(engineMocks.play).not.toHaveBeenCalled()
     expect(engineMocks.loadPreset).toHaveBeenCalledTimes(1)
   })
 
@@ -285,6 +287,50 @@ describe('createMagePlayer', () => {
     expect(audioState.sourcePath).toBe('device-track.mp3')
     expect(audioState.volume).toBe(1)
     expect(audioState.currentTime).toBeGreaterThanOrEqual(0)
+  })
+
+  it('detaches cleared audio so resuming playback does not replay a removed track', async () => {
+    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const canvas = document.createElement('canvas')
+    const sceneBlob = {
+      visualizer: {
+        shader: 'test',
+      },
+    }
+
+    const player = await createMagePlayer(canvas)
+
+    player.loadSceneBlob(sceneBlob)
+    await player.loadAudio({
+      sourceLabel: 'device-track.mp3',
+      sourcePath: 'blob:device-track',
+    })
+
+    engineMocks.play.mockClear()
+    engineMocks.start.mockClear()
+    engineMocks.unloadAudio.mockClear()
+
+    expect(player.clearAudio()).toMatchObject({
+      currentTime: 0,
+      duration: 0,
+      hasSource: false,
+      isLoaded: false,
+      sourcePath: null,
+    })
+
+    expect(engineMocks.unloadAudio).toHaveBeenCalledTimes(1)
+
+    player.setPlaybackState('playing')
+
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
+    expect(engineMocks.play).not.toHaveBeenCalled()
+    expect(player.getAudioState()).toMatchObject({
+      currentTime: 0,
+      duration: 0,
+      hasSource: false,
+      isLoaded: false,
+      sourcePath: null,
+    })
   })
 
   it('seeks loaded audio and syncs engine time for the shared scrubber', async () => {
