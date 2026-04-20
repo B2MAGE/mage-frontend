@@ -60,6 +60,7 @@ describe('createMagePlayer', () => {
 
     expect(engineMocks.loadPreset).toHaveBeenCalledWith(sceneBlob)
     expect(engineMocks.setEngineTime).toHaveBeenCalledWith(1 / 60)
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).toHaveBeenCalledTimes(1)
   })
 
@@ -79,16 +80,43 @@ describe('createMagePlayer', () => {
     player.loadSceneBlob(sceneBlob)
 
     expect(engineMocks.setEngineTime).not.toHaveBeenCalled()
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).toHaveBeenCalledTimes(1)
   })
 
-  it('exposes playback state controls for the shared player UI', async () => {
+  it('tracks playback state before the first scene load without touching the engine', async () => {
     const { createMagePlayer } = await import('./magePlayerAdapter')
     const canvas = document.createElement('canvas')
 
     const player = await createMagePlayer(canvas)
 
     expect(player.getPlaybackState()).toBe('playing')
+
+    player.setPlaybackState('paused')
+
+    expect(player.getPlaybackState()).toBe('paused')
+    player.setPlaybackState('playing')
+
+    expect(player.getPlaybackState()).toBe('playing')
+    expect(engineMocks.pause).not.toHaveBeenCalled()
+    expect(engineMocks.play).not.toHaveBeenCalled()
+  })
+
+  it('exposes playback state controls for the shared player UI after a scene is loaded', async () => {
+    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const canvas = document.createElement('canvas')
+    const sceneBlob = {
+      visualizer: {
+        shader: 'test',
+      },
+    }
+
+    const player = await createMagePlayer(canvas)
+
+    player.loadSceneBlob(sceneBlob)
+
+    engineMocks.pause.mockClear()
+    engineMocks.play.mockClear()
 
     player.setPlaybackState('paused')
 
@@ -112,14 +140,36 @@ describe('createMagePlayer', () => {
 
     const player = await createMagePlayer(canvas)
 
+    engineMocks.start.mockClear()
     engineMocks.pause.mockClear()
     engineMocks.play.mockClear()
 
     player.setPlaybackState('paused')
     player.loadSceneBlob(sceneBlob)
 
-    expect(engineMocks.pause).toHaveBeenCalledTimes(2)
+    expect(engineMocks.start).not.toHaveBeenCalled()
+    expect(engineMocks.pause).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).not.toHaveBeenCalled()
+  })
+
+  it('surfaces the underlying engine error text when scene loading throws', async () => {
+    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const canvas = document.createElement('canvas')
+    const sceneBlob = {
+      visualizer: {
+        shader: 'test',
+      },
+    }
+
+    engineMocks.loadPreset.mockImplementation(() => {
+      throw new ReferenceError('setStepSize is not defined')
+    })
+
+    const player = await createMagePlayer(canvas)
+
+    expect(() => player.loadSceneBlob(sceneBlob)).toThrowError(
+      'Scene data could not be rendered by the MAGE engine. ReferenceError: setStepSize is not defined',
+    )
   })
 
   it('disables native engine controls so only shared playback chrome is shown', async () => {

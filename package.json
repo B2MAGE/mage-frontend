@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "patch-package",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "postinstall": "patch-package",
     "test": "vitest run",
     "preview": "vite preview"
   },
@@ -34,6 +36,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^29.0.1",
+    "patch-package": "^8.0.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1",

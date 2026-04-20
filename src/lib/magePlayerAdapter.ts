@@ -16,6 +16,7 @@ const DEFAULT_ENGINE_CONTROLS = {
   active: false,
   integrated: false,
 } as const
+const GENERIC_RENDER_ERROR_MESSAGE = 'Scene data could not be rendered by the MAGE engine.'
 
 type MageEngineBridge = {
   dispose: MAGEEngineAPI['dispose']
@@ -50,7 +51,15 @@ export type MagePlayerController = {
   setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
 }
 
-export class MagePlayerAdapterError extends Error {}
+export class MagePlayerAdapterError extends Error {
+  override cause: unknown
+
+  constructor(message: string, options: { cause?: unknown } = {}) {
+    super(message)
+    this.name = 'MagePlayerAdapterError'
+    this.cause = options.cause
+  }
+}
 
 let mageEngineModulePromise: Promise<MageEngineModule> | null = null
 
@@ -66,11 +75,41 @@ function isMageSceneBlob(value: unknown): value is MageSceneBlob {
   return SCENE_BLOB_KEYS.some((key) => Object.hasOwn(value, key))
 }
 
+function readErrorDetails(error: unknown) {
+  if (error instanceof Error) {
+    const message = error.message.trim()
+
+    if (!message) {
+      return error.name !== 'Error' ? error.name : null
+    }
+
+    return error.name !== 'Error' && !message.startsWith(`${error.name}:`)
+      ? `${error.name}: ${message}`
+      : message
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim()
+  }
+
+  return null
+}
+
+function createSceneRenderError(cause?: unknown) {
+  const details = readErrorDetails(cause)
+
+  if (!details || details === GENERIC_RENDER_ERROR_MESSAGE) {
+    return new MagePlayerAdapterError(GENERIC_RENDER_ERROR_MESSAGE, { cause })
+  }
+
+  return new MagePlayerAdapterError(`${GENERIC_RENDER_ERROR_MESSAGE} ${details}`, { cause })
+}
+
 function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob) {
   const loadedScene = engine.loadPreset(sceneBlob)
 
   if (!loadedScene) {
-    throw new MagePlayerAdapterError('Scene data could not be rendered by the MAGE engine.')
+    throw createSceneRenderError()
   }
 }
 
@@ -124,9 +163,16 @@ export async function createMagePlayer(
   })
 
   engine.start()
+  let hasLoadedScene = false
   let playbackState: MagePlayerPlaybackState = 'playing'
 
   function setPlaybackState(nextPlaybackState: MagePlayerPlaybackState) {
+    playbackState = nextPlaybackState
+
+    if (!hasLoadedScene) {
+      return playbackState
+    }
+
     playbackState = applyPlaybackState(engine, nextPlaybackState)
     return playbackState
   }
@@ -142,13 +188,14 @@ export async function createMagePlayer(
 
       try {
         loadSceneIntoEngine(engine, sceneBlob)
-        setPlaybackState(playbackState)
+        hasLoadedScene = true
+        playbackState = applyPlaybackState(engine, playbackState)
       } catch (error) {
         if (error instanceof MagePlayerAdapterError) {
           throw error
         }
 
-        throw new MagePlayerAdapterError('Scene data could not be rendered by the MAGE engine.')
+        throw createSceneRenderError(error)
       }
     },
     setPlaybackState,
