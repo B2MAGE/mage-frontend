@@ -139,23 +139,6 @@ function applyPlaybackState(
   return playbackState
 }
 
-function restartLoadedScene(
-  engine: MageEngineBridge,
-  playbackState: MagePlayerPlaybackState,
-) {
-  // Scene reloads were stable when the shared player restarted the engine
-  // directly after loadPreset(). Preserve that behavior and then re-apply
-  // paused state if the UI requested it.
-  primeEngineTime(engine)
-  engine.start()
-
-  if (playbackState === 'paused') {
-    engine.pause()
-  }
-
-  return playbackState
-}
-
 async function loadMageEngineModule() {
   if (!mageEngineModulePromise) {
     mageEngineModulePromise = (import('@notrac/mage') as Promise<MageEngineModule>).catch((error) => {
@@ -206,7 +189,7 @@ export async function createMagePlayer(
       try {
         loadSceneIntoEngine(engine, sceneBlob)
         hasLoadedScene = true
-        playbackState = restartLoadedScene(engine, playbackState)
+        playbackState = applyPlaybackState(engine, playbackState)
       } catch (error) {
         if (error instanceof MagePlayerAdapterError) {
           throw error

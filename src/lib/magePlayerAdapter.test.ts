@@ -34,7 +34,7 @@ describe('createMagePlayer', () => {
     engineMocks.loadPreset.mockReturnValue({ visualizer: { shader: 'test' } })
   })
 
-  it('primes engine time and restarts the engine after loading a scene blob', async () => {
+  it('primes engine time and resumes playback after loading a scene blob', async () => {
     const { createMagePlayer } = await import('./magePlayerAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
@@ -60,8 +60,8 @@ describe('createMagePlayer', () => {
 
     expect(engineMocks.loadPreset).toHaveBeenCalledWith(sceneBlob)
     expect(engineMocks.setEngineTime).toHaveBeenCalledWith(1 / 60)
-    expect(engineMocks.start).toHaveBeenCalledTimes(2)
-    expect(engineMocks.play).not.toHaveBeenCalled()
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
+    expect(engineMocks.play).toHaveBeenCalledTimes(1)
   })
 
   it('does not reset engine time when it is already past zero', async () => {
@@ -80,8 +80,8 @@ describe('createMagePlayer', () => {
     player.loadSceneBlob(sceneBlob)
 
     expect(engineMocks.setEngineTime).not.toHaveBeenCalled()
-    expect(engineMocks.start).toHaveBeenCalledTimes(2)
-    expect(engineMocks.play).not.toHaveBeenCalled()
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
+    expect(engineMocks.play).toHaveBeenCalledTimes(1)
   })
 
   it('tracks playback state before the first scene load without touching the engine', async () => {
@@ -147,7 +147,7 @@ describe('createMagePlayer', () => {
     player.setPlaybackState('paused')
     player.loadSceneBlob(sceneBlob)
 
-    expect(engineMocks.start).toHaveBeenCalledTimes(1)
+    expect(engineMocks.start).not.toHaveBeenCalled()
     expect(engineMocks.pause).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).not.toHaveBeenCalled()
   })
