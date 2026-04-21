@@ -2119,9 +2119,12 @@
 .surface--editor {
   --scene-editor-edge-gap: 40px;
   --scene-editor-side-gap: 30px;
-  --scene-editor-panel-radius: 32px;
+  --scene-editor-panel-radius: var(--editor-surface-radius);
   padding: var(--scene-editor-edge-gap) var(--scene-editor-side-gap) 0;
   overflow: visible;
+  border-color: var(--editor-surface-border);
+  background: var(--editor-surface-background);
+  box-shadow: var(--editor-surface-shadow);
 }
 
 .surface--editor > .scene-editor-form {
@@ -2223,7 +2226,7 @@
   left: calc(50% + 11px);
   width: calc(100% - 22px);
   height: 2px;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--editor-stepper-line);
 }
 
 .scene-editor-stepper__button {
@@ -2235,7 +2238,7 @@
   padding: 0 12px;
   border: 0;
   background: none;
-  color: var(--muted);
+  color: var(--editor-stepper-text);
   cursor: pointer;
   text-align: center;
   position: relative;
@@ -2243,19 +2246,19 @@
 }
 
 .scene-editor-stepper__button:hover {
-  color: #d8e6e1;
+  color: var(--editor-stepper-hover-text);
 }
 
 .scene-editor-stepper__button--active {
-  color: #f2f8f6;
+  color: var(--editor-stepper-active-text);
 }
 
 .scene-editor-stepper__button--complete {
-  color: #d8e6e1;
+  color: var(--editor-stepper-complete-text);
 }
 
 .scene-editor-stepper__button--invalid {
-  color: #ff8c83;
+  color: var(--editor-stepper-invalid-text);
 }
 
 .scene-editor-stepper__label {
@@ -2268,9 +2271,9 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  border: 3px solid rgba(255, 255, 255, 0.22);
-  background: var(--bg-soft);
-  color: #061013;
+  border: 3px solid var(--editor-stepper-marker-border);
+  background: var(--editor-stepper-marker-background);
+  color: var(--editor-stepper-marker-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2282,18 +2285,19 @@
 }
 
 .scene-editor-stepper__button--active .scene-editor-stepper__marker {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(99, 240, 214, 0.12);
+  border-color: var(--editor-stepper-active-marker-border);
+  box-shadow: var(--editor-stepper-active-marker-ring);
 }
 
 .scene-editor-stepper__button--complete .scene-editor-stepper__marker {
-  border-color: #eef5f3;
-  background: #eef5f3;
+  border-color: var(--editor-stepper-complete-marker-border);
+  background: var(--editor-stepper-complete-marker-background);
+  color: var(--editor-stepper-complete-marker-text);
 }
 
 .scene-editor-stepper__button--invalid .scene-editor-stepper__marker {
-  border-color: #ff8c83;
-  color: #ff8c83;
+  border-color: var(--editor-stepper-invalid-marker-border);
+  color: var(--editor-stepper-invalid-marker-text);
 }
 
 .scene-editor-layout {
@@ -2333,10 +2337,10 @@
   width: fit-content;
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(99, 240, 214, 0.18);
-  background: rgba(99, 240, 214, 0.08);
-  color: #f5fbf9;
+  border-radius: var(--editor-button-radius);
+  border: 1px solid var(--editor-button-border);
+  background: var(--editor-button-background);
+  color: var(--editor-button-text);
   font: inherit;
   font-size: 0.88rem;
   font-weight: 700;
@@ -2346,8 +2350,9 @@
 }
 
 .scene-editor-collapsible__toggle:hover {
-  border-color: rgba(99, 240, 214, 0.3);
-  background: rgba(99, 240, 214, 0.14);
+  border-color: var(--editor-button-hover-border);
+  background: var(--editor-button-hover-background);
+  color: var(--editor-button-hover-text);
 }
 
 .scene-editor-collapsible__content {
@@ -2400,29 +2405,17 @@
   display: grid;
   gap: 14px;
   padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.035),
-      rgba(255, 255, 255, 0.015)
-    ),
-    rgba(6, 17, 20, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  border-radius: var(--editor-field-radius);
+  border: 1px solid var(--editor-field-border);
+  background: var(--editor-field-background);
+  box-shadow: var(--editor-field-shadow);
 }
 
 .scene-field__shell:focus-within,
 .scene-slider:focus-within,
 .scene-toggle:not(.scene-toggle--compact):focus-within {
-  border-color: rgba(99, 240, 214, 0.18);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(255, 255, 255, 0.018)
-    ),
-    rgba(6, 17, 20, 0.5);
+  border-color: var(--editor-field-focus-border);
+  background: var(--editor-field-focus-background);
 }
 
 .scene-field__top,
@@ -2475,27 +2468,15 @@
   gap: 14px;
   min-width: 0;
   padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.035),
-      rgba(255, 255, 255, 0.015)
-    ),
-    rgba(6, 17, 20, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  border-radius: var(--editor-field-radius);
+  border: 1px solid var(--editor-field-border);
+  background: var(--editor-field-background);
+  box-shadow: var(--editor-field-shadow);
 }
 
 .surface--editor .field-group:focus-within {
-  border-color: rgba(99, 240, 214, 0.18);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.04),
-      rgba(255, 255, 255, 0.018)
-    ),
-    rgba(6, 17, 20, 0.5);
+  border-color: var(--editor-field-focus-border);
+  background: var(--editor-field-focus-background);
 }
 
 .scene-confirm-summary {
@@ -2566,9 +2547,9 @@
   gap: 8px;
   min-height: 30px;
   padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--editor-value-pill-radius);
+  border: 1px solid var(--editor-value-pill-border);
+  background: var(--editor-value-pill-background);
 }
 
 .scene-confirm-vector__axis {
@@ -2580,7 +2561,7 @@
 }
 
 .scene-confirm-vector__value {
-  color: #f5fbf9;
+  color: var(--editor-value-pill-text);
   font-feature-settings: "tnum" 1;
   font-variant-numeric: tabular-nums;
 }
@@ -2596,10 +2577,10 @@
   align-items: center;
   min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(99, 240, 214, 0.16);
-  background: rgba(99, 240, 214, 0.08);
-  color: #e8fffb;
+  border-radius: var(--editor-value-pill-radius);
+  border: 1px solid var(--editor-value-pill-border);
+  background: var(--editor-value-pill-background);
+  color: var(--editor-value-pill-text);
   font-size: 0.82rem;
   line-height: 1;
 }
@@ -2643,10 +2624,10 @@
   display: grid;
   gap: 12px;
   padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(9, 20, 24, 0.92);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  border-radius: var(--editor-dropdown-radius);
+  border: 1px solid var(--editor-dropdown-border);
+  background: var(--editor-dropdown-background);
+  box-shadow: var(--editor-dropdown-shadow);
 }
 
 .scene-tag-dropdown__search {
@@ -2673,10 +2654,10 @@
   width: 100%;
   min-height: 42px;
   padding: 10px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 27, 31, 0.94);
-  color: rgba(220, 232, 229, 0.86);
+  border-radius: var(--editor-dropdown-option-radius);
+  border: 1px solid var(--editor-dropdown-option-border);
+  background: var(--editor-dropdown-option-background);
+  color: var(--editor-dropdown-option-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -2687,9 +2668,9 @@
 }
 
 .scene-tag-dropdown__option:hover {
-  background: rgba(26, 63, 67, 0.96);
-  border-color: rgba(99, 240, 214, 0.34);
-  color: #e8fffb;
+  background: var(--editor-dropdown-option-hover-background);
+  border-color: var(--editor-dropdown-option-hover-border);
+  color: var(--editor-dropdown-option-hover-text);
 }
 
 .scene-tag-dropdown__option:disabled {
@@ -2698,16 +2679,14 @@
 }
 
 .scene-tag-dropdown__option--create {
-  border-color: rgba(99, 240, 214, 0.28);
-  background:
-    linear-gradient(135deg, rgba(17, 58, 53, 0.74), rgba(12, 25, 29, 0.96));
-  color: #e8fffb;
+  border-color: var(--editor-dropdown-create-border);
+  background: var(--editor-dropdown-create-background);
+  color: var(--editor-dropdown-create-text);
 }
 
 .scene-tag-dropdown__option--create:hover {
-  border-color: rgba(99, 240, 214, 0.46);
-  background:
-    linear-gradient(135deg, rgba(24, 79, 73, 0.84), rgba(14, 32, 36, 0.98));
+  border-color: var(--editor-dropdown-create-hover-border);
+  background: var(--editor-dropdown-create-hover-background);
 }
 
 .scene-tag-editor__selected-label {
@@ -2740,9 +2719,9 @@
   gap: 10px;
   min-height: 132px;
   padding: 16px;
-  border-radius: 18px;
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--editor-choice-radius);
+  border: 1px dashed var(--editor-choice-border);
+  background: var(--editor-choice-background);
   color: var(--text);
   font: inherit;
   text-align: left;
@@ -2750,16 +2729,16 @@
 }
 
 .scene-thumbnail-choice:hover {
-  border-color: rgba(99, 240, 214, 0.34);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 0 0 1px rgba(99, 240, 214, 0.12);
+  border-color: var(--editor-choice-hover-border);
+  background: var(--editor-choice-hover-background);
+  box-shadow: var(--editor-choice-hover-shadow);
 }
 
 .scene-thumbnail-choice.is-selected {
   border-style: solid;
-  border-color: rgba(99, 240, 214, 0.42);
-  background: rgba(17, 58, 53, 0.42);
-  box-shadow: 0 0 0 4px rgba(99, 240, 214, 0.08);
+  border-color: var(--editor-choice-selected-border);
+  background: var(--editor-choice-selected-background);
+  box-shadow: var(--editor-choice-selected-shadow);
 }
 
 .scene-thumbnail-choice__eyebrow {
@@ -2812,10 +2791,10 @@
   justify-content: center;
   min-width: 72px;
   padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(99, 240, 214, 0.16);
-  background: rgba(99, 240, 214, 0.08);
-  color: var(--accent);
+  border-radius: var(--editor-value-pill-radius);
+  border: 1px solid var(--editor-value-pill-border);
+  background: var(--editor-value-pill-background);
+  color: var(--editor-value-pill-text);
   font-size: 0.88rem;
   font-weight: 700;
   line-height: 1;
@@ -2835,11 +2814,7 @@
   margin: 0;
   border-radius: 999px;
   appearance: none;
-  background: linear-gradient(
-    90deg,
-    rgba(99, 240, 214, 0.38),
-    rgba(118, 196, 255, 0.34)
-  );
+  background: var(--editor-range-background);
   outline: none;
 }
 
@@ -2849,8 +2824,8 @@
   height: 18px;
   border-radius: 50%;
   border: 0;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(99, 240, 214, 0.16);
+  background: var(--editor-range-thumb-background);
+  box-shadow: var(--editor-range-thumb-shadow);
 }
 
 .scene-slider__range::-moz-range-thumb {
@@ -2858,8 +2833,8 @@
   height: 18px;
   border-radius: 50%;
   border: 0;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(99, 240, 214, 0.16);
+  background: var(--editor-range-thumb-background);
+  box-shadow: var(--editor-range-thumb-shadow);
 }
 
 .scene-vector-field {
@@ -2891,9 +2866,9 @@
   align-items: center;
   gap: 16px;
   padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--editor-field-radius);
+  border: 1px solid var(--editor-field-border);
+  background: var(--editor-field-background);
 }
 
 .scene-toggle__copy {
@@ -2930,7 +2905,7 @@
   width: 48px;
   height: 28px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--editor-toggle-track-background);
   transition: background-color 0.18s ease;
 }
 
@@ -2942,12 +2917,13 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #f5fbf9;
+  background: var(--editor-toggle-thumb-background);
+  box-shadow: var(--editor-toggle-thumb-shadow);
   transition: transform 0.18s ease;
 }
 
 .scene-toggle__input:checked + .scene-toggle__switch .scene-toggle__track {
-  background: rgba(99, 240, 214, 0.34);
+  background: var(--editor-toggle-track-active-background);
 }
 
 .scene-toggle__input:checked + .scene-toggle__switch .scene-toggle__track::after {
@@ -2986,16 +2962,10 @@
 .effect-card {
   display: grid;
   padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.035),
-      rgba(255, 255, 255, 0.015)
-    ),
-    rgba(6, 17, 20, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  border-radius: var(--editor-field-radius);
+  border: 1px solid var(--editor-field-border);
+  background: var(--editor-field-background);
+  box-shadow: var(--editor-field-shadow);
 }
 
 .effect-card-group.is-disabled .effect-card {
@@ -3078,16 +3048,10 @@
   gap: 16px;
   align-items: flex-start;
   padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.035),
-      rgba(255, 255, 255, 0.015)
-    ),
-    rgba(6, 17, 20, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  border-radius: var(--editor-field-radius);
+  border: 1px solid var(--editor-field-border);
+  background: var(--editor-field-background);
+  box-shadow: var(--editor-field-shadow);
 }
 
 .scene-pass-order__copy {
@@ -3115,10 +3079,10 @@
   min-width: 44px;
   padding: 0 12px;
   min-height: 30px;
-  border-radius: 999px;
-  border: 1px solid rgba(99, 240, 214, 0.18);
-  background: rgba(99, 240, 214, 0.08);
-  color: var(--accent);
+  border-radius: var(--editor-value-pill-radius);
+  border: 1px solid var(--editor-value-pill-border);
+  background: var(--editor-value-pill-background);
+  color: var(--editor-value-pill-text);
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -3140,10 +3104,10 @@
 .scene-secondary-button {
   min-height: 40px;
   padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(99, 240, 214, 0.18);
-  background: rgba(99, 240, 214, 0.1);
-  color: #f5fbf9;
+  border-radius: var(--editor-button-radius);
+  border: 1px solid var(--editor-button-border);
+  background: var(--editor-button-background);
+  color: var(--editor-button-text);
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -3155,8 +3119,9 @@
 
 .scene-order-button:hover,
 .scene-secondary-button:hover {
-  border-color: rgba(99, 240, 214, 0.3);
-  background: rgba(99, 240, 214, 0.16);
+  border-color: var(--editor-button-hover-border);
+  background: var(--editor-button-hover-background);
+  color: var(--editor-button-hover-text);
 }
 
 .scene-order-button:disabled {
@@ -3191,7 +3156,8 @@
 
 .scene-editor-submit:hover {
   transform: none;
-  background: #7bf4e1;
+  background: var(--editor-button-hover-background);
+  color: var(--editor-button-hover-text);
   box-shadow: none;
 }
 
@@ -3208,10 +3174,10 @@
   margin-inline: calc(var(--scene-editor-side-gap) * -1);
   padding: 16px var(--scene-editor-side-gap);
   border: 0;
-  border-top: 1px solid var(--surface-soft-border);
+  border-top: 1px solid var(--editor-action-bar-border);
   border-radius: 0;
-  background: var(--bg-soft);
-  box-shadow: none;
+  background: var(--editor-action-bar-background);
+  box-shadow: var(--editor-action-bar-shadow);
   backdrop-filter: none;
 }
 

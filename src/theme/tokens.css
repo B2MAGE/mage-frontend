@@ -151,6 +151,140 @@
   --table-status-draft-background: rgba(186, 144, 255, 0.08);
   --table-status-draft-text: rgba(239, 228, 255, 0.92);
 
+  --player-viewport-radius: 28px;
+  --player-viewport-border: rgba(255, 255, 255, 0.08);
+  --player-viewport-background:
+    radial-gradient(circle at 24% 18%, rgba(99, 240, 214, 0.16), transparent 28%),
+    radial-gradient(circle at 78% 74%, rgba(118, 196, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, rgba(2, 8, 11, 0.42), rgba(2, 8, 11, 0.82));
+  --player-viewport-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 24px 70px rgba(0, 0, 0, 0.34);
+  --player-viewport-frame-border: rgba(255, 255, 255, 0.08);
+  --player-controls-background:
+    linear-gradient(
+      180deg,
+      rgba(6, 13, 16, 0),
+      rgba(6, 13, 16, 0.12) 20%,
+      rgba(6, 13, 16, 0.7) 74%,
+      rgba(6, 13, 16, 0.92)
+    );
+  --player-meta-text: rgba(255, 255, 255, 0.78);
+  --player-track-summary-hover-text: #f2fffd;
+  --player-feedback-text: #ffc4b9;
+  --player-timeline-background:
+    linear-gradient(
+      90deg,
+      rgba(99, 240, 214, 0.95) 0,
+      rgba(99, 240, 214, 0.95) var(--mage-player-progress, 0%),
+      rgba(255, 255, 255, 0.2) var(--mage-player-progress, 0%),
+      rgba(255, 255, 255, 0.2) 100%
+    );
+  --player-volume-track-background: rgba(255, 255, 255, 0.18);
+  --player-slider-thumb-background: #f4fffd;
+  --player-slider-thumb-shadow: 0 0 0 4px rgba(99, 240, 214, 0.14);
+  --player-button-radius: 999px;
+  --player-button-border: rgba(255, 255, 255, 0.1);
+  --player-button-background: rgba(255, 255, 255, 0.12);
+  --player-button-text: var(--text);
+  --player-button-hover-border: rgba(99, 240, 214, 0.34);
+  --player-button-hover-background: rgba(99, 240, 214, 0.22);
+  --player-button-hover-text: var(--accent);
+  --player-button-active-border: rgba(99, 240, 214, 0.34);
+  --player-button-active-background: rgba(99, 240, 214, 0.2);
+  --player-button-active-text: var(--accent);
+  --player-button-disabled-border: rgba(255, 255, 255, 0.1);
+  --player-button-disabled-background: rgba(255, 255, 255, 0.12);
+  --player-button-disabled-text: var(--text);
+  --player-volume-panel-border: rgba(255, 255, 255, 0.1);
+  --player-volume-panel-radius: 16px;
+  --player-volume-panel-background: rgba(8, 16, 20, 0.95);
+  --player-volume-panel-shadow: 0 18px 34px rgba(0, 0, 0, 0.34);
+  --player-volume-panel-text: rgba(255, 255, 255, 0.82);
+  --player-overlay-background:
+    linear-gradient(180deg, rgba(4, 12, 14, 0.78), rgba(4, 12, 14, 0.92));
+  --player-overlay-text: var(--text);
+  --player-overlay-muted: var(--muted);
+
+  --editor-surface-radius: 32px;
+  --editor-surface-background: var(--panel);
+  --editor-surface-border: var(--surface-border, var(--border));
+  --editor-surface-shadow: var(--surface-shadow);
+  --editor-field-radius: 20px;
+  --editor-field-border: rgba(255, 255, 255, 0.08);
+  --editor-field-background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    rgba(6, 17, 20, 0.44);
+  --editor-field-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  --editor-field-focus-border: rgba(99, 240, 214, 0.18);
+  --editor-field-focus-background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018)),
+    rgba(6, 17, 20, 0.5);
+  --editor-stepper-line: rgba(255, 255, 255, 0.18);
+  --editor-stepper-text: var(--muted);
+  --editor-stepper-hover-text: #d8e6e1;
+  --editor-stepper-active-text: #f2f8f6;
+  --editor-stepper-complete-text: #d8e6e1;
+  --editor-stepper-invalid-text: #ff8c83;
+  --editor-stepper-marker-border: rgba(255, 255, 255, 0.22);
+  --editor-stepper-marker-background: var(--bg-soft);
+  --editor-stepper-marker-text: #061013;
+  --editor-stepper-active-marker-border: var(--accent);
+  --editor-stepper-active-marker-ring: 0 0 0 4px rgba(99, 240, 214, 0.12);
+  --editor-stepper-complete-marker-border: #eef5f3;
+  --editor-stepper-complete-marker-background: #eef5f3;
+  --editor-stepper-complete-marker-text: #061013;
+  --editor-stepper-invalid-marker-border: #ff8c83;
+  --editor-stepper-invalid-marker-text: #ff8c83;
+  --editor-value-pill-radius: 999px;
+  --editor-value-pill-border: rgba(99, 240, 214, 0.16);
+  --editor-value-pill-background: rgba(99, 240, 214, 0.08);
+  --editor-value-pill-text: var(--accent);
+  --editor-button-radius: 999px;
+  --editor-button-border: rgba(99, 240, 214, 0.18);
+  --editor-button-background: rgba(99, 240, 214, 0.1);
+  --editor-button-text: #f5fbf9;
+  --editor-button-hover-border: rgba(99, 240, 214, 0.3);
+  --editor-button-hover-background: rgba(99, 240, 214, 0.16);
+  --editor-button-hover-text: #f5fbf9;
+  --editor-toggle-track-background: rgba(255, 255, 255, 0.16);
+  --editor-toggle-track-active-background: rgba(99, 240, 214, 0.34);
+  --editor-toggle-thumb-background: #f5fbf9;
+  --editor-toggle-thumb-shadow: none;
+  --editor-range-background:
+    linear-gradient(90deg, rgba(99, 240, 214, 0.38), rgba(118, 196, 255, 0.34));
+  --editor-range-thumb-background: var(--accent);
+  --editor-range-thumb-shadow: 0 0 0 4px rgba(99, 240, 214, 0.16);
+  --editor-action-bar-border: var(--surface-soft-border);
+  --editor-action-bar-background: var(--bg-soft);
+  --editor-action-bar-shadow: none;
+  --editor-dropdown-radius: 18px;
+  --editor-dropdown-border: rgba(255, 255, 255, 0.08);
+  --editor-dropdown-background: rgba(9, 20, 24, 0.92);
+  --editor-dropdown-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  --editor-dropdown-option-radius: 14px;
+  --editor-dropdown-option-border: rgba(255, 255, 255, 0.08);
+  --editor-dropdown-option-background: rgba(17, 27, 31, 0.94);
+  --editor-dropdown-option-text: rgba(220, 232, 229, 0.86);
+  --editor-dropdown-option-hover-border: rgba(99, 240, 214, 0.34);
+  --editor-dropdown-option-hover-background: rgba(26, 63, 67, 0.96);
+  --editor-dropdown-option-hover-text: #e8fffb;
+  --editor-dropdown-create-border: rgba(99, 240, 214, 0.28);
+  --editor-dropdown-create-background:
+    linear-gradient(135deg, rgba(17, 58, 53, 0.74), rgba(12, 25, 29, 0.96));
+  --editor-dropdown-create-text: #e8fffb;
+  --editor-dropdown-create-hover-border: rgba(99, 240, 214, 0.46);
+  --editor-dropdown-create-hover-background:
+    linear-gradient(135deg, rgba(24, 79, 73, 0.84), rgba(14, 32, 36, 0.98));
+  --editor-choice-radius: 18px;
+  --editor-choice-border: rgba(255, 255, 255, 0.18);
+  --editor-choice-background: rgba(255, 255, 255, 0.03);
+  --editor-choice-hover-border: rgba(99, 240, 214, 0.34);
+  --editor-choice-hover-background: rgba(255, 255, 255, 0.05);
+  --editor-choice-hover-shadow: 0 0 0 1px rgba(99, 240, 214, 0.12);
+  --editor-choice-selected-border: rgba(99, 240, 214, 0.42);
+  --editor-choice-selected-background: rgba(17, 58, 53, 0.42);
+  --editor-choice-selected-shadow: 0 0 0 4px rgba(99, 240, 214, 0.08);
 }
 
 :root[data-theme='classic-facebook'] {
@@ -283,6 +417,128 @@
   --table-status-draft-background: #f2eef9;
   --table-status-draft-text: #5e4b86;
 
+  --player-viewport-radius: 4px;
+  --player-viewport-border: #bcc7d8;
+  --player-viewport-background: #f7f8fb;
+  --player-viewport-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --player-viewport-frame-border: #d8dfea;
+  --player-controls-background:
+    linear-gradient(
+      180deg,
+      rgba(20, 31, 57, 0) 0%,
+      rgba(20, 31, 57, 0.1) 20%,
+      rgba(20, 31, 57, 0.56) 74%,
+      rgba(20, 31, 57, 0.86) 100%
+    );
+  --player-meta-text: #f7f8fb;
+  --player-track-summary-hover-text: #ffffff;
+  --player-feedback-text: #ffd4cf;
+  --player-timeline-background:
+    linear-gradient(
+      90deg,
+      #5b74a8 0,
+      #5b74a8 var(--mage-player-progress, 0%),
+      rgba(255, 255, 255, 0.34) var(--mage-player-progress, 0%),
+      rgba(255, 255, 255, 0.34) 100%
+    );
+  --player-volume-track-background: rgba(91, 116, 168, 0.24);
+  --player-slider-thumb-background: #ffffff;
+  --player-slider-thumb-shadow: 0 0 0 3px rgba(91, 116, 168, 0.2);
+  --player-button-radius: 2px;
+  --player-button-border: rgba(216, 223, 234, 0.28);
+  --player-button-background: rgba(255, 255, 255, 0.12);
+  --player-button-text: #f7f8fb;
+  --player-button-hover-border: rgba(168, 184, 217, 0.76);
+  --player-button-hover-background: rgba(91, 116, 168, 0.72);
+  --player-button-hover-text: #ffffff;
+  --player-button-active-border: rgba(168, 184, 217, 0.76);
+  --player-button-active-background: rgba(91, 116, 168, 0.72);
+  --player-button-active-text: #ffffff;
+  --player-button-disabled-border: rgba(216, 223, 234, 0.28);
+  --player-button-disabled-background: rgba(255, 255, 255, 0.12);
+  --player-button-disabled-text: #f7f8fb;
+  --player-volume-panel-border: #bcc7d8;
+  --player-volume-panel-radius: 2px;
+  --player-volume-panel-background: rgba(255, 255, 255, 0.98);
+  --player-volume-panel-shadow: 0 10px 20px rgba(0, 0, 0, 0.16);
+  --player-volume-panel-text: #49618d;
+  --player-overlay-background:
+    linear-gradient(180deg, rgba(247, 248, 251, 0.2), rgba(29, 42, 68, 0.8));
+  --player-overlay-text: #ffffff;
+  --player-overlay-muted: #ffffff;
+
+  --editor-surface-radius: 4px;
+  --editor-surface-background: #ffffff;
+  --editor-surface-border: #bcc7d8;
+  --editor-surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --editor-field-radius: 4px;
+  --editor-field-border: #d8dfea;
+  --editor-field-background: #fbfcff;
+  --editor-field-shadow: none;
+  --editor-field-focus-border: #98abd3;
+  --editor-field-focus-background: #f4f7fc;
+  --editor-stepper-line: #d8dfea;
+  --editor-stepper-text: #98a7c3;
+  --editor-stepper-hover-text: #5a719f;
+  --editor-stepper-active-text: #2d4373;
+  --editor-stepper-complete-text: #6a7ea8;
+  --editor-stepper-invalid-text: #d95c57;
+  --editor-stepper-marker-border: #c7d2e5;
+  --editor-stepper-marker-background: #ffffff;
+  --editor-stepper-marker-text: #6076a8;
+  --editor-stepper-active-marker-border: #3b5998;
+  --editor-stepper-active-marker-ring: 0 0 0 3px rgba(59, 89, 152, 0.12);
+  --editor-stepper-complete-marker-border: #9eb6df;
+  --editor-stepper-complete-marker-background: #eff4fb;
+  --editor-stepper-complete-marker-text: #2d4373;
+  --editor-stepper-invalid-marker-border: #ff8a82;
+  --editor-stepper-invalid-marker-text: #d95c57;
+  --editor-value-pill-radius: 2px;
+  --editor-value-pill-border: #bcc7d8;
+  --editor-value-pill-background: #e8edf7;
+  --editor-value-pill-text: #3b5998;
+  --editor-button-radius: 2px;
+  --editor-button-border: #29447e;
+  --editor-button-background: #5b74a8;
+  --editor-button-text: #ffffff;
+  --editor-button-hover-border: #29447e;
+  --editor-button-hover-background: #6d84b4;
+  --editor-button-hover-text: #ffffff;
+  --editor-toggle-track-background: #d8dfea;
+  --editor-toggle-track-active-background: #8da3cf;
+  --editor-toggle-thumb-background: #ffffff;
+  --editor-toggle-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --editor-range-background: linear-gradient(90deg, #cbd6ea 0%, #bfd0ea 100%);
+  --editor-range-thumb-background: #3b5998;
+  --editor-range-thumb-shadow: 0 0 0 4px rgba(59, 89, 152, 0.14);
+  --editor-action-bar-border: #bcc7d8;
+  --editor-action-bar-background: #f7f8fb;
+  --editor-action-bar-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --editor-dropdown-radius: 2px;
+  --editor-dropdown-border: #bcc7d8;
+  --editor-dropdown-background: #ffffff;
+  --editor-dropdown-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  --editor-dropdown-option-radius: 2px;
+  --editor-dropdown-option-border: #d8dfea;
+  --editor-dropdown-option-background: #f7f8fb;
+  --editor-dropdown-option-text: #49618d;
+  --editor-dropdown-option-hover-border: #a8b8d9;
+  --editor-dropdown-option-hover-background: #eef2f7;
+  --editor-dropdown-option-hover-text: #2d4373;
+  --editor-dropdown-create-border: #a8b8d9;
+  --editor-dropdown-create-background: #e9eff8;
+  --editor-dropdown-create-text: #2d4373;
+  --editor-dropdown-create-hover-border: #98abd3;
+  --editor-dropdown-create-hover-background: #dde6f5;
+  --editor-choice-radius: 4px;
+  --editor-choice-border: #c7d2e5;
+  --editor-choice-background: #f7f8fb;
+  --editor-choice-hover-border: #98abd3;
+  --editor-choice-hover-background: #f1f4f9;
+  --editor-choice-hover-shadow: none;
+  --editor-choice-selected-border: #5b74a8;
+  --editor-choice-selected-background: #e9eff8;
+  --editor-choice-selected-shadow: inset 0 0 0 1px #a8b8d9;
 }
 
 body {
