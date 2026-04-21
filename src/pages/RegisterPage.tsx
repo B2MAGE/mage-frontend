@@ -3,7 +3,8 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthPage, AuthPageHeader } from '@components/AuthPage'
 import { buildApiUrl } from '@lib/api'
-import { emailPattern, parseApiError } from '@lib/authForm'
+import { emailPattern, parseApiError } from '@shared/lib'
+import { FormNotice, TextInputField } from '@shared/ui'
 
 type RegistrationFormValues = {
   displayName: string
@@ -167,75 +168,49 @@ export function RegisterPage() {
           />
 
           <form className="auth-form" noValidate onSubmit={handleSubmit}>
-            <div className="field-group">
-              <label htmlFor="displayName">Display name</label>
-              <input
-                id="displayName"
-                name="displayName"
-                type="text"
-                autoComplete="nickname"
-                required
-                minLength={2}
-                value={values.displayName}
-                onChange={(event) => handleChange('displayName', event.target.value)}
-                aria-invalid={Boolean(errors.displayName)}
-                aria-describedby={errors.displayName ? 'displayName-error' : undefined}
-                placeholder="Mir Ahnaf Ali"
-              />
-              {errors.displayName ? (
-                <p className="field-error" id="displayName-error" role="alert">
-                  {errors.displayName}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={values.email}
-                onChange={(event) => handleChange('email', event.target.value)}
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-                placeholder="you@example.com"
-              />
-              {errors.email ? (
-                <p className="field-error" id="email-error" role="alert">
-                  {errors.email}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="field-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={values.password}
-                onChange={(event) => handleChange('password', event.target.value)}
-                aria-invalid={Boolean(errors.password)}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                placeholder="At least 8 characters"
-              />
-              {errors.password ? (
-                <p className="field-error" id="password-error" role="alert">
-                  {errors.password}
-                </p>
-              ) : null}
-            </div>
+            <TextInputField
+              autoComplete="nickname"
+              error={errors.displayName}
+              id="displayName"
+              label="Display name"
+              minLength={2}
+              name="displayName"
+              onChange={(event) => handleChange('displayName', event.target.value)}
+              placeholder="Mir Ahnaf Ali"
+              required
+              type="text"
+              value={values.displayName}
+            />
+            <TextInputField
+              autoComplete="email"
+              error={errors.email}
+              id="email"
+              label="Email"
+              name="email"
+              onChange={(event) => handleChange('email', event.target.value)}
+              placeholder="you@example.com"
+              required
+              type="email"
+              value={values.email}
+            />
+            <TextInputField
+              autoComplete="new-password"
+              error={errors.password}
+              id="password"
+              label="Password"
+              minLength={8}
+              name="password"
+              onChange={(event) => handleChange('password', event.target.value)}
+              placeholder="At least 8 characters"
+              required
+              type="password"
+              value={values.password}
+            />
 
             {errors.form ? (
-              <div className="form-alert" id={formErrorId} role="alert">
+              <FormNotice id={formErrorId} tone="error">
                 {errors.form}
-              </div>
+              </FormNotice>
             ) : null}
 
             <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>

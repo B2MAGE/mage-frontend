@@ -1,4 +1,4 @@
-import { parseApiError } from "./authForm";
+import { parseApiError } from "@shared/lib";
 
 type AuthenticatedFetch = (
   input: RequestInfo | URL,

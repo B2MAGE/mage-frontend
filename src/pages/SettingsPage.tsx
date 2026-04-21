@@ -1,7 +1,8 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useAuth } from '@auth'
 import { ThemeSettingsSection } from '@components/settings'
-import { parseApiError } from '@lib/authForm'
+import { parseApiError } from '@shared/lib'
+import { FormNotice, SurfaceCard, TextInputField } from '@shared/ui'
 
 const PROFILE_SAVE_UNAVAILABLE_MESSAGE =
   'Profile updates are unavailable right now. Please try again in a moment.'
@@ -155,99 +156,69 @@ function ProfileDetailsForm({
   }
 
   return (
-    <section className="surface surface--soft settings-section" aria-label="Profile details">
+    <SurfaceCard as="section" className="settings-section" tone="soft" aria-label="Profile details">
       <div className="settings-section__header">
         <h2>Profile details</h2>
         <p>Review the account details currently tied to your MAGE profile.</p>
       </div>
       <form className="settings-fields" onSubmit={handleSubmit}>
-        <div className="field-group">
-          <label htmlFor="settings-email">Email</label>
-          <input id="settings-email" name="email" readOnly type="email" value={email} />
-        </div>
-
-        <div className="field-group">
-          <label htmlFor="settings-display-name">Display name</label>
-          <input
-            id="settings-display-name"
-            name="displayName"
-            onChange={(event) =>
-              setNameFields((currentFields) => ({
-                ...currentFields,
-                displayName: event.target.value,
-              }))
-            }
-            aria-describedby={errors.displayName ? 'settings-display-name-error' : undefined}
-            aria-invalid={Boolean(errors.displayName)}
-            placeholder="Display name"
-            type="text"
-            value={nameFields.displayName}
-          />
-          {errors.displayName ? (
-            <p className="field-error" id="settings-display-name-error" role="alert">
-              {errors.displayName}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="field-group">
-          <label htmlFor="settings-first-name">First name</label>
-          <input
-            id="settings-first-name"
-            name="firstName"
-            onChange={(event) =>
-              setNameFields((currentFields) => ({
-                ...currentFields,
-                firstName: event.target.value,
-              }))
-            }
-            aria-describedby={errors.firstName ? 'settings-first-name-error' : undefined}
-            aria-invalid={Boolean(errors.firstName)}
-            placeholder="First name"
-            type="text"
-            value={nameFields.firstName}
-          />
-          {errors.firstName ? (
-            <p className="field-error" id="settings-first-name-error" role="alert">
-              {errors.firstName}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="field-group">
-          <label htmlFor="settings-last-name">Last name</label>
-          <input
-            id="settings-last-name"
-            name="lastName"
-            onChange={(event) =>
-              setNameFields((currentFields) => ({
-                ...currentFields,
-                lastName: event.target.value,
-              }))
-            }
-            aria-describedby={errors.lastName ? 'settings-last-name-error' : undefined}
-            aria-invalid={Boolean(errors.lastName)}
-            placeholder="Last name"
-            type="text"
-            value={nameFields.lastName}
-          />
-          {errors.lastName ? (
-            <p className="field-error" id="settings-last-name-error" role="alert">
-              {errors.lastName}
-            </p>
-          ) : null}
-        </div>
+        <TextInputField id="settings-email" label="Email" name="email" readOnly type="email" value={email} />
+        <TextInputField
+          error={errors.displayName}
+          id="settings-display-name"
+          label="Display name"
+          name="displayName"
+          onChange={(event) =>
+            setNameFields((currentFields) => ({
+              ...currentFields,
+              displayName: event.target.value,
+            }))
+          }
+          placeholder="Display name"
+          type="text"
+          value={nameFields.displayName}
+        />
+        <TextInputField
+          error={errors.firstName}
+          id="settings-first-name"
+          label="First name"
+          name="firstName"
+          onChange={(event) =>
+            setNameFields((currentFields) => ({
+              ...currentFields,
+              firstName: event.target.value,
+            }))
+          }
+          placeholder="First name"
+          type="text"
+          value={nameFields.firstName}
+        />
+        <TextInputField
+          error={errors.lastName}
+          id="settings-last-name"
+          label="Last name"
+          name="lastName"
+          onChange={(event) =>
+            setNameFields((currentFields) => ({
+              ...currentFields,
+              lastName: event.target.value,
+            }))
+          }
+          placeholder="Last name"
+          type="text"
+          value={nameFields.lastName}
+        />
 
         {errors.form ? (
-          <div className="form-alert" id={formNoticeId} role="alert">
+          <FormNotice id={formNoticeId} tone="error">
             {errors.form}
-          </div>
+          </FormNotice>
         ) : null}
 
         {successMessage ? (
-          <div className="form-note" role="status">
+          <FormNotice tone="note">
             {successMessage}
-          </div>
+          </FormNotice>
         ) : null}
 
         <div className="settings-actions">
@@ -267,6 +238,6 @@ function ProfileDetailsForm({
           </button>
         </div>
       </form>
-    </section>
+    </SurfaceCard>
   )
 }
