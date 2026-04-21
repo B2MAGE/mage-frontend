@@ -7,6 +7,7 @@ import {
   type PropsWithChildren,
 } from 'react'
 import { buildApiUrl } from '@lib/api'
+import { readStorageItem, removeStorageItem, writeStorageItem } from '@shared/lib'
 
 export type AuthenticatedUser = {
   userId: number | null
@@ -91,7 +92,7 @@ function readStoredUser(value: unknown): AuthenticatedUser | null {
 }
 
 function readStoredSession(): StoredAuthSession | null {
-  const rawSession = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)
+  const rawSession = readStorageItem(AUTH_SESSION_STORAGE_KEY)
 
   if (!rawSession) {
     return null
@@ -101,7 +102,7 @@ function readStoredSession(): StoredAuthSession | null {
     const parsed = JSON.parse(rawSession) as unknown
 
     if (!isRecord(parsed) || typeof parsed.accessToken !== 'string' || !parsed.accessToken.trim()) {
-      window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+      removeStorageItem(AUTH_SESSION_STORAGE_KEY)
       return null
     }
 
@@ -111,7 +112,7 @@ function readStoredSession(): StoredAuthSession | null {
     }
   } catch {
     if (!rawSession.trim()) {
-      window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+      removeStorageItem(AUTH_SESSION_STORAGE_KEY)
       return null
     }
 
@@ -123,7 +124,7 @@ function readStoredSession(): StoredAuthSession | null {
 }
 
 function persistSession(session: StoredAuthSession) {
-  window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(session))
+  writeStorageItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify(session))
 }
 
 function buildAuthorizationHeaders(headers: HeadersInit | undefined, accessToken: string) {
@@ -137,7 +138,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isRestoringSession, setIsRestoringSession] = useState(true)
 
   function clearSession() {
-    window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
+    removeStorageItem(AUTH_SESSION_STORAGE_KEY)
     setSession(null)
   }
 

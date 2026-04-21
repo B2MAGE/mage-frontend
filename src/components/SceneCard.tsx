@@ -1,43 +1,14 @@
 import { Link } from 'react-router-dom'
 import type { SceneListResponse } from '@lib/api'
+import { formatMetricLabel, formatRelativeTime } from '@shared/lib'
 
 type SceneCardProps = {
   scene: SceneListResponse
 }
 
-function formatRelativeTime(isoDate: string): string {
-  const now = Date.now()
-  const then = new Date(isoDate).getTime()
-  const diffMs = now - then
-
-  const seconds = Math.floor(diffMs / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const days = Math.floor(hours / 24)
-  const weeks = Math.floor(days / 7)
-  const months = Math.floor(days / 30)
-
-  if (months > 0) return `${months} month${months === 1 ? '' : 's'} ago`
-  if (weeks > 0) return `${weeks} week${weeks === 1 ? '' : 's'} ago`
-  if (days > 0) return `${days} day${days === 1 ? '' : 's'} ago`
-  if (hours > 0) return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  if (minutes > 0) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
-  if (seconds > 20) return `${seconds} seconds ago`
-  return 'Just now'
-}
-
 function formatViewLabel(sceneId: number) {
   const syntheticViews = 1200 + sceneId * 183
-
-  if (syntheticViews >= 1000000) {
-    return `${(syntheticViews / 1000000).toFixed(1)}M views`
-  }
-
-  if (syntheticViews >= 1000) {
-    return `${(syntheticViews / 1000).toFixed(1)}K views`
-  }
-
-  return `${syntheticViews} views`
+  return formatMetricLabel(syntheticViews, 'view')
 }
 
 function buildCreatorInitials(name: string) {

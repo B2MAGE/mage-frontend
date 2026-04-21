@@ -13,8 +13,8 @@ import {
   ToggleField,
   Vector3Field,
 } from "@components/SceneEditorControls";
-import { parseApiError } from "@lib/authForm";
 import { uploadNewSceneThumbnail } from "@lib/sceneThumbnailUpload";
+import { parseApiError } from "@shared/lib";
 import {
   fetchAvailableTags,
   type TagResponse,

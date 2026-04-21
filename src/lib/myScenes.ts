@@ -151,36 +151,6 @@ function parseCreatedAtValue(createdAt: string | null) {
   return Number.isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime()
 }
 
-export function formatSceneDate(createdAt: string | null) {
-  if (!createdAt) {
-    return 'Recently'
-  }
-
-  const parsedDate = new Date(createdAt)
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return createdAt
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(parsedDate)
-}
-
-export function formatCompactCount(value: number) {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`
-  }
-
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`
-  }
-
-  return String(value)
-}
-
 export function buildSortSummary(sortKey: SortKey, sortDirection: SortDirection) {
   if (sortKey === 'updated') {
     return sortDirection === 'desc' ? 'Newest items first' : 'Oldest items first'

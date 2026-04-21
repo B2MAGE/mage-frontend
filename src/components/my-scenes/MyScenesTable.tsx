@@ -2,12 +2,12 @@ import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import {
   buildSortAriaLabel,
-  formatCompactCount,
-  formatSceneDate,
   type SortDirection,
   type SortKey,
   type UserScene,
 } from '@lib/myScenes'
+import { formatCalendarDate, formatCompactCount } from '@shared/lib'
+import { TableSortButton } from '@shared/ui'
 
 type MyScenesTableProps = {
   allPageScenesSelected: boolean
@@ -19,31 +19,6 @@ type MyScenesTableProps = {
   onSort: (sortKey: SortKey) => void
   onToggleSceneSelection: (sceneId: number) => void
   onToggleSelectAll: () => void
-}
-
-function SortIndicator({
-  active,
-  direction,
-}: {
-  active: boolean
-  direction: SortDirection
-}) {
-  return (
-    <span className="my-scenes-table__sort-indicator" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="none">
-        <path
-          d="M8 3.5 5.25 6.25h5.5L8 3.5Z"
-          fill="currentColor"
-          opacity={active && direction === 'asc' ? '1' : '0.45'}
-        />
-        <path
-          d="m8 12.5 2.75-2.75h-5.5L8 12.5Z"
-          fill="currentColor"
-          opacity={active && direction === 'desc' ? '1' : '0.45'}
-        />
-      </svg>
-    </span>
-  )
 }
 
 function SortButton({
@@ -60,18 +35,16 @@ function SortButton({
   onSort: (sortKey: SortKey) => void
 }) {
   return (
-    <button
-      className="my-scenes-table__sort-button"
+    <TableSortButton
+      active={activeSortKey === sortKey}
       aria-label={buildSortAriaLabel(label, sortKey, activeSortKey, sortDirection)}
-      data-active={activeSortKey === sortKey}
+      className="my-scenes-table__sort-button"
+      direction={sortDirection}
+      label={label}
       onClick={() => {
         onSort(sortKey)
       }}
-      type="button"
-    >
-      {label}
-      <SortIndicator active={activeSortKey === sortKey} direction={sortDirection} />
-    </button>
+    />
   )
 }
 
@@ -177,7 +150,7 @@ export function MyScenesTable({
             </div>
 
             <div className="my-scenes-row__cell">
-              <strong>{formatSceneDate(scene.createdAt)}</strong>
+              <strong>{formatCalendarDate(scene.createdAt)}</strong>
             </div>
 
             <div className="my-scenes-row__metric">

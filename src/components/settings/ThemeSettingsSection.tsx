@@ -1,4 +1,5 @@
 import { type AppThemeDefinition, useTheme } from '@theme'
+import { SurfaceCard } from '@shared/ui'
 import './themeSettingsSection.css'
 
 type ThemePreviewProps = {
@@ -31,7 +32,12 @@ export function ThemeSettingsSection() {
   const { setTheme, themeId, themes } = useTheme()
 
   return (
-    <section className="surface surface--soft settings-section" aria-labelledby="theme-settings-title">
+    <SurfaceCard
+      as="section"
+      className="settings-section"
+      tone="soft"
+      aria-labelledby="theme-settings-title"
+    >
       <div className="settings-section__header">
         <h2 id="theme-settings-title">Theme</h2>
         <p>Choose how MAGE looks across the app. Changes apply immediately and stay saved on this device.</p>
@@ -65,6 +71,6 @@ export function ThemeSettingsSection() {
           )
         })}
       </div>
-    </section>
+    </SurfaceCard>
   )
 }

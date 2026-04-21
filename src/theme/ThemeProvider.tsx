@@ -16,6 +16,7 @@ import {
   type AppThemeDefinition,
   type AppThemeId,
 } from './themes'
+import { readStorageItem, writeStorageItem } from '@shared/lib'
 
 type ThemeContextValue = {
   setTheme: (themeId: AppThemeId) => void
@@ -40,7 +41,7 @@ function readInitialTheme() {
     return DEFAULT_APP_THEME_ID
   }
 
-  const storedTheme = window.localStorage.getItem(APP_THEME_STORAGE_KEY)
+  const storedTheme = readStorageItem(APP_THEME_STORAGE_KEY)
   return isAppThemeId(storedTheme) ? storedTheme : DEFAULT_APP_THEME_ID
 }
 
@@ -51,7 +52,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     applyTheme(theme)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(APP_THEME_STORAGE_KEY, themeId)
+      writeStorageItem(APP_THEME_STORAGE_KEY, themeId)
     }
   }, [theme, themeId])
 

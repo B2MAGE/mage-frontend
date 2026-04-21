@@ -1,4 +1,5 @@
 import type { TagResponse } from '@lib/api'
+import { SelectableChip } from '@shared/ui'
 import { ScrollableTagBar } from './ScrollableTagBar'
 
 type TagFilterBarProps = {
@@ -23,24 +24,26 @@ export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFil
 
   return (
     <ScrollableTagBar ariaLabel="Filter scenes by tag" role="toolbar">
-      <button
-        className={`tag-pill${activeTag === null ? ' tag-pill--active' : ''}`}
+      <SelectableChip
+        active={activeTag === null}
+        activeClassName="tag-pill--active"
         aria-pressed={activeTag === null}
+        className="tag-pill"
         onClick={() => onTagSelect(null)}
-        type="button"
       >
         All
-      </button>
+      </SelectableChip>
       {tags.map((tag) => (
-        <button
-          key={tag.tagId}
-          className={`tag-pill${activeTag === tag.name ? ' tag-pill--active' : ''}`}
+        <SelectableChip
+          active={activeTag === tag.name}
+          activeClassName="tag-pill--active"
           aria-pressed={activeTag === tag.name}
+          className="tag-pill"
+          key={tag.tagId}
           onClick={() => onTagSelect(tag.name)}
-          type="button"
         >
           {tag.name}
-        </button>
+        </SelectableChip>
       ))}
     </ScrollableTagBar>
   )

@@ -1,4 +1,5 @@
 import type { SceneVisibility, StatusFilter } from '@lib/myScenes'
+import { SelectableChip } from '@shared/ui'
 
 type MyScenesToolbarProps = {
   availableStatuses: SceneVisibility[]
@@ -24,28 +25,26 @@ export function MyScenesToolbar({
         <span>{sortSummary}</span>
       </div>
       <div className="my-scenes-board__filters">
-        <button
+        <SelectableChip
+          active={statusFilter === 'All'}
           className="my-scenes-board__chip"
-          data-active={statusFilter === 'All'}
           onClick={() => {
             onSelectStatus('All')
           }}
-          type="button"
         >
           All
-        </button>
+        </SelectableChip>
         {availableStatuses.map((status) => (
-          <button
-            key={status}
+          <SelectableChip
+            active={statusFilter === status}
             className="my-scenes-board__chip"
-            data-active={statusFilter === status}
+            key={status}
             onClick={() => {
               onSelectStatus(status)
             }}
-            type="button"
           >
             {status}
-          </button>
+          </SelectableChip>
         ))}
       </div>
     </div>

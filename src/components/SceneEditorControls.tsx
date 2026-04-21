@@ -1,5 +1,7 @@
 import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
 import type { Vector3Value } from '@lib/sceneEditor'
+import { joinClassNames } from '@shared/lib'
+import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
 
 type SectionProps = PropsWithChildren<{
   className?: string
@@ -61,39 +63,6 @@ type EffectCardProps = PropsWithChildren<{
   title: string
 }>
 
-function buildClassName(...classNames: Array<string | undefined | false>) {
-  return classNames.filter(Boolean).join(' ')
-}
-
-function FieldShell({
-  children,
-  description,
-  htmlFor,
-  label,
-}: PropsWithChildren<{
-  description?: string
-  htmlFor?: string
-  label: string
-}>) {
-  return (
-    <div className="scene-field">
-      <div className="scene-field__shell">
-        <div className="scene-field__top">
-          <div className="scene-field__copy">
-            <div className="scene-field__label-row">
-              <label className="scene-field__label" htmlFor={htmlFor}>
-                {label}
-              </label>
-            </div>
-            {description ? <p className="scene-field__description">{description}</p> : null}
-          </div>
-        </div>
-        <div className="scene-field__control">{children}</div>
-      </div>
-    </div>
-  )
-}
-
 function readNumericValue(event: ChangeEvent<HTMLInputElement>) {
   return event.currentTarget.valueAsNumber
 }
@@ -116,7 +85,7 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
 
 export function SceneSection({ children, className, description, title }: SectionProps) {
   return (
-    <section className={buildClassName('scene-editor-section', className)}>
+    <section className={joinClassNames('scene-editor-section', className)}>
       <div className="scene-editor-section__header">
         <h2>{title}</h2>
         <p>{description}</p>
@@ -135,7 +104,7 @@ export function SelectField({
   value,
 }: SelectFieldProps) {
   return (
-    <FieldShell description={description} htmlFor={id} label={label}>
+    <EditorFieldShell description={description} htmlFor={id} label={label}>
       <select
         className="scene-select"
         id={id}
@@ -148,7 +117,7 @@ export function SelectField({
           </option>
         ))}
       </select>
-    </FieldShell>
+    </EditorFieldShell>
   )
 }
 
@@ -164,7 +133,7 @@ export function NumberField({
   value,
 }: NumberFieldProps) {
   return (
-    <FieldShell description={description} htmlFor={id} label={label}>
+    <EditorFieldShell description={description} htmlFor={id} label={label}>
       <input
         className="scene-number-input"
         id={id}
@@ -176,7 +145,7 @@ export function NumberField({
         type="number"
         value={Number.isFinite(value) ? value : ''}
       />
-    </FieldShell>
+    </EditorFieldShell>
   )
 }
 
@@ -192,45 +161,33 @@ export function SliderField({
   value,
 }: SliderFieldProps) {
   return (
-    <div className="scene-field scene-field--slider">
-      <div className="scene-slider">
-        <div className="scene-slider__top">
-          <div className="scene-slider__copy">
-            <div className="scene-field__label-row">
-              <label className="scene-field__label" htmlFor={id}>
-                {label}
-              </label>
-            </div>
-            {description ? <p className="scene-field__description">{description}</p> : null}
-          </div>
-          <output className="scene-slider__value" htmlFor={id}>
-            {formatSliderValue(value, formatValue)}
-          </output>
-        </div>
-        <div className="scene-slider__controls">
-          <input
-            className="scene-slider__range"
-            id={id}
-            max={max}
-            min={min}
-            onChange={(event) => forwardNumericValue(event, onChange)}
-            step={step}
-            type="range"
-            value={value}
-          />
-          <input
-            aria-label="Numeric value"
-            className="scene-slider__number"
-            max={max}
-            min={min}
-            onChange={(event) => forwardNumericValue(event, onChange)}
-            step={step}
-            type="number"
-            value={Number.isFinite(value) ? value : ''}
-          />
-        </div>
-      </div>
-    </div>
+    <SliderFieldShell
+      description={description}
+      htmlFor={id}
+      label={label}
+      valueLabel={formatSliderValue(value, formatValue)}
+    >
+      <input
+        className="scene-slider__range"
+        id={id}
+        max={max}
+        min={min}
+        onChange={(event) => forwardNumericValue(event, onChange)}
+        step={step}
+        type="range"
+        value={value}
+      />
+      <input
+        aria-label="Numeric value"
+        className="scene-slider__number"
+        max={max}
+        min={min}
+        onChange={(event) => forwardNumericValue(event, onChange)}
+        step={step}
+        type="number"
+        value={Number.isFinite(value) ? value : ''}
+      />
+    </SliderFieldShell>
   )
 }
 
@@ -243,8 +200,8 @@ export function ToggleField({
   onChange,
 }: ToggleFieldProps) {
   return (
-    <div className={buildClassName('scene-toggle-field', compact && 'scene-toggle-field--compact')}>
-      <div className={buildClassName('scene-toggle', compact && 'scene-toggle--compact')}>
+    <div className={joinClassNames('scene-toggle-field', compact && 'scene-toggle-field--compact')}>
+      <div className={joinClassNames('scene-toggle', compact && 'scene-toggle--compact')}>
         <div className="scene-toggle__top">
           <div className="scene-toggle__copy">
             <div className="scene-toggle__label-row">
@@ -288,7 +245,7 @@ export function Vector3Field({
   }
 
   return (
-    <FieldShell description={description} htmlFor={id} label={label}>
+    <EditorFieldShell description={description} htmlFor={id} label={label}>
       <div className="scene-vector-field" id={id}>
         {(['x', 'y', 'z'] as Array<keyof Vector3Value>).map((axis) => (
           <label className="scene-vector-field__axis" key={axis}>
@@ -303,7 +260,7 @@ export function Vector3Field({
           </label>
         ))}
       </div>
-    </FieldShell>
+    </EditorFieldShell>
   )
 }
 
@@ -320,8 +277,8 @@ export function EffectCard({
   const toggleId = `${title.toLowerCase().replace(/\s+/g, '-')}-toggle`
 
   return (
-    <section className={buildClassName('effect-card-group', !isEnabled && 'is-disabled')}>
-      <div className="surface surface--nested effect-card">
+    <section className={joinClassNames('effect-card-group', !isEnabled && 'is-disabled')}>
+      <SurfaceCard as="div" className="effect-card" tone="nested">
         <div className="effect-card__header">
           <div>
             <h3>{title}</h3>
@@ -337,7 +294,7 @@ export function EffectCard({
             />
           ) : null}
         </div>
-      </div>
+      </SurfaceCard>
       {isEnabled && (hasContent || footer) ? (
         <div className="effect-card__details">
           {hasContent ? <div className="effect-card__content">{children}</div> : null}

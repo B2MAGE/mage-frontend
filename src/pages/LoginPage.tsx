@@ -4,7 +4,8 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, type AuthenticatedUser } from '@auth'
 import { AuthPage, AuthPageHeader } from '@components/AuthPage'
 import { buildApiUrl } from '@lib/api'
-import { emailPattern, parseApiError } from '@lib/authForm'
+import { emailPattern, parseApiError } from '@shared/lib'
+import { FormNotice, TextInputField } from '@shared/ui'
 
 type LoginFormValues = {
   email: string
@@ -224,69 +225,48 @@ export function LoginPage() {
             />
 
             <form className="auth-form" noValidate onSubmit={handleSubmit}>
-              <div className="field-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={values.email}
-                  onChange={(event) => handleChange('email', event.target.value)}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'login-email-error' : undefined}
-                  placeholder="you@example.com"
-                />
-                {errors.email ? (
-                  <p className="field-error" id="login-email-error" role="alert">
-                    {errors.email}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="field-group">
-                <label htmlFor="password">Password</label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={values.password}
-                  onChange={(event) => handleChange('password', event.target.value)}
-                  aria-invalid={Boolean(errors.password)}
-                  aria-describedby={
-                    errors.password ? 'login-password-error' : 'login-password-hint'
-                  }
-                  placeholder="Enter your password"
-                />
-                <p className="field-hint" id="login-password-hint">
-                  Use the same password you created during registration.
-                </p>
-                {errors.password ? (
-                  <p className="field-error" id="login-password-error" role="alert">
-                    {errors.password}
-                  </p>
-                ) : null}
-              </div>
+              <TextInputField
+                autoComplete="email"
+                error={errors.email}
+                id="email"
+                label="Email"
+                name="email"
+                onChange={(event) => handleChange('email', event.target.value)}
+                placeholder="you@example.com"
+                required
+                type="email"
+                value={values.email}
+              />
+              <TextInputField
+                autoComplete="current-password"
+                error={errors.password}
+                hint="Use the same password you created during registration."
+                id="password"
+                label="Password"
+                name="password"
+                onChange={(event) => handleChange('password', event.target.value)}
+                placeholder="Enter your password"
+                required
+                type="password"
+                value={values.password}
+              />
 
               {errors.form ? (
-                <div className="form-alert" id={formNoticeId} role="alert">
+                <FormNotice id={formNoticeId} tone="error">
                   {errors.form}
-                </div>
+                </FormNotice>
               ) : null}
 
               {registrationNotice ? (
-                <div className="form-note" role="status">
+                <FormNotice tone="note">
                   {registrationNotice}
-                </div>
+                </FormNotice>
               ) : null}
 
               {resetPasswordNotice ? (
-                <div className="form-note" role="status">
+                <FormNotice tone="note">
                   {resetPasswordNotice}
-                </div>
+                </FormNotice>
               ) : null}
 
               <button

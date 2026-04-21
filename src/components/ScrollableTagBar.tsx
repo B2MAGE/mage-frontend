@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { joinClassNames } from '@shared/lib'
 
 type ScrollableTagBarProps = {
   ariaLabel: string
@@ -8,10 +9,6 @@ type ScrollableTagBarProps = {
 }
 
 const SCROLL_EPSILON = 2
-
-function joinClassNames(...classNames: Array<string | undefined>) {
-  return classNames.filter(Boolean).join(' ')
-}
 
 export function ScrollableTagBar({
   ariaLabel,
