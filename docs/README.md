@@ -11,7 +11,7 @@ This directory holds focused implementation notes for the MAGE frontend. The rep
   Supported production deployment strategy, reverse-proxy expectations, and container notes.
 
 - [engine-integration.md](./engine-integration.md)  
-  Local engine package assumptions, aliasing, and current integration caveats.
+  Published engine bridge, frontend adapter responsibilities, and package caveats.
 
 - [login-page.md](./login-page.md)  
   Login flow behavior, session handling, and backend request shape.
@@ -23,4 +23,7 @@ This directory holds focused implementation notes for the MAGE frontend. The rep
   Registration flow behavior, redirect path, and backend request shape.
 
 - [settings-page.md](./settings-page.md)  
-  Profile edit flow, save behavior, and authenticated update request shape.
+  Profile edit flow, theme selection behavior, and authenticated update request shape.
+
+- [theme-system.md](./theme-system.md)  
+  Theme registry, provider, CSS structure, and how to add additional themes safely.

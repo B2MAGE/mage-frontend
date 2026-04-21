@@ -20,12 +20,16 @@ Route:
 
 The page is split into:
 
+- `Details`
 - `Scene`
 - `Camera`
 - `Motion`
 - `Effects`
 - `Pass Order`
-- `Advanced`
+- `Confirm`
+
+Additional advanced controls are exposed inside the `Camera` and `Motion` sections through local
+expand/collapse toggles instead of as a top-level section.
 
 Those sections write into a structured scene object built around:
 
@@ -63,6 +67,9 @@ Submission uses `authenticatedFetch()` for backend calls, so the save action req
 
 If a thumbnail is selected, the page uploads it before sending the create request. That means a failed thumbnail upload blocks scene creation instead of leaving behind a saved scene without a thumbnail.
 
+If tags are selected, the page currently attaches them in a follow-up request after the scene is
+created and the backend returns the new `sceneId`.
+
 ## Live Preview
 
 The page uses the shared `MagePlayer` component for inline preview. Edits update the structured scene data, and the preview reflects the current in-memory scene blob.
@@ -82,6 +89,7 @@ At the moment:
 
 - `name` and `sceneData` are submitted
 - thumbnail uploads are staged first and only committed when the final scene create request succeeds
+- selected tags are persisted in a follow-up attach step after the scene is created
 - description and playlist are still UI-only
 - some engine passes exist in the stack but do not have fully persisted boolean support in the compact scene schema
 
