@@ -6,9 +6,9 @@ The frontend uses the published `@notrac/mage` package for scene playback and pr
 
 App code should not talk to the engine directly. The intended boundary is:
 
-- page code -> `MagePlayer`
-- `MagePlayer` -> `src/lib/magePlayerAdapter.ts`
-- `magePlayerAdapter` -> `@notrac/mage`
+- feature/page code -> `@modules/player`
+- `@modules/player` -> `src/modules/player/infrastructure/engineAdapter.ts`
+- `engineAdapter` -> `@notrac/mage`
 
 That keeps engine-specific startup, loading, audio bridging, and disposal logic in one place.
 
@@ -20,9 +20,10 @@ the engine on unmount.
 
 Relevant files:
 
-- `src/components/MagePlayer.tsx`
-- `src/lib/magePlayerAdapter.ts`
-- `src/lib/magePlayerPlaylist.ts`
+- `src/modules/player/index.ts`
+- `src/modules/player/MagePlayer.tsx`
+- `src/modules/player/playlist.ts`
+- `src/modules/player/infrastructure/engineAdapter.ts`
 
 ## Scene Data
 
@@ -43,6 +44,7 @@ data when it contains at least one engine-recognized root branch such as:
 The adapter is doing more than forwarding calls:
 
 - it keeps engine imports out of route components
+- it isolates engine patch assumptions behind a frontend-owned infrastructure layer
 - it validates scene blobs before loading
 - it applies the current startup workaround for the published engine so scenes do not stall at time `0`
 - it centralizes scene pause/resume behavior so every embedded `MagePlayer` uses the same playback model
