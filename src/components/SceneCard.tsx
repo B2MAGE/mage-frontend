@@ -30,14 +30,14 @@ function formatViewLabel(sceneId: number) {
   const syntheticViews = 1200 + sceneId * 183
 
   if (syntheticViews >= 1000000) {
-    return `${(syntheticViews / 1000000).toFixed(1)}M renders`
+    return `${(syntheticViews / 1000000).toFixed(1)}M views`
   }
 
   if (syntheticViews >= 1000) {
-    return `${(syntheticViews / 1000).toFixed(1)}K renders`
+    return `${(syntheticViews / 1000).toFixed(1)}K views`
   }
 
-  return `${syntheticViews} renders`
+  return `${syntheticViews} views`
 }
 
 function buildCreatorInitials(name: string) {

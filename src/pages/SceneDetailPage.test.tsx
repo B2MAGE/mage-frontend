@@ -185,7 +185,7 @@ describe('SceneDetailPage', () => {
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
     expect(screen.getByText(/add a comment as scene artist/i)).toBeInTheDocument()
     expect(screen.getAllByText('Scene Artist').length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/2,999 plays/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/2,999 views/i).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /from scene artist/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^focus-friendly$/i })).toBeInTheDocument()

@@ -46,7 +46,7 @@ export function SceneDescriptionCard({
   return (
     <section className="scene-detail-description-card">
       <div className="scene-detail-description-card__meta">
-        <strong>{engagement.playsLabel}</strong>
+        <strong>{engagement.viewsLabel}</strong>
         <span>{engagement.publishedLabel}</span>
       </div>
       <div className="scene-detail-description-copy" data-expanded={isDescriptionExpanded}>
