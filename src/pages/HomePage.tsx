@@ -1,6 +1,5 @@
 import { useAuth } from '@auth'
-import { MagePlayer } from '@components/MagePlayer'
-import type { MageSceneBlob } from '@lib/magePlayerAdapter'
+import { MagePlayer, type MageSceneBlob } from '@modules/player'
 import { ScenesPage } from './ScenesPage'
 
 const HOME_PAGE_SCENE = {

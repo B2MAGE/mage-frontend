@@ -6,8 +6,8 @@ import {
   revokePlaylistTrackSources,
   shufflePlaylistTracks,
   type MagePlayerPlaylistTrack,
-} from '@lib/magePlayerPlaylist'
-import type { MageSceneBlob } from '@lib/magePlayerAdapter'
+  type MageSceneBlob,
+} from '@modules/player'
 
 export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefined) {
   const [basePlaylistTracks, setBasePlaylistTracks] = useState<MagePlayerPlaylistTrack[]>([])
@@ -32,17 +32,28 @@ export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefine
   useEffect(() => {
     const sceneTrack = buildScenePlaylistTrack(sceneBlob)
     const nextTracks = sceneTrack ? [sceneTrack] : []
+    let isCancelled = false
 
-    setBasePlaylistTracks((currentTracks) => {
-      revokePlaylistTrackSources(currentTracks)
-      return nextTracks
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return
+      }
+
+      setBasePlaylistTracks((currentTracks) => {
+        revokePlaylistTrackSources(currentTracks)
+        return nextTracks
+      })
+      setPlaylistTracks(nextTracks)
+      setSelectedTrackId(sceneTrack?.id ?? null)
+      setPlaylistName('Playlist')
+      setIsPlaylistOpen(false)
+      setIsRepeatEnabled(false)
+      setIsShuffleEnabled(false)
     })
-    setPlaylistTracks(nextTracks)
-    setSelectedTrackId(sceneTrack?.id ?? null)
-    setPlaylistName('Playlist')
-    setIsPlaylistOpen(false)
-    setIsRepeatEnabled(false)
-    setIsShuffleEnabled(false)
+
+    return () => {
+      isCancelled = true
+    }
   }, [sceneBlob])
 
   function handlePlaylistChange(nextTracks: MagePlayerPlaylistTrack[]) {

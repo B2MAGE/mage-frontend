@@ -3,8 +3,8 @@ import {
   buildScenePlaylistTrack,
   revokePlaylistTrackSources,
   type MagePlayerPlaylistTrack,
-} from '@lib/magePlayerPlaylist'
-import type { MageSceneBlob } from '@lib/magePlayerAdapter'
+} from './playlist'
+import type { MageSceneBlob } from './infrastructure/engineAdapter'
 
 type UseMagePlayerPlaylistArgs = {
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
@@ -85,47 +85,56 @@ export function useMagePlayerPlaylist({
       return
     }
 
-    setInternalPlaylistTracks((currentTracks) => {
-      revokePlaylistTrackSources(currentTracks)
+    let isCancelled = false
+    const sceneTrack = buildScenePlaylistTrack(sceneBlob)
+    const nextSelectedTrackId = sceneTrack?.id ?? null
 
-      const sceneTrack = buildScenePlaylistTrack(sceneBlob)
-      return sceneTrack ? [sceneTrack] : []
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return
+      }
+
+      setInternalPlaylistTracks((currentTracks) => {
+        revokePlaylistTrackSources(currentTracks)
+        return sceneTrack ? [sceneTrack] : []
+      })
+      setInternalSelectedTrackId(nextSelectedTrackId)
     })
 
-    setInternalSelectedTrackId(() => {
-      const sceneTrack = buildScenePlaylistTrack(sceneBlob)
-      return sceneTrack?.id ?? null
-    })
+    return () => {
+      isCancelled = true
+    }
   }, [isPlaylistControlled, sceneBlob])
 
   useEffect(() => {
-    if (isPlaylistControlled || !sceneBlob || tracks.length > 0) {
-      return
-    }
+    let isCancelled = false
 
-    const sceneTrack = buildScenePlaylistTrack(sceneBlob)
-
-    if (!sceneTrack) {
-      return
-    }
-
-    commitPlaylistTracks([sceneTrack])
-    commitSelectedTrackId(sceneTrack.id)
-  }, [isPlaylistControlled, sceneBlob, tracks.length])
-
-  useEffect(() => {
     if (tracks.length === 0) {
       if (activeSelectedTrackId !== null) {
-        commitSelectedTrackId(null)
+        queueMicrotask(() => {
+          if (!isCancelled) {
+            commitSelectedTrackId(null)
+          }
+        })
       }
 
-      return
+      return () => {
+        isCancelled = true
+      }
     }
 
     if (!currentTrack) {
-      commitSelectedTrackId(tracks[0].id)
+      queueMicrotask(() => {
+        if (!isCancelled) {
+          commitSelectedTrackId(tracks[0].id)
+        }
+      })
     }
-  }, [activeSelectedTrackId, currentTrack, tracks])
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeSelectedTrackId, commitSelectedTrackId, currentTrack, tracks])
 
   return {
     activeSelectedTrackId,

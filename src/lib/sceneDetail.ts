@@ -1,5 +1,5 @@
 import { buildApiUrl, fetchScenes, type SceneListResponse } from './api'
-import type { MageSceneBlob } from './magePlayerAdapter'
+import type { MageSceneBlob } from '@modules/player'
 
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
-import { type MagePlayerPlaylistTrack } from '@lib/magePlayerPlaylist'
 import {
   createMagePlayer,
   type MagePlayerAudioState,
   type MagePlayerController,
   type MagePlayerPlaybackState,
   type MageSceneBlob,
-} from '@lib/magePlayerAdapter'
-import { MagePlayerControls } from './mage-player/MagePlayerControls'
-import './mage-player/magePlayer.css'
+} from './infrastructure/engineAdapter'
+import { type MagePlayerPlaylistTrack } from './playlist'
+import { MagePlayerControls } from './MagePlayerControls'
+import './magePlayer.css'
 import {
   audioStatesMatch,
   buildMagePlayerClassName,
@@ -17,10 +17,10 @@ import {
   readAudioFileDuration,
   readMagePlayerErrorMessage,
   type MagePlayerStatus,
-} from './mage-player/magePlayerUtils'
-import { useMagePlayerPlaylist } from './mage-player/useMagePlayerPlaylist'
+} from './magePlayerUtils'
+import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 
-type MagePlayerProps = {
+export type MagePlayerProps = {
   ariaLabel?: string
   className?: string
   initialPlayback?: MagePlayerPlaybackState

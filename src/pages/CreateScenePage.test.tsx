@@ -10,19 +10,24 @@ import {
 import { buildApiUrl } from '@lib/api'
 import { CreateScenePage } from './CreateScenePage'
 
-vi.mock('@components/MagePlayer', () => ({
-  MagePlayer: ({
-    initialPlayback,
-    sceneBlob,
-  }: {
-    initialPlayback?: string
-    sceneBlob: unknown
-  }) => (
-    <div data-playback={initialPlayback} data-testid="mage-player">
-      {sceneBlob ? 'preview-ready' : 'no-preview'}
-    </div>
-  ),
-}))
+vi.mock('@modules/player', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@modules/player')>()
+
+  return {
+    ...actual,
+    MagePlayer: ({
+      initialPlayback,
+      sceneBlob,
+    }: {
+      initialPlayback?: string
+      sceneBlob: unknown
+    }) => (
+      <div data-playback={initialPlayback} data-testid="mage-player">
+        {sceneBlob ? 'preview-ready' : 'no-preview'}
+      </div>
+    ),
+  }
+})
 
 const storedUser: AuthenticatedUser = {
   userId: 8,

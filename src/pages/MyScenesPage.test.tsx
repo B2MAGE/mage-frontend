@@ -12,21 +12,26 @@ import { LoginPage } from './LoginPage'
 import { MyScenesPage } from './MyScenesPage'
 import { SceneDetailPage } from './SceneDetailPage'
 
-vi.mock('@components/MagePlayer', () => ({
-  MagePlayer: ({
-    ariaLabel,
-    className,
-    sceneBlob,
-  }: {
-    ariaLabel?: string
-    className?: string
-    sceneBlob: unknown
-  }) => (
-    <div aria-label={ariaLabel} className={className} data-testid="mage-player">
-      {sceneBlob ? 'player-ready' : 'no-scene'}
-    </div>
-  ),
-}))
+vi.mock('@modules/player', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@modules/player')>()
+
+  return {
+    ...actual,
+    MagePlayer: ({
+      ariaLabel,
+      className,
+      sceneBlob,
+    }: {
+      ariaLabel?: string
+      className?: string
+      sceneBlob: unknown
+    }) => (
+      <div aria-label={ariaLabel} className={className} data-testid="mage-player">
+        {sceneBlob ? 'player-ready' : 'no-scene'}
+      </div>
+    ),
+  }
+})
 
 const storedUser: AuthenticatedUser = {
   userId: 8,

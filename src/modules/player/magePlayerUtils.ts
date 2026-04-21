@@ -1,4 +1,4 @@
-import type { MagePlayerAudioState } from '@lib/magePlayerAdapter'
+import type { MagePlayerAudioState } from './infrastructure/engineAdapter'
 
 export type MagePlayerStatus = 'empty' | 'loading' | 'ready' | 'error'
 

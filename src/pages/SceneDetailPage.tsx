@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { MagePlayer } from '@components/MagePlayer'
+import { MagePlayer } from '@modules/player'
 import {
   SceneCommentsPanel,
   SceneDescriptionCard,
