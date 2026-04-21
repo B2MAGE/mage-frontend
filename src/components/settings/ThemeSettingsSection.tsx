@@ -1,5 +1,6 @@
 import { type AppThemeDefinition, useTheme } from '@theme'
 import { SurfaceCard } from '@shared/ui'
+import type { CSSProperties } from 'react'
 import './themeSettingsSection.css'
 
 type ThemePreviewProps = {
@@ -7,10 +8,18 @@ type ThemePreviewProps = {
 }
 
 function ThemePreview({ theme }: ThemePreviewProps) {
+  const previewStyle = {
+    '--theme-preview-background': theme.preview.background,
+    '--theme-preview-bar': theme.preview.bar,
+    '--theme-preview-rail': theme.preview.rail,
+    '--theme-preview-card': theme.preview.card,
+  } as CSSProperties
+
   return (
     <span
       aria-hidden="true"
-      className={`theme-option__preview theme-option__preview--${theme.id}`}
+      className="theme-option__preview"
+      style={previewStyle}
     >
       <span className="theme-option__preview-bar" />
       <span className="theme-option__preview-body">

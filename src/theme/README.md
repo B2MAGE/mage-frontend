@@ -20,6 +20,7 @@ Exports:
 - `AppThemeDefinition`
 - `AppThemeId`
 - `AppThemeColorScheme`
+- `AppThemePreviewDefinition`
 
 ## Internal Responsibilities
 
@@ -36,7 +37,7 @@ Exports:
 
 ## Adding A Theme
 
-1. Add the theme definition in `themes.ts`.
+1. Add the theme definition in `themes.ts`, including `preview` metadata for settings UI.
 2. Add token overrides in `tokens.css` under `:root[data-theme='<theme-id>']`.
 3. Create `themes/<theme-id>/index.css` only for structural/layout differences that the shared tokens do not cover.
 4. Import the new theme entrypoint from `theme.css`.

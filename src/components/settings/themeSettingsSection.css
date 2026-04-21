@@ -37,6 +37,16 @@
 }
 
 .theme-option__preview {
+  --theme-preview-background:
+    radial-gradient(circle at top left, rgba(99, 240, 214, 0.18), transparent 50%),
+    linear-gradient(180deg, rgba(8, 18, 21, 0.96), rgba(5, 11, 13, 0.98));
+  --theme-preview-bar: linear-gradient(90deg, rgba(99, 240, 214, 0.94), rgba(126, 200, 255, 0.86));
+  --theme-preview-rail:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(7, 15, 17, 0.96)),
+    rgba(7, 15, 17, 0.96);
+  --theme-preview-card:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(11, 21, 25, 0.96);
   display: grid;
   gap: 10px;
   padding: 12px;
@@ -44,11 +54,13 @@
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  background: var(--theme-preview-background);
 }
 
 .theme-option__preview-bar {
   height: 18px;
   border-radius: 999px;
+  background: var(--theme-preview-bar);
 }
 
 .theme-option__preview-body {
@@ -62,6 +74,7 @@
 .theme-option__preview-rail,
 .theme-option__preview-card {
   border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .theme-option__preview-main {
@@ -83,47 +96,12 @@
   min-height: 52px;
 }
 
-.theme-option__preview--mage-pulse {
-  background:
-    radial-gradient(circle at top left, rgba(99, 240, 214, 0.18), transparent 50%),
-    linear-gradient(180deg, rgba(8, 18, 21, 0.96), rgba(5, 11, 13, 0.98));
+.theme-option__preview-rail {
+  background: var(--theme-preview-rail);
 }
 
-.theme-option__preview--mage-pulse .theme-option__preview-bar {
-  background: linear-gradient(90deg, rgba(99, 240, 214, 0.94), rgba(126, 200, 255, 0.86));
-}
-
-.theme-option__preview--mage-pulse .theme-option__preview-rail {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(7, 15, 17, 0.96)),
-    rgba(7, 15, 17, 0.96);
-  border: 1px solid rgba(99, 240, 214, 0.12);
-}
-
-.theme-option__preview--mage-pulse .theme-option__preview-card {
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
-    rgba(11, 21, 25, 0.96);
-  border: 1px solid rgba(99, 240, 214, 0.1);
-}
-
-.theme-option__preview--classic-facebook {
-  background: linear-gradient(180deg, #eef2f7, #f8f9fb);
-}
-
-.theme-option__preview--classic-facebook .theme-option__preview-bar {
-  background: linear-gradient(90deg, #3b5998, #5872a8);
-}
-
-.theme-option__preview--classic-facebook .theme-option__preview-rail {
-  background: #f7f8fb;
-  border: 1px solid #cfd8ea;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.theme-option__preview--classic-facebook .theme-option__preview-card {
-  background: #ffffff;
-  border: 1px solid #bcc7d8;
+.theme-option__preview-card {
+  background: var(--theme-preview-card);
 }
 
 .theme-option__copy {
