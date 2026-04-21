@@ -13,6 +13,9 @@ This directory holds focused implementation notes for the MAGE frontend. The rep
 - [engine-integration.md](./engine-integration.md)  
   Published engine bridge, frontend adapter responsibilities, and package caveats.
 
+- [frontend-architecture.md](./frontend-architecture.md)  
+  Initial modular-monolith folder conventions, ownership rules, and migration direction.
+
 - [login-page.md](./login-page.md)  
   Login flow behavior, session handling, and backend request shape.
 
