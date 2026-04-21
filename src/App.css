@@ -2036,14 +2036,28 @@
 }
 
 .my-scenes-pagination__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
   border: 0;
   background: transparent;
   color: rgba(220, 232, 229, 0.86);
-  font-size: 0.95rem;
-  font-weight: 700;
   cursor: pointer;
+}
+
+.my-scenes-pagination__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+
+.my-scenes-pagination__icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .my-scenes-pagination__button:hover,
