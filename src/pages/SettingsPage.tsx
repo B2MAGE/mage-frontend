@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { ThemeSettingsSection } from '../components/settings/ThemeSettingsSection'
 import { parseApiError } from '../lib/authForm'
 
 const PROFILE_SAVE_UNAVAILABLE_MESSAGE =
@@ -34,10 +35,12 @@ export function SettingsPage() {
     <main className="page-stack settings-page">
       <section className="surface surface--page-panel">
         <div className="eyebrow">Settings</div>
-        <h1 className="settings-title">Profile details</h1>
+        <h1 className="settings-title">Settings</h1>
         <p className="settings-lead">
-          Review the account details currently tied to your MAGE profile.
+          Manage your MAGE profile details and choose the interface theme that fits this device.
         </p>
+
+        <ThemeSettingsSection />
 
         <ProfileDetailsForm
           email={user.email}
@@ -153,6 +156,10 @@ function ProfileDetailsForm({
 
   return (
     <section className="surface surface--soft settings-section" aria-label="Profile details">
+      <div className="settings-section__header">
+        <h2>Profile details</h2>
+        <p>Review the account details currently tied to your MAGE profile.</p>
+      </div>
       <form className="settings-fields" onSubmit={handleSubmit}>
         <div className="field-group">
           <label htmlFor="settings-email">Email</label>

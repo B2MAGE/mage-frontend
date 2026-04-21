@@ -18,6 +18,49 @@ type MyScenesPaginationProps = {
   onToggleRowsPerPageMenu: () => void
 }
 
+function PaginationChevronIcon({
+  direction,
+  double = false,
+}: {
+  direction: 'left' | 'right'
+  double?: boolean
+}) {
+  const isLeft = direction === 'left'
+
+  return (
+    <span className="my-scenes-pagination__icon" aria-hidden="true">
+      <svg viewBox="0 0 16 16" fill="none">
+        {double ? (
+          <>
+            <path
+              d={isLeft ? 'M9.5 4.5 6 8l3.5 3.5' : 'M6.5 4.5 10 8l-3.5 3.5'}
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={isLeft ? 'M13 4.5 9.5 8 13 11.5' : 'M3 4.5 6.5 8 3 11.5'}
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </>
+        ) : (
+          <path
+            d={isLeft ? 'M10.5 4.5 7 8l3.5 3.5' : 'M5.5 4.5 9 8l-3.5 3.5'}
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+    </span>
+  )
+}
+
 export function MyScenesPagination({
   currentPageIndex,
   isRowsPerPageMenuOpen,
@@ -94,7 +137,7 @@ export function MyScenesPagination({
           onClick={onGoToFirstPage}
           type="button"
         >
-          {'<<'}
+          <PaginationChevronIcon direction="left" double />
         </button>
         <button
           aria-label="Go to previous page"
@@ -103,7 +146,7 @@ export function MyScenesPagination({
           onClick={onGoToPreviousPage}
           type="button"
         >
-          {'<'}
+          <PaginationChevronIcon direction="left" />
         </button>
         <button
           aria-label="Go to next page"
@@ -112,7 +155,7 @@ export function MyScenesPagination({
           onClick={onGoToNextPage}
           type="button"
         >
-          {'>'}
+          <PaginationChevronIcon direction="right" />
         </button>
         <button
           aria-label="Go to last page"
@@ -121,7 +164,7 @@ export function MyScenesPagination({
           onClick={onGoToLastPage}
           type="button"
         >
-          {'>>'}
+          <PaginationChevronIcon direction="right" double />
         </button>
       </div>
     </div>

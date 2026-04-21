@@ -1,0 +1,212 @@
+html[data-theme='classic-facebook'] .settings-section,
+html[data-theme='classic-facebook'] .my-scenes-panel {
+  gap: 16px;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-panel__header,
+html[data-theme='classic-facebook'] .my-scenes-board__toolbar {
+  border-bottom-color: #d8dfea;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-board__chip {
+  border-radius: 2px;
+  border-color: #c7d2e5;
+  background: #f0f2f5;
+  color: #49618d;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-board__chip[data-active='true'] {
+  border-color: #a8b8d9;
+  background: #d8dfea;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-board__chip:hover,
+html[data-theme='classic-facebook'] .my-scenes-board__chip:focus-visible {
+  border-color: #98abd3;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-scroll {
+  scrollbar-color: #c1cada #eef2f7;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-scroll::-webkit-scrollbar-track {
+  background: #eef2f7;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-scroll::-webkit-scrollbar-thumb {
+  background: #c1cada;
+  border-color: #f7f8fb;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-table__head {
+  color: #6076a8;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-table__sort-button[data-active='true'],
+html[data-theme='classic-facebook'] .my-scenes-table__sort-button:hover,
+html[data-theme='classic-facebook'] .my-scenes-table__sort-button:focus-visible {
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-table__sort-indicator {
+  color: #7a8eb6;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-table__checkbox {
+  accent-color: #3b5998;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row {
+  border-top-color: #d8dfea;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row:hover {
+  background: #f7f9fc;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row:hover .my-scenes-row__title-link strong,
+html[data-theme='classic-facebook'] .my-scenes-row__title-link:focus-visible strong {
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__description {
+  color: #596b93;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__description:hover,
+html[data-theme='classic-facebook'] .my-scenes-row__description:focus-visible {
+  color: #2d4373;
+  text-decoration: underline;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__thumb,
+html[data-theme='classic-facebook'] .my-scenes-row__thumb-fallback {
+  border-radius: 2px;
+  border-color: #bcc7d8;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__thumb {
+  background: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__thumb-fallback {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8f9fb, #eef2f7);
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__thumb-fallback::before {
+  content: '';
+  position: absolute;
+  inset: 12% 10%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Crect x='10' y='10' width='220' height='160' rx='18' ry='18' fill='%23f6f8fb' stroke='%2397a4b8' stroke-width='5'/%3E%3Ccircle cx='182' cy='54' r='20' fill='%23b5bfce'/%3E%3Cpolygon points='28,154 88,70 150,154' fill='%239da7b4'/%3E%3Cpolygon points='104,154 146,96 190,154' fill='%23b2bccb'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__pill {
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 2px;
+  background: #e9eff8;
+  color: #2d4373;
+  border-color: #a8b8d9;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__pill[data-status="Public"] {
+  border-color: #a8b8d9;
+  background: #e9eff8;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__pill[data-status="Private"] {
+  border-color: #d4bea1;
+  background: #f7efe3;
+  color: #7a5a2f;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__pill[data-status="Unlisted"] {
+  border-color: #a8bfd9;
+  background: #edf4fb;
+  color: #345880;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-row__pill[data-status="Draft"] {
+  border-color: #c5b8db;
+  background: #f2eef9;
+  color: #5e4b86;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination {
+  color: #7b8cad;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-button {
+  min-height: 28px;
+  border-radius: 2px;
+  border-color: #bcc7d8;
+  background: #ffffff;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-button:hover,
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-button:focus-visible {
+  border-color: #98abd3;
+  background: #eef2f7;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-caret,
+html[data-theme='classic-facebook'] .my-scenes-pagination__range {
+  color: #6076a8;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu {
+  border: 1px solid #bcc7d8;
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-option {
+  color: #49618d;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-option:hover,
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-option:focus-visible {
+  background: #eef2f7;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__menu-option[data-active="true"] {
+  background: #e9eff8;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #bcc7d8;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #5b74a8;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__button:hover,
+html[data-theme='classic-facebook'] .my-scenes-pagination__button:focus-visible {
+  border-color: #98abd3;
+  background: #eef2f7;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .my-scenes-pagination__button:disabled {
+  border-color: #d8dfea;
+  background: #f7f8fb;
+  color: #b7c2d6;
+}
+

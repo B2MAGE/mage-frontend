@@ -13,6 +13,7 @@ The current app includes:
 
 - guest and authenticated account flows
 - a reusable browser-based MAGE player
+- a persistent frontend theme system with multiple selectable themes
 - scene listing and scene detail pages
 - a multi-section create scene editor with direct-to-object-storage thumbnail uploads
 - shared auth session restore and protected routes
@@ -38,6 +39,7 @@ mage-frontend/
 |  |- components/     Reusable UI and player components
 |  |- lib/            Scene editor helpers, API helpers, engine adapter
 |  |- pages/          Route-level screens
+|  |- theme/          Theme registry, provider, tokens, and theme CSS entrypoints
 |  `- test/           Shared test setup
 |- .env.example
 |- package.json
@@ -131,3 +133,5 @@ Additional project notes live in `docs/`:
 - [docs/login-page.md](./docs/login-page.md)
 - [docs/player-component.md](./docs/player-component.md)
 - [docs/registration-page.md](./docs/registration-page.md)
+- [docs/settings-page.md](./docs/settings-page.md)
+- [docs/theme-system.md](./docs/theme-system.md)

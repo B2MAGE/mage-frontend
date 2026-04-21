@@ -63,17 +63,44 @@ export function HomePage() {
   return (
     <main className="surface surface--hero home-hero">
       <div className="eyebrow">Preview</div>
-      <h1>MAGE</h1>
-      <p className="page-lead">Musical Autonomous Generated Environments</p>
-      <section className="home-preview-section" aria-label="Live scene preview">
-        <MagePlayer
-          ariaLabel="MAGE live scene preview"
-          initialPlayback="playing"
-          sceneBlob={HOME_PAGE_SCENE}
-        />
-      </section>
-      <p className="page-footnote">The full platform experience is currently in development.</p>
-      <div className="page-mark">MAGE</div>
+      <div className="home-hero__header">
+        <div className="home-hero__title-block">
+          <h1>MAGE</h1>
+          <p className="page-lead">Musical Autonomous Generated Environments</p>
+        </div>
+      </div>
+      <div className="home-hero__layout">
+        <section className="surface surface--nested home-hero__info-panel" aria-label="Welcome to MAGE">
+          <div className="home-hero__panel-heading">Welcome to MAGE</div>
+          <div className="home-hero__panel-body">
+            <p className="home-hero__panel-copy">
+              A live social space for reactive scenes, creator-built visuals, and music-driven
+              experiences.
+            </p>
+            <ul className="home-hero__feature-list">
+              <li>Preview interactive scenes right from the homepage.</li>
+              <li>Browse community-built visuals once discovery opens.</li>
+              <li>Build and publish your own scenes with the studio tools.</li>
+            </ul>
+            <p className="page-footnote">
+              The full platform experience is currently in development.
+            </p>
+          </div>
+        </section>
+        <section className="home-preview-section home-hero__preview" aria-label="Live scene preview">
+          <div className="home-hero__panel-heading">Live Scene Preview</div>
+          <div className="home-hero__preview-body">
+            <MagePlayer
+              ariaLabel="MAGE live scene preview"
+              initialPlayback="playing"
+              sceneBlob={HOME_PAGE_SCENE}
+            />
+          </div>
+        </section>
+      </div>
+      <div className="home-hero__footer">
+        <div className="page-mark">MAGE</div>
+      </div>
     </main>
   )
 }
