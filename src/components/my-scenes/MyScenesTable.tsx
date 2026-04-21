@@ -128,9 +128,8 @@ export function MyScenesTable({
                   <div
                     className="my-scenes-row__thumb-fallback"
                     aria-label={`${scene.name} thumbnail unavailable`}
-                  >
-                    No thumbnail available
-                  </div>
+                    role="img"
+                  />
                 )}
               </Link>
               <div className="my-scenes-row__copy">
