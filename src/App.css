@@ -1458,6 +1458,10 @@
   background: var(--card-thumbnail-image-background);
 }
 
+.mage-scene-card__thumb--fallback {
+  background: var(--card-thumbnail-placeholder-background);
+}
+
 .mage-scene-card__thumb::after {
   content: "";
   position: absolute;

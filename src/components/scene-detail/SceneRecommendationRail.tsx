@@ -177,7 +177,7 @@ export function SceneRecommendationRail({
               ) : (
                 <div
                   aria-hidden="true"
-                  className="mage-scene-card__thumb"
+                  className="mage-scene-card__thumb mage-scene-card__thumb--fallback"
                   style={{ '--scene-accent': recommendedScene.accent } as CSSProperties}
                 />
               )}
