@@ -51,7 +51,7 @@ export type CreatorProfile = {
 }
 
 export type SceneEngagement = {
-  playsLabel: string
+  viewsLabel: string
   upvotesLabel: string
   downvotesLabel: string
   savesLabel: string
@@ -301,9 +301,9 @@ function normalizeRecommendedSceneList(payload: unknown): SceneListResponse[] {
   }, [])
 }
 
-function buildRecommendedPlaysLabel(sceneId: number) {
-  const plays = 1559 + sceneId * 120
-  return `${plays.toLocaleString()} plays`
+function buildRecommendedViewsLabel(sceneId: number) {
+  const views = 1559 + sceneId * 120
+  return `${views.toLocaleString()} views`
 }
 
 function buildRecommendationAccent(sceneId: number) {
@@ -328,7 +328,7 @@ function buildRecommendedScenesFromList(
         id: scene.sceneId,
         title: scene.name,
         creator: scene.creatorDisplayName,
-        meta: `${buildRecommendedPlaysLabel(scene.sceneId)} | ${formatRelativeAge(scene.createdAt)}`,
+        meta: `${buildRecommendedViewsLabel(scene.sceneId)} | ${formatRelativeAge(scene.createdAt)}`,
         accent: buildRecommendationAccent(scene.sceneId),
         thumbnailRef: scene.thumbnailRef,
         ownerUserId: scene.ownerUserId,
@@ -495,13 +495,13 @@ export async function fetchRecommendedSceneGroups(
 }
 
 export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
-  const plays = 1559 + scene.id * 120
+  const views = 1559 + scene.id * 120
   const upvotes = 56 + scene.id * 30
   const downvotes = 8 + scene.id * 2
   const saves = 18 + scene.id * 11
 
   return {
-    playsLabel: `${plays.toLocaleString()} plays`,
+    viewsLabel: `${views.toLocaleString()} views`,
     upvotesLabel: upvotes.toLocaleString(),
     downvotesLabel: downvotes.toLocaleString(),
     savesLabel: saves.toLocaleString(),
@@ -533,7 +533,7 @@ export function buildCreatorProfile(
       handle: `@${slugify(resolvedDisplayName) || 'magecreator'}`,
       subscribersLabel: buildSubscriberLabel(scene.id),
       studioNote:
-        'I wanted this scene page to feel like something I would actually share, not just a lab route with a player dropped into it.',
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
       primaryActionLabel: 'Subscribe',
     }
   }
@@ -556,12 +556,14 @@ export function buildSceneDescription(
   creatorProfile: CreatorProfile,
 ): SceneDescription {
   return {
-    opening: `I built ${scene.name} for tracks that need atmosphere without visual clutter. The motion holds back during the intro, then the reflections and bloom open up once the mids start pushing forward.`,
-    middle: `${creatorProfile.displayName} tends to tune scenes for patience rather than spectacle, so this one lands best behind slower house, downtempo electronica, mellow garage, and long vocal builds where the frame needs to stay supportive instead of noisy.`,
+    opening:
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    middle:
+      `${creatorProfile.displayName} lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
     closing:
-      'This page is still an early public pass, but the scene render above is the real scene payload. I wanted the surrounding notes, comments, and recommendations to read like a creator page someone would actually spend time on while the rest of the social features catch up.',
-    bestFor: 'late-night sets, focus mixes, ambient intros',
-    builtWith: 'soft bloom, layered fog, reflective passes, restrained drift',
+      'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+    bestFor: 'lorem ipsum, dolor sit amet, consectetur',
+    builtWith: 'adipiscing elit, sed do eiusmod, tempor incididunt',
     tags: scene.tags,
   }
 }
@@ -572,7 +574,7 @@ export function buildSceneComments(scene: SceneDetail): SceneComment[] {
       author: 'Nora Vale',
       handle: '@noravale',
       posted: '2 days ago',
-      text: `Ran ${scene.name} behind a Rhodes sketch last night and it sat exactly where I wanted it. The slower build is what makes it feel intentional.`,
+      text: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. ${scene.name} sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
       upvotes: '14',
       downvotes: '1',
     },
@@ -580,7 +582,8 @@ export function buildSceneComments(scene: SceneDetail): SceneComment[] {
       author: 'Cass Mercer',
       handle: '@cassmercer',
       posted: '5 days ago',
-      text: 'The restraint is the best part. Most reactive scenes oversell the first beat, but this one gives the track room before the highlights start showing off.',
+      text:
+        'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
       upvotes: '9',
       downvotes: '0',
     },
@@ -588,7 +591,8 @@ export function buildSceneComments(scene: SceneDetail): SceneComment[] {
       author: 'Jun Park',
       handle: '@junpark',
       posted: '1 week ago',
-      text: 'Would happily use this for an hour-long focus upload. The glassy reflections feel polished without tipping into sci-fi overload.',
+      text:
+        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
       upvotes: '6',
       downvotes: '0',
     },

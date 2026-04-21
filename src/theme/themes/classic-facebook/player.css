@@ -58,6 +58,18 @@ html[data-theme='classic-facebook'] .mage-player__timeline-slider {
     );
 }
 
+html[data-theme='classic-facebook'] .mage-player__volume-slider {
+  background: rgba(91, 116, 168, 0.24);
+}
+
+html[data-theme='classic-facebook'] .mage-player__volume-slider::-webkit-slider-runnable-track {
+  background: rgba(91, 116, 168, 0.24);
+}
+
+html[data-theme='classic-facebook'] .mage-player__volume-slider::-moz-range-track {
+  background: rgba(91, 116, 168, 0.24);
+}
+
 html[data-theme='classic-facebook'] .mage-player__timeline-slider::-webkit-slider-thumb,
 html[data-theme='classic-facebook'] .mage-player__volume-slider::-webkit-slider-thumb {
   background: #ffffff;
