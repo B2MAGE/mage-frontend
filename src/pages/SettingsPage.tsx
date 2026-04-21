@@ -1,7 +1,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
-import { useAuth } from '../auth/AuthContext'
-import { ThemeSettingsSection } from '../components/settings/ThemeSettingsSection'
-import { parseApiError } from '../lib/authForm'
+import { useAuth } from '@auth'
+import { ThemeSettingsSection } from '@components/settings'
+import { parseApiError } from '@lib/authForm'
 
 const PROFILE_SAVE_UNAVAILABLE_MESSAGE =
   'Profile updates are unavailable right now. Please try again in a moment.'

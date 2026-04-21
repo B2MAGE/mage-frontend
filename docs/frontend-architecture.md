@@ -52,6 +52,19 @@ If code is mostly owned by one feature, it should stay with that feature.
 
 The repo is still in a hybrid state. Existing `pages/`, `components/`, and `lib/` directories remain in use while the modular-monolith structure is introduced. Issue `#83` establishes the skeleton and app-level composition move. Later stories will migrate feature code into modules incrementally rather than through a single rewrite.
 
+## Import Conventions
+
+Cross-top-level imports should use aliases instead of parent-relative paths.
+
+- `@app` for application wiring and composition
+- `@modules/<module-name>` for module public APIs
+- `@shared/*` for cross-cutting shared code
+- `@auth`, `@components`, `@lib`, `@pages`, and `@theme` for the current hybrid directories during migration
+
+Within a top-level area, short relative imports are still fine for local implementation details.
+
+Module internals are private by default. If a module needs to be consumed elsewhere, expose it from that module's `index.ts` and import it through `@modules/<module-name>`. Deep imports such as `@modules/player/internal/foo` should be treated as boundary violations.
+
 ## Near-Term Refactor Sequence
 
 The intended sequence is:

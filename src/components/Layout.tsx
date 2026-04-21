@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '@auth'
 
 function UserIcon() {
   return (

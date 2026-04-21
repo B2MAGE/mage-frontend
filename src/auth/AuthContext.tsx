@@ -6,7 +6,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react'
-import { buildApiUrl } from '../lib/api'
+import { buildApiUrl } from '@lib/api'
 
 export type AuthenticatedUser = {
   userId: number | null

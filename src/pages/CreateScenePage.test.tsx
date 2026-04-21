@@ -6,11 +6,11 @@ import {
   AUTH_SESSION_STORAGE_KEY,
   AuthProvider,
   type AuthenticatedUser,
-} from '../auth/AuthContext'
-import { buildApiUrl } from '../lib/api'
+} from '@auth'
+import { buildApiUrl } from '@lib/api'
 import { CreateScenePage } from './CreateScenePage'
 
-vi.mock('../components/MagePlayer', () => ({
+vi.mock('@components/MagePlayer', () => ({
   MagePlayer: ({
     initialPlayback,
     sceneBlob,

@@ -7,7 +7,7 @@ import {
   type SortDirection,
   type SortKey,
   type UserScene,
-} from '../../lib/myScenes'
+} from '@lib/myScenes'
 
 type MyScenesTableProps = {
   allPageScenesSelected: boolean

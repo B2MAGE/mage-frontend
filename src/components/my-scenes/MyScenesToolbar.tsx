@@ -1,4 +1,4 @@
-import type { SceneVisibility, StatusFilter } from '../../lib/myScenes'
+import type { SceneVisibility, StatusFilter } from '@lib/myScenes'
 
 type MyScenesToolbarProps = {
   availableStatuses: SceneVisibility[]

@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { MY_SCENES_ROWS_PER_PAGE_OPTIONS } from '../../lib/myScenes'
+import { MY_SCENES_ROWS_PER_PAGE_OPTIONS } from '@lib/myScenes'
 
 type MyScenesPaginationProps = {
   currentPageIndex: number

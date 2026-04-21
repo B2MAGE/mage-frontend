@@ -6,13 +6,13 @@ import {
   AUTH_SESSION_STORAGE_KEY,
   AuthProvider,
   type AuthenticatedUser,
-} from '../auth/AuthContext'
-import { buildApiUrl } from '../lib/api'
+} from '@auth'
+import { buildApiUrl } from '@lib/api'
 import { LoginPage } from './LoginPage'
 import { MyScenesPage } from './MyScenesPage'
 import { SceneDetailPage } from './SceneDetailPage'
 
-vi.mock('../components/MagePlayer', () => ({
+vi.mock('@components/MagePlayer', () => ({
   MagePlayer: ({
     ariaLabel,
     className,

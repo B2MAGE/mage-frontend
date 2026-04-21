@@ -3,8 +3,8 @@ import {
   buildScenePlaylistTrack,
   revokePlaylistTrackSources,
   type MagePlayerPlaylistTrack,
-} from '../../lib/magePlayerPlaylist'
-import type { MageSceneBlob } from '../../lib/magePlayerAdapter'
+} from '@lib/magePlayerPlaylist'
+import type { MageSceneBlob } from '@lib/magePlayerAdapter'
 
 type UseMagePlayerPlaylistArgs = {
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
