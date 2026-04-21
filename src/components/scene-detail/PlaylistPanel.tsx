@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react'
-import type { MagePlayerPlaylistTrack } from '../../lib/magePlayerPlaylist'
+import type { MagePlayerPlaylistTrack } from '@lib/magePlayerPlaylist'
 import { PlaylistTrackRow } from './PlaylistTrackRow'
 import { EditIcon, RepeatIcon, ShuffleIcon } from './playlistPanelIcons'
 import './playlistPanel.css'

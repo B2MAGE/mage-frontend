@@ -24,7 +24,7 @@ let authState = {
   },
 }
 
-vi.mock('../auth/AuthContext', () => ({
+vi.mock('@auth', () => ({
   useAuth: () => authState,
 }))
 

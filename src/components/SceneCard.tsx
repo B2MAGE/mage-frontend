@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { SceneListResponse } from '../lib/api'
+import type { SceneListResponse } from '@lib/api'
 
 type SceneCardProps = {
   scene: SceneListResponse

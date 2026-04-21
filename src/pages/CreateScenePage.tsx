@@ -1,9 +1,9 @@
 import type { FormEvent, PropsWithChildren, ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
-import { AuthPage, AuthPageHeader } from "../components/AuthPage";
-import { MagePlayer } from "../components/MagePlayer";
+import { useAuth } from "@auth";
+import { AuthPage, AuthPageHeader } from "@components/AuthPage";
+import { MagePlayer } from "@components/MagePlayer";
 import {
   EffectCard,
   NumberField,
@@ -12,13 +12,13 @@ import {
   SliderField,
   ToggleField,
   Vector3Field,
-} from "../components/SceneEditorControls";
-import { parseApiError } from "../lib/authForm";
-import { uploadNewSceneThumbnail } from "../lib/sceneThumbnailUpload";
+} from "@components/SceneEditorControls";
+import { parseApiError } from "@lib/authForm";
+import { uploadNewSceneThumbnail } from "@lib/sceneThumbnailUpload";
 import {
   fetchAvailableTags,
   type TagResponse,
-} from "../lib/api";
+} from "@lib/api";
 import {
   createDefaultSceneData,
   getSceneEditorModel,
@@ -36,7 +36,7 @@ import {
   type ScenePassId,
   type SceneData,
   type SceneEditorModel,
-} from "../lib/sceneEditor";
+} from "@lib/sceneEditor";
 
 type CreateSceneFormErrors = Partial<
   Record<"form" | "name" | "newTag" | "sceneData" | "tags" | "thumbnail", string>

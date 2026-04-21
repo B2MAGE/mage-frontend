@@ -20,11 +20,11 @@ let authState = {
   },
 }
 
-vi.mock('../auth/AuthContext', () => ({
+vi.mock('@auth', () => ({
   useAuth: () => authState,
 }))
 
-vi.mock('../components/MagePlayer', () => ({
+vi.mock('@components/MagePlayer', () => ({
   MagePlayer: ({ initialPlayback }: { initialPlayback?: string }) => (
     <div data-playback={initialPlayback}>Preview player</div>
   ),

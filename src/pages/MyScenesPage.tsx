@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
-import { MyScenesPagination } from '../components/my-scenes/MyScenesPagination'
-import { MyScenesTable } from '../components/my-scenes/MyScenesTable'
-import { MyScenesToolbar } from '../components/my-scenes/MyScenesToolbar'
+import { useAuth } from '@auth'
+import { MyScenesPagination, MyScenesTable, MyScenesToolbar } from '@components/my-scenes'
 import {
   buildSortSummary,
   createDemoScenes,
@@ -13,7 +11,7 @@ import {
   type SortKey,
   type StatusFilter,
   type UserScene,
-} from '../lib/myScenes'
+} from '@lib/myScenes'
 
 export function MyScenesPage() {
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()

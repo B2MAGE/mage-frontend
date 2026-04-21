@@ -1,4 +1,4 @@
-import type { TagResponse } from '../lib/api'
+import type { TagResponse } from '@lib/api'
 import { ScrollableTagBar } from './ScrollableTagBar'
 
 type TagFilterBarProps = {

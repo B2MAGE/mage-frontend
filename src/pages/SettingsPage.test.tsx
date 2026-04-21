@@ -1,9 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { APP_THEME_STORAGE_KEY, ThemeProvider } from '@theme'
 import { SettingsPage } from './SettingsPage'
-import { ThemeProvider } from '../theme/ThemeProvider'
-import { APP_THEME_STORAGE_KEY } from '../theme/themes'
 
 let authState = {
   accessToken: null as string | null,
@@ -23,7 +22,7 @@ let authState = {
   },
 }
 
-vi.mock('../auth/AuthContext', () => ({
+vi.mock('@auth', () => ({
   useAuth: () => authState,
 }))
 

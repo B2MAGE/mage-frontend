@@ -2,11 +2,11 @@ import { type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEven
 import {
   readPlaylistTrackSummaryName,
   type MagePlayerPlaylistTrack,
-} from '../../lib/magePlayerPlaylist'
+} from '@lib/magePlayerPlaylist'
 import {
   type MagePlayerAudioState,
   type MagePlayerPlaybackState,
-} from '../../lib/magePlayerAdapter'
+} from '@lib/magePlayerAdapter'
 import { formatAudioTime } from './magePlayerUtils'
 
 type MagePlayerControlsProps = {

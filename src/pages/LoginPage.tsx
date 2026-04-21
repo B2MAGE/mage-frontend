@@ -1,10 +1,10 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AuthPage, AuthPageHeader } from '../components/AuthPage'
-import { useAuth, type AuthenticatedUser } from '../auth/AuthContext'
-import { buildApiUrl } from '../lib/api'
-import { emailPattern, parseApiError } from '../lib/authForm'
+import { useAuth, type AuthenticatedUser } from '@auth'
+import { AuthPage, AuthPageHeader } from '@components/AuthPage'
+import { buildApiUrl } from '@lib/api'
+import { emailPattern, parseApiError } from '@lib/authForm'
 
 type LoginFormValues = {
   email: string

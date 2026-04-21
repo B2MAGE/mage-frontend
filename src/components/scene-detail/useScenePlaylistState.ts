@@ -6,8 +6,8 @@ import {
   revokePlaylistTrackSources,
   shufflePlaylistTracks,
   type MagePlayerPlaylistTrack,
-} from '../../lib/magePlayerPlaylist'
-import type { MageSceneBlob } from '../../lib/magePlayerAdapter'
+} from '@lib/magePlayerPlaylist'
+import type { MageSceneBlob } from '@lib/magePlayerAdapter'
 
 export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefined) {
   const [basePlaylistTracks, setBasePlaylistTracks] = useState<MagePlayerPlaylistTrack[]>([])

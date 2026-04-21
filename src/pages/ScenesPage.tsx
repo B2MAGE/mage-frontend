@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { SceneListResponse, TagResponse } from '../lib/api'
-import { fetchScenes, fetchTags } from '../lib/api'
-import { SceneCard } from '../components/SceneCard'
-import { TagFilterBar } from '../components/TagFilterBar'
+import type { SceneListResponse, TagResponse } from '@lib/api'
+import { fetchScenes, fetchTags } from '@lib/api'
+import { SceneCard } from '@components/SceneCard'
+import { TagFilterBar } from '@components/TagFilterBar'
 
 type PageState = 'loading' | 'ready' | 'error'
 

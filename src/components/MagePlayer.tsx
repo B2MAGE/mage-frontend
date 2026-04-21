@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
-import { type MagePlayerPlaylistTrack } from '../lib/magePlayerPlaylist'
+import { type MagePlayerPlaylistTrack } from '@lib/magePlayerPlaylist'
 import {
   createMagePlayer,
   type MagePlayerAudioState,
   type MagePlayerController,
   type MagePlayerPlaybackState,
   type MageSceneBlob,
-} from '../lib/magePlayerAdapter'
+} from '@lib/magePlayerAdapter'
 import { MagePlayerControls } from './mage-player/MagePlayerControls'
 import './mage-player/magePlayer.css'
 import {

@@ -1,5 +1,4 @@
-import { useTheme } from '../../theme/ThemeProvider'
-import { type AppThemeDefinition } from '../../theme/themes'
+import { type AppThemeDefinition, useTheme } from '@theme'
 import './themeSettingsSection.css'
 
 type ThemePreviewProps = {

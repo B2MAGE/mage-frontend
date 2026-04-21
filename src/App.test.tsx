@@ -2,42 +2,42 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AUTH_SESSION_STORAGE_KEY } from '@auth'
 import App from './App'
-import { AUTH_SESSION_STORAGE_KEY } from './auth/AuthContext'
 
-vi.mock('./components/Layout', () => ({
+vi.mock('@components/Layout', () => ({
   Layout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('./pages/HomePage', () => ({
+vi.mock('@pages/HomePage', () => ({
   HomePage: () => <div>Home page</div>,
 }))
 
-vi.mock('./pages/LoginPage', () => ({
+vi.mock('@pages/LoginPage', () => ({
   LoginPage: () => <div>Login page</div>,
 }))
 
-vi.mock('./pages/MyScenesPage', () => ({
+vi.mock('@pages/MyScenesPage', () => ({
   MyScenesPage: () => <div>My scenes page</div>,
 }))
 
-vi.mock('./pages/ScenesPage', () => ({
+vi.mock('@pages/ScenesPage', () => ({
   ScenesPage: () => <div>Scenes page</div>,
 }))
 
-vi.mock('./pages/SceneDetailPage', () => ({
+vi.mock('@pages/SceneDetailPage', () => ({
   SceneDetailPage: () => <div>Scene detail page</div>,
 }))
 
-vi.mock('./pages/RegisterPage', () => ({
+vi.mock('@pages/RegisterPage', () => ({
   RegisterPage: () => <div>Register page</div>,
 }))
 
-vi.mock('./pages/CreateScenePage', () => ({
+vi.mock('@pages/CreateScenePage', () => ({
   CreateScenePage: () => <div>Create scene page</div>,
 }))
 
-vi.mock('./pages/SettingsPage', () => ({
+vi.mock('@pages/SettingsPage', () => ({
   SettingsPage: () => <div>Settings page</div>,
 }))
 

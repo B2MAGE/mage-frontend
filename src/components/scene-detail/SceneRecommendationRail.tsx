@@ -1,12 +1,12 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import type { MagePlayerPlaylistTrack } from '../../lib/magePlayerPlaylist'
+import type { MagePlayerPlaylistTrack } from '@lib/magePlayerPlaylist'
 import {
   buildTagRecommendationFilter,
   readRecommendationFilterTag,
   type RecommendedSceneCard,
   type RecommendationFilter,
-} from '../../lib/sceneDetail'
+} from '@lib/sceneDetail'
 import { ScrollableTagBar } from '../ScrollableTagBar'
 import { PlaylistPanel } from './PlaylistPanel'
 

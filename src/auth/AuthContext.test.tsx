@@ -9,7 +9,7 @@ import {
   type AuthenticatedUser,
   useAuth,
 } from './AuthContext'
-import { buildApiUrl } from '../lib/api'
+import { buildApiUrl } from '@lib/api'
 
 const storedUser: AuthenticatedUser = {
   userId: 8,

@@ -1,5 +1,5 @@
 import { type ChangeEvent } from 'react'
-import { readPlaylistTrackSummaryName, type MagePlayerPlaylistTrack } from '../../lib/magePlayerPlaylist'
+import { readPlaylistTrackSummaryName, type MagePlayerPlaylistTrack } from '@lib/magePlayerPlaylist'
 import { CloseIcon } from './playlistPanelIcons'
 
 type PlaylistTrackEditorProps = {

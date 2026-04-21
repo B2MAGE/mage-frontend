@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { AUTH_SESSION_STORAGE_KEY, AuthProvider } from '../auth/AuthContext'
-import { buildApiUrl } from '../lib/api'
+import { AUTH_SESSION_STORAGE_KEY, AuthProvider } from '@auth'
+import { buildApiUrl } from '@lib/api'
 import { LoginPage } from './LoginPage'
 
 type RenderLoginPageOptions = {
