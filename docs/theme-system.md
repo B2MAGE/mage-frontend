@@ -2,16 +2,21 @@
 
 ## Overview
 
-The frontend now has a shared theme system instead of page-specific theme forks. The active theme is applied at the document level, persisted on the current device, and consumed by shared route/layout surfaces.
+The frontend theme system is now organized as a dedicated module boundary under `src/theme/`.
 
 Current themes:
 
 - `mage-pulse` (`MAGE Pulse`)
 - `classic-facebook` (`Classic Blue`)
 
+The active theme is applied at the document level, persisted on the current device, and consumed by shared UI surfaces through token families instead of page-by-page color overrides.
+
 ## Related Files
 
+- `src/theme/README.md`
+- `src/theme/index.ts`
 - `src/theme/themes.ts`
+- `src/theme/runtime.ts`
 - `src/theme/ThemeProvider.tsx`
 - `src/theme/theme.css`
 - `src/theme/tokens.css`
@@ -19,55 +24,51 @@ Current themes:
 - `src/components/settings/ThemeSettingsSection.tsx`
 - `src/components/settings/themeSettingsSection.css`
 
-## Architecture
+## Module Boundary
 
-The theme system is split into three layers:
+Use `@theme` as the public API.
 
-1. **Theme registry**
+Public exports:
 
-   `src/theme/themes.ts` is the single source of truth for available themes. Each theme definition includes:
+- `ThemeProvider`
+- `useTheme()`
+- `APP_THEME_STORAGE_KEY`
+- `APP_THEMES`
+- `APP_THEME_OPTIONS`
+- `APP_THEME_DEFINITIONS`
+- `DEFAULT_APP_THEME_ID`
+- `getAppTheme()`
+- `isAppThemeId()`
+- `AppThemeDefinition`
+- `AppThemeId`
+- `AppThemeColorScheme`
+- `AppThemePreviewDefinition`
 
-   - `id`
-   - `label`
-   - `description`
-   - `colorScheme`
+Internal responsibilities:
 
-2. **Theme provider**
+- `themes.ts`
+  Theme registry metadata, preview metadata, and lookup helpers.
+- `runtime.ts`
+  Document application and theme persistence helpers.
+- `ThemeProvider.tsx`
+  React context boundary for theme selection.
+- `tokens.css`
+  Shared token families for reusable surfaces.
+- `themes/<theme-id>/`
+  Structural theme overrides that cannot be expressed with shared tokens alone.
 
-   `ThemeProvider`:
+## Token Families
 
-   - reads the saved theme from `localStorage`
-   - falls back to `DEFAULT_APP_THEME_ID`
-   - applies `data-theme` to `document.documentElement`
-   - applies `document.documentElement.style.colorScheme`
-   - exposes `theme`, `themeId`, `themes`, and `setTheme()`
+`src/theme/tokens.css` now defines shared token families for reusable UI surfaces, including:
 
-3. **Theme CSS**
+- nav chrome
+- pills
+- cards
+- tables
+- player chrome
+- editor surfaces
 
-   `src/theme/theme.css` is only an entrypoint. It imports:
-
-   - shared tokens from `tokens.css`
-   - one CSS entrypoint per non-default theme
-
-   Theme-specific overrides should live under `src/theme/themes/<theme-id>/`.
-
-## Current CSS Structure
-
-Shared tokens:
-
-- `src/theme/tokens.css`
-
-Classic Blue modules:
-
-- `chrome.css`
-- `home.css`
-- `discovery.css`
-- `library.css`
-- `editor.css`
-- `player.css`
-- `index.css` as the theme entrypoint
-
-This keeps large theme work split by surface area instead of collecting everything in one file.
+The shared app CSS consumes those tokens directly. Themes primarily customize the app by overriding token values, while theme CSS files are reserved for layout or behavioral differences that tokens cannot safely represent.
 
 ## Settings Integration
 
@@ -77,27 +78,29 @@ Behavior:
 
 - switching themes applies immediately
 - the selected theme persists on the current device through `mage.theme`
-- the current theme is exposed to the app without route code needing to know implementation details
+- preview cards are driven by registry metadata in `themes.ts`
+- route code does not need to know how themes are stored or applied
 
 ## Adding A New Theme
 
-To add another theme:
+To add another theme safely:
 
-1. Add a new theme definition to `APP_THEME_CONFIG` in `src/theme/themes.ts`
-2. Create a new folder under `src/theme/themes/<theme-id>/`
-3. Add an `index.css` file for that theme and split it by surface area as needed
-4. Import that theme entrypoint from `src/theme/theme.css`
-5. Add a preview style in `src/components/settings/themeSettingsSection.css`
-6. Update tests if the visible theme labels or options change
+1. Add a new theme definition to `APP_THEME_CONFIG` in `src/theme/themes.ts`, including preview metadata.
+2. Add the theme token overrides to `src/theme/tokens.css` under `:root[data-theme='<theme-id>']`.
+3. Create a new folder under `src/theme/themes/<theme-id>/` only if the theme needs structural overrides beyond the shared tokens.
+4. Add an `index.css` entrypoint for that theme and import it from `src/theme/theme.css`.
+5. Verify the shared nav, pill, card, table, player, and editor surfaces inherit the expected theme behavior.
+6. Update tests if visible labels or theme options change.
 
-Avoid adding provider logic that branches on specific theme ids. Theme-specific behavior should usually come from:
+Avoid branching provider logic on specific theme ids. New themes should default to:
 
 - registry metadata in `themes.ts`
-- CSS selectors like `html[data-theme='<theme-id>'] ...`
+- token overrides in `tokens.css`
+- targeted structural overrides in `themes/<theme-id>/`
 
 ## Tests
 
-Theme persistence and selection coverage currently lives in:
+Theme persistence and integration coverage currently lives in:
 
 - `src/pages/SettingsPage.test.tsx`
-- route/theme provider integration checks in `src/App.test.tsx`
+- `src/App.test.tsx`

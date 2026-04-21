@@ -1,4 +1,9 @@
-export const APP_THEME_STORAGE_KEY = 'mage.theme'
+export type AppThemePreviewDefinition = {
+  background: string
+  bar: string
+  rail: string
+  card: string
+}
 
 const APP_THEME_CONFIG = [
   {
@@ -6,12 +11,27 @@ const APP_THEME_CONFIG = [
     id: 'mage-pulse',
     label: 'MAGE Pulse',
     description: 'The current MAGE theme with dark surfaces and luminous accents.',
+    preview: {
+      background:
+        'radial-gradient(circle at top left, rgba(99, 240, 214, 0.18), transparent 50%), linear-gradient(180deg, rgba(8, 18, 21, 0.96), rgba(5, 11, 13, 0.98))',
+      bar: 'linear-gradient(90deg, rgba(99, 240, 214, 0.94), rgba(126, 200, 255, 0.86))',
+      rail:
+        'linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(7, 15, 17, 0.96)), rgba(7, 15, 17, 0.96)',
+      card:
+        'linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), rgba(11, 21, 25, 0.96)',
+    },
   },
   {
     colorScheme: 'light',
     id: 'classic-facebook',
     label: 'Classic Blue',
     description: 'A blue-and-white retro theme inspired by mid-2000s social media.',
+    preview: {
+      background: 'linear-gradient(180deg, #eef2f7, #f8f9fb)',
+      bar: 'linear-gradient(90deg, #3b5998, #5872a8)',
+      rail: '#f7f8fb',
+      card: '#ffffff',
+    },
   },
 ] as const
 
