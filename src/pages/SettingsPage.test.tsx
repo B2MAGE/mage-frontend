@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsPage } from './SettingsPage'
+import { ThemeProvider } from '../theme/ThemeProvider'
+import { APP_THEME_STORAGE_KEY } from '../theme/themes'
 
 let authState = {
   accessToken: null as string | null,
@@ -25,8 +27,18 @@ vi.mock('../auth/AuthContext', () => ({
   useAuth: () => authState,
 }))
 
+function renderSettingsPage() {
+  return render(
+    <ThemeProvider>
+      <SettingsPage />
+    </ThemeProvider>,
+  )
+}
+
 describe('SettingsPage', () => {
   beforeEach(() => {
+    window.localStorage.clear()
+    document.documentElement.removeAttribute('data-theme')
     authState = {
       accessToken: null,
       authenticatedFetch: vi.fn(),
@@ -54,13 +66,17 @@ describe('SettingsPage', () => {
       },
     }
 
-    render(<SettingsPage />)
+    renderSettingsPage()
 
-    expect(screen.getByRole('heading', { name: /profile details/i, level: 1 })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /profile details/i, level: 2 })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^settings$/i, level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /theme/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /profile details/i, level: 2 })).toBeInTheDocument()
     expect(
-      screen.getByText(/review the account details currently tied to your mage profile/i),
+      screen.getByText(
+        /manage your mage profile details and choose the interface theme that fits this device/i,
+      ),
     ).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /mage pulse/i })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByLabelText(/email/i)).toHaveValue('artist@example.com')
     expect(screen.getByLabelText(/first name/i)).toHaveValue('Scene')
     expect(screen.getByLabelText(/display name/i)).toHaveValue('Scene Artist')
@@ -68,6 +84,35 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('LOCAL')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument()
+  })
+
+  it('persists the selected theme on this device', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    await user.click(screen.getByRole('radio', { name: /classic blue/i }))
+
+    expect(screen.getByRole('radio', { name: /classic blue/i })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(document.documentElement.dataset.theme).toBe('classic-facebook')
+    expect(window.localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe('classic-facebook')
   })
 
   it('saves updated names through the authenticated backend flow', async () => {
@@ -106,7 +151,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    render(<SettingsPage />)
+    renderSettingsPage()
 
     await user.clear(screen.getByLabelText(/first name/i))
     await user.type(screen.getByLabelText(/first name/i), 'Updated')
@@ -177,7 +222,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    render(<SettingsPage />)
+    renderSettingsPage()
 
     await user.clear(screen.getByLabelText(/first name/i))
     await user.clear(screen.getByLabelText(/last name/i))
@@ -210,7 +255,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    render(<SettingsPage />)
+    renderSettingsPage()
 
     await user.clear(screen.getByLabelText(/display name/i))
     await user.type(screen.getByLabelText(/display name/i), 'Updated Artist')
@@ -224,7 +269,7 @@ describe('SettingsPage', () => {
   })
 
   it('shows a fallback state when the page cannot read a signed-in user', () => {
-    render(<SettingsPage />)
+    renderSettingsPage()
 
     expect(screen.getByRole('heading', { name: /unable to open settings/i })).toBeInTheDocument()
     expect(

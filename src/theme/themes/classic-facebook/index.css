@@ -1,0 +1,7 @@
+/* Classic Blue theme surface overrides grouped by app area. */
+@import './chrome.css';
+@import './home.css';
+@import './discovery.css';
+@import './library.css';
+@import './editor.css';
+@import './player.css';
