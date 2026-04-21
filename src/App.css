@@ -446,7 +446,83 @@
 }
 
 .home-hero {
-  width: min(750px, 100%);
+  width: min(1040px, 100%);
+}
+
+.home-hero__header {
+  display: grid;
+  gap: 10px;
+}
+
+.home-hero__title-block {
+  display: grid;
+  gap: 10px;
+}
+
+.home-hero__layout {
+  display: grid;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.home-hero__info-panel {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.home-hero__panel-heading {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-hero__panel-body {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px 18px;
+}
+
+.home-hero__panel-copy {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.home-hero__feature-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+}
+
+.home-hero__preview {
+  display: grid;
+  gap: 0;
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.home-hero__preview-body {
+  display: grid;
+  justify-items: center;
+  padding: 18px;
+}
+
+.home-hero__preview .mage-player {
+  width: min(100%, 620px);
+}
+
+.home-hero__footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
 }
 
 .home-hero .page-lead,
@@ -457,10 +533,21 @@
 }
 
 .home-preview-section {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  margin-top: 32px;
+  display: grid;
+  justify-items: center;
+}
+
+@media (max-width: 920px) {
+  .home-hero__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-hero__header,
+  .home-hero__layout,
+  .home-hero__footer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
 }
 
 .secondary-link {
