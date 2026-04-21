@@ -7,9 +7,9 @@ import {
   type MagePlayerAudioState,
   type MagePlayerController,
   type MagePlayerPlaybackState,
-} from '@lib/magePlayerAdapter'
+} from './infrastructure/engineAdapter'
 
-vi.mock('@lib/magePlayerAdapter', () => ({
+vi.mock('./infrastructure/engineAdapter', () => ({
   createMagePlayer: vi.fn(),
 }))
 

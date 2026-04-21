@@ -24,11 +24,16 @@ vi.mock('@auth', () => ({
   useAuth: () => authState,
 }))
 
-vi.mock('@components/MagePlayer', () => ({
-  MagePlayer: ({ initialPlayback }: { initialPlayback?: string }) => (
-    <div data-playback={initialPlayback}>Preview player</div>
-  ),
-}))
+vi.mock('@modules/player', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@modules/player')>()
+
+  return {
+    ...actual,
+    MagePlayer: ({ initialPlayback }: { initialPlayback?: string }) => (
+      <div data-playback={initialPlayback}>Preview player</div>
+    ),
+  }
+})
 
 vi.mock('./ScenesPage', () => ({
   ScenesPage: () => <div>Scenes page</div>,

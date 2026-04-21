@@ -3,7 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@auth";
 import { AuthPage, AuthPageHeader } from "@components/AuthPage";
-import { MagePlayer } from "@components/MagePlayer";
+import { MagePlayer } from "@modules/player";
 import {
   EffectCard,
   NumberField,

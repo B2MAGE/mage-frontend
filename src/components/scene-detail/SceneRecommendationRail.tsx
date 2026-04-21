@@ -1,6 +1,6 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import type { MagePlayerPlaylistTrack } from '@lib/magePlayerPlaylist'
+import type { MagePlayerPlaylistTrack } from '@modules/player'
 import {
   buildTagRecommendationFilter,
   readRecommendationFilterTag,

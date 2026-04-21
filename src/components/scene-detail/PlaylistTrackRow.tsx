@@ -4,7 +4,7 @@ import {
   readPlaylistTrackMetaLine,
   readPlaylistTrackSummaryName,
   type MagePlayerPlaylistTrack,
-} from '@lib/magePlayerPlaylist'
+} from '@modules/player'
 import { PlaylistTrackEditor } from './PlaylistTrackEditor'
 import { CloseIcon } from './playlistPanelIcons'
 

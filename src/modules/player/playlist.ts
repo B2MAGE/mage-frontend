@@ -1,4 +1,4 @@
-import type { MageSceneBlob } from './magePlayerAdapter'
+import type { MageSceneBlob } from './infrastructure/engineAdapter'
 
 export type MagePlayerPlaylistTrack = {
   album?: string

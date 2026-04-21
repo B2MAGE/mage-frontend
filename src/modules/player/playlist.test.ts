@@ -3,7 +3,7 @@ import {
   mergePlaylistTrackCollections,
   shufflePlaylistTracks,
   type MagePlayerPlaylistTrack,
-} from './magePlayerPlaylist'
+} from './playlist'
 
 function createTrack(id: string): MagePlayerPlaylistTrack {
   return {

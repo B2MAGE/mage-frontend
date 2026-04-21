@@ -1,6 +1,5 @@
 export { AuthPage, AuthPageHeader } from './AuthPage'
 export { Layout } from './Layout'
-export { MagePlayer } from './MagePlayer'
 export {
   EffectCard,
   NumberField,

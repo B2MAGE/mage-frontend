@@ -73,7 +73,7 @@ describe('createMagePlayer', () => {
   })
 
   it('primes engine time and resumes playback after loading a scene blob', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -103,7 +103,7 @@ describe('createMagePlayer', () => {
   })
 
   it('does not reset engine time when it is already past zero', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -124,7 +124,7 @@ describe('createMagePlayer', () => {
   })
 
   it('tracks playback state before the first scene load without touching the engine', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
 
     const player = await createMagePlayer(canvas)
@@ -142,7 +142,7 @@ describe('createMagePlayer', () => {
   })
 
   it('exposes playback state controls for the shared player UI after a scene is loaded', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -172,7 +172,7 @@ describe('createMagePlayer', () => {
   })
 
   it('keeps a paused scene paused when a new scene blob loads', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -196,7 +196,7 @@ describe('createMagePlayer', () => {
   })
 
   it('surfaces the underlying engine error text when scene loading throws', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -216,7 +216,7 @@ describe('createMagePlayer', () => {
   })
 
   it('loads configured audio and syncs it to the current scene time', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       audioPath: '/audio/crimson-reactor.mp3',
@@ -252,7 +252,7 @@ describe('createMagePlayer', () => {
   })
 
   it('allows audio loading from a local device when the frontend passes a source path directly', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -290,7 +290,7 @@ describe('createMagePlayer', () => {
   })
 
   it('detaches cleared audio so resuming playback does not replay a removed track', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       visualizer: {
@@ -334,7 +334,7 @@ describe('createMagePlayer', () => {
   })
 
   it('seeks loaded audio and syncs engine time for the shared scrubber', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       audioPath: '/audio/crimson-reactor.mp3',
@@ -360,7 +360,7 @@ describe('createMagePlayer', () => {
   })
 
   it('updates audio volume through the shared player bridge', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
 
     const player = await createMagePlayer(canvas)
@@ -372,7 +372,7 @@ describe('createMagePlayer', () => {
   })
 
   it('resets scene and audio playback back to the beginning', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
       audioPath: '/audio/crimson-reactor.mp3',
@@ -402,7 +402,7 @@ describe('createMagePlayer', () => {
   })
 
   it('disables native engine controls so only shared playback chrome is shown', async () => {
-    const { createMagePlayer } = await import('./magePlayerAdapter')
+    const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
 
     const player = await createMagePlayer(canvas)

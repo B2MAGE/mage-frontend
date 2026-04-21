@@ -2,18 +2,20 @@
 
 ## Overview
 
-`MagePlayer` is the shared React boundary for rendering MAGE scenes in the browser. Pages should
-pass a scene blob into the component and let the shared adapter handle engine startup, scene
-loading, audio state, and disposal.
+`MagePlayer` is exported from the dedicated `@modules/player` boundary and is the shared React
+surface for rendering MAGE scenes in the browser. Feature and page code should pass a scene blob
+into the component and let the player module own engine startup, scene loading, audio state, and
+disposal.
 
 ## Related Files
 
-- `src/components/MagePlayer.tsx`
-- `src/components/mage-player/MagePlayerControls.tsx`
-- `src/components/mage-player/useMagePlayerPlaylist.ts`
-- `src/lib/magePlayerAdapter.ts`
-- `src/lib/magePlayerPlaylist.ts`
-- `src/components/MagePlayer.test.tsx`
+- `src/modules/player/index.ts`
+- `src/modules/player/MagePlayer.tsx`
+- `src/modules/player/MagePlayerControls.tsx`
+- `src/modules/player/useMagePlayerPlaylist.ts`
+- `src/modules/player/playlist.ts`
+- `src/modules/player/infrastructure/engineAdapter.ts`
+- `src/modules/player/MagePlayer.test.tsx`
 
 ## Public Interface
 
@@ -39,7 +41,7 @@ Optional playlist-management props used by route-level pages:
 Example:
 
 ```tsx
-import { MagePlayer } from "../components/MagePlayer";
+import { MagePlayer } from '@modules/player'
 
 export function SceneDetail({
   scene,
@@ -114,8 +116,9 @@ model.
 
 ## Integration Rules
 
-- do not call `initMAGE()` directly from route components
-- keep engine-specific logic inside `src/lib/magePlayerAdapter.ts`
+- import the player through `@modules/player`
+- do not call `initMAGE()` directly from route or feature components
+- treat `src/modules/player/infrastructure/engineAdapter.ts` as an internal infrastructure detail
 - keep route-level playlist state outside the player when a page needs track editing, shuffle, repeat, or side-panel UI
 - if a page swaps scenes, pass the next `sceneBlob` to the same `MagePlayer` instance and let the component reload it
 - use `initialPlayback` from route code instead of building page-specific play/pause overlays
@@ -130,4 +133,4 @@ model.
 
 Main coverage lives in:
 
-- `src/components/MagePlayer.test.tsx`
+- `src/modules/player/MagePlayer.test.tsx`
