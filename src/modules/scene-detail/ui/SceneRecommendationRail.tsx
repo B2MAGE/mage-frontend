@@ -1,13 +1,9 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { ScrollableTagBar } from '@components'
 import type { MagePlayerPlaylistTrack } from '@modules/player'
-import {
-  buildTagRecommendationFilter,
-  readRecommendationFilterTag,
-  type RecommendedSceneCard,
-  type RecommendationFilter,
-} from '@lib/sceneDetail'
-import { ScrollableTagBar } from '../ScrollableTagBar'
+import { buildTagRecommendationFilter, readRecommendationFilterTag } from '../recommendations'
+import type { RecommendedSceneCard, RecommendationFilter } from '../types'
 import { PlaylistPanel } from './PlaylistPanel'
 
 type SceneRecommendationRailProps = {

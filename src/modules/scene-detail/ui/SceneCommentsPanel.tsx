@@ -1,5 +1,5 @@
-import type { SceneComment } from '@lib/sceneDetail'
-import { readInitial } from '@lib/sceneDetail'
+import { readInitial } from '../selectors'
+import type { SceneComment } from '../types'
 import { VoteButton } from './VoteButton'
 
 type SceneCommentsPanelProps = {

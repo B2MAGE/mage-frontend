@@ -25,7 +25,7 @@ vi.mock('@pages/ScenesPage', () => ({
   ScenesPage: () => <div>Scenes page</div>,
 }))
 
-vi.mock('@pages/SceneDetailPage', () => ({
+vi.mock('@modules/scene-detail', () => ({
   SceneDetailPage: () => <div>Scene detail page</div>,
 }))
 
