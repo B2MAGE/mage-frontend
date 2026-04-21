@@ -7,6 +7,8 @@ import { emailPattern, parseApiError } from '@shared/lib'
 import { FormNotice, TextInputField } from '@shared/ui'
 
 type RegistrationFormValues = {
+  firstName: string
+  lastName: string
   displayName: string
   email: string
   password: string
@@ -25,6 +27,8 @@ type RegistrationResponse = {
 }
 
 const initialValues: RegistrationFormValues = {
+  firstName:'',
+  lastName: '',
   displayName: '',
   email: '',
   password: '',
@@ -35,6 +39,18 @@ const DEFAULT_REGISTRATION_LAST_NAME = 'NoName'
 
 function validateRegistrationForm(values: RegistrationFormValues): RegistrationFormErrors {
   const errors: RegistrationFormErrors = {}
+
+  if (!values.firstName.trim()) {
+    errors.firstName = 'First name is required.'
+  } else if (values.firstName.trim().length < 2) {
+    errors.firstName = 'First name must be at least 2 characters.'
+  }
+
+  if (!values.lastName.trim()) {
+    errors.lastName = 'Last name is required.'
+  } else if (values.lastName.trim().length < 2) {
+    errors.lastName = 'Last name must be at least 2 characters.'
+  }
 
   if (!values.displayName.trim()) {
     errors.displayName = 'Display name is required.'
@@ -91,6 +107,8 @@ export function RegisterPage() {
     event.preventDefault()
 
     const trimmedValues = {
+      firstName: values.firstName.trim(),
+      lastName: values.lastName.trim(),
       displayName: values.displayName.trim(),
       email: values.email.trim(),
       password: values.password,
@@ -107,16 +125,12 @@ export function RegisterPage() {
     setErrors({})
 
     try {
-      const response = await fetch(buildApiUrl('/auth/register'), {
+      const response = await fetch(buildApiUrl('/api/auth/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...trimmedValues,
-          firstName: DEFAULT_REGISTRATION_FIRST_NAME,
-          lastName: DEFAULT_REGISTRATION_LAST_NAME,
-        }),
+        body: JSON.stringify(trimmedValues),
       })
 
       if (!response.ok) {
@@ -168,6 +182,32 @@ export function RegisterPage() {
           />
 
           <form className="auth-form" noValidate onSubmit={handleSubmit}>
+            <TextInputField
+              autoComplete="first-name"
+              error={errors.firstName}
+              id="firstName"
+              label="First name"
+              minLength={2}
+              name="firstName"
+              onChange={(event) => handleChange('firstName', event.target.value)}
+              placeholder="John"
+              required
+              type="text"
+              value={values.firstName}
+            />
+            <TextInputField
+              autoComplete="last-name"
+              error={errors.lastName}
+              id="lastName"
+              label="Last name"
+              minLength={2}
+              name="lastName"
+              onChange={(event) => handleChange('lastName', event.target.value)}
+              placeholder="Doe"
+              required
+              type="text"
+              value={values.lastName}
+            />
             <TextInputField
               autoComplete="nickname"
               error={errors.displayName}
