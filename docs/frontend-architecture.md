@@ -37,6 +37,8 @@ Use `modules/` for vertical feature slices. A module should eventually own:
 
 Examples of target modules include `player`, `scene-detail`, `scene-editor`, `discovery`, `my-scenes`, `auth`, `settings`, and `theme`.
 
+The current `src/theme/` directory is already treated as a dedicated module boundary with its own public API, even though the broader module migration is still in progress.
+
 ### `shared/`
 
 Use `shared/` only for cross-cutting concerns that are genuinely reused across multiple modules. Typical examples are:
