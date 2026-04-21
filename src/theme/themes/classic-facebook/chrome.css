@@ -1,9 +1,5 @@
 html[data-theme='classic-facebook'] .navbar {
-  height: 56px;
-  background: #3b5998;
-  border-bottom: 1px solid #29447e;
   box-shadow: inset 0 -1px 0 rgba(17, 33, 74, 0.4);
-  backdrop-filter: none;
 }
 
 html[data-theme='classic-facebook'] .nav-inner {
@@ -16,35 +12,10 @@ html[data-theme='classic-facebook'] .nav-actions {
 }
 
 html[data-theme='classic-facebook'] .logo {
-  color: #ffffff;
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.05em;
   text-transform: lowercase;
-}
-
-html[data-theme='classic-facebook'] .nav-signin,
-html[data-theme='classic-facebook'] .nav-status-pill {
-  min-height: 34px;
-  border-radius: 2px;
-  border: 1px solid #29447e;
-  background: #5b74a8;
-  color: #ffffff;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .nav-signin:hover,
-html[data-theme='classic-facebook'] .nav-status-pill:hover {
-  border-color: #29447e;
-  background: #6d84b4;
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .nav-signin:focus-visible,
-html[data-theme='classic-facebook'] .nav-menu__item:focus-visible,
-html[data-theme='classic-facebook'] .nav-menu__profile-link:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.22);
-  border-color: #ffffff;
 }
 
 html[data-theme='classic-facebook'] .nav-create__icon,
@@ -91,8 +62,8 @@ html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible {
 
 html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-avatar,
 html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-avatar {
-  background: #eef2f7;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.24);
+  background: var(--nav-avatar-hover-background);
+  box-shadow: var(--nav-avatar-hover-shadow);
 }
 
 html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-profile-trigger__chevron,
@@ -100,62 +71,19 @@ html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-prof
   color: #ffffff;
 }
 
-html[data-theme='classic-facebook'] .nav-profile-trigger__chevron {
-  color: #d8dfea;
-}
-
-html[data-theme='classic-facebook'] .nav-avatar {
-  background: #d8dfea;
-  color: #3b5998;
-  box-shadow: none;
-}
-
 html[data-theme='classic-facebook'] .nav-menu {
   top: calc(100% + 8px);
   min-width: 280px;
   padding: 10px 0;
-  border-radius: 0;
-  border: 1px solid #bcc7d8;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
-  backdrop-filter: none;
 }
 
 html[data-theme='classic-facebook'] .nav-menu__profile-link {
   border-radius: 2px;
 }
 
-html[data-theme='classic-facebook'] .nav-menu__profile-link:hover {
-  background: #eff2f7;
-  border-color: #d8dfea;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__identity strong {
-  color: #1d2a44;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__channel-link,
-html[data-theme='classic-facebook'] .nav-menu__identity span,
-html[data-theme='classic-facebook'] .nav-menu__item,
-html[data-theme='classic-facebook'] .nav-menu__icon {
-  color: #49618d;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__divider {
-  background: #d8dfea;
-}
-
 html[data-theme='classic-facebook'] .nav-menu__item {
   min-height: 44px;
   font-weight: 700;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__item:hover {
-  background: #eff2f7;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__item:hover .nav-menu__icon {
-  color: #3b5998;
 }
 
 html[data-theme='classic-facebook'] .app-shell {
@@ -219,8 +147,8 @@ html[data-theme='classic-facebook'] .page-mark {
 }
 
 html[data-theme='classic-facebook'] .demo-link,
-html[data-theme='classic-facebook'] .scene-order-button,
-html[data-theme='classic-facebook'] .scene-secondary-button {
+html[data-theme='classic-facebook'] .auth-submit,
+html[data-theme='classic-facebook'] .scene-editor-submit {
   border-radius: 2px;
   border: 1px solid #29447e;
   background: #5b74a8;
@@ -229,9 +157,8 @@ html[data-theme='classic-facebook'] .scene-secondary-button {
 }
 
 html[data-theme='classic-facebook'] .demo-link:hover,
-html[data-theme='classic-facebook'] .scene-order-button:hover,
-html[data-theme='classic-facebook'] .scene-secondary-button:hover,
-html[data-theme='classic-facebook'] .auth-submit:hover {
+html[data-theme='classic-facebook'] .auth-submit:hover,
+html[data-theme='classic-facebook'] .scene-editor-submit:hover {
   background: #6d84b4;
   box-shadow: none;
 }
@@ -242,11 +169,7 @@ html[data-theme='classic-facebook'] .field-group label {
 
 html[data-theme='classic-facebook'] .field-group input,
 html[data-theme='classic-facebook'] .field-group textarea,
-html[data-theme='classic-facebook'] .field-group select,
-html[data-theme='classic-facebook'] .scene-select,
-html[data-theme='classic-facebook'] .scene-number-input,
-html[data-theme='classic-facebook'] .scene-slider__number,
-html[data-theme='classic-facebook'] .scene-textarea {
+html[data-theme='classic-facebook'] .field-group select {
   border-radius: 2px;
   border-color: #bdc7d8;
   background: #ffffff;
@@ -254,28 +177,19 @@ html[data-theme='classic-facebook'] .scene-textarea {
 }
 
 html[data-theme='classic-facebook'] .field-group input::placeholder,
-html[data-theme='classic-facebook'] .field-group textarea::placeholder,
-html[data-theme='classic-facebook'] .scene-textarea::placeholder {
+html[data-theme='classic-facebook'] .field-group textarea::placeholder {
   color: #8794b4;
 }
 
 html[data-theme='classic-facebook'] .field-group input:hover,
 html[data-theme='classic-facebook'] .field-group textarea:hover,
-html[data-theme='classic-facebook'] .field-group select:hover,
-html[data-theme='classic-facebook'] .scene-select:hover,
-html[data-theme='classic-facebook'] .scene-number-input:hover,
-html[data-theme='classic-facebook'] .scene-slider__number:hover,
-html[data-theme='classic-facebook'] .scene-textarea:hover {
+html[data-theme='classic-facebook'] .field-group select:hover {
   border-color: #6d84b4;
 }
 
 html[data-theme='classic-facebook'] .field-group input:focus,
 html[data-theme='classic-facebook'] .field-group textarea:focus,
-html[data-theme='classic-facebook'] .field-group select:focus,
-html[data-theme='classic-facebook'] .scene-select:focus,
-html[data-theme='classic-facebook'] .scene-number-input:focus,
-html[data-theme='classic-facebook'] .scene-slider__number:focus,
-html[data-theme='classic-facebook'] .scene-textarea:focus {
+html[data-theme='classic-facebook'] .field-group select:focus {
   border-color: #3b5998;
   box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.12);
 }
@@ -295,11 +209,7 @@ html[data-theme='classic-facebook'] .form-note {
 }
 
 html[data-theme='classic-facebook'] .settings-page,
-html[data-theme='classic-facebook'] .my-scenes-page {
-  margin-top: 0;
-}
-
+html[data-theme='classic-facebook'] .my-scenes-page,
 html[data-theme='classic-facebook'] .auth-page--wide {
   margin-top: 0;
 }
-

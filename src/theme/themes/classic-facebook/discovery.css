@@ -23,38 +23,6 @@ html[data-theme='classic-facebook'] .tag-filter-bar {
   padding: 0;
 }
 
-html[data-theme='classic-facebook'] .tag-pill {
-  min-height: 28px;
-  padding: 4px 12px;
-  border-radius: 2px;
-  border-color: #c7d2e5;
-  background: #f0f2f5;
-  color: #49618d;
-  font-size: 0.82rem;
-  text-transform: none;
-}
-
-html[data-theme='classic-facebook'] .tag-pill:hover,
-html[data-theme='classic-facebook'] .tag-pill:focus-visible {
-  border-color: #a8b8d9;
-  background: #e6ebf4;
-  color: #2d4373;
-  outline: none;
-}
-
-html[data-theme='classic-facebook'] .tag-pill--active,
-html[data-theme='classic-facebook'] .tag-pill--active:hover {
-  border-color: #29447e;
-  background: #5b74a8;
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .tag-pill--skeleton {
-  border: 1px solid #d8dfea;
-  background: linear-gradient(90deg, #eef2f7 25%, #f7f8fb 50%, #eef2f7 75%);
-  background-size: 200% 100%;
-}
-
 html[data-theme='classic-facebook'] .scene-grid {
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 28px 20px;
@@ -64,18 +32,16 @@ html[data-theme='classic-facebook'] .scene-card {
   gap: 14px;
   padding: 0;
   margin: 0;
-  border-radius: 2px;
 }
 
-html[data-theme='classic-facebook'] .scene-card-link:hover .scene-card,
-html[data-theme='classic-facebook'] .scene-card-link:focus-visible .scene-card {
-  background: transparent;
+html[data-theme='classic-facebook'] .scene-card__body {
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
 }
 
 html[data-theme='classic-facebook'] .scene-card-link:hover .scene-card__thumbnail,
 html[data-theme='classic-facebook'] .scene-card-link:focus-visible .scene-card__thumbnail {
-  border-color: #a8b8d9;
-  box-shadow: 0 4px 10px rgba(59, 89, 152, 0.12);
   transform: translateY(-1px);
 }
 
@@ -87,87 +53,11 @@ html[data-theme='classic-facebook'] .scene-card-link:focus-visible .scene-card__
   filter: brightness(1.02);
 }
 
-html[data-theme='classic-facebook'] .scene-card__thumbnail {
-  border-radius: 2px;
-  border-color: #bcc7d8;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-
-html[data-theme='classic-facebook'] .scene-card__thumbnail-placeholder {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(180deg, #f8f9fb, #eef2f7);
-}
-
-html[data-theme='classic-facebook'] .scene-card__thumbnail-placeholder::before {
-  content: '';
-  position: absolute;
-  inset: 12% 10%;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Crect x='10' y='10' width='220' height='160' rx='18' ry='18' fill='%23f6f8fb' stroke='%2397a4b8' stroke-width='5'/%3E%3Ccircle cx='182' cy='54' r='20' fill='%23b5bfce'/%3E%3Cpolygon points='28,154 88,70 150,154' fill='%239da7b4'/%3E%3Cpolygon points='104,154 146,96 190,154' fill='%23b2bccb'/%3E%3C/svg%3E")
-      center / contain no-repeat;
-}
-
-html[data-theme='classic-facebook'] .scene-card__thumbnail-placeholder::after {
-  display: none;
-}
-
-html[data-theme='classic-facebook'] .scene-card__thumbnail::after {
-  display: none;
-}
-
-html[data-theme='classic-facebook'] .scene-card__body {
-  align-items: center;
-  gap: 10px;
-  padding: 0 2px;
-}
-
-html[data-theme='classic-facebook'] .scene-card__avatar {
-  width: 38px;
-  height: 38px;
-  border-color: #bcc7d8;
-  background: #d8dfea;
-  color: #3b5998;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-card__avatar--skeleton {
-  border: 1px solid #d8dfea;
-  background: linear-gradient(90deg, #eef2f7 25%, #f7f8fb 50%, #eef2f7 75%);
-  background-size: 200% 100%;
-}
-
-html[data-theme='classic-facebook'] .scene-card__name {
-  color: #3b5998;
-  font-size: 0.98rem;
-}
-
-html[data-theme='classic-facebook'] .scene-card__creator,
-html[data-theme='classic-facebook'] .scene-card__stats,
-html[data-theme='classic-facebook'] .scene-card__stats-separator {
-  color: #7b8cad;
-}
-
 html[data-theme='classic-facebook'] .scene-card-link:hover .scene-card__name,
 html[data-theme='classic-facebook'] .scene-card-link:focus-visible .scene-card__name {
-  color: #2d4373;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.15em;
-}
-
-html[data-theme='classic-facebook'] .scene-card-link:hover .scene-card__creator,
-html[data-theme='classic-facebook'] .scene-card-link:hover .scene-card__stats,
-html[data-theme='classic-facebook'] .scene-card-link:focus-visible .scene-card__creator,
-html[data-theme='classic-facebook'] .scene-card-link:focus-visible .scene-card__stats {
-  color: #596b93;
-}
-
-html[data-theme='classic-facebook'] .scene-card__thumbnail--skeleton,
-html[data-theme='classic-facebook'] .skeleton-text {
-  background: linear-gradient(90deg, #eef2f7 25%, #f7f8fb 50%, #eef2f7 75%);
-  background-size: 200% 100%;
 }
 
 html[data-theme='classic-facebook'] .scenes-empty,
@@ -187,4 +77,3 @@ html[data-theme='classic-facebook'] .scenes-error p {
 html[data-theme='classic-facebook'] .scenes-empty__hint {
   color: #596b93 !important;
 }
-

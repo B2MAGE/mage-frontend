@@ -1,8 +1,5 @@
 html[data-theme='classic-facebook'] .surface--editor {
   --scene-editor-panel-radius: 4px;
-  background: #ffffff;
-  border-color: #bcc7d8;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 html[data-theme='classic-facebook'] .surface--editor > .scene-editor-form {
@@ -16,7 +13,11 @@ html[data-theme='classic-facebook'] .scene-editor-toolbar__eyebrow {
 html[data-theme='classic-facebook'] .scene-editor-toolbar__hint,
 html[data-theme='classic-facebook'] .scene-editor-section__header p,
 html[data-theme='classic-facebook'] .scene-editor-preview__header p,
-html[data-theme='classic-facebook'] .scene-effect-footnote {
+html[data-theme='classic-facebook'] .scene-effect-footnote,
+html[data-theme='classic-facebook'] .effect-card__header p,
+html[data-theme='classic-facebook'] .scene-pass-order__copy span,
+html[data-theme='classic-facebook'] .scene-editor-action-bar__meta span:last-child,
+html[data-theme='classic-facebook'] .scene-thumbnail-choice__description {
   color: #596b93;
 }
 
@@ -25,160 +26,17 @@ html[data-theme='classic-facebook'] .scene-editor-preview__header h2,
 html[data-theme='classic-facebook'] .scene-confirm-section__title,
 html[data-theme='classic-facebook'] .effect-card__header h3,
 html[data-theme='classic-facebook'] .scene-pass-order__copy strong,
-html[data-theme='classic-facebook'] .scene-toggle__label {
+html[data-theme='classic-facebook'] .scene-toggle__label,
+html[data-theme='classic-facebook'] .scene-thumbnail-choice__title,
+html[data-theme='classic-facebook'] .scene-editor-toolbar__name,
+html[data-theme='classic-facebook'] .scene-field__label,
+html[data-theme='classic-facebook'] .surface--editor .field-group label,
+html[data-theme='classic-facebook'] .surface--editor .field-group .scene-field__label {
   color: #1d2a44;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__item:not(:last-child)::after {
-  background: #d8dfea;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button {
-  color: #98a7c3;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button:hover {
-  color: #5a719f;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button--active {
-  color: #2d4373;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button--complete {
-  color: #6a7ea8;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button--invalid {
-  color: #d95c57;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__marker {
-  border-color: #c7d2e5;
-  background: #ffffff;
-  color: #6076a8;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button--active .scene-editor-stepper__marker {
-  border-color: #3b5998;
-  box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.12);
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button--complete .scene-editor-stepper__marker {
-  border-color: #9eb6df;
-  background: #eff4fb;
-  color: #2d4373;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-stepper__button--invalid .scene-editor-stepper__marker {
-  border-color: #ff8a82;
-  color: #d95c57;
-}
-
-html[data-theme='classic-facebook'] .surface--editor .field-group,
-html[data-theme='classic-facebook'] .scene-field__shell,
-html[data-theme='classic-facebook'] .scene-slider,
-html[data-theme='classic-facebook'] .scene-toggle:not(.scene-toggle--compact),
-html[data-theme='classic-facebook'] .scene-toggle--compact,
-html[data-theme='classic-facebook'] .effect-card,
-html[data-theme='classic-facebook'] .scene-pass-order__item,
-html[data-theme='classic-facebook'] .scene-editor-preview__card {
-  border-color: #d8dfea;
-  border-radius: 4px;
-  background: #fbfcff;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .surface--editor .field-group:focus-within,
-html[data-theme='classic-facebook'] .scene-field__shell:focus-within,
-html[data-theme='classic-facebook'] .scene-slider:focus-within,
-html[data-theme='classic-facebook'] .scene-toggle:not(.scene-toggle--compact):focus-within,
-html[data-theme='classic-facebook'] .scene-toggle--compact:focus-within,
-html[data-theme='classic-facebook'] .effect-card:focus-within,
-html[data-theme='classic-facebook'] .scene-pass-order__item:focus-within {
-  border-color: #98abd3;
-  background: #f4f7fc;
 }
 
 html[data-theme='classic-facebook'] .effect-card__details {
   border-left-color: #d8dfea;
-}
-
-html[data-theme='classic-facebook'] .effect-card__header p,
-html[data-theme='classic-facebook'] .scene-pass-order__copy span,
-html[data-theme='classic-facebook'] .scene-editor-action-bar__meta span:last-child {
-  color: #596b93;
-}
-
-html[data-theme='classic-facebook'] .scene-pass-order__index,
-html[data-theme='classic-facebook'] .scene-slider__value {
-  border-color: #bcc7d8;
-  background: #e8edf7;
-  color: #3b5998;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-order-button,
-html[data-theme='classic-facebook'] .scene-editor-nav-button,
-html[data-theme='classic-facebook'] .scene-editor-submit,
-html[data-theme='classic-facebook'] .scene-editor-collapsible__toggle {
-  border-color: #29447e;
-  border-radius: 2px;
-  background: #5b74a8;
-  color: #ffffff;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-order-button:hover,
-html[data-theme='classic-facebook'] .scene-editor-nav-button:hover,
-html[data-theme='classic-facebook'] .scene-editor-submit:hover,
-html[data-theme='classic-facebook'] .scene-editor-collapsible__toggle:hover {
-  border-color: #29447e;
-  background: #6d84b4;
-  color: #ffffff;
-  transform: none;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-collapsible__toggle {
-  min-height: 34px;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-submit {
-  min-width: 220px;
-}
-
-html[data-theme='classic-facebook'] .scene-slider__range {
-  background: linear-gradient(90deg, #cbd6ea 0%, #bfd0ea 100%);
-}
-
-html[data-theme='classic-facebook'] .scene-slider__range::-webkit-slider-thumb {
-  background: #3b5998;
-  box-shadow: 0 0 0 4px rgba(59, 89, 152, 0.14);
-}
-
-html[data-theme='classic-facebook'] .scene-slider__range::-moz-range-thumb {
-  background: #3b5998;
-  box-shadow: 0 0 0 4px rgba(59, 89, 152, 0.14);
-}
-
-html[data-theme='classic-facebook'] .scene-toggle__track {
-  background: #d8dfea;
-}
-
-html[data-theme='classic-facebook'] .scene-toggle__track::after {
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-}
-
-html[data-theme='classic-facebook'] .scene-toggle__input:checked + .scene-toggle__switch .scene-toggle__track {
-  background: #8da3cf;
-}
-
-html[data-theme='classic-facebook'] .scene-toggle--compact {
-  border-color: #a8b8d9;
-  background: #eef2f7;
 }
 
 html[data-theme='classic-facebook'] .scene-toggle--compact .scene-toggle__label {
@@ -194,7 +52,14 @@ html[data-theme='classic-facebook'] .scene-confirm-section__item {
 }
 
 html[data-theme='classic-facebook'] .scene-confirm-section__term,
-html[data-theme='classic-facebook'] .scene-confirm-vector__axis {
+html[data-theme='classic-facebook'] .scene-confirm-vector__axis,
+html[data-theme='classic-facebook'] .field-hint,
+html[data-theme='classic-facebook'] .scene-field__description,
+html[data-theme='classic-facebook'] .scene-tag-editor__label,
+html[data-theme='classic-facebook'] .scene-tag-dropdown__search label,
+html[data-theme='classic-facebook'] .scene-tag-editor__selected-label,
+html[data-theme='classic-facebook'] .scene-effects-category__title,
+html[data-theme='classic-facebook'] .scene-vector-field__axis span {
   color: #6076a8;
 }
 
@@ -203,10 +68,12 @@ html[data-theme='classic-facebook'] .scene-confirm-vector__value {
   color: #1d2a44;
 }
 
-html[data-theme='classic-facebook'] .scene-confirm-vector__item,
-html[data-theme='classic-facebook'] .scene-confirm-pill {
-  border-color: #c7d2e5;
-  background: #f0f3f8;
+html[data-theme='classic-facebook'] .scene-editor-collapsible__toggle {
+  min-height: 34px;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-submit {
+  min-width: 220px;
 }
 
 html[data-theme='classic-facebook'] .scene-editor-action-bar {
@@ -214,10 +81,10 @@ html[data-theme='classic-facebook'] .scene-editor-action-bar {
   width: 100%;
   margin-inline: 0;
   padding: 16px 18px;
-  border: 1px solid #bcc7d8;
+  border: 1px solid var(--editor-action-bar-border);
   border-radius: 4px;
-  background: #f7f8fb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  background: var(--editor-action-bar-background);
+  box-shadow: var(--editor-action-bar-shadow);
 }
 
 html[data-theme='classic-facebook'] .scene-editor-action-bar:not(.scene-editor-action-bar--stuck) {
@@ -230,37 +97,6 @@ html[data-theme='classic-facebook'] .scene-editor-action-bar__meta strong {
 
 html[data-theme='classic-facebook'] .scene-editor-preview__card {
   top: 80px;
-}
-
-html[data-theme='classic-facebook'] .field-hint,
-html[data-theme='classic-facebook'] .scene-field__description,
-html[data-theme='classic-facebook'] .scene-tag-editor__label,
-html[data-theme='classic-facebook'] .scene-tag-dropdown__search label,
-html[data-theme='classic-facebook'] .scene-tag-editor__selected-label {
-  color: #6076a8;
-}
-
-html[data-theme='classic-facebook'] .scene-field__label,
-html[data-theme='classic-facebook'] .scene-thumbnail-choice__title,
-html[data-theme='classic-facebook'] .scene-editor-toolbar__name,
-html[data-theme='classic-facebook'] .scene-effects-category__title {
-  color: #1d2a44;
-}
-
-html[data-theme='classic-facebook'] .surface--editor .field-group label,
-html[data-theme='classic-facebook'] .surface--editor .field-group .scene-field__label {
-  color: #1d2a44;
-}
-
-html[data-theme='classic-facebook'] .scene-thumbnail-choice__description {
-  color: #596b93;
-}
-
-html[data-theme='classic-facebook'] .scene-effects-category__title,
-html[data-theme='classic-facebook'] .scene-vector-field__axis span {
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6076a8;
 }
 
 html[data-theme='classic-facebook'] .scene-select,
@@ -340,96 +176,3 @@ html[data-theme='classic-facebook'] .scene-textarea--code {
   background: #fbfcff;
   color: #1d2a44;
 }
-
-html[data-theme='classic-facebook'] .scene-secondary-button {
-  min-height: 34px;
-  border-color: #29447e;
-  border-radius: 2px;
-  background: #5b74a8;
-  color: #ffffff;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-secondary-button:hover {
-  border-color: #29447e;
-  background: #6d84b4;
-}
-
-html[data-theme='classic-facebook'] .scene-thumbnail-choice {
-  min-height: 120px;
-  border-radius: 4px;
-  border: 1px solid #c7d2e5;
-  background: #f7f8fb;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-thumbnail-choice:hover {
-  border-color: #98abd3;
-  background: #f1f4f9;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .scene-thumbnail-choice.is-selected {
-  border-style: solid;
-  border-color: #5b74a8;
-  background: #e9eff8;
-  box-shadow: inset 0 0 0 1px #a8b8d9;
-}
-
-html[data-theme='classic-facebook'] .scene-thumbnail-choice__eyebrow {
-  color: #3b5998;
-}
-
-html[data-theme='classic-facebook'] .scene-tag-dropdown__panel {
-  border: 1px solid #bcc7d8;
-  border-radius: 2px;
-  background: #ffffff;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
-}
-
-html[data-theme='classic-facebook'] .scene-tag-dropdown__option {
-  border-color: #d8dfea;
-  border-radius: 2px;
-  background: #f7f8fb;
-  color: #49618d;
-}
-
-html[data-theme='classic-facebook'] .scene-tag-dropdown__option:hover {
-  border-color: #a8b8d9;
-  background: #eef2f7;
-  color: #2d4373;
-}
-
-html[data-theme='classic-facebook'] .scene-tag-dropdown__option--create {
-  border-color: #a8b8d9;
-  background: #e9eff8;
-  color: #2d4373;
-}
-
-html[data-theme='classic-facebook'] .scene-tag-dropdown__option--create:hover {
-  border-color: #98abd3;
-  background: #dde6f5;
-}
-
-html[data-theme='classic-facebook'] .scene-tag-editor__selected-list .tag-pill,
-html[data-theme='classic-facebook'] .scene-tag-editor__selected-list .tag-pill--active {
-  border-color: #29447e;
-  border-radius: 2px;
-  background: #5b74a8;
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .scene-tag-editor__selected-list .tag-pill:hover,
-html[data-theme='classic-facebook'] .scene-tag-editor__selected-list .tag-pill--active:hover {
-  border-color: #29447e;
-  background: #6d84b4;
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .scene-confirm-pill {
-  border-color: #a8b8d9;
-  border-radius: 2px;
-  background: #e9eff8;
-  color: #2d4373;
-}
-
