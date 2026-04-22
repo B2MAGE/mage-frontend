@@ -1,4 +1,4 @@
-export { CreateScenePage } from './CreateScenePage'
+export { CreateScenePage } from '@modules/scene-editor'
 export { HomePage } from './HomePage'
 export { LoginPage, RegisterPage } from '@modules/auth'
 export { MyScenesPage } from '@modules/my-scenes'

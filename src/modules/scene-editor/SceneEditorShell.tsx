@@ -1,7 +1,5 @@
-import type { FormEvent, PropsWithChildren, ReactNode } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@auth";
+import type { PropsWithChildren, ReactNode } from "react";
+import type { AuthenticatedFetch } from "@auth";
 import { AuthPage, AuthPageHeader } from "@components/AuthPage";
 import { MagePlayer } from "@modules/player";
 import {
@@ -12,260 +10,25 @@ import {
   SliderField,
   ToggleField,
   Vector3Field,
-} from "@components/SceneEditorControls";
-import { uploadNewSceneThumbnail } from "@lib/sceneThumbnailUpload";
-import { parseApiError } from "@shared/lib";
+} from "./ui/SceneEditorControls";
 import {
-  fetchAvailableTags,
-  type TagResponse,
-} from "@lib/api";
-import {
-  createDefaultSceneData,
-  getSceneEditorModel,
-  mergeSceneEditorBranch,
-  parseSceneDataJson,
   PASS_LABELS,
-  prettyPrintSceneData,
-  sanitizeSceneData,
   SHADER_SCENES,
   SKYBOX_OPTIONS,
-  TONE_MAPPING_OPTIONS,
   toDegrees,
   toRadians,
-  type PersistedPassFlag,
-  type ScenePassId,
-  type SceneData,
-  type SceneEditorModel,
 } from "@lib/sceneEditor";
-
-type CreateSceneFormErrors = Partial<
-  Record<"form" | "name" | "newTag" | "sceneData" | "tags" | "thumbnail", string>
->;
-type EditorSectionId =
-  | "confirm"
-  | "details"
-  | "camera"
-  | "effects"
-  | "motion"
-  | "pass-order"
-  | "scene";
-type EffectCategoryId = "color" | "finish" | "pattern" | "trail";
-type ThumbnailMode = "skip" | "upload";
-
-type PendingTagAttachment = {
-  sceneId: number;
-  tagIds: number[];
-};
-
-type TagAttachmentFailure = {
-  tagId: number;
-  tagName: string;
-};
-
-type AdditionalPassConfig = {
-  category: EffectCategoryId;
-  description: string;
-  flag: PersistedPassFlag;
-  passId: ScenePassId;
-};
-
-type EditorSectionConfig = {
-  id: EditorSectionId;
-  title: string;
-};
-
-const EDITOR_SECTIONS: EditorSectionConfig[] = [
-  {
-    id: "details",
-    title: "Details",
-  },
-  {
-    id: "scene",
-    title: "Scene",
-  },
-  {
-    id: "camera",
-    title: "Camera",
-  },
-  {
-    id: "motion",
-    title: "Motion",
-  },
-  {
-    id: "effects",
-    title: "Effects",
-  },
-  {
-    id: "pass-order",
-    title: "Pass Order",
-  },
-  {
-    id: "confirm",
-    title: "Confirm",
-  },
-];
-
-const initialSceneData = sanitizeSceneData(createDefaultSceneData());
-const initialSceneModel = getSceneEditorModel(initialSceneData);
-const PLAYLIST_OPTIONS = [
-  {
-    label: "Featured Collection",
-    value: "featured-collection",
-  },
-  {
-    label: "Ambient Atlas",
-    value: "ambient-atlas",
-  },
-  {
-    label: "Night Drive",
-    value: "night-drive",
-  },
-  {
-    label: "Discovery Lab",
-    value: "discovery-lab",
-  },
-];
-
-const additionalPasses: AdditionalPassConfig[] = [
-  {
-    category: "trail",
-    flag: "glitch",
-    passId: "glitchPass",
-    description: "Inject sharp digital breakups and instability.",
-  },
-  {
-    category: "pattern",
-    flag: "dot",
-    passId: "dotShader",
-    description: "Halftone-style dots for a print-like screen texture.",
-  },
-  {
-    category: "color",
-    flag: "technicolor",
-    passId: "technicolorShader",
-    description: "Shift the image toward a high-contrast retro palette.",
-  },
-  {
-    category: "color",
-    flag: "luminosity",
-    passId: "luminosityShader",
-    description: "Flatten the palette toward a luminance-driven look.",
-  },
-  {
-    category: "pattern",
-    flag: "sobel",
-    passId: "sobelShader",
-    description: "Emphasize outlines and edge contrast.",
-  },
-  {
-    category: "pattern",
-    flag: "halftone",
-    passId: "halftonePass",
-    description: "Break the image into clustered print cells.",
-  },
-  {
-    category: "finish",
-    flag: "gammaCorrection",
-    passId: "gammaCorrectionShader",
-    description: "Apply a gamma correction pass at the end of the stack.",
-  },
-];
-
-const additionalPassesByCategory: Record<
-  EffectCategoryId,
-  AdditionalPassConfig[]
-> = {
-  color: additionalPasses.filter(
-    (passConfig) => passConfig.category === "color",
-  ),
-  finish: additionalPasses.filter(
-    (passConfig) => passConfig.category === "finish",
-  ),
-  pattern: additionalPasses.filter(
-    (passConfig) => passConfig.category === "pattern",
-  ),
-  trail: additionalPasses.filter(
-    (passConfig) => passConfig.category === "trail",
-  ),
-};
-
-const passFlagsById: Partial<Record<ScenePassId, PersistedPassFlag>> = {
-  RGBShift: "rgbShift",
-  afterImagePass: "afterImage",
-  colorifyShader: "colorify",
-  dotShader: "dot",
-  gammaCorrectionShader: "gammaCorrection",
-  glitchPass: "glitch",
-  halftonePass: "halftone",
-  kaleidoShader: "kaleid",
-  luminosityShader: "luminosity",
-  outputPass: "outputPass",
-  sobelShader: "sobel",
-  technicolorShader: "technicolor",
-};
-
-const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
-const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024;
-const MAX_TAG_NAME_LENGTH = 64;
-const TAG_SKELETON_COUNT = 5;
-
-function normalizeTagName(name: string) {
-  return name.trim().toLowerCase();
-}
-
-function sortTags(tags: TagResponse[]) {
-  return [...tags].sort((firstTag, secondTag) =>
-    firstTag.name.localeCompare(secondTag.name),
-  );
-}
-
-function upsertTag(tags: TagResponse[], nextTag: TagResponse) {
-  return sortTags([
-    ...tags.filter((tag) => tag.tagId !== nextTag.tagId),
-    nextTag,
-  ]);
-}
-
-function parseCreatedSceneId(payload: unknown) {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const sceneId = (payload as { sceneId?: unknown }).sceneId;
-  return typeof sceneId === "number" && sceneId > 0 ? sceneId : null;
-}
-
-async function loadAvailableTagsFromBackend() {
-  return sortTags(await fetchAvailableTags());
-}
-
-function buildShaderOptions(currentShader: string) {
-  const matchedShaderScene = SHADER_SCENES.find(
-    (shaderScene) => shaderScene.shader.trim() === currentShader.trim(),
-  );
-  const options = SHADER_SCENES.map((shaderScene) => ({
-    label: shaderScene.label,
-    value: shaderScene.id,
-  }));
-
-  if (!matchedShaderScene) {
-    options.unshift({
-      label: "Custom Shader",
-      value: "custom",
-    });
-  }
-
-  return {
-    matchedShaderScene,
-    options,
-    value: matchedShaderScene?.id ?? "custom",
-  };
-}
+import {
+  EDITOR_SECTIONS,
+  PLAYLIST_OPTIONS,
+  TAG_SKELETON_COUNT,
+  additionalPassesByCategory,
+  initialSceneModel,
+} from "./fixtures";
+import { useSceneEditorPreview } from "./useSceneEditorPreview";
+import { useSceneEditorState } from "./useSceneEditorState";
+import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
+import { describePassState } from "./utils";
 
 function formatFixed(value: number, fractionDigits = 2) {
   return value.toFixed(fractionDigits).replace(/0+$/, "").replace(/\.$/, "");
@@ -407,378 +170,105 @@ function ConfirmSummaryPills({
   );
 }
 
-function buildToneMappingOptions(currentMethod: number) {
-  const matchedOption = TONE_MAPPING_OPTIONS.find(
-    (option) => option.value === currentMethod,
-  );
-  const options = TONE_MAPPING_OPTIONS.map((option) => ({
-    label: option.label,
-    value: String(option.value),
-  }));
+type SceneEditorShellProps = {
+  authenticatedFetch: AuthenticatedFetch;
+  onComplete: () => void;
+};
 
-  if (!matchedOption) {
-    options.unshift({
-      label: `Custom (${currentMethod})`,
-      value: String(currentMethod),
-    });
-  }
-
-  return {
-    matchedOption,
-    options,
-    value: String(currentMethod),
-  };
-}
-
-function describePassState(passId: ScenePassId, sceneModel: SceneEditorModel) {
-  if (passId === "outputPass") {
-    return sceneModel.fx.passes.outputPass ? "Enabled" : "Disabled";
-  }
-
-  if (passId === "bloom") {
-    return sceneModel.fx.bloom.enabled ? "Enabled" : "Disabled";
-  }
-
-  const flag = passFlagsById[passId];
-
-  if (!flag) {
-    return "Stack only";
-  }
-
-  return sceneModel.fx.passes[flag] ? "Enabled" : "Disabled";
-}
-
-function validateForm(name: string, sceneDataText: string) {
-  const errors: CreateSceneFormErrors = {};
-  const nameError = validateSceneName(name);
-  const { error: sceneDataError, parsedSceneData } =
-    validateSceneDataText(sceneDataText);
-
-  if (nameError) {
-    errors.name = nameError;
-  }
-
-  if (sceneDataError) {
-    errors.sceneData = sceneDataError;
-  }
-
-  return {
+export function SceneEditorShell({
+  authenticatedFetch,
+  onComplete,
+}: SceneEditorShellProps) {
+  const {
+    actionBarSentinelRef,
+    availableTags,
+    canCreateTagFromSearch,
+    currentSection,
+    currentSectionIndex,
+    description,
     errors,
-    parsedSceneData,
-  };
-}
-
-function validateSceneName(name: string) {
-  if (!name.trim()) {
-    return "Scene name is required.";
-  }
-
-  if (name.trim().length < 2) {
-    return "Scene name must be at least 2 characters.";
-  }
-
-  return null;
-}
-
-function validateSceneDataText(sceneDataText: string) {
-  if (!sceneDataText.trim()) {
-    return {
-      error: "Scene data is required.",
-      parsedSceneData: null,
-    };
-  }
-
-  try {
-    return {
-      error: null,
-      parsedSceneData: parseSceneDataJson(sceneDataText.trim()),
-    };
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : "Scene data must be valid JSON.",
-      parsedSceneData: null,
-    };
-  }
-}
-
-function validateThumbnailFile(file: File | null) {
-  if (!file) {
-    return "Select a thumbnail image to upload.";
-  }
-
-  if (!ALLOWED_THUMBNAIL_CONTENT_TYPES.has(file.type)) {
-    return "Thumbnail must be a jpeg, png, webp, or gif image.";
-  }
-
-  if (file.size <= 0) {
-    return "Thumbnail file must not be empty.";
-  }
-
-  if (file.size > MAX_THUMBNAIL_BYTES) {
-    return "Thumbnail must not exceed 5 MB.";
-  }
-
-  return null;
-}
-
-function buildEffectiveSceneData(
-  sourceSceneData: SceneData,
-  {
+    filteredSelectableTags,
+    formErrorId,
+    handleCameraAdvancedToggle,
+    handleCreateTag,
+    handleFormatJson,
+    handleMotionAdvancedToggle,
+    handleNameChange,
+    handleRawSceneDataChange,
+    handleSectionJump,
+    handleSectionStep,
+    handleTagSearchChange,
+    handleThumbnailFileChange,
+    handleThumbnailModeChange,
+    handleThumbnailUploadClick,
+    isActionBarStuck,
+    isCameraAdvancedEnabled,
+    isConfirmJsonOpen,
+    isCreatingTag,
+    isExactMatchedTagSelected,
+    isMotionAdvancedEnabled,
+    isSubmitting,
+    isTagDropdownOpen,
+    movePass,
+    name,
+    nextSection,
+    normalizedTagSearchValue,
+    openTagDropdown,
+    pendingRetryTags,
+    pendingTagAttachment,
+    playlistValue,
+    previousSection,
+    reloadAvailableTags,
+    sceneData,
+    sceneDataText,
+    sectionIssuesById,
+    sectionMenuValue,
+    selectableTags,
+    selectedTagIds,
+    selectedTags,
+    setDescription,
+    setErrors,
+    setIsConfirmJsonOpen,
+    setIsSubmitting,
+    setPendingTagAttachment,
+    setPlaylistValue,
+    tagDropdownRef,
+    tagSearchInputId,
+    tagSearchValue,
+    tagsError,
+    tagsLoading,
+    thumbnailFile,
+    thumbnailFileInputRef,
+    thumbnailFileName,
+    thumbnailInputId,
+    thumbnailMode,
+    titleId,
+    toggleTagSelection,
+    updateBranch,
+  } = useSceneEditorState({ authenticatedFetch });
+  const {
+    previewSceneData,
+    sceneModel,
+    selectedShaderScene,
+    selectedToneMapping,
+    shaderSelection,
+    toneMappingSelection,
+  } = useSceneEditorPreview({
     isCameraAdvancedEnabled,
     isMotionAdvancedEnabled,
-  }: {
-    isCameraAdvancedEnabled: boolean;
-    isMotionAdvancedEnabled: boolean;
-  },
-) {
-  let nextSceneData = sourceSceneData;
+    sceneData,
+  });
 
-  if (!isCameraAdvancedEnabled) {
-    nextSceneData = mergeSceneEditorBranch(nextSceneData, "intent", {
-      ...getSceneEditorModel(nextSceneData).intent,
-      camOrientationMode: initialSceneModel.intent.camOrientationMode,
-      camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-    });
-  }
-
-  if (!isMotionAdvancedEnabled) {
-    nextSceneData = mergeSceneEditorBranch(
-      nextSceneData,
-      "state",
-      initialSceneModel.state,
-    );
-  }
-
-  return sanitizeSceneData(nextSceneData);
-}
-
-export function CreateScenePage() {
-  const { authenticatedFetch } = useAuth();
-  const navigate = useNavigate();
-
-  const [sectionMenuValue, setSectionMenuValue] =
-    useState<EditorSectionId>("details");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [thumbnailMode, setThumbnailMode] = useState<ThumbnailMode>("skip");
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailFileName, setThumbnailFileName] = useState("");
-  const [playlistValue, setPlaylistValue] = useState("");
-  const [availableTags, setAvailableTags] = useState<TagResponse[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [tagSearchValue, setTagSearchValue] = useState("");
-  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
-  const [sceneData, setSceneData] = useState<SceneData>(initialSceneData);
-  const [sceneDataText, setSceneDataText] = useState(() =>
-    prettyPrintSceneData(initialSceneData),
-  );
-  const [errors, setErrors] = useState<CreateSceneFormErrors>({});
-  const [tagsLoading, setTagsLoading] = useState(true);
-  const [tagsError, setTagsError] = useState<string | null>(null);
-  const [isActionBarStuck, setIsActionBarStuck] = useState(false);
-  const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false);
-  const [isMotionAdvancedEnabled, setIsMotionAdvancedEnabled] = useState(false);
-  const [cameraAdvancedDraft, setCameraAdvancedDraft] = useState(() => ({
-    camOrientationMode: initialSceneModel.intent.camOrientationMode,
-    camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-  }));
-  const [motionRuntimeDraft, setMotionRuntimeDraft] = useState(
-    () => initialSceneModel.state,
-  );
-  const [isConfirmJsonOpen, setIsConfirmJsonOpen] = useState(false);
-  const [pendingTagAttachment, setPendingTagAttachment] =
-    useState<PendingTagAttachment | null>(null);
-  const [isCreatingTag, setIsCreatingTag] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const tagDropdownRef = useRef<HTMLDivElement | null>(null);
-  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
-  const actionBarSentinelRef = useRef<HTMLDivElement | null>(null);
-
-  const formErrorId = useId();
-  const tagSearchInputId = useId();
-  const thumbnailInputId = useId();
-  const titleId = "create-scene-title";
-
-  const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData]);
-  const previewSceneData = useMemo(
-    () =>
-      buildEffectiveSceneData(sceneData, {
-        isCameraAdvancedEnabled,
-        isMotionAdvancedEnabled,
-      }),
-    [sceneData, isCameraAdvancedEnabled, isMotionAdvancedEnabled],
-  );
-  const shaderSelection = useMemo(
-    () => buildShaderOptions(sceneModel.visualizer.shader),
-    [sceneModel.visualizer.shader],
-  );
-  const toneMappingSelection = useMemo(
-    () => buildToneMappingOptions(sceneModel.fx.toneMapping.method),
-    [sceneModel.fx.toneMapping.method],
-  );
-  const selectedShaderScene = shaderSelection.matchedShaderScene;
-  const selectedToneMapping =
-    toneMappingSelection.matchedOption ?? TONE_MAPPING_OPTIONS[0];
-  const normalizedTagSearchValue = normalizeTagName(tagSearchValue);
-  const selectedTags = useMemo(
-    () =>
-      availableTags.filter((tag) => selectedTagIds.includes(tag.tagId)),
-    [availableTags, selectedTagIds],
-  );
-  const selectableTags = useMemo(
-    () =>
-      availableTags.filter((tag) => !selectedTagIds.includes(tag.tagId)),
-    [availableTags, selectedTagIds],
-  );
-  const filteredSelectableTags = useMemo(() => {
-    if (!normalizedTagSearchValue) {
-      return selectableTags;
-    }
-
-    return selectableTags.filter((tag) =>
-      tag.name.includes(normalizedTagSearchValue),
-    );
-  }, [normalizedTagSearchValue, selectableTags]);
-  const exactMatchedTag = useMemo(
-    () =>
-      availableTags.find((tag) => tag.name === normalizedTagSearchValue) ?? null,
-    [availableTags, normalizedTagSearchValue],
-  );
-  const isExactMatchedTagSelected =
-    exactMatchedTag !== null && selectedTagIds.includes(exactMatchedTag.tagId);
-  const canCreateTagFromSearch =
-    normalizedTagSearchValue.length > 0 && exactMatchedTag === null;
-  const pendingRetryTags = useMemo(
-    () =>
-      pendingTagAttachment === null
-        ? []
-        : availableTags.filter((tag) =>
-            pendingTagAttachment.tagIds.includes(tag.tagId),
-          ),
-    [availableTags, pendingTagAttachment],
-  );
-  const currentSectionIndex = Math.max(
-    0,
-    EDITOR_SECTIONS.findIndex((section) => section.id === sectionMenuValue),
-  );
-  const currentSection = EDITOR_SECTIONS[currentSectionIndex] ?? EDITOR_SECTIONS[0];
-  const previousSection =
-    currentSectionIndex > 0 ? EDITOR_SECTIONS[currentSectionIndex - 1] : null;
-  const nextSection =
-    currentSectionIndex < EDITOR_SECTIONS.length - 1
-      ? EDITOR_SECTIONS[currentSectionIndex + 1]
-      : null;
-  const detailsSectionIssueMessages = [
-    validateSceneName(name),
-    thumbnailMode === "upload" ? validateThumbnailFile(thumbnailFile) : null,
-  ].filter((message): message is string => Boolean(message));
-  const confirmSectionIssueMessage = validateSceneDataText(sceneDataText).error;
-  const sectionIssuesById: Partial<Record<EditorSectionId, string | null>> = {
-    confirm: confirmSectionIssueMessage,
-    details:
-      detailsSectionIssueMessages.length > 0
-        ? detailsSectionIssueMessages.join(" ")
-        : null,
-  };
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadTags() {
-      try {
-        const nextTags = await loadAvailableTagsFromBackend();
-
-        if (!isCurrent) {
-          return;
-        }
-
-        setAvailableTags(nextTags);
-        setTagsError(null);
-      } catch (error) {
-        if (!isCurrent) {
-          return;
-        }
-
-        setAvailableTags([]);
-        setTagsError(
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Unable to load available tags right now.",
-        );
-      } finally {
-        if (isCurrent) {
-          setTagsLoading(false);
-        }
-      }
-    }
-
-    void loadTags();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isTagDropdownOpen) {
-      return;
-    }
-
-    function handleDocumentMouseDown(event: MouseEvent) {
-      if (!tagDropdownRef.current?.contains(event.target as Node)) {
-        setIsTagDropdownOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-    };
-  }, [isTagDropdownOpen]);
-
-  useEffect(() => {
-    if (!isTagDropdownOpen) {
-      return;
-    }
-
-    if (pendingTagAttachment) {
-      setIsTagDropdownOpen(false);
-    }
-  }, [isTagDropdownOpen, pendingTagAttachment]);
-
-  useEffect(() => {
-    const sentinel = actionBarSentinelRef.current;
-
-    if (!sentinel || typeof IntersectionObserver === "undefined") {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsActionBarStuck(entry.intersectionRatio < 1);
-      },
-      {
-        threshold: 1,
-      },
-    );
-
-    observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  function renderAdditionalPassCard(passConfig: AdditionalPassConfig) {
+  function renderAdditionalPassCard(passConfig: {
+    description: string;
+    flag: keyof typeof sceneModel.fx.passes;
+    passId: keyof typeof PASS_LABELS;
+  }) {
     return (
       <EffectCard
         description={passConfig.description}
         enabled={sceneModel.fx.passes[passConfig.flag]}
-        key={passConfig.flag}
+        key={String(passConfig.flag)}
         onToggle={(nextValue) =>
           updateBranch("fx", (currentFx) => ({
             ...currentFx,
@@ -791,389 +281,6 @@ export function CreateScenePage() {
         title={PASS_LABELS[passConfig.passId]}
       />
     );
-  }
-
-  function clearErrors(...fields: Array<keyof CreateSceneFormErrors>) {
-    if (fields.length === 0) {
-      setErrors({});
-      return;
-    }
-
-    setErrors((currentErrors) => {
-      const nextErrors = { ...currentErrors };
-
-      for (const field of fields) {
-        nextErrors[field] = undefined;
-      }
-
-      return nextErrors;
-    });
-  }
-
-  function clearThumbnailSelection() {
-    setThumbnailFile(null);
-    setThumbnailFileName("");
-    if (thumbnailFileInputRef.current) {
-      thumbnailFileInputRef.current.value = "";
-    }
-  }
-
-  function applySceneData(nextSceneData: SceneData) {
-    const sanitizedSceneData = sanitizeSceneData(nextSceneData);
-    setSceneData(sanitizedSceneData);
-    setSceneDataText(prettyPrintSceneData(sanitizedSceneData));
-    clearErrors("sceneData", "form");
-  }
-
-  function updateBranch<K extends keyof SceneEditorModel>(
-    branch: K,
-    recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
-  ) {
-    const currentModel = getSceneEditorModel(sceneData);
-    const nextBranch = recipe(currentModel[branch]);
-    applySceneData(mergeSceneEditorBranch(sceneData, branch, nextBranch));
-  }
-
-  function handleCameraAdvancedToggle(nextValue: boolean) {
-    if (nextValue) {
-      setIsCameraAdvancedEnabled(true);
-      updateBranch("intent", (currentIntent) => ({
-        ...currentIntent,
-        camOrientationMode: cameraAdvancedDraft.camOrientationMode,
-        camOrientationSpeed: cameraAdvancedDraft.camOrientationSpeed,
-      }));
-      return;
-    }
-
-    setCameraAdvancedDraft({
-      camOrientationMode: sceneModel.intent.camOrientationMode,
-      camOrientationSpeed: sceneModel.intent.camOrientationSpeed,
-    });
-    setIsCameraAdvancedEnabled(false);
-    updateBranch("intent", (currentIntent) => ({
-      ...currentIntent,
-      camOrientationMode: initialSceneModel.intent.camOrientationMode,
-      camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-    }));
-  }
-
-  function handleMotionAdvancedToggle(nextValue: boolean) {
-    if (nextValue) {
-      setIsMotionAdvancedEnabled(true);
-      updateBranch("state", () => motionRuntimeDraft);
-      return;
-    }
-
-    setMotionRuntimeDraft(sceneModel.state);
-    setIsMotionAdvancedEnabled(false);
-    updateBranch("state", () => initialSceneModel.state);
-  }
-
-  function handleNameChange(nextValue: string) {
-    setName(nextValue);
-    clearErrors("name", "form");
-  }
-
-  function handleThumbnailModeChange(nextValue: ThumbnailMode) {
-    setThumbnailMode(nextValue);
-    if (nextValue === "skip") {
-      clearThumbnailSelection();
-    }
-    setErrors((currentErrors) => ({
-      ...currentErrors,
-      thumbnail: undefined,
-      form: undefined,
-    }));
-  }
-
-  function handleThumbnailUploadClick() {
-    setThumbnailMode("upload");
-    thumbnailFileInputRef.current?.click();
-  }
-
-  function handleThumbnailFileChange(fileList: FileList | File[] | null) {
-    let nextFile: File | null = null;
-
-    if (Array.isArray(fileList)) {
-      nextFile = fileList[0] ?? null;
-    } else {
-      nextFile = fileList?.item(0) ?? null;
-    }
-
-    if (!nextFile) {
-      return;
-    }
-
-    setThumbnailMode("upload");
-    setThumbnailFile(nextFile);
-    setThumbnailFileName(nextFile.name);
-    setErrors((currentErrors) => ({
-      ...currentErrors,
-      thumbnail: undefined,
-      form: undefined,
-    }));
-  }
-
-  function handleSectionJump(nextSectionId: EditorSectionId) {
-    setSectionMenuValue(nextSectionId);
-  }
-
-  function handleSectionStep(direction: -1 | 1) {
-    const nextIndex = currentSectionIndex + direction;
-    const nextSectionConfig = EDITOR_SECTIONS[nextIndex];
-
-    if (!nextSectionConfig) {
-      return;
-    }
-
-    handleSectionJump(nextSectionConfig.id);
-  }
-
-  function handleRawSceneDataChange(nextValue: string) {
-    setSceneDataText(nextValue);
-    clearErrors("sceneData", "form");
-
-    try {
-      setSceneData(sanitizeSceneData(parseSceneDataJson(nextValue)));
-    } catch {
-      return;
-    }
-  }
-
-  function handleFormatJson() {
-    try {
-      const parsedSceneData = parseSceneDataJson(sceneDataText);
-      applySceneData(
-        buildEffectiveSceneData(parsedSceneData, {
-          isCameraAdvancedEnabled,
-          isMotionAdvancedEnabled,
-        }),
-      );
-    } catch (error) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        sceneData:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Scene data must be valid JSON before formatting.",
-      }));
-    }
-  }
-
-  async function reloadAvailableTags() {
-    setTagsLoading(true);
-    setTagsError(null);
-
-    try {
-      const nextTags = await loadAvailableTagsFromBackend();
-      setAvailableTags(nextTags);
-    } catch (error) {
-      setAvailableTags([]);
-      setTagsError(
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : "Unable to load available tags right now.",
-      );
-    } finally {
-      setTagsLoading(false);
-    }
-  }
-
-  function openTagDropdown() {
-    if (pendingTagAttachment || tagsLoading || isCreatingTag) {
-      return;
-    }
-
-    clearErrors("form", "newTag", "tags");
-    setIsTagDropdownOpen(true);
-  }
-
-  function handleTagSearchChange(nextValue: string) {
-    setTagSearchValue(nextValue);
-    setIsTagDropdownOpen(true);
-    clearErrors("form", "newTag", "tags");
-  }
-
-  function toggleTagSelection(tagId: number) {
-    if (pendingTagAttachment || isCreatingTag) {
-      return;
-    }
-
-    clearErrors("form", "newTag", "tags");
-    setSelectedTagIds((currentTagIds) =>
-      currentTagIds.includes(tagId)
-        ? currentTagIds.filter((currentTagId) => currentTagId !== tagId)
-        : [...currentTagIds, tagId],
-    );
-    setTagSearchValue("");
-    setIsTagDropdownOpen(false);
-  }
-
-  async function handleCreateTag(requestedTagName = tagSearchValue) {
-    if (pendingTagAttachment || isCreatingTag) {
-      return;
-    }
-
-    const normalizedTagName = normalizeTagName(requestedTagName);
-
-    if (!normalizedTagName) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag: "Tag name is required.",
-      }));
-      return;
-    }
-
-    if (normalizedTagName.length > MAX_TAG_NAME_LENGTH) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag: `Tag name must be at most ${MAX_TAG_NAME_LENGTH} characters.`,
-      }));
-      return;
-    }
-
-    const existingTag = availableTags.find(
-      (tag) => tag.name === normalizedTagName,
-    );
-
-    if (existingTag) {
-      setSelectedTagIds((currentTagIds) =>
-        currentTagIds.includes(existingTag.tagId)
-          ? currentTagIds
-          : [...currentTagIds, existingTag.tagId],
-      );
-      setTagSearchValue("");
-      setIsTagDropdownOpen(false);
-      clearErrors("newTag", "form", "tags");
-      return;
-    }
-
-    setIsCreatingTag(true);
-    clearErrors("newTag", "form", "tags");
-
-    try {
-      const response = await authenticatedFetch("/tags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: normalizedTagName,
-        }),
-      });
-
-      if (response.ok) {
-        const createdTag = (await response.json()) as TagResponse;
-        setAvailableTags((currentTags) => upsertTag(currentTags, createdTag));
-        setTagsError(null);
-        setSelectedTagIds((currentTagIds) =>
-          currentTagIds.includes(createdTag.tagId)
-            ? currentTagIds
-            : [...currentTagIds, createdTag.tagId],
-        );
-        setTagSearchValue("");
-        setIsTagDropdownOpen(false);
-        return;
-      }
-
-      const apiError = await parseApiError(response);
-
-      if (response.status === 409 && apiError?.code === "TAG_ALREADY_EXISTS") {
-        try {
-          const nextTags = await loadAvailableTagsFromBackend();
-          const matchedTag = nextTags.find(
-            (tag) => tag.name === normalizedTagName,
-          );
-
-          setAvailableTags(nextTags);
-          setTagsError(null);
-
-          if (matchedTag) {
-            setSelectedTagIds((currentTagIds) =>
-              currentTagIds.includes(matchedTag.tagId)
-                ? currentTagIds
-                : [...currentTagIds, matchedTag.tagId],
-            );
-            setTagSearchValue("");
-            setIsTagDropdownOpen(false);
-            return;
-          }
-        } catch (error) {
-          setTagsError(
-            error instanceof Error && error.message.trim()
-              ? error.message
-              : "Unable to refresh tags right now.",
-          );
-        }
-      }
-
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag:
-          apiError?.details?.name ??
-          apiError?.message ??
-          "Failed to create tag. Please try again.",
-      }));
-    } catch (error) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Failed to create tag. Please try again.",
-      }));
-    } finally {
-      setIsCreatingTag(false);
-    }
-  }
-
-  async function attachTagsToScene(sceneId: number, tagIds: number[]) {
-    const failures: TagAttachmentFailure[] = [];
-
-    for (const tagId of tagIds) {
-      const tag = availableTags.find((availableTag) => availableTag.tagId === tagId);
-
-      if (!tag) {
-        failures.push({
-          tagId,
-          tagName: `tag ${tagId}`,
-        });
-        continue;
-      }
-
-      try {
-        const response = await authenticatedFetch(`/scenes/${sceneId}/tags`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tagId,
-          }),
-        });
-
-        if (response.ok) {
-          continue;
-        }
-
-        const apiError = await parseApiError(response);
-
-        if (
-          response.status === 409 &&
-          apiError?.code === "SCENE_TAG_ALREADY_EXISTS"
-        ) {
-          continue;
-        }
-
-        failures.push({
-          tagId,
-          tagName: tag.name,
-        });
-      } catch {
-        failures.push({
-          tagId,
-          tagName: tag.name,
-        });
-      }
-    }
-
-    return failures;
   }
 
   function renderSceneNameField() {
@@ -1681,168 +788,23 @@ export function CreateScenePage() {
       .join(" • ");
   }
 
-  function movePass(passId: ScenePassId, direction: -1 | 1) {
-    if (passId === "outputPass") {
-      return;
-    }
-
-    updateBranch("fx", (currentFx) => {
-      const movablePasses = currentFx.passOrder.filter(
-        (currentPassId): currentPassId is Exclude<ScenePassId, "outputPass"> =>
-          currentPassId !== "outputPass",
-      );
-      const currentIndex = movablePasses.indexOf(passId);
-      const nextIndex = currentIndex + direction;
-
-      if (
-        currentIndex < 0 ||
-        nextIndex < 0 ||
-        nextIndex >= movablePasses.length
-      ) {
-        return currentFx;
-      }
-
-      const nextPassOrder = [...movablePasses];
-      const [movedPass] = nextPassOrder.splice(currentIndex, 1);
-      nextPassOrder.splice(nextIndex, 0, movedPass);
-
-      return {
-        ...currentFx,
-        passOrder: [...nextPassOrder, "outputPass"],
-      };
-    });
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (pendingTagAttachment) {
-      setIsSubmitting(true);
-      setErrors({});
-
-      try {
-        const attachFailures = await attachTagsToScene(
-          pendingTagAttachment.sceneId,
-          pendingTagAttachment.tagIds,
-        );
-
-        if (attachFailures.length > 0) {
-          setPendingTagAttachment({
-            sceneId: pendingTagAttachment.sceneId,
-            tagIds: attachFailures.map((failure) => failure.tagId),
-          });
-          setErrors({
-            form: `Scene created, but we still couldn't attach ${attachFailures
-              .map((failure) => failure.tagName)
-              .join(", ")}. Submit again to retry attachment for the existing scene. Additional editor changes will not be saved in this retry state.`,
-          });
-          return;
-        }
-
-        setPendingTagAttachment(null);
-        navigate("/my-scenes");
-      } finally {
-        setIsSubmitting(false);
-      }
-
-      return;
-    }
-
-    const trimmedName = name.trim();
-    const { errors: nextErrors, parsedSceneData } = validateForm(
-      trimmedName,
-      sceneDataText,
-    );
-    const nextThumbnailError =
-      thumbnailMode === "upload" ? validateThumbnailFile(thumbnailFile) : null;
-
-    if (nextThumbnailError) {
-      nextErrors.thumbnail = nextThumbnailError;
-    }
-
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
-
-    const sanitizedSceneData = buildEffectiveSceneData(parsedSceneData ?? sceneData, {
-      isCameraAdvancedEnabled,
-      isMotionAdvancedEnabled,
-    });
-
-    setIsSubmitting(true);
-    setErrors({});
-
-    try {
-      const thumbnailObjectKey =
-        thumbnailMode === "upload" && thumbnailFile
-          ? await uploadNewSceneThumbnail(authenticatedFetch, thumbnailFile)
-          : undefined;
-
-      const response = await authenticatedFetch("/scenes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmedName,
-          sceneData: sanitizedSceneData,
-          thumbnailObjectKey,
-        }),
-      });
-
-      if (!response.ok) {
-        const apiError = await parseApiError(response);
-        const backendDetails = apiError?.details ?? {};
-        setErrors({
-          name: backendDetails.name,
-          sceneData: backendDetails.sceneData,
-          form:
-            apiError?.message ?? "Failed to create scene. Please try again.",
-        });
-        return;
-      }
-
-      const createdScenePayload = (await response.json().catch(() => null)) as
-        | unknown
-        | null;
-      const sceneId = parseCreatedSceneId(createdScenePayload);
-
-      if (sceneId === null) {
-        setErrors({
-          form:
-            "Scene was created, but the response did not include the new scene id for tag attachment.",
-        });
-        return;
-      }
-
-      if (selectedTagIds.length > 0) {
-        const attachFailures = await attachTagsToScene(sceneId, selectedTagIds);
-
-        if (attachFailures.length > 0) {
-          setPendingTagAttachment({
-            sceneId,
-            tagIds: attachFailures.map((failure) => failure.tagId),
-          });
-          setErrors({
-            form: `Scene created, but we couldn't attach ${attachFailures
-              .map((failure) => failure.tagName)
-              .join(", ")}. Submit again to retry attachment for the existing scene. Additional editor changes will not be saved in this retry state.`,
-          });
-          return;
-        }
-      }
-
-      navigate("/my-scenes");
-    } catch (error) {
-      setErrors({
-        form:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "Scene creation is unavailable right now. Please try again in a moment.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  const { handleSubmit } = useSceneEditorSubmission({
+    authenticatedFetch,
+    availableTags,
+    isCameraAdvancedEnabled,
+    isMotionAdvancedEnabled,
+    name,
+    onComplete,
+    pendingTagAttachment,
+    sceneData,
+    sceneDataText,
+    selectedTagIds,
+    setErrors,
+    setIsSubmitting,
+    setPendingTagAttachment,
+    thumbnailFile,
+    thumbnailMode,
+  });
 
   return (
     <AuthPage
@@ -1893,12 +855,14 @@ export function CreateScenePage() {
                                   ? "scene-editor-stepper__button scene-editor-stepper__button--active"
                                   : isInvalid
                                     ? "scene-editor-stepper__button scene-editor-stepper__button--invalid"
-                                  : isComplete
-                                    ? "scene-editor-stepper__button scene-editor-stepper__button--complete"
-                                    : "scene-editor-stepper__button"
+                                    : isComplete
+                                      ? "scene-editor-stepper__button scene-editor-stepper__button--complete"
+                                      : "scene-editor-stepper__button"
                               }
                               onClick={() => handleSectionJump(section.id)}
-                              title={isInvalid ? issueMessage ?? undefined : undefined}
+                              title={
+                                isInvalid ? issueMessage ?? undefined : undefined
+                              }
                               type="button"
                             >
                               <span className="scene-editor-stepper__label">
@@ -1908,7 +872,11 @@ export function CreateScenePage() {
                                 aria-hidden="true"
                                 className="scene-editor-stepper__marker"
                               >
-                                {isInvalid ? <AlertIcon /> : isComplete ? <CheckIcon /> : null}
+                                {isInvalid ? (
+                                  <AlertIcon />
+                                ) : isComplete ? (
+                                  <CheckIcon />
+                                ) : null}
                               </span>
                             </button>
                           </li>
@@ -1969,7 +937,6 @@ export function CreateScenePage() {
                   {renderThumbnailField()}
                   {renderTagEditor()}
                 </div>
-
               </SceneSection>
             ) : null}
 
@@ -2113,7 +1080,7 @@ export function CreateScenePage() {
 
                     <SliderField
                       description="Displayed in degrees while the engine still stores radians."
-                      formatValue={formatDegrees}
+                      formatValue={(value) => formatDegrees(value)}
                       id="camera-tilt"
                       label="Camera Orientation"
                       max={360}
@@ -2211,6 +1178,9 @@ export function CreateScenePage() {
                       value={sceneModel.intent.power_factor}
                     />
 
+                  </div>
+
+                  <div className="scene-editor-grid">
                     <SliderField
                       description="Controls how much pointer-down influence lingers after release for shaders that read pointer input."
                       id="pointer-release-hold"
@@ -2509,9 +1479,7 @@ export function CreateScenePage() {
                               }))
                             }
                             step={1}
-                            value={toDegrees(
-                              sceneModel.fx.params.rgbShift.angle,
-                            )}
+                            value={toDegrees(sceneModel.fx.params.rgbShift.angle)}
                           />
                         </div>
                       </EffectCard>
@@ -2662,9 +1630,7 @@ export function CreateScenePage() {
                               }))
                             }
                             step={1}
-                            value={Math.round(
-                              sceneModel.fx.params.kaleid.sides,
-                            )}
+                            value={Math.round(sceneModel.fx.params.kaleid.sides)}
                           />
                           <SliderField
                             description="Rotate the mirrored segment pattern in degrees."
@@ -2839,9 +1805,12 @@ export function CreateScenePage() {
                       {isCameraAdvancedEnabled ? (
                         <ConfirmSummaryItem
                           label="Advanced Camera"
-                          value={"Mode " + sceneModel.intent.camOrientationMode + ", Speed " + formatFixed(
-                            sceneModel.intent.camOrientationSpeed,
-                          )}
+                          value={
+                            "Mode " +
+                            sceneModel.intent.camOrientationMode +
+                            ", Speed " +
+                            formatFixed(sceneModel.intent.camOrientationSpeed)
+                          }
                         />
                       ) : null}
                     </ConfirmSummarySection>
@@ -2909,16 +1878,13 @@ export function CreateScenePage() {
                 </div>
               </SceneSection>
             ) : null}
-
           </div>
 
           <aside className="scene-editor-preview">
             <section className="surface surface--soft scene-editor-preview__card">
               <div className="scene-editor-preview__header">
                 <div>
-                  <span className="scene-editor-toolbar__eyebrow">
-                    Preview
-                  </span>
+                  <span className="scene-editor-toolbar__eyebrow">Preview</span>
                   <h2>Live Preview</h2>
                 </div>
               </div>
