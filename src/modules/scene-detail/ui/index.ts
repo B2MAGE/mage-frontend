@@ -1,6 +1,6 @@
+export { PlaylistPanel } from './PlaylistPanel'
 export { SceneCommentsPanel } from './SceneCommentsPanel'
 export { SceneDescriptionCard } from './SceneDescriptionCard'
 export { SceneDetailState } from './SceneDetailState'
 export { SceneRecommendationRail } from './SceneRecommendationRail'
-export { useScenePlaylistState } from './useScenePlaylistState'
 export { VoteButton } from './VoteButton'

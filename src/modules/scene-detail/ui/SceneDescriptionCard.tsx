@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { CreatorProfile, SceneDescription, SceneEngagement } from '@lib/sceneDetail'
+import type { CreatorProfile, SceneDescription, SceneEngagement } from '../types'
 
 type SceneDescriptionCardProps = {
   creatorProfile: CreatorProfile

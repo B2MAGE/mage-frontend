@@ -2,32 +2,14 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { MagePlayer } from '@modules/player'
-import {
-  SceneCommentsPanel,
-  SceneDescriptionCard,
-  SceneDetailState,
-  SceneRecommendationRail,
-  useScenePlaylistState,
-  VoteButton,
-} from '@components/scene-detail'
-import {
-  buildCreatorProfile,
-  buildSceneComments,
-  buildSceneDescription,
-  buildSceneEngagement,
-  createEmptyRecommendedSceneGroups,
-  fetchRecommendedSceneGroups,
-  fetchSceneDetail,
-  SceneDetailRequestError,
-  readErrorCopy,
-  readInitial,
-  readSceneId,
-  readRecommendationFilterTag,
-  type SceneDetail,
-  type SceneDetailErrorCode,
-  type RecommendedSceneGroups,
-  type RecommendationFilter,
-} from '@lib/sceneDetail'
+import { buildSceneComments, buildSceneDescription } from './fixtures'
+import { fetchRecommendedSceneGroups, fetchSceneDetail, SceneDetailRequestError } from './loaders'
+import { createEmptyRecommendedSceneGroups, selectRecommendedScenes } from './recommendations'
+import { readErrorCopy, readInitial, readSceneId } from './selectors'
+import type { RecommendationFilter, RecommendedSceneGroups, SceneDetail, SceneDetailErrorCode } from './types'
+import { SceneCommentsPanel, SceneDescriptionCard, SceneDetailState, SceneRecommendationRail, VoteButton } from './ui'
+import { useScenePlaylistState } from './useScenePlaylistState'
+import { buildCreatorProfile, buildSceneEngagement } from './viewModels'
 
 export function SceneDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -221,13 +203,10 @@ export function SceneDetailPage() {
   const engagement = buildSceneEngagement(scene)
   const sceneDescription = buildSceneDescription(scene, creatorProfile)
   const sceneComments = buildSceneComments(scene)
-  const activeRecommendationTag = readRecommendationFilterTag(recommendationFilter)
-  const filteredRecommendedScenes =
-    activeRecommendationTag !== null
-      ? recommendedSceneGroups.byTag[activeRecommendationTag] ?? []
-      : recommendationFilter === 'creator'
-        ? recommendedSceneGroups.creator
-        : recommendedSceneGroups.all
+  const filteredRecommendedScenes = selectRecommendedScenes(
+    recommendedSceneGroups,
+    recommendationFilter,
+  )
   const composerInitial = readInitial(user?.displayName ?? 'Guest')
   const composerPrompt = user?.displayName
     ? `Add a comment as ${user.displayName}...`

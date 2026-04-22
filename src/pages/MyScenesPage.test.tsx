@@ -8,9 +8,9 @@ import {
   type AuthenticatedUser,
 } from '@auth'
 import { buildApiUrl } from '@lib/api'
+import { SceneDetailPage } from '@modules/scene-detail'
 import { LoginPage } from './LoginPage'
 import { MyScenesPage } from './MyScenesPage'
-import { SceneDetailPage } from './SceneDetailPage'
 
 vi.mock('@modules/player', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@modules/player')>()
