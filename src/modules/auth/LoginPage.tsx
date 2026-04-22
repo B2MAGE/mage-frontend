@@ -1,11 +1,12 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth, type AuthenticatedUser } from '@auth'
 import { AuthPage, AuthPageHeader } from '@components/AuthPage'
-import { buildApiUrl } from '@lib/api'
 import { emailPattern, parseApiError } from '@shared/lib'
 import { FormNotice, TextInputField } from '@shared/ui'
+import { loginWithCredentials } from './client'
+import { useAuth } from './authContext'
+import type { AuthenticatedUser } from './types'
 
 type LoginFormValues = {
   email: string
@@ -68,12 +69,7 @@ function validateLoginForm(values: LoginFormValues): LoginFormErrors {
 }
 
 export function LoginPage() {
-  const {
-    accessToken,
-    completeLoginSession,
-    isAuthenticated,
-    isRestoringSession,
-  } = useAuth()
+  const { accessToken, completeLoginSession, isAuthenticated, isRestoringSession } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const loginLocationState = readLoginLocationState(location.state)
@@ -139,13 +135,7 @@ export function LoginPage() {
     setErrors({})
 
     try {
-      const response = await fetch(buildApiUrl('/auth/login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(trimmedValues),
-      })
+      const response = await loginWithCredentials(trimmedValues)
 
       if (!response.ok) {
         const apiError = await parseApiError(response)
@@ -206,101 +196,89 @@ export function LoginPage() {
 
   return (
     <AuthPage titleId={titleId}>
-        {isRestoringSession && accessToken ? (
-          <div className="auth-state" role="status" aria-live="polite">
-            <AuthPageHeader
-              description="MAGE found a stored access token and is verifying it with the backend."
-              eyebrow="Restoring Session"
-              title="Checking your saved login."
-              titleId={titleId}
+      {isRestoringSession && accessToken ? (
+        <div className="auth-state" role="status" aria-live="polite">
+          <AuthPageHeader
+            description="MAGE found a stored access token and is verifying it with the backend."
+            eyebrow="Restoring Session"
+            title="Checking your saved login."
+            titleId={titleId}
+          />
+        </div>
+      ) : (
+        <>
+          <AuthPageHeader
+            description="Enter your credentials to access your account."
+            eyebrow="Sign In"
+            title="Login"
+            titleId={titleId}
+          />
+
+          <form className="auth-form" noValidate onSubmit={handleSubmit}>
+            <TextInputField
+              autoComplete="email"
+              error={errors.email}
+              id="email"
+              label="Email"
+              name="email"
+              onChange={(event) => handleChange('email', event.target.value)}
+              placeholder="you@example.com"
+              required
+              type="email"
+              value={values.email}
             />
-          </div>
-        ) : (
-          <>
-            <AuthPageHeader
-              description="Enter your credentials to access your account."
-              eyebrow="Sign In"
-              title="Login"
-              titleId={titleId}
+            <TextInputField
+              autoComplete="current-password"
+              error={errors.password}
+              hint="Use the same password you created during registration."
+              id="password"
+              label="Password"
+              name="password"
+              onChange={(event) => handleChange('password', event.target.value)}
+              placeholder="Enter your password"
+              required
+              type="password"
+              value={values.password}
             />
 
-            <form className="auth-form" noValidate onSubmit={handleSubmit}>
-              <TextInputField
-                autoComplete="email"
-                error={errors.email}
-                id="email"
-                label="Email"
-                name="email"
-                onChange={(event) => handleChange('email', event.target.value)}
-                placeholder="you@example.com"
-                required
-                type="email"
-                value={values.email}
-              />
-              <TextInputField
-                autoComplete="current-password"
-                error={errors.password}
-                hint="Use the same password you created during registration."
-                id="password"
-                label="Password"
-                name="password"
-                onChange={(event) => handleChange('password', event.target.value)}
-                placeholder="Enter your password"
-                required
-                type="password"
-                value={values.password}
-              />
+            {errors.form ? (
+              <FormNotice id={formNoticeId} tone="error">
+                {errors.form}
+              </FormNotice>
+            ) : null}
 
-              {errors.form ? (
-                <FormNotice id={formNoticeId} tone="error">
-                  {errors.form}
-                </FormNotice>
-              ) : null}
+            {registrationNotice ? <FormNotice tone="note">{registrationNotice}</FormNotice> : null}
 
-              {registrationNotice ? (
-                <FormNotice tone="note">
-                  {registrationNotice}
-                </FormNotice>
-              ) : null}
+            {resetPasswordNotice ? <FormNotice tone="note">{resetPasswordNotice}</FormNotice> : null}
 
-              {resetPasswordNotice ? (
-                <FormNotice tone="note">
-                  {resetPasswordNotice}
-                </FormNotice>
-              ) : null}
+            <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
+              {isSubmitting ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
 
-              <button
-                className="demo-link auth-submit"
-                type="submit"
-                disabled={isSubmitDisabled}
-              >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
-              </button>
-            </form>
+          <p className="auth-footnote">
+            Forgot your password?{' '}
+            <button
+              className="auth-link-button"
+              type="button"
+              onClick={() =>
+                setResetPasswordNotice(
+                  'Password reset is not connected yet, but this option is now available in the frontend.',
+                )
+              }
+            >
+              Reset it here
+            </button>
+          </p>
 
-            <p className="auth-footnote">
-              Forgot your password?{' '}
-              <button
-                className="auth-link-button"
-                type="button"
-                onClick={() =>
-                  setResetPasswordNotice(
-                    'Password reset is not connected yet, but this option is now available in the frontend.',
-                  )
-                }
-              >
-                Reset it here
-              </button>
-            </p>
-
-            <p className="auth-footnote">
-              Need an account?{' '}
-              <Link className="secondary-link" to="/register">
-                Create one here
-              </Link>
-            </p>
-          </>
-        )}
+          <p className="auth-footnote">
+            Need an account?{' '}
+            <Link className="secondary-link" to="/register">
+              Create one here
+            </Link>
+          </p>
+        </>
+      )}
     </AuthPage>
   )
 }

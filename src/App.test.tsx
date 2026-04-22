@@ -13,10 +13,6 @@ vi.mock('@pages/HomePage', () => ({
   HomePage: () => <div>Home page</div>,
 }))
 
-vi.mock('@pages/LoginPage', () => ({
-  LoginPage: () => <div>Login page</div>,
-}))
-
 vi.mock('@modules/my-scenes', () => ({
   MyScenesPage: () => <div>My scenes page</div>,
 }))
@@ -25,12 +21,18 @@ vi.mock('@modules/discovery', () => ({
   ScenesPage: () => <div>Scenes page</div>,
 }))
 
+vi.mock('@modules/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@modules/auth')>()
+
+  return {
+    ...actual,
+    LoginPage: () => <div>Login page</div>,
+    RegisterPage: () => <div>Register page</div>,
+  }
+})
+
 vi.mock('@modules/scene-detail', () => ({
   SceneDetailPage: () => <div>Scene detail page</div>,
-}))
-
-vi.mock('@pages/RegisterPage', () => ({
-  RegisterPage: () => <div>Register page</div>,
 }))
 
 vi.mock('@pages/CreateScenePage', () => ({
