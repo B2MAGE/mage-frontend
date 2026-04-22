@@ -1,17 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { MyScenesPagination, MyScenesTable, MyScenesToolbar } from '@components/my-scenes'
-import {
-  buildSortSummary,
-  createDemoScenes,
-  fetchUserScenes,
-  sortScenes,
-  type SortDirection,
-  type SortKey,
-  type StatusFilter,
-  type UserScene,
-} from '@lib/myScenes'
+import { createDemoScenes, fetchUserScenes } from './loaders'
+import { buildMyScenesBoardModel, pruneSelectedSceneIds } from './selectors'
+import type { SortDirection, SortKey, StatusFilter, UserScene } from './types'
+import { MyScenesPagination, MyScenesTable, MyScenesToolbar } from './ui'
 
 export function MyScenesPage() {
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
@@ -72,9 +65,7 @@ export function MyScenesPage() {
   }, [authenticatedFetch, isAuthenticated, isRestoringSession, reloadKey, user?.userId])
 
   useEffect(() => {
-    setSelectedSceneIds((currentIds) =>
-      currentIds.filter((sceneId) => scenes.some((scene) => scene.id === sceneId)),
-    )
+    setSelectedSceneIds((currentIds) => pruneSelectedSceneIds(currentIds, scenes))
   }, [scenes])
 
   useEffect(() => {
@@ -103,27 +94,35 @@ export function MyScenesPage() {
     }
   }, [isRowsPerPageMenuOpen])
 
-  const availableStatuses = [...new Set(scenes.map((scene) => scene.statusLabel))].sort()
-  const visibleScenes =
-    statusFilter === 'All'
-      ? scenes
-      : scenes.filter((scene) => scene.statusLabel === statusFilter)
-  const sortedScenes = sortScenes(visibleScenes, sortKey, sortDirection)
-  const sortSummary = buildSortSummary(sortKey, sortDirection)
-  const totalScenes = sortedScenes.length
-  const pageCount = Math.max(1, Math.ceil(Math.max(totalScenes, 1) / rowsPerPage))
-  const currentPageIndex = Math.min(pageIndex, pageCount - 1)
-  const pageStart = totalScenes === 0 ? 0 : currentPageIndex * rowsPerPage
-  const pageEnd = Math.min(pageStart + rowsPerPage, totalScenes)
-  const pagedScenes = sortedScenes.slice(pageStart, pageEnd)
-  const selectedSceneIdSet = new Set(selectedSceneIds)
-  const currentPageSceneIds = pagedScenes.map((scene) => scene.id)
-  const allPageScenesSelected =
-    currentPageSceneIds.length > 0 &&
-    currentPageSceneIds.every((sceneId) => selectedSceneIdSet.has(sceneId))
-  const somePageScenesSelected =
-    !allPageScenesSelected &&
-    currentPageSceneIds.some((sceneId) => selectedSceneIdSet.has(sceneId))
+  const boardModel = useMemo(
+    () =>
+      buildMyScenesBoardModel({
+        pageIndex,
+        rowsPerPage,
+        scenes,
+        selectedSceneIds,
+        sortDirection,
+        sortKey,
+        statusFilter,
+      }),
+    [pageIndex, rowsPerPage, scenes, selectedSceneIds, sortDirection, sortKey, statusFilter],
+  )
+
+  const {
+    allPageScenesSelected,
+    availableStatuses,
+    currentPageIndex,
+    currentPageSceneIds,
+    pageCount,
+    pageEnd,
+    pageStart,
+    pagedScenes,
+    selectedSceneIdSet,
+    somePageScenesSelected,
+    sortSummary,
+    sortedScenes,
+    totalScenes,
+  } = boardModel
 
   useEffect(() => {
     if (!selectAllCheckboxRef.current) {

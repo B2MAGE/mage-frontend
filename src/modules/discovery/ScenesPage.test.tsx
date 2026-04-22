@@ -69,9 +69,7 @@ describe('ScenesPage', () => {
   })
 
   it('renders loading skeleton initially', () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(
-      () => new Promise(() => {}),
-    )
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}))
 
     renderScenesPage()
 
@@ -125,12 +123,10 @@ describe('ScenesPage', () => {
     await user.click(fireButton)
 
     await waitFor(() => {
-      const sceneCalls = fetchSpy.mock.calls.filter(
-        (call) => {
-          const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
-          return url.includes('/scenes')
-        },
-      )
+      const sceneCalls = fetchSpy.mock.calls.filter((call) => {
+        const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
+        return url.includes('/scenes')
+      })
       const lastCall = sceneCalls[sceneCalls.length - 1]
       const url = typeof lastCall[0] === 'string' ? lastCall[0] : (lastCall[0] as Request).url
       expect(url).toContain('tag=fire')
@@ -150,12 +146,10 @@ describe('ScenesPage', () => {
     await user.click(allButton)
 
     await waitFor(() => {
-      const sceneCalls = fetchSpy.mock.calls.filter(
-        (call) => {
-          const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
-          return url.includes('/scenes')
-        },
-      )
+      const sceneCalls = fetchSpy.mock.calls.filter((call) => {
+        const url = typeof call[0] === 'string' ? call[0] : (call[0] as Request).url
+        return url.includes('/scenes')
+      })
       const lastCall = sceneCalls[sceneCalls.length - 1]
       const url = typeof lastCall[0] === 'string' ? lastCall[0] : (lastCall[0] as Request).url
       expect(url).not.toContain('tag=')
@@ -175,9 +169,7 @@ describe('ScenesPage', () => {
         )
       }
 
-      return Promise.resolve(
-        new Response('Internal Server Error', { status: 500 }),
-      )
+      return Promise.resolve(new Response('Internal Server Error', { status: 500 }))
     })
 
     renderScenesPage()

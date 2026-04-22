@@ -52,7 +52,14 @@ If code is mostly owned by one feature, it should stay with that feature.
 
 ## Current State
 
-The repo is still in a hybrid state. Existing `pages/`, `components/`, and `lib/` directories remain in use while the modular-monolith structure is introduced. Issue `#83` establishes the skeleton and app-level composition move. Later stories will migrate feature code into modules incrementally rather than through a single rewrite.
+The repo is still in a hybrid state, but several route-facing surfaces now live behind module entrypoints:
+
+- `discovery`
+- `my-scenes`
+- `player`
+- `scene-detail`
+
+Existing `pages/`, `components/`, and `lib/` directories still exist for surfaces that have not been migrated yet. Issue `#83` established the skeleton and app-level composition move; later stories migrate one surface at a time instead of through a single rewrite.
 
 ## Import Conventions
 

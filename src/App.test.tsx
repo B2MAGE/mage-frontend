@@ -17,11 +17,11 @@ vi.mock('@pages/LoginPage', () => ({
   LoginPage: () => <div>Login page</div>,
 }))
 
-vi.mock('@pages/MyScenesPage', () => ({
+vi.mock('@modules/my-scenes', () => ({
   MyScenesPage: () => <div>My scenes page</div>,
 }))
 
-vi.mock('@pages/ScenesPage', () => ({
+vi.mock('@modules/discovery', () => ({
   ScenesPage: () => <div>Scenes page</div>,
 }))
 

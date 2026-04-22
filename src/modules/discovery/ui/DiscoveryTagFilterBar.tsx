@@ -1,22 +1,26 @@
-import type { TagResponse } from '@lib/api'
-import { SelectableChip } from '@shared/ui'
-import { ScrollableTagBar } from './ScrollableTagBar'
+import { ScrollableTagBar, SelectableChip } from '@shared/ui'
+import type { DiscoveryTag } from '../types'
 
-type TagFilterBarProps = {
-  tags: TagResponse[]
+type DiscoveryTagFilterBarProps = {
   activeTag: string | null
-  onTagSelect: (tag: string | null) => void
   isLoading: boolean
+  tags: DiscoveryTag[]
+  onTagSelect: (tag: string | null) => void
 }
 
 const skeletonCount = 5
 
-export function TagFilterBar({ tags, activeTag, onTagSelect, isLoading }: TagFilterBarProps) {
+export function DiscoveryTagFilterBar({
+  activeTag,
+  isLoading,
+  tags,
+  onTagSelect,
+}: DiscoveryTagFilterBarProps) {
   if (isLoading) {
     return (
       <div className="tag-filter-bar" aria-label="Tag filters loading">
-        {Array.from({ length: skeletonCount }, (_, i) => (
-          <span key={i} className="tag-pill tag-pill--skeleton" aria-hidden="true" />
+        {Array.from({ length: skeletonCount }, (_, index) => (
+          <span key={index} className="tag-pill tag-pill--skeleton" aria-hidden="true" />
         ))}
       </div>
     )

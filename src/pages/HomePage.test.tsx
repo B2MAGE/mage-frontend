@@ -35,7 +35,7 @@ vi.mock('@modules/player', async (importOriginal) => {
   }
 })
 
-vi.mock('./ScenesPage', () => ({
+vi.mock('@modules/discovery', () => ({
   ScenesPage: () => <div>Scenes page</div>,
 }))
 

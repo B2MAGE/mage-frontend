@@ -116,7 +116,12 @@ export function ScrollableTagBar({
         </button>
       ) : null}
 
-      <div ref={barRef} className={joinClassNames('tag-filter-bar', barClassName)} role={role} aria-label={ariaLabel}>
+      <div
+        ref={barRef}
+        className={joinClassNames('tag-filter-bar', barClassName)}
+        role={role}
+        aria-label={ariaLabel}
+      >
         {children}
       </div>
 

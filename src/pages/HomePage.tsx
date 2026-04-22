@@ -1,6 +1,6 @@
 import { useAuth } from '@auth'
+import { ScenesPage } from '@modules/discovery'
 import { MagePlayer, type MageSceneBlob } from '@modules/player'
-import { ScenesPage } from './ScenesPage'
 
 const HOME_PAGE_SCENE = {
   visualizer: {
