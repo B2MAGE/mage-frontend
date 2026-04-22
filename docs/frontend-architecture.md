@@ -54,10 +54,12 @@ If code is mostly owned by one feature, it should stay with that feature.
 
 The repo is still in a hybrid state, but several route-facing surfaces now live behind module entrypoints:
 
+- `auth`
 - `discovery`
 - `my-scenes`
 - `player`
 - `scene-detail`
+- `settings`
 
 Existing `pages/`, `components/`, and `lib/` directories still exist for surfaces that have not been migrated yet. Issue `#83` established the skeleton and app-level composition move; later stories migrate one surface at a time instead of through a single rewrite.
 
@@ -68,7 +70,8 @@ Cross-top-level imports should use aliases instead of parent-relative paths.
 - `@app` for application wiring and composition
 - `@modules/<module-name>` for module public APIs
 - `@shared/*` for cross-cutting shared code
-- `@auth`, `@components`, `@lib`, `@pages`, and `@theme` for the current hybrid directories during migration
+- `@auth` as the stable auth module alias
+- `@components`, `@lib`, `@pages`, and `@theme` for the current hybrid directories during migration
 
 Within a top-level area, short relative imports are still fine for local implementation details.
 

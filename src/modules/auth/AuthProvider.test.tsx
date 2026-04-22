@@ -3,13 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  AUTH_SESSION_STORAGE_KEY,
-  AuthProvider,
-  type AuthenticatedUser,
-  useAuth,
-} from './AuthContext'
 import { buildApiUrl } from '@lib/api'
+import { AuthProvider } from './AuthProvider'
+import { useAuth } from './authContext'
+import { AUTH_SESSION_STORAGE_KEY } from './storage'
+import type { AuthenticatedUser } from './types'
 
 const storedUser: AuthenticatedUser = {
   userId: 8,

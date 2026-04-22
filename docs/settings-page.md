@@ -21,12 +21,15 @@ Access:
 
 ## Related Files
 
-- `src/pages/SettingsPage.tsx`
-- `src/pages/SettingsPage.test.tsx`
-- `src/components/settings/ThemeSettingsSection.tsx`
-- `src/components/settings/themeSettingsSection.css`
-- `src/auth/AuthContext.tsx`
-- `src/auth/AuthContext.test.tsx`
+- `src/modules/settings/SettingsPage.tsx`
+- `src/modules/settings/SettingsPage.test.tsx`
+- `src/modules/settings/profile.ts`
+- `src/modules/settings/ui/ProfileDetailsForm.tsx`
+- `src/modules/settings/ui/ThemeSettingsSection.tsx`
+- `src/modules/settings/ui/themeSettingsSection.css`
+- `src/modules/auth/AuthProvider.tsx`
+- `src/modules/auth/AuthProvider.test.tsx`
+- `src/modules/auth/guards.tsx`
 - `src/lib/authForm.ts`
 - `src/theme/ThemeProvider.tsx`
 - `src/theme/themes.ts`
@@ -66,8 +69,8 @@ stored session automatically if the backend returns `401`.
 
 ## Theme Notes
 
-The page does not manage theme CSS directly. It renders `ThemeSettingsSection`, which talks to the
-shared theme provider.
+The settings module does not manage theme CSS directly. Its `ThemeSettingsSection` UI talks to the
+shared theme provider through the stable `@theme` API.
 
 Current built-in themes:
 
@@ -84,8 +87,9 @@ edit.
 
 Main coverage lives in:
 
-- `src/pages/SettingsPage.test.tsx`
-- `src/auth/AuthContext.test.tsx`
+- `src/modules/settings/SettingsPage.test.tsx`
+- `src/modules/auth/AuthProvider.test.tsx`
+- `src/modules/auth/guards.test.tsx`
 
 Run them with:
 

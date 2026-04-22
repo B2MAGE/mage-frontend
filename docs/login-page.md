@@ -15,12 +15,16 @@ Access:
 
 ## Related Files
 
-- `src/pages/LoginPage.tsx`
-- `src/auth/AuthContext.tsx`
+- `src/modules/auth/LoginPage.tsx`
+- `src/modules/auth/client.ts`
+- `src/modules/auth/AuthProvider.tsx`
+- `src/modules/auth/guards.tsx`
+- `src/modules/auth/storage.ts`
 - `src/lib/api.ts`
 - `src/lib/authForm.ts`
-- `src/pages/LoginPage.test.tsx`
-- `src/auth/AuthContext.test.tsx`
+- `src/modules/auth/LoginPage.test.tsx`
+- `src/modules/auth/AuthProvider.test.tsx`
+- `src/modules/auth/guards.test.tsx`
 
 ## Request Flow
 
@@ -56,13 +60,13 @@ Requests are built through `buildApiUrl()`. For local development, leave `VITE_A
 
 ## Auth Session Notes
 
-The shared auth provider stores session data under:
+The auth module stores session data under:
 
 ```text
 mage.auth.session
 ```
 
-That provider is responsible for:
+The auth module is responsible for:
 
 - persisting the access token
 - restoring the session on app startup
@@ -81,8 +85,9 @@ That provider is responsible for:
 
 Main coverage lives in:
 
-- `src/pages/LoginPage.test.tsx`
-- `src/auth/AuthContext.test.tsx`
+- `src/modules/auth/LoginPage.test.tsx`
+- `src/modules/auth/AuthProvider.test.tsx`
+- `src/modules/auth/guards.test.tsx`
 
 Run them with:
 

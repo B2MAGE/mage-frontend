@@ -2,9 +2,9 @@ import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AuthPage, AuthPageHeader } from '@components/AuthPage'
-import { buildApiUrl } from '@lib/api'
 import { emailPattern, parseApiError } from '@shared/lib'
 import { FormNotice, TextInputField } from '@shared/ui'
+import { registerLocalAccount } from './client'
 
 type RegistrationFormValues = {
   firstName: string
@@ -122,13 +122,7 @@ export function RegisterPage() {
     setErrors({})
 
     try {
-      const response = await fetch(buildApiUrl('/auth/register'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(trimmedValues),
-      })
+      const response = await registerLocalAccount(trimmedValues)
 
       if (!response.ok) {
         const apiError = await parseApiError(response)
@@ -172,99 +166,99 @@ export function RegisterPage() {
 
   return (
     <AuthPage titleId={titleId}>
-        <>
-          <AuthPageHeader
-            description="Use your email address to create a local account for the MAGE platform."
-            eyebrow="Create Account"
-            title="Register"
-            titleId={titleId}
+      <>
+        <AuthPageHeader
+          description="Use your email address to create a local account for the MAGE platform."
+          eyebrow="Create Account"
+          title="Register"
+          titleId={titleId}
+        />
+
+        <form className="auth-form" noValidate onSubmit={handleSubmit}>
+          <TextInputField
+            autoComplete="given-name"
+            error={errors.firstName}
+            id="firstName"
+            label="First name"
+            minLength={2}
+            name="firstName"
+            onChange={(event) => handleChange('firstName', event.target.value)}
+            placeholder="John"
+            required
+            type="text"
+            value={values.firstName}
+          />
+          <TextInputField
+            autoComplete="family-name"
+            error={errors.lastName}
+            id="lastName"
+            label="Last name"
+            minLength={2}
+            name="lastName"
+            onChange={(event) => handleChange('lastName', event.target.value)}
+            placeholder="Doe"
+            required
+            type="text"
+            value={values.lastName}
+          />
+          <TextInputField
+            autoComplete="nickname"
+            error={errors.displayName}
+            hint="This is the public name shown on scenes and comments."
+            id="displayName"
+            label="Display name"
+            minLength={2}
+            name="displayName"
+            onChange={(event) => handleChange('displayName', event.target.value)}
+            placeholder="Mir Ahnaf Ali"
+            required
+            type="text"
+            value={values.displayName}
+          />
+          <TextInputField
+            autoComplete="email"
+            error={errors.email}
+            id="email"
+            label="Email"
+            name="email"
+            onChange={(event) => handleChange('email', event.target.value)}
+            placeholder="you@example.com"
+            required
+            type="email"
+            value={values.email}
+          />
+          <TextInputField
+            autoComplete="new-password"
+            error={errors.password}
+            id="password"
+            label="Password"
+            minLength={8}
+            name="password"
+            onChange={(event) => handleChange('password', event.target.value)}
+            placeholder="At least 8 characters"
+            required
+            type="password"
+            value={values.password}
           />
 
-          <form className="auth-form" noValidate onSubmit={handleSubmit}>
-            <TextInputField
-              autoComplete="given-name"
-              error={errors.firstName}
-              id="firstName"
-              label="First name"
-              minLength={2}
-              name="firstName"
-              onChange={(event) => handleChange('firstName', event.target.value)}
-              placeholder="John"
-              required
-              type="text"
-              value={values.firstName}
-            />
-            <TextInputField
-              autoComplete="family-name"
-              error={errors.lastName}
-              id="lastName"
-              label="Last name"
-              minLength={2}
-              name="lastName"
-              onChange={(event) => handleChange('lastName', event.target.value)}
-              placeholder="Doe"
-              required
-              type="text"
-              value={values.lastName}
-            />
-            <TextInputField
-              autoComplete="nickname"
-              error={errors.displayName}
-              hint="This is the public name shown on scenes and comments."
-              id="displayName"
-              label="Display name"
-              minLength={2}
-              name="displayName"
-              onChange={(event) => handleChange('displayName', event.target.value)}
-              placeholder="Mir Ahnaf Ali"
-              required
-              type="text"
-              value={values.displayName}
-            />
-            <TextInputField
-              autoComplete="email"
-              error={errors.email}
-              id="email"
-              label="Email"
-              name="email"
-              onChange={(event) => handleChange('email', event.target.value)}
-              placeholder="you@example.com"
-              required
-              type="email"
-              value={values.email}
-            />
-            <TextInputField
-              autoComplete="new-password"
-              error={errors.password}
-              id="password"
-              label="Password"
-              minLength={8}
-              name="password"
-              onChange={(event) => handleChange('password', event.target.value)}
-              placeholder="At least 8 characters"
-              required
-              type="password"
-              value={values.password}
-            />
+          {errors.form ? (
+            <FormNotice id={formErrorId} tone="error">
+              {errors.form}
+            </FormNotice>
+          ) : null}
 
-            {errors.form ? (
-              <FormNotice id={formErrorId} tone="error">
-                {errors.form}
-              </FormNotice>
-            ) : null}
+          <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
+            {isSubmitting ? 'Creating account...' : 'Create account'}
+          </button>
+        </form>
 
-            <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
-              {isSubmitting ? 'Creating account...' : 'Create account'}
-            </button>
-          </form>
-
-          <p className="auth-footnote">
-            Already have an account?{' '}
-            <Link className="secondary-link" to="/login">
-              Go to login
-            </Link>
-          </p>
-        </>
+        <p className="auth-footnote">
+          Already have an account?{' '}
+          <Link className="secondary-link" to="/login">
+            Go to login
+          </Link>
+        </p>
+      </>
     </AuthPage>
   )
 }

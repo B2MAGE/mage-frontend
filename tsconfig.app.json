@@ -8,8 +8,8 @@
     "paths": {
       "@app": ["./src/app/index.ts"],
       "@app/*": ["./src/app/*"],
-      "@auth": ["./src/auth/index.ts"],
-      "@auth/*": ["./src/auth/*"],
+      "@auth": ["./src/modules/auth/index.ts"],
+      "@auth/*": ["./src/modules/auth/*"],
       "@components": ["./src/components/index.ts"],
       "@components/*": ["./src/components/*"],
       "@lib/*": ["./src/lib/*"],

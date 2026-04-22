@@ -8,8 +8,8 @@ import {
   type AuthenticatedUser,
 } from '@auth'
 import { buildApiUrl } from '@lib/api'
+import { LoginPage } from '@modules/auth'
 import { MyScenesPage } from '@modules/my-scenes'
-import { LoginPage } from '@pages/LoginPage'
 import { SceneDetailPage } from './SceneDetailPage'
 
 vi.mock('@modules/player', async (importOriginal) => {
