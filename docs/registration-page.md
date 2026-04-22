@@ -17,8 +17,8 @@ Access:
 
 - `src/pages/RegisterPage.tsx`
 - `src/lib/api.ts`
-- `src/lib/authForm.ts`
 - `src/pages/RegisterPage.test.tsx`
+- `src/shared/ui/TextInputField.tsx`
 
 ## Request Flow
 
@@ -30,6 +30,8 @@ Expected request body:
 
 ```json
 {
+  "firstName": "Example",
+  "lastName": "User",
   "displayName": "Example User",
   "email": "user@example.com",
   "password": "example-password"
@@ -40,20 +42,24 @@ Requests are built through `buildApiUrl()`. For local development, leave `VITE_A
 
 ## User-Facing Behavior
 
-- validates display name, email, and password before submission
+- validates first name, last name, display name, email, and password before submission
+- requires a minimum first-name length of `2`
+- requires a minimum last-name length of `2`
 - requires a minimum display-name length of `2`
 - requires a minimum password length of `8`
 - disables the submit button while the request is in flight
-- surfaces backend validation details when present
+- surfaces backend validation details for first name, last name, display name, email, and password when present
 - surfaces conflict responses such as duplicate-email registration
 - redirects to `/login` on success
 - passes the registered email and a success notice into login page state
+- explains that display name is the public name shown on scenes and comments
 
 ## Current Scope
 
 The registration page currently supports:
 
 - local account creation
+- separate first name, last name, and public display name inputs
 - client-side validation
 - backend error handling
 - post-registration redirect into login

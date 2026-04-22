@@ -27,15 +27,12 @@ type RegistrationResponse = {
 }
 
 const initialValues: RegistrationFormValues = {
-  firstName:'',
+  firstName: '',
   lastName: '',
   displayName: '',
   email: '',
   password: '',
 }
-
-const DEFAULT_REGISTRATION_FIRST_NAME = 'NoName'
-const DEFAULT_REGISTRATION_LAST_NAME = 'NoName'
 
 function validateRegistrationForm(values: RegistrationFormValues): RegistrationFormErrors {
   const errors: RegistrationFormErrors = {}
@@ -125,7 +122,7 @@ export function RegisterPage() {
     setErrors({})
 
     try {
-      const response = await fetch(buildApiUrl('/api/auth/register'), {
+      const response = await fetch(buildApiUrl('/auth/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,6 +139,8 @@ export function RegisterPage() {
             : undefined
 
         setErrors({
+          firstName: backendDetails.firstName,
+          lastName: backendDetails.lastName,
           displayName: backendDetails.displayName,
           email: backendDetails.email,
           password: backendDetails.password,
@@ -183,7 +182,7 @@ export function RegisterPage() {
 
           <form className="auth-form" noValidate onSubmit={handleSubmit}>
             <TextInputField
-              autoComplete="first-name"
+              autoComplete="given-name"
               error={errors.firstName}
               id="firstName"
               label="First name"
@@ -196,7 +195,7 @@ export function RegisterPage() {
               value={values.firstName}
             />
             <TextInputField
-              autoComplete="last-name"
+              autoComplete="family-name"
               error={errors.lastName}
               id="lastName"
               label="Last name"
@@ -211,6 +210,7 @@ export function RegisterPage() {
             <TextInputField
               autoComplete="nickname"
               error={errors.displayName}
+              hint="This is the public name shown on scenes and comments."
               id="displayName"
               label="Display name"
               minLength={2}
