@@ -1,6 +1,6 @@
 import { type AppThemeDefinition, useTheme } from '@theme'
-import { SurfaceCard } from '@shared/ui'
 import type { CSSProperties } from 'react'
+import { SurfaceCard } from '@shared/ui'
 import './themeSettingsSection.css'
 
 type ThemePreviewProps = {

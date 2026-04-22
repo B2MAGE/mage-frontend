@@ -39,7 +39,7 @@ vi.mock('@pages/CreateScenePage', () => ({
   CreateScenePage: () => <div>Create scene page</div>,
 }))
 
-vi.mock('@pages/SettingsPage', () => ({
+vi.mock('@modules/settings', () => ({
   SettingsPage: () => <div>Settings page</div>,
 }))
 

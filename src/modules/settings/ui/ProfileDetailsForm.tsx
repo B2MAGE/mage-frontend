@@ -1,108 +1,20 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
-import { useAuth } from '@auth'
-import { ThemeSettingsSection } from '@components/settings'
-import { parseApiError } from '@shared/lib'
 import { FormNotice, SurfaceCard, TextInputField } from '@shared/ui'
-
-const PROFILE_SAVE_UNAVAILABLE_MESSAGE =
-  'Profile updates are unavailable right now. Please try again in a moment.'
-
-type UserProfileResponse = {
-  userId: number | null
-  email: string
-  firstName?: string
-  lastName?: string
-  displayName: string
-  authProvider: string
-  createdAt?: string
-}
-
-export function SettingsPage() {
-  const { authenticatedFetch, updateAuthenticatedUser, user } = useAuth()
-
-  if (!user) {
-    return (
-      <main className="surface surface--hero">
-        <div className="eyebrow">Settings</div>
-        <h1>Unable to open settings</h1>
-        <p className="page-lead">
-          MAGE could not find the signed-in account details needed to render this page.
-        </p>
-      </main>
-    )
-  }
-
-  return (
-    <main className="page-stack settings-page">
-      <section className="surface surface--page-panel">
-        <div className="eyebrow">Settings</div>
-        <h1 className="settings-title">Settings</h1>
-        <p className="settings-lead">
-          Manage your MAGE profile details and choose the interface theme that fits this device.
-        </p>
-
-        <ThemeSettingsSection />
-
-        <ProfileDetailsForm
-          email={user.email}
-          firstName={user.firstName ?? ''}
-          lastName={user.lastName ?? ''}
-          displayName={user.displayName}
-          onSave={async (nameFields) => {
-            try {
-              const response = await authenticatedFetch('/users/me', {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(nameFields),
-              })
-
-              if (!response.ok) {
-                const apiError = await parseApiError(response)
-                return {
-                  ok: false as const,
-                  details: apiError?.details ?? {},
-                  message: apiError?.message ?? PROFILE_SAVE_UNAVAILABLE_MESSAGE,
-                }
-              }
-
-              const updatedUser = (await response.json()) as UserProfileResponse
-              updateAuthenticatedUser(updatedUser)
-
-              return {
-                ok: true as const,
-              }
-            } catch {
-              return {
-                ok: false as const,
-                details: {},
-                message: PROFILE_SAVE_UNAVAILABLE_MESSAGE,
-              }
-            }
-          }}
-        />
-      </section>
-    </main>
-  )
-}
+import type { ProfileNameFields, ProfileSaveResult } from '../types'
 
 type ProfileDetailsFormProps = {
+  displayName: string
   email: string
   firstName: string
   lastName: string
-  displayName: string
-  onSave: (nameFields: { firstName: string; lastName: string; displayName: string }) => Promise<
-    | { ok: true }
-    | { ok: false; details: Record<string, string>; message: string }
-  >
+  onSave: (nameFields: ProfileNameFields) => Promise<ProfileSaveResult>
 }
 
-function ProfileDetailsForm({
+export function ProfileDetailsForm({
+  displayName,
   email,
   firstName,
   lastName,
-  displayName,
   onSave,
 }: ProfileDetailsFormProps) {
   const [nameFields, setNameFields] = useState(() => ({ firstName, lastName, displayName }))
@@ -215,11 +127,7 @@ function ProfileDetailsForm({
           </FormNotice>
         ) : null}
 
-        {successMessage ? (
-          <FormNotice tone="note">
-            {successMessage}
-          </FormNotice>
-        ) : null}
+        {successMessage ? <FormNotice tone="note">{successMessage}</FormNotice> : null}
 
         <div className="settings-actions">
           <button

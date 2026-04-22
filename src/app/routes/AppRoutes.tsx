@@ -4,9 +4,9 @@ import { GuestOnlyRoute, LoginPage, RegisterPage } from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
 import { MyScenesPage } from '@modules/my-scenes'
 import { SceneDetailPage } from '@modules/scene-detail'
+import { SettingsPage } from '@modules/settings'
 import { CreateScenePage } from '@pages/CreateScenePage'
 import { HomePage } from '@pages/HomePage'
-import { SettingsPage } from '@pages/SettingsPage'
 import { ProtectedRoute } from '@modules/auth'
 
 export function AppRoutes() {
