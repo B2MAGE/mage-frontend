@@ -1,19 +1,19 @@
-import type { SceneVisibility, StatusFilter } from '@lib/myScenes'
 import { SelectableChip } from '@shared/ui'
+import type { SceneVisibility, StatusFilter } from '../types'
 
 type MyScenesToolbarProps = {
   availableStatuses: SceneVisibility[]
   sortSummary: string
-  totalScenes: number
   statusFilter: StatusFilter
+  totalScenes: number
   onSelectStatus: (status: StatusFilter) => void
 }
 
 export function MyScenesToolbar({
   availableStatuses,
   sortSummary,
-  totalScenes,
   statusFilter,
+  totalScenes,
   onSelectStatus,
 }: MyScenesToolbarProps) {
   return (

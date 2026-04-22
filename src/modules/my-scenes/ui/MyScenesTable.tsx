@@ -1,13 +1,9 @@
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  buildSortAriaLabel,
-  type SortDirection,
-  type SortKey,
-  type UserScene,
-} from '@lib/myScenes'
 import { formatCalendarDate, formatCompactCount } from '@shared/lib'
 import { TableSortButton } from '@shared/ui'
+import { buildSortAriaLabel } from '../selectors'
+import type { SortDirection, SortKey, UserScene } from '../types'
 
 type MyScenesTableProps = {
   allPageScenesSelected: boolean

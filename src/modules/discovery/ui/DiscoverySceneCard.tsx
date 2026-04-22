@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import type { SceneListResponse } from '@lib/api'
 import { formatMetricLabel, formatRelativeTime } from '@shared/lib'
+import type { DiscoveryScene } from '../types'
 
-type SceneCardProps = {
-  scene: SceneListResponse
+type DiscoverySceneCardProps = {
+  scene: DiscoveryScene
 }
 
 function formatViewLabel(sceneId: number) {
@@ -21,7 +21,7 @@ function buildCreatorInitials(name: string) {
   return initials || 'MG'
 }
 
-export function SceneCard({ scene }: SceneCardProps) {
+export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
   const creatorName = scene.creatorDisplayName
   const creatorInitials = buildCreatorInitials(creatorName)
   const relativeTime = formatRelativeTime(scene.createdAt)

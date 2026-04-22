@@ -2,14 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  AUTH_SESSION_STORAGE_KEY,
-  AuthProvider,
-  type AuthenticatedUser,
-} from '@auth'
+import { AUTH_SESSION_STORAGE_KEY, AuthProvider, type AuthenticatedUser } from '@auth'
 import { buildApiUrl } from '@lib/api'
 import { SceneDetailPage } from '@modules/scene-detail'
-import { LoginPage } from './LoginPage'
+import { LoginPage } from '@pages/LoginPage'
 import { MyScenesPage } from './MyScenesPage'
 
 vi.mock('@modules/player', async (importOriginal) => {
@@ -141,9 +137,7 @@ describe('MyScenesPage', () => {
     expect(await screen.findAllByText(/loading scenes/i)).not.toHaveLength(0)
     await waitFor(() => expect(resolveScenesResponse).toBeDefined())
 
-    resolveScenesResponse?.(
-      jsonResponse([]),
-    )
+    resolveScenesResponse?.(jsonResponse([]))
 
     expect(await screen.findByText(/no scenes yet/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add sample scenes/i })).toBeInTheDocument()
@@ -264,9 +258,7 @@ describe('MyScenesPage', () => {
     expect(
       screen.getByAltText('Very Long Scene Name To Test Wrapping In The Card Layout thumbnail'),
     ).toBeInTheDocument()
-    expect(
-      screen.getByLabelText('Signal Bloom thumbnail unavailable'),
-    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Signal Bloom thumbnail unavailable')).toBeInTheDocument()
     expect(screen.getByText('1-3 of 3')).toBeInTheDocument()
 
     const selectAllCheckbox = screen.getByRole('checkbox', {
@@ -422,7 +414,14 @@ describe('MyScenesPage', () => {
 
     await screen.findByRole('link', { name: /signal bloom/i })
 
-    const titleLinks = () => screen.getAllByRole('link').filter((link) => /\/scenes\/\d+$/.test(link.getAttribute('href') ?? '') && !/Open scene preview/i.test(link.getAttribute('aria-label') ?? ''))
+    const titleLinks = () =>
+      screen
+        .getAllByRole('link')
+        .filter(
+          (link) =>
+            /\/scenes\/\d+$/.test(link.getAttribute('href') ?? '') &&
+            !/Open scene preview/i.test(link.getAttribute('aria-label') ?? ''),
+        )
 
     expect(titleLinks().map((link) => link.textContent)).toEqual([
       'Solar Thread',

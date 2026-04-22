@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
-import { MY_SCENES_ROWS_PER_PAGE_OPTIONS } from '@lib/myScenes'
 import { PaginationIconButton } from '@shared/ui'
+import { MY_SCENES_ROWS_PER_PAGE_OPTIONS } from '../selectors'
 
 type MyScenesPaginationProps = {
   currentPageIndex: number
