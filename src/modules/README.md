@@ -17,9 +17,11 @@ Each module should eventually own its route-facing logic, data access, UI, tests
 
 Current module-owned feature slices include:
 
+- `auth/`
 - `discovery/`
 - `my-scenes/`
 - `player/`
 - `scene-detail/`
+- `settings/`
 
 Import modules through `@modules/<module-name>`. Do not reach into `@modules/<module-name>/...` from another area; expose what is needed from the module's `index.ts`.

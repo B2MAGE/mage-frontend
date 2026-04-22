@@ -15,9 +15,10 @@ Access:
 
 ## Related Files
 
-- `src/pages/RegisterPage.tsx`
+- `src/modules/auth/RegisterPage.tsx`
+- `src/modules/auth/client.ts`
 - `src/lib/api.ts`
-- `src/pages/RegisterPage.test.tsx`
+- `src/modules/auth/RegisterPage.test.tsx`
 - `src/shared/ui/TextInputField.tsx`
 
 ## Request Flow
@@ -73,7 +74,7 @@ It does not currently:
 
 Main coverage lives in:
 
-- `src/pages/RegisterPage.test.tsx`
+- `src/modules/auth/RegisterPage.test.tsx`
 
 Run it with:
 

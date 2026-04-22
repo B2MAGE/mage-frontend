@@ -21,8 +21,8 @@ The active theme is applied at the document level, persisted on the current devi
 - `src/theme/theme.css`
 - `src/theme/tokens.css`
 - `src/theme/themes/classic-facebook/`
-- `src/components/settings/ThemeSettingsSection.tsx`
-- `src/components/settings/themeSettingsSection.css`
+- `src/modules/settings/ui/ThemeSettingsSection.tsx`
+- `src/modules/settings/ui/themeSettingsSection.css`
 
 ## Module Boundary
 
@@ -102,5 +102,5 @@ Avoid branching provider logic on specific theme ids. New themes should default 
 
 Theme persistence and integration coverage currently lives in:
 
-- `src/pages/SettingsPage.test.tsx`
+- `src/modules/settings/SettingsPage.test.tsx`
 - `src/App.test.tsx`
