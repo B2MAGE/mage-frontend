@@ -35,6 +35,13 @@ Use `modules/` for vertical feature slices. A module should eventually own:
 - internal selectors/helpers
 - feature tests and fixtures
 
+Tests should follow the same ownership rule as production code:
+
+- keep module-specific specs next to the owning module instead of in generic top-level test buckets
+- split large integration-style specs into smaller files grouped by module behavior
+- add module-local `test-fixtures.ts` or `test-fixtures.tsx` builders when a feature needs richer sample data
+- keep `src/shared/test/` limited to true cross-cutting helpers such as shared auth/session or HTTP response setup
+
 Examples of target modules include `player`, `scene-detail`, `scene-editor`, `discovery`, `my-scenes`, `auth`, `settings`, and `theme`.
 
 The current `src/theme/` directory is already treated as a dedicated module boundary with its own public API, even though the broader module migration is still in progress.
