@@ -1,14 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { fireEvent, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
 import {
-  AUTH_SESSION_STORAGE_KEY,
-  AuthProvider,
-  type AuthenticatedUser,
-} from '@auth'
-import { buildApiUrl } from '@lib/api'
-import { CreateScenePage } from './CreateScenePage'
+  mockCreateScenePageFetch,
+  renderCreateScenePage,
+  storeSceneEditorSession,
+} from './test-fixtures'
 
 vi.mock('@modules/player', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@modules/player')>()
@@ -29,112 +26,14 @@ vi.mock('@modules/player', async (importOriginal) => {
   }
 })
 
-const storedUser: AuthenticatedUser = {
-  userId: 8,
-  email: 'artist@example.com',
-  displayName: 'Scene Artist',
-  authProvider: 'LOCAL',
-}
-
-const mockTags = [
-  { tagId: 1, name: 'ambient' },
-  { tagId: 2, name: 'focus-friendly' },
-]
-
-type FetchHandler = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Response | Promise<Response> | null | undefined
-
-function jsonResponse(payload: unknown, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
-}
-
-function storeSession() {
-  window.localStorage.setItem(
-    AUTH_SESSION_STORAGE_KEY,
-    JSON.stringify({
-      accessToken: 'stored-auth-token',
-      user: storedUser,
-    }),
-  )
-}
-
-function mockCreateScenePageFetch(
-  handler?: FetchHandler,
-  tagsResponse: unknown[] = mockTags,
-) {
-  return vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
-    const method = typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
-
-    if (input === buildApiUrl('/users/me')) {
-      return Promise.resolve(jsonResponse(storedUser))
-    }
-
-    if (input === buildApiUrl('/tags') && method === 'GET') {
-      return Promise.resolve(jsonResponse(tagsResponse))
-    }
-
-    const nextResponse = handler?.(input, init)
-
-    if (nextResponse) {
-      return Promise.resolve(nextResponse)
-    }
-
-    throw new Error(`Unexpected request: ${String(input)}`)
-  })
-}
-
-function renderCreateScenePage() {
-  return render(
-    <MemoryRouter initialEntries={['/create-scene']}>
-      <AuthProvider>
-        <Routes>
-          <Route path="/create-scene" element={<CreateScenePage />} />
-          <Route path="/my-scenes" element={<div>My Scenes</div>} />
-        </Routes>
-      </AuthProvider>
-    </MemoryRouter>,
-  )
-}
-
-async function selectExistingTag(user: ReturnType<typeof userEvent.setup>, tagName: string) {
-  const searchInput = await screen.findByLabelText(/select existing tags/i)
-
-  await user.click(searchInput)
-  await user.clear(searchInput)
-  await user.type(searchInput, tagName)
-  await user.click(screen.getByRole('button', { name: new RegExp(`^${tagName}$`, 'i') }))
-}
-
-async function addTagFromSearch(user: ReturnType<typeof userEvent.setup>, tagName: string) {
-  const normalizedTagName = tagName.trim().toLowerCase()
-  const searchInput = await screen.findByLabelText(/select existing tags/i)
-
-  await user.click(searchInput)
-  await user.clear(searchInput)
-  await user.type(searchInput, tagName)
-  await user.click(
-    screen.getByRole('button', {
-      name: new RegExp(`^Add tag "${normalizedTagName}"$`, 'i'),
-    }),
-  )
-}
-
 afterEach(() => {
   vi.restoreAllMocks()
   window.localStorage.clear()
 })
 
-describe('CreateScenePage', () => {
+describe('CreateScenePage workflow', () => {
   it('renders the details step first while keeping the full section menu available', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     renderCreateScenePage()
@@ -159,8 +58,7 @@ describe('CreateScenePage', () => {
   })
 
   it('renders interactive metadata controls beneath the scene name field', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     renderCreateScenePage()
@@ -187,8 +85,7 @@ describe('CreateScenePage', () => {
   })
 
   it('keeps the first section ordered around scene metadata and shows sticky navigation actions', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     renderCreateScenePage()
@@ -222,127 +119,8 @@ describe('CreateScenePage', () => {
     expect(screen.getByRole('button', { name: /create scene/i })).toBeInTheDocument()
   })
 
-  it('loads available tags and lets the user select more than one before saving', async () => {
-    storeSession()
-
-    mockCreateScenePageFetch()
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await selectExistingTag(user, 'ambient')
-    await selectExistingTag(user, 'focus-friendly')
-
-    expect(screen.queryByLabelText(/create a new tag/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/^selected tags$/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^focus-friendly$/i })).toBeInTheDocument()
-  })
-
-  it('creates a new tag in the editor and auto-selects it after success', async () => {
-    storeSession()
-
-    let createTagBody: Record<string, unknown> | null = null
-
-    mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/tags')) {
-        createTagBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ tagId: 7, name: 'late night' }, 201))
-      }
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await addTagFromSearch(user, 'Late Night')
-
-    await waitFor(() => expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument())
-
-    expect(createTagBody).toMatchObject({
-      name: 'late night',
-    })
-    expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument()
-  })
-
-  it('selects the existing tag when create-tag returns a duplicate-name conflict', async () => {
-    storeSession()
-
-    let tagListRequestCount = 0
-
-    const fetchSpy = vi.spyOn(globalThis, 'fetch')
-    fetchSpy.mockImplementation((input, init) => {
-      const method = typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
-
-      if (input === buildApiUrl('/users/me')) {
-        return Promise.resolve(jsonResponse(storedUser))
-      }
-
-      if (input === buildApiUrl('/tags') && method === 'GET') {
-        tagListRequestCount += 1
-
-        const tagList =
-          tagListRequestCount === 1
-            ? [
-                { tagId: 1, name: 'ambient' },
-                { tagId: 2, name: 'focus-friendly' },
-              ]
-            : [
-                { tagId: 1, name: 'ambient' },
-                { tagId: 2, name: 'focus-friendly' },
-                { tagId: 7, name: 'late night' },
-              ]
-
-        return Promise.resolve(
-          jsonResponse(tagList),
-        )
-      }
-
-      if (input === buildApiUrl('/tags') && method === 'POST') {
-        return Promise.resolve(
-          jsonResponse(
-            {
-              code: 'TAG_ALREADY_EXISTS',
-              message: 'A tag with this name already exists.',
-            },
-            409,
-          ),
-        )
-      }
-
-      throw new Error(`Unexpected request: ${String(input)}`)
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await addTagFromSearch(user, 'Late Night')
-
-    await waitFor(() => expect(tagListRequestCount).toBeGreaterThanOrEqual(2))
-    expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument()
-    expect(screen.queryByText(/failed to create tag/i)).not.toBeInTheDocument()
-  })
-
-  it('clicking a selected tag pill removes it from the scene', async () => {
-    storeSession()
-
-    mockCreateScenePageFetch()
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await selectExistingTag(user, 'ambient')
-    await user.click(screen.getByRole('button', { name: /^ambient$/i }))
-
-    expect(screen.getByText(/no tags selected yet\./i)).toBeInTheDocument()
-  })
-
   it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
@@ -365,8 +143,7 @@ describe('CreateScenePage', () => {
   })
 
   it('moves between sections with the next and back buttons and keeps the menu in sync', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
@@ -393,8 +170,7 @@ describe('CreateScenePage', () => {
   })
 
   it('switches the shader select to Custom Shader when the source no longer matches a built-in shader', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
@@ -414,8 +190,7 @@ describe('CreateScenePage', () => {
   })
 
   it('marks previous required sections as needing attention when you move past them incomplete', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
@@ -433,8 +208,7 @@ describe('CreateScenePage', () => {
   })
 
   it('splits pass ordering into its own section and groups effects into categorized cards', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
@@ -461,247 +235,8 @@ describe('CreateScenePage', () => {
     expect(screen.queryByRole('heading', { name: /^finish & output$/i })).not.toBeInTheDocument()
   })
 
-  it('submits the structured scene data and converts degree controls back to radians', async () => {
-    storeSession()
-
-    let submittedBody: Record<string, unknown> | null = null
-
-    mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes')) {
-        submittedBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
-      }
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    await user.click(screen.getByRole('button', { name: /^camera$/i }))
-    expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/camera orientation/i), { target: { value: '90' } })
-    await user.click(screen.getByRole('button', { name: /create scene/i }))
-
-    await waitFor(() => expect(submittedBody).not.toBeNull())
-
-    if (!submittedBody) {
-      throw new Error('Expected scene submission payload to be captured.')
-    }
-
-    const responseBody: { name: string; sceneData: Record<string, unknown> } = submittedBody
-    const sceneData = responseBody.sceneData
-    const intent = sceneData.intent as Record<string, number>
-    const fx = sceneData.fx as Record<string, unknown>
-    const passOrder = fx.passOrder as string[]
-
-    expect(responseBody).toMatchObject({
-      name: 'Aurora Drift',
-    })
-    expect(intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
-    expect(passOrder.at(-1)).toBe('outputPass')
-    expect(await screen.findByText('My Scenes')).toBeInTheDocument()
-  })
-
-  it('attaches selected tags after the scene is created', async () => {
-    storeSession()
-
-    let createBody: Record<string, unknown> | null = null
-    const attachedTagIds: number[] = []
-
-    mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes')) {
-        createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
-      }
-
-      if (input === buildApiUrl('/scenes/18/tags')) {
-        const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
-
-        if (typeof payload.tagId === 'number') {
-          attachedTagIds.push(payload.tagId)
-        }
-
-        return Promise.resolve(jsonResponse({ sceneId: 18, tagId: payload.tagId }, 201))
-      }
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    await selectExistingTag(user, 'ambient')
-    await selectExistingTag(user, 'focus-friendly')
-    await user.click(screen.getByRole('button', { name: /create scene/i }))
-
-    await screen.findByText('My Scenes')
-
-    expect(createBody).toMatchObject({
-      name: 'Aurora Drift',
-    })
-    expect(attachedTagIds).toEqual([1, 2])
-  })
-
-  it('keeps the created scene in retry mode when one or more tag attachments fail', async () => {
-    storeSession()
-
-    const attachCalls: number[] = []
-
-    mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes')) {
-        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
-      }
-
-      if (input === buildApiUrl('/scenes/18/tags')) {
-        const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
-
-        if (typeof payload.tagId === 'number') {
-          attachCalls.push(payload.tagId)
-        }
-
-        if (payload.tagId === 2) {
-          return Promise.resolve(
-            jsonResponse(
-              {
-                code: 'TAG_ATTACH_FAILED',
-                message: 'Tag attachment is unavailable right now.',
-              },
-              503,
-            ),
-          )
-        }
-
-        return Promise.resolve(jsonResponse({ sceneId: 18, tagId: payload.tagId }, 201))
-      }
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    await selectExistingTag(user, 'ambient')
-    await selectExistingTag(user, 'focus-friendly')
-    await user.click(screen.getByRole('button', { name: /create scene/i }))
-
-    expect(
-      await screen.findByText(/scene created, but we couldn't attach focus-friendly\./i),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /retry tag attachment/i })).toBeInTheDocument()
-    expect(screen.getByText(/waiting to retry attachment for:/i)).toBeInTheDocument()
-    expect(attachCalls).toEqual([1, 2])
-  })
-
-  it('uploads a selected thumbnail before the scene create request is sent', async () => {
-    storeSession()
-
-    const uploadedFiles: File[] = []
-    let presignBody: Record<string, unknown> | null = null
-    let createBody: Record<string, unknown> | null = null
-
-    mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes/thumbnail/presign')) {
-        presignBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(
-          jsonResponse({
-            objectKey: 'scenes/pending/8/thumbnails/abc123.png',
-            uploadUrl: 'https://upload.example.com/scenes/pending/8/thumbnails/abc123.png',
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'image/png',
-            },
-          }),
-        )
-      }
-
-      if (input === 'https://upload.example.com/scenes/pending/8/thumbnails/abc123.png') {
-        if (init?.body instanceof File) {
-          uploadedFiles.push(init.body)
-        }
-
-        return Promise.resolve(new Response(null, { status: 200 }))
-      }
-
-      if (input === buildApiUrl('/scenes')) {
-        createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
-      }
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
-      target: {
-        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
-      },
-    })
-    await user.click(screen.getByRole('button', { name: /create scene/i }))
-
-    await waitFor(() => expect(presignBody).not.toBeNull())
-
-    expect(presignBody).toMatchObject({
-      filename: 'cover.png',
-      contentType: 'image/png',
-      sizeBytes: 5,
-    })
-    expect(uploadedFiles).toHaveLength(1)
-    expect(uploadedFiles[0].name).toBe('cover.png')
-    expect(createBody).toMatchObject({
-      name: 'Aurora Drift',
-      thumbnailObjectKey: 'scenes/pending/8/thumbnails/abc123.png',
-    })
-    expect(await screen.findByText('My Scenes')).toBeInTheDocument()
-  })
-
-  it('does not create the scene when thumbnail upload preparation fails', async () => {
-    storeSession()
-
-    let createAttempted = false
-
-    mockCreateScenePageFetch((input) => {
-      if (input === buildApiUrl('/scenes/thumbnail/presign')) {
-        return Promise.resolve(
-          jsonResponse(
-            {
-              code: 'THUMBNAIL_STORAGE_UNAVAILABLE',
-              message: 'Thumbnail storage is unavailable right now.',
-            },
-            503,
-          ),
-        )
-      }
-
-      if (input === buildApiUrl('/scenes')) {
-        createAttempted = true
-        return Promise.resolve(jsonResponse({ sceneId: 18 }, 201))
-      }
-    })
-
-    const user = userEvent.setup()
-
-    renderCreateScenePage()
-
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
-      target: {
-        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
-      },
-    })
-    await user.click(screen.getByRole('button', { name: /create scene/i }))
-
-    expect(
-      await screen.findByText(/thumbnail storage is unavailable right now\./i),
-    ).toBeInTheDocument()
-    expect(createAttempted).toBe(false)
-  })
-
   it('moves advanced controls into collapsible groups and uses confirm as the final review step', async () => {
-    storeSession()
-
+    storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
