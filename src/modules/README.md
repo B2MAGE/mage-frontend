@@ -22,6 +22,7 @@ Current module-owned feature slices include:
 - `my-scenes/`
 - `player/`
 - `scene-detail/`
+- `scene-editor/`
 - `settings/`
 
 Import modules through `@modules/<module-name>`. Do not reach into `@modules/<module-name>/...` from another area; expose what is needed from the module's `index.ts`.

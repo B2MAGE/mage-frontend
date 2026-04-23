@@ -59,6 +59,7 @@ The repo is still in a hybrid state, but several route-facing surfaces now live 
 - `my-scenes`
 - `player`
 - `scene-detail`
+- `scene-editor`
 - `settings`
 
 Existing `pages/`, `components/`, and `lib/` directories still exist for surfaces that have not been migrated yet. Issue `#83` established the skeleton and app-level composition move; later stories migrate one surface at a time instead of through a single rewrite.
