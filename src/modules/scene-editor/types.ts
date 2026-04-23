@@ -1,0 +1,58 @@
+import type { PersistedPassFlag, SceneData, SceneEditorModel, ScenePassId } from '@lib/sceneEditor'
+
+export type CreateSceneFormErrors = Partial<
+  Record<'form' | 'name' | 'newTag' | 'sceneData' | 'tags' | 'thumbnail', string>
+>
+
+export type EditorSectionId =
+  | 'confirm'
+  | 'details'
+  | 'camera'
+  | 'effects'
+  | 'motion'
+  | 'pass-order'
+  | 'scene'
+
+export type EffectCategoryId = 'color' | 'finish' | 'pattern' | 'trail'
+
+export type ThumbnailMode = 'skip' | 'upload'
+
+export type PendingTagAttachment = {
+  sceneId: number
+  tagIds: number[]
+}
+
+export type TagAttachmentFailure = {
+  tagId: number
+  tagName: string
+}
+
+export type AdditionalPassConfig = {
+  category: EffectCategoryId
+  description: string
+  flag: PersistedPassFlag
+  passId: ScenePassId
+}
+
+export type EditorSectionConfig = {
+  id: EditorSectionId
+  title: string
+}
+
+export type SceneEditorStateSnapshot = {
+  availableTags: Array<{ tagId: number; name: string }>
+  isCameraAdvancedEnabled: boolean
+  isMotionAdvancedEnabled: boolean
+  name: string
+  pendingTagAttachment: PendingTagAttachment | null
+  sceneData: SceneData
+  sceneDataText: string
+  selectedTagIds: number[]
+  thumbnailFile: File | null
+  thumbnailMode: ThumbnailMode
+}
+
+export type SceneEditorStateBranchUpdater = <K extends keyof SceneEditorModel>(
+  branch: K,
+  recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
+) => void

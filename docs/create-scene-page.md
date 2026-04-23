@@ -2,19 +2,32 @@
 
 ## Overview
 
-The create scene page is the frontend editor for building MAGE scene data and previewing it live in the browser.
+The create scene flow is now owned by the `scene-editor` module. It is the frontend editor for building MAGE scene data and previewing it live in the browser.
 
 Route:
 
 - `/create-scene`
 
-## Related Files
+## Module Boundary
 
-- `src/pages/CreateScenePage.tsx`
+Route-facing imports should go through `@modules/scene-editor`.
+
+Primary files:
+
+- `src/modules/scene-editor/CreateScenePage.tsx`
+- `src/modules/scene-editor/SceneEditorShell.tsx`
+- `src/modules/scene-editor/useSceneEditorState.ts`
+- `src/modules/scene-editor/useSceneEditorPreview.ts`
+- `src/modules/scene-editor/useSceneEditorSubmission.ts`
+- `src/modules/scene-editor/fixtures.ts`
+- `src/modules/scene-editor/utils.ts`
+- `src/modules/scene-editor/ui/SceneEditorControls.tsx`
+- `src/modules/scene-editor/CreateScenePage.test.tsx`
+
+Shared dependencies the module still consumes:
+
 - `src/lib/sceneEditor.ts`
 - `src/lib/embeddedShaderScenes.ts`
-- `src/components/SceneEditorControls.tsx`
-- `src/pages/CreateScenePage.test.tsx`
 
 ## Editor Sections
 
@@ -38,6 +51,14 @@ Those sections write into a structured scene object built around:
 - `intent`
 - `fx`
 - `state`
+
+## Editor Layers
+
+- `CreateScenePage.tsx` keeps route/auth wiring thin.
+- `SceneEditorShell.tsx` owns the rendering shell and section layout.
+- `useSceneEditorState.ts` owns workflow state, tag interaction, and section navigation.
+- `useSceneEditorPreview.ts` owns derived preview scene data and selection metadata.
+- `useSceneEditorSubmission.ts` owns thumbnail upload, create submission, and tag-attachment retry behavior.
 
 ## Submission Flow
 
@@ -99,4 +120,4 @@ If scene persistence expands on the backend, this page is a likely place for fol
 
 Main coverage lives in:
 
-- `src/pages/CreateScenePage.test.tsx`
+- `src/modules/scene-editor/CreateScenePage.test.tsx`
