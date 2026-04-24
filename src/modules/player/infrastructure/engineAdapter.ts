@@ -19,6 +19,7 @@ const DEFAULT_ENGINE_CONTROLS = {
 const GENERIC_RENDER_ERROR_MESSAGE = 'Scene data could not be rendered by the MAGE engine.'
 
 type MageEngineBridge = {
+  captureFramePreview?: MAGEEngineAPI['captureFramePreview']
   dispose: MAGEEngineAPI['dispose']
   getAudioDuration?: MAGEEngineAPI['getAudioDuration']
   getAudioTime?: MAGEEngineAPI['getAudioTime']
@@ -61,7 +62,17 @@ export type MagePlayerAudioState = {
   volume: number
 }
 
+export type MagePlayerCaptureFrameOptions = {
+  height?: number
+  quality?: number
+  type?: string
+  width?: number
+}
+
 export type MagePlayerController = {
+  captureFramePreview?: (
+    options?: MagePlayerCaptureFrameOptions,
+  ) => Promise<string | null>
   clearAudio: () => MagePlayerAudioState
   dispose: () => void
   getAudioState: () => MagePlayerAudioState
@@ -344,6 +355,28 @@ export async function createMagePlayer(
   }
 
   return {
+    async captureFramePreview(options = {}) {
+      if (!hasLoadedScene || !currentSceneBlob) {
+        throw new MagePlayerAdapterError(
+          'Load a scene before capturing a thumbnail.',
+        )
+      }
+
+      if (typeof engine.captureFramePreview !== 'function') {
+        throw new MagePlayerAdapterError(
+          'This MAGE engine build does not support preview capture.',
+        )
+      }
+
+      try {
+        return await engine.captureFramePreview(options)
+      } catch (error) {
+        throw new MagePlayerAdapterError(
+          'The live preview could not be captured.',
+          { cause: error },
+        )
+      }
+    },
     clearAudio() {
       if (typeof engine.unloadAudio === 'function') {
         engine.unloadAudio()
