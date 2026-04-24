@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import type { AuthenticatedFetch } from "@auth";
-import { AuthPage, AuthPageHeader } from "@components/AuthPage";
+import { AuthPage, AuthPageHeader } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
 import {
   EffectCard,
@@ -17,7 +17,7 @@ import {
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
-} from "@lib/sceneEditor";
+} from "./sceneEditor";
 import {
   EDITOR_SECTIONS,
   PLAYLIST_OPTIONS,

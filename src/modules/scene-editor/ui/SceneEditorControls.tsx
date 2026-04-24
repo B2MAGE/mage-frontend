@@ -1,5 +1,5 @@
 import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
-import type { Vector3Value } from '@lib/sceneEditor'
+import type { Vector3Value } from '../sceneEditor'
 import { joinClassNames } from '@shared/lib'
 import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
 

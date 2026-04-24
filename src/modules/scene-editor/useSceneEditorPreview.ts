@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { getSceneEditorModel, TONE_MAPPING_OPTIONS, type SceneData } from '@lib/sceneEditor'
+import { getSceneEditorModel, TONE_MAPPING_OPTIONS, type SceneData } from './sceneEditor'
 import { buildEffectiveSceneData, buildShaderOptions, buildToneMappingOptions } from './utils'
 
 type UseSceneEditorPreviewArgs = {

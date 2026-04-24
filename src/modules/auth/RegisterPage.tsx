@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AuthPage, AuthPageHeader } from '@components/AuthPage'
+import { AuthPage, AuthPageHeader } from '@shared/ui'
 import { emailPattern, parseApiError } from '@shared/lib'
 import { FormNotice, TextInputField } from '@shared/ui'
 import { registerLocalAccount } from './client'

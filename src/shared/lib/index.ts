@@ -1,3 +1,5 @@
+export { buildApiUrl, fetchAvailableTags, fetchScenes, fetchTags } from './api'
+export type { FetchTagsOptions, SceneListResponse, TagResponse } from './api'
 export { parseApiError } from './apiErrors'
 export type { ApiErrorResponse } from './apiErrors'
 export { joinClassNames } from './classNames'

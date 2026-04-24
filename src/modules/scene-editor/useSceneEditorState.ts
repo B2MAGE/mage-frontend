@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { AuthenticatedFetch } from '@auth'
-import type { TagResponse } from '@lib/api'
+import type { TagResponse } from '@shared/lib'
 import {
   getSceneEditorModel,
   mergeSceneEditorBranch,
@@ -8,7 +8,7 @@ import {
   type SceneData,
   type SceneEditorModel,
   type ScenePassId,
-} from '@lib/sceneEditor'
+} from './sceneEditor'
 import { parseApiError } from '@shared/lib'
 import { EDITOR_SECTIONS, MAX_TAG_NAME_LENGTH, initialSceneData, initialSceneModel } from './fixtures'
 import type { CreateSceneFormErrors, EditorSectionId, PendingTagAttachment, ThumbnailMode } from './types'

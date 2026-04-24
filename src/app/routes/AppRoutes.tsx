@@ -1,12 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { Layout } from '@components/Layout'
+import { Layout } from '@app/Layout'
 import { GuestOnlyRoute, LoginPage, RegisterPage } from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
+import { HomePage } from '@modules/home'
 import { MyScenesPage } from '@modules/my-scenes'
 import { CreateScenePage } from '@modules/scene-editor'
 import { SceneDetailPage } from '@modules/scene-detail'
 import { SettingsPage } from '@modules/settings'
-import { HomePage } from '@pages/HomePage'
 import { ProtectedRoute } from '@modules/auth'
 
 export function AppRoutes() {

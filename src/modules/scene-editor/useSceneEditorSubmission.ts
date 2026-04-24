@@ -1,7 +1,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
-import { uploadNewSceneThumbnail } from '@lib/sceneThumbnailUpload'
+import { uploadNewSceneThumbnail } from './sceneThumbnailUpload'
 import type {
   CreateSceneFormErrors,
   PendingTagAttachment,

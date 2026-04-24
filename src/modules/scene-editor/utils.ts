@@ -1,4 +1,4 @@
-import { fetchAvailableTags, type TagResponse } from '@lib/api'
+import { fetchAvailableTags, type TagResponse } from '@shared/lib'
 import {
   getSceneEditorModel,
   mergeSceneEditorBranch,
@@ -9,7 +9,7 @@ import {
   TONE_MAPPING_OPTIONS,
   type SceneData,
   type ScenePassId,
-} from '@lib/sceneEditor'
+} from './sceneEditor'
 import { ALLOWED_THUMBNAIL_CONTENT_TYPES, MAX_THUMBNAIL_BYTES, initialSceneModel, passFlagsById } from './fixtures'
 import type { CreateSceneFormErrors } from './types'
 

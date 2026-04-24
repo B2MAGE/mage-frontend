@@ -5,11 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AUTH_SESSION_STORAGE_KEY } from '@auth'
 import App from './App'
 
-vi.mock('@components/Layout', () => ({
+vi.mock('@app/Layout', () => ({
   Layout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@pages/HomePage', () => ({
+vi.mock('@modules/home', () => ({
   HomePage: () => <div>Home page</div>,
 }))
 

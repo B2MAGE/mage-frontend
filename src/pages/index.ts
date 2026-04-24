@@ -1,8 +1,0 @@
-export { CreateScenePage } from '@modules/scene-editor'
-export { HomePage } from './HomePage'
-export { LoginPage, RegisterPage } from '@modules/auth'
-export { MyScenesPage } from '@modules/my-scenes'
-export { PlaceholderPage } from './PlaceholderPage'
-export { SceneDetailPage } from '@modules/scene-detail'
-export { ScenesPage } from '@modules/discovery'
-export { SettingsPage } from '@modules/settings'

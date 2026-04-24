@@ -30,17 +30,17 @@ The current app includes:
 
 ## Repository Structure
 
+Runtime and feature code lives under `app/`, `modules/`, and `shared/`, with `theme/` remaining as an intentional dedicated boundary for theming.
+
 ```text
 mage-frontend/
 |- docs/              Additional implementation notes
 |- public/            Static assets served by Vite
 |- src/
-|  |- auth/           Shared auth session and account context
-|  |- components/     Reusable UI and player components
-|  |- lib/            Scene editor helpers, API helpers, engine adapter
-|  |- pages/          Route-level screens
-|  |- theme/          Theme registry, provider, tokens, and theme CSS entrypoints
-|  `- test/           Shared test setup
+|  |- app/            App-wide composition, layout shell, and route wiring
+|  |- modules/        Vertical feature slices and their public entrypoints
+|  |- shared/         Cross-cutting UI, utilities, and test helpers
+|  `- theme/          Dedicated theming boundary, provider, tokens, and theme CSS
 |- .env.example
 |- package.json
 `- vite.config.ts
@@ -124,14 +124,12 @@ See [docs/deployment.md](./docs/deployment.md) for the deployment contract and t
 
 ## Documentation
 
-Additional project notes live in `docs/`:
+Cross-cutting project notes live in `docs/`:
 
 - [docs/README.md](./docs/README.md)
-- [docs/create-scene-page.md](./docs/create-scene-page.md)
+- [docs/frontend-architecture.md](./docs/frontend-architecture.md)
 - [docs/deployment.md](./docs/deployment.md)
-- [docs/engine-integration.md](./docs/engine-integration.md)
-- [docs/login-page.md](./docs/login-page.md)
-- [docs/player-component.md](./docs/player-component.md)
-- [docs/registration-page.md](./docs/registration-page.md)
-- [docs/settings-page.md](./docs/settings-page.md)
-- [docs/theme-system.md](./docs/theme-system.md)
+
+Use [docs/README.md](./docs/README.md) as the main index for cross-cutting frontend documentation.
+Feature-specific behavior and public contracts now live in the owning module READMEs under
+`src/modules/<feature>/README.md`.

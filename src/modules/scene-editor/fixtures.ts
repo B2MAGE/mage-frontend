@@ -4,7 +4,7 @@ import {
   sanitizeSceneData,
   type PersistedPassFlag,
   type ScenePassId,
-} from '@lib/sceneEditor'
+} from './sceneEditor'
 import type { AdditionalPassConfig, EditorSectionConfig, EffectCategoryId } from './types'
 
 export const EDITOR_SECTIONS: EditorSectionConfig[] = [

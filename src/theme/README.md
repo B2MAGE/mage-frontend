@@ -42,3 +42,10 @@ Exports:
 3. Create `themes/<theme-id>/index.css` only for structural/layout differences that the shared tokens do not cover.
 4. Import the new theme entrypoint from `theme.css`.
 5. Verify the shared surfaces still inherit the expected nav, card, pill, table, player, and editor tokens.
+
+## Integration Rules
+
+1. Mount `ThemeProvider` once in app-level provider composition.
+2. Import theme state and registry metadata through `@theme`, not through deep file paths.
+3. Feature-specific theme selection UI belongs to the owning feature module, currently `@modules/settings`.
+4. The theme boundary should not depend on app wiring or feature-module internals.

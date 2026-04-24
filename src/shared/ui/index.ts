@@ -1,3 +1,4 @@
+export { AuthPage, AuthPageHeader } from './AuthPage'
 export { EditorFieldShell, SliderFieldShell } from './EditorFieldShell'
 export { FormNotice } from './FormNotice'
 export { PaginationIconButton } from './PaginationIconButton'

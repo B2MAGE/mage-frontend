@@ -1,4 +1,4 @@
-import { buildApiUrl } from '@lib/api'
+import { buildApiUrl } from '@shared/lib'
 
 type LoginRequest = {
   email: string
