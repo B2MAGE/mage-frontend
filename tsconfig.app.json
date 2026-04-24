@@ -14,8 +14,6 @@
       "@components/*": ["./src/components/*"],
       "@lib/*": ["./src/lib/*"],
       "@modules/*": ["./src/modules/*"],
-      "@pages": ["./src/pages/index.ts"],
-      "@pages/*": ["./src/pages/*"],
       "@shared/*": ["./src/shared/*"],
       "@test/*": ["./src/test/*"],
       "@theme": ["./src/theme/index.ts"],

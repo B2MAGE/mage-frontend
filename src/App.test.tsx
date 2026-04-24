@@ -9,7 +9,7 @@ vi.mock('@components/Layout', () => ({
   Layout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('@pages/HomePage', () => ({
+vi.mock('@modules/home', () => ({
   HomePage: () => <div>Home page</div>,
 }))
 
