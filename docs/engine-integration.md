@@ -12,6 +12,8 @@ App code should not talk to the engine directly. The intended boundary is:
 
 That keeps engine-specific startup, loading, audio bridging, and disposal logic in one place.
 
+The adapter and the checked-in package patch are both infrastructure. Feature modules should not depend on raw engine package behavior, patched internals, or browser-workaround code directly.
+
 ## Current Integration
 
 The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, keeps the
@@ -77,14 +79,26 @@ The frontend player uses that bridge to support:
 
 The frontend currently patches `@notrac/mage@1.0.1` with `patch-package`.
 
-That patch is applied during install/build and is used to support the runtime behavior the frontend
-expects, including:
+Relevant repo-owned pieces are:
+
+- `patches/@notrac+mage+1.0.1.patch`
+- `postinstall` in `package.json`
+- `prebuild` in `package.json`
+
+The patch is applied during install and before builds. It is used to support the runtime behavior the frontend expects, including:
 
 - published engine audio playback cleanup
 - shader helper exposure used by scene preview/runtime compilation
 
-If the engine package version changes, the checked-in patch should be reviewed and regenerated as
-needed.
+The patch does not replace the adapter. The patch fixes published-package behavior the frontend depends on, while the adapter keeps the app-facing API stable and localizes engine-specific startup and runtime logic.
+
+If the engine package version changes:
+
+1. review and regenerate the checked-in patch as needed
+2. verify `src/modules/player/infrastructure/engineAdapter.ts` still matches the package behavior
+3. rerun player/editor verification because those surfaces depend on the patched runtime boundary
+
+No feature module should import from `patches/` or from `@notrac/mage` directly.
 
 ## Current Caveats
 
