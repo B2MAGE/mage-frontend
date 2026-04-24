@@ -12,7 +12,6 @@
       "@auth/*": ["./src/modules/auth/*"],
       "@modules/*": ["./src/modules/*"],
       "@shared/*": ["./src/shared/*"],
-      "@test/*": ["./src/test/*"],
       "@theme": ["./src/theme/index.ts"],
       "@theme/*": ["./src/theme/*"]
     },

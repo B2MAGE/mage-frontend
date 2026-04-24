@@ -14,7 +14,6 @@ export default defineConfig({
       '@auth': fileURLToPath(new URL('./src/modules/auth', import.meta.url)),
       '@modules': fileURLToPath(new URL('./src/modules', import.meta.url)),
       '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
-      '@test': fileURLToPath(new URL('./src/test', import.meta.url)),
       '@theme': fileURLToPath(new URL('./src/theme', import.meta.url)),
     },
   },
@@ -32,6 +31,6 @@ export default defineConfig({
   test: {
     css: true,
     environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
+    setupFiles: './src/shared/test/setup.ts',
   },
 })
