@@ -1,4 +1,4 @@
-import type { SceneListResponse } from '@lib/api'
+import type { SceneListResponse } from '@shared/lib'
 import type { SceneDetail } from './types'
 
 type SceneDetailResponse = {

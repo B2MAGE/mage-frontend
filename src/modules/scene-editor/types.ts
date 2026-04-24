@@ -1,4 +1,4 @@
-import type { PersistedPassFlag, SceneData, SceneEditorModel, ScenePassId } from '@lib/sceneEditor'
+import type { PersistedPassFlag, SceneData, SceneEditorModel, ScenePassId } from './sceneEditor'
 
 export type CreateSceneFormErrors = Partial<
   Record<'form' | 'name' | 'newTag' | 'sceneData' | 'tags' | 'thumbnail', string>

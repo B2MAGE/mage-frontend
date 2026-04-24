@@ -1,4 +1,4 @@
-import { buildApiUrl, fetchScenes } from '@lib/api'
+import { buildApiUrl, fetchScenes } from '@shared/lib'
 import { normalizeRecommendedSceneList, normalizeSceneDetail } from './dto'
 import { buildRecommendedSceneGroups } from './recommendations'
 import type { AuthenticatedFetch, RecommendedSceneGroups, SceneDetail, SceneDetailErrorCode } from './types'

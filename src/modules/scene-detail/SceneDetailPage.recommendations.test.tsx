@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { buildApiUrl } from '@lib/api'
+import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import {
   buildSceneDetailResponse,

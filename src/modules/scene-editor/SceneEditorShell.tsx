@@ -17,7 +17,7 @@ import {
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
-} from "@lib/sceneEditor";
+} from "./sceneEditor";
 import {
   EDITOR_SECTIONS,
   PLAYLIST_OPTIONS,

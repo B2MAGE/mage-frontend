@@ -1,4 +1,4 @@
-import type { SceneListResponse, TagResponse } from '@lib/api'
+import type { SceneListResponse, TagResponse } from '@shared/lib'
 
 export type DiscoveryScene = SceneListResponse
 export type DiscoveryTag = TagResponse

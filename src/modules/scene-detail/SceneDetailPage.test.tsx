@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { buildApiUrl } from '@lib/api'
+import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import {
   buildSceneDetailResponse,

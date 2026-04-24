@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
-import { buildApiUrl } from '@lib/api'
+import { buildApiUrl } from '@shared/lib'
 import {
   mockCreateScenePageFetch,
   renderCreateScenePage,
