@@ -1,6 +1,6 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import type { AuthenticatedFetch } from "@auth";
-import { AuthPage, AuthPageHeader } from "@components/AuthPage";
+import { AuthPage, AuthPageHeader } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
 import {
   EffectCard,

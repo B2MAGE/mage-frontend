@@ -52,10 +52,7 @@ function ScenesIcon() {
         strokeLinejoin="round"
         strokeWidth="1.9"
       />
-      <path
-        d="M8.95 9.25a1.05 1.05 0 1 0 0-.001"
-        fill="currentColor"
-      />
+      <path d="M8.95 9.25a1.05 1.05 0 1 0 0-.001" fill="currentColor" />
     </svg>
   )
 }

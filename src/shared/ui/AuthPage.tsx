@@ -21,8 +21,8 @@ export function AuthPage({ cardClassName, children, className, titleId }: AuthPa
   return (
     <main className={buildClassName('auth-page', className)}>
       <section
-        className={buildClassName('surface surface--form', cardClassName)}
         aria-labelledby={titleId}
+        className={buildClassName('surface surface--form', cardClassName)}
       >
         {children}
       </section>

@@ -10,8 +10,6 @@
       "@app/*": ["./src/app/*"],
       "@auth": ["./src/modules/auth/index.ts"],
       "@auth/*": ["./src/modules/auth/*"],
-      "@components": ["./src/components/index.ts"],
-      "@components/*": ["./src/components/*"],
       "@lib/*": ["./src/lib/*"],
       "@modules/*": ["./src/modules/*"],
       "@shared/*": ["./src/shared/*"],

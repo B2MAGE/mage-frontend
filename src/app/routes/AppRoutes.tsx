@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { Layout } from '@components/Layout'
+import { Layout } from '@app/Layout'
 import { GuestOnlyRoute, LoginPage, RegisterPage } from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
