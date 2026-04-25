@@ -21,7 +21,7 @@ Exports:
 - `useSceneEditorPreview.ts`
   Preview scene-data coordination and derived preview selections.
 - `useSceneEditorSubmission.ts`
-  Save/create submission, thumbnail upload, and tag attachment retry behavior.
+  Save/create submission, thumbnail capture persistence, and tag attachment retry behavior.
 - `fixtures.ts`
   Editor defaults, section config, and create-flow fixtures.
 - `types.ts`
@@ -54,8 +54,9 @@ Editor structure:
 
 Request flow:
 
+- live preview capture from the shared `MagePlayer`
 - `POST /api/scenes/thumbnail/presign`
-- direct browser `PUT` to the returned object-storage URL when a thumbnail is selected
+- direct browser `PUT` to the returned object-storage URL when a thumbnail is captured
 - `POST /api/scenes`
 - `POST /api/scenes/:sceneId/tags` for follow-up tag attachment
 
@@ -63,8 +64,10 @@ User-facing behavior:
 
 - uses the shared `MagePlayer` component for inline preview
 - updates the preview from the current in-memory scene blob instead of waiting for persistence
-- validates required fields before upload or create requests
-- uploads thumbnails before scene creation so failed uploads block partial saves
+- captures thumbnails from the current live preview instead of asking for a local file upload
+- validates required fields before scene creation
+- automatically captures a thumbnail during scene creation if the user has not already captured one manually
+- uploads captured thumbnails before scene creation so failed uploads block partial saves
 - retries failed tag attachments through a dedicated pending retry state after scene creation
 
 Current limitations:
