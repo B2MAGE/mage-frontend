@@ -148,7 +148,7 @@ export function validateForm(name: string, sceneDataText: string) {
 
 export function validateThumbnailFile(file: File | null) {
   if (!file) {
-    return 'Choose an image file or skip the thumbnail.'
+    return 'Capture a thumbnail before creating the scene.'
   }
 
   if (!ALLOWED_THUMBNAIL_CONTENT_TYPES.has(file.type)) {
@@ -160,6 +160,34 @@ export function validateThumbnailFile(file: File | null) {
   }
 
   return null
+}
+
+export function buildCapturedThumbnailFile(dataUrl: string) {
+  const matchedDataUrl = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/)
+
+  if (!matchedDataUrl) {
+    throw new Error('Preview capture returned an unexpected image format.')
+  }
+
+  const [, rawContentType, base64Marker, encodedPayload] = matchedDataUrl
+  const contentType = rawContentType?.trim() || 'image/png'
+  const decodedPayload = base64Marker
+    ? window.atob(encodedPayload)
+    : decodeURIComponent(encodedPayload)
+  const payloadBytes = Uint8Array.from(decodedPayload, (character) =>
+    character.charCodeAt(0),
+  )
+
+  const extension =
+    contentType === 'image/jpeg'
+      ? 'jpg'
+      : contentType === 'image/webp'
+        ? 'webp'
+        : 'png'
+
+  return new File([payloadBytes], `scene-preview-thumbnail.${extension}`, {
+    type: contentType,
+  })
 }
 
 export function buildEffectiveSceneData(

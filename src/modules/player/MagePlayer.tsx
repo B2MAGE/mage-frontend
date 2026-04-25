@@ -25,6 +25,9 @@ export type MagePlayerProps = {
   className?: string
   initialPlayback?: MagePlayerPlaybackState
   log?: boolean
+  onCaptureFramePreviewChange?: (
+    captureFramePreview: (() => Promise<string | null>) | null,
+  ) => void
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
   onRequestPlaylistOpen?: () => void
   onSelectedTrackChange?: (trackId: string | null) => void
@@ -53,6 +56,7 @@ export function MagePlayer({
   className,
   initialPlayback = 'playing',
   log = false,
+  onCaptureFramePreviewChange,
   onPlaylistChange,
   onRequestPlaylistOpen,
   onSelectedTrackChange,
@@ -242,6 +246,34 @@ export function MagePlayer({
         : loadedSceneBlob === sceneBlob
           ? 'ready'
           : 'loading'
+
+  useEffect(() => {
+    if (!onCaptureFramePreviewChange) {
+      return
+    }
+
+    const player = playerRef.current
+
+    if (status === 'ready' && typeof player?.captureFramePreview === 'function') {
+      onCaptureFramePreviewChange(() =>
+        player.captureFramePreview?.({
+          height: 512,
+          type: 'image/png',
+          width: 512,
+        }) ?? Promise.resolve(null),
+      )
+
+      return () => {
+        onCaptureFramePreviewChange(null)
+      }
+    }
+
+    onCaptureFramePreviewChange(null)
+
+    return () => {
+      onCaptureFramePreviewChange(null)
+    }
+  }, [onCaptureFramePreviewChange, playerVersion, status])
 
   useEffect(() => {
     const player = playerRef.current

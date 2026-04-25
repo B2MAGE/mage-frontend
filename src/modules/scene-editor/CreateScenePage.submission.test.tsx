@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { buildApiUrl } from '@shared/lib'
 import {
@@ -9,15 +9,49 @@ import {
   storeSceneEditorSession,
 } from './test-fixtures'
 
+const CAPTURED_THUMBNAIL_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j+7sAAAAASUVORK5CYII='
+const mockCaptureFramePreview = vi.fn(
+  async (): Promise<string | null> => CAPTURED_THUMBNAIL_DATA_URL,
+)
+
 vi.mock('@modules/player', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@modules/player')>()
+  const React = await import('react')
 
   return {
     ...actual,
-    MagePlayer: ({ sceneBlob }: { sceneBlob: unknown }) => (
-      <div data-testid="mage-player">{sceneBlob ? 'preview-ready' : 'no-preview'}</div>
-    ),
+    MagePlayer: ({
+      onCaptureFramePreviewChange,
+      sceneBlob,
+    }: {
+      onCaptureFramePreviewChange?: (
+        captureFramePreview: (() => Promise<string | null>) | null,
+      ) => void
+      sceneBlob: unknown
+    }) => {
+      React.useEffect(() => {
+        onCaptureFramePreviewChange?.(
+          sceneBlob ? () => mockCaptureFramePreview() : null,
+        )
+
+        return () => {
+          onCaptureFramePreviewChange?.(null)
+        }
+      }, [onCaptureFramePreviewChange, sceneBlob])
+
+      return (
+        <div data-testid="mage-player">
+          {sceneBlob ? 'preview-ready' : 'no-preview'}
+        </div>
+      )
+    },
   }
+})
+
+beforeEach(() => {
+  mockCaptureFramePreview.mockReset()
+  mockCaptureFramePreview.mockResolvedValue(CAPTURED_THUMBNAIL_DATA_URL)
 })
 
 afterEach(() => {
@@ -188,16 +222,26 @@ describe('CreateScenePage submission', () => {
     expect(attachCalls).toEqual([1, 2])
   })
 
-  it('uploads a selected thumbnail before the scene create request is sent', async () => {
+  it('captures a thumbnail automatically from the live preview before the scene create request is sent', async () => {
     storeSceneEditorSession()
 
     const uploadedFiles: File[] = []
-    let presignBody: Record<string, unknown> | null = null
+    let presignBody:
+      | {
+          contentType: string
+          filename: string
+          sizeBytes: number
+        }
+      | null = null
     let createBody: Record<string, unknown> | null = null
 
     mockCreateScenePageFetch((input, init) => {
       if (input === buildApiUrl('/scenes/thumbnail/presign')) {
-        presignBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        presignBody = JSON.parse(String(init?.body ?? '{}')) as {
+          contentType: string
+          filename: string
+          sizeBytes: number
+        }
         return Promise.resolve(
           new Response(
             JSON.stringify({
@@ -240,27 +284,56 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
-      target: {
-        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
-      },
-    })
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     await waitFor(() => expect(presignBody).not.toBeNull())
 
-    expect(presignBody).toMatchObject({
-      filename: 'cover.png',
-      contentType: 'image/png',
-      sizeBytes: 5,
-    })
+    const capturedPresignBody = presignBody!
+
+    expect(capturedPresignBody.filename).toBe('scene-preview-thumbnail.png')
+    expect(capturedPresignBody.contentType).toBe('image/png')
+    expect(capturedPresignBody.sizeBytes).toEqual(expect.any(Number))
+    expect(capturedPresignBody.sizeBytes).toBeGreaterThan(0)
     expect(uploadedFiles).toHaveLength(1)
-    expect(uploadedFiles[0].name).toBe('cover.png')
+    expect(uploadedFiles[0].name).toBe('scene-preview-thumbnail.png')
     expect(createBody).toMatchObject({
       name: 'Aurora Drift',
       thumbnailObjectKey: 'scenes/pending/8/thumbnails/abc123.png',
     })
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
+  })
+
+  it('does not create the scene when automatic thumbnail capture fails during submit', async () => {
+    storeSceneEditorSession()
+
+    let createAttempted = false
+    mockCaptureFramePreview.mockResolvedValueOnce(null)
+
+    mockCreateScenePageFetch((input) => {
+      if (input === buildApiUrl('/scenes')) {
+        createAttempted = true
+        return Promise.resolve(
+          new Response(JSON.stringify({ sceneId: 18 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+    })
+
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
+
+    expect(
+      await screen.findByText(
+        /we couldn't capture the current preview frame\. let the preview finish loading and try again\./i,
+      ),
+    ).toBeInTheDocument()
+    expect(createAttempted).toBe(false)
   })
 
   it('does not create the scene when thumbnail upload preparation fails', async () => {
@@ -300,11 +373,6 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
-    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
-      target: {
-        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
-      },
-    })
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(

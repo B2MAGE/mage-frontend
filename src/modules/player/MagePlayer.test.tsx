@@ -138,6 +138,40 @@ describe('MagePlayer', () => {
     })
   })
 
+  it('publishes a capture callback once the live preview is ready', async () => {
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+
+    const onCaptureFramePreviewChange = vi.fn()
+    const sceneBlob = buildMagePlayerSceneBlob()
+
+    render(
+      <MagePlayer
+        onCaptureFramePreviewChange={onCaptureFramePreviewChange}
+        sceneBlob={sceneBlob}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
+      expect(onCaptureFramePreviewChange).toHaveBeenCalledWith(
+        expect.any(Function),
+      )
+    })
+
+    const captureFramePreview =
+      onCaptureFramePreviewChange.mock.calls.at(-1)?.[0]
+
+    const previewDataUrl = await captureFramePreview?.()
+
+    expect(controller.captureFramePreview).toHaveBeenCalledWith({
+      height: 512,
+      type: 'image/png',
+      width: 512,
+    })
+    expect(previewDataUrl).toMatch(/^data:image\/png;base64,/)
+  })
+
   it('suppresses playback controls while the player is empty', async () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)

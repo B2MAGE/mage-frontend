@@ -49,6 +49,10 @@ export function buildMagePlayerController(
   }
 
   return {
+    captureFramePreview: vi.fn(
+      async () =>
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j+7sAAAAASUVORK5CYII=',
+    ),
     clearAudio: vi.fn(() => {
       audioState = {
         currentTime: 0,

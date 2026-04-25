@@ -11,7 +11,7 @@ import {
 } from './sceneEditor'
 import { parseApiError } from '@shared/lib'
 import { EDITOR_SECTIONS, MAX_TAG_NAME_LENGTH, initialSceneData, initialSceneModel } from './fixtures'
-import type { CreateSceneFormErrors, EditorSectionId, PendingTagAttachment, ThumbnailMode } from './types'
+import type { CreateSceneFormErrors, EditorSectionId, PendingTagAttachment } from './types'
 import {
   buildEffectiveSceneData,
   loadAvailableTagsFromBackend,
@@ -35,9 +35,10 @@ export function useSceneEditorState({
     useState<EditorSectionId>('details')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [thumbnailMode, setThumbnailMode] = useState<ThumbnailMode>('skip')
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
-  const [thumbnailFileName, setThumbnailFileName] = useState('')
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(
+    null,
+  )
   const [playlistValue, setPlaylistValue] = useState('')
   const [availableTags, setAvailableTags] = useState<TagResponse[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
@@ -66,12 +67,10 @@ export function useSceneEditorState({
   const [isCreatingTag, setIsCreatingTag] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const tagDropdownRef = useRef<HTMLDivElement | null>(null)
-  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null)
   const actionBarSentinelRef = useRef<HTMLDivElement | null>(null)
 
   const formErrorId = useId()
   const tagSearchInputId = useId()
-  const thumbnailInputId = useId()
   const titleId = 'create-scene-title'
 
   const normalizedTagSearchValue = normalizeTagName(tagSearchValue)
@@ -124,7 +123,7 @@ export function useSceneEditorState({
       : null
   const detailsSectionIssueMessages = [
     validateSceneName(name),
-    thumbnailMode === 'upload' ? validateThumbnailFile(thumbnailFile) : null,
+    thumbnailFile ? validateThumbnailFile(thumbnailFile) : null,
   ].filter((message): message is string => Boolean(message))
   const confirmSectionIssueMessage = validateSceneDataText(sceneDataText).error
   const sectionIssuesById: Partial<Record<EditorSectionId, string | null>> = {
@@ -239,14 +238,6 @@ export function useSceneEditorState({
     })
   }
 
-  function clearThumbnailSelection() {
-    setThumbnailFile(null)
-    setThumbnailFileName('')
-    if (thumbnailFileInputRef.current) {
-      thumbnailFileInputRef.current.value = ''
-    }
-  }
-
   function applySceneData(nextSceneData: SceneData) {
     const sanitizedSceneData = buildEffectiveSceneData(nextSceneData, {
       isCameraAdvancedEnabled,
@@ -310,39 +301,9 @@ export function useSceneEditorState({
     clearErrors('name', 'form')
   }
 
-  function handleThumbnailModeChange(nextValue: ThumbnailMode) {
-    setThumbnailMode(nextValue)
-    if (nextValue === 'skip') {
-      clearThumbnailSelection()
-    }
-    setErrors((currentErrors) => ({
-      ...currentErrors,
-      thumbnail: undefined,
-      form: undefined,
-    }))
-  }
-
-  function handleThumbnailUploadClick() {
-    setThumbnailMode('upload')
-    thumbnailFileInputRef.current?.click()
-  }
-
-  function handleThumbnailFileChange(fileList: FileList | File[] | null) {
-    let nextFile: File | null = null
-
-    if (Array.isArray(fileList)) {
-      nextFile = fileList[0] ?? null
-    } else {
-      nextFile = fileList?.item(0) ?? null
-    }
-
-    if (!nextFile) {
-      return
-    }
-
-    setThumbnailMode('upload')
+  function handleThumbnailCapture(nextFile: File, previewUrl: string) {
     setThumbnailFile(nextFile)
-    setThumbnailFileName(nextFile.name)
+    setThumbnailPreviewUrl(previewUrl)
     setErrors((currentErrors) => ({
       ...currentErrors,
       thumbnail: undefined,
@@ -611,9 +572,7 @@ export function useSceneEditorState({
     handleSectionJump,
     handleSectionStep,
     handleTagSearchChange,
-    handleThumbnailFileChange,
-    handleThumbnailModeChange,
-    handleThumbnailUploadClick,
+    handleThumbnailCapture,
     isActionBarStuck,
     isCameraAdvancedEnabled,
     isConfirmJsonOpen,
@@ -651,10 +610,7 @@ export function useSceneEditorState({
     tagsError,
     tagsLoading,
     thumbnailFile,
-    thumbnailFileInputRef,
-    thumbnailFileName,
-    thumbnailInputId,
-    thumbnailMode,
+    thumbnailPreviewUrl,
     titleId,
     toggleTagSelection,
     updateBranch,

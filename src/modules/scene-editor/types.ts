@@ -15,8 +15,6 @@ export type EditorSectionId =
 
 export type EffectCategoryId = 'color' | 'finish' | 'pattern' | 'trail'
 
-export type ThumbnailMode = 'skip' | 'upload'
-
 export type PendingTagAttachment = {
   sceneId: number
   tagIds: number[]
@@ -49,7 +47,6 @@ export type SceneEditorStateSnapshot = {
   sceneDataText: string
   selectedTagIds: number[]
   thumbnailFile: File | null
-  thumbnailMode: ThumbnailMode
 }
 
 export type SceneEditorStateBranchUpdater = <K extends keyof SceneEditorModel>(
