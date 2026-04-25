@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import { useRef, type PropsWithChildren, type ReactNode } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import { AuthPage, AuthPageHeader } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
@@ -28,7 +28,11 @@ import {
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
-import { describePassState } from "./utils";
+import {
+  buildCapturedThumbnailFile,
+  describePassState,
+  validateThumbnailFile,
+} from "./utils";
 
 function formatFixed(value: number, fractionDigits = 2) {
   return value.toFixed(fractionDigits).replace(/0+$/, "").replace(/\.$/, "");
@@ -198,9 +202,7 @@ export function SceneEditorShell({
     handleSectionJump,
     handleSectionStep,
     handleTagSearchChange,
-    handleThumbnailFileChange,
-    handleThumbnailModeChange,
-    handleThumbnailUploadClick,
+    handleThumbnailCapture,
     isActionBarStuck,
     isCameraAdvancedEnabled,
     isConfirmJsonOpen,
@@ -238,10 +240,7 @@ export function SceneEditorShell({
     tagsError,
     tagsLoading,
     thumbnailFile,
-    thumbnailFileInputRef,
-    thumbnailFileName,
-    thumbnailInputId,
-    thumbnailMode,
+    thumbnailPreviewUrl,
     titleId,
     toggleTagSelection,
     updateBranch,
@@ -258,6 +257,50 @@ export function SceneEditorShell({
     isMotionAdvancedEnabled,
     sceneData,
   });
+  const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
+    null,
+  );
+
+  async function captureThumbnailFromPreview() {
+    if (!captureFramePreviewRef.current) {
+      throw new Error(
+        "Wait for the live preview to finish loading before capturing a thumbnail.",
+      );
+    }
+
+    const capturedPreviewUrl = await captureFramePreviewRef.current();
+
+    if (!capturedPreviewUrl) {
+      throw new Error(
+        "We couldn't capture the current preview frame. Let the preview finish loading and try again.",
+      );
+    }
+
+    const capturedThumbnailFile = buildCapturedThumbnailFile(capturedPreviewUrl);
+    const thumbnailError = validateThumbnailFile(capturedThumbnailFile);
+
+    if (thumbnailError) {
+      throw new Error(thumbnailError);
+    }
+
+    handleThumbnailCapture(capturedThumbnailFile, capturedPreviewUrl);
+    return capturedThumbnailFile;
+  }
+
+  async function handleThumbnailCaptureRequest() {
+    try {
+      await captureThumbnailFromPreview();
+    } catch (error) {
+      setErrors((currentErrors) => ({
+        ...currentErrors,
+        form: undefined,
+        thumbnail:
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "The live preview could not be captured right now. Please try again.",
+      }));
+    }
+  }
 
   function renderAdditionalPassCard(passConfig: {
     description: string;
@@ -492,57 +535,50 @@ export function SceneEditorShell({
   function renderThumbnailField() {
     return (
       <div className="field-group">
-        <FieldGroupLabel htmlFor={thumbnailInputId} label="Thumbnail" />
+        <FieldGroupLabel label="Thumbnail" />
         <div className="scene-thumbnail-picker">
-          <input
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            aria-label="Upload thumbnail file"
-            className="scene-thumbnail-input"
-            id={thumbnailInputId}
-            onChange={(event) =>
-              handleThumbnailFileChange(event.currentTarget.files)
-            }
-            ref={thumbnailFileInputRef}
-            type="file"
-          />
+          <div className="scene-thumbnail-picker__row">
+            <div className="scene-thumbnail-picker__grid">
+              <button
+                className={`scene-thumbnail-choice${
+                  thumbnailPreviewUrl ? " is-selected" : ""
+                }`}
+                disabled={isSubmitting}
+                onClick={() => {
+                  void handleThumbnailCaptureRequest();
+                }}
+                type="button"
+              >
+                <span className="scene-thumbnail-choice__eyebrow">
+                  {thumbnailPreviewUrl ? "Recapture" : "Live Preview"}
+                </span>
+                <strong className="scene-thumbnail-choice__title">
+                  {thumbnailPreviewUrl ? "Capture Again" : "Capture Thumbnail"}
+                </strong>
+                <span className="scene-thumbnail-choice__description">
+                  Use the current live preview frame as the scene thumbnail.
+                </span>
+              </button>
+            </div>
 
-          <div className="scene-thumbnail-picker__grid">
-            <button
-              className={`scene-thumbnail-choice${
-                thumbnailMode === "upload" ? " is-selected" : ""
-              }`}
-              onClick={handleThumbnailUploadClick}
-              type="button"
-            >
-              <span className="scene-thumbnail-choice__eyebrow">Upload</span>
-              <strong className="scene-thumbnail-choice__title">Upload File</strong>
-              <span className="scene-thumbnail-choice__description">
-                Use a custom image.
-              </span>
-            </button>
-
-            <button
-              className={`scene-thumbnail-choice${
-                thumbnailMode === "skip" ? " is-selected" : ""
-              }`}
-              onClick={() => handleThumbnailModeChange("skip")}
-              type="button"
-            >
-              <span className="scene-thumbnail-choice__eyebrow">Optional</span>
-              <strong className="scene-thumbnail-choice__title">
-                Skip for Now
-              </strong>
-              <span className="scene-thumbnail-choice__description">
-                Create the scene without a thumbnail.
-              </span>
-            </button>
+            <div className="scene-thumbnail-preview">
+              <div className="scene-thumbnail-preview__frame">
+                {thumbnailPreviewUrl ? (
+                  <img
+                    alt="Captured thumbnail preview"
+                    className="scene-thumbnail-preview__image"
+                    src={thumbnailPreviewUrl}
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="scene-card__thumbnail-placeholder scene-thumbnail-preview__placeholder"
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
-          {thumbnailFileName ? (
-            <p className="field-hint">
-              Selected file: <strong>{thumbnailFileName}</strong>
-            </p>
-          ) : null}
           {errors.thumbnail ? (
             <p className="field-error" role="alert">
               {errors.thumbnail}
@@ -791,6 +827,7 @@ export function SceneEditorShell({
   const { handleSubmit } = useSceneEditorSubmission({
     authenticatedFetch,
     availableTags,
+    captureThumbnailIfMissing: captureThumbnailFromPreview,
     isCameraAdvancedEnabled,
     isMotionAdvancedEnabled,
     name,
@@ -803,7 +840,6 @@ export function SceneEditorShell({
     setIsSubmitting,
     setPendingTagAttachment,
     thumbnailFile,
-    thumbnailMode,
   });
 
   return (
@@ -1745,9 +1781,9 @@ export function SceneEditorShell({
                       <ConfirmSummaryItem
                         label="Thumbnail"
                         value={
-                          thumbnailMode === "upload"
-                            ? thumbnailFileName || "Upload selected"
-                            : "Skipped"
+                          thumbnailPreviewUrl
+                            ? "Captured from live preview"
+                            : "Not captured yet"
                         }
                       />
                       <ConfirmSummaryItem
@@ -1892,6 +1928,9 @@ export function SceneEditorShell({
               <MagePlayer
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
+                onCaptureFramePreviewChange={(nextCapture) => {
+                  captureFramePreviewRef.current = nextCapture;
+                }}
                 sceneBlob={previewSceneData}
               />
             </section>

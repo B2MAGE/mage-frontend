@@ -12,6 +12,7 @@ import { buildEffectiveSceneData, parseCreatedSceneId, validateForm } from './ut
 
 type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   authenticatedFetch: AuthenticatedFetch
+  captureThumbnailIfMissing: () => Promise<File>
   onComplete: () => void
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
   setIsSubmitting: Dispatch<SetStateAction<boolean>>
@@ -77,6 +78,7 @@ async function attachTagsToScene(
 export function useSceneEditorSubmission({
   authenticatedFetch,
   availableTags,
+  captureThumbnailIfMissing,
   isCameraAdvancedEnabled,
   isMotionAdvancedEnabled,
   name,
@@ -89,7 +91,6 @@ export function useSceneEditorSubmission({
   setIsSubmitting,
   setPendingTagAttachment,
   thumbnailFile,
-  thumbnailMode,
 }: UseSceneEditorSubmissionArgs) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -134,13 +135,25 @@ export function useSceneEditorSubmission({
       sceneDataText,
     )
 
-    if (thumbnailMode === 'upload' && !thumbnailFile) {
-      nextErrors.thumbnail = 'Choose an image file or skip the thumbnail.'
-    }
-
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
+    }
+
+    let effectiveThumbnailFile = thumbnailFile
+
+    if (!effectiveThumbnailFile) {
+      try {
+        effectiveThumbnailFile = await captureThumbnailIfMissing()
+      } catch (error) {
+        setErrors({
+          thumbnail:
+            error instanceof Error && error.message.trim()
+              ? error.message
+              : 'Capture a thumbnail before creating the scene.',
+        })
+        return
+      }
     }
 
     const sanitizedSceneData = buildEffectiveSceneData(
@@ -156,8 +169,8 @@ export function useSceneEditorSubmission({
 
     try {
       const thumbnailObjectKey =
-        thumbnailMode === 'upload' && thumbnailFile
-          ? await uploadNewSceneThumbnail(authenticatedFetch, thumbnailFile)
+        effectiveThumbnailFile
+          ? await uploadNewSceneThumbnail(authenticatedFetch, effectiveThumbnailFile)
           : undefined
 
       const response = await authenticatedFetch('/scenes', {

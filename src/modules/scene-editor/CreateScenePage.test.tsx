@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import {
   mockCreateScenePageFetch,
@@ -7,23 +7,51 @@ import {
   storeSceneEditorSession,
 } from './test-fixtures'
 
+const CAPTURED_THUMBNAIL_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j+7sAAAAASUVORK5CYII='
+const mockCaptureFramePreview = vi.fn(
+  async (): Promise<string | null> => CAPTURED_THUMBNAIL_DATA_URL,
+)
+
 vi.mock('@modules/player', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@modules/player')>()
+  const React = await import('react')
 
   return {
     ...actual,
     MagePlayer: ({
       initialPlayback,
+      onCaptureFramePreviewChange,
       sceneBlob,
     }: {
       initialPlayback?: string
+      onCaptureFramePreviewChange?: (
+        captureFramePreview: (() => Promise<string | null>) | null,
+      ) => void
       sceneBlob: unknown
-    }) => (
-      <div data-playback={initialPlayback} data-testid="mage-player">
-        {sceneBlob ? 'preview-ready' : 'no-preview'}
-      </div>
-    ),
+    }) => {
+      React.useEffect(() => {
+        onCaptureFramePreviewChange?.(
+          sceneBlob ? () => mockCaptureFramePreview() : null,
+        )
+
+        return () => {
+          onCaptureFramePreviewChange?.(null)
+        }
+      }, [onCaptureFramePreviewChange, sceneBlob])
+
+      return (
+        <div data-playback={initialPlayback} data-testid="mage-player">
+          {sceneBlob ? 'preview-ready' : 'no-preview'}
+        </div>
+      )
+    },
   }
+})
+
+beforeEach(() => {
+  mockCaptureFramePreview.mockReset()
+  mockCaptureFramePreview.mockResolvedValue(CAPTURED_THUMBNAIL_DATA_URL)
 })
 
 afterEach(() => {
@@ -60,6 +88,7 @@ describe('CreateScenePage workflow', () => {
   it('renders interactive metadata controls beneath the scene name field', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
+    const user = userEvent.setup()
 
     renderCreateScenePage()
 
@@ -69,18 +98,20 @@ describe('CreateScenePage workflow', () => {
     fireEvent.change(screen.getByLabelText(/playlists/i), {
       target: { value: 'ambient-atlas' },
     })
-    fireEvent.change(screen.getByLabelText(/upload thumbnail file/i), {
-      target: {
-        files: [new File(['cover'], 'cover.png', { type: 'image/png' })],
-      },
-    })
+    await user.click(
+      screen.getByRole('button', { name: /capture thumbnail/i }),
+    )
 
     expect(screen.getByLabelText(/description/i)).toHaveValue(
       'A soft drifting scene for night scenes.',
     )
     expect(screen.getByLabelText(/playlists/i)).toHaveValue('ambient-atlas')
-    expect(screen.getByText(/selected file:/i)).toBeInTheDocument()
-    expect(screen.getByText(/cover\.png/i)).toBeInTheDocument()
+    expect(
+      screen.getByAltText(/captured thumbnail preview/i),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /capture again/i }),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
   })
 
@@ -93,7 +124,9 @@ describe('CreateScenePage workflow', () => {
     const nameField = screen.getByLabelText(/scene name/i)
     const descriptionField = screen.getByLabelText(/description/i)
     const playlistsField = screen.getByLabelText(/playlists/i)
-    const thumbnailField = screen.getByLabelText(/upload thumbnail file/i)
+    const thumbnailField = screen.getByRole('button', {
+      name: /capture thumbnail/i,
+    })
     const tagSearchField = await screen.findByLabelText(/select existing tags/i)
 
     expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
@@ -117,6 +150,24 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByRole('button', { name: /^back$/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /^next$/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /create scene/i })).toBeInTheDocument()
+  })
+
+  it('shows a clear thumbnail error when the live preview cannot be captured', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    mockCaptureFramePreview.mockResolvedValueOnce(null)
+
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    await user.click(screen.getByRole('button', { name: /capture thumbnail/i }))
+
+    expect(
+      await screen.findByText(
+        /we couldn't capture the current preview frame\. let the preview finish loading and try again\./i,
+      ),
+    ).toBeInTheDocument()
   })
 
   it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {

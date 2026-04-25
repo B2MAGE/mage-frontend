@@ -50,6 +50,9 @@ export function mockCreateScenePageFetch(
   tagsResponse: unknown[] = buildSceneEditorTags(),
   storedUser: AuthenticatedUser = buildSceneEditorStoredUser(),
 ) {
+  const defaultThumbnailUploadUrl =
+    'https://upload.example.com/scenes/pending/default/thumbnails/scene-preview-thumbnail.png'
+
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
     const method =
       typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
@@ -66,6 +69,24 @@ export function mockCreateScenePageFetch(
 
     if (input === buildApiUrl('/tags') && method === 'GET') {
       return Promise.resolve(jsonResponse(tagsResponse))
+    }
+
+    if (input === buildApiUrl('/scenes/thumbnail/presign') && method === 'POST') {
+      return Promise.resolve(
+        jsonResponse({
+          headers: {
+            'Content-Type': 'image/png',
+          },
+          method: 'PUT',
+          objectKey:
+            'scenes/pending/default/thumbnails/scene-preview-thumbnail.png',
+          uploadUrl: defaultThumbnailUploadUrl,
+        }),
+      )
+    }
+
+    if (input === defaultThumbnailUploadUrl && method === 'PUT') {
+      return Promise.resolve(new Response(null, { status: 200 }))
     }
 
     throw new Error(`Unexpected request: ${String(input)}`)
