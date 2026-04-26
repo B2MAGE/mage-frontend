@@ -1,23 +1,6 @@
+import { formatCalendarDate } from '@shared/lib'
 import { pickCreatorProfileBlueprint } from './fixtures'
 import type { CreatorProfile, SceneDescription, SceneDetail, SceneEngagement } from './types'
-
-function formatCreatedAt(createdAt: string | null) {
-  if (!createdAt) {
-    return 'Unavailable'
-  }
-
-  const parsedDate = new Date(createdAt)
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return createdAt
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(parsedDate)
-}
 
 function buildSubscriberLabel(seed: number) {
   const subscriberCount = 1720 + seed * 38
@@ -60,7 +43,7 @@ export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
     upvotesLabel: upvotes.toLocaleString(),
     downvotesLabel: downvotes.toLocaleString(),
     savesLabel: saves.toLocaleString(),
-    publishedLabel: `Published ${formatCreatedAt(scene.createdAt)}`,
+    publishedLabel: `Published ${formatCalendarDate(scene.createdAt, 'Unavailable')}`,
     topicLabel: 'Audio-reactive scene',
   }
 }
