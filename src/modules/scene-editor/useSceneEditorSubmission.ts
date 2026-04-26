@@ -79,6 +79,7 @@ export function useSceneEditorSubmission({
   authenticatedFetch,
   availableTags,
   captureThumbnailIfMissing,
+  description,
   isCameraAdvancedEnabled,
   isMotionAdvancedEnabled,
   name,
@@ -130,6 +131,7 @@ export function useSceneEditorSubmission({
     }
 
     const trimmedName = name.trim()
+    const trimmedDescription = description.trim()
     const { errors: nextErrors, parsedSceneData } = validateForm(
       trimmedName,
       sceneDataText,
@@ -178,6 +180,7 @@ export function useSceneEditorSubmission({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: trimmedName,
+          description: trimmedDescription || undefined,
           sceneData: sanitizedSceneData,
           thumbnailObjectKey,
         }),
@@ -187,6 +190,7 @@ export function useSceneEditorSubmission({
         const apiError = await parseApiError(response)
         const backendDetails = apiError?.details ?? {}
         setErrors({
+          description: backendDetails.description,
           name: backendDetails.name,
           sceneData: backendDetails.sceneData,
           form:

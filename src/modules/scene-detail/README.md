@@ -23,7 +23,7 @@ Exports:
 - `recommendations.ts`
   Recommendation grouping, filter helpers, and selection logic for the sidebar rail.
 - `fixtures.ts`
-  Placeholder/sample content builders for description and comments so lorem ipsum content stays out of production transforms.
+  Placeholder/sample content builders for comments and fallback description copy so lorem ipsum content stays out of production transforms.
 - `ui/`
   Scene-detail-owned presentation for description, comments, voting, recommendations, and playlist sidebar behavior.
 
@@ -31,7 +31,7 @@ Exports:
 
 1. Route wiring should import `SceneDetailPage` from `@modules/scene-detail`.
 2. Feature code outside this module should not import `ui/*`, `loaders.ts`, or internal builders directly.
-3. Placeholder comments, creator notes, and description copy stay in `fixtures.ts`, not in DTO or loader code.
+3. Placeholder comments, creator notes, and fallback description copy stay in `fixtures.ts`, not in DTO or loader code.
 4. Recommendation filtering, description rendering, comments, and playlist-sidebar state stay owned by this module.
 
 ## Route Surface
@@ -60,7 +60,7 @@ User-facing behavior:
 
 Current limitations:
 
-- comments, creator notes, and parts of the description experience still rely on module fixtures
+- comments, creator notes, and fallback description copy still rely on module fixtures
 - vote, share, save, and follow controls are currently presentation-only
 - recommendation ranking is heuristic and frontend-owned
 

@@ -27,6 +27,7 @@ export function buildSceneDetailResponse(
   return {
     createdAt: '2026-04-06T14:00:00Z',
     creatorDisplayName: 'Scene Artist',
+    description: 'Soft teal bloom with low-end drift.',
     name: 'Aurora Drift',
     ownerUserId: 8,
     sceneData: {

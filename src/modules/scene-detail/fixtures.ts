@@ -37,13 +37,16 @@ export function buildSceneDescription(
   scene: SceneDetail,
   creatorProfile: CreatorProfile,
 ): SceneDescription {
+  const storedDescription = scene.description?.trim()
+
   return {
-    opening:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-    middle:
-      `${creatorProfile.displayName} lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
-    closing:
-      'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+    paragraphs: storedDescription
+      ? [storedDescription]
+      : [
+          'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+          `${creatorProfile.displayName} lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+          'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+        ],
     bestFor: 'lorem ipsum, dolor sit amet, consectetur',
     builtWith: 'adipiscing elit, sed do eiusmod, tempor incididunt',
     tags: scene.tags,

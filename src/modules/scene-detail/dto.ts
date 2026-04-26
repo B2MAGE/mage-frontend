@@ -7,6 +7,7 @@ type SceneDetailResponse = {
   ownerUserId?: number
   creatorDisplayName?: string
   name?: string
+  description?: string | null
   sceneData?: unknown
   thumbnailRef?: string | null
   createdAt?: string
@@ -66,6 +67,10 @@ export function normalizeSceneDetail(payload: unknown): SceneDetail | null {
       typeof resolvedPayload.name === 'string' && resolvedPayload.name.trim()
         ? resolvedPayload.name.trim()
         : `Scene ${sceneId}`,
+    description:
+      typeof resolvedPayload.description === 'string' && resolvedPayload.description.trim()
+        ? resolvedPayload.description.trim()
+        : null,
     sceneData: resolvedPayload.sceneData,
     thumbnailRef:
       typeof resolvedPayload.thumbnailRef === 'string' && resolvedPayload.thumbnailRef.trim()
@@ -106,6 +111,10 @@ export function normalizeRecommendedSceneList(payload: unknown): SceneListRespon
       ownerUserId: candidate.ownerUserId,
       creatorDisplayName: candidate.creatorDisplayName.trim() || 'Unknown creator',
       name: candidate.name.trim() || `Scene ${candidate.sceneId}`,
+      description:
+        typeof candidate.description === 'string' && candidate.description.trim()
+          ? candidate.description.trim()
+          : null,
       sceneData:
         typeof candidate.sceneData === 'object' && candidate.sceneData !== null ? candidate.sceneData : {},
       thumbnailRef:

@@ -72,7 +72,7 @@ User-facing behavior:
 
 Current limitations:
 
-- `name` and `sceneData` are submitted, but description and playlist are still UI-only
+- `name`, `description`, and `sceneData` are submitted, but playlist is still UI-only
 - selected tags are persisted in a follow-up attach step after the scene is created
 - some engine passes still lack full persisted boolean support in the compact scene schema
 

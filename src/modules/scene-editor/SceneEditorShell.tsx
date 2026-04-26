@@ -828,6 +828,7 @@ export function SceneEditorShell({
     authenticatedFetch,
     availableTags,
     captureThumbnailIfMissing: captureThumbnailFromPreview,
+    description,
     isCameraAdvancedEnabled,
     isMotionAdvancedEnabled,
     name,
@@ -941,14 +942,29 @@ export function SceneEditorShell({
                   <div className="field-group">
                     <FieldGroupLabel htmlFor="description" label="Description" />
                     <textarea
-                      id="description"
-                      onChange={(event) =>
-                        setDescription(event.currentTarget.value)
+                      aria-describedby={
+                        errors.description ? "description-error" : undefined
                       }
+                      aria-invalid={Boolean(errors.description)}
+                      id="description"
+                      maxLength={1000}
+                      onChange={(event) => {
+                        setDescription(event.currentTarget.value);
+                        setErrors((currentErrors) => ({
+                          ...currentErrors,
+                          description: undefined,
+                          form: undefined,
+                        }));
+                      }}
                       placeholder="Describe the mood, motion, or moment this scene is built for."
                       rows={5}
                       value={description}
                     />
+                    {errors.description ? (
+                      <p className="field-error" id="description-error" role="alert">
+                        {errors.description}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="field-group">

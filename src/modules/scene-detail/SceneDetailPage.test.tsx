@@ -104,6 +104,7 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
+    expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
     expect(screen.getByText(/add a comment as scene artist/i)).toBeInTheDocument()
     expect(screen.getAllByText('Scene Artist').length).toBeGreaterThan(0)

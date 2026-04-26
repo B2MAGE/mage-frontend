@@ -31,6 +31,7 @@ export type SceneListResponse = {
   ownerUserId: number
   creatorDisplayName: string
   name: string
+  description?: string | null
   sceneData: Record<string, unknown>
   thumbnailRef: string | null
   createdAt: string

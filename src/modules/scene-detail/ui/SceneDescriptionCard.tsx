@@ -50,9 +50,9 @@ export function SceneDescriptionCard({
         <span>{engagement.publishedLabel}</span>
       </div>
       <div className="scene-detail-description-copy" data-expanded={isDescriptionExpanded}>
-        <p>{sceneDescription.opening}</p>
-        <p>{sceneDescription.middle}</p>
-        <p>{sceneDescription.closing}</p>
+        {sceneDescription.paragraphs.map((paragraph, index) => (
+          <p key={`${index}-${paragraph}`}>{paragraph}</p>
+        ))}
       </div>
 
       {isDescriptionExpanded ? (

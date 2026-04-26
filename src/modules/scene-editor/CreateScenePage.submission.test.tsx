@@ -82,6 +82,7 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(screen.getByLabelText(/description/i), 'Soft teal bloom with low-end drift.')
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
     expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/camera orientation/i), {
@@ -102,6 +103,7 @@ describe('CreateScenePage submission', () => {
     const passOrder = fx.passOrder as string[]
 
     expect(responseBody).toMatchObject({
+      description: 'Soft teal bloom with low-end drift.',
       name: 'Aurora Drift',
     })
     expect(intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
