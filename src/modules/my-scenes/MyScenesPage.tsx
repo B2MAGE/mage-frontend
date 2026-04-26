@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { createDemoScenes, fetchUserScenes } from './loaders'
+import { fetchUserScenes } from './loaders'
 import { buildMyScenesBoardModel, pruneSelectedSceneIds } from './selectors'
 import type { SortDirection, SortKey, StatusFilter, UserScene } from './types'
 import { MyScenesPagination, MyScenesTable, MyScenesToolbar } from './ui'
@@ -10,10 +10,7 @@ export function MyScenesPage() {
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
   const [scenes, setScenes] = useState<UserScene[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isSeedingScenes, setIsSeedingScenes] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [seedErrorMessage, setSeedErrorMessage] = useState('')
-  const [reloadKey, setReloadKey] = useState(0)
   const [sortKey, setSortKey] = useState<SortKey>('updated')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
@@ -62,7 +59,7 @@ export function MyScenesPage() {
     return () => {
       isCurrent = false
     }
-  }, [authenticatedFetch, isAuthenticated, isRestoringSession, reloadKey, user?.userId])
+  }, [authenticatedFetch, isAuthenticated, isRestoringSession, user?.userId])
 
   useEffect(() => {
     setSelectedSceneIds((currentIds) => pruneSelectedSceneIds(currentIds, scenes))
@@ -160,24 +157,6 @@ export function MyScenesPage() {
     )
   }
 
-  async function handleSeedScenes() {
-    setIsSeedingScenes(true)
-    setSeedErrorMessage('')
-
-    try {
-      await createDemoScenes(authenticatedFetch)
-      setReloadKey((currentKey) => currentKey + 1)
-    } catch (error) {
-      setSeedErrorMessage(
-        error instanceof Error && error.message
-          ? error.message
-          : 'Unable to add sample scenes right now. Please try again in a moment.',
-      )
-    } finally {
-      setIsSeedingScenes(false)
-    }
-  }
-
   function handleSort(nextSortKey: SortKey) {
     if (sortKey === nextSortKey) {
       setSortDirection((currentDirection) => (currentDirection === 'desc' ? 'asc' : 'desc'))
@@ -236,23 +215,16 @@ export function MyScenesPage() {
           <div className="scene-empty-state">
             <p className="scene-status">No scenes yet</p>
             <p className="scene-status">
-              Temporary helper: add sample scenes to this account so you can preview the list UI.
+              Create your first scene to start building your library.
             </p>
             <div className="scene-actions">
-              <button
-                type="button"
-                className="scene-action"
-                onClick={() => {
-                  void handleSeedScenes()
-                }}
-                disabled={isSeedingScenes}
+              <Link
+                className="scene-secondary-button scene-editor-nav-button my-scenes-empty-action"
+                to="/create-scene"
               >
-                {isSeedingScenes ? 'Adding sample scenes...' : 'Add sample scenes'}
-              </button>
+                Create Scene
+              </Link>
             </div>
-            {seedErrorMessage ? (
-              <p className="scene-status scene-status-error">{seedErrorMessage}</p>
-            ) : null}
           </div>
         ) : (
           <div className="my-scenes-board">
