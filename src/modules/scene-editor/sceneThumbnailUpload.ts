@@ -35,8 +35,13 @@ export async function uploadNewSceneThumbnail(
 
   const presignedUpload =
     (await presignResponse.json()) as PresignedThumbnailUploadResponse;
+
+  if (!presignedUpload.objectKey || !presignedUpload.uploadUrl || !presignedUpload.method) {
+    throw new Error("Thumbnail upload response was incomplete.");
+  }
+
   const uploadResponse = await fetch(presignedUpload.uploadUrl, {
-    method: presignedUpload.method || "PUT",
+    method: presignedUpload.method,
     headers: presignedUpload.headers,
     body: file,
   });

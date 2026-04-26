@@ -46,6 +46,59 @@ export type FetchTagsOptions = {
   attachedOnly?: boolean
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function normalizeSceneListItem(item: unknown): SceneListResponse | null {
+  if (!isRecord(item)) {
+    return null
+  }
+
+  if (
+    typeof item.sceneId !== 'number' ||
+    typeof item.ownerUserId !== 'number' ||
+    typeof item.creatorDisplayName !== 'string' ||
+    typeof item.name !== 'string' ||
+    typeof item.createdAt !== 'string'
+  ) {
+    return null
+  }
+
+  return {
+    sceneId: item.sceneId,
+    ownerUserId: item.ownerUserId,
+    creatorDisplayName: item.creatorDisplayName.trim() || 'Unknown creator',
+    name: item.name.trim() || `Scene ${item.sceneId}`,
+    description:
+      typeof item.description === 'string' && item.description.trim()
+        ? item.description.trim()
+        : null,
+    sceneData: isRecord(item.sceneData) ? item.sceneData : {},
+    thumbnailRef:
+      typeof item.thumbnailRef === 'string' && item.thumbnailRef.trim()
+        ? item.thumbnailRef
+        : null,
+    createdAt: item.createdAt,
+  }
+}
+
+export function normalizeSceneList(payload: unknown): SceneListResponse[] {
+  if (!Array.isArray(payload)) {
+    return []
+  }
+
+  return payload.reduce<SceneListResponse[]>((scenes, item) => {
+    const scene = normalizeSceneListItem(item)
+
+    if (scene) {
+      scenes.push(scene)
+    }
+
+    return scenes
+  }, [])
+}
+
 export async function fetchAvailableTags(options?: FetchTagsOptions): Promise<TagResponse[]> {
   const query = options?.attachedOnly ? '?attachedOnly=true' : ''
   const response = await fetch(buildApiUrl(`/tags${query}`))
@@ -65,7 +118,7 @@ export async function fetchScenes(tag?: string | null): Promise<SceneListRespons
     throw new Error(`Failed to fetch scenes (${response.status})`)
   }
 
-  return response.json() as Promise<SceneListResponse[]>
+  return normalizeSceneList(await response.json().catch(() => []))
 }
 
 export async function fetchTags(options?: FetchTagsOptions): Promise<TagResponse[]> {

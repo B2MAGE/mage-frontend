@@ -363,9 +363,7 @@ describe('CreateScenePage submission', () => {
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
-    expect(
-      await screen.findByText(/preview capture returned an unsupported image format\./i),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/preview capture must return a png data url\./i)).toBeInTheDocument()
     expect(createAttempted).toBe(false)
   })
 

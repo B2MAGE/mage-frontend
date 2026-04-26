@@ -1,5 +1,5 @@
 import { buildApiUrl, fetchScenes } from '@shared/lib'
-import { normalizeRecommendedSceneList, normalizeSceneDetail } from './dto'
+import { normalizeSceneDetail } from './dto'
 import { buildRecommendedSceneGroups } from './recommendations'
 import type { AuthenticatedFetch, RecommendedSceneGroups, SceneDetail, SceneDetailErrorCode } from './types'
 
@@ -59,13 +59,11 @@ export async function fetchRecommendedSceneGroups(
   const recommendationRequests = [fetchScenes(), ...scene.tags.map((tag) => fetchScenes(tag))]
   const [allScenesResult, ...tagSceneResults] = await Promise.allSettled(recommendationRequests)
 
-  const allScenes =
-    allScenesResult.status === 'fulfilled' ? normalizeRecommendedSceneList(allScenesResult.value) : []
-  const tagScenesByTag = scene.tags.reduce<Record<string, ReturnType<typeof normalizeRecommendedSceneList>>>(
+  const allScenes = allScenesResult.status === 'fulfilled' ? allScenesResult.value : []
+  const tagScenesByTag = scene.tags.reduce<Record<string, typeof allScenes>>(
     (resolvedTagScenes, tag, index) => {
       const nextTagResult = tagSceneResults[index]
-      resolvedTagScenes[tag] =
-        nextTagResult?.status === 'fulfilled' ? normalizeRecommendedSceneList(nextTagResult.value) : []
+      resolvedTagScenes[tag] = nextTagResult?.status === 'fulfilled' ? nextTagResult.value : []
       return resolvedTagScenes
     },
     {},

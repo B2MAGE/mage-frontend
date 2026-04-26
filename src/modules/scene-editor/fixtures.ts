@@ -94,12 +94,7 @@ export const passFlagsById: Partial<Record<ScenePassId, PersistedPassFlag>> = {
   technicolorShader: 'technicolor',
 }
 
-export const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-])
+export const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set(['image/png'])
 
 export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024
 export const MAX_TAG_NAME_LENGTH = 64

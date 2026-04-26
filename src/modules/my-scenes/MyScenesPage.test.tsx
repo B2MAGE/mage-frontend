@@ -69,7 +69,7 @@ describe('MyScenesPage states', () => {
     resolveScenesResponse?.(jsonResponse([]))
 
     expect(await screen.findByText(/no scenes yet/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add sample scenes/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /create scene/i })).toHaveAttribute('href', '/create-scene')
   })
 
   it('renders the authenticated users scenes and opens the scene detail route', async () => {

@@ -155,7 +155,7 @@ export function validateThumbnailFile(file: File | null) {
   }
 
   if (!ALLOWED_THUMBNAIL_CONTENT_TYPES.has(file.type)) {
-    return 'Thumbnail must be a JPEG, PNG, WebP, or GIF image.'
+    return 'Thumbnail must be a PNG image.'
   }
 
   if (file.size > MAX_THUMBNAIL_BYTES) {
@@ -166,22 +166,14 @@ export function validateThumbnailFile(file: File | null) {
 }
 
 export function buildCapturedThumbnailFile(dataUrl: string) {
-  const matchedDataUrl = dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/)
+  const matchedDataUrl = dataUrl.match(/^data:image\/png;base64,(.+)$/)
 
   if (!matchedDataUrl) {
-    throw new Error('Preview capture returned an unexpected image format.')
+    throw new Error('Preview capture must return a PNG data URL.')
   }
 
-  const [, rawContentType, base64Marker, encodedPayload] = matchedDataUrl
-  const contentType = rawContentType?.trim().toLowerCase()
-
-  if (contentType !== CAPTURED_THUMBNAIL_CONTENT_TYPE) {
-    throw new Error('Preview capture returned an unsupported image format.')
-  }
-
-  const decodedPayload = base64Marker
-    ? window.atob(encodedPayload)
-    : decodeURIComponent(encodedPayload)
+  const [, encodedPayload] = matchedDataUrl
+  const decodedPayload = window.atob(encodedPayload)
   const payloadBytes = Uint8Array.from(decodedPayload, (character) =>
     character.charCodeAt(0),
   )

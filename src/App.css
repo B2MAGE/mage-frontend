@@ -2092,6 +2092,13 @@
   transform: none;
 }
 
+.my-scenes-empty-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .auth-page--wide {
   width: min(1380px, 100%);
   align-self: start;

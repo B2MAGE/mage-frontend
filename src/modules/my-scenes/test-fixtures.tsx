@@ -21,17 +21,12 @@ export function storeMyScenesSession(
 export function buildMyScenesApiScene(
   overrides: Partial<Record<string, unknown>> = {},
 ) {
-  const sceneId =
-    typeof overrides.sceneId === 'number'
-      ? overrides.sceneId
-      : typeof overrides.id === 'number'
-        ? overrides.id
-        : 1
+  const sceneId = typeof overrides.sceneId === 'number' ? overrides.sceneId : 1
 
   return {
     createdAt: '2026-04-06T14:00:00Z',
+    creatorDisplayName: 'Scene Artist',
     description: 'Soft teal bloom with low-end drift.',
-    id: sceneId,
     name: 'Aurora Drift',
     ownerUserId: 42,
     sceneData: {
