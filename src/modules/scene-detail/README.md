@@ -19,11 +19,11 @@ Exports:
 - `dto.ts`
   Backend payload normalization for scene detail and recommendation list responses.
 - `viewModels.ts`
-  Production-facing scene detail view-model builders derived from fetched scene data.
+  Production-facing scene detail view-model builders, including stored and fallback description presentation.
 - `recommendations.ts`
   Recommendation grouping, filter helpers, and selection logic for the sidebar rail.
 - `fixtures.ts`
-  Placeholder/sample content builders for comments and fallback description copy so lorem ipsum content stays out of production transforms.
+  Placeholder/sample content builders for comments and fallback description paragraph copy.
 - `ui/`
   Scene-detail-owned presentation for description, comments, voting, recommendations, and playlist sidebar behavior.
 

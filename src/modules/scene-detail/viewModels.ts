@@ -1,5 +1,5 @@
-import { pickCreatorProfileBlueprint } from './fixtures'
-import type { CreatorProfile, SceneDetail, SceneEngagement } from './types'
+import { buildFallbackSceneDescriptionParagraphs, pickCreatorProfileBlueprint } from './fixtures'
+import type { CreatorProfile, SceneDescription, SceneDetail, SceneEngagement } from './types'
 
 function formatCreatedAt(createdAt: string | null) {
   if (!createdAt) {
@@ -49,6 +49,22 @@ export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
     savesLabel: saves.toLocaleString(),
     publishedLabel: `Published ${formatCreatedAt(scene.createdAt)}`,
     topicLabel: 'Audio-reactive scene',
+  }
+}
+
+export function buildSceneDescription(
+  scene: SceneDetail,
+  creatorProfile: CreatorProfile,
+): SceneDescription {
+  const storedDescription = scene.description?.trim()
+
+  return {
+    paragraphs: storedDescription
+      ? [storedDescription]
+      : buildFallbackSceneDescriptionParagraphs(creatorProfile),
+    bestFor: 'lorem ipsum, dolor sit amet, consectetur',
+    builtWith: 'adipiscing elit, sed do eiusmod, tempor incididunt',
+    tags: scene.tags,
   }
 }
 

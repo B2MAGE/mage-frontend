@@ -1,4 +1,4 @@
-import type { CreatorProfile, SceneComment, SceneDescription, SceneDetail } from './types'
+import type { CreatorProfile, SceneComment, SceneDetail } from './types'
 
 type CreatorProfileBlueprint = Pick<CreatorProfile, 'displayName' | 'handle' | 'studioNote' | 'subscribersLabel'>
 
@@ -33,24 +33,12 @@ export function pickCreatorProfileBlueprint(seed: number): CreatorProfileBluepri
   return creatorProfileBlueprints[Math.abs(seed) % creatorProfileBlueprints.length]
 }
 
-export function buildSceneDescription(
-  scene: SceneDetail,
-  creatorProfile: CreatorProfile,
-): SceneDescription {
-  const storedDescription = scene.description?.trim()
-
-  return {
-    paragraphs: storedDescription
-      ? [storedDescription]
-      : [
-          'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-          `${creatorProfile.displayName} lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
-          'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-        ],
-    bestFor: 'lorem ipsum, dolor sit amet, consectetur',
-    builtWith: 'adipiscing elit, sed do eiusmod, tempor incididunt',
-    tags: scene.tags,
-  }
+export function buildFallbackSceneDescriptionParagraphs(creatorProfile: CreatorProfile) {
+  return [
+    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    `${creatorProfile.displayName} lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+    'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+  ]
 }
 
 export function buildSceneComments(scene: SceneDetail): SceneComment[] {

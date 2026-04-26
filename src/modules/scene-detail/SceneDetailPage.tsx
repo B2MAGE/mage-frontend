@@ -2,14 +2,14 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { MagePlayer } from '@modules/player'
-import { buildSceneComments, buildSceneDescription } from './fixtures'
+import { buildSceneComments } from './fixtures'
 import { fetchRecommendedSceneGroups, fetchSceneDetail, SceneDetailRequestError } from './loaders'
 import { createEmptyRecommendedSceneGroups, selectRecommendedScenes } from './recommendations'
 import { readErrorCopy, readInitial, readSceneId } from './selectors'
 import type { RecommendationFilter, RecommendedSceneGroups, SceneDetail, SceneDetailErrorCode } from './types'
 import { SceneCommentsPanel, SceneDescriptionCard, SceneDetailState, SceneRecommendationRail, VoteButton } from './ui'
 import { useScenePlaylistState } from './useScenePlaylistState'
-import { buildCreatorProfile, buildSceneEngagement } from './viewModels'
+import { buildCreatorProfile, buildSceneDescription, buildSceneEngagement } from './viewModels'
 
 export function SceneDetailPage() {
   const { id } = useParams<{ id: string }>()
