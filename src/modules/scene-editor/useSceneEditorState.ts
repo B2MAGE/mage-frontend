@@ -1,6 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import type { AuthenticatedFetch } from '@auth'
-import type { TagResponse } from '@shared/lib'
 import {
   getSceneEditorModel,
   mergeSceneEditorBranch,
@@ -9,20 +8,18 @@ import {
   type SceneEditorModel,
   type ScenePassId,
 } from './sceneEditor'
-import { parseApiError } from '@shared/lib'
-import { EDITOR_SECTIONS, MAX_TAG_NAME_LENGTH, initialSceneData, initialSceneModel } from './fixtures'
+import { initialSceneData, initialSceneModel } from './fixtures'
 import type { CreateSceneFormErrors, EditorSectionId, PendingTagAttachment } from './types'
 import {
   buildEffectiveSceneData,
-  loadAvailableTagsFromBackend,
-  normalizeTagName,
   prettyPrintEditorSceneData,
-  sortTags,
-  upsertTag,
   validateSceneDataText,
   validateSceneName,
   validateThumbnailFile,
 } from './utils'
+import { useSceneEditorActionBarState } from './useSceneEditorActionBarState'
+import { useSceneEditorNavigation } from './useSceneEditorNavigation'
+import { useSceneTagEditor } from './useSceneTagEditor'
 
 type UseSceneEditorStateArgs = {
   authenticatedFetch: AuthenticatedFetch
@@ -31,8 +28,16 @@ type UseSceneEditorStateArgs = {
 export function useSceneEditorState({
   authenticatedFetch,
 }: UseSceneEditorStateArgs) {
-  const [sectionMenuValue, setSectionMenuValue] =
-    useState<EditorSectionId>('details')
+  const {
+    currentSection,
+    currentSectionIndex,
+    handleSectionJump,
+    handleSectionStep,
+    nextSection,
+    previousSection,
+    sectionMenuValue,
+  } = useSceneEditorNavigation()
+  const { actionBarSentinelRef, isActionBarStuck } = useSceneEditorActionBarState()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
@@ -40,18 +45,11 @@ export function useSceneEditorState({
     null,
   )
   const [playlistValue, setPlaylistValue] = useState('')
-  const [availableTags, setAvailableTags] = useState<TagResponse[]>([])
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
-  const [tagSearchValue, setTagSearchValue] = useState('')
-  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false)
   const [sceneData, setSceneData] = useState<SceneData>(initialSceneData)
   const [sceneDataText, setSceneDataText] = useState(() =>
     prettyPrintEditorSceneData(initialSceneData),
   )
   const [errors, setErrors] = useState<CreateSceneFormErrors>({})
-  const [tagsLoading, setTagsLoading] = useState(true)
-  const [tagsError, setTagsError] = useState<string | null>(null)
-  const [isActionBarStuck, setIsActionBarStuck] = useState(false)
   const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false)
   const [isMotionAdvancedEnabled, setIsMotionAdvancedEnabled] = useState(false)
   const [cameraAdvancedDraft, setCameraAdvancedDraft] = useState(() => ({
@@ -64,63 +62,11 @@ export function useSceneEditorState({
   const [isConfirmJsonOpen, setIsConfirmJsonOpen] = useState(false)
   const [pendingTagAttachment, setPendingTagAttachment] =
     useState<PendingTagAttachment | null>(null)
-  const [isCreatingTag, setIsCreatingTag] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const tagDropdownRef = useRef<HTMLDivElement | null>(null)
-  const actionBarSentinelRef = useRef<HTMLDivElement | null>(null)
 
   const formErrorId = useId()
-  const tagSearchInputId = useId()
   const titleId = 'create-scene-title'
 
-  const normalizedTagSearchValue = normalizeTagName(tagSearchValue)
-  const selectedTags = useMemo(
-    () => availableTags.filter((tag) => selectedTagIds.includes(tag.tagId)),
-    [availableTags, selectedTagIds],
-  )
-  const selectableTags = useMemo(
-    () => availableTags.filter((tag) => !selectedTagIds.includes(tag.tagId)),
-    [availableTags, selectedTagIds],
-  )
-  const filteredSelectableTags = useMemo(() => {
-    if (!normalizedTagSearchValue) {
-      return selectableTags
-    }
-
-    return selectableTags.filter((tag) =>
-      tag.name.includes(normalizedTagSearchValue),
-    )
-  }, [normalizedTagSearchValue, selectableTags])
-  const exactMatchedTag = useMemo(
-    () =>
-      availableTags.find((tag) => tag.name === normalizedTagSearchValue) ?? null,
-    [availableTags, normalizedTagSearchValue],
-  )
-  const isExactMatchedTagSelected =
-    exactMatchedTag !== null && selectedTagIds.includes(exactMatchedTag.tagId)
-  const canCreateTagFromSearch =
-    normalizedTagSearchValue.length > 0 && exactMatchedTag === null
-  const pendingRetryTags = useMemo(
-    () =>
-      pendingTagAttachment === null
-        ? []
-        : availableTags.filter((tag) =>
-            pendingTagAttachment.tagIds.includes(tag.tagId),
-          ),
-    [availableTags, pendingTagAttachment],
-  )
-  const currentSectionIndex = Math.max(
-    0,
-    EDITOR_SECTIONS.findIndex((section) => section.id === sectionMenuValue),
-  )
-  const currentSection =
-    EDITOR_SECTIONS[currentSectionIndex] ?? EDITOR_SECTIONS[0]
-  const previousSection =
-    currentSectionIndex > 0 ? EDITOR_SECTIONS[currentSectionIndex - 1] : null
-  const nextSection =
-    currentSectionIndex < EDITOR_SECTIONS.length - 1
-      ? EDITOR_SECTIONS[currentSectionIndex + 1]
-      : null
   const detailsSectionIssueMessages = [
     validateSceneName(name),
     thumbnailFile ? validateThumbnailFile(thumbnailFile) : null,
@@ -133,93 +79,6 @@ export function useSceneEditorState({
         ? detailsSectionIssueMessages.join(' ')
         : null,
   }
-
-  useEffect(() => {
-    let isCurrent = true
-
-    async function loadTags() {
-      try {
-        const nextTags = await loadAvailableTagsFromBackend()
-
-        if (!isCurrent) {
-          return
-        }
-
-        setAvailableTags(nextTags)
-        setTagsError(null)
-      } catch (error) {
-        if (!isCurrent) {
-          return
-        }
-
-        setAvailableTags([])
-        setTagsError(
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : 'Unable to load available tags right now.',
-        )
-      } finally {
-        if (isCurrent) {
-          setTagsLoading(false)
-        }
-      }
-    }
-
-    void loadTags()
-
-    return () => {
-      isCurrent = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isTagDropdownOpen) {
-      return
-    }
-
-    function handleDocumentMouseDown(event: MouseEvent) {
-      if (!tagDropdownRef.current?.contains(event.target as Node)) {
-        setIsTagDropdownOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleDocumentMouseDown)
-
-    return () => {
-      document.removeEventListener('mousedown', handleDocumentMouseDown)
-    }
-  }, [isTagDropdownOpen])
-
-  useEffect(() => {
-    if (!isTagDropdownOpen || !pendingTagAttachment) {
-      return
-    }
-
-    setIsTagDropdownOpen(false)
-  }, [isTagDropdownOpen, pendingTagAttachment])
-
-  useEffect(() => {
-    const sentinel = actionBarSentinelRef.current
-
-    if (!sentinel || typeof IntersectionObserver === 'undefined') {
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsActionBarStuck(entry.intersectionRatio < 1)
-      },
-      {
-        threshold: 1,
-      },
-    )
-
-    observer.observe(sentinel)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
 
   function clearErrors(...fields: Array<keyof CreateSceneFormErrors>) {
     if (fields.length === 0) {
@@ -237,6 +96,35 @@ export function useSceneEditorState({
       return nextErrors
     })
   }
+
+  const {
+    availableTags,
+    canCreateTagFromSearch,
+    filteredSelectableTags,
+    handleCreateTag,
+    handleTagSearchChange,
+    isCreatingTag,
+    isExactMatchedTagSelected,
+    isTagDropdownOpen,
+    normalizedTagSearchValue,
+    openTagDropdown,
+    pendingRetryTags,
+    reloadAvailableTags,
+    selectableTags,
+    selectedTagIds,
+    selectedTags,
+    tagDropdownRef,
+    tagSearchInputId,
+    tagSearchValue,
+    tagsError,
+    tagsLoading,
+    toggleTagSelection,
+  } = useSceneTagEditor({
+    authenticatedFetch,
+    clearErrors,
+    pendingTagAttachment,
+    setErrors,
+  })
 
   function applySceneData(nextSceneData: SceneData) {
     const sanitizedSceneData = buildEffectiveSceneData(nextSceneData, {
@@ -311,21 +199,6 @@ export function useSceneEditorState({
     }))
   }
 
-  function handleSectionJump(nextSectionId: EditorSectionId) {
-    setSectionMenuValue(nextSectionId)
-  }
-
-  function handleSectionStep(direction: -1 | 1) {
-    const nextIndex = currentSectionIndex + direction
-    const nextSectionConfig = EDITOR_SECTIONS[nextIndex]
-
-    if (!nextSectionConfig) {
-      return
-    }
-
-    handleSectionJump(nextSectionConfig.id)
-  }
-
   function handleRawSceneDataChange(nextValue: string) {
     setSceneDataText(nextValue)
     clearErrors('sceneData', 'form')
@@ -353,171 +226,6 @@ export function useSceneEditorState({
             ? error.message
             : 'Scene data must be valid JSON before formatting.',
       }))
-    }
-  }
-
-  async function reloadAvailableTags() {
-    setTagsLoading(true)
-    setTagsError(null)
-
-    try {
-      const nextTags = await loadAvailableTagsFromBackend()
-      setAvailableTags(nextTags)
-    } catch (error) {
-      setAvailableTags([])
-      setTagsError(
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : 'Unable to load available tags right now.',
-      )
-    } finally {
-      setTagsLoading(false)
-    }
-  }
-
-  function openTagDropdown() {
-    if (pendingTagAttachment || tagsLoading || isCreatingTag) {
-      return
-    }
-
-    clearErrors('form', 'newTag', 'tags')
-    setIsTagDropdownOpen(true)
-  }
-
-  function handleTagSearchChange(nextValue: string) {
-    setTagSearchValue(nextValue)
-    setIsTagDropdownOpen(true)
-    clearErrors('form', 'newTag', 'tags')
-  }
-
-  function toggleTagSelection(tagId: number) {
-    if (pendingTagAttachment || isCreatingTag) {
-      return
-    }
-
-    clearErrors('form', 'newTag', 'tags')
-    setSelectedTagIds((currentTagIds) =>
-      currentTagIds.includes(tagId)
-        ? currentTagIds.filter((currentTagId) => currentTagId !== tagId)
-        : [...currentTagIds, tagId],
-    )
-    setTagSearchValue('')
-    setIsTagDropdownOpen(false)
-  }
-
-  async function handleCreateTag(requestedTagName = tagSearchValue) {
-    if (pendingTagAttachment || isCreatingTag) {
-      return
-    }
-
-    const normalizedTagName = normalizeTagName(requestedTagName)
-
-    if (!normalizedTagName) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag: 'Tag name is required.',
-      }))
-      return
-    }
-
-    if (normalizedTagName.length > MAX_TAG_NAME_LENGTH) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag: `Tag name must be at most ${MAX_TAG_NAME_LENGTH} characters.`,
-      }))
-      return
-    }
-
-    const existingTag = availableTags.find(
-      (tag) => tag.name === normalizedTagName,
-    )
-
-    if (existingTag) {
-      setSelectedTagIds((currentTagIds) =>
-        currentTagIds.includes(existingTag.tagId)
-          ? currentTagIds
-          : [...currentTagIds, existingTag.tagId],
-      )
-      setTagSearchValue('')
-      setIsTagDropdownOpen(false)
-      clearErrors('newTag', 'form', 'tags')
-      return
-    }
-
-    setIsCreatingTag(true)
-    clearErrors('newTag', 'form', 'tags')
-
-    try {
-      const response = await authenticatedFetch('/tags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: normalizedTagName,
-        }),
-      })
-
-      if (response.ok) {
-        const createdTag = (await response.json()) as TagResponse
-        setAvailableTags((currentTags) => upsertTag(currentTags, createdTag))
-        setTagsError(null)
-        setSelectedTagIds((currentTagIds) =>
-          currentTagIds.includes(createdTag.tagId)
-            ? currentTagIds
-            : [...currentTagIds, createdTag.tagId],
-        )
-        setTagSearchValue('')
-        setIsTagDropdownOpen(false)
-        return
-      }
-
-      const apiError = await parseApiError(response)
-
-      if (response.status === 409 && apiError?.code === 'TAG_ALREADY_EXISTS') {
-        try {
-          const nextTags = await loadAvailableTagsFromBackend()
-          const matchedTag = nextTags.find(
-            (tag) => tag.name === normalizedTagName,
-          )
-
-          setAvailableTags(sortTags(nextTags))
-          setTagsError(null)
-
-          if (matchedTag) {
-            setSelectedTagIds((currentTagIds) =>
-              currentTagIds.includes(matchedTag.tagId)
-                ? currentTagIds
-                : [...currentTagIds, matchedTag.tagId],
-            )
-            setTagSearchValue('')
-            setIsTagDropdownOpen(false)
-            return
-          }
-        } catch (error) {
-          setTagsError(
-            error instanceof Error && error.message.trim()
-              ? error.message
-              : 'Unable to refresh tags right now.',
-          )
-        }
-      }
-
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag:
-          apiError?.details?.name ??
-          apiError?.message ??
-          'Failed to create tag. Please try again.',
-      }))
-    } catch (error) {
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        newTag:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : 'Failed to create tag. Please try again.',
-      }))
-    } finally {
-      setIsCreatingTag(false)
     }
   }
 
