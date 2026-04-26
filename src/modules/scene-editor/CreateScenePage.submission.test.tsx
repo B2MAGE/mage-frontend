@@ -338,6 +338,37 @@ describe('CreateScenePage submission', () => {
     expect(createAttempted).toBe(false)
   })
 
+  it('does not create the scene when the live preview returns a non-png thumbnail', async () => {
+    storeSceneEditorSession()
+
+    let createAttempted = false
+    mockCaptureFramePreview.mockResolvedValueOnce('data:image/webp;base64,AAAA')
+
+    mockCreateScenePageFetch((input) => {
+      if (input === buildApiUrl('/scenes')) {
+        createAttempted = true
+        return Promise.resolve(
+          new Response(JSON.stringify({ sceneId: 18 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+    })
+
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
+
+    expect(
+      await screen.findByText(/preview capture returned an unsupported image format\./i),
+    ).toBeInTheDocument()
+    expect(createAttempted).toBe(false)
+  })
+
   it('does not create the scene when thumbnail upload preparation fails', async () => {
     storeSceneEditorSession()
 
