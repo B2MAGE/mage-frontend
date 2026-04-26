@@ -121,6 +121,7 @@ describe('MyScenesPage states', () => {
 
     expect(await screen.findByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
+    expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
   })
 
   it('shows empty and error states using simple messages', async () => {
@@ -154,7 +155,7 @@ describe('MyScenesPage states', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
-  it('shows a description placeholder when no description is stored', async () => {
+  it('shows an add-description action when no description is stored', async () => {
     storeMyScenesSession()
 
     const storedUser = buildMyScenesStoredUser()

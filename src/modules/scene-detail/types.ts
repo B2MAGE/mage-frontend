@@ -7,6 +7,7 @@ export type SceneDetail = {
   ownerUserId: number | null
   creatorDisplayName: string | null
   name: string
+  description: string | null
   sceneData: MageSceneBlob
   thumbnailRef: string | null
   createdAt: string | null
@@ -33,7 +34,6 @@ export type CreatorProfile = {
   displayName: string
   handle: string
   subscribersLabel: string
-  studioNote: string
   primaryActionLabel?: string
 }
 
@@ -47,11 +47,7 @@ export type SceneEngagement = {
 }
 
 export type SceneDescription = {
-  opening: string
-  middle: string
-  closing: string
-  bestFor: string
-  builtWith: string
+  paragraphs: string[]
   tags: string[]
 }
 

@@ -110,14 +110,13 @@ html[data-theme='classic-facebook'] .scene-detail-comments-panel {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-html[data-theme='classic-facebook'] .scene-detail-description-card__meta strong,
-html[data-theme='classic-facebook'] .scene-detail-note-grid__item strong {
+html[data-theme='classic-facebook'] .scene-detail-description-card__meta strong {
   color: #1d2a44;
 }
 
 html[data-theme='classic-facebook'] .scene-detail-description-card__meta span,
 html[data-theme='classic-facebook'] .scene-detail-description-card p,
-html[data-theme='classic-facebook'] .scene-detail-note-grid__item span,
+html[data-theme='classic-facebook'] .scene-detail-comments-empty,
 html[data-theme='classic-facebook'] .scene-detail-comment-composer__field {
   color: #596b93;
 }
@@ -128,12 +127,6 @@ html[data-theme='classic-facebook'] .scene-detail-description-toggle {
 
 html[data-theme='classic-facebook'] .scene-detail-description-toggle:hover {
   color: #2d4373;
-}
-
-html[data-theme='classic-facebook'] .scene-detail-note-grid__item {
-  border-radius: 4px;
-  border-color: #d8dfea;
-  background: #f7f8fb;
 }
 
 html[data-theme='classic-facebook'] .scene-detail-comment-composer__field {

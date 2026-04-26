@@ -1,5 +1,5 @@
 import { pickCreatorProfileBlueprint } from './fixtures'
-import type { CreatorProfile, SceneDetail, SceneEngagement } from './types'
+import type { CreatorProfile, SceneDescription, SceneDetail, SceneEngagement } from './types'
 
 function formatCreatedAt(createdAt: string | null) {
   if (!createdAt) {
@@ -36,6 +36,19 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '')
 }
 
+function buildDescriptionParagraphs(description: string | null) {
+  const normalizedDescription = description?.replace(/\r\n/g, '\n').trim()
+
+  if (!normalizedDescription) {
+    return []
+  }
+
+  return normalizedDescription
+    .split(/\n[ \t]*\n/g)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+}
+
 export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
   const views = 1559 + scene.id * 120
   const upvotes = 56 + scene.id * 30
@@ -52,6 +65,13 @@ export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
   }
 }
 
+export function buildSceneDescription(scene: SceneDetail): SceneDescription {
+  return {
+    paragraphs: buildDescriptionParagraphs(scene.description),
+    tags: scene.tags,
+  }
+}
+
 export function buildCreatorProfile(
   scene: SceneDetail,
   viewerDisplayName: string | undefined,
@@ -64,8 +84,6 @@ export function buildCreatorProfile(
       displayName: resolvedDisplayName,
       handle: `@${slugify(resolvedDisplayName) || 'magecreator'}`,
       subscribersLabel: buildSubscriberLabel(scene.id),
-      studioNote:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
       primaryActionLabel: 'Subscribe',
     }
   }

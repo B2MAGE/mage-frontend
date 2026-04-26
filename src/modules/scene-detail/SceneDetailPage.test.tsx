@@ -104,6 +104,7 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
+    expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
     expect(screen.getByText(/add a comment as scene artist/i)).toBeInTheDocument()
     expect(screen.getAllByText('Scene Artist').length).toBeGreaterThan(0)
@@ -130,6 +131,86 @@ describe('SceneDetailPage route states', () => {
     const sceneRequestHeaders = fetchSpy.mock.calls[1][1]?.headers as Headers
 
     expect(sceneRequestHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
+  })
+
+  it('shows an empty description state when no description is stored', async () => {
+    const sceneResponse = buildSceneDetailResponse({
+      description: null,
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText('No description provided.')).toBeInTheDocument()
+    expect(screen.queryByText(/lorem ipsum/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
+  })
+
+  it('does not show the description toggle when a short description has no hidden content', async () => {
+    const sceneResponse = buildSceneDetailResponse({
+      description: 'Short saved description.',
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText('Short saved description.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
+  })
+
+  it('preserves saved description line breaks on the player page', async () => {
+    const sceneResponse = buildSceneDetailResponse({
+      description: 'First line\nSecond line\n\nSecond paragraph',
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
+
+    const descriptionParagraphs = document.querySelectorAll('.scene-detail-description-copy p')
+
+    expect(descriptionParagraphs).toHaveLength(2)
+    expect(descriptionParagraphs[0]?.textContent).toBe('First lineSecond line')
+    expect(descriptionParagraphs[0]?.querySelectorAll('br')).toHaveLength(1)
+    expect(descriptionParagraphs[1]?.textContent).toBe('Second paragraph')
+    expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
   })
 
   it('shows a clear error state for an invalid scene route id', async () => {

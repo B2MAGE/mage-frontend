@@ -355,6 +355,38 @@ export function SceneEditorShell({
     );
   }
 
+  function handleDescriptionChange(nextDescription: string) {
+    setDescription(nextDescription);
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      description: undefined,
+      form: undefined,
+    }));
+  }
+
+  function renderSceneDescriptionField() {
+    return (
+      <div className="field-group">
+        <FieldGroupLabel htmlFor="description" label="Description" />
+        <textarea
+          aria-describedby={errors.description ? "description-error" : undefined}
+          aria-invalid={Boolean(errors.description)}
+          id="description"
+          maxLength={1000}
+          onChange={(event) => handleDescriptionChange(event.currentTarget.value)}
+          placeholder="Describe the mood, motion, or moment this scene is built for."
+          rows={5}
+          value={description}
+        />
+        {errors.description ? (
+          <p className="field-error" id="description-error" role="alert">
+            {errors.description}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   function renderTagEditor() {
     return (
       <div className="field-group">
@@ -828,6 +860,7 @@ export function SceneEditorShell({
     authenticatedFetch,
     availableTags,
     captureThumbnailIfMissing: captureThumbnailFromPreview,
+    description,
     isCameraAdvancedEnabled,
     isMotionAdvancedEnabled,
     name,
@@ -937,19 +970,7 @@ export function SceneEditorShell({
               >
                 <div className="scene-editor-stack">
                   {renderSceneNameField()}
-
-                  <div className="field-group">
-                    <FieldGroupLabel htmlFor="description" label="Description" />
-                    <textarea
-                      id="description"
-                      onChange={(event) =>
-                        setDescription(event.currentTarget.value)
-                      }
-                      placeholder="Describe the mood, motion, or moment this scene is built for."
-                      rows={5}
-                      value={description}
-                    />
-                  </div>
+                  {renderSceneDescriptionField()}
 
                   <div className="field-group">
                     <FieldGroupLabel htmlFor="playlists" label="Playlists" />

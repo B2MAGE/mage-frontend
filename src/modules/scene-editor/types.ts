@@ -1,7 +1,7 @@
 import type { PersistedPassFlag, SceneData, SceneEditorModel, ScenePassId } from './sceneEditor'
 
 export type CreateSceneFormErrors = Partial<
-  Record<'form' | 'name' | 'newTag' | 'sceneData' | 'tags' | 'thumbnail', string>
+  Record<'description' | 'form' | 'name' | 'newTag' | 'sceneData' | 'tags' | 'thumbnail', string>
 >
 
 export type EditorSectionId =
@@ -39,6 +39,7 @@ export type EditorSectionConfig = {
 
 export type SceneEditorStateSnapshot = {
   availableTags: Array<{ tagId: number; name: string }>
+  description: string
   isCameraAdvancedEnabled: boolean
   isMotionAdvancedEnabled: boolean
   name: string
