@@ -13,6 +13,9 @@ import {
 import { ALLOWED_THUMBNAIL_CONTENT_TYPES, MAX_THUMBNAIL_BYTES, initialSceneModel, passFlagsById } from './fixtures'
 import type { CreateSceneFormErrors } from './types'
 
+const CAPTURED_THUMBNAIL_CONTENT_TYPE = 'image/png'
+const CAPTURED_THUMBNAIL_FILENAME = 'scene-preview-thumbnail.png'
+
 export function normalizeTagName(name: string) {
   return name.trim().toLowerCase()
 }
@@ -170,7 +173,12 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
   }
 
   const [, rawContentType, base64Marker, encodedPayload] = matchedDataUrl
-  const contentType = rawContentType?.trim() || 'image/png'
+  const contentType = rawContentType?.trim().toLowerCase()
+
+  if (contentType !== CAPTURED_THUMBNAIL_CONTENT_TYPE) {
+    throw new Error('Preview capture returned an unsupported image format.')
+  }
+
   const decodedPayload = base64Marker
     ? window.atob(encodedPayload)
     : decodeURIComponent(encodedPayload)
@@ -178,15 +186,8 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
     character.charCodeAt(0),
   )
 
-  const extension =
-    contentType === 'image/jpeg'
-      ? 'jpg'
-      : contentType === 'image/webp'
-        ? 'webp'
-        : 'png'
-
-  return new File([payloadBytes], `scene-preview-thumbnail.${extension}`, {
-    type: contentType,
+  return new File([payloadBytes], CAPTURED_THUMBNAIL_FILENAME, {
+    type: CAPTURED_THUMBNAIL_CONTENT_TYPE,
   })
 }
 
