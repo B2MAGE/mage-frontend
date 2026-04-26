@@ -201,8 +201,8 @@ export function SceneDetailPage() {
 
   const creatorProfile = buildCreatorProfile(scene, user?.displayName, user?.userId)
   const engagement = buildSceneEngagement(scene)
-  const sceneDescription = buildSceneDescription(scene, creatorProfile)
-  const sceneComments = buildSceneComments(scene)
+  const sceneDescription = buildSceneDescription(scene)
+  const sceneComments = buildSceneComments()
   const filteredRecommendedScenes = selectRecommendedScenes(
     recommendedSceneGroups,
     recommendationFilter,
@@ -284,7 +284,6 @@ export function SceneDetailPage() {
           </section>
 
           <SceneDescriptionCard
-            creatorProfile={creatorProfile}
             engagement={engagement}
             isDescriptionExpanded={isDescriptionExpanded}
             sceneDescription={sceneDescription}

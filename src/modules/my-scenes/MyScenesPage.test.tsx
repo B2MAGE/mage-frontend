@@ -155,7 +155,7 @@ describe('MyScenesPage states', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
-  it('shows a description placeholder when no description is stored', async () => {
+  it('shows an add-description action when no description is stored', async () => {
     storeMyScenesSession()
 
     const storedUser = buildMyScenesStoredUser()

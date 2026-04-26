@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
-import type { CreatorProfile, SceneDescription, SceneEngagement } from '../types'
+import type { SceneDescription, SceneEngagement } from '../types'
 
 type SceneDescriptionCardProps = {
-  creatorProfile: CreatorProfile
   engagement: SceneEngagement
   isDescriptionExpanded: boolean
   sceneDescription: SceneDescription
@@ -10,12 +9,14 @@ type SceneDescriptionCardProps = {
 }
 
 export function SceneDescriptionCard({
-  creatorProfile,
   engagement,
   isDescriptionExpanded,
   sceneDescription,
   onToggleDescription,
 }: SceneDescriptionCardProps) {
+  const hasDescription = sceneDescription.paragraphs.length > 0
+  const hasTags = sceneDescription.tags.length > 0
+  const shouldShowToggle = hasDescription || hasTags
   const descriptionToggle = (
     <button
       className="scene-detail-description-toggle"
@@ -50,33 +51,18 @@ export function SceneDescriptionCard({
         <span>{engagement.publishedLabel}</span>
       </div>
       <div className="scene-detail-description-copy" data-expanded={isDescriptionExpanded}>
-        {sceneDescription.paragraphs.map((paragraph, index) => (
-          <p key={`${index}-${paragraph}`}>{paragraph}</p>
-        ))}
+        {hasDescription ? (
+          sceneDescription.paragraphs.map((paragraph, index) => (
+            <p key={`${index}-${paragraph}`}>{paragraph}</p>
+          ))
+        ) : (
+          <p>No description provided.</p>
+        )}
       </div>
 
       {isDescriptionExpanded ? (
         <>
-          <div className="scene-detail-note-grid">
-            <div className="scene-detail-note-grid__item">
-              <span>Studio note</span>
-              <strong>{creatorProfile.studioNote}</strong>
-            </div>
-            <div className="scene-detail-note-grid__item">
-              <span>Best for</span>
-              <strong>{sceneDescription.bestFor}</strong>
-            </div>
-            <div className="scene-detail-note-grid__item">
-              <span>Built with</span>
-              <strong>{sceneDescription.builtWith}</strong>
-            </div>
-            <div className="scene-detail-note-grid__item">
-              <span>Saves</span>
-              <strong>{engagement.savesLabel}</strong>
-            </div>
-          </div>
-
-          {sceneDescription.tags.length > 0 ? (
+          {hasTags ? (
             <div className="tag-filter-bar scene-detail-description-tags" role="toolbar" aria-label="Scene tags">
               {sceneDescription.tags.map((tag) => (
                 <Link key={tag} className="tag-pill" to={`/scenes?tag=${encodeURIComponent(tag)}`}>
@@ -86,10 +72,10 @@ export function SceneDescriptionCard({
             </div>
           ) : null}
 
-          {descriptionToggle}
+          {shouldShowToggle ? descriptionToggle : null}
         </>
       ) : (
-        descriptionToggle
+        shouldShowToggle ? descriptionToggle : null
       )}
     </section>
   )

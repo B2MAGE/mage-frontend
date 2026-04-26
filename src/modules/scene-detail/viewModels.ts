@@ -1,4 +1,4 @@
-import { buildFallbackSceneDescriptionParagraphs, pickCreatorProfileBlueprint } from './fixtures'
+import { pickCreatorProfileBlueprint } from './fixtures'
 import type { CreatorProfile, SceneDescription, SceneDetail, SceneEngagement } from './types'
 
 function formatCreatedAt(createdAt: string | null) {
@@ -52,18 +52,11 @@ export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
   }
 }
 
-export function buildSceneDescription(
-  scene: SceneDetail,
-  creatorProfile: CreatorProfile,
-): SceneDescription {
+export function buildSceneDescription(scene: SceneDetail): SceneDescription {
   const storedDescription = scene.description?.trim()
 
   return {
-    paragraphs: storedDescription
-      ? [storedDescription]
-      : buildFallbackSceneDescriptionParagraphs(creatorProfile),
-    bestFor: 'lorem ipsum, dolor sit amet, consectetur',
-    builtWith: 'adipiscing elit, sed do eiusmod, tempor incididunt',
+    paragraphs: storedDescription ? [storedDescription] : [],
     tags: scene.tags,
   }
 }
@@ -80,8 +73,6 @@ export function buildCreatorProfile(
       displayName: resolvedDisplayName,
       handle: `@${slugify(resolvedDisplayName) || 'magecreator'}`,
       subscribersLabel: buildSubscriberLabel(scene.id),
-      studioNote:
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
       primaryActionLabel: 'Subscribe',
     }
   }

@@ -34,7 +34,6 @@ export type CreatorProfile = {
   displayName: string
   handle: string
   subscribersLabel: string
-  studioNote: string
   primaryActionLabel?: string
 }
 
@@ -49,8 +48,6 @@ export type SceneEngagement = {
 
 export type SceneDescription = {
   paragraphs: string[]
-  bestFor: string
-  builtWith: string
   tags: string[]
 }
 

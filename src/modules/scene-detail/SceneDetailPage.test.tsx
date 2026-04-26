@@ -133,6 +133,31 @@ describe('SceneDetailPage route states', () => {
     expect(sceneRequestHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
   })
 
+  it('shows an empty description state when no description is stored', async () => {
+    const sceneResponse = buildSceneDetailResponse({
+      description: null,
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText('No description provided.')).toBeInTheDocument()
+    expect(screen.queryByText(/lorem ipsum/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
+  })
+
   it('shows a clear error state for an invalid scene route id', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
