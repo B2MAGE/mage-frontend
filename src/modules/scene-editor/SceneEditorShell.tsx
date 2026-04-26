@@ -1,4 +1,4 @@
-import { useRef, type PropsWithChildren, type ReactNode } from "react";
+import { useRef } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import { AuthPage, AuthPageHeader } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
@@ -19,12 +19,20 @@ import {
   toRadians,
 } from "./sceneEditor";
 import {
-  EDITOR_SECTIONS,
   PLAYLIST_OPTIONS,
-  TAG_SKELETON_COUNT,
   additionalPassesByCategory,
   initialSceneModel,
 } from "./fixtures";
+import { SceneEditorActionBar } from "./ui/SceneEditorActionBar";
+import { SceneEditorDetailsSection } from "./ui/SceneEditorDetailsSection";
+import {
+  CollapsibleEditorGroup,
+  ConfirmSummaryItem,
+  ConfirmSummaryPills,
+  ConfirmSummarySection,
+  FieldGroupLabel,
+} from "./ui/SceneEditorLayout";
+import { SceneEditorStepper } from "./ui/SceneEditorStepper";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
@@ -40,138 +48,6 @@ function formatFixed(value: number, fractionDigits = 2) {
 
 function formatDegrees(value: number) {
   return `${Math.round(value)}\u00B0`;
-}
-
-function CheckIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path
-        d="m9.55 16.65-4.2-4.2 1.4-1.4 2.8 2.8 7.65-7.65 1.4 1.4Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M11 6h2v8h-2zm0 10h2v2h-2z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function FieldGroupLabel({
-  description,
-  htmlFor,
-  label,
-}: {
-  description?: string;
-  htmlFor?: string;
-  label: string;
-}) {
-  return (
-    <div className="scene-field__copy">
-      <div className="scene-field__label-row">
-        {htmlFor ? (
-          <label className="scene-field__label" htmlFor={htmlFor}>
-            {label}
-          </label>
-        ) : (
-          <span className="scene-field__label">{label}</span>
-        )}
-      </div>
-      {description ? (
-        <p className="scene-field__description">{description}</p>
-      ) : null}
-    </div>
-  );
-}
-
-function CollapsibleEditorGroup({
-  children,
-  hideLabel,
-  id,
-  isOpen,
-  onToggle,
-  showLabel,
-}: PropsWithChildren<{
-  hideLabel?: string;
-  id: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  showLabel?: string;
-}>) {
-  return (
-    <section className="scene-editor-collapsible">
-      <button
-        aria-controls={id}
-        aria-expanded={isOpen}
-        className="scene-editor-collapsible__toggle"
-        onClick={onToggle}
-        type="button"
-      >
-        {isOpen ? hideLabel ?? "Hide Advanced" : showLabel ?? "Show Advanced"}
-      </button>
-
-      {isOpen ? (
-        <div className="scene-editor-collapsible__content" id={id}>
-          {children}
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function ConfirmSummarySection({
-  children,
-  title,
-}: PropsWithChildren<{
-  title: string;
-}>) {
-  return (
-    <section className="scene-confirm-section">
-      <h3 className="scene-confirm-section__title">{title}</h3>
-      <dl className="scene-confirm-section__list">{children}</dl>
-    </section>
-  );
-}
-
-function ConfirmSummaryItem({
-  label,
-  value,
-}: {
-  label: string;
-  value: ReactNode;
-}) {
-  return (
-    <div className="scene-confirm-section__item">
-      <dt className="scene-confirm-section__term">{label}</dt>
-      <dd className="scene-confirm-section__value">{value}</dd>
-    </div>
-  );
-}
-
-function ConfirmSummaryPills({
-  emptyLabel,
-  values,
-}: {
-  emptyLabel: string;
-  values: string[];
-}) {
-  if (values.length === 0) {
-    return <span>{emptyLabel}</span>;
-  }
-
-  return (
-    <span className="scene-confirm-pills">
-      {values.map((value) => (
-        <span className="scene-confirm-pill" key={value}>
-          {value}
-        </span>
-      ))}
-    </span>
-  );
 }
 
 type SceneEditorShellProps = {
@@ -326,35 +202,6 @@ export function SceneEditorShell({
     );
   }
 
-  function renderSceneNameField() {
-    return (
-      <div className="field-group">
-        <FieldGroupLabel htmlFor="name" label="Scene Name" />
-        <input
-          id="name"
-          minLength={2}
-          name="name"
-          onChange={(event) => handleNameChange(event.currentTarget.value)}
-          placeholder="Aurora Drift"
-          required
-          type="text"
-          value={name}
-          aria-describedby={errors.name ? "name-error" : "name-hint"}
-          aria-invalid={Boolean(errors.name)}
-        />
-        {errors.name ? (
-          <p className="field-error" id="name-error" role="alert">
-            {errors.name}
-          </p>
-        ) : (
-          <p className="field-hint" id="name-hint">
-            Start with a memorable name.
-          </p>
-        )}
-      </div>
-    );
-  }
-
   function handleDescriptionChange(nextDescription: string) {
     setDescription(nextDescription);
     setErrors((currentErrors) => ({
@@ -362,263 +209,6 @@ export function SceneEditorShell({
       description: undefined,
       form: undefined,
     }));
-  }
-
-  function renderSceneDescriptionField() {
-    return (
-      <div className="field-group">
-        <FieldGroupLabel htmlFor="description" label="Description" />
-        <textarea
-          aria-describedby={errors.description ? "description-error" : undefined}
-          aria-invalid={Boolean(errors.description)}
-          id="description"
-          maxLength={1000}
-          onChange={(event) => handleDescriptionChange(event.currentTarget.value)}
-          placeholder="Describe the mood, motion, or moment this scene is built for."
-          rows={5}
-          value={description}
-        />
-        {errors.description ? (
-          <p className="field-error" id="description-error" role="alert">
-            {errors.description}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  function renderTagEditor() {
-    return (
-      <div className="field-group">
-        <div className="scene-tag-editor__header">
-          <FieldGroupLabel label="Tags" />
-          {pendingTagAttachment ? (
-            <span className="field-hint">
-              Retry mode for scene #{pendingTagAttachment.sceneId}
-            </span>
-          ) : null}
-        </div>
-
-        <p className="field-hint">
-          Search existing tags. If there is no exact match, add it from the
-          dropdown before saving.
-        </p>
-
-        {tagsError ? (
-          <div className="scene-tag-editor__status">
-            <p className="field-error" role="alert">
-              {tagsError}
-            </p>
-            <button
-              className="scene-secondary-button"
-              disabled={tagsLoading}
-              onClick={() => {
-                void reloadAvailableTags();
-              }}
-              type="button"
-            >
-              Retry tag load
-            </button>
-          </div>
-        ) : null}
-
-        <div
-          className="scene-tag-editor__picker"
-          role="group"
-          aria-label="Available tags"
-        >
-          {tagsLoading ? (
-            <div className="tag-filter-bar" aria-label="Available tags loading">
-              {Array.from({ length: TAG_SKELETON_COUNT }, (_, index) => (
-                <span
-                  key={index}
-                  className="tag-pill tag-pill--skeleton"
-                  aria-hidden="true"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="scene-tag-dropdown" ref={tagDropdownRef}>
-              <div className="scene-tag-dropdown__search">
-                <label htmlFor={tagSearchInputId}>Select existing tags</label>
-                <input
-                  aria-controls="scene-tag-dropdown-panel"
-                  aria-describedby={errors.newTag ? "tag-editor-error" : undefined}
-                  aria-expanded={isTagDropdownOpen}
-                  aria-invalid={Boolean(errors.newTag)}
-                  disabled={Boolean(pendingTagAttachment) || isCreatingTag}
-                  id={tagSearchInputId}
-                  onChange={(event) =>
-                    handleTagSearchChange(event.currentTarget.value)
-                  }
-                  onClick={openTagDropdown}
-                  onFocus={openTagDropdown}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") {
-                      return;
-                    }
-
-                    if (canCreateTagFromSearch) {
-                      event.preventDefault();
-                      void handleCreateTag();
-                      return;
-                    }
-
-                    if (filteredSelectableTags.length === 1) {
-                      event.preventDefault();
-                      toggleTagSelection(filteredSelectableTags[0].tagId);
-                    }
-                  }}
-                  placeholder="Search or add tags"
-                  type="text"
-                  value={tagSearchValue}
-                />
-              </div>
-
-              {isTagDropdownOpen ? (
-                <div
-                  className="scene-tag-dropdown__panel"
-                  id="scene-tag-dropdown-panel"
-                >
-                  {filteredSelectableTags.length > 0 || canCreateTagFromSearch ? (
-                    <div className="scene-tag-dropdown__options">
-                      {filteredSelectableTags.map((tag) => (
-                        <button
-                          key={tag.tagId}
-                          className="scene-tag-dropdown__option"
-                          disabled={isCreatingTag}
-                          onClick={() => toggleTagSelection(tag.tagId)}
-                          type="button"
-                        >
-                          {tag.name}
-                        </button>
-                      ))}
-                      {canCreateTagFromSearch ? (
-                        <button
-                          className="scene-tag-dropdown__option scene-tag-dropdown__option--create"
-                          disabled={isCreatingTag}
-                          onClick={() => {
-                            void handleCreateTag();
-                          }}
-                          type="button"
-                        >
-                          {isCreatingTag
-                            ? `Adding "${normalizedTagSearchValue}"...`
-                            : `Add tag "${normalizedTagSearchValue}"`}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : availableTags.length === 0 && !normalizedTagSearchValue ? (
-                    <p className="field-hint">
-                      No tags exist yet. Type a name to add the first one.
-                    </p>
-                  ) : isExactMatchedTagSelected ? (
-                    <p className="field-hint">That tag is already selected.</p>
-                  ) : selectableTags.length === 0 ? (
-                    <p className="field-hint">
-                      All available tags are already selected.
-                    </p>
-                  ) : (
-                    <p className="field-hint">No matching unselected tags.</p>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        <div className="scene-tag-editor__selected">
-          <span className="scene-tag-editor__selected-label">Selected tags</span>
-          {selectedTags.length > 0 ? (
-            <div className="scene-tag-editor__selected-list">
-              {selectedTags.map((tag) => (
-                <button
-                  key={tag.tagId}
-                  className="tag-pill tag-pill--active"
-                  disabled={Boolean(pendingTagAttachment)}
-                  onClick={() => toggleTagSelection(tag.tagId)}
-                  type="button"
-                >
-                  {tag.name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="field-hint">No tags selected yet.</p>
-          )}
-        </div>
-
-        {errors.newTag ? (
-          <p className="field-error" id="tag-editor-error" role="alert">
-            {errors.newTag}
-          </p>
-        ) : null}
-
-        {pendingRetryTags.length > 0 ? (
-          <p className="field-hint">
-            Waiting to retry attachment for:{" "}
-            <strong>{pendingRetryTags.map((tag) => tag.name).join(", ")}</strong>
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  function renderThumbnailField() {
-    return (
-      <div className="field-group">
-        <FieldGroupLabel label="Thumbnail" />
-        <div className="scene-thumbnail-picker">
-          <div className="scene-thumbnail-picker__row">
-            <div className="scene-thumbnail-picker__grid">
-              <button
-                className={`scene-thumbnail-choice${
-                  thumbnailPreviewUrl ? " is-selected" : ""
-                }`}
-                disabled={isSubmitting}
-                onClick={() => {
-                  void handleThumbnailCaptureRequest();
-                }}
-                type="button"
-              >
-                <span className="scene-thumbnail-choice__eyebrow">
-                  {thumbnailPreviewUrl ? "Recapture" : "Live Preview"}
-                </span>
-                <strong className="scene-thumbnail-choice__title">
-                  {thumbnailPreviewUrl ? "Capture Again" : "Capture Thumbnail"}
-                </strong>
-                <span className="scene-thumbnail-choice__description">
-                  Use the current live preview frame as the scene thumbnail.
-                </span>
-              </button>
-            </div>
-
-            <div className="scene-thumbnail-preview">
-              <div className="scene-thumbnail-preview__frame">
-                {thumbnailPreviewUrl ? (
-                  <img
-                    alt="Captured thumbnail preview"
-                    className="scene-thumbnail-preview__image"
-                    src={thumbnailPreviewUrl}
-                  />
-                ) : (
-                  <div
-                    aria-hidden="true"
-                    className="scene-card__thumbnail-placeholder scene-thumbnail-preview__placeholder"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {errors.thumbnail ? (
-            <p className="field-error" role="alert">
-              {errors.thumbnail}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    );
   }
 
   function renderCameraAdvancedFields() {
@@ -899,60 +489,12 @@ export function SceneEditorShell({
             <div className="scene-editor-toolbar">
               <div className="scene-editor-toolbar__controls">
                 <div className="scene-editor-toolbar__control-group scene-editor-toolbar__control-group--navigation">
-                  <nav
-                    aria-label="Section navigation"
-                    className="scene-editor-stepper"
-                  >
-                    <ol className="scene-editor-stepper__list">
-                      {EDITOR_SECTIONS.map((section, index) => {
-                        const isActive = section.id === currentSection.id;
-                        const isPrevious = index < currentSectionIndex;
-                        const issueMessage = sectionIssuesById[section.id];
-                        const hasIssues = Boolean(issueMessage);
-                        const isInvalid = isPrevious && hasIssues;
-                        const isComplete = isPrevious && !hasIssues;
-
-                        return (
-                          <li
-                            className="scene-editor-stepper__item"
-                            key={section.id}
-                          >
-                            <button
-                              aria-current={isActive ? "step" : undefined}
-                              className={
-                                isActive
-                                  ? "scene-editor-stepper__button scene-editor-stepper__button--active"
-                                  : isInvalid
-                                    ? "scene-editor-stepper__button scene-editor-stepper__button--invalid"
-                                    : isComplete
-                                      ? "scene-editor-stepper__button scene-editor-stepper__button--complete"
-                                      : "scene-editor-stepper__button"
-                              }
-                              onClick={() => handleSectionJump(section.id)}
-                              title={
-                                isInvalid ? issueMessage ?? undefined : undefined
-                              }
-                              type="button"
-                            >
-                              <span className="scene-editor-stepper__label">
-                                {section.title}
-                              </span>
-                              <span
-                                aria-hidden="true"
-                                className="scene-editor-stepper__marker"
-                              >
-                                {isInvalid ? (
-                                  <AlertIcon />
-                                ) : isComplete ? (
-                                  <CheckIcon />
-                                ) : null}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </nav>
+                  <SceneEditorStepper
+                    currentSection={currentSection}
+                    currentSectionIndex={currentSectionIndex}
+                    sectionIssuesById={sectionIssuesById}
+                    onSectionJump={handleSectionJump}
+                  />
                 </div>
               </div>
             </div>
@@ -964,37 +506,41 @@ export function SceneEditorShell({
             ) : null}
 
             {sectionMenuValue === "details" ? (
-              <SceneSection
-                description="Start with the saved scene metadata before moving into the engine controls."
-                title="Details"
-              >
-                <div className="scene-editor-stack">
-                  {renderSceneNameField()}
-                  {renderSceneDescriptionField()}
-
-                  <div className="field-group">
-                    <FieldGroupLabel htmlFor="playlists" label="Playlists" />
-                    <select
-                      className="scene-select"
-                      id="playlists"
-                      onChange={(event) =>
-                        setPlaylistValue(event.currentTarget.value)
-                      }
-                      value={playlistValue}
-                    >
-                      <option value="">Select playlist</option>
-                      {PLAYLIST_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {renderThumbnailField()}
-                  {renderTagEditor()}
-                </div>
-              </SceneSection>
+              <SceneEditorDetailsSection
+                availableTags={availableTags}
+                canCreateTagFromSearch={canCreateTagFromSearch}
+                description={description}
+                errors={errors}
+                filteredSelectableTags={filteredSelectableTags}
+                isCreatingTag={isCreatingTag}
+                isExactMatchedTagSelected={isExactMatchedTagSelected}
+                isSubmitting={isSubmitting}
+                isTagDropdownOpen={isTagDropdownOpen}
+                name={name}
+                normalizedTagSearchValue={normalizedTagSearchValue}
+                pendingRetryTags={pendingRetryTags}
+                pendingTagAttachment={pendingTagAttachment}
+                playlistValue={playlistValue}
+                selectableTags={selectableTags}
+                selectedTags={selectedTags}
+                tagDropdownRef={tagDropdownRef}
+                tagSearchInputId={tagSearchInputId}
+                tagSearchValue={tagSearchValue}
+                tagsError={tagsError}
+                tagsLoading={tagsLoading}
+                thumbnailPreviewUrl={thumbnailPreviewUrl}
+                onCreateTag={handleCreateTag}
+                onDescriptionChange={handleDescriptionChange}
+                onNameChange={handleNameChange}
+                onOpenTagDropdown={openTagDropdown}
+                onPlaylistValueChange={setPlaylistValue}
+                onReloadAvailableTags={reloadAvailableTags}
+                onTagSearchChange={handleTagSearchChange}
+                onThumbnailCaptureRequest={() => {
+                  void handleThumbnailCaptureRequest();
+                }}
+                onToggleTagSelection={toggleTagSelection}
+              />
             ) : null}
 
             {sectionMenuValue === "scene" ? (
@@ -1957,55 +1503,16 @@ export function SceneEditorShell({
             </section>
           </aside>
 
-          <div
-            className={
-              isActionBarStuck
-                ? "scene-editor-action-bar scene-editor-action-bar--stuck"
-                : "scene-editor-action-bar"
-            }
-          >
-            <div className="scene-editor-action-bar__meta">
-              <span className="scene-editor-toolbar__eyebrow">Section</span>
-              <strong>{currentSection.title}</strong>
-              <span>
-                {currentSectionIndex + 1} of {EDITOR_SECTIONS.length}
-              </span>
-            </div>
-
-            <div className="scene-editor-action-bar__buttons">
-              <button
-                className="scene-secondary-button scene-editor-nav-button"
-                disabled={!previousSection || isSubmitting}
-                onClick={() => handleSectionStep(-1)}
-                type="button"
-              >
-                Back
-              </button>
-
-              <button
-                className="scene-secondary-button scene-editor-nav-button"
-                disabled={!nextSection || isSubmitting}
-                onClick={() => handleSectionStep(1)}
-                type="button"
-              >
-                Next
-              </button>
-
-              <button
-                className="demo-link auth-submit scene-editor-submit"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                {isSubmitting
-                  ? pendingTagAttachment
-                    ? "Retrying tag attachment..."
-                    : "Creating scene..."
-                  : pendingTagAttachment
-                    ? "Retry tag attachment"
-                    : "Create scene"}
-              </button>
-            </div>
-          </div>
+          <SceneEditorActionBar
+            currentSection={currentSection}
+            currentSectionIndex={currentSectionIndex}
+            isActionBarStuck={isActionBarStuck}
+            isSubmitting={isSubmitting}
+            nextSection={nextSection}
+            pendingTagAttachment={pendingTagAttachment}
+            previousSection={previousSection}
+            onSectionStep={handleSectionStep}
+          />
 
           <div
             aria-hidden="true"
