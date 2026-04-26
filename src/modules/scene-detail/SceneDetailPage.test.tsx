@@ -158,6 +158,30 @@ describe('SceneDetailPage route states', () => {
     expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
   })
 
+  it('does not show the description toggle when a short description has no hidden content', async () => {
+    const sceneResponse = buildSceneDetailResponse({
+      description: 'Short saved description.',
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText('Short saved description.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
+  })
+
   it('preserves saved description line breaks on the player page', async () => {
     const sceneResponse = buildSceneDetailResponse({
       description: 'First line\nSecond line\n\nSecond paragraph',
@@ -186,6 +210,7 @@ describe('SceneDetailPage route states', () => {
     expect(descriptionParagraphs[0]?.textContent).toBe('First lineSecond line')
     expect(descriptionParagraphs[0]?.querySelectorAll('br')).toHaveLength(1)
     expect(descriptionParagraphs[1]?.textContent).toBe('Second paragraph')
+    expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
   })
 
   it('shows a clear error state for an invalid scene route id', async () => {

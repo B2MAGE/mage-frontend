@@ -26,7 +26,9 @@ export function SceneDescriptionCard({
 }: SceneDescriptionCardProps) {
   const hasDescription = sceneDescription.paragraphs.length > 0
   const hasTags = sceneDescription.tags.length > 0
-  const shouldShowToggle = hasDescription || hasTags
+  const hasHiddenDescriptionParagraphs = sceneDescription.paragraphs.length > 1
+  const shouldShowToggle = hasHiddenDescriptionParagraphs || hasTags
+  const isDescriptionCopyExpanded = shouldShowToggle ? isDescriptionExpanded : true
   const descriptionToggle = (
     <button
       className="scene-detail-description-toggle"
@@ -60,7 +62,7 @@ export function SceneDescriptionCard({
         <strong>{engagement.viewsLabel}</strong>
         <span>{engagement.publishedLabel}</span>
       </div>
-      <div className="scene-detail-description-copy" data-expanded={isDescriptionExpanded}>
+      <div className="scene-detail-description-copy" data-expanded={isDescriptionCopyExpanded}>
         {hasDescription ? (
           sceneDescription.paragraphs.map((paragraph, index) => (
             <p key={`${index}-${paragraph}`}>{renderParagraphWithLineBreaks(paragraph)}</p>
