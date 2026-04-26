@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import type { SceneDescription, SceneEngagement } from '../types'
 
@@ -6,6 +7,15 @@ type SceneDescriptionCardProps = {
   isDescriptionExpanded: boolean
   sceneDescription: SceneDescription
   onToggleDescription: () => void
+}
+
+function renderParagraphWithLineBreaks(paragraph: string) {
+  return paragraph.split('\n').map((line, index) => (
+    <Fragment key={`${index}-${line}`}>
+      {index > 0 ? <br /> : null}
+      {line}
+    </Fragment>
+  ))
 }
 
 export function SceneDescriptionCard({
@@ -53,7 +63,7 @@ export function SceneDescriptionCard({
       <div className="scene-detail-description-copy" data-expanded={isDescriptionExpanded}>
         {hasDescription ? (
           sceneDescription.paragraphs.map((paragraph, index) => (
-            <p key={`${index}-${paragraph}`}>{paragraph}</p>
+            <p key={`${index}-${paragraph}`}>{renderParagraphWithLineBreaks(paragraph)}</p>
           ))
         ) : (
           <p>No description provided.</p>

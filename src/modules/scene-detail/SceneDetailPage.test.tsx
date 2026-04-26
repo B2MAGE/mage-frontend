@@ -158,6 +158,36 @@ describe('SceneDetailPage route states', () => {
     expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
   })
 
+  it('preserves saved description line breaks on the player page', async () => {
+    const sceneResponse = buildSceneDetailResponse({
+      description: 'First line\nSecond line\n\nSecond paragraph',
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
+
+    const descriptionParagraphs = document.querySelectorAll('.scene-detail-description-copy p')
+
+    expect(descriptionParagraphs).toHaveLength(2)
+    expect(descriptionParagraphs[0]?.textContent).toBe('First lineSecond line')
+    expect(descriptionParagraphs[0]?.querySelectorAll('br')).toHaveLength(1)
+    expect(descriptionParagraphs[1]?.textContent).toBe('Second paragraph')
+  })
+
   it('shows a clear error state for an invalid scene route id', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
 
