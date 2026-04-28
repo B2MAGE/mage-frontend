@@ -12,7 +12,7 @@ The intended production contract is:
 
 This keeps deployment aligned with the current auth flow and avoids introducing CORS requirements into the supported path.
 
-The one exception is scene thumbnail uploads: when a user selects a thumbnail in the create scene flow, the browser uploads that file directly to the configured object-storage provider using a presigned `PUT` URL issued by the backend.
+The one exception is scene thumbnail uploads: when the create scene flow has a thumbnail to persist, the browser uploads that generated image directly to the configured object-storage provider using a presigned `PUT` URL issued by the backend.
 
 ## Container Notes
 
@@ -20,7 +20,6 @@ The frontend repo includes:
 
 - a production `Dockerfile`
 - an nginx config with SPA fallback
-- a `postinstall` hook that reapplies local `patch-package` patches during `npm install` and `npm ci`
 
 SPA fallback is required because the app uses `BrowserRouter`, so direct loads of routes like `/login` and `/register` must return `index.html`.
 

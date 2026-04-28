@@ -1,0 +1,178 @@
+html[data-theme='classic-facebook'] .surface--editor {
+  --scene-editor-panel-radius: 4px;
+}
+
+html[data-theme='classic-facebook'] .surface--editor > .scene-editor-form {
+  margin-top: 24px;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-toolbar__eyebrow {
+  color: #3b5998;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-toolbar__hint,
+html[data-theme='classic-facebook'] .scene-editor-section__header p,
+html[data-theme='classic-facebook'] .scene-editor-preview__header p,
+html[data-theme='classic-facebook'] .scene-effect-footnote,
+html[data-theme='classic-facebook'] .effect-card__header p,
+html[data-theme='classic-facebook'] .scene-pass-order__copy span,
+html[data-theme='classic-facebook'] .scene-editor-action-bar__meta span:last-child,
+html[data-theme='classic-facebook'] .scene-thumbnail-choice__description {
+  color: #596b93;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-section__header h2,
+html[data-theme='classic-facebook'] .scene-editor-preview__header h2,
+html[data-theme='classic-facebook'] .scene-confirm-section__title,
+html[data-theme='classic-facebook'] .effect-card__header h3,
+html[data-theme='classic-facebook'] .scene-pass-order__copy strong,
+html[data-theme='classic-facebook'] .scene-toggle__label,
+html[data-theme='classic-facebook'] .scene-thumbnail-choice__title,
+html[data-theme='classic-facebook'] .scene-editor-toolbar__name,
+html[data-theme='classic-facebook'] .scene-field__label,
+html[data-theme='classic-facebook'] .surface--editor .field-group label,
+html[data-theme='classic-facebook'] .surface--editor .field-group .scene-field__label {
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .effect-card__details {
+  border-left-color: #d8dfea;
+}
+
+html[data-theme='classic-facebook'] .scene-toggle--compact .scene-toggle__label {
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .scene-confirm-section + .scene-confirm-section {
+  border-top-color: #d8dfea;
+}
+
+html[data-theme='classic-facebook'] .scene-confirm-section__item {
+  border-top-color: #e1e6ef;
+}
+
+html[data-theme='classic-facebook'] .scene-confirm-section__term,
+html[data-theme='classic-facebook'] .scene-confirm-vector__axis,
+html[data-theme='classic-facebook'] .field-hint,
+html[data-theme='classic-facebook'] .scene-field__description,
+html[data-theme='classic-facebook'] .scene-tag-editor__label,
+html[data-theme='classic-facebook'] .scene-tag-dropdown__search label,
+html[data-theme='classic-facebook'] .scene-tag-editor__selected-label,
+html[data-theme='classic-facebook'] .scene-effects-category__title,
+html[data-theme='classic-facebook'] .scene-vector-field__axis span {
+  color: #6076a8;
+}
+
+html[data-theme='classic-facebook'] .scene-confirm-section__value,
+html[data-theme='classic-facebook'] .scene-confirm-vector__value {
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-collapsible__toggle {
+  min-height: 34px;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-submit {
+  min-width: 220px;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-action-bar {
+  bottom: 16px;
+  width: 100%;
+  margin-inline: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--editor-action-bar-border);
+  border-radius: 4px;
+  background: var(--editor-action-bar-background);
+  box-shadow: var(--editor-action-bar-shadow);
+}
+
+html[data-theme='classic-facebook'] .scene-editor-action-bar:not(.scene-editor-action-bar--stuck) {
+  border-radius: 4px;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-action-bar__meta strong {
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .scene-editor-preview__card {
+  top: 80px;
+}
+
+html[data-theme='classic-facebook'] .scene-select,
+html[data-theme='classic-facebook'] .scene-number-input,
+html[data-theme='classic-facebook'] .scene-slider__number,
+html[data-theme='classic-facebook'] .scene-textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border-color: #bcc7d8;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .scene-select,
+html[data-theme='classic-facebook'] .scene-number-input,
+html[data-theme='classic-facebook'] .scene-slider__number {
+  min-height: 42px;
+}
+
+html[data-theme='classic-facebook'] .scene-select {
+  padding-right: 44px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #5b74a8 50%),
+    linear-gradient(135deg, #5b74a8 50%, transparent 50%),
+    linear-gradient(#ffffff, #ffffff);
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 12px) calc(50% - 1px),
+    0 0;
+  background-size:
+    6px 6px,
+    6px 6px,
+    100% 100%;
+  background-repeat: no-repeat;
+  background-color: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .scene-select--navigation {
+  border-color: #bcc7d8;
+  background-color: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .scene-select::-ms-expand {
+  display: none;
+}
+
+html[data-theme='classic-facebook'] .scene-select option {
+  color: #1d2a44;
+  background: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .scene-select:hover,
+html[data-theme='classic-facebook'] .scene-number-input:hover,
+html[data-theme='classic-facebook'] .scene-slider__number:hover,
+html[data-theme='classic-facebook'] .scene-textarea:hover {
+  border-color: #98abd3;
+}
+
+html[data-theme='classic-facebook'] .scene-select:focus,
+html[data-theme='classic-facebook'] .scene-number-input:focus,
+html[data-theme='classic-facebook'] .scene-slider__number:focus,
+html[data-theme='classic-facebook'] .scene-textarea:focus {
+  border-color: #5b74a8;
+  box-shadow: 0 0 0 3px rgba(91, 116, 168, 0.14);
+}
+
+html[data-theme='classic-facebook'] .scene-textarea::placeholder,
+html[data-theme='classic-facebook'] .scene-select::placeholder,
+html[data-theme='classic-facebook'] .scene-number-input::placeholder,
+html[data-theme='classic-facebook'] .scene-slider__number::placeholder {
+  color: #8b9cb9;
+}
+
+html[data-theme='classic-facebook'] .scene-textarea--code {
+  background: #fbfcff;
+  color: #1d2a44;
+}

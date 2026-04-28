@@ -1,0 +1,259 @@
+html[data-theme='classic-facebook'] .scene-detail-page {
+  width: min(1380px, 100%);
+  margin-top: 0;
+}
+
+html[data-theme='classic-facebook'] .mage-watch {
+  gap: 24px;
+  align-items: start;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__main {
+  display: grid;
+  gap: 18px;
+}
+
+html[data-theme='classic-facebook'] .mage-stage-frame {
+  border-color: #bcc7d8;
+  background: #f7f8fb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='classic-facebook'] .mage-stage-frame--watch {
+  border-radius: 4px;
+}
+
+html[data-theme='classic-facebook'] .mage-stage-frame--watch::after {
+  background: linear-gradient(180deg, transparent 58%, rgba(15, 24, 44, 0.24));
+}
+
+html[data-theme='classic-facebook'] .mage-watch__title,
+html[data-theme='classic-facebook'] .mage-comments__header h2,
+html[data-theme='classic-facebook'] .mage-watch__rail-header h2,
+html[data-theme='classic-facebook'] .scene-detail-comment__header strong,
+html[data-theme='classic-facebook'] .mage-channel-card__copy strong {
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-header,
+html[data-theme='classic-facebook'] .scene-detail-social-row {
+  padding-top: 0;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-social-row {
+  margin-top: 0;
+  padding: 6px 0 18px;
+  border-bottom-color: #d8dfea;
+}
+
+html[data-theme='classic-facebook'] .mage-channel-card__avatar,
+html[data-theme='classic-facebook'] .mage-comment__avatar,
+html[data-theme='classic-facebook'] .scene-detail-comment-composer__avatar {
+  background: #d8dfea;
+  border-color: #bcc7d8;
+  color: #3b5998;
+  box-shadow: none;
+}
+
+html[data-theme='classic-facebook'] .mage-channel-card__avatar:hover,
+html[data-theme='classic-facebook'] .mage-comment__avatar:hover {
+  background: #e9eff8;
+  border-color: #a8b8d9;
+  box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.12);
+}
+
+html[data-theme='classic-facebook'] .mage-channel-card__copy span,
+html[data-theme='classic-facebook'] .mage-comment__meta span,
+html[data-theme='classic-facebook'] .mage-comments__header span,
+html[data-theme='classic-facebook'] .scene-detail-comment__header span,
+html[data-theme='classic-facebook'] .mage-comment__body p,
+html[data-theme='classic-facebook'] .mage-watch__rail-header p,
+html[data-theme='classic-facebook'] .mage-watch__rail-empty {
+  color: #596b93;
+}
+
+html[data-theme='classic-facebook'] .mage-channel-card__copy strong:hover,
+html[data-theme='classic-facebook'] .scene-detail-comment__header strong:hover {
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-follow-button,
+html[data-theme='classic-facebook'] .scene-detail-action-chip,
+html[data-theme='classic-facebook'] .scene-detail-sort-chip,
+html[data-theme='classic-facebook'] .scene-detail-comment__action {
+  min-height: 34px;
+  border-radius: 2px;
+  border: 1px solid #bcc7d8;
+  background: #f7f8fb;
+  color: #2d4373;
+  box-shadow: none;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-follow-button:hover,
+html[data-theme='classic-facebook'] .scene-detail-action-chip:hover,
+html[data-theme='classic-facebook'] .scene-detail-sort-chip:hover,
+html[data-theme='classic-facebook'] .scene-detail-comment__action:hover {
+  border-color: #98abd3;
+  background: #eef2f7;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-vote-button__icon {
+  color: #6076a8;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-description-card,
+html[data-theme='classic-facebook'] .scene-detail-comments-panel {
+  border-radius: 4px;
+  border-color: #bcc7d8;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='classic-facebook'] .scene-detail-description-card__meta strong {
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-description-card__meta span,
+html[data-theme='classic-facebook'] .scene-detail-description-card p,
+html[data-theme='classic-facebook'] .scene-detail-comments-empty,
+html[data-theme='classic-facebook'] .scene-detail-comment-composer__field {
+  color: #596b93;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-description-toggle {
+  color: #3b5998;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-description-toggle:hover {
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-comment-composer__field {
+  border-bottom-color: #d8dfea;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__rail {
+  top: 72px;
+  gap: 12px;
+}
+
+html[data-theme='classic-facebook'] .scene-detail-recommendation-filters {
+  padding: 0 0 6px;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-panel {
+  border-radius: 4px;
+  border-color: #bcc7d8;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-header strong,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-copy strong,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-header strong {
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-header span,
+html[data-theme='classic-facebook'] .mage-watch__playlist-empty,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-copy span,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-field span,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-source {
+  color: #596b93;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-name-button:hover,
+html[data-theme='classic-facebook'] .mage-watch__playlist-name-button:focus-visible {
+  color: #2d4373;
+  text-decoration: underline;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-name-input,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-field input {
+  border-color: #bcc7d8;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-name-input:focus,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-field input:focus {
+  border-color: #5b74a8;
+  box-shadow: 0 0 0 3px rgba(91, 116, 168, 0.14);
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-action,
+html[data-theme='classic-facebook'] .mage-watch__playlist-remove,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-close {
+  border-color: #bcc7d8;
+  border-radius: 2px;
+  background: #f7f8fb;
+  color: #49618d;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-action[aria-pressed='true'] {
+  border-color: #a8b8d9;
+  background: #e9eff8;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-action:hover,
+html[data-theme='classic-facebook'] .mage-watch__playlist-action:focus-visible,
+html[data-theme='classic-facebook'] .mage-watch__playlist-remove:hover,
+html[data-theme='classic-facebook'] .mage-watch__playlist-remove:focus-visible,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-close:hover,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor-close:focus-visible {
+  border-color: #98abd3;
+  background: #eef2f7;
+  color: #2d4373;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track {
+  border-radius: 2px;
+  background: #f7f8fb;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track.is-active,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track.is-details-open {
+  background: #e9eff8;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track.is-drop-target {
+  background: #eef2f7;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track::before,
+html[data-theme='classic-facebook'] .mage-watch__playlist-track::after {
+  background: #5b74a8;
+  box-shadow: 0 0 0 3px rgba(91, 116, 168, 0.12);
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-index {
+  color: #7b8cad;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor {
+  border-color: #bcc7d8;
+  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  backdrop-filter: none;
+}
+
+html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor::before {
+  border-top-color: #bcc7d8;
+  border-left-color: #bcc7d8;
+  background: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .mage-scene-card {
+  padding: 8px 0;
+}
+
+html[data-theme='classic-facebook'] .mage-scene-card:hover .mage-scene-card__body strong,
+html[data-theme='classic-facebook'] .mage-scene-card.is-active .mage-scene-card__body strong {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}

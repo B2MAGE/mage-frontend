@@ -4,14 +4,17 @@ import { fileURLToPath, URL } from 'node:url'
 
 const backendProxyTarget = 'http://localhost:8080'
 const workspaceRoot = fileURLToPath(new URL('..', import.meta.url))
-const mageEngineEntry = fileURLToPath(new URL('./node_modules/mage/dist/mage-engine.js', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@mage/engine': mageEngineEntry,
+      '@app': fileURLToPath(new URL('./src/app', import.meta.url)),
+      '@auth': fileURLToPath(new URL('./src/modules/auth', import.meta.url)),
+      '@modules': fileURLToPath(new URL('./src/modules', import.meta.url)),
+      '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
+      '@theme': fileURLToPath(new URL('./src/theme', import.meta.url)),
     },
   },
   server: {
@@ -28,6 +31,6 @@ export default defineConfig({
   test: {
     css: true,
     environment: 'jsdom',
-    setupFiles: './src/test/setup.ts',
+    setupFiles: './src/shared/test/setup.ts',
   },
 })

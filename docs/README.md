@@ -1,23 +1,35 @@
 # Frontend Docs
 
-This directory holds focused implementation notes for the MAGE frontend. The repository README covers setup, scripts, and the high-level project overview. These docs are meant to answer feature-specific questions without forcing readers to scan route code first.
+This directory holds cross-cutting implementation notes for the MAGE frontend. The repository
+README covers setup, scripts, and the high-level project overview.
 
-## Documents
+## Start Here
 
-- [create-scene-page.md](./create-scene-page.md)  
-  Scene editor structure, submission flow, and current persistence limits.
+- [frontend-architecture.md](./frontend-architecture.md)  
+  Current frontend folder conventions, ownership rules, and dependency direction.
+
+- [../src/modules/README.md](../src/modules/README.md)  
+  The module-layer contract and where feature-specific documentation now lives.
+
+## Cross-Cutting Docs
 
 - [deployment.md](./deployment.md)  
   Supported production deployment strategy, reverse-proxy expectations, and container notes.
 
 - [engine-integration.md](./engine-integration.md)  
-  Local engine package assumptions, aliasing, and current integration caveats.
+  Published engine bridge, frontend adapter responsibilities, and package caveats.
 
-- [login-page.md](./login-page.md)  
-  Login flow behavior, session handling, and backend request shape.
+- [theme-system.md](./theme-system.md)  
+  Theme registry, provider, CSS structure, and how to add additional themes safely.
 
-- [player-component.md](./player-component.md)  
-  `MagePlayer` usage, scene blob expectations, and integration rules.
+## Layer Contracts
 
-- [registration-page.md](./registration-page.md)  
-  Registration flow behavior, redirect path, and backend request shape.
+- [../src/app/README.md](../src/app/README.md)
+- [../src/modules/README.md](../src/modules/README.md)
+- [../src/shared/README.md](../src/shared/README.md)
+- [../src/theme/README.md](../src/theme/README.md)
+
+## Feature Docs
+
+Feature behavior, request flow, limitations, and public integration notes live in the owning module
+README under `src/modules/<feature>/README.md`.

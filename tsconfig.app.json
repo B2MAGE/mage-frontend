@@ -5,12 +5,18 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "baseUrl": ".",
+    "paths": {
+      "@app": ["./src/app/index.ts"],
+      "@app/*": ["./src/app/*"],
+      "@auth": ["./src/modules/auth/index.ts"],
+      "@auth/*": ["./src/modules/auth/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@theme": ["./src/theme/index.ts"],
+      "@theme/*": ["./src/theme/*"]
+    },
     "types": ["vite/client"],
     "skipLibCheck": true,
-    "paths": {
-      "@mage/engine": ["./node_modules/mage/dist/mage-engine.js"]
-    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

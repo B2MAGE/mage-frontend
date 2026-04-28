@@ -1,0 +1,215 @@
+html[data-theme='classic-facebook'] .navbar {
+  box-shadow: inset 0 -1px 0 rgba(17, 33, 74, 0.4);
+}
+
+html[data-theme='classic-facebook'] .nav-inner {
+  width: min(1380px, calc(100% - 48px));
+  gap: 10px;
+}
+
+html[data-theme='classic-facebook'] .nav-actions {
+  gap: 18px;
+}
+
+html[data-theme='classic-facebook'] .logo {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  text-transform: lowercase;
+}
+
+html[data-theme='classic-facebook'] .nav-create__icon,
+html[data-theme='classic-facebook'] .nav-signin__icon {
+  display: none;
+}
+
+html[data-theme='classic-facebook'] .nav-create,
+html[data-theme='classic-facebook'] .nav-profile-trigger {
+  min-height: 34px;
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .nav-create {
+  padding: 0 2px;
+}
+
+html[data-theme='classic-facebook'] .nav-profile-trigger {
+  padding: 0 2px 0 0;
+  border-radius: 2px;
+}
+
+html[data-theme='classic-facebook'] .nav-create:hover,
+html[data-theme='classic-facebook'] .nav-create:focus-visible {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+html[data-theme='classic-facebook'] .nav-profile-trigger:hover,
+html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-avatar,
+html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-avatar {
+  background: var(--nav-avatar-hover-background);
+  box-shadow: var(--nav-avatar-hover-shadow);
+}
+
+html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-profile-trigger__chevron,
+html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-profile-trigger__chevron {
+  color: #ffffff;
+}
+
+html[data-theme='classic-facebook'] .nav-menu {
+  top: calc(100% + 8px);
+  min-width: 280px;
+  padding: 10px 0;
+}
+
+html[data-theme='classic-facebook'] .nav-menu__profile-link {
+  border-radius: 2px;
+}
+
+html[data-theme='classic-facebook'] .nav-menu__item {
+  min-height: 44px;
+  font-weight: 700;
+}
+
+html[data-theme='classic-facebook'] .app-shell {
+  display: block;
+  padding: 84px 16px 32px;
+}
+
+html[data-theme='classic-facebook'] .app-shell > * {
+  margin-inline: auto;
+}
+
+html[data-theme='classic-facebook'] .surface {
+  border-color: #bcc7d8;
+  background: #ffffff;
+  backdrop-filter: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='classic-facebook'] .surface--hero,
+html[data-theme='classic-facebook'] .surface--form,
+html[data-theme='classic-facebook'] .surface--page-header,
+html[data-theme='classic-facebook'] .surface--page-panel,
+html[data-theme='classic-facebook'] .surface--soft,
+html[data-theme='classic-facebook'] .surface--nested {
+  border-radius: 4px;
+}
+
+html[data-theme='classic-facebook'] .surface--hero::before,
+html[data-theme='classic-facebook'] .surface--form::before,
+html[data-theme='classic-facebook'] .surface--page-panel::before {
+  opacity: 0;
+}
+
+html[data-theme='classic-facebook'] .surface--hero,
+html[data-theme='classic-facebook'] .surface--form,
+html[data-theme='classic-facebook'] .surface--page-header,
+html[data-theme='classic-facebook'] .surface--page-panel {
+  padding: 22px 24px;
+}
+
+html[data-theme='classic-facebook'] .surface--soft,
+html[data-theme='classic-facebook'] .surface--nested {
+  background: #f7f8fb;
+  box-shadow: none;
+}
+
+html[data-theme='classic-facebook'] .eyebrow {
+  display: none;
+}
+
+html[data-theme='classic-facebook'] .page-lead,
+html[data-theme='classic-facebook'] .page-footnote,
+html[data-theme='classic-facebook'] .settings-lead,
+html[data-theme='classic-facebook'] .auth-copy,
+html[data-theme='classic-facebook'] .my-scenes-panel__lead {
+  color: #596b93;
+}
+
+html[data-theme='classic-facebook'] .page-mark {
+  color: #7183a7;
+}
+
+html[data-theme='classic-facebook'] .demo-link,
+html[data-theme='classic-facebook'] .auth-submit,
+html[data-theme='classic-facebook'] .scene-editor-submit {
+  border-radius: 2px;
+  border: 1px solid #29447e;
+  background: #5b74a8;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+html[data-theme='classic-facebook'] .demo-link:hover,
+html[data-theme='classic-facebook'] .auth-submit:hover,
+html[data-theme='classic-facebook'] .scene-editor-submit:hover {
+  background: #6d84b4;
+  box-shadow: none;
+}
+
+html[data-theme='classic-facebook'] .field-group label {
+  color: #3b5998;
+}
+
+html[data-theme='classic-facebook'] .field-group input,
+html[data-theme='classic-facebook'] .field-group textarea,
+html[data-theme='classic-facebook'] .field-group select {
+  border-radius: 2px;
+  border-color: #bdc7d8;
+  background: #ffffff;
+  color: #1d2a44;
+}
+
+html[data-theme='classic-facebook'] .field-group input::placeholder,
+html[data-theme='classic-facebook'] .field-group textarea::placeholder {
+  color: #8794b4;
+}
+
+html[data-theme='classic-facebook'] .field-group input:hover,
+html[data-theme='classic-facebook'] .field-group textarea:hover,
+html[data-theme='classic-facebook'] .field-group select:hover {
+  border-color: #6d84b4;
+}
+
+html[data-theme='classic-facebook'] .field-group input:focus,
+html[data-theme='classic-facebook'] .field-group textarea:focus,
+html[data-theme='classic-facebook'] .field-group select:focus {
+  border-color: #3b5998;
+  box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.12);
+}
+
+html[data-theme='classic-facebook'] .form-alert {
+  border-radius: 4px;
+  border-color: #d8b2b9;
+  background: #fff4f5;
+  color: #7b2a38;
+}
+
+html[data-theme='classic-facebook'] .form-note {
+  border-radius: 4px;
+  border-color: #bfd0ec;
+  background: #eef4ff;
+  color: #29447e;
+}
+
+html[data-theme='classic-facebook'] .settings-page,
+html[data-theme='classic-facebook'] .my-scenes-page,
+html[data-theme='classic-facebook'] .auth-page--wide {
+  margin-top: 0;
+}

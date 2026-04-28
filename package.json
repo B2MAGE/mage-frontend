@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prebuild": "patch-package",
     "dev": "vite",
+    "prebuild": "patch-package",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "postinstall": "patch-package",
@@ -13,7 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "mage": "file:vendor/mage-engine/mage-1.0.0.tgz",
+    "@notrac/mage": "^1.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1"

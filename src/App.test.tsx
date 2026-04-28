@@ -2,42 +2,44 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AUTH_SESSION_STORAGE_KEY } from '@auth'
 import App from './App'
-import { AUTH_SESSION_STORAGE_KEY } from './auth/AuthContext'
 
-vi.mock('./components/Layout', () => ({
+vi.mock('@app/Layout', () => ({
   Layout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('./pages/HomePage', () => ({
+vi.mock('@modules/home', () => ({
   HomePage: () => <div>Home page</div>,
 }))
 
-vi.mock('./pages/LoginPage', () => ({
-  LoginPage: () => <div>Login page</div>,
-}))
-
-vi.mock('./pages/MyScenesPage', () => ({
+vi.mock('@modules/my-scenes', () => ({
   MyScenesPage: () => <div>My scenes page</div>,
 }))
 
-vi.mock('./pages/ScenesPage', () => ({
+vi.mock('@modules/discovery', () => ({
   ScenesPage: () => <div>Scenes page</div>,
 }))
 
-vi.mock('./pages/SceneDetailPage', () => ({
+vi.mock('@modules/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@modules/auth')>()
+
+  return {
+    ...actual,
+    LoginPage: () => <div>Login page</div>,
+    RegisterPage: () => <div>Register page</div>,
+  }
+})
+
+vi.mock('@modules/scene-detail', () => ({
   SceneDetailPage: () => <div>Scene detail page</div>,
 }))
 
-vi.mock('./pages/RegisterPage', () => ({
-  RegisterPage: () => <div>Register page</div>,
-}))
-
-vi.mock('./pages/CreateScenePage', () => ({
+vi.mock('@modules/scene-editor', () => ({
   CreateScenePage: () => <div>Create scene page</div>,
 }))
 
-vi.mock('./pages/SettingsPage', () => ({
+vi.mock('@modules/settings', () => ({
   SettingsPage: () => <div>Settings page</div>,
 }))
 

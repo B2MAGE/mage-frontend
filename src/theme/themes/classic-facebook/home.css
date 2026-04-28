@@ -1,0 +1,118 @@
+html[data-theme='classic-facebook'] .home-hero {
+  width: min(1120px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+html[data-theme='classic-facebook'] .home-hero__header {
+  padding: 28px 28px 0;
+}
+
+html[data-theme='classic-facebook'] .home-hero__title-block {
+  justify-items: center;
+  text-align: center;
+}
+
+html[data-theme='classic-facebook'] .home-hero__title-block h1 {
+  margin: 0;
+  color: #1d2a44;
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+html[data-theme='classic-facebook'] .home-hero__title-block .page-lead {
+  max-width: 40rem;
+  margin: 0;
+}
+
+html[data-theme='classic-facebook'] .home-hero__layout {
+  grid-template-columns: minmax(280px, 340px) minmax(420px, 560px);
+  justify-content: center;
+  align-items: start;
+  gap: 18px;
+  margin-top: 22px;
+  padding: 0 28px 24px;
+}
+
+html[data-theme='classic-facebook'] .home-hero__info-panel,
+html[data-theme='classic-facebook'] .home-hero__preview {
+  border-radius: 2px;
+  border: 1px solid #bcc7d8;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+html[data-theme='classic-facebook'] .home-hero__panel-heading {
+  padding: 9px 12px;
+  border-bottom: 1px solid #bcc7d8;
+  background: #d8dfea;
+  color: #3b5998;
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[data-theme='classic-facebook'] .home-hero__panel-body {
+  padding: 14px 14px 16px;
+  background: #f7f8fb;
+}
+
+html[data-theme='classic-facebook'] .home-hero__panel-copy {
+  color: #1d2a44;
+  font-size: 0.96rem;
+  line-height: 1.6;
+}
+
+html[data-theme='classic-facebook'] .home-hero__feature-list {
+  gap: 8px;
+  padding-left: 18px;
+  color: #1d2a44;
+  font-size: 0.93rem;
+}
+
+html[data-theme='classic-facebook'] .home-hero__feature-list li::marker {
+  color: #3b5998;
+}
+
+html[data-theme='classic-facebook'] .home-hero__panel-body .page-footnote {
+  margin-top: 2px;
+  color: #596b93;
+  font-size: 0.9rem;
+}
+
+html[data-theme='classic-facebook'] .home-hero__preview {
+  width: min(100%, 560px);
+  justify-self: center;
+  align-self: stretch;
+}
+
+html[data-theme='classic-facebook'] .home-hero__preview .home-hero__panel-heading {
+  width: 100%;
+  box-sizing: border-box;
+  justify-self: stretch;
+  text-align: center;
+}
+
+html[data-theme='classic-facebook'] .home-hero__preview-body {
+  justify-items: center;
+  padding: 14px;
+  background: transparent;
+}
+
+html[data-theme='classic-facebook'] .home-hero__preview .mage-player {
+  width: 100%;
+}
+
+html[data-theme='classic-facebook'] .home-hero__footer {
+  justify-content: flex-end;
+  padding: 0 28px 20px;
+  margin-top: 0;
+}
+
+html[data-theme='classic-facebook'] .home-hero__footer .page-mark {
+  margin-top: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+}

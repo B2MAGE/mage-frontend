@@ -2,73 +2,35 @@
 
 ## Overview
 
-The frontend consumes the MAGE engine through a vendored packaged dependency, not a public npm package from the registry. This is an important repository assumption.
+The frontend uses the published `@notrac/mage` package for scene playback and preview.
 
-## Package Source
+App code should not talk to the engine directly. The intended boundary is:
 
-The current dependency in `package.json` is:
+- feature/page code -> `@modules/player`
+- `@modules/player` -> `src/modules/player/infrastructure/engineAdapter.ts`
+- `engineAdapter` -> `@notrac/mage`
 
-```json
-"mage": "file:vendor/mage-engine/mage-1.0.0.tgz"
-```
+That keeps engine-specific startup, loading, audio bridging, and disposal logic in one place.
 
-The tarball is kept inside this repository.
+The adapter and the checked-in package patch are both infrastructure. Feature modules should not depend on raw engine package behavior, patched internals, or browser-workaround code directly.
 
-## Why The Frontend Uses An Alias
+## Current Integration
 
-The frontend does not import the package root directly. Instead, `@mage/engine` is aliased to:
-
-```text
-node_modules/mage/dist/mage-engine.js
-```
-
-This alias exists because the current packaged engine metadata is still not cleanly consumable from its root export. The shipped tarball includes `dist/mage-engine.js`, but its `package.json` still points `exports.import` at an unshipped `dist/mage-engine.mjs`.
+The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, keeps the
+package's native control system disabled, exposes shared playback and audio controls, and disposes
+the engine on unmount.
 
 Relevant files:
 
-- `vite.config.ts`
-- `tsconfig.app.json`
-- `src/types/mage-engine.d.ts`
+- `src/modules/player/index.ts`
+- `src/modules/player/MagePlayer.tsx`
+- `src/modules/player/playlist.ts`
+- `src/modules/player/infrastructure/engineAdapter.ts`
 
-## Types
+## Scene Data
 
-The packaged `dist/mage-engine.d.ts` is present, but it still imports `./MAGEEngine.js`, which is not shipped in the tarball. The frontend therefore keeps a small local declaration shim for `@mage/engine` instead of relying on the package types directly.
-
-## Bundled Engine Patch
-
-The frontend reapplies a local patch to:
-
-```text
-node_modules/mage/dist/mage-engine.js
-```
-
-This happens through `patch-package` during `npm install` and again before `npm run build`.
-
-The patch preserves the Shader Park runtime compatibility shim that used to live in a separate `shader-park-core` patch before the engine moved to a bundled dist file.
-
-It also fixes the current packaged engine teardown bug where `dispose()` clears engine state without stopping the active `requestAnimationFrame` loop, which can otherwise surface as `Cannot set properties of null (setting 'time')` after unmount.
-
-Relevant files:
-
-- `package.json`
-- `patches/mage+1.0.0.patch`
-
-## Frontend Boundary
-
-Pages should not import the engine directly. The intended boundary is:
-
-- page code -> `MagePlayer`
-- `MagePlayer` -> `magePlayerAdapter`
-- `magePlayerAdapter` -> `@mage/engine`
-
-Relevant files:
-
-- `src/components/MagePlayer.tsx`
-- `src/lib/magePlayerAdapter.ts`
-
-## Scene Data Expectations
-
-The player adapter treats a value as renderable scene data if it contains at least one recognized engine branch such as:
+The adapter accepts backend `sceneData` objects directly. It treats a value as renderable scene
+data when it contains at least one engine-recognized root branch such as:
 
 - `visualizer`
 - `controls`
@@ -77,19 +39,70 @@ The player adapter treats a value as renderable scene data if it contains at lea
 - `state`
 - `settings`
 - `audioPath`
+- `audio`
 
-That keeps route components simple and allows backend `sceneData` payloads to be passed through directly.
+## Why The Adapter Exists
+
+The adapter is doing more than forwarding calls:
+
+- it keeps engine imports out of route components
+- it isolates engine patch assumptions behind a frontend-owned infrastructure layer
+- it validates scene blobs before loading
+- it applies the current startup workaround for the published engine so scenes do not stall at time `0`
+- it centralizes scene pause/resume behavior so every embedded `MagePlayer` uses the same playback model
+- it bridges local audio loading, clearing, seeking, and volume into a single frontend-safe controller
+- it explicitly loads saved `audioPath` or compatible root-level audio metadata on demand
+- it starts the engine without the package's built-in controls bootstrap, so embedded player UI stays frontend-owned
+
+## Audio Model
+
+The adapter exposes a small player-friendly API rather than leaking the raw engine bridge:
+
+- `loadSceneBlob()`
+- `setPlaybackState()`
+- `getPlaybackState()`
+- `loadAudio()`
+- `clearAudio()`
+- `seekAudio()`
+- `setAudioVolume()`
+- `getAudioState()`
+- `dispose()`
+
+The frontend player uses that bridge to support:
+
+- route-owned playlists
+- local device audio files
+- synchronized scene/audio play-pause
+- scrubber + volume controls
+
+## Package Patch Notes
+
+The frontend currently patches `@notrac/mage@1.0.1` with `patch-package`.
+
+Relevant repo-owned pieces are:
+
+- `patches/@notrac+mage+1.0.1.patch`
+- `postinstall` in `package.json`
+- `prebuild` in `package.json`
+
+The patch is applied during install and before builds. It is used to support the runtime behavior the frontend expects, including:
+
+- published engine audio playback cleanup
+- shader helper exposure used by scene preview/runtime compilation
+
+The patch does not replace the adapter. The patch fixes published-package behavior the frontend depends on, while the adapter keeps the app-facing API stable and localizes engine-specific startup and runtime logic.
+
+If the engine package version changes:
+
+1. review and regenerate the checked-in patch as needed
+2. verify `src/modules/player/infrastructure/engineAdapter.ts` still matches the package behavior
+3. rerun player/editor verification because those surfaces depend on the patched runtime boundary
+
+No feature module should import from `patches/` or from `@notrac/mage` directly.
 
 ## Current Caveats
 
-These are current package-level caveats worth knowing before making engine-related changes:
-
-- the npm registry package named `mage` is not this engine, so the frontend must keep using the local tarball dependency
-- when the engine package changes, the vendored tarball in `vendor/mage-engine/` must be refreshed intentionally
-- when the vendored engine tarball changes, `patches/mage+1.0.0.patch` must be reviewed and usually regenerated against the new bundled file
-- the packaged engine root export is still broken, so the frontend must keep aliasing `@mage/engine` to the shipped dist entry file
-- the packaged type file still references an unshipped `MAGEEngine.js`, so `src/types/mage-engine.d.ts` remains the frontend source of truth
-- the bundled engine still emits `eval` warnings during build
-- the engine bundle is large enough to trigger Vite chunk-size warnings
-
-These warnings do not currently block the frontend build, but they are useful context when debugging engine-related issues.
+- The published package types are still incomplete for the runtime behavior the frontend uses. The adapter keeps a small local bridge type for that gap.
+- The engine bundle still emits `eval` warnings during `vite build`. The build succeeds, but those warnings are coming from the published package.
+- The engine bundle is very large and still triggers Vite chunk-size warnings. That does not block builds, but it is a real startup-cost concern.
+- Enabling mouse-driven controls also means the published package may render its own control chrome alongside the app's custom playback bar, so embedded players continue to keep those controls disabled by default.

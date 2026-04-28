@@ -1,0 +1,391 @@
+.mage-watch__playlist-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(14, 22, 26, 0.92);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
+}
+
+.mage-watch__playlist-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mage-watch__playlist-heading {
+  min-width: 0;
+}
+
+.mage-watch__playlist-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mage-watch__playlist-header strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.mage-watch__playlist-name-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mage-watch__playlist-name-button:hover,
+.mage-watch__playlist-name-button:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.mage-watch__playlist-name-input {
+  width: min(100%, 220px);
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(99, 240, 214, 0.22);
+  border-radius: 12px;
+  background: rgba(5, 12, 15, 0.8);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.mage-watch__playlist-name-input:focus {
+  outline: none;
+  border-color: rgba(99, 240, 214, 0.38);
+  box-shadow: 0 0 0 3px rgba(99, 240, 214, 0.1);
+}
+
+.mage-watch__playlist-header span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.mage-watch__playlist-action,
+.mage-watch__playlist-remove {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.78);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.mage-watch__playlist-action {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mage-watch__playlist-action--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+
+.mage-watch__playlist-action--icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mage-watch__playlist-action[aria-pressed="true"] {
+  background: rgba(99, 240, 214, 0.16);
+  border-color: rgba(99, 240, 214, 0.28);
+  color: var(--accent);
+}
+
+.mage-watch__playlist-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mage-watch__playlist-action:hover,
+.mage-watch__playlist-action:focus-visible,
+.mage-watch__playlist-remove:hover,
+.mage-watch__playlist-remove:focus-visible {
+  background: rgba(99, 240, 214, 0.12);
+  border-color: rgba(99, 240, 214, 0.24);
+  color: var(--accent);
+  outline: none;
+}
+
+.mage-watch__playlist-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.mage-watch__playlist-list {
+  display: grid;
+  gap: 8px;
+  overflow: visible;
+}
+
+.mage-watch__playlist-track-shell {
+  position: relative;
+  overflow: visible;
+}
+
+.mage-watch__playlist-track-shell.is-details-open {
+  z-index: 3;
+}
+
+.mage-watch__playlist-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: background-color 0.18s ease;
+}
+
+.mage-watch__playlist-track::before,
+.mage-watch__playlist-track::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(99, 240, 214, 0.94);
+  box-shadow: 0 0 0 3px rgba(99, 240, 214, 0.14);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mage-watch__playlist-track::before {
+  top: -4px;
+}
+
+.mage-watch__playlist-track::after {
+  bottom: -4px;
+}
+
+.mage-watch__playlist-track.is-active {
+  background: rgba(99, 240, 214, 0.12);
+}
+
+.mage-watch__playlist-track.is-editing {
+  cursor: grab;
+}
+
+.mage-watch__playlist-track.is-editing .mage-watch__playlist-track-button {
+  cursor: inherit;
+}
+
+.mage-watch__playlist-track.is-dragging {
+  opacity: 0.52;
+}
+
+.mage-watch__playlist-track.is-drop-target {
+  background: rgba(99, 240, 214, 0.08);
+}
+
+.mage-watch__playlist-track.is-drop-target[data-drop-position="before"]::before {
+  opacity: 1;
+}
+
+.mage-watch__playlist-track.is-drop-target[data-drop-position="after"]::after {
+  opacity: 1;
+}
+
+.mage-watch__playlist-track-button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mage-watch__playlist-track-button:focus-visible {
+  outline: none;
+}
+
+.mage-watch__playlist-track-index {
+  width: 1.4rem;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mage-watch__playlist-track-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mage-watch__playlist-track-copy strong,
+.mage-watch__playlist-track-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mage-watch__playlist-track-copy strong {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.mage-watch__playlist-track-copy span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.mage-watch__playlist-track.is-details-open {
+  background: rgba(99, 240, 214, 0.1);
+}
+
+.mage-watch__playlist-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+
+.mage-watch__playlist-remove svg {
+  width: 14px;
+  height: 14px;
+}
+
+.mage-watch__playlist-track-editor {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 28px;
+  right: 8px;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(6, 13, 16, 0.92);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  z-index: 5;
+}
+
+.mage-watch__playlist-track-editor::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 26px;
+  width: 14px;
+  height: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 13, 16, 0.92);
+  transform: rotate(45deg);
+}
+
+.mage-watch__playlist-track-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mage-watch__playlist-track-editor-header strong {
+  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mage-watch__playlist-track-editor-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+}
+
+.mage-watch__playlist-track-editor-close:hover,
+.mage-watch__playlist-track-editor-close:focus-visible {
+  background: rgba(99, 240, 214, 0.12);
+  border-color: rgba(99, 240, 214, 0.24);
+  color: var(--accent);
+  outline: none;
+}
+
+.mage-watch__playlist-track-editor-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.mage-watch__playlist-track-editor-field {
+  display: grid;
+  gap: 6px;
+}
+
+.mage-watch__playlist-track-editor-field span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mage-watch__playlist-track-editor-field input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font: inherit;
+}
+
+.mage-watch__playlist-track-editor-field input:focus {
+  outline: none;
+  border-color: rgba(99, 240, 214, 0.3);
+  box-shadow: 0 0 0 3px rgba(99, 240, 214, 0.1);
+}
+
+.mage-watch__playlist-track-editor-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
