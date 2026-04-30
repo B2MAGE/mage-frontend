@@ -1,10 +1,5 @@
-import { formatRelativeTime, type SceneListResponse } from '@shared/lib'
+import { formatMetricLabel, formatRelativeTime, type SceneListResponse } from '@shared/lib'
 import type { RecommendationFilter, RecommendedSceneCard, RecommendedSceneGroups, SceneDetail } from './types'
-
-function buildRecommendedViewsLabel(sceneId: number) {
-  const views = 1559 + sceneId * 120
-  return `${views.toLocaleString()} views`
-}
 
 function buildRecommendationAccent(sceneId: number) {
   const accents = ['#63f0d6', '#9fd9ff', '#ffb26b', '#7ef0c0', '#7f9bff']
@@ -28,7 +23,7 @@ function buildRecommendedScenesFromList(
         id: scene.sceneId,
         title: scene.name,
         creator: scene.creatorDisplayName,
-        meta: `${buildRecommendedViewsLabel(scene.sceneId)} | ${formatRelativeTime(scene.createdAt)}`,
+        meta: `${formatMetricLabel(scene.engagement.views, 'view')} | ${formatRelativeTime(scene.createdAt)}`,
         accent: buildRecommendationAccent(scene.sceneId),
         thumbnailRef: scene.thumbnailRef,
         ownerUserId: scene.ownerUserId,

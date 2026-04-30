@@ -76,7 +76,18 @@ describe('MyScenesPage states', () => {
     storeMyScenesSession()
 
     const storedUser = buildMyScenesStoredUser()
-    const auroraScene = buildMyScenesApiScene({ id: 12, sceneId: 12 })
+    const auroraScene = buildMyScenesApiScene({
+      engagement: {
+        currentUserSaved: false,
+        currentUserVote: null,
+        downvotes: 1,
+        saves: 2,
+        upvotes: 3,
+        views: 777,
+      },
+      id: 12,
+      sceneId: 12,
+    })
     const signalScene = buildMyScenesApiScene({
       id: 13,
       name: 'Signal Bloom',
@@ -116,6 +127,8 @@ describe('MyScenesPage states', () => {
     const sceneLink = await screen.findByRole('link', { name: /aurora drift/i })
 
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
+    expect(screen.getByText('777')).toBeInTheDocument()
+    expect(screen.getByText('75%')).toBeInTheDocument()
 
     await user.click(sceneLink)
 

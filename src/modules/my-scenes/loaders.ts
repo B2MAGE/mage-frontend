@@ -1,16 +1,18 @@
 import { normalizeSceneList } from '@shared/lib'
 import type { AuthenticatedFetch, SceneVisibility } from './types'
 
-function buildViewsCount(sceneId: number) {
-  return 18 + sceneId * 37
-}
-
 function buildCommentsCount(sceneId: number) {
   return (sceneId * 3) % 17
 }
 
-function buildLikesRatio(sceneId: number) {
-  return 92 + (sceneId % 7)
+function buildLikesRatio(upvotes: number, downvotes: number) {
+  const totalVotes = upvotes + downvotes
+
+  if (totalVotes === 0) {
+    return 0
+  }
+
+  return Math.round((upvotes / totalVotes) * 100)
 }
 
 function buildStatusLabel(): SceneVisibility {
@@ -25,9 +27,9 @@ export function normalizeUserScenes(payload: unknown) {
     createdAt: scene.createdAt,
     description: scene.description ?? null,
     statusLabel: buildStatusLabel(),
-    viewsCount: buildViewsCount(scene.sceneId),
+    viewsCount: scene.engagement.views,
     commentsCount: buildCommentsCount(scene.sceneId),
-    likesRatio: buildLikesRatio(scene.sceneId),
+    likesRatio: buildLikesRatio(scene.engagement.upvotes, scene.engagement.downvotes),
   }))
 }
 

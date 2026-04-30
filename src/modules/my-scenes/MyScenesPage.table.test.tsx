@@ -37,7 +37,16 @@ describe('MyScenesPage table behavior', () => {
 
     const storedUser = buildMyScenesStoredUser()
     const mockScenes = [
-      buildMyScenesApiScene(),
+      buildMyScenesApiScene({
+        engagement: {
+          currentUserSaved: false,
+          currentUserVote: null,
+          downvotes: 1,
+          saves: 0,
+          upvotes: 3,
+          views: 1200,
+        },
+      }),
       buildMyScenesApiScene({
         createdAt: '2026-04-06T14:10:00Z',
         description: undefined,
@@ -92,6 +101,8 @@ describe('MyScenesPage table behavior', () => {
     ).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /add description/i })).toHaveLength(2)
     expect(screen.getByAltText('Aurora Drift thumbnail')).toBeInTheDocument()
+    expect(screen.getByText('1.2K')).toBeInTheDocument()
+    expect(screen.getByText('75%')).toBeInTheDocument()
     expect(
       screen.getByAltText('Very Long Scene Name To Test Wrapping In The Card Layout thumbnail'),
     ).toBeInTheDocument()
