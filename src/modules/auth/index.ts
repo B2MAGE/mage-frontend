@@ -1,4 +1,5 @@
 export { AuthProvider } from './AuthProvider'
+export { ForgotPasswordPage } from './ForgotPasswordPage'
 export { GuestOnlyRoute, ProtectedRoute } from './guards'
 export { LoginPage } from './LoginPage'
 export { RegisterPage } from './RegisterPage'

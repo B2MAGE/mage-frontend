@@ -26,6 +26,7 @@ function renderLoginPage(options: RenderLoginPageOptions = {}) {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<div>Forgot password page</div>} />
           <Route path="/" element={<div>Home page</div>} />
           <Route path="/settings" element={<div>Settings page</div>} />
         </Routes>
@@ -125,6 +126,17 @@ describe('LoginPage', () => {
     expect(
       screen.getByText('Account created. Sign in to open your profile.'),
     ).toBeInTheDocument()
+  })
+
+  it('routes the reset-password action into the forgot-password flow', async () => {
+    const user = userEvent.setup()
+
+    renderLoginPage()
+
+    await user.type(screen.getByLabelText(/^email$/i), 'artist@example.com')
+    await user.click(screen.getByRole('link', { name: /reset it here/i }))
+
+    expect(await screen.findByText('Forgot password page')).toBeInTheDocument()
   })
 
   it('shows backend invalid-credential errors clearly to the user', async () => {
