@@ -1119,6 +1119,14 @@
   gap: 10px;
 }
 
+.scene-detail-action-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #ffb4a8;
+  font-size: 0.86rem;
+  text-align: right;
+}
+
 .scene-detail-action-chip,
 .scene-detail-sort-chip,
 .scene-detail-comment__action {
@@ -1148,6 +1156,13 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.scene-detail-action-chip[aria-pressed='true'],
+.scene-detail-action-chip.is-selected {
+  border-color: rgba(99, 240, 214, 0.48);
+  background: rgba(99, 240, 214, 0.14);
+  color: #e9fffb;
+}
+
 .scene-detail-vote-button__icon {
   display: inline-flex;
   align-items: center;
@@ -1155,6 +1170,11 @@
   width: 1rem;
   height: 1rem;
   color: var(--muted);
+}
+
+.scene-detail-action-chip[aria-pressed='true'] .scene-detail-vote-button__icon,
+.scene-detail-action-chip.is-selected .scene-detail-vote-button__icon {
+  color: #63f0d6;
 }
 
 .scene-detail-vote-button__icon svg {

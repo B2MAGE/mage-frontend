@@ -12,6 +12,7 @@ export type SceneDetail = {
   thumbnailRef: string | null
   createdAt: string | null
   tags: string[]
+  engagement: SceneEngagementSummary
 }
 
 export type SceneDetailErrorCode =
@@ -37,11 +38,24 @@ export type CreatorProfile = {
   primaryActionLabel?: string
 }
 
+export type SceneVoteState = 'up' | 'down'
+
+export type SceneEngagementSummary = {
+  views: number
+  upvotes: number
+  downvotes: number
+  saves: number
+  currentUserVote: SceneVoteState | null
+  currentUserSaved: boolean
+}
+
 export type SceneEngagement = {
   viewsLabel: string
   upvotesLabel: string
   downvotesLabel: string
   savesLabel: string
+  currentUserVote: SceneVoteState | null
+  currentUserSaved: boolean
   publishedLabel: string
   topicLabel: string
 }

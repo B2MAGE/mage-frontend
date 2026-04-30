@@ -33,16 +33,15 @@ function buildDescriptionParagraphs(description: string | null) {
 }
 
 export function buildSceneEngagement(scene: SceneDetail): SceneEngagement {
-  const views = 1559 + scene.id * 120
-  const upvotes = 56 + scene.id * 30
-  const downvotes = 8 + scene.id * 2
-  const saves = 18 + scene.id * 11
-
   return {
-    viewsLabel: `${views.toLocaleString()} views`,
-    upvotesLabel: upvotes.toLocaleString(),
-    downvotesLabel: downvotes.toLocaleString(),
-    savesLabel: saves.toLocaleString(),
+    viewsLabel: `${scene.engagement.views.toLocaleString()} ${
+      scene.engagement.views === 1 ? 'view' : 'views'
+    }`,
+    upvotesLabel: scene.engagement.upvotes.toLocaleString(),
+    downvotesLabel: scene.engagement.downvotes.toLocaleString(),
+    savesLabel: scene.engagement.saves.toLocaleString(),
+    currentUserVote: scene.engagement.currentUserVote,
+    currentUserSaved: scene.engagement.currentUserSaved,
     publishedLabel: `Published ${formatCalendarDate(scene.createdAt, 'Unavailable')}`,
     topicLabel: 'Audio-reactive scene',
   }
