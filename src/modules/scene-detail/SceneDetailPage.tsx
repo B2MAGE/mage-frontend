@@ -1,28 +1,46 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { MagePlayer } from '@modules/player'
 import { buildSceneComments } from './fixtures'
-import { fetchRecommendedSceneGroups, fetchSceneDetail, SceneDetailRequestError } from './loaders'
+import {
+  clearSceneVote,
+  fetchRecommendedSceneGroups,
+  fetchSceneDetail,
+  recordSceneView,
+  SceneDetailRequestError,
+  updateSceneSave,
+  updateSceneVote,
+} from './loaders'
 import { createEmptyRecommendedSceneGroups, selectRecommendedScenes } from './recommendations'
 import { readErrorCopy, readInitial, readSceneId } from './selectors'
-import type { RecommendationFilter, RecommendedSceneGroups, SceneDetail, SceneDetailErrorCode } from './types'
+import type {
+  RecommendationFilter,
+  RecommendedSceneGroups,
+  SceneDetail,
+  SceneDetailErrorCode,
+  SceneEngagementSummary,
+  SceneVoteState,
+} from './types'
 import { SceneCommentsPanel, SceneDescriptionCard, SceneDetailState, SceneRecommendationRail, VoteButton } from './ui'
 import { useScenePlaylistState } from './useScenePlaylistState'
 import { buildCreatorProfile, buildSceneDescription, buildSceneEngagement } from './viewModels'
 
 export function SceneDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
   const [scene, setScene] = useState<SceneDetail | null>(null)
   const [errorCode, setErrorCode] = useState<SceneDetailErrorCode | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [engagementActionError, setEngagementActionError] = useState<string | null>(null)
   const [recommendedSceneGroups, setRecommendedSceneGroups] = useState<RecommendedSceneGroups>(
     createEmptyRecommendedSceneGroups(),
   )
   const [isRecommendationsLoading, setIsRecommendationsLoading] = useState(false)
   const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('all')
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const recordedViewSceneIds = useRef<Set<number>>(new Set())
   const sceneId = readSceneId(id)
   const {
     handlePlaylistChange,
@@ -87,7 +105,47 @@ export function SceneDetailPage() {
   useEffect(() => {
     setIsDescriptionExpanded(false)
     setRecommendationFilter('all')
+    setEngagementActionError(null)
   }, [scene?.id])
+
+  useEffect(() => {
+    if (!scene || recordedViewSceneIds.current.has(scene.id)) {
+      return
+    }
+
+    const currentSceneId = scene.id
+    let isCurrent = true
+    recordedViewSceneIds.current.add(currentSceneId)
+
+    async function recordLoadedSceneView() {
+      try {
+        const nextEngagement = await recordSceneView(authenticatedFetch, isAuthenticated, currentSceneId)
+
+        if (!isCurrent) {
+          return
+        }
+
+        setScene((currentScene) =>
+          currentScene?.id === currentSceneId
+            ? {
+                ...currentScene,
+                engagement: nextEngagement,
+              }
+            : currentScene,
+        )
+      } catch {
+        if (isCurrent) {
+          recordedViewSceneIds.current.delete(currentSceneId)
+        }
+      }
+    }
+
+    void recordLoadedSceneView()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [authenticatedFetch, isAuthenticated, scene])
 
   useEffect(() => {
     if (!scene) {
@@ -199,9 +257,10 @@ export function SceneDetailPage() {
     )
   }
 
-  const creatorProfile = buildCreatorProfile(scene, user?.displayName, user?.userId)
-  const engagement = buildSceneEngagement(scene)
-  const sceneDescription = buildSceneDescription(scene)
+  const loadedScene = scene
+  const creatorProfile = buildCreatorProfile(loadedScene, user?.displayName, user?.userId)
+  const engagement = buildSceneEngagement(loadedScene)
+  const sceneDescription = buildSceneDescription(loadedScene)
   const sceneComments = buildSceneComments()
   const filteredRecommendedScenes = selectRecommendedScenes(
     recommendedSceneGroups,
@@ -211,6 +270,51 @@ export function SceneDetailPage() {
   const composerPrompt = user?.displayName
     ? `Add a comment as ${user.displayName}...`
     : 'Sign in to join the conversation'
+
+  function applySceneEngagement(nextEngagement: SceneEngagementSummary) {
+    setScene((currentScene) =>
+      currentScene?.id === loadedScene.id
+        ? {
+            ...currentScene,
+            engagement: nextEngagement,
+          }
+        : currentScene,
+    )
+  }
+
+  async function runAuthenticatedEngagementAction(action: () => Promise<SceneEngagementSummary>) {
+    if (!isAuthenticated) {
+      navigate('/login')
+      return
+    }
+
+    setEngagementActionError(null)
+
+    try {
+      applySceneEngagement(await action())
+    } catch (error) {
+      if (error instanceof SceneDetailRequestError && error.code === 'auth-required') {
+        navigate('/login')
+        return
+      }
+
+      setEngagementActionError('Unable to update this interaction right now.')
+    }
+  }
+
+  function handleVoteClick(vote: SceneVoteState) {
+    void runAuthenticatedEngagementAction(() =>
+      engagement.currentUserVote === vote
+        ? clearSceneVote(authenticatedFetch, loadedScene.id)
+        : updateSceneVote(authenticatedFetch, loadedScene.id, vote),
+    )
+  }
+
+  function handleSaveClick() {
+    void runAuthenticatedEngagementAction(() =>
+      updateSceneSave(authenticatedFetch, loadedScene.id, !engagement.currentUserSaved),
+    )
+  }
 
   return (
     <main className="scene-detail-page">
@@ -268,19 +372,39 @@ export function SceneDetailPage() {
                 className="scene-detail-action-chip"
                 count={engagement.upvotesLabel}
                 direction="up"
+                isSelected={engagement.currentUserVote === 'up'}
+                onClick={() => {
+                  handleVoteClick('up')
+                }}
               />
               <VoteButton
                 className="scene-detail-action-chip"
                 count={engagement.downvotesLabel}
                 direction="down"
+                isSelected={engagement.currentUserVote === 'down'}
+                onClick={() => {
+                  handleVoteClick('down')
+                }}
               />
               <button className="scene-detail-action-chip" type="button">
                 Share
               </button>
-              <button className="scene-detail-action-chip" type="button">
-                Save
+              <button
+                aria-label={`${engagement.currentUserSaved ? 'Saved' : 'Save'} ${engagement.savesLabel}`}
+                aria-pressed={engagement.currentUserSaved}
+                className={`scene-detail-action-chip${engagement.currentUserSaved ? ' is-selected' : ''}`}
+                onClick={handleSaveClick}
+                type="button"
+              >
+                <span>{engagement.currentUserSaved ? 'Saved' : 'Save'}</span>
+                <span>{engagement.savesLabel}</span>
               </button>
             </div>
+            {engagementActionError ? (
+              <p className="scene-detail-action-error" role="status">
+                {engagementActionError}
+              </p>
+            ) : null}
           </section>
 
           <SceneDescriptionCard

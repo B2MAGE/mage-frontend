@@ -1,7 +1,14 @@
 import { buildApiUrl, fetchScenes } from '@shared/lib'
-import { normalizeSceneDetail } from './dto'
+import { normalizeSceneDetail, normalizeSceneEngagement } from './dto'
 import { buildRecommendedSceneGroups } from './recommendations'
-import type { AuthenticatedFetch, RecommendedSceneGroups, SceneDetail, SceneDetailErrorCode } from './types'
+import type {
+  AuthenticatedFetch,
+  RecommendedSceneGroups,
+  SceneDetail,
+  SceneDetailErrorCode,
+  SceneEngagementSummary,
+  SceneVoteState,
+} from './types'
 
 export class SceneDetailRequestError extends Error {
   code: SceneDetailErrorCode
@@ -51,6 +58,63 @@ export async function fetchSceneDetail(
   }
 
   return scene
+}
+
+async function readSceneEngagementResponse(response: Response): Promise<SceneEngagementSummary> {
+  if (!response.ok) {
+    throw new SceneDetailRequestError(
+      readErrorCode(response.status),
+      `Scene engagement request failed with status ${response.status}.`,
+    )
+  }
+
+  const payload = await response.json().catch(() => null)
+  return normalizeSceneEngagement(payload)
+}
+
+export async function recordSceneView(
+  authenticatedFetch: AuthenticatedFetch,
+  isAuthenticated: boolean,
+  sceneId: number,
+) {
+  const response = isAuthenticated
+    ? await authenticatedFetch(`/scenes/${sceneId}/views`, { method: 'POST' })
+    : await fetch(buildApiUrl(`/scenes/${sceneId}/views`), { method: 'POST' })
+
+  return readSceneEngagementResponse(response)
+}
+
+export async function updateSceneVote(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  vote: SceneVoteState,
+) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/vote`, {
+    body: JSON.stringify({ vote }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'PUT',
+  })
+
+  return readSceneEngagementResponse(response)
+}
+
+export async function clearSceneVote(authenticatedFetch: AuthenticatedFetch, sceneId: number) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/vote`, { method: 'DELETE' })
+  return readSceneEngagementResponse(response)
+}
+
+export async function updateSceneSave(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  shouldSave: boolean,
+) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/save`, {
+    method: shouldSave ? 'POST' : 'DELETE',
+  })
+
+  return readSceneEngagementResponse(response)
 }
 
 export async function fetchRecommendedSceneGroups(

@@ -35,11 +35,23 @@ export type SceneListResponse = {
   sceneData: Record<string, unknown>
   thumbnailRef: string | null
   createdAt: string
+  engagement: SceneListEngagement
 }
 
 export type TagResponse = {
   tagId: number
   name: string
+}
+
+export type SceneEngagementVoteState = 'up' | 'down'
+
+export type SceneListEngagement = {
+  views: number
+  upvotes: number
+  downvotes: number
+  saves: number
+  currentUserVote: SceneEngagementVoteState | null
+  currentUserSaved: boolean
 }
 
 export type FetchTagsOptions = {
@@ -48,6 +60,40 @@ export type FetchTagsOptions = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function normalizeCount(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return 0
+  }
+
+  return Math.trunc(value)
+}
+
+function normalizeCurrentUserVote(value: unknown): SceneEngagementVoteState | null {
+  return value === 'up' || value === 'down' ? value : null
+}
+
+export function normalizeSceneListEngagement(engagement: unknown): SceneListEngagement {
+  if (!isRecord(engagement)) {
+    return {
+      views: 0,
+      upvotes: 0,
+      downvotes: 0,
+      saves: 0,
+      currentUserVote: null,
+      currentUserSaved: false,
+    }
+  }
+
+  return {
+    views: normalizeCount(engagement.views),
+    upvotes: normalizeCount(engagement.upvotes),
+    downvotes: normalizeCount(engagement.downvotes),
+    saves: normalizeCount(engagement.saves),
+    currentUserVote: normalizeCurrentUserVote(engagement.currentUserVote),
+    currentUserSaved: engagement.currentUserSaved === true,
+  }
 }
 
 export function normalizeSceneListItem(item: unknown): SceneListResponse | null {
@@ -80,6 +126,7 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
         ? item.thumbnailRef
         : null,
     createdAt: item.createdAt,
+    engagement: normalizeSceneListEngagement(item.engagement),
   }
 }
 

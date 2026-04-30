@@ -39,6 +39,14 @@ describe('SceneDetailPage recommendations', () => {
     const sceneResponse = buildSceneDetailResponse()
     const creatorSceneResponse = buildSceneDetailResponse({
       createdAt: '2026-04-08T14:00:00Z',
+      engagement: {
+        currentUserSaved: false,
+        currentUserVote: null,
+        downvotes: 4,
+        saves: 8,
+        upvotes: 50,
+        views: 4321,
+      },
       name: 'Signal Bloom',
       sceneId: 16,
       tags: [],
@@ -47,6 +55,14 @@ describe('SceneDetailPage recommendations', () => {
     const tagSceneResponse = buildSceneDetailResponse({
       createdAt: '2026-04-09T14:00:00Z',
       creatorDisplayName: 'Night Archive',
+      engagement: {
+        currentUserSaved: false,
+        currentUserVote: null,
+        downvotes: 0,
+        saves: 0,
+        upvotes: 1,
+        views: 5,
+      },
       name: 'Afterglow Static',
       ownerUserId: 42,
       sceneId: 21,
@@ -97,6 +113,8 @@ describe('SceneDetailPage recommendations', () => {
 
     expect(await screen.findByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /afterglow static/i })).toBeInTheDocument()
+    expect(screen.getByText(/4\.3K views/i)).toBeInTheDocument()
+    expect(screen.getByText(/5 views/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /from scene artist/i }))
 

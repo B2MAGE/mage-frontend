@@ -14,6 +14,14 @@ const mockScenes = [
     sceneId: 1,
     ownerUserId: 10,
     creatorDisplayName: 'Sunset Artist',
+    engagement: {
+      currentUserSaved: false,
+      currentUserVote: null,
+      downvotes: 2,
+      saves: 4,
+      upvotes: 10,
+      views: 42,
+    },
     name: 'Sunset Scene',
     sceneData: {},
     thumbnailRef: null,
@@ -23,6 +31,14 @@ const mockScenes = [
     sceneId: 2,
     ownerUserId: 10,
     creatorDisplayName: 'Ocean Artist',
+    engagement: {
+      currentUserSaved: false,
+      currentUserVote: null,
+      downvotes: 8,
+      saves: 9,
+      upvotes: 20,
+      views: 1500,
+    },
     name: 'Ocean Breeze',
     sceneData: {},
     thumbnailRef: 'https://example.com/thumb.png',
@@ -85,6 +101,8 @@ describe('ScenesPage', () => {
     expect(screen.getByText('Ocean Breeze')).toBeInTheDocument()
     expect(screen.getByText('Sunset Artist')).toBeInTheDocument()
     expect(screen.getByText('Ocean Artist')).toBeInTheDocument()
+    expect(screen.getByText('42 views')).toBeInTheDocument()
+    expect(screen.getByText('1.5K views')).toBeInTheDocument()
   })
 
   it('renders tag filter pills after loading', async () => {

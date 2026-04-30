@@ -46,6 +46,11 @@ Access:
 Request flow:
 
 - `GET /api/scenes/:id`
+- `POST /api/scenes/:id/views`
+- `PUT /api/scenes/:id/vote`
+- `DELETE /api/scenes/:id/vote`
+- `POST /api/scenes/:id/save`
+- `DELETE /api/scenes/:id/save`
 - `GET /api/scenes`
 - `GET /api/scenes?tag=<tag>` for recommendation loading
 
@@ -55,13 +60,14 @@ User-facing behavior:
 - shows explicit restoring, loading, not-found, auth-required, and unavailable states
 - embeds the shared `MagePlayer` with route-owned playlist state
 - resets description expansion and recommendation filter state when the scene changes
-- derives creator profile and engagement labels locally from fetched scene data plus module fixtures
+- derives creator profile labels locally from fetched scene data plus module fixtures
+- renders engagement counts and current-user vote/save state from the scene detail response
 - lets the user filter the recommendation rail by creator or by scene tag
 
 Current limitations:
 
 - creator subscriber labels are still frontend-derived until the backend exposes them
-- vote, share, save, and follow controls are currently presentation-only
+- share and follow controls are currently presentation-only
 - recommendation ranking is heuristic and frontend-owned
 
 ## Tests

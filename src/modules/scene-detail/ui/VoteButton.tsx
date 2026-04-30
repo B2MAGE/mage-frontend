@@ -24,16 +24,26 @@ export function VoteButton({
   className,
   count,
   direction,
+  isSelected = false,
+  onClick,
 }: {
   className: string
   count: string
   direction: 'up' | 'down'
+  isSelected?: boolean
+  onClick?: () => void
 }) {
   const label = direction === 'up' ? 'Upvote' : 'Downvote'
   const Icon = direction === 'up' ? UpvoteIcon : DownvoteIcon
 
   return (
-    <button aria-label={`${label} ${count}`} className={className} type="button">
+    <button
+      aria-label={`${label} ${count}`}
+      aria-pressed={isSelected}
+      className={`${className}${isSelected ? ' is-selected' : ''}`}
+      onClick={onClick}
+      type="button"
+    >
       <span className="scene-detail-vote-button__icon" aria-hidden="true">
         <Icon />
       </span>

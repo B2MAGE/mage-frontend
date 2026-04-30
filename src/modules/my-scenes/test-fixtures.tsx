@@ -22,6 +22,7 @@ export function buildMyScenesApiScene(
   overrides: Partial<Record<string, unknown>> = {},
 ) {
   const sceneId = typeof overrides.sceneId === 'number' ? overrides.sceneId : 1
+  const likesRatio = 92 + (sceneId % 7)
 
   return {
     createdAt: '2026-04-06T14:00:00Z',
@@ -31,6 +32,14 @@ export function buildMyScenesApiScene(
     ownerUserId: 42,
     sceneData: {
       visualizer: { shader: 'nebula' },
+    },
+    engagement: {
+      currentUserSaved: false,
+      currentUserVote: null,
+      downvotes: 100 - likesRatio,
+      saves: 0,
+      upvotes: likesRatio,
+      views: 18 + sceneId * 37,
     },
     sceneId,
     thumbnailRef: `thumbnails/scene-${sceneId}.png`,

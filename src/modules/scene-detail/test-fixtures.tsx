@@ -30,6 +30,14 @@ export function buildSceneDetailResponse(
     description: 'Soft teal bloom with low-end drift.',
     name: 'Aurora Drift',
     ownerUserId: 8,
+    engagement: {
+      currentUserSaved: false,
+      currentUserVote: null,
+      downvotes: 32,
+      saves: 150,
+      upvotes: 416,
+      views: 2999,
+    },
     sceneData: {
       visualizer: {
         shader: 'nebula',

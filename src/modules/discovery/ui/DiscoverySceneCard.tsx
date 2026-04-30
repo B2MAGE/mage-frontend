@@ -6,11 +6,6 @@ type DiscoverySceneCardProps = {
   scene: DiscoveryScene
 }
 
-function formatViewLabel(sceneId: number) {
-  const syntheticViews = 1200 + sceneId * 183
-  return formatMetricLabel(syntheticViews, 'view')
-}
-
 function buildCreatorInitials(name: string) {
   const words = name.split(/\s+/).filter(Boolean)
   const initials = words
@@ -25,7 +20,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
   const creatorName = scene.creatorDisplayName
   const creatorInitials = buildCreatorInitials(creatorName)
   const relativeTime = formatRelativeTime(scene.createdAt)
-  const viewLabel = formatViewLabel(scene.sceneId)
+  const viewLabel = formatMetricLabel(scene.engagement.views, 'view')
 
   return (
     <Link className="scene-card-link" to={`/scenes/${scene.sceneId}`}>

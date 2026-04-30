@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
@@ -109,6 +110,7 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByText(/add a comment as scene artist/i)).toBeInTheDocument()
     expect(screen.getAllByText('Scene Artist').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2,999 views/i).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /save 150/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /from scene artist/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^focus-friendly$/i })).toBeInTheDocument()
@@ -131,6 +133,121 @@ describe('SceneDetailPage route states', () => {
     const sceneRequestHeaders = fetchSpy.mock.calls[1][1]?.headers as Headers
 
     expect(sceneRequestHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
+  })
+
+  it('renders backend engagement counts and current-user state', async () => {
+    storeSceneDetailSession()
+
+    const storedUser = buildSceneDetailStoredUser()
+    const sceneResponse = buildSceneDetailResponse({
+      engagement: {
+        currentUserSaved: true,
+        currentUserVote: 'up',
+        downvotes: 3,
+        saves: 45,
+        upvotes: 123,
+        views: 9876,
+      },
+      tags: [],
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText(/9,876 views/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /upvote 123/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /downvote 3/i })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /saved 45/i })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('records a view and updates vote and save state through the backend', async () => {
+    storeSceneDetailSession()
+
+    const user = userEvent.setup()
+    const storedUser = buildSceneDetailStoredUser()
+    const sceneResponse = buildSceneDetailResponse()
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input === buildApiUrl('/users/me')) {
+        return jsonResponse(storedUser)
+      }
+
+      if (input === buildApiUrl('/scenes/12')) {
+        return jsonResponse(sceneResponse)
+      }
+
+      if (input === buildApiUrl('/scenes/12/views')) {
+        expect(init?.method).toBe('POST')
+        return jsonResponse({
+          ...sceneResponse.engagement,
+          views: 3000,
+        })
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return jsonResponse([sceneResponse])
+      }
+
+      if (input === buildApiUrl('/scenes/12/vote')) {
+        expect(init?.method).toBe('PUT')
+        expect(init?.body).toBe(JSON.stringify({ vote: 'up' }))
+
+        return jsonResponse({
+          ...sceneResponse.engagement,
+          currentUserVote: 'up',
+          upvotes: 417,
+          views: 3000,
+        })
+      }
+
+      if (input === buildApiUrl('/scenes/12/save')) {
+        expect(init?.method).toBe('POST')
+
+        return jsonResponse({
+          ...sceneResponse.engagement,
+          currentUserSaved: true,
+          currentUserVote: 'up',
+          saves: 151,
+          upvotes: 417,
+          views: 3000,
+        })
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText(/3,000 views/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /upvote 416/i }))
+    expect(await screen.findByRole('button', { name: /upvote 417/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await user.click(screen.getByRole('button', { name: /save 150/i }))
+    expect(await screen.findByRole('button', { name: /saved 151/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(buildApiUrl('/scenes/12/views'), expect.any(Object)))
   })
 
   it('shows an empty description state when no description is stored', async () => {
