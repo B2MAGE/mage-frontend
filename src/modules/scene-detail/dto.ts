@@ -1,5 +1,5 @@
 import { normalizeSceneListEngagement } from '@shared/lib'
-import type { SceneDetail, SceneEngagementSummary, SceneVoteState } from './types'
+import type { SceneComment, SceneDetail, SceneEngagementSummary, SceneVoteState } from './types'
 
 type SceneDetailResponse = {
   sceneId?: number
@@ -21,6 +21,21 @@ type SceneEngagementResponse = {
   saves?: unknown
   currentUserVote?: unknown
   currentUserSaved?: unknown
+}
+
+type SceneCommentResponse = {
+  commentId?: unknown
+  sceneId?: unknown
+  parentCommentId?: unknown
+  authorUserId?: unknown
+  authorDisplayName?: unknown
+  text?: unknown
+  createdAt?: unknown
+  replyCount?: unknown
+  upvotes?: unknown
+  downvotes?: unknown
+  currentUserVote?: unknown
+  replies?: unknown
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -50,6 +65,69 @@ function normalizeSceneTags(tags: unknown) {
 
 function normalizeCurrentUserVote(value: unknown): SceneVoteState | null {
   return value === 'up' || value === 'down' ? value : null
+}
+
+function normalizeCount(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return 0
+  }
+
+  return Math.trunc(value)
+}
+
+export function normalizeSceneComment(payload: unknown): SceneComment | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const resolvedPayload = payload as SceneCommentResponse
+  const commentId = typeof resolvedPayload.commentId === 'number' ? resolvedPayload.commentId : null
+  const sceneId = typeof resolvedPayload.sceneId === 'number' ? resolvedPayload.sceneId : null
+  const text = typeof resolvedPayload.text === 'string' ? resolvedPayload.text.trim() : ''
+
+  if (commentId === null || sceneId === null || !text) {
+    return null
+  }
+
+  const replies = normalizeSceneComments(resolvedPayload.replies)
+
+  return {
+    commentId,
+    sceneId,
+    parentCommentId:
+      typeof resolvedPayload.parentCommentId === 'number' ? resolvedPayload.parentCommentId : null,
+    authorUserId: typeof resolvedPayload.authorUserId === 'number' ? resolvedPayload.authorUserId : null,
+    authorDisplayName:
+      typeof resolvedPayload.authorDisplayName === 'string' && resolvedPayload.authorDisplayName.trim()
+        ? resolvedPayload.authorDisplayName.trim()
+        : 'Mage user',
+    createdAt:
+      typeof resolvedPayload.createdAt === 'string' && resolvedPayload.createdAt.trim()
+        ? resolvedPayload.createdAt
+        : null,
+    text,
+    replyCount: Math.max(normalizeCount(resolvedPayload.replyCount), replies.length),
+    upvotes: normalizeCount(resolvedPayload.upvotes),
+    downvotes: normalizeCount(resolvedPayload.downvotes),
+    currentUserVote: normalizeCurrentUserVote(resolvedPayload.currentUserVote),
+    replies,
+  }
+}
+
+export function normalizeSceneComments(payload: unknown): SceneComment[] {
+  if (!Array.isArray(payload)) {
+    return []
+  }
+
+  return payload.reduce<SceneComment[]>((comments, item) => {
+    const comment = normalizeSceneComment(item)
+
+    if (comment) {
+      comments.push(comment)
+    }
+
+    return comments
+  }, [])
 }
 
 export function normalizeSceneEngagement(engagement: unknown): SceneEngagementSummary {

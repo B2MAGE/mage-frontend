@@ -50,6 +50,31 @@ export function buildSceneDetailResponse(
   }
 }
 
+export function buildSceneCommentResponse(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
+  const commentId =
+    typeof overrides.commentId === 'number' ? overrides.commentId : 501
+  const sceneId =
+    typeof overrides.sceneId === 'number' ? overrides.sceneId : 12
+
+  return {
+    authorDisplayName: 'Comment Artist',
+    authorUserId: 31,
+    commentId,
+    createdAt: '2026-04-10T14:00:00Z',
+    currentUserVote: null,
+    downvotes: 0,
+    parentCommentId: null,
+    replies: [],
+    replyCount: 0,
+    sceneId,
+    text: 'This scene has a great pulse.',
+    upvotes: 2,
+    ...overrides,
+  }
+}
+
 export function renderSceneDetailPage(initialEntries = ['/scenes/12']) {
   function ScenesRouteProbe() {
     const location = useLocation()
