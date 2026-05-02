@@ -12,11 +12,12 @@ type PresignedThumbnailUploadResponse = {
   headers?: Record<string, string>;
 };
 
-export async function uploadNewSceneThumbnail(
+async function uploadSceneThumbnail(
   authenticatedFetch: AuthenticatedFetch,
   file: File,
+  presignPath: string,
 ) {
-  const presignResponse = await authenticatedFetch("/scenes/thumbnail/presign", {
+  const presignResponse = await authenticatedFetch(presignPath, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -51,4 +52,35 @@ export async function uploadNewSceneThumbnail(
   }
 
   return presignedUpload.objectKey;
+}
+
+export async function uploadNewSceneThumbnail(
+  authenticatedFetch: AuthenticatedFetch,
+  file: File,
+) {
+  return uploadSceneThumbnail(authenticatedFetch, file, "/scenes/thumbnail/presign");
+}
+
+export async function replaceSceneThumbnail(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  file: File,
+) {
+  const objectKey = await uploadSceneThumbnail(
+    authenticatedFetch,
+    file,
+    `/scenes/${sceneId}/thumbnail/presign`,
+  );
+  const finalizeResponse = await authenticatedFetch(`/scenes/${sceneId}/thumbnail/finalize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ objectKey }),
+  });
+
+  if (!finalizeResponse.ok) {
+    const apiError = await parseApiError(finalizeResponse);
+    throw new Error(
+      apiError?.message ?? "Failed to replace the scene thumbnail.",
+    );
+  }
 }

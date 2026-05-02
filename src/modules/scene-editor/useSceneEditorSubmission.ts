@@ -1,7 +1,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
-import { uploadNewSceneThumbnail } from './sceneThumbnailUpload'
+import { replaceSceneThumbnail, uploadNewSceneThumbnail } from './sceneThumbnailUpload'
 import type {
   CreateSceneFormErrors,
   PendingTagAttachment,
@@ -197,6 +197,10 @@ export function useSceneEditorSubmission({
             form: tagResult.message,
           })
           return
+        }
+
+        if (thumbnailFile) {
+          await replaceSceneThumbnail(authenticatedFetch, mode.sceneId, thumbnailFile)
         }
 
         onComplete()
