@@ -4,7 +4,7 @@ import { GuestOnlyRoute, LoginPage, RegisterPage } from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
 import { MyScenesPage } from '@modules/my-scenes'
-import { CreateScenePage } from '@modules/scene-editor'
+import { CreateScenePage, EditScenePage } from '@modules/scene-editor'
 import { SceneDetailPage } from '@modules/scene-detail'
 import { SettingsPage } from '@modules/settings'
 import { ProtectedRoute } from '@modules/auth'
@@ -32,6 +32,14 @@ export function AppRoutes() {
           }
         />
         <Route path="/scenes/:id" element={<SceneDetailPage />} />
+        <Route
+          path="/scenes/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditScenePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/register"
           element={

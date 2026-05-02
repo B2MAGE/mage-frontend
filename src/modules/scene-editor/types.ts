@@ -50,6 +50,23 @@ export type SceneEditorStateSnapshot = {
   thumbnailFile: File | null
 }
 
+export type SceneEditorInitialState = {
+  description?: string | null
+  name?: string
+  sceneData?: SceneData
+  tagNames?: string[]
+  thumbnailPreviewUrl?: string | null
+}
+
+export type SceneEditorSubmissionMode =
+  | {
+      type: 'create'
+    }
+  | {
+      sceneId: number
+      type: 'edit'
+    }
+
 export type SceneEditorStateBranchUpdater = <K extends keyof SceneEditorModel>(
   branch: K,
   recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
