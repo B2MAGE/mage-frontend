@@ -7,6 +7,7 @@ import { buildApiUrl } from '@shared/lib'
 import { buildAuthenticatedUser, storeAuthenticatedSession } from '@shared/test/auth'
 import { jsonResponse } from '@shared/test/http'
 import { CreateScenePage } from './CreateScenePage'
+import { EditScenePage } from './EditScenePage'
 
 export type SceneEditorFetchHandler = (
   input: RequestInfo | URL,
@@ -52,10 +53,15 @@ export function mockCreateScenePageFetch(
 ) {
   const defaultThumbnailUploadUrl =
     'https://upload.example.com/scenes/pending/default/thumbnails/scene-preview-thumbnail.png'
+  const sceneThumbnailUploadPattern =
+    /^\/api\/scenes\/(?<sceneId>\d+)\/thumbnail\/presign$/
+  const sceneThumbnailFinalizePattern =
+    /^\/api\/scenes\/(?<sceneId>\d+)\/thumbnail\/finalize$/
 
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
     const method =
       typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
+    const inputString = String(input)
 
     if (input === buildApiUrl('/users/me')) {
       return Promise.resolve(jsonResponse(storedUser))
@@ -85,7 +91,37 @@ export function mockCreateScenePageFetch(
       )
     }
 
-    if (input === defaultThumbnailUploadUrl && method === 'PUT') {
+    const sceneThumbnailUploadMatch = inputString.match(sceneThumbnailUploadPattern)
+    if (sceneThumbnailUploadMatch?.groups?.sceneId && method === 'POST') {
+      const { sceneId } = sceneThumbnailUploadMatch.groups
+      return Promise.resolve(
+        jsonResponse({
+          headers: {
+            'Content-Type': 'image/png',
+          },
+          method: 'PUT',
+          objectKey: `scenes/${sceneId}/thumbnails/scene-preview-thumbnail.png`,
+          uploadUrl: `https://upload.example.com/scenes/${sceneId}/thumbnails/scene-preview-thumbnail.png`,
+        }),
+      )
+    }
+
+    const sceneThumbnailFinalizeMatch = inputString.match(sceneThumbnailFinalizePattern)
+    if (sceneThumbnailFinalizeMatch?.groups?.sceneId && method === 'POST') {
+      const sceneId = Number(sceneThumbnailFinalizeMatch.groups.sceneId)
+      return Promise.resolve(
+        jsonResponse(buildSceneEditorApiScene({
+          sceneId,
+          thumbnailRef: `https://cdn.example.com/scenes/${sceneId}/thumbnails/scene-preview-thumbnail.png`,
+        })),
+      )
+    }
+
+    if (
+      (input === defaultThumbnailUploadUrl ||
+        inputString.startsWith('https://upload.example.com/scenes/')) &&
+      method === 'PUT'
+    ) {
       return Promise.resolve(new Response(null, { status: 200 }))
     }
 
@@ -100,6 +136,56 @@ export function renderCreateScenePage() {
         <Routes>
           <Route path="/create-scene" element={<CreateScenePage />} />
           <Route path="/my-scenes" element={<div>My Scenes</div>} />
+        </Routes>
+      </AuthProvider>
+    </MemoryRouter>,
+  )
+}
+
+export function buildSceneEditorApiScene(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
+  const sceneId = typeof overrides.sceneId === 'number' ? overrides.sceneId : 12
+
+  return {
+    createdAt: '2026-04-06T14:00:00Z',
+    creatorDisplayName: 'Scene Artist',
+    description: 'Soft teal bloom with low-end drift.',
+    engagement: {
+      currentUserSaved: false,
+      currentUserVote: null,
+      downvotes: 0,
+      saves: 0,
+      upvotes: 0,
+      views: 0,
+    },
+    name: 'Aurora Drift',
+    ownerUserId: 8,
+    sceneData: {
+      controls: {
+        position0: { x: 0, y: 0, z: 7 },
+        target0: { x: 0, y: 0, z: 0 },
+        zoom0: 1,
+      },
+      visualizer: {
+        shader: 'nebula',
+        skyboxPreset: 4,
+      },
+    },
+    sceneId,
+    thumbnailRef: `thumbnails/scene-${sceneId}.png`,
+    ...overrides,
+  }
+}
+
+export function renderEditScenePage(initialEntries = ['/scenes/12/edit']) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<div>Login</div>} />
+          <Route path="/my-scenes" element={<div>My Scenes</div>} />
+          <Route path="/scenes/:id/edit" element={<EditScenePage />} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
