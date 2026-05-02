@@ -1,5 +1,10 @@
 import { buildApiUrl, fetchScenes } from '@shared/lib'
-import { normalizeSceneDetail, normalizeSceneEngagement } from './dto'
+import {
+  normalizeSceneComment,
+  normalizeSceneComments,
+  normalizeSceneDetail,
+  normalizeSceneEngagement,
+} from './dto'
 import { buildRecommendedSceneGroups } from './recommendations'
 import type {
   AuthenticatedFetch,
@@ -7,6 +12,7 @@ import type {
   SceneDetail,
   SceneDetailErrorCode,
   SceneEngagementSummary,
+  SceneComment,
   SceneVoteState,
 } from './types'
 
@@ -70,6 +76,96 @@ async function readSceneEngagementResponse(response: Response): Promise<SceneEng
 
   const payload = await response.json().catch(() => null)
   return normalizeSceneEngagement(payload)
+}
+
+async function readSceneCommentResponse(response: Response): Promise<SceneComment> {
+  if (!response.ok) {
+    throw new SceneDetailRequestError(
+      readErrorCode(response.status),
+      `Scene comment request failed with status ${response.status}.`,
+    )
+  }
+
+  const payload = await response.json().catch(() => null)
+  const comment = normalizeSceneComment(payload)
+
+  if (!comment) {
+    throw new SceneDetailRequestError(
+      'invalid-payload',
+      'Scene comment response is missing required fields.',
+    )
+  }
+
+  return comment
+}
+
+export async function fetchSceneComments(
+  authenticatedFetch: AuthenticatedFetch,
+  isAuthenticated: boolean,
+  sceneId: number,
+) {
+  const response = isAuthenticated
+    ? await authenticatedFetch(`/scenes/${sceneId}/comments`)
+    : await fetch(buildApiUrl(`/scenes/${sceneId}/comments`))
+
+  if (!response.ok) {
+    throw new SceneDetailRequestError(
+      readErrorCode(response.status),
+      `Scene comments request failed with status ${response.status}.`,
+    )
+  }
+
+  const payload = await response.json().catch(() => [])
+  return normalizeSceneComments(payload)
+}
+
+export async function createSceneComment(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  text: string,
+  parentCommentId?: number | null,
+) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/comments`, {
+    body: JSON.stringify({
+      text,
+      parentCommentId: parentCommentId ?? null,
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+
+  return readSceneCommentResponse(response)
+}
+
+export async function updateSceneCommentVote(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  commentId: number,
+  vote: SceneVoteState,
+) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/comments/${commentId}/vote`, {
+    body: JSON.stringify({ vote }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'PUT',
+  })
+
+  return readSceneCommentResponse(response)
+}
+
+export async function clearSceneCommentVote(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  commentId: number,
+) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/comments/${commentId}/vote`, {
+    method: 'DELETE',
+  })
+
+  return readSceneCommentResponse(response)
 }
 
 export async function recordSceneView(

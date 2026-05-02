@@ -23,12 +23,14 @@ function DownvoteIcon() {
 export function VoteButton({
   className,
   count,
+  disabled = false,
   direction,
   isSelected = false,
   onClick,
 }: {
   className: string
   count: string
+  disabled?: boolean
   direction: 'up' | 'down'
   isSelected?: boolean
   onClick?: () => void
@@ -41,6 +43,7 @@ export function VoteButton({
       aria-label={`${label} ${count}`}
       aria-pressed={isSelected}
       className={`${className}${isSelected ? ' is-selected' : ''}`}
+      disabled={disabled}
       onClick={onClick}
       type="button"
     >

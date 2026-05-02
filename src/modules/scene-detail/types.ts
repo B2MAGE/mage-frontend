@@ -23,12 +23,18 @@ export type SceneDetailErrorCode =
   | 'unavailable'
 
 export type SceneComment = {
-  author: string
-  handle: string
-  posted: string
+  commentId: number
+  sceneId: number
+  parentCommentId: number | null
+  authorUserId: number | null
+  authorDisplayName: string
+  createdAt: string | null
   text: string
-  upvotes: string
-  downvotes: string
+  replyCount: number
+  upvotes: number
+  downvotes: number
+  currentUserVote: SceneVoteState | null
+  replies: SceneComment[]
 }
 
 export type CreatorProfile = {

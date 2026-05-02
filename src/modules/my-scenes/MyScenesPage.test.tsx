@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
@@ -105,6 +105,41 @@ describe('MyScenesPage states', () => {
         return Promise.resolve(jsonResponse([auroraScene, signalScene]))
       }
 
+      if (input === buildApiUrl('/scenes/12/comments')) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              commentId: 101,
+              replies: [
+                {
+                  commentId: 102,
+                  replies: [],
+                  replyCount: 0,
+                },
+              ],
+              replyCount: 1,
+            },
+            {
+              commentId: 103,
+              replies: [],
+              replyCount: 0,
+            },
+          ]),
+        )
+      }
+
+      if (input === buildApiUrl('/scenes/13/comments')) {
+        return Promise.resolve(
+          jsonResponse([
+            {
+              commentId: 201,
+              replies: [],
+              replyCount: 0,
+            },
+          ]),
+        )
+      }
+
       if (input === buildApiUrl('/scenes/12')) {
         return Promise.resolve(jsonResponse(auroraScene))
       }
@@ -129,6 +164,14 @@ describe('MyScenesPage states', () => {
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(screen.getByText('777')).toBeInTheDocument()
     expect(screen.getByText('75%')).toBeInTheDocument()
+
+    const auroraRow = sceneLink.closest('article')
+    const signalRow = screen.getByRole('link', { name: /signal bloom/i }).closest('article')
+
+    expect(auroraRow).not.toBeNull()
+    expect(signalRow).not.toBeNull()
+    expect(within(auroraRow as HTMLElement).getByText('3')).toBeInTheDocument()
+    expect(within(signalRow as HTMLElement).getByText('1')).toBeInTheDocument()
 
     await user.click(sceneLink)
 

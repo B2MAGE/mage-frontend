@@ -1315,7 +1315,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 14px;
-  align-items: center;
+  align-items: flex-start;
   margin-top: 18px;
 }
 
@@ -1338,12 +1338,98 @@
   color: var(--muted);
 }
 
+.scene-detail-comment-composer__field--button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.scene-detail-comment-form,
+.scene-detail-reply-composer {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scene-detail-reply-composer {
+  margin-top: 12px;
+}
+
+.scene-detail-comment-composer__textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.scene-detail-comment-composer__textarea::placeholder {
+  color: var(--muted);
+}
+
+.scene-detail-comment-composer__textarea:focus {
+  outline: none;
+  border-bottom-color: rgba(99, 240, 214, 0.52);
+}
+
+.scene-detail-comment-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.scene-detail-comment-submit-button,
+.scene-detail-comment-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+.scene-detail-comment-submit-button {
+  background: rgba(99, 240, 214, 0.18);
+  border-color: rgba(99, 240, 214, 0.36);
+}
+
+.scene-detail-comment-cancel-button {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.scene-detail-comment-submit-button:hover,
+.scene-detail-comment-cancel-button:hover {
+  border-color: rgba(99, 240, 214, 0.48);
+}
+
+.scene-detail-comment-submit-button:disabled,
+.scene-detail-comment-cancel-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .mage-comments__list {
   display: grid;
   gap: 14px;
   margin-top: 16px;
 }
 
+.scene-detail-comments-status,
 .scene-detail-comments-empty {
   margin: 16px 0 0;
   color: var(--muted);
@@ -1393,6 +1479,37 @@
   min-height: 34px;
   padding: 8px 12px;
   font-size: 0.86rem;
+}
+
+.scene-detail-comment__action[aria-pressed='true'],
+.scene-detail-comment__action.is-selected {
+  border-color: rgba(99, 240, 214, 0.46);
+  background: rgba(99, 240, 214, 0.13);
+  color: #e9fffb;
+}
+
+.scene-detail-comment__action[aria-pressed='true'] .scene-detail-vote-button__icon,
+.scene-detail-comment__action.is-selected .scene-detail-vote-button__icon {
+  color: #63f0d6;
+}
+
+.scene-detail-action-chip:disabled,
+.scene-detail-sort-chip:disabled,
+.scene-detail-comment__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.mage-comment__replies {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.mage-comment--reply .mage-comment__avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 0.82rem;
 }
 
 .mage-watch__rail {

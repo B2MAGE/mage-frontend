@@ -1,10 +1,11 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import {
   buildSceneDetailResponse,
+  buildSceneCommentResponse,
   buildSceneDetailStoredUser,
   renderSceneDetailPage,
   storeSceneDetailSession,
@@ -107,7 +108,9 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
     expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
-    expect(screen.getByText(/add a comment as scene artist/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /add a public comment/i }),
+    ).toHaveAttribute('placeholder', 'Add a comment as Scene Artist...')
     expect(screen.getAllByText('Scene Artist').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/2,999 views/i).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /save 150/i })).toBeInTheDocument()
@@ -248,6 +251,113 @@ describe('SceneDetailPage route states', () => {
     )
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(buildApiUrl('/scenes/12/views'), expect.any(Object)))
+  })
+
+  it('loads comments and supports replies and comment voting', async () => {
+    storeSceneDetailSession()
+
+    const user = userEvent.setup()
+    const storedUser = buildSceneDetailStoredUser()
+    const sceneResponse = buildSceneDetailResponse({
+      tags: [],
+    })
+    const replyResponse = buildSceneCommentResponse({
+      authorDisplayName: 'Reply Artist',
+      authorUserId: 32,
+      commentId: 502,
+      parentCommentId: 501,
+      text: 'A reply from the crowd.',
+      upvotes: 1,
+    })
+    const topLevelComment = buildSceneCommentResponse({
+      commentId: 501,
+      replies: [replyResponse],
+      replyCount: 1,
+    })
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input === buildApiUrl('/users/me')) {
+        return jsonResponse(storedUser)
+      }
+
+      if (input === buildApiUrl('/scenes/12')) {
+        return jsonResponse(sceneResponse)
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return jsonResponse([sceneResponse])
+      }
+
+      if (input === buildApiUrl('/scenes/12/comments')) {
+        if (init?.method === 'POST') {
+          const payload = JSON.parse(String(init.body)) as Record<string, unknown>
+
+          expect(payload).toEqual({
+            parentCommentId: 501,
+            text: 'New reply from UI',
+          })
+
+          return jsonResponse(
+            buildSceneCommentResponse({
+              authorDisplayName: storedUser.displayName,
+              authorUserId: storedUser.userId,
+              commentId: 503,
+              parentCommentId: 501,
+              text: 'New reply from UI',
+            }),
+          )
+        }
+
+        return jsonResponse([topLevelComment])
+      }
+
+      if (input === buildApiUrl('/scenes/12/comments/501/vote')) {
+        if (init?.method === 'DELETE') {
+          return jsonResponse(topLevelComment)
+        }
+
+        expect(init?.method).toBe('PUT')
+        expect(init?.body).toBe(JSON.stringify({ vote: 'up' }))
+
+        return jsonResponse({
+          ...topLevelComment,
+          currentUserVote: 'up',
+          upvotes: 3,
+        })
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByText('This scene has a great pulse.')).toBeInTheDocument()
+    expect(screen.getByText('A reply from the crowd.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /upvote 2/i }))
+    expect(await screen.findByRole('button', { name: /upvote 3/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await user.click(screen.getByRole('button', { name: /upvote 3/i }))
+    expect(await screen.findByRole('button', { name: /upvote 2/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+
+    await user.click(screen.getByRole('button', { name: /^reply$/i }))
+
+    const replyTextbox = screen.getByRole('textbox', { name: /reply to comment artist/i })
+    await user.type(replyTextbox, 'New reply from UI')
+
+    const replyForm = replyTextbox.closest('form')
+
+    expect(replyForm).not.toBeNull()
+
+    await user.click(within(replyForm as HTMLFormElement).getByRole('button', { name: /^reply$/i }))
+
+    expect(await screen.findByText('New reply from UI')).toBeInTheDocument()
   })
 
   it('shows an empty description state when no description is stored', async () => {
