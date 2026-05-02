@@ -47,8 +47,27 @@ export type SceneEditorStateSnapshot = {
   sceneData: SceneData
   sceneDataText: string
   selectedTagIds: number[]
+  tagsError: string | null
+  tagsLoading: boolean
   thumbnailFile: File | null
 }
+
+export type SceneEditorInitialState = {
+  description?: string | null
+  name?: string
+  sceneData?: SceneData
+  tagNames?: string[]
+  thumbnailPreviewUrl?: string | null
+}
+
+export type SceneEditorSubmissionMode =
+  | {
+      type: 'create'
+    }
+  | {
+      sceneId: number
+      type: 'edit'
+    }
 
 export type SceneEditorStateBranchUpdater = <K extends keyof SceneEditorModel>(
   branch: K,

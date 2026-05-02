@@ -37,6 +37,7 @@ vi.mock('@modules/scene-detail', () => ({
 
 vi.mock('@modules/scene-editor', () => ({
   CreateScenePage: () => <div>Create scene page</div>,
+  EditScenePage: () => <div>Edit scene page</div>,
 }))
 
 vi.mock('@modules/settings', () => ({

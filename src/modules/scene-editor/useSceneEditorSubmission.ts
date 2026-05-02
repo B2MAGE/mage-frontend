@@ -1,10 +1,11 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
-import { uploadNewSceneThumbnail } from './sceneThumbnailUpload'
+import { replaceSceneThumbnail, uploadNewSceneThumbnail } from './sceneThumbnailUpload'
 import type {
   CreateSceneFormErrors,
   PendingTagAttachment,
+  SceneEditorSubmissionMode,
   SceneEditorStateSnapshot,
   TagAttachmentFailure,
 } from './types'
@@ -13,6 +14,7 @@ import { buildEffectiveSceneData, parseCreatedSceneId, validateForm } from './ut
 type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   authenticatedFetch: AuthenticatedFetch
   captureThumbnailIfMissing: () => Promise<File>
+  mode: SceneEditorSubmissionMode
   onComplete: () => void
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
   setIsSubmitting: Dispatch<SetStateAction<boolean>>
@@ -75,6 +77,32 @@ async function attachTagsToScene(
   return failures
 }
 
+async function replaceTagsForScene(
+  authenticatedFetch: AuthenticatedFetch,
+  sceneId: number,
+  tagIds: number[],
+) {
+  const response = await authenticatedFetch(`/scenes/${sceneId}/tags`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tagIds }),
+  })
+
+  if (!response.ok) {
+    const apiError = await parseApiError(response)
+
+    return {
+      details: apiError?.details ?? {},
+      message: apiError?.message ?? 'Failed to update scene tags. Please try again.',
+      ok: false as const,
+    }
+  }
+
+  return {
+    ok: true as const,
+  }
+}
+
 export function useSceneEditorSubmission({
   authenticatedFetch,
   availableTags,
@@ -82,6 +110,7 @@ export function useSceneEditorSubmission({
   description,
   isCameraAdvancedEnabled,
   isMotionAdvancedEnabled,
+  mode,
   name,
   onComplete,
   pendingTagAttachment,
@@ -91,10 +120,103 @@ export function useSceneEditorSubmission({
   setErrors,
   setIsSubmitting,
   setPendingTagAttachment,
+  tagsError,
+  tagsLoading,
   thumbnailFile,
 }: UseSceneEditorSubmissionArgs) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (mode.type === 'edit') {
+      if (tagsLoading || tagsError) {
+        setErrors({
+          tags:
+            tagsError ??
+            'Wait for tags to finish loading before updating the scene.',
+        })
+        return
+      }
+
+      const trimmedName = name.trim()
+      const trimmedDescription = description.trim()
+      const { errors: nextErrors, parsedSceneData } = validateForm(
+        trimmedName,
+        sceneDataText,
+      )
+
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors)
+        return
+      }
+
+      const sanitizedSceneData = buildEffectiveSceneData(
+        parsedSceneData ?? sceneData,
+        {
+          isCameraAdvancedEnabled,
+          isMotionAdvancedEnabled,
+        },
+      )
+
+      setIsSubmitting(true)
+      setErrors({})
+
+      try {
+        const response = await authenticatedFetch(`/scenes/${mode.sceneId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: trimmedName,
+            description: trimmedDescription || null,
+            sceneData: sanitizedSceneData,
+          }),
+        })
+
+        if (!response.ok) {
+          const apiError = await parseApiError(response)
+          const backendDetails = apiError?.details ?? {}
+
+          setErrors({
+            description: backendDetails.description,
+            name: backendDetails.name,
+            sceneData: backendDetails.sceneData,
+            form:
+              apiError?.message ?? 'Failed to update scene. Please try again.',
+          })
+          return
+        }
+
+        const tagResult = await replaceTagsForScene(
+          authenticatedFetch,
+          mode.sceneId,
+          selectedTagIds,
+        )
+
+        if (!tagResult.ok) {
+          setErrors({
+            tags: tagResult.details.tagIds,
+            form: tagResult.message,
+          })
+          return
+        }
+
+        if (thumbnailFile) {
+          await replaceSceneThumbnail(authenticatedFetch, mode.sceneId, thumbnailFile)
+        }
+
+        onComplete()
+      } catch (error) {
+        setErrors({
+          form:
+            error instanceof Error && error.message.trim()
+              ? error.message
+              : 'Scene update is unavailable right now. Please try again in a moment.',
+        })
+      } finally {
+        setIsSubmitting(false)
+      }
+
+      return
+    }
 
     if (pendingTagAttachment) {
       setIsSubmitting(true)

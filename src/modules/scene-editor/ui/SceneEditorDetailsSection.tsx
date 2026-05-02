@@ -332,6 +332,12 @@ function TagEditor({
         </p>
       ) : null}
 
+      {errors.tags ? (
+        <p className="field-error" role="alert">
+          {errors.tags}
+        </p>
+      ) : null}
+
       {pendingRetryTags.length > 0 ? (
         <p className="field-hint">
           Waiting to retry attachment for:{' '}

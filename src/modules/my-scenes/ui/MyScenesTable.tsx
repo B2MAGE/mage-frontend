@@ -44,6 +44,26 @@ function SortButton({
   )
 }
 
+function EditSceneIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M4.75 19.25h3.6L18.7 8.9a2.12 2.12 0 0 0 0-3L18.1 5.3a2.12 2.12 0 0 0-3 0L4.75 15.65v3.6Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="m13.75 6.65 3.6 3.6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
 export function MyScenesTable({
   allPageScenesSelected,
   pagedScenes,
@@ -132,9 +152,25 @@ export function MyScenesTable({
                 <Link className="my-scenes-row__title-link" to={`/scenes/${scene.id}`}>
                   <strong>{scene.name}</strong>
                 </Link>
-                <button className="my-scenes-row__description" type="button">
-                  {scene.description ?? 'Add description'}
-                </button>
+                <div className="my-scenes-row__description-slot">
+                  <span className="my-scenes-row__description">
+                    {scene.description ?? 'Add description'}
+                  </span>
+                  <div
+                    aria-label={`Actions for ${scene.name}`}
+                    className="my-scenes-row__menu"
+                    role="group"
+                  >
+                    <Link
+                      aria-label="Edit scene"
+                      className="my-scenes-row__menu-button"
+                      title="Edit scene"
+                      to={`/scenes/${scene.id}/edit`}
+                    >
+                      <EditSceneIcon />
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
 

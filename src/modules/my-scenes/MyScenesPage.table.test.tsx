@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
@@ -97,9 +97,15 @@ describe('MyScenesPage table behavior', () => {
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Public' })).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /soft teal bloom with low-end drift\./i }),
+      screen.getByText(/soft teal bloom with low-end drift\./i),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /add description/i })).toHaveLength(2)
+    expect(screen.getAllByText(/add description/i)).toHaveLength(2)
+    expect(
+      within(screen.getByRole('group', { name: /actions for aurora drift/i })).getByRole(
+        'link',
+        { name: /edit scene/i },
+      ),
+    ).toHaveAttribute('href', '/scenes/1/edit')
     expect(screen.getByAltText('Aurora Drift thumbnail')).toBeInTheDocument()
     expect(screen.getByText('1.2K')).toBeInTheDocument()
     expect(screen.getByText('75%')).toBeInTheDocument()

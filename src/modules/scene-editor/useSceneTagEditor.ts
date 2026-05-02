@@ -8,6 +8,7 @@ import { loadAvailableTagsFromBackend, normalizeTagName, sortTags, upsertTag } f
 type UseSceneTagEditorArgs = {
   authenticatedFetch: AuthenticatedFetch
   clearErrors: (...fields: Array<keyof CreateSceneFormErrors>) => void
+  initialSelectedTagNames?: string[]
   pendingTagAttachment: PendingTagAttachment | null
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
 }
@@ -15,6 +16,7 @@ type UseSceneTagEditorArgs = {
 export function useSceneTagEditor({
   authenticatedFetch,
   clearErrors,
+  initialSelectedTagNames = [],
   pendingTagAttachment,
   setErrors,
 }: UseSceneTagEditorArgs) {
@@ -26,6 +28,10 @@ export function useSceneTagEditor({
   const [tagsError, setTagsError] = useState<string | null>(null)
   const [isCreatingTag, setIsCreatingTag] = useState(false)
   const tagDropdownRef = useRef<HTMLDivElement | null>(null)
+  const hasAppliedInitialSelectedTagsRef = useRef(false)
+  const initialSelectedTagNameSetRef = useRef(
+    new Set(initialSelectedTagNames.map((tagName) => normalizeTagName(tagName))),
+  )
   const tagSearchInputId = useId()
   const normalizedTagSearchValue = normalizeTagName(tagSearchValue)
   const selectedTags = useMemo(
@@ -96,6 +102,24 @@ export function useSceneTagEditor({
       isCurrent = false
     }
   }, [])
+
+  useEffect(() => {
+    if (hasAppliedInitialSelectedTagsRef.current || tagsLoading) {
+      return
+    }
+
+    hasAppliedInitialSelectedTagsRef.current = true
+
+    if (initialSelectedTagNameSetRef.current.size === 0) {
+      return
+    }
+
+    setSelectedTagIds(
+      availableTags
+        .filter((tag) => initialSelectedTagNameSetRef.current.has(normalizeTagName(tag.name)))
+        .map((tag) => tag.tagId),
+    )
+  }, [availableTags, tagsLoading])
 
   useEffect(() => {
     if (!isTagDropdownOpen) {

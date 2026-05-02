@@ -9,6 +9,8 @@ type SceneEditorActionBarProps = {
   nextSection: EditorSectionConfig | null
   pendingTagAttachment: { sceneId: number; tagIds: number[] } | null
   previousSection: EditorSectionConfig | null
+  submitLabel?: string
+  submittingLabel?: string
   onSectionStep: (direction: -1 | 1) => void
 }
 
@@ -20,6 +22,8 @@ export function SceneEditorActionBar({
   nextSection,
   pendingTagAttachment,
   previousSection,
+  submitLabel = 'Create scene',
+  submittingLabel = 'Creating scene...',
   onSectionStep,
 }: SceneEditorActionBarProps) {
   return (
@@ -61,10 +65,10 @@ export function SceneEditorActionBar({
           {isSubmitting
             ? pendingTagAttachment
               ? 'Retrying tag attachment...'
-              : 'Creating scene...'
+              : submittingLabel
             : pendingTagAttachment
               ? 'Retry tag attachment'
-              : 'Create scene'}
+              : submitLabel}
         </button>
       </div>
     </div>

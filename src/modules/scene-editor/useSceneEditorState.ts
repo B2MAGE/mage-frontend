@@ -9,7 +9,12 @@ import {
   type ScenePassId,
 } from './sceneEditor'
 import { initialSceneData, initialSceneModel } from './fixtures'
-import type { CreateSceneFormErrors, EditorSectionId, PendingTagAttachment } from './types'
+import type {
+  CreateSceneFormErrors,
+  EditorSectionId,
+  PendingTagAttachment,
+  SceneEditorInitialState,
+} from './types'
 import {
   buildEffectiveSceneData,
   prettyPrintEditorSceneData,
@@ -23,10 +28,14 @@ import { useSceneTagEditor } from './useSceneTagEditor'
 
 type UseSceneEditorStateArgs = {
   authenticatedFetch: AuthenticatedFetch
+  initialState?: SceneEditorInitialState
+  titleId?: string
 }
 
 export function useSceneEditorState({
   authenticatedFetch,
+  initialState,
+  titleId: providedTitleId = 'create-scene-title',
 }: UseSceneEditorStateArgs) {
   const {
     currentSection,
@@ -38,16 +47,18 @@ export function useSceneEditorState({
     sectionMenuValue,
   } = useSceneEditorNavigation()
   const { actionBarSentinelRef, isActionBarStuck } = useSceneEditorActionBarState()
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+  const [name, setName] = useState(() => initialState?.name ?? '')
+  const [description, setDescription] = useState(() => initialState?.description ?? '')
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(
-    null,
+    () => initialState?.thumbnailPreviewUrl ?? null,
   )
   const [playlistValue, setPlaylistValue] = useState('')
-  const [sceneData, setSceneData] = useState<SceneData>(initialSceneData)
+  const [sceneData, setSceneData] = useState<SceneData>(
+    () => initialState?.sceneData ?? initialSceneData,
+  )
   const [sceneDataText, setSceneDataText] = useState(() =>
-    prettyPrintEditorSceneData(initialSceneData),
+    prettyPrintEditorSceneData(initialState?.sceneData ?? initialSceneData),
   )
   const [errors, setErrors] = useState<CreateSceneFormErrors>({})
   const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false)
@@ -65,7 +76,7 @@ export function useSceneEditorState({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const formErrorId = useId()
-  const titleId = 'create-scene-title'
+  const titleId = providedTitleId
 
   const detailsSectionIssueMessages = [
     validateSceneName(name),
@@ -122,6 +133,7 @@ export function useSceneEditorState({
   } = useSceneTagEditor({
     authenticatedFetch,
     clearErrors,
+    initialSelectedTagNames: initialState?.tagNames,
     pendingTagAttachment,
     setErrors,
   })

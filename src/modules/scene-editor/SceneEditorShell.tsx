@@ -36,6 +36,7 @@ import { SceneEditorStepper } from "./ui/SceneEditorStepper";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
+import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
   describePassState,
@@ -52,13 +53,18 @@ function formatDegrees(value: number) {
 
 type SceneEditorShellProps = {
   authenticatedFetch: AuthenticatedFetch;
+  initialState?: SceneEditorInitialState;
+  mode?: SceneEditorSubmissionMode;
   onComplete: () => void;
 };
 
 export function SceneEditorShell({
   authenticatedFetch,
+  initialState,
+  mode = { type: "create" },
   onComplete,
 }: SceneEditorShellProps) {
+  const isEditMode = mode.type === "edit";
   const {
     actionBarSentinelRef,
     availableTags,
@@ -120,7 +126,11 @@ export function SceneEditorShell({
     titleId,
     toggleTagSelection,
     updateBranch,
-  } = useSceneEditorState({ authenticatedFetch });
+  } = useSceneEditorState({
+    authenticatedFetch,
+    initialState,
+    titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
+  });
   const {
     previewSceneData,
     sceneModel,
@@ -453,6 +463,7 @@ export function SceneEditorShell({
     description,
     isCameraAdvancedEnabled,
     isMotionAdvancedEnabled,
+    mode,
     name,
     onComplete,
     pendingTagAttachment,
@@ -462,6 +473,8 @@ export function SceneEditorShell({
     setErrors,
     setIsSubmitting,
     setPendingTagAttachment,
+    tagsError,
+    tagsLoading,
     thumbnailFile,
   });
 
@@ -472,9 +485,13 @@ export function SceneEditorShell({
       titleId={titleId}
     >
       <AuthPageHeader
-        description="Build a scene with curated controls and effect shaping."
+        description={
+          isEditMode
+            ? "Refine the saved scene details and preview the current scene configuration."
+            : "Build a scene with curated controls and effect shaping."
+        }
         eyebrow="Scene Studio"
-        title="Create Scene"
+        title={isEditMode ? "Edit Scene" : "Create Scene"}
         titleId={titleId}
       />
 
@@ -1321,7 +1338,11 @@ export function SceneEditorShell({
 
             {sectionMenuValue === "confirm" ? (
               <SceneSection
-                description="Review the scene setup before creating it and expand the raw JSON only if you need a final low-level check."
+                description={
+                  isEditMode
+                    ? "Review the scene setup before updating it and expand the raw JSON only if you need a final low-level check."
+                    : "Review the scene setup before creating it and expand the raw JSON only if you need a final low-level check."
+                }
                 title="Confirm"
               >
                 <div className="scene-editor-stack">
@@ -1511,6 +1532,8 @@ export function SceneEditorShell({
             nextSection={nextSection}
             pendingTagAttachment={pendingTagAttachment}
             previousSection={previousSection}
+            submitLabel={isEditMode ? "Update scene" : "Create scene"}
+            submittingLabel={isEditMode ? "Updating scene..." : "Creating scene..."}
             onSectionStep={handleSectionStep}
           />
 
