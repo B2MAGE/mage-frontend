@@ -79,7 +79,6 @@ export function LoginPage() {
   }))
   const [errors, setErrors] = useState<LoginFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [resetPasswordNotice, setResetPasswordNotice] = useState('')
   const [registrationNotice, setRegistrationNotice] = useState(
     loginLocationState.registrationNotice ?? '',
   )
@@ -106,10 +105,6 @@ export function LoginPage() {
         form: undefined,
       }
     })
-
-    if (resetPasswordNotice) {
-      setResetPasswordNotice('')
-    }
 
     if (registrationNotice) {
       setRegistrationNotice('')
@@ -249,8 +244,6 @@ export function LoginPage() {
 
             {registrationNotice ? <FormNotice tone="note">{registrationNotice}</FormNotice> : null}
 
-            {resetPasswordNotice ? <FormNotice tone="note">{resetPasswordNotice}</FormNotice> : null}
-
             <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
               {isSubmitting ? 'Signing in...' : 'Sign in'}
             </button>
@@ -258,17 +251,15 @@ export function LoginPage() {
 
           <p className="auth-footnote">
             Forgot your password?{' '}
-            <button
+            <Link
               className="auth-link-button"
-              type="button"
-              onClick={() =>
-                setResetPasswordNotice(
-                  'Password reset is not connected yet, but this option is now available in the frontend.',
-                )
-              }
+              to="/forgot-password"
+              state={{
+                loginEmail: values.email.trim() || undefined,
+              }}
             >
               Reset it here
-            </button>
+            </Link>
           </p>
 
           <p className="auth-footnote">

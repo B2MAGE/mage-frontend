@@ -857,10 +857,6 @@
   border: 1px solid rgba(99, 240, 214, 0.18);
 }
 
-.settings-reset-button {
-  justify-self: auto;
-}
-
 .scene-empty-state {
   display: grid;
   gap: 14px;

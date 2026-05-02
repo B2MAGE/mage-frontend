@@ -1,6 +1,7 @@
 import { useAuth } from '@auth'
+import { changePassword } from './password'
 import { saveUserProfile } from './profile'
-import { ProfileDetailsForm, ThemeSettingsSection } from './ui'
+import { PasswordChangeForm, ProfileDetailsForm, ThemeSettingsSection } from './ui'
 
 export function SettingsPage() {
   const { authenticatedFetch, updateAuthenticatedUser, user } = useAuth()
@@ -42,6 +43,11 @@ export function SettingsPage() {
 
             return result
           }}
+        />
+
+        <PasswordChangeForm
+          authProvider={user.authProvider}
+          onSave={(passwordFields) => changePassword(authenticatedFetch, passwordFields)}
         />
       </section>
     </main>

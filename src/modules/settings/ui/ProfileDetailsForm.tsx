@@ -137,13 +137,6 @@ export function ProfileDetailsForm({
           >
             {isSubmitting ? 'Saving...' : 'Save changes'}
           </button>
-
-          <button
-            className="scene-secondary-button settings-action-button settings-reset-button"
-            type="button"
-          >
-            Reset password
-          </button>
         </div>
       </form>
     </SurfaceCard>

@@ -13,6 +13,10 @@ type RegisterRequest = {
   password: string
 }
 
+type PasswordResetRequest = {
+  email: string
+}
+
 export function buildAuthorizationHeaders(headers: HeadersInit | undefined, accessToken: string) {
   const nextHeaders = new Headers(headers)
   nextHeaders.set('Authorization', `Bearer ${accessToken}`)
@@ -48,6 +52,16 @@ export async function loginWithCredentials(payload: LoginRequest) {
 
 export async function registerLocalAccount(payload: RegisterRequest) {
   return fetch(buildApiUrl('/auth/register'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function requestPasswordReset(payload: PasswordResetRequest) {
+  return fetch(buildApiUrl('/auth/reset-password/request'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

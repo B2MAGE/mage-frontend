@@ -17,3 +17,12 @@ export type UserProfileResponse = {
 export type ProfileSaveResult =
   | { ok: true }
   | { ok: false; details: Record<string, string>; message: string }
+
+export type PasswordChangeFields = {
+  currentPassword: string
+  newPassword: string
+}
+
+export type PasswordChangeResult =
+  | { ok: true }
+  | { ok: false; code?: string; details: Record<string, string>; message: string }

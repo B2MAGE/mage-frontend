@@ -70,6 +70,7 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('heading', { name: /^settings$/i, level: 1 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /theme/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /profile details/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /password/i, level: 2 })).toBeInTheDocument()
     expect(
       screen.getByText(
         /manage your mage profile details and choose the interface theme that fits this device/i,
@@ -82,7 +83,11 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText(/last name/i)).toHaveValue('Artist')
     expect(screen.queryByText('LOCAL')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/current password/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^new password$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/verify new password/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /save password/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /reset password/i })).not.toBeInTheDocument()
   })
 
   it('persists the selected theme on this device', async () => {
@@ -265,6 +270,215 @@ describe('SettingsPage', () => {
     ).toBeInTheDocument()
     expect(authState.updateAuthenticatedUser).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: /save changes/i })).toBeEnabled()
+  })
+
+  it('changes a local account password through the authenticated backend flow', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    await user.type(screen.getByLabelText(/current password/i), 'current-secret')
+    await user.type(screen.getByLabelText(/^new password$/i), 'new-secret-value')
+    await user.type(screen.getByLabelText(/verify new password/i), 'new-secret-value')
+    await user.click(screen.getByRole('button', { name: /save password/i }))
+
+    await waitFor(() =>
+      expect(authState.authenticatedFetch).toHaveBeenCalledWith(
+        '/users/me/password',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({
+            currentPassword: 'current-secret',
+            newPassword: 'new-secret-value',
+          }),
+        }),
+      ),
+    )
+
+    expect(await screen.findByText('Password updated.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/current password/i)).toHaveValue('')
+    expect(screen.getByLabelText(/^new password$/i)).toHaveValue('')
+    expect(screen.getByLabelText(/verify new password/i)).toHaveValue('')
+  })
+
+  it('validates password change fields before submitting', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn(),
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    await user.click(screen.getByRole('button', { name: /save password/i }))
+
+    expect(await screen.findByText('Current password is required.')).toBeInTheDocument()
+    expect(screen.getByText('New password is required.')).toBeInTheDocument()
+    expect(screen.getByText('Verify your new password.')).toBeInTheDocument()
+    expect(authState.authenticatedFetch).not.toHaveBeenCalled()
+
+    await user.type(screen.getByLabelText(/current password/i), 'current-secret')
+    await user.type(screen.getByLabelText(/^new password$/i), 'short')
+    await user.type(screen.getByLabelText(/verify new password/i), 'different-value')
+    await user.click(screen.getByRole('button', { name: /save password/i }))
+
+    expect(
+      await screen.findByText('New password must be between 8 and 72 characters.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('New passwords must match.')).toBeInTheDocument()
+    expect(authState.authenticatedFetch).not.toHaveBeenCalled()
+  })
+
+  it('shows invalid current password errors on the current password field', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            code: 'INVALID_CURRENT_PASSWORD',
+            message: 'Current password is incorrect.',
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      ),
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    await user.type(screen.getByLabelText(/current password/i), 'wrong-secret')
+    await user.type(screen.getByLabelText(/^new password$/i), 'new-secret-value')
+    await user.type(screen.getByLabelText(/verify new password/i), 'new-secret-value')
+    await user.click(screen.getByRole('button', { name: /save password/i }))
+
+    expect(await screen.findByText('Current password is incorrect.')).toBeInTheDocument()
+  })
+
+  it('shows backend password validation and request failure messages clearly', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Request validation failed.',
+              details: {
+                newPassword: 'newPassword must be between 8 and 72 characters',
+              },
+            }),
+            {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            },
+          ),
+        )
+        .mockRejectedValueOnce(new Error('network down')),
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    await user.type(screen.getByLabelText(/current password/i), 'current-secret')
+    await user.type(screen.getByLabelText(/^new password$/i), 'new-secret-value')
+    await user.type(screen.getByLabelText(/verify new password/i), 'new-secret-value')
+    await user.click(screen.getByRole('button', { name: /save password/i }))
+
+    expect(
+      await screen.findByText('newPassword must be between 8 and 72 characters'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Request validation failed.')).toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText(/current password/i))
+    await user.type(screen.getByLabelText(/current password/i), 'current-secret')
+    await user.click(screen.getByRole('button', { name: /save password/i }))
+
+    expect(
+      await screen.findByText(
+        'Password changes are unavailable right now. Please try again in a moment.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an unsupported password state for Google-only users', () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn(),
+      isAuthenticated: true,
+      user: {
+        authProvider: 'GOOGLE',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    renderSettingsPage()
+
+    expect(
+      screen.getByText('Password changes are managed by Google for this account.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText(/current password/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /save password/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /reset password/i })).not.toBeInTheDocument()
   })
 
   it('shows a fallback state when the page cannot read a signed-in user', () => {
