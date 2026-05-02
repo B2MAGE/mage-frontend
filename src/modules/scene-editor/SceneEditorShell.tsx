@@ -463,6 +463,7 @@ export function SceneEditorShell({
     description,
     isCameraAdvancedEnabled,
     isMotionAdvancedEnabled,
+    mode,
     name,
     onComplete,
     pendingTagAttachment,
@@ -472,6 +473,8 @@ export function SceneEditorShell({
     setErrors,
     setIsSubmitting,
     setPendingTagAttachment,
+    tagsError,
+    tagsLoading,
     thumbnailFile,
   });
 

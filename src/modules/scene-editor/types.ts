@@ -47,6 +47,8 @@ export type SceneEditorStateSnapshot = {
   sceneData: SceneData
   sceneDataText: string
   selectedTagIds: number[]
+  tagsError: string | null
+  tagsLoading: boolean
   thumbnailFile: File | null
 }
 
