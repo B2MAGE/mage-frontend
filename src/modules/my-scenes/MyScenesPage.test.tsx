@@ -211,7 +211,7 @@ describe('MyScenesPage states', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 
-  it('shows an add-description action when no description is stored', async () => {
+  it('shows an edit action when no description is stored', async () => {
     storeMyScenesSession()
 
     const storedUser = buildMyScenesStoredUser()
@@ -247,7 +247,13 @@ describe('MyScenesPage states', () => {
     renderMyScenesPage()
 
     expect(await screen.findByText('Custom Shader Scene')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /add description/i })).toBeInTheDocument()
+    expect(screen.getByText(/add description/i)).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('group', { name: /actions for custom shader scene/i })).getByRole(
+        'link',
+        { name: /edit scene/i },
+      ),
+    ).toHaveAttribute('href', '/scenes/31/edit')
     expect(screen.queryByText(/let size = input/i)).not.toBeInTheDocument()
   })
 })
