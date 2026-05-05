@@ -15,6 +15,7 @@ Exports:
 - `GuestOnlyRoute`
 - `LoginPage`
 - `ForgotPasswordPage`
+- `ResetPasswordPage`
 - `RegisterPage`
 
 ## Internal Responsibilities
@@ -29,8 +30,8 @@ Exports:
   Protected-route and guest-route behavior.
 - `LoginPage.tsx` and `RegisterPage.tsx`
   Route-facing auth UI.
-- `ForgotPasswordPage.tsx`
-  Password-recovery request UI.
+- `ForgotPasswordPage.tsx` and `ResetPasswordPage.tsx`
+  Password-recovery request and reset-confirmation UI.
 
 ## Integration Rules
 
@@ -126,6 +127,40 @@ Failure modes:
 - backend validation details are surfaced on the email field when available
 - network or server failures show a generic unavailable message
 - successful responses do not reveal whether the submitted email exists
+
+### `/reset-password`
+
+Access:
+
+- guest-only
+- authenticated users are redirected to `/`
+
+Request flow:
+
+- `POST /api/auth/reset-password/confirm`
+
+Expected request body:
+
+```json
+{
+  "token": "raw-reset-token",
+  "newPassword": "example-password"
+}
+```
+
+User-facing behavior:
+
+- reads the reset token from `/reset-password?token=...`
+- shows a missing-token error when the link is malformed
+- validates new password length and confirmation matching on the client
+- disables submit while the request is in flight
+- shows a success state with a login link after reset completes
+
+Failure modes:
+
+- invalid or expired token responses are shown as form-level errors
+- backend password validation details are surfaced on the new-password field
+- network or server failures show a generic unavailable message
 
 ### `/register`
 
