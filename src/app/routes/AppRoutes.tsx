@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from '@app/Layout'
-import { ForgotPasswordPage, GuestOnlyRoute, LoginPage, RegisterPage } from '@modules/auth'
+import { ForgotPasswordPage, GuestOnlyRoute, LoginPage, RegisterPage, ResetPasswordPage } from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
 import { MyScenesPage } from '@modules/my-scenes'
@@ -28,6 +28,14 @@ export function AppRoutes() {
           element={
             <GuestOnlyRoute>
               <ForgotPasswordPage />
+            </GuestOnlyRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <GuestOnlyRoute>
+              <ResetPasswordPage />
             </GuestOnlyRoute>
           }
         />
