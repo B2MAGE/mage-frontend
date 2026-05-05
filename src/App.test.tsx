@@ -26,8 +26,10 @@ vi.mock('@modules/auth', async (importOriginal) => {
 
   return {
     ...actual,
+    ForgotPasswordPage: () => <div>Forgot password page</div>,
     LoginPage: () => <div>Login page</div>,
     RegisterPage: () => <div>Register page</div>,
+    ResetPasswordPage: () => <div>Reset password page</div>,
   }
 })
 
