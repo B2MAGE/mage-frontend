@@ -61,6 +61,7 @@ describe('App routing', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.restoreAllMocks()
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   })
 
   it('allows direct scene detail visits without redirecting to login', async () => {

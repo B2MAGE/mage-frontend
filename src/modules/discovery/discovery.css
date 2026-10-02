@@ -1,4 +1,9 @@
 /* Discovery cards are shared with the homepage's recent-scene grid. */
+.scene-card-link { position: relative; isolation: isolate; }
+.scene-card-link .scene-card__open-link { color: inherit; text-decoration: none; }
+.scene-card__open-link::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: var(--card-thumbnail-radius, 14px); }
+.scene-card-link .scene-card__open-link:focus-visible { outline: none; }
+.scene-card__open-link:focus-visible::after { outline: 2px solid var(--accent-light, var(--accent)); outline-offset: 4px; }
 .scenes-filter-rail {display:flex;align-items:center;gap:18px;}
 .scenes-filter-rail > :is(.tag-filter-scroller,.tag-filter-loading-region) {flex:1 1 auto;min-width:0;}
 .tag-filter-loading-region .loading-region__visual {width:100%;}

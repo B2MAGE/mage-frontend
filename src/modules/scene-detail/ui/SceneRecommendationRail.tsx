@@ -1,6 +1,6 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { LoadingRegion, ScrollableTagBar } from '@shared/ui'
+import { CreatorProfileLink, LoadingRegion, ScrollableTagBar } from '@shared/ui'
 import type { MagePlayerPlaylistTrack } from '@modules/player'
 import { buildTagRecommendationFilter, readRecommendationFilterTag } from '../recommendations'
 import type { RecommendedSceneCard, RecommendationFilter } from '../types'
@@ -168,7 +168,7 @@ export function SceneRecommendationRail({
       ) : (
         <div className="mage-watch__rail-list">
           {recommendedScenes.slice(0, 4).map((recommendedScene) => (
-            <Link className="mage-scene-card" key={recommendedScene.id} to={`/scenes/${recommendedScene.id}`}>
+            <article className="mage-scene-card" key={recommendedScene.id}>
               {recommendedScene.thumbnailRef ? (
                 <img
                   alt={`${recommendedScene.title} thumbnail`}
@@ -183,11 +183,17 @@ export function SceneRecommendationRail({
                 />
               )}
               <div className="mage-scene-card__body">
-                <strong>{recommendedScene.title}</strong>
-                <span>{recommendedScene.creator}</span>
+                <Link className="mage-scene-card__open-link" to={`/scenes/${recommendedScene.id}`}>
+                  <strong>{recommendedScene.title}</strong>
+                </Link>
+                <span>
+                  <CreatorProfileLink handle={recommendedScene.creatorHandle}>
+                    {recommendedScene.creator}
+                  </CreatorProfileLink>
+                </span>
                 <span>{recommendedScene.meta}</span>
               </div>
-            </Link>
+            </article>
           ))}
         </div>
       )}

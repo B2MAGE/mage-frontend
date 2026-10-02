@@ -81,6 +81,7 @@ export type RecommendedSceneCard = {
   id: number
   title: string
   creator: string
+  creatorHandle: string | null
   meta: string
   accent: string
   thumbnailRef: string | null

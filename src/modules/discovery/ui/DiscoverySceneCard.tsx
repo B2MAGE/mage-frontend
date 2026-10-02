@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { formatMetricLabel, formatRelativeTime } from '@shared/lib'
-import { AppIcon, UserAvatar } from '@shared/ui'
+import { AppIcon, CreatorProfileLink, UserAvatar } from '@shared/ui'
 import type { DiscoveryScene } from '../types'
 import { useSceneHoverPreview } from './useSceneHoverPreview'
 
@@ -32,13 +32,12 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
   } = useSceneHoverPreview({ sceneBlob: scene.sceneData, seed: scene.sceneId })
 
   return (
-    <Link
+    <div
       className="scene-card-link"
       onBlur={onBlur}
       onFocus={onFocus}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
-      to={`/scenes/${scene.sceneId}`}
     >
       <article className="scene-card" id={`scene-${scene.sceneId}`}>
         <div className="scene-card__thumbnail" ref={thumbnailRef}>
@@ -56,8 +55,12 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
         <div className="scene-card__body">
           <UserAvatar className="scene-card__avatar" initials={creatorInitials} gradientStart={scene.creatorAvatarGradientStart} gradientEnd={scene.creatorAvatarGradientEnd} />
           <div className="scene-card__meta">
-            <h3 className="scene-card__name">{scene.name}</h3>
-            <p className="scene-card__creator">{creatorName}</p>
+            <h3 className="scene-card__name">
+              <Link className="scene-card__open-link" to={`/scenes/${scene.sceneId}`}>{scene.name}</Link>
+            </h3>
+            <p className="scene-card__creator">
+              <CreatorProfileLink handle={scene.creatorHandle}>{creatorName}</CreatorProfileLink>
+            </p>
             <div className="scene-card__stats">
               <span>{viewLabel}</span>
               <span className="scene-card__stats-separator" aria-hidden="true">
@@ -70,6 +73,6 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           </div>
         </div>
       </article>
-    </Link>
+    </div>
   )
 }
