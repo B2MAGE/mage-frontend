@@ -2,6 +2,8 @@
 html[data-theme='mage-pulse'] .navbar { position:sticky; top:0; z-index:80; flex:none; height:69px; border-bottom:1px solid var(--border); background:rgba(9,10,13,.90); backdrop-filter:blur(18px); }
 html[data-theme='mage-pulse'] .nav-inner { width:min(calc(100% - 48px),1280px); max-width:none; height:68px; padding:0; margin:auto; display:flex; align-items:center; justify-content:flex-start; gap:38px; }
 html[data-theme='mage-pulse'] .logo { display:inline-flex; align-items:center; gap:10px; font-size:27px; font-weight:820; letter-spacing:.11em; line-height:1; background:none; color:var(--text); text-shadow:none; }
+html[data-theme='mage-pulse'] .logo__wordmark { transition:color 350ms ease-in-out; }
+html[data-theme='mage-pulse'] .logo:is(:hover, :focus-visible) .logo__wordmark { color:var(--text-soft); }
 html[data-theme='mage-pulse'] .pulse-orbit { display:block; width:48px; height:48px; position:relative; flex:0 0 48px; border-radius:50%; }
 html[data-theme='mage-pulse'] .pulse-orbit::before,html[data-theme='mage-pulse'] .pulse-orbit::after { content:""; position:absolute; left:50%; top:50%; border-radius:50%; transform:translate(-50%,-50%) rotate(32deg); }
 html[data-theme='mage-pulse'] .pulse-orbit::before { width:40px; height:20px; border:1.8px solid rgba(191,183,255,.9); box-shadow:0 0 12px rgba(124,108,255,.28); }

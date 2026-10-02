@@ -155,7 +155,7 @@ export function Layout({ children }: PropsWithChildren) {
       <header className="navbar">
         <div className="nav-inner">
           <Link className="logo" to="/">
-            <span className="pulse-orbit" aria-hidden="true"><span className="pulse-orbit-core" /></span><span>MAGE</span>
+            <span className="pulse-orbit" aria-hidden="true"><span className="pulse-orbit-core" /></span><span className="logo__wordmark">MAGE</span>
           </Link>
           <nav className="nav-primary" aria-label="Primary navigation">
             <NavLink

@@ -1,22 +1,4 @@
 
-    html[data-theme='mage-pulse'] .pulse-home .primary-button, html[data-theme='mage-pulse'] .pulse-home .secondary-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      height: 44px;
-      padding: 0 18px;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 650;
-    }
-
-    html[data-theme='mage-pulse'] .pulse-home .primary-button { background: var(--text); color: #090a0d; }
-    html[data-theme='mage-pulse'] .pulse-home .secondary-button { border: 1px solid var(--border-strong); background: var(--surface); }
-    html[data-theme='mage-pulse'] .pulse-home .primary-button, html[data-theme='mage-pulse'] .pulse-home .secondary-button { transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
-    html[data-theme='mage-pulse'] .pulse-home .primary-button:hover { background: #dedee8; color: #090a0d; }
-    html[data-theme='mage-pulse'] .pulse-home .secondary-button:hover { border-color: var(--tag-pill-hover-border); background: var(--surface-hover); color: var(--text); }
-
     html[data-theme='mage-pulse'] .pulse-home .featured-section { padding: 0 0 84px; }
 
     html[data-theme='mage-pulse'] .pulse-home .creator-section.is-dismissed + .featured-section {
