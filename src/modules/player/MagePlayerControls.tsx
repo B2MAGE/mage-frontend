@@ -1,4 +1,5 @@
 import { type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
+import { PendingButtonLabel } from '@shared/ui'
 import {
   readPlaylistTrackSummaryName,
   type MagePlayerPlaylistTrack,
@@ -10,11 +11,10 @@ import {
 import { formatAudioTime } from './magePlayerUtils'
 
 type MagePlayerControlsProps = {
-  addButtonLabel: string
+  activeAudioAction: 'add' | 'load' | null
   audioError: string | null
   audioProgressPercent: string
   audioState: MagePlayerAudioState
-  controlsBusy: boolean
   currentTrack: MagePlayerPlaylistTrack | null
   currentTrackIndex: number
   isVolumeOpen: boolean
@@ -25,6 +25,7 @@ type MagePlayerControlsProps = {
   onTrackSummaryClick: (event: ReactMouseEvent<HTMLButtonElement>) => void
   onVolumeChange: (event: ChangeEvent<HTMLInputElement>) => void
   playbackState: MagePlayerPlaybackState
+  showPlaylistButton: boolean
   tracksCount: number
   volumeControlRef: RefObject<HTMLDivElement | null>
 }
@@ -32,7 +33,7 @@ type MagePlayerControlsProps = {
 function PauseIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M7 5h4v14H7zm6 0h4v14h-4z" fill="currentColor" />
+      <path d="M7.5 5.5h3.25v13H7.5zM13.25 5.5h3.25v13h-3.25z" fill="currentColor" />
     </svg>
   )
 }
@@ -45,30 +46,29 @@ function PlayIcon() {
   )
 }
 
+function AddAudioIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 4v10.5a3.25 3.25 0 1 1-2-3V6l6-2v9.5a3.25 3.25 0 1 1-2-3" />
+      <path d="M4 6v6M1 9h6" />
+    </svg>
+  )
+}
+
 function VolumeIcon({ muted }: { muted: boolean }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      {muted ? (
-        <path
-          d="M15.3 8.7a1 1 0 0 1 1.4 0L19 11l2.3-2.3a1 1 0 1 1 1.4 1.4L20.4 12l2.3 2.3a1 1 0 0 1-1.4 1.4L19 13.4l-2.3 2.3a1 1 0 1 1-1.4-1.4l2.3-2.3-2.3-2.3a1 1 0 0 1 0-1.4ZM4 9h3.2l4-3.6A1 1 0 0 1 13 6.1v11.8a1 1 0 0 1-1.8.7l-4-3.6H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1Z"
-          fill="currentColor"
-        />
-      ) : (
-        <path
-          d="M4 9h3.2l4-3.6A1 1 0 0 1 13 6.1v11.8a1 1 0 0 1-1.8.7l-4-3.6H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1Zm12.5-1.2a1 1 0 0 1 1.4 0 6 6 0 0 1 0 8.5 1 1 0 1 1-1.4-1.4 4 4 0 0 0 0-5.7 1 1 0 0 1 0-1.4Zm2.8-2.8a1 1 0 0 1 1.4 0 10 10 0 0 1 0 14.1 1 1 0 0 1-1.4-1.4 8 8 0 0 0 0-11.3 1 1 0 0 1 0-1.4Z"
-          fill="currentColor"
-        />
-      )}
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 10v4h4l5 4V6l-5 4H4z" />
+      {muted ? <path d="m17 10 4 4m0-4-4 4" /> : <><path d="M16 9.5a4 4 0 0 1 0 5" /><path d="M18.5 7a7.25 7.25 0 0 1 0 10" /></>}
     </svg>
   )
 }
 
 export function MagePlayerControls({
-  addButtonLabel,
+  activeAudioAction,
   audioError,
   audioProgressPercent,
   audioState,
-  controlsBusy,
   currentTrack,
   currentTrackIndex,
   isVolumeOpen,
@@ -79,9 +79,13 @@ export function MagePlayerControls({
   onTrackSummaryClick,
   onVolumeChange,
   playbackState,
+  showPlaylistButton,
   tracksCount,
   volumeControlRef,
 }: MagePlayerControlsProps) {
+  const controlsBusy = activeAudioAction !== null
+  const isAddingAudio = activeAudioAction === 'add'
+  const isLoadingTrack = activeAudioAction === 'load'
   const playbackLabel = playbackState === 'playing' ? 'Pause' : 'Play'
   const trackSummaryLabel = currentTrack
     ? `Track ${currentTrackIndex}/${tracksCount}: ${readPlaylistTrackSummaryName(currentTrack)}`
@@ -89,8 +93,21 @@ export function MagePlayerControls({
 
   return (
     <div className="mage-player__controls">
+        <button
+          aria-label={`${playbackLabel} scene and audio playback`}
+          aria-pressed={playbackState === 'playing'}
+          className="mage-player__control-button mage-player__control-button--playback"
+          disabled={controlsBusy}
+          onClick={onTogglePlayback}
+          title={`${playbackLabel} scene and audio playback`}
+          type="button"
+        >
+          <span className="mage-player__control-icon">
+            {playbackState === 'playing' ? <PauseIcon /> : <PlayIcon />}
+          </span>
+        </button>
       <div className="mage-player__controls-main">
-        <div className="mage-player__control-meta">
+        <div aria-busy={isLoadingTrack} className="mage-player__control-meta">
           {tracksCount > 0 ? (
             <button className="mage-player__track-summary" onClick={onTrackSummaryClick} type="button">
               {trackSummaryLabel}
@@ -98,7 +115,12 @@ export function MagePlayerControls({
           ) : (
             <span className="mage-player__audio-label">{trackSummaryLabel}</span>
           )}
-          {audioError ? (
+          {isLoadingTrack ? (
+            <span className="mage-player__control-feedback mage-player__track-loading-status" role="status">
+              <span aria-hidden="true" className="pending-button-label__spinner" />
+              Loading track…
+            </span>
+          ) : audioError ? (
             <span className="mage-player__control-feedback" role="alert">
               {audioError}
             </span>
@@ -128,6 +150,7 @@ export function MagePlayerControls({
       </div>
       <div className="mage-player__control-actions">
         <button
+          aria-busy={isAddingAudio}
           aria-label="Add audio tracks"
           className="mage-player__control-button mage-player__control-button--text"
           disabled={controlsBusy}
@@ -135,7 +158,12 @@ export function MagePlayerControls({
           title="Add audio tracks from your device."
           type="button"
         >
-          {addButtonLabel}
+          <span className="mage-player__add-audio-label">
+            <PendingButtonLabel pending={isAddingAudio} pendingLabel="Adding...">
+              Add
+            </PendingButtonLabel>
+          </span>
+          <span className="mage-player__control-icon mage-player__add-audio-icon"><AddAudioIcon /></span>
         </button>
         <div className="mage-player__volume-control" ref={volumeControlRef}>
           <button
@@ -176,19 +204,24 @@ export function MagePlayerControls({
             </div>
           ) : null}
         </div>
-        <button
-          aria-label={`${playbackLabel} scene and audio playback`}
-          aria-pressed={playbackState === 'playing'}
-          className="mage-player__control-button"
-          disabled={controlsBusy}
-          onClick={onTogglePlayback}
-          title={`${playbackLabel} scene and audio playback`}
-          type="button"
-        >
-          <span className="mage-player__control-icon">
-            {playbackState === 'playing' ? <PauseIcon /> : <PlayIcon />}
-          </span>
-        </button>
+
+
+        <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M8.5 4H4v4.5M15.5 4H20v4.5M20 15.5V20h-4.5M4 15.5V20h4.5"/></svg></button>
+        {showPlaylistButton && (
+          <button
+            className="mage-player__control-button mage-player__control-button--playlist"
+            type="button"
+            aria-label="Open playlist"
+            title="Open playlist"
+            onClick={onTrackSummaryClick}
+          >
+            <span className="mage-player__control-icon">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M8 6h12M8 12h12M8 18h12M3 6h1M3 12h1M3 18h1" />
+              </svg>
+            </span>
+          </button>
+        )}
       </div>
     </div>
   )

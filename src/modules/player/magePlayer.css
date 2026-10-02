@@ -1,4 +1,5 @@
 .mage-player {
+  position: relative;
   width: 50%;
 }
 
@@ -31,7 +32,7 @@
   position: absolute;
   inset: auto 0 0 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
   gap: 18px;
   padding: 44px 18px 18px;
@@ -114,6 +115,13 @@
   color: var(--player-feedback-text);
   font-size: 0.83rem;
   line-height: 1.3;
+}
+
+.mage-player__track-loading-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  justify-self: start;
 }
 
 .mage-player__timeline-slider,
@@ -283,8 +291,8 @@
   justify-self: end;
 }
 
-.mage-player[data-state="ready"] .mage-player__viewport:hover .mage-player__controls,
-.mage-player[data-state="ready"] .mage-player__viewport:focus-within .mage-player__controls {
+.mage-player[data-state="ready"]:hover .mage-player__controls,
+.mage-player[data-state="ready"]:focus-within .mage-player__controls {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
@@ -302,8 +310,29 @@
 
 .mage-player__overlay-copy {
   display: grid;
+  justify-items: center;
   gap: 10px;
   max-width: 26rem;
+}
+
+.mage-player__overlay--loading .loading-region__visual {
+  display: grid;
+  place-items: center;
+}
+
+.mage-player__loading-indicator {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--skeleton-base);
+  border-top-color: var(--player-overlay-text);
+  border-radius: 50%;
+  animation: mage-player-loading-spin 900ms linear infinite;
+}
+
+@keyframes mage-player-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .mage-player__overlay-copy strong {
@@ -316,6 +345,13 @@
   margin: 0;
   color: var(--player-overlay-muted);
   line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mage-player__loading-indicator {
+    animation: none;
+    border-color: var(--skeleton-highlight);
+  }
 }
 
 @media (max-width: 560px) {
@@ -371,3 +407,17 @@
     pointer-events: auto;
   }
 }
+
+.mage-player__controls-main {grid-column:1;grid-row:1;}
+.mage-player__control-actions {grid-column:2;grid-row:1;}
+.mage-player__controls > .mage-player__control-button--playback {grid-column:3;grid-row:1;}
+.mage-player__add-audio-icon {display:none;}
+
+@media(max-width:560px) {
+  .mage-player__controls {grid-template-columns:minmax(0,1fr) auto;}
+  .mage-player__controls-main {grid-column:1 / -1;grid-row:1;}
+  .mage-player__control-actions {grid-column:1;grid-row:2;width:auto;}
+  .mage-player__controls > .mage-player__control-button--playback {grid-column:2;grid-row:2;}
+}
+
+.mage-player__control-button--fullscreen svg {display:block;width:16px;height:16px;}

@@ -389,3 +389,120 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Pulse track details share the surrounding playlist and account-form language. */
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor {
+  left: 0;
+  right: 0;
+  min-width: 0;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+  backdrop-filter: none;
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor::before {
+  top: -6px;
+  left: 24px;
+  width: 10px;
+  height: 10px;
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-header {
+  gap: 12px;
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-header strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  text-transform: none;
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-close {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-close:hover {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-close:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-field {
+  min-width: 0;
+  gap: 6px;
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-field span {
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-field input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-field input::placeholder {
+  color: var(--text-muted);
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-field input:focus {
+  outline: none;
+  border-color: rgba(178, 168, 255, .5);
+  box-shadow: 0 0 0 3px rgba(124, 108, 255, .08);
+}
+
+html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-source {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1080px) {
+  html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor {
+    position: relative;
+    top: auto;
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  html[data-theme='mage-pulse'] .mage-watch__playlist-track-editor-field input {
+    font-size: 16px;
+  }
+}

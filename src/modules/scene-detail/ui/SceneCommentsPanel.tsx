@@ -1,7 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { formatCompactCount, formatRelativeTime } from '@shared/lib'
+import { LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
 import { readInitial } from '../selectors'
 import type { SceneComment, SceneVoteState } from '../types'
+import { SceneCommentSkeletonList } from './SceneLoadingSkeletons'
 import { VoteButton } from './VoteButton'
 
 type SceneCommentsPanelProps = {
@@ -13,7 +16,7 @@ type SceneCommentsPanelProps = {
   isLoading: boolean
   isSubmittingComment: boolean
   loadingError: string | null
-  pendingVoteCommentId: number | null
+  pendingVote: { commentId: number; vote: SceneVoteState } | null
   submittingReplyCommentId: number | null
   onRequestSignIn: () => void
   onSubmitComment: (text: string, parentCommentId?: number | null) => Promise<boolean>
@@ -22,19 +25,6 @@ type SceneCommentsPanelProps = {
 
 function countComments(comments: SceneComment[]): number {
   return comments.reduce((count, comment) => count + 1 + countComments(comment.replies), 0)
-}
-
-function buildCommentHandle(comment: SceneComment) {
-  const slug = comment.authorDisplayName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-
-  if (slug) {
-    return `@${slug}`
-  }
-
-  return comment.authorUserId ? `@user${comment.authorUserId}` : '@mageuser'
 }
 
 function formatCommentTimestamp(createdAt: string | null) {
@@ -50,17 +40,25 @@ export function SceneCommentsPanel({
   isLoading,
   isSubmittingComment,
   loadingError,
-  pendingVoteCommentId,
+  pendingVote,
   submittingReplyCommentId,
   onRequestSignIn,
   onSubmitComment,
   onVoteComment,
 }: SceneCommentsPanelProps) {
   const [commentDraft, setCommentDraft] = useState('')
+  const [commentSort, setCommentSort] = useState<'top' | 'newest'>('top')
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<number | null>(null)
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({})
   const commentsCount = countComments(comments)
   const trimmedCommentDraft = commentDraft.trim()
+  const sortedComments = [...comments].sort((a, b) => {
+    if (commentSort === 'top') {
+      const scoreDifference = b.upvotes - b.downvotes - (a.upvotes - a.downvotes)
+      if (scoreDifference !== 0) return scoreDifference
+    }
+    return Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? '')
+  })
 
   async function handleSubmitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -101,7 +99,7 @@ export function SceneCommentsPanel({
     const trimmedReplyDraft = replyDraft.trim()
     const isReplyFormOpen = activeReplyCommentId === comment.commentId
     const isReplySubmitting = submittingReplyCommentId === comment.commentId
-    const isVotePending = pendingVoteCommentId === comment.commentId
+    const isVotePending = pendingVote?.commentId === comment.commentId
 
     return (
       <article
@@ -114,7 +112,14 @@ export function SceneCommentsPanel({
         <div className="mage-comment__body">
           <div className="scene-detail-comment__header">
             <strong>{comment.authorDisplayName}</strong>
-            <span>{buildCommentHandle(comment)}</span>
+            {comment.authorHandle ? (
+              <Link
+                className="scene-detail-comment__handle"
+                to={`/@${comment.authorHandle}`}
+              >
+                @{comment.authorHandle}
+              </Link>
+            ) : null}
             <span>{formatCommentTimestamp(comment.createdAt)}</span>
           </div>
           <p>{comment.text}</p>
@@ -124,6 +129,7 @@ export function SceneCommentsPanel({
               count={formatCompactCount(comment.upvotes)}
               direction="up"
               disabled={isVotePending}
+              isBusy={isVotePending && pendingVote?.vote === 'up'}
               isSelected={comment.currentUserVote === 'up'}
               onClick={() => {
                 onVoteComment(comment, 'up')
@@ -134,6 +140,7 @@ export function SceneCommentsPanel({
               count={formatCompactCount(comment.downvotes)}
               direction="down"
               disabled={isVotePending}
+              isBusy={isVotePending && pendingVote?.vote === 'down'}
               isSelected={comment.currentUserVote === 'down'}
               onClick={() => {
                 onVoteComment(comment, 'down')
@@ -191,11 +198,14 @@ export function SceneCommentsPanel({
                   Cancel
                 </button>
                 <button
+                  aria-busy={isReplySubmitting}
                   className="scene-detail-comment-submit-button"
                   disabled={!trimmedReplyDraft || isReplySubmitting}
                   type="submit"
                 >
-                  {isReplySubmitting ? 'Replying...' : 'Reply'}
+                  <PendingButtonLabel pending={isReplySubmitting} pendingLabel="Replying...">
+                    Reply
+                  </PendingButtonLabel>
                 </button>
               </div>
             </form>
@@ -216,10 +226,16 @@ export function SceneCommentsPanel({
       <div className="scene-detail-comments-toolbar">
         <div className="mage-comments__header">
           <h2>Comments</h2>
-          <span>{commentsCount}</span>
+          {isLoading ? (
+            <Skeleton className="scene-detail-comments-count-skeleton" shape="line" />
+          ) : (
+            <span>{commentsCount}</span>
+          )}
         </div>
-        <button className="scene-detail-sort-chip" type="button">
-          Top comments
+        <button className="scene-detail-sort-chip" type="button"
+          onClick={() => setCommentSort((current) => current === 'top' ? 'newest' : 'top')}
+          aria-label={commentSort === 'top' ? 'Top comments; switch to newest' : 'Newest first; switch to top comments'}>
+          {commentSort === 'top' ? 'Top comments' : 'Newest first'}
         </button>
       </div>
 
@@ -242,11 +258,14 @@ export function SceneCommentsPanel({
             />
             <div className="scene-detail-comment-form__actions">
               <button
+                aria-busy={isSubmittingComment}
                 className="scene-detail-comment-submit-button"
                 disabled={!trimmedCommentDraft || isSubmittingComment}
                 type="submit"
               >
-                {isSubmittingComment ? 'Commenting...' : 'Comment'}
+                <PendingButtonLabel pending={isSubmittingComment} pendingLabel="Commenting...">
+                  Comment
+                </PendingButtonLabel>
               </button>
             </div>
           </form>
@@ -268,15 +287,15 @@ export function SceneCommentsPanel({
       ) : null}
 
       {isLoading ? (
-        <p className="scene-detail-comments-status" role="status">
-          Loading comments...
-        </p>
+        <LoadingRegion className="scene-detail-comments-loading" label="Loading comments">
+          <SceneCommentSkeletonList />
+        </LoadingRegion>
       ) : loadingError ? (
         <p className="scene-detail-comments-status" role="status">
           {loadingError}
         </p>
       ) : comments.length > 0 ? (
-        <div className="mage-comments__list">{comments.map((comment) => renderComment(comment))}</div>
+        <div className="mage-comments__list">{sortedComments.map((comment) => renderComment(comment))}</div>
       ) : (
         <p className="scene-detail-comments-empty">No comments yet.</p>
       )}

@@ -22,8 +22,8 @@ Exports:
   Production-facing scene detail view-model builders derived from fetched scene data.
 - `recommendations.ts`
   Recommendation grouping, filter helpers, and selection logic for the sidebar rail.
-- `fixtures.ts`
-  Temporary deterministic creator metadata used until the backend exposes those fields.
+- `sceneDetail.css`
+  Pulse Watch layout, including the desktop rail and mobile ordering from the supplied mockup.
 - `ui/`
   Scene-detail-owned presentation for description, comments, voting, recommendations, and playlist sidebar behavior.
 
@@ -60,14 +60,16 @@ User-facing behavior:
 - shows explicit restoring, loading, not-found, auth-required, and unavailable states
 - embeds the shared `MagePlayer` with route-owned playlist state
 - resets description expansion and recommendation filter state when the scene changes
-- derives creator profile labels locally from fetched scene data plus module fixtures
+- shows the fetched creator name without fabricated subscriber counts; owners can edit their scene
 - renders engagement counts and current-user vote/save state from the scene detail response
-- lets the user filter the recommendation rail by creator or by scene tag
+- lets the user filter the four-card recommendation rail by creator or scene tag
+- supports top/newest comment ordering, comments, replies, and persisted votes
+- opens the playlist in the desktop rail or an accessible, Escape-dismissable mobile dialog
 
 Current limitations:
 
-- creator subscriber labels are still frontend-derived until the backend exposes them
-- share and follow controls are currently presentation-only
+- follow remains visibly disabled because the backend does not provide creator following
+- Share copies the actual scene URL; clipboard failures show a useful message
 - recommendation ranking is heuristic and frontend-owned
 
 ## Tests

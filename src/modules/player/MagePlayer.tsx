@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { LoadingRegion } from '@shared/ui'
 import {
   createMagePlayer,
   type MagePlayerAudioState,
@@ -9,6 +10,7 @@ import {
 import { type MagePlayerPlaylistTrack } from './playlist'
 import { MagePlayerControls } from './MagePlayerControls'
 import './magePlayer.css'
+import './pulsePlayer.css'
 import {
   audioStatesMatch,
   buildMagePlayerClassName,
@@ -255,13 +257,23 @@ export function MagePlayer({
     const player = playerRef.current
 
     if (status === 'ready' && typeof player?.captureFramePreview === 'function') {
-      onCaptureFramePreviewChange(() =>
-        player.captureFramePreview?.({
-          height: 512,
+      onCaptureFramePreviewChange(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return Promise.resolve(null)
+
+        // The engine stretches its source to these dimensions. Read the live
+        // viewport at capture time so resizing cannot squash the saved frame.
+        const bounds = canvas.getBoundingClientRect()
+        const sourceWidth = bounds.width > 0 ? bounds.width : canvas.width
+        const sourceHeight = bounds.height > 0 ? bounds.height : canvas.height
+        const scale = 512 / Math.max(sourceWidth, sourceHeight, 1)
+
+        return player.captureFramePreview?.({
+          height: Math.max(1, Math.round(sourceHeight * scale)),
           type: 'image/png',
-          width: 512,
-        }) ?? Promise.resolve(null),
-      )
+          width: Math.max(1, Math.round(sourceWidth * scale)),
+        }) ?? Promise.resolve(null)
+      })
 
       return () => {
         onCaptureFramePreviewChange(null)
@@ -461,7 +473,6 @@ export function MagePlayer({
   ])
 
   const controlsBusy = activeAudioAction !== null
-  const addButtonLabel = activeAudioAction === 'add' ? 'Adding' : 'Add'
   const audioProgressPercent =
     audioState.duration > 0
       ? `${Math.min((audioState.currentTime / audioState.duration) * 100, 100)}%`
@@ -613,13 +624,31 @@ export function MagePlayer({
           ref={audioInputRef}
           type="file"
         />
+        {status === 'loading' ? (
+          <LoadingRegion
+            className="mage-player__overlay mage-player__overlay--loading"
+            label={title}
+          >
+            <div className="mage-player__overlay-copy">
+              <span className="mage-player__loading-indicator" />
+              <strong>Loading preview</strong>
+            </div>
+          </LoadingRegion>
+        ) : status !== 'ready' ? (
+          <div className="mage-player__overlay" role={role} aria-live="polite">
+            <div className="mage-player__overlay-copy">
+              <strong>{title}</strong>
+              <p>{message}</p>
+            </div>
+          </div>
+        ) : null}
+      </div>
         {status === 'ready' ? (
           <MagePlayerControls
-            addButtonLabel={addButtonLabel}
+            activeAudioAction={activeAudioAction}
             audioError={audioError}
             audioProgressPercent={audioProgressPercent}
             audioState={audioState}
-            controlsBusy={controlsBusy}
             currentTrack={currentTrack}
             currentTrackIndex={currentTrackIndex}
             isVolumeOpen={isVolumeOpen}
@@ -630,19 +659,11 @@ export function MagePlayer({
             onTrackSummaryClick={handleTrackSummaryClick}
             onVolumeChange={handleVolumeChange}
             playbackState={playbackState}
+            showPlaylistButton={Boolean(onRequestPlaylistOpen)}
             tracksCount={tracks.length}
             volumeControlRef={volumeControlRef}
           />
         ) : null}
-        {status !== 'ready' ? (
-          <div className="mage-player__overlay" role={role} aria-live="polite">
-            <div className="mage-player__overlay-copy">
-              <strong>{title}</strong>
-              <p>{message}</p>
-            </div>
-          </div>
-        ) : null}
-      </div>
     </section>
   )
 }
