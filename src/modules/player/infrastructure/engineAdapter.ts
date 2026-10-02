@@ -33,6 +33,7 @@ type MageEngineBridge = {
   seek?: MAGEEngineAPI['seek']
   setAudioVolume?: (volume: number) => number
   setEngineTime?: (time: number) => boolean
+  setSyntheticPreview: MAGEEngineAPI['setSyntheticPreview']
   start: MAGEEngineAPI['start']
   unloadAudio?: MAGEEngineAPI['unloadAudio']
 }
@@ -83,6 +84,7 @@ export type MagePlayerController = {
   seekAudio: (time: number) => MagePlayerAudioState
   setAudioVolume: (volume: number) => MagePlayerAudioState
   setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
+  setSyntheticPreview: (enabled: boolean, seed?: number) => void
 }
 
 export class MagePlayerAdapterError extends Error {
@@ -553,6 +555,9 @@ export async function createMagePlayer(
       }
 
       return getAudioState()
+    },
+    setSyntheticPreview(enabled, seed) {
+      engine.setSyntheticPreview(enabled, seed)
     },
     setPlaybackState,
     dispose() {

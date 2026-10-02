@@ -15,6 +15,7 @@ const engineMocks = vi.hoisted(() => ({
   seek: vi.fn(),
   setAudioVolume: vi.fn(),
   setEngineTime: vi.fn(),
+  setSyntheticPreview: vi.fn(),
   start: vi.fn(),
   unloadAudio: vi.fn(),
 }))
@@ -47,6 +48,7 @@ describe('createMagePlayer', () => {
       seek: engineMocks.seek,
       setAudioVolume: engineMocks.setAudioVolume,
       setEngineTime: engineMocks.setEngineTime,
+      setSyntheticPreview: engineMocks.setSyntheticPreview,
       start: engineMocks.start,
       unloadAudio: engineMocks.unloadAudio,
     })
@@ -369,6 +371,23 @@ describe('createMagePlayer', () => {
       volume: 0.4,
     })
     expect(engineMocks.setAudioVolume).toHaveBeenLastCalledWith(0.4)
+  })
+
+  it('forwards silent synthetic preview state without loading or playing audio', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const canvas = document.createElement('canvas')
+    const player = await createMagePlayer(canvas)
+
+    player.setSyntheticPreview(true, 731)
+
+    expect(engineMocks.setSyntheticPreview).toHaveBeenLastCalledWith(true, 731)
+    expect(engineMocks.loadAudio).not.toHaveBeenCalled()
+    expect(engineMocks.play).not.toHaveBeenCalled()
+
+    player.setSyntheticPreview(false)
+
+    expect(engineMocks.setSyntheticPreview).toHaveBeenLastCalledWith(false, undefined)
+    expect(engineMocks.setSyntheticPreview).toHaveBeenCalledTimes(2)
   })
 
   it('resets scene and audio playback back to the beginning', async () => {

@@ -1,4 +1,5 @@
 export { MagePlayer } from './MagePlayer'
+export { createMagePlayer } from './infrastructure/engineAdapter'
 export {
   buildScenePlaylistTrack,
   formatPlaylistTrackName,
@@ -14,6 +15,7 @@ export type { MagePlayerProps } from './MagePlayer'
 export type { MagePlayerPlaylistTrack } from './playlist'
 export type {
   MagePlayerAudioState,
+  MagePlayerController,
   MagePlayerPlaybackState,
   MageSceneBlob,
 } from './infrastructure/engineAdapter'
