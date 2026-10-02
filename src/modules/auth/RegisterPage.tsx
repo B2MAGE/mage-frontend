@@ -15,6 +15,7 @@ type RegistrationFormValues = {
   handle: string
   email: string
   password: string
+  confirmPassword: string
 }
 
 type RegistrationFormErrors = Partial<Record<keyof RegistrationFormValues | 'form', string>>
@@ -38,6 +39,7 @@ const initialValues: RegistrationFormValues = {
   handle: '',
   email: '',
   password: '',
+  confirmPassword: '',
 }
 
 function validateRegistrationForm(values: RegistrationFormValues): RegistrationFormErrors {
@@ -81,6 +83,12 @@ function validateRegistrationForm(values: RegistrationFormValues): RegistrationF
     errors.password = 'Password must be at least 8 characters.'
   }
 
+  if (!values.confirmPassword) {
+    errors.confirmPassword = 'Confirm your password.'
+  } else if (values.confirmPassword !== values.password) {
+    errors.confirmPassword = 'Passwords must match.'
+  }
+
   return errors
 }
 
@@ -90,6 +98,7 @@ export function RegisterPage() {
   const [errors, setErrors] = useState<RegistrationFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [passwordVisible, setPasswordVisible] = useState(false)
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
 
   const formErrorId = useId()
   const titleId = 'register-title'
@@ -103,12 +112,13 @@ export function RegisterPage() {
     }))
 
     setErrors((currentErrors) => {
-      if (!currentErrors[field] && !currentErrors.form) {
+      if (!currentErrors[field] && !currentErrors.form && !(field === 'password' && currentErrors.confirmPassword)) {
         return currentErrors
       }
 
       return {
         ...currentErrors,
+        confirmPassword: field === 'password' ? undefined : currentErrors.confirmPassword,
         [field]: undefined,
         form: undefined,
       }
@@ -127,7 +137,10 @@ export function RegisterPage() {
       password: values.password,
     }
 
-    const nextErrors = validateRegistrationForm(trimmedValues)
+    const nextErrors = validateRegistrationForm({
+      ...trimmedValues,
+      confirmPassword: values.confirmPassword,
+    })
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
@@ -205,6 +218,7 @@ export function RegisterPage() {
             label="Email"
             name="email"
             onChange={(event) => handleChange('email', event.target.value)}
+            placeholder="you@example.com"
             required
             type="email"
             value={values.email}
@@ -222,6 +236,7 @@ export function RegisterPage() {
             minLength={2}
             name="displayName"
             onChange={(event) => handleChange('displayName', event.target.value)}
+            placeholder="John"
             required
             type="text"
             value={values.displayName}
@@ -234,6 +249,7 @@ export function RegisterPage() {
             label="Handle"
             labelSuffix={<PublicProfileMarker />}
             onValueChange={(value) => handleChange('handle', value)}
+            placeholder="jdoe"
             required
             value={values.handle}
           />
@@ -246,6 +262,7 @@ export function RegisterPage() {
               minLength={2}
               name="firstName"
               onChange={(event) => handleChange('firstName', event.target.value)}
+              placeholder="John"
               required
               type="text"
               value={values.firstName}
@@ -258,6 +275,7 @@ export function RegisterPage() {
               minLength={2}
               name="lastName"
               onChange={(event) => handleChange('lastName', event.target.value)}
+              placeholder="Doe"
               required
               type="text"
               value={values.lastName}
@@ -275,6 +293,7 @@ export function RegisterPage() {
             minLength={8}
             name="password"
             onChange={(event) => handleChange('password', event.target.value)}
+            placeholder="At least 8 characters"
             required
             type={passwordVisible ? 'text' : 'password'}
             value={values.password}
@@ -287,6 +306,30 @@ export function RegisterPage() {
                 onClick={() => setPasswordVisible((visible) => !visible)}
               >
                 {passwordVisible ? 'Hide' : 'Show'}
+              </button>
+            }
+          />
+          <TextInputField
+            autoComplete="new-password"
+            error={errors.confirmPassword}
+            id="confirmPassword"
+            label="Confirm password"
+            name="confirmPassword"
+            onChange={(event) => handleChange('confirmPassword', event.target.value)}
+            placeholder="Enter your password again"
+            required
+            type={confirmPasswordVisible ? 'text' : 'password'}
+            value={values.confirmPassword}
+            inputAction={
+              <button
+                className="registration-show-password"
+                type="button"
+                aria-controls="confirmPassword"
+                aria-label={confirmPasswordVisible ? 'Hide password confirmation' : 'Show password confirmation'}
+                aria-pressed={confirmPasswordVisible}
+                onClick={() => setConfirmPasswordVisible((visible) => !visible)}
+              >
+                {confirmPasswordVisible ? 'Hide' : 'Show'}
               </button>
             }
           />
