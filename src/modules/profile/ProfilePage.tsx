@@ -1,21 +1,28 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import {
   DiscoverySceneCard,
+  DiscoverySortSelect,
   SceneCollectionState,
   SceneGridSkeleton,
+  type DiscoverySort,
 } from '@modules/discovery'
 import { formatCompactCount } from '@shared/lib'
-import { Skeleton, UserAvatar } from '@shared/ui'
+import { AppIcon, Skeleton, UserAvatar } from '@shared/ui'
 import {
   buildProfileViewModel,
   fetchPublicProfile,
-  filterProfileScenes,
   normalizeProfileHandle,
   PublicProfileRequestError,
   type ProfileViewModel,
 } from './profileData'
+import {
+  buildProfileScenePage,
+  DEFAULT_PROFILE_PAGE_SIZE,
+  PROFILE_SCENE_SORT_OPTIONS,
+} from './profileSceneList'
+import { ProfileScenesPagination } from './ui/ProfileScenesPagination'
 import '../discovery/discovery.css'
 import './profile.css'
 
@@ -24,15 +31,6 @@ type ProfileLoadState =
   | { status: 'not-found'; requestKey: string }
   | { status: 'unavailable'; requestKey: string }
   | { status: 'ready'; profile: ProfileViewModel; requestKey: string }
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="m16 16 4.5 4.5" />
-    </svg>
-  )
-}
 
 function ProfileLoadingState() {
   return (
@@ -54,7 +52,10 @@ function ProfileLoadingState() {
       <section className="profile-scenes">
         <div className="profile-scenes__toolbar" aria-hidden="true">
           <Skeleton className="profile-scenes__tab-loading" shape="line" />
-          <Skeleton className="profile-scenes__search-loading" shape="block" />
+          <div className="profile-scenes__filters">
+            <Skeleton className="profile-scenes__search-loading" shape="block" />
+            <Skeleton className="profile-scenes__sort-loading" shape="block" />
+          </div>
         </div>
         <SceneGridSkeleton count={6} label="Loading profile scenes" />
       </section>
@@ -94,6 +95,10 @@ export function ProfilePage() {
   const handle = useMemo(() => normalizeProfileHandle(profileHandle), [profileHandle])
   const [loadState, setLoadState] = useState<ProfileLoadState>({ status: 'idle' })
   const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<DiscoverySort>('descending')
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PROFILE_PAGE_SIZE)
+  const toolbarRef = useRef<HTMLDivElement>(null)
   const [reloadVersion, setReloadVersion] = useState(0)
   const requestKey = handle
     ? `${handle}:${isAuthenticated ? 'authenticated' : 'public'}:${reloadVersion}`
@@ -110,6 +115,9 @@ export function ProfilePage() {
       .then((profile) => {
         if (!cancelled) {
           setQuery('')
+          setSort('descending')
+          setPageIndex(0)
+          setPageSize(DEFAULT_PROFILE_PAGE_SIZE)
           setLoadState({
             status: 'ready',
             profile: buildProfileViewModel(profile),
@@ -185,7 +193,21 @@ export function ProfilePage() {
 
   const { profile } = loadState
   const isOwner = user?.userId === profile.userId
-  const filteredScenes = filterProfileScenes(profile.scenes, query)
+  const scenePage = buildProfileScenePage({ scenes: profile.scenes, query, sort, pageIndex, pageSize })
+  const changePage = (nextPageIndex: number) => {
+    setPageIndex(nextPageIndex)
+    requestAnimationFrame(() => {
+      const toolbar = toolbarRef.current
+      if (!toolbar) return
+      const bounds = toolbar.getBoundingClientRect()
+      if (bounds.top < 80 || bounds.bottom > window.innerHeight) {
+        toolbar.scrollIntoView?.({
+          block: 'start',
+          behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        })
+      }
+    })
+  }
   const profileStats = [
     { label: 'scenes', value: profile.stats.scenes },
     { label: 'views', value: profile.stats.views },
@@ -222,22 +244,36 @@ export function ProfilePage() {
       </section>
 
       <section className="profile-scenes" aria-labelledby="profile-scenes-title">
-        <div className="profile-scenes__toolbar">
+        <div className="profile-scenes__toolbar" ref={toolbarRef}>
           <div className="profile-scenes__tabs">
             <h2 className="profile-scenes__tab" id="profile-scenes-title">Scenes</h2>
           </div>
 
-          <label className="profile-scenes__search">
-            <SearchIcon />
-            <input
-              aria-label="Search scenes"
+          <div className="profile-scenes__filters">
+            <label className="profile-scenes__search">
+              <AppIcon name="search" size={16} />
+              <input
+                aria-label="Search scenes"
+                disabled={profile.scenes.length === 0}
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  setPageIndex(0)
+                }}
+                placeholder="Search scenes"
+                type="search"
+                value={query}
+              />
+            </label>
+            <DiscoverySortSelect
               disabled={profile.scenes.length === 0}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search scenes"
-              type="search"
-              value={query}
+              onChange={(nextSort) => {
+                setSort(nextSort)
+                setPageIndex(0)
+              }}
+              options={PROFILE_SCENE_SORT_OPTIONS}
+              value={sort}
             />
-          </label>
+          </div>
         </div>
 
         <div className="profile-scenes__content" aria-live="polite">
@@ -256,14 +292,17 @@ export function ProfilePage() {
               }
             />
           ) : null}
-          {profile.scenes.length > 0 && filteredScenes.length === 0 ? (
+          {profile.scenes.length > 0 && scenePage.totalScenes === 0 ? (
             <SceneCollectionState
               description={`No scene titles match “${query.trim()}”.`}
               title="No matching scenes"
               action={(
                 <button
                   className="scene-collection-state__button"
-                  onClick={() => setQuery('')}
+                  onClick={() => {
+                    setQuery('')
+                    setPageIndex(0)
+                  }}
                   type="button"
                 >
                   Clear search
@@ -271,14 +310,29 @@ export function ProfilePage() {
               )}
             />
           ) : null}
-          {filteredScenes.length > 0 ? (
+          {scenePage.scenes.length > 0 ? (
             <div className="scene-grid" aria-label={`${profile.displayName} scenes`}>
-              {filteredScenes.map((scene) => (
+              {scenePage.scenes.map((scene) => (
                 <DiscoverySceneCard key={scene.sceneId} scene={scene} />
               ))}
             </div>
           ) : null}
         </div>
+        {profile.scenes.length > 0 ? (
+          <ProfileScenesPagination
+            currentPageIndex={scenePage.currentPageIndex}
+            onPageChange={changePage}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize)
+              setPageIndex(0)
+            }}
+            pageCount={scenePage.pageCount}
+            pageEnd={scenePage.pageEnd}
+            pageSize={scenePage.pageSize}
+            pageStart={scenePage.pageStart}
+            totalScenes={scenePage.totalScenes}
+          />
+        ) : null}
       </section>
     </main>
   )
