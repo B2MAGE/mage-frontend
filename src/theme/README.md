@@ -33,13 +33,13 @@ Exports:
 - `tokens.css`
   Shared design-token families used by reusable UI surfaces.
 - `themes/<theme-id>/`
-  Theme-specific structural overrides that cannot be expressed through shared tokens alone.
+  Theme token palettes and base styles. Page structure belongs to feature-owned stylesheets.
 
 ## Adding A Theme
 
 1. Add the theme definition in `themes.ts`, including `preview` metadata for settings UI.
-2. Add token overrides in `tokens.css` under `:root[data-theme='<theme-id>']`.
-3. Create `themes/<theme-id>/index.css` only for structural/layout differences that the shared tokens do not cover.
+2. Add token overrides in the theme entrypoint under `:root[data-theme='<theme-id>']`. Keep selector specificity consistent with the base tokens.
+3. Keep base theme rules in `themes/<theme-id>/index.css`, app navigation in the app shell, and page-specific layouts with the owning feature.
 4. Import the new theme entrypoint from `theme.css`.
 5. Verify the shared surfaces still inherit the expected nav, card, pill, table, player, and editor tokens.
 

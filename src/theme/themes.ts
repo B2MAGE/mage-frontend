@@ -10,26 +10,26 @@ const APP_THEME_CONFIG = [
     colorScheme: 'dark',
     id: 'mage-pulse',
     label: 'MAGE Pulse',
-    description: 'The current MAGE theme with dark surfaces and luminous accents.',
+    description: 'Dark, focused, and built around scene content.',
     preview: {
       background:
-        'radial-gradient(circle at top left, rgba(99, 240, 214, 0.18), transparent 50%), linear-gradient(180deg, rgba(8, 18, 21, 0.96), rgba(5, 11, 13, 0.98))',
-      bar: 'linear-gradient(90deg, rgba(99, 240, 214, 0.94), rgba(126, 200, 255, 0.86))',
+        'radial-gradient(circle at 60% 45%, rgba(124,108,255,.22), transparent 32%), #090a0d',
+      bar: '#171a20',
       rail:
-        'linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(7, 15, 17, 0.96)), rgba(7, 15, 17, 0.96)',
+        '#171a20',
       card:
-        'linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)), rgba(11, 21, 25, 0.96)',
+        '#171a20',
     },
   },
   {
     colorScheme: 'light',
     id: 'classic-facebook',
     label: 'Classic Blue',
-    description: 'A blue-and-white retro theme inspired by mid-2000s social media.',
+    description: 'A brighter, traditional social-platform layout.',
     preview: {
-      background: 'linear-gradient(180deg, #eef2f7, #f8f9fb)',
-      bar: 'linear-gradient(90deg, #3b5998, #5872a8)',
-      rail: '#f7f8fb',
+      background: '#e9edf4',
+      bar: '#4267b2',
+      rail: '#ffffff',
       card: '#ffffff',
     },
   },

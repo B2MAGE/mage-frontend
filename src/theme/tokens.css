@@ -62,7 +62,8 @@
   --nav-menu-item-hover-background: rgba(255, 255, 255, 0.06);
   --nav-menu-icon-color: rgba(233, 243, 240, 0.92);
   --nav-menu-icon-hover-color: var(--accent);
-  --nav-status-pill-text: var(--muted);
+  --skeleton-base: rgba(255, 255, 255, 0.045);
+  --skeleton-highlight: rgba(255, 255, 255, 0.1);
 
   --tag-pill-radius: 999px;
   --tag-pill-border: rgba(255, 255, 255, 0.08);
@@ -77,14 +78,6 @@
   --tag-pill-active-hover-border: rgba(99, 240, 214, 0.4);
   --tag-pill-active-hover-background: rgba(26, 63, 67, 0.96);
   --tag-pill-active-hover-text: #efffff;
-  --tag-pill-skeleton-background:
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.03) 25%,
-      rgba(255, 255, 255, 0.07) 50%,
-      rgba(255, 255, 255, 0.03) 75%
-    );
-
   --card-hover-background: rgba(255, 255, 255, 0.03);
   --card-thumbnail-radius: 20px;
   --card-thumbnail-border: rgba(255, 255, 255, 0.08);
@@ -111,14 +104,6 @@
   --card-title-hover-color: var(--accent);
   --card-meta-color: rgba(187, 201, 196, 0.84);
   --card-meta-hover-color: rgba(213, 228, 223, 0.94);
-  --card-skeleton-background:
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.04) 25%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.04) 75%
-    );
-
   --table-heading-color: rgba(171, 189, 184, 0.78);
   --table-sort-active-color: #dffefa;
   --table-sort-hover-color: #efffff;
@@ -345,7 +330,8 @@
   --nav-menu-item-hover-background: #eff2f7;
   --nav-menu-icon-color: #49618d;
   --nav-menu-icon-hover-color: #3b5998;
-  --nav-status-pill-text: #ffffff;
+  --skeleton-base: #eef2f7;
+  --skeleton-highlight: #ffffff;
 
   --tag-pill-radius: 2px;
   --tag-pill-border: #c7d2e5;
@@ -360,8 +346,6 @@
   --tag-pill-active-hover-border: #29447e;
   --tag-pill-active-hover-background: #5b74a8;
   --tag-pill-active-hover-text: #ffffff;
-  --tag-pill-skeleton-background: linear-gradient(90deg, #eef2f7 25%, #f7f8fb 50%, #eef2f7 75%);
-
   --card-hover-background: transparent;
   --card-thumbnail-radius: 2px;
   --card-thumbnail-border: #bcc7d8;
@@ -383,8 +367,6 @@
   --card-title-hover-color: #2d4373;
   --card-meta-color: #7b8cad;
   --card-meta-hover-color: #596b93;
-  --card-skeleton-background: linear-gradient(90deg, #eef2f7 25%, #f7f8fb 50%, #eef2f7 75%);
-
   --table-heading-color: #6076a8;
   --table-sort-active-color: #2d4373;
   --table-sort-hover-color: #2d4373;

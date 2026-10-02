@@ -43,8 +43,7 @@
 
 .nav-create,
 .nav-signin,
-.nav-profile-trigger,
-.nav-status-pill {
+.nav-profile-trigger {
   min-height: var(--nav-control-min-height);
   border-radius: var(--nav-control-radius);
   border: 1px solid var(--nav-control-border);
@@ -150,14 +149,6 @@
   font-size: 1rem;
 }
 
-.nav-status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 16px;
-  font-size: 0.82rem;
-  color: var(--nav-status-pill-text);
-}
-
 .nav-menu {
   position: absolute;
   top: calc(100% + 12px);
@@ -180,9 +171,12 @@
 
 .nav-menu__profile-link {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
+  row-gap: 6px;
   margin: 0;
   padding: 10px 12px;
   border-radius: 18px;
@@ -194,6 +188,11 @@
   border: 1px solid transparent;
 }
 
+.nav-menu__profile-link > .nav-avatar {
+  grid-column: 1;
+  grid-row: 1;
+}
+
 .nav-menu__profile-link:hover {
   background: var(--nav-menu-profile-hover-background);
   border-color: var(--nav-menu-profile-hover-border);
@@ -201,6 +200,8 @@
 
 .nav-menu__identity {
   display: grid;
+  grid-column: 2;
+  grid-row: 1;
   gap: 2px;
   min-width: 0;
 }
@@ -227,6 +228,8 @@
 }
 
 .nav-menu__channel-link {
+  grid-column: 2;
+  grid-row: 2;
   justify-self: start;
   padding: 0;
   border: 0;
@@ -635,8 +638,8 @@
 
 .field-group input,
 .field-group textarea,
-.field-group select,
-.scene-select,
+.field-group select:not(.mage-select),
+.mage-select,
 .scene-number-input,
 .scene-slider__number,
 .scene-textarea {
@@ -667,8 +670,8 @@
 
 .field-group input:hover,
 .field-group textarea:hover,
-.field-group select:hover,
-.scene-select:hover,
+.field-group select:not(.mage-select):hover,
+.mage-select:hover,
 .scene-number-input:hover,
 .scene-slider__number:hover,
 .scene-textarea:hover {
@@ -677,8 +680,8 @@
 
 .field-group input:focus,
 .field-group textarea:focus,
-.field-group select:focus,
-.scene-select:focus,
+.field-group select:not(.mage-select):focus,
+.mage-select:focus,
 .scene-number-input:focus,
 .scene-slider__number:focus,
 .scene-textarea:focus {
@@ -689,8 +692,8 @@
 
 .field-group input[aria-invalid="true"],
 .field-group textarea[aria-invalid="true"],
-.field-group select[aria-invalid="true"],
-.scene-select[aria-invalid="true"],
+.field-group select:not(.mage-select)[aria-invalid="true"],
+.mage-select[aria-invalid="true"],
 .scene-number-input[aria-invalid="true"],
 .scene-slider__number[aria-invalid="true"],
 .scene-textarea[aria-invalid="true"] {
@@ -1159,25 +1162,6 @@
   color: #e9fffb;
 }
 
-.scene-detail-vote-button__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  color: var(--muted);
-}
-
-.scene-detail-action-chip[aria-pressed='true'] .scene-detail-vote-button__icon,
-.scene-detail-action-chip.is-selected .scene-detail-vote-button__icon {
-  color: #63f0d6;
-}
-
-.scene-detail-vote-button__icon svg {
-  width: 100%;
-  height: 100%;
-}
-
 .scene-detail-description-card,
 .scene-detail-comments-panel {
   margin-top: 18px;
@@ -1482,11 +1466,6 @@
   border-color: rgba(99, 240, 214, 0.46);
   background: rgba(99, 240, 214, 0.13);
   color: #e9fffb;
-}
-
-.scene-detail-comment__action[aria-pressed='true'] .scene-detail-vote-button__icon,
-.scene-detail-comment__action.is-selected .scene-detail-vote-button__icon {
-  color: #63f0d6;
 }
 
 .scene-detail-action-chip:disabled,
@@ -3003,25 +2982,34 @@
   filter: saturate(1.05) brightness(1.03);
 }
 
-.scene-select {
-  appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, rgba(99, 240, 214, 0.86) 50%),
-    linear-gradient(135deg, rgba(99, 240, 214, 0.86) 50%, transparent 50%);
-  background-position:
-    calc(100% - 22px) calc(50% - 2px),
-    calc(100% - 16px) calc(50% - 2px);
-  background-size:
-    6px 6px,
-    6px 6px;
+.mage-select {
+  width: 100%;
+  min-height: 0;
+  height: 42px;
+  padding: 0 44px 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+  outline: 0;
+  box-shadow: none;
+  background-color: #0d0f13;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='m7 10 5 5 5-5' stroke='%23a4a8b2' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 14px;
+  color: #f4f5f7;
+  font-family: inherit;
+  font-size: 16px;
+  appearance: none;
+  cursor: pointer;
 }
 
-.scene-select--navigation {
-  min-height: 56px;
-  padding-left: 46px;
-  border-color: rgba(99, 240, 214, 0.22);
-  background-color: rgba(4, 12, 14, 0.56);
+.mage-select:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.mage-select:focus {
+  border-color: rgba(178, 168, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.09);
 }
 
 .scene-field--slider {
@@ -3882,24 +3870,6 @@
   color: var(--tag-pill-active-hover-text);
 }
 
-.tag-pill--skeleton {
-  width: 80px;
-  height: 42px;
-  border: none;
-  background: var(--tag-pill-skeleton-background);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 /* â”€â”€â”€ Scene Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .scene-grid {
@@ -4009,13 +3979,6 @@
   box-shadow: var(--card-avatar-shadow);
 }
 
-.scene-card__avatar--skeleton {
-  border: 0;
-  background: var(--card-skeleton-background);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-}
-
 .scene-card__meta {
   display: grid;
   gap: 4px;
@@ -4091,41 +4054,6 @@
 .scene-card-link:focus-visible .scene-card__thumbnail-placeholder {
   transform: scale(1.018);
   filter: saturate(1.05) brightness(1.03);
-}
-
-/* â”€â”€â”€ Skeleton Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
-.scene-card--skeleton {
-  pointer-events: none;
-}
-
-.scene-card__thumbnail--skeleton {
-  background: var(--card-skeleton-background);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-}
-
-.skeleton-text {
-  display: block;
-  border-radius: 6px;
-  background: var(--card-skeleton-background);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-}
-
-.skeleton-text--title {
-  width: 70%;
-  height: 18px;
-}
-
-.skeleton-text--sub {
-  width: 40%;
-  height: 14px;
-}
-
-.skeleton-text--meta {
-  width: 54%;
-  height: 12px;
 }
 
 /* â”€â”€â”€ Empty & Error States â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
