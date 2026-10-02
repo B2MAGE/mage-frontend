@@ -17,7 +17,7 @@ function renderProtectedRoute() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute loadingFallback={<div role="status">Restoring your session</div>}>
               <div>Protected page</div>
             </ProtectedRoute>
           }
@@ -61,7 +61,8 @@ describe('auth guards', () => {
 
     renderProtectedRoute()
 
-    expect(screen.getByRole('heading', { name: /checking your login/i })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/restoring your session/i)
+    expect(screen.queryByText(/checking your login/i)).not.toBeInTheDocument()
   })
 
   it('redirects unauthenticated users away from protected routes', () => {

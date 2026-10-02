@@ -14,7 +14,12 @@ vi.mock('@modules/home', () => ({
 }))
 
 vi.mock('@modules/my-scenes', () => ({
+  MyScenesLoadingState: () => <div>Loading my scenes</div>,
   MyScenesPage: () => <div>My scenes page</div>,
+}))
+
+vi.mock('@modules/profile', () => ({
+  ProfilePage: () => <div>Public profile page</div>,
 }))
 
 vi.mock('@modules/discovery', () => ({
@@ -40,9 +45,11 @@ vi.mock('@modules/scene-detail', () => ({
 vi.mock('@modules/scene-editor', () => ({
   CreateScenePage: () => <div>Create scene page</div>,
   EditScenePage: () => <div>Edit scene page</div>,
+  SceneEditorLoadingState: () => <div>Loading scene editor</div>,
 }))
 
 vi.mock('@modules/settings', () => ({
+  SettingsLoadingState: () => <div>Loading settings</div>,
   SettingsPage: () => <div>Settings page</div>,
 }))
 
@@ -74,6 +81,55 @@ describe('App routing', () => {
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
+  it('renders the public About placeholder route', () => {
+    render(
+      <MemoryRouter initialEntries={['/about']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'About MAGE' })).toBeInTheDocument()
+    expect(screen.getByText('This page is coming soon.')).toBeInTheDocument()
+  })
+
+  it('keeps the profile placeholder behind authentication', async () => {
+    render(
+      <MemoryRouter initialEntries={['/profile']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Login page')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('heading', { name: 'Your profile' })).not.toBeInTheDocument()
+  })
+
+  it('allows public visits to canonical handle profile routes', () => {
+    render(
+      <MemoryRouter initialEntries={['/@ari']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Public profile page')).toBeInTheDocument()
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument()
+  })
+
+  it('does not treat ordinary unknown paths as profile handles', async () => {
+    render(
+      <MemoryRouter initialEntries={['/not-a-profile']}>
+        <App />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Home page')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Public profile page')).not.toBeInTheDocument()
+  })
+
   it('keeps settings behind authentication', async () => {
     render(
       <MemoryRouter initialEntries={['/settings']}>
@@ -97,6 +153,7 @@ describe('App routing', () => {
           userId: 14,
           email: 'user@example.com',
           displayName: 'Existing User',
+          handle: 'existing_user',
           authProvider: 'LOCAL',
         },
       }),
@@ -108,6 +165,7 @@ describe('App routing', () => {
           userId: 14,
           email: 'user@example.com',
           displayName: 'Existing User',
+          handle: 'existing_user',
           authProvider: 'LOCAL',
         }),
         {
@@ -141,6 +199,7 @@ describe('App routing', () => {
           userId: 14,
           email: 'user@example.com',
           displayName: 'Existing User',
+          handle: 'existing_user',
           authProvider: 'LOCAL',
         },
       }),
@@ -152,6 +211,7 @@ describe('App routing', () => {
           userId: 14,
           email: 'user@example.com',
           displayName: 'Existing User',
+          handle: 'existing_user',
           authProvider: 'LOCAL',
         }),
         {

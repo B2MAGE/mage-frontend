@@ -1,26 +1,23 @@
 import type { ReactElement } from 'react'
 import { Navigate } from 'react-router-dom'
+import { AuthFormLoadingState } from './AuthLoadingState'
 import { useAuth } from './authContext'
 
 type GuardedRouteProps = {
   children: ReactElement
+  loadingFallback?: ReactElement
 }
 
-function SessionRestoreState() {
-  return (
-    <main className="card">
-      <div className="eyebrow">Session</div>
-      <h1>Checking your login...</h1>
-      <p className="sub">MAGE is restoring your account before opening this page.</p>
-    </main>
-  )
+type ProtectedRouteProps = {
+  children: ReactElement
+  loadingFallback: ReactElement
 }
 
-export function ProtectedRoute({ children }: GuardedRouteProps) {
+export function ProtectedRoute({ children, loadingFallback }: ProtectedRouteProps) {
   const { isAuthenticated, isRestoringSession } = useAuth()
 
   if (isRestoringSession) {
-    return <SessionRestoreState />
+    return loadingFallback
   }
 
   if (!isAuthenticated) {
@@ -30,11 +27,11 @@ export function ProtectedRoute({ children }: GuardedRouteProps) {
   return children
 }
 
-export function GuestOnlyRoute({ children }: GuardedRouteProps) {
+export function GuestOnlyRoute({ children, loadingFallback }: GuardedRouteProps) {
   const { isAuthenticated, isRestoringSession } = useAuth()
 
   if (isRestoringSession) {
-    return <SessionRestoreState />
+    return loadingFallback ?? <AuthFormLoadingState label="Restoring your session" />
   }
 
   if (isAuthenticated) {

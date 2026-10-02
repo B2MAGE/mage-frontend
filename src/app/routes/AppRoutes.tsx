@@ -1,24 +1,59 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { Layout } from '@app/Layout'
-import { ForgotPasswordPage, GuestOnlyRoute, LoginPage, RegisterPage, ResetPasswordPage } from '@modules/auth'
+import { AboutPage } from '@modules/about'
+import {
+  AuthFormLoadingState,
+  ForgotPasswordPage,
+  GuestOnlyRoute,
+  LoginPage,
+  ProtectedRoute,
+  RegisterPage,
+  ResetPasswordPage,
+  useAuth,
+} from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
-import { MyScenesPage } from '@modules/my-scenes'
-import { CreateScenePage, EditScenePage } from '@modules/scene-editor'
+import { MyScenesLoadingState, MyScenesPage } from '@modules/my-scenes'
+import { ProfilePage } from '@modules/profile'
+import { CreateScenePage, EditScenePage, SceneEditorLoadingState } from '@modules/scene-editor'
 import { SceneDetailPage } from '@modules/scene-detail'
-import { SettingsPage } from '@modules/settings'
-import { ProtectedRoute } from '@modules/auth'
+import { SettingsLoadingState, SettingsPage } from '@modules/settings'
+
+const HANDLE_PATH_PATTERN = /^@[a-z][a-z0-9_]{2,29}$/
+
+function OwnProfileRedirect() {
+  const { user } = useAuth()
+  return <Navigate replace to={user?.handle ? `/@${user.handle}` : '/settings#profile'} />
+}
+
+function HandleProfileRoute() {
+  const { profileHandle = '' } = useParams()
+  const canonicalHandle = profileHandle.toLowerCase()
+
+  if (!HANDLE_PATH_PATTERN.test(canonicalHandle)) {
+    return <Navigate replace to="/" />
+  }
+
+  if (canonicalHandle !== profileHandle) {
+    return <Navigate replace to={`/${canonicalHandle}`} />
+  }
+
+  return <ProfilePage />
+}
 
 export function AppRoutes() {
   return (
     <Layout>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/scenes" element={<ScenesPage />} />
         <Route
           path="/login"
           element={
-            <GuestOnlyRoute>
+            <GuestOnlyRoute
+              loadingFallback={<AuthFormLoadingState label="Restoring your saved login" />}
+            >
               <LoginPage />
             </GuestOnlyRoute>
           }
@@ -26,7 +61,14 @@ export function AppRoutes() {
         <Route
           path="/forgot-password"
           element={
-            <GuestOnlyRoute>
+            <GuestOnlyRoute
+              loadingFallback={
+                <AuthFormLoadingState
+                  label="Restoring your session before account recovery"
+                  variant="recovery"
+                />
+              }
+            >
               <ForgotPasswordPage />
             </GuestOnlyRoute>
           }
@@ -34,7 +76,13 @@ export function AppRoutes() {
         <Route
           path="/reset-password"
           element={
-            <GuestOnlyRoute>
+            <GuestOnlyRoute
+              loadingFallback={
+                <AuthFormLoadingState
+                  label="Restoring your session before resetting your password"
+                />
+              }
+            >
               <ResetPasswordPage />
             </GuestOnlyRoute>
           }
@@ -42,7 +90,7 @@ export function AppRoutes() {
         <Route
           path="/my-scenes"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute loadingFallback={<MyScenesLoadingState />}>
               <MyScenesPage />
             </ProtectedRoute>
           }
@@ -51,7 +99,11 @@ export function AppRoutes() {
         <Route
           path="/scenes/:id/edit"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute
+              loadingFallback={
+                <SceneEditorLoadingState label="Restoring your session before loading the scene editor" />
+              }
+            >
               <EditScenePage />
             </ProtectedRoute>
           }
@@ -59,20 +111,40 @@ export function AppRoutes() {
         <Route
           path="/register"
           element={
-            <GuestOnlyRoute>
+            <GuestOnlyRoute
+              loadingFallback={
+                <AuthFormLoadingState
+                  label="Restoring your session before registration"
+                  variant="register"
+                />
+              }
+            >
               <RegisterPage />
             </GuestOnlyRoute>
           }
         />
         <Route path="/create-scene" element={<CreateScenePage />} />
         <Route
+          path="/profile"
+          element={
+            <ProtectedRoute
+              loadingFallback={
+                <AuthFormLoadingState label="Restoring your session before opening your profile" />
+              }
+            >
+              <OwnProfileRedirect />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute loadingFallback={<SettingsLoadingState />}>
               <SettingsPage />
             </ProtectedRoute>
           }
         />
+        <Route path="/:profileHandle" element={<HandleProfileRoute />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
     </Layout>

@@ -18,6 +18,7 @@ let authState = {
     authProvider: string
     displayName: string
     email: string
+    handle?: string
     firstName?: string
     lastName?: string
     userId: number | null
@@ -57,10 +58,15 @@ describe('Layout', () => {
     renderLayout()
 
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
+    expect(screen.getAllByRole('link', { name: 'About', hidden: true })).toHaveLength(2)
+    for (const aboutLink of screen.getAllByRole('link', { name: 'About', hidden: true })) {
+      expect(aboutLink).toHaveAttribute('href', '/about')
+    }
+    expect(screen.queryByRole('button', { name: 'About' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /open account menu/i })).not.toBeInTheDocument()
   })
 
-  it('shows the main branch account dropdown and routes the identity row to settings', async () => {
+  it('shows the profile, library, settings, and sign-out account actions', async () => {
     authState = {
       ...authState,
       accessToken: 'token',
@@ -69,6 +75,7 @@ describe('Layout', () => {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
         email: 'artist@example.com',
+        handle: 'sceneartist',
         userId: 8,
       },
     }
@@ -81,15 +88,25 @@ describe('Layout', () => {
 
     await user.click(screen.getByRole('button', { name: /open account menu for scene artist/i }))
 
-    expect(screen.getByRole('menuitem', { name: /scene artist/i })).toHaveAttribute(
-      'href',
-      '/settings',
-    )
-    expect(screen.getByRole('button', { name: /view your channel/i })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /browse/i })).toHaveAttribute('href', '/')
+    expect(screen.getAllByRole('menuitem')).toHaveLength(4)
+    const profileMenuItem = screen.getByRole('menuitem', { name: /scene artist/i })
+    const profileIdentity = profileMenuItem.querySelector('.nav-menu__identity')
+    const viewProfile = screen.getByText('View profile')
+
+    expect(profileMenuItem).toHaveAttribute('href', '/@sceneartist')
+    expect(profileIdentity).toHaveTextContent('Scene Artist')
+    expect(profileIdentity).toHaveTextContent('artist@example.com')
+    expect(profileIdentity).not.toHaveTextContent('View profile')
+    expect(viewProfile).toHaveClass('nav-menu__channel-link')
+    expect(viewProfile.parentElement).toBe(profileMenuItem)
+    expect(screen.queryByRole('menuitem', { name: /browse/i })).not.toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /my scenes/i })).toHaveAttribute(
       'href',
       '/my-scenes',
+    )
+    expect(screen.getByRole('menuitem', { name: /settings/i })).toHaveAttribute(
+      'href',
+      '/settings',
     )
     expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument()
 
