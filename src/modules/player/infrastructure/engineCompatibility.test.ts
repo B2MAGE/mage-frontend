@@ -93,6 +93,7 @@ describe('installed MAGE engine compatibility', () => {
     expectTypeOf<MAGEEngineAPI['unloadAudio']>().toEqualTypeOf<() => void>()
     expectTypeOf<MAGEEngineAPI['getAudioVolume']>().toEqualTypeOf<() => number>()
     expectTypeOf<MAGEEngineAPI['setAudioVolume']>().toEqualTypeOf<(volume: number) => number>()
+    expectTypeOf<MAGEEngineAPI['setAudioResponseMode']>().toEqualTypeOf<(mode?: 'legacy' | 'transient-v1') => void>()
     expectTypeOf<MAGEEngineAPI['setSyntheticPreview']>().toEqualTypeOf<(enabled: boolean, seed?: number, tempoScale?: number) => void>()
     expectTypeOf<MAGEConfig['pixelRatio']>().toEqualTypeOf<number | undefined>()
   })
@@ -216,6 +217,7 @@ describe('installed MAGE engine compatibility', () => {
       viewportHeight: 360,
       controls: { enabled: false },
       controlSettings: { active: false },
+      setAudioResponseMode: vi.fn(),
       fx: { bleachBypassShader: { enabled: false }, toonShader: { enabled: false } },
       _clearScene: engineMethod('_clearScene'),
       _updateVisualizer: engineMethod('_updateVisualizer', {
@@ -253,6 +255,7 @@ describe('installed MAGE engine compatibility', () => {
     const getActiveShader = vi.fn(() => shader)
     const engine = {
       visualizer: { getActiveShader, skyboxPreset: 6, scale: 1.25 },
+      audioResponseMode: 'transient-v1',
       state: { time: 3, size: 0.2 },
       controls: null,
       camera: { fov: 50 },
@@ -261,11 +264,14 @@ describe('installed MAGE engine compatibility', () => {
     }
 
     expect(engineMethod('toPreset', { MAGE_VERSION: 'test' }).call(engine)).toMatchObject({
+      audioResponse: 'transient-v1',
       visualizer: { shader, skyboxPreset: 6, scale: 1.25 },
       state: { time: 3, size: 0.2 },
       fx: { passes: { bleachBypass: true, toon: true } },
     })
     expect(getActiveShader).toHaveBeenCalledOnce()
+    engine.audioResponseMode = 'legacy'
+    expect(engineMethod('toPreset', { MAGE_VERSION: 'test' }).call(engine)).not.toHaveProperty('audioResponse')
   })
 
   it('loads, disables, and resets the new effects when an older scene omits their flags', () => {

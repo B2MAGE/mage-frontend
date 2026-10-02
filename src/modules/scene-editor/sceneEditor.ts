@@ -1,5 +1,6 @@
 import { EMBEDDED_SHADER_SCENES } from './embeddedShaderScenes'
 import { ADDITIONAL_SHADER_SCENES } from './additionalShaderScenes'
+import { normalizeAudioResponseMode } from '@shared/lib'
 
 export type SceneData = Record<string, unknown>
 
@@ -644,6 +645,12 @@ export function mergeSceneEditorBranch<K extends keyof SceneEditorModel>(
 export function sanitizeSceneData(sceneData: SceneData): SceneData {
   const normalizedModel = getSceneEditorModel(sceneData)
   let nextSceneData = { ...sceneData }
+
+  // Keep the versioned opt-in through editing and JSON round trips without
+  // rewriting legacy scene payloads that never had this field.
+  if (Object.hasOwn(sceneData, 'audioResponse')) {
+    nextSceneData.audioResponse = normalizeAudioResponseMode(sceneData.audioResponse)
+  }
 
   nextSceneData = mergeSceneEditorBranch(nextSceneData, 'visualizer', normalizedModel.visualizer)
   nextSceneData = mergeSceneEditorBranch(nextSceneData, 'controls', normalizedModel.controls)

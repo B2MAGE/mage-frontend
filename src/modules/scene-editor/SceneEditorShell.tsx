@@ -154,6 +154,7 @@ export function SceneEditorShell({
     sceneData,
   });
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
+  const usesTransientAudio = sceneData.audioResponse === "transient-v1";
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
@@ -348,7 +349,7 @@ export function SceneEditorShell({
           step={0.01}
           value={sceneModel.state.time}
         />
-        <NumberField
+        {!usesTransientAudio ? <NumberField
           description="Initial runtime volume multiplier."
           id="state-volume"
           label="Volume Multiplier"
@@ -360,7 +361,7 @@ export function SceneEditorShell({
           }
           step={0.01}
           value={sceneModel.state.volume_multiplier}
-        />
+        /> : null}
       </div>
     );
   }
@@ -468,7 +469,7 @@ export function SceneEditorShell({
         sceneModel.state.volume_multiplier,
         initialSceneModel.state.volume_multiplier,
       ] as [string, number, number],
-    ].filter(([, value, initialValue]) => value !== initialValue);
+    ].filter(([label, value, initialValue]) => value !== initialValue && (!usesTransientAudio || label !== "Volume"));
 
     if (runtimeStatePairs.length === 0) {
       return "Default";
@@ -792,8 +793,13 @@ export function SceneEditorShell({
                       value={sceneModel.intent.time_multiplier}
                     />
 
+                    {usesTransientAudio ? (
+                      <p className="scene-editor-grid__item--full">
+                        This scene uses automatic beat detection and release. Legacy audio gain, curve, base speed, easing, and volume controls do not apply.
+                      </p>
+                    ) : <>
                     <SliderField
-                      description="Scales the incoming audio signal before the engine applies its response curve."
+                      description="Audio sensitivity: how strongly the scene picks up music before its response curve."
                       id="audio-gain"
                       label="Audio Gain"
                       max={2}
@@ -823,6 +829,7 @@ export function SceneEditorShell({
                       step={0.1}
                       value={sceneModel.intent.power_factor}
                     />
+                    </>}
 
                   </div>
 
@@ -859,6 +866,7 @@ export function SceneEditorShell({
                       value={sceneModel.intent.autoRotateSpeed}
                     />
 
+                    {!usesTransientAudio ? <>
                     <SliderField
                       description="Base audio-reactive speed shaping used by the engine."
                       id="base-speed"
@@ -876,7 +884,7 @@ export function SceneEditorShell({
                     />
 
                     <SliderField
-                      description="How quickly the reactive size settles toward its latest value."
+                      description="Reaction smoothing: lower values follow the beat quickly; higher values ease into each change."
                       id="easing-speed"
                       label="Easing Speed"
                       max={0.9}
@@ -890,6 +898,7 @@ export function SceneEditorShell({
                       step={0.01}
                       value={sceneModel.intent.easing_speed}
                     />
+                    </> : null}
 
                     <div className="scene-editor-grid__item--full">
                       <ToggleField
@@ -1478,6 +1487,9 @@ export function SceneEditorShell({
                         label="Time Multiplier"
                         value={formatFixed(sceneModel.intent.time_multiplier)}
                       />
+                      {usesTransientAudio ? (
+                        <ConfirmSummaryItem label="Audio Response" value="Beat detection" />
+                      ) : <>
                       <ConfirmSummaryItem
                         label="Audio Gain"
                         value={formatFixed(sceneModel.intent.minimizing_factor)}
@@ -1486,6 +1498,7 @@ export function SceneEditorShell({
                         label="Audio Curve"
                         value={formatFixed(sceneModel.intent.power_factor)}
                       />
+                      </>}
                       <ConfirmSummaryItem
                         label="Auto Rotate"
                         value={sceneModel.intent.autoRotate ? "On" : "Off"}

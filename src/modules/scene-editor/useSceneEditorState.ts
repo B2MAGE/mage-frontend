@@ -199,13 +199,23 @@ export function useSceneEditorState({
 
     if (nextValue) {
       setIsMotionAdvancedEnabled(true)
-      updateBranch('state', () => motionRuntimeDraft)
+      updateBranch('state', () => ({
+        ...motionRuntimeDraft,
+        ...(sceneData.audioResponse === 'transient-v1'
+          ? { volume_multiplier: sceneModel.state.volume_multiplier }
+          : {}),
+      }))
       return
     }
 
     setMotionRuntimeDraft(sceneModel.state)
     setIsMotionAdvancedEnabled(false)
-    updateBranch('state', () => initialSceneModel.state)
+    updateBranch('state', () => ({
+      ...initialSceneModel.state,
+      ...(sceneData.audioResponse === 'transient-v1'
+        ? { volume_multiplier: sceneModel.state.volume_multiplier }
+        : {}),
+    }))
   }
 
   function handleNameChange(nextValue: string) {

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
@@ -57,6 +57,67 @@ function expectRetiredControlsAbsent() {
 }
 
 describe('scene editor presets and beat preview', () => {
+  it('explains beat detection, hides only bypassed controls, and preserves legacy settings when saving', async () => {
+    storeSceneEditorSession()
+    const defaults = createDefaultSceneData()
+    const saved = {
+      ...defaults,
+      audioResponse: 'transient-v1',
+      intent: {
+        ...getSceneEditorModel(defaults).intent,
+        minimizing_factor: 1.3, power_factor: 3.4, base_speed: 0.13, easing_speed: 0.44,
+      },
+      state: { ...getSceneEditorModel(defaults).state, volume_multiplier: 0.27 },
+    }
+    const scene = buildSceneEditorApiScene({ sceneData: saved, tags: [] })
+    let updated: SceneWritePayload | undefined
+    mockCreateScenePageFetch((input, init) => {
+      if (input === buildApiUrl('/scenes/12/tags') && init?.method === 'PUT') return jsonResponse([])
+      if (input !== buildApiUrl('/scenes/12')) return
+      if (!init?.method || init.method === 'GET') return jsonResponse(scene)
+      if (init.method === 'PUT') {
+        updated = JSON.parse(String(init.body)) as SceneWritePayload
+        return jsonResponse(scene)
+      }
+    })
+    const user = userEvent.setup()
+    renderEditScenePage(undefined, 'mage-pulse')
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Motion' }))
+
+    expect(screen.getByText(/this scene uses automatic beat detection and release/i)).toBeInTheDocument()
+    for (const name of ['Audio Gain', 'Audio Curve', 'Base Speed', 'Easing Speed']) {
+      expect(screen.queryByRole('slider', { name })).not.toBeInTheDocument()
+    }
+    expect(screen.getByRole('spinbutton', { name: 'Time Multiplier' })).toBeEnabled()
+    expect(screen.getByRole('slider', { name: 'Pointer Release Hold' })).toBeEnabled()
+    expect(screen.getByRole('slider', { name: 'Rotation Speed' })).toBeEnabled()
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Time Multiplier' }), { target: { value: '0.6' } })
+    fireEvent.change(screen.getByRole('slider', { name: 'Pointer Release Hold' }), { target: { value: '0.3' } })
+    expect(getSceneEditorModel(previewScene()).intent).toMatchObject({ time_multiplier: 0.6, pointerDownMultiplier: 0.3 })
+
+    await user.click(screen.getByRole('button', { name: 'Enable Advanced' }))
+    expect(screen.queryByRole('spinbutton', { name: 'Volume Multiplier' })).not.toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Pointer Down' })).toBeEnabled()
+    expect(getSceneEditorModel(previewScene()).state.volume_multiplier).toBe(0.27)
+    await user.click(screen.getByRole('button', { name: 'Disable Advanced' }))
+    expect(getSceneEditorModel(previewScene()).state.volume_multiplier).toBe(0.27)
+
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(screen.getByText('Audio Response')).toBeInTheDocument()
+    expect(screen.getByText('Beat detection')).toBeInTheDocument()
+    expect(screen.queryByText('Audio Gain')).not.toBeInTheDocument()
+    expect(screen.queryByText('Audio Curve')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^update scene$/i }))
+    await waitFor(() => expect(updated).toBeDefined())
+    expect(updated?.sceneData.audioResponse).toBe('transient-v1')
+    expect(getSceneEditorModel(updated!.sceneData).intent).toMatchObject({
+      minimizing_factor: 1.3, power_factor: 3.4, base_speed: 0.13, easing_speed: 0.44,
+      time_multiplier: 0.6, pointerDownMultiplier: 0.3,
+    })
+    expect(getSceneEditorModel(updated!.sceneData).state.volume_multiplier).toBe(0.27)
+  })
+
   it.each(['Rose Circuit', 'Ripple Rings', 'Tidal Lantern'])('keeps %s as an ordinary preset without pulse or deformation controls', async (label) => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()

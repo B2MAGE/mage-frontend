@@ -1,4 +1,5 @@
 import type { MAGEEngineAPI } from '@notrac/mage'
+import { normalizeAudioResponseMode, type SceneAudioResponseMode } from '@shared/lib'
 import { attachViewerMouseInteractions, type ViewerMouseEngine } from './viewerMouseInteractions'
 
 const SCENE_BLOB_KEYS = [
@@ -35,6 +36,7 @@ type MageEngineBridge = {
   loadPreset: (scene: unknown) => unknown
   seek?: MAGEEngineAPI['seek']
   setAudioVolume?: (volume: number) => number
+  setAudioResponseMode?: (mode: SceneAudioResponseMode) => void
   setEngineTime?: (time: number) => boolean
   setSyntheticPreview: MAGEEngineAPI['setSyntheticPreview']
   start: MAGEEngineAPI['start']
@@ -155,6 +157,11 @@ function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob)
   if (!loadedScene) {
     throw createSceneRenderError()
   }
+
+  // A reused player must not carry an opted-in response into an older scene.
+  // Apply after preset loading so it also works with engines whose preset
+  // serializer does not yet retain the top-level app metadata.
+  engine.setAudioResponseMode?.(normalizeAudioResponseMode(sceneBlob.audioResponse))
 }
 
 function readSceneAudioSource(sceneBlob: MageSceneBlob) {
