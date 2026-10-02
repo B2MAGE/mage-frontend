@@ -5,11 +5,13 @@ import {
   revokePlaylistTrackSource,
   revokePlaylistTrackSources,
   shufflePlaylistTracks,
+  scenePlaybackIdentity,
+  type MageSceneKey,
   type MagePlayerPlaylistTrack,
   type MageSceneBlob,
 } from '@modules/player'
 
-export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefined) {
+export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefined, sceneKey?: MageSceneKey) {
   const [basePlaylistTracks, setBasePlaylistTracks] = useState<MagePlayerPlaylistTrack[]>([])
   const [playlistTracks, setPlaylistTracks] = useState<MagePlayerPlaylistTrack[]>([])
   const [playlistName, setPlaylistName] = useState('Playlist')
@@ -18,6 +20,8 @@ export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefine
   const [isRepeatEnabled, setIsRepeatEnabled] = useState(false)
   const [isShuffleEnabled, setIsShuffleEnabled] = useState(false)
   const basePlaylistTracksRef = useRef<MagePlayerPlaylistTrack[]>([])
+  const previousSceneIdentity = useRef<string | null | undefined>(undefined)
+  const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
 
   useEffect(() => {
     basePlaylistTracksRef.current = basePlaylistTracks
@@ -30,6 +34,7 @@ export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefine
   }, [])
 
   useEffect(() => {
+    if (playbackIdentity !== null && previousSceneIdentity.current === playbackIdentity) return
     const sceneTrack = buildScenePlaylistTrack(sceneBlob)
     const nextTracks = sceneTrack ? [sceneTrack] : []
     let isCancelled = false
@@ -38,6 +43,7 @@ export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefine
       if (isCancelled) {
         return
       }
+      previousSceneIdentity.current = playbackIdentity
 
       setBasePlaylistTracks((currentTracks) => {
         revokePlaylistTrackSources(currentTracks)
@@ -54,7 +60,7 @@ export function useScenePlaylistState(sceneBlob: MageSceneBlob | null | undefine
     return () => {
       isCancelled = true
     }
-  }, [sceneBlob])
+  }, [playbackIdentity, sceneBlob])
 
   function handlePlaylistChange(nextTracks: MagePlayerPlaylistTrack[]) {
     setBasePlaylistTracks((currentBaseTracks) => mergePlaylistTrackCollections(currentBaseTracks, nextTracks))

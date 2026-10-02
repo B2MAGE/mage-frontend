@@ -63,3 +63,37 @@ The engine routes each declared shader input independently. `size` keeps a 0.006
 Shaders may also declare `audioTime`, `bassHitTime`, `midHitTime`, `trebleHitTime`, `audioHitTime`, and the corresponding `HitStrength` inputs. Times share the `audioTime` clock; a hit time of -1 means no retained hit. These describe the latest event per band. Scenes needing multiple simultaneous event lifetimes can consume the bounded `getAudioResponseEvents(afterId)` history. Actual playing audio takes priority over the silent preview; both use the same mapping and envelope path.
 
 For a native browser check, open `/scripts/audio-response-browser-check.html` on the development server. Its generated tones remain silent, and its rendering check verifies real WebGL uniform delivery for bass-only and mixed-input shaders. The optional `?minified=1` check expects a separately bundled ESM copy of the analysis module at `.local/audio-analysis-built.js`.
+
+## Platform settings and persistence
+
+An authored scene stores the mode and configuration in its existing JSON document:
+
+```json
+{
+  "audioResponse": "mapped-v1",
+  "audioResponseConfig": {
+    "version": 1,
+    "sensitivity": 1,
+    "mappings": [
+      { "target": "size", "source": "bass-hit", "amount": 1, "attack": 0.04, "release": 0.35 }
+    ]
+  }
+}
+```
+
+The editor normalizes explicitly supplied configuration and preserves it through shader selection, structured edits, JSON import/export, and create/update request payloads. Explicit configuration also survives while legacy or transient mode is selected. Older documents do not acquire mode or configuration fields merely by opening or editing them. Deleting the configuration in raw JSON removes its saved metadata; mapped mode then uses defaults. Backend scene data remains an ordinary JSON document.
+
+Feature code uses the public `@modules/player` boundary. The controller exposes:
+
+- `getAudioResponseState()` returns independent copies of `{ savedMode, savedConfig, override, effectiveMode, effectiveConfig }`. An absent saved configuration is `null`; effective configuration is `null` outside mapped mode.
+- `setAudioResponseSettings(mode, config?)` replaces the authored settings in the adapter's scene snapshot. Omitted configuration removes explicit metadata; an undefined mode removes its metadata. Callers retaining inactive mappings must pass that configuration when changing modes. This updates the current preview; durable saving still uses the editor's scene data and existing API request.
+- `setAudioResponseOverride(config)` applies a temporary viewer configuration in mapped mode. Passing `null` restores the authored mode and configuration. Overrides never enter the scene JSON. Updating authored settings while an override is active updates only the stored defaults until the override is cleared.
+- `getAudioResponseCapabilities()`, `getAudioResponseDiagnostics()`, and `getAudioResponseEvents(afterId?)` forward defensive snapshots. Older engine bridges without these APIs return `null`, `null`, and `[]` respectively. Reading events does not consume another caller's cursor.
+
+Live configuration changes keep the player, song, playback position, playback volume, and pause state. The adapter does not re-select an unchanged mode, since that would tear down the analysis session. Reapplying identical settings is a no-op. Resetting playback retains the current authored defaults and temporary override; loading a different scene clears the override. Pending audio-load completion is invalidated when a newer load, scene change, audio clear, or disposal supersedes it.
+
+`MagePlayer` accepts an optional `sceneKey`. Route surfaces pass their scene ID, and the editor uses a stable edit/create identity. An identity change reloads even two identical scene documents. With the same identity, a new document whose only changes are `audioResponse` and `audioResponseConfig` updates live. Structural comparison ignores JSON object-key order. The component and both playlist owners preserve device tracks and their object URLs during these edits. Without an explicit key, identical content is treated as the same scene; callers switching between distinct identical scenes must provide a key.
+
+Regression coverage includes adapter behavior and asynchronous audio races, live component changes with loaded and pending songs, scene-key transitions, route-owned playlists, and mocked HTTP create/update/reopen contract tests. The HTTP tests exercise frontend payload and response normalization; they do not claim a live backend roundtrip. `/scripts/audio-response-player-check.html` provides the real-browser adapter check against the installed engine.
+
+AR05 verification also exercised the local backend with a temporary scene: create, read, update, and read preserved the exact mapped configuration and unrelated nested fields. Deleting that scene returned success, the next read returned not found, and the original scene inventory was restored. This complements the mocked editor workflow tests with a real API persistence check.

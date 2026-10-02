@@ -147,7 +147,8 @@ export function SceneEditorShell({
     sceneData,
   });
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
-  const usesTransientAudio = sceneData.audioResponse === "transient-v1";
+  const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
+  const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
@@ -342,7 +343,7 @@ export function SceneEditorShell({
           step={0.01}
           value={sceneModel.state.time}
         />
-        {!usesTransientAudio ? <NumberField
+        {!usesModernAudio ? <NumberField
           description="Initial runtime volume multiplier."
           id="state-volume"
           label="Volume Multiplier"
@@ -462,7 +463,7 @@ export function SceneEditorShell({
         sceneModel.state.volume_multiplier,
         initialSceneModel.state.volume_multiplier,
       ] as [string, number, number],
-    ].filter(([label, value, initialValue]) => value !== initialValue && (!usesTransientAudio || label !== "Volume"));
+    ].filter(([label, value, initialValue]) => value !== initialValue && (!usesModernAudio || label !== "Volume"));
 
     if (runtimeStatePairs.length === 0) {
       return "Default";
@@ -792,9 +793,9 @@ export function SceneEditorShell({
                       value={sceneModel.intent.time_multiplier}
                     />
 
-                    {usesTransientAudio ? (
+                    {usesModernAudio ? (
                       <p className="scene-editor-grid__item--full">
-                        This scene uses automatic beat detection and release. Legacy audio gain, curve, base speed, easing, and volume controls do not apply.
+                        {usesMappedAudio ? "This scene uses saved audio mappings." : "This scene uses automatic beat detection and release."} Legacy audio gain, curve, base speed, easing, and volume controls do not apply.
                       </p>
                     ) : <>
                     <SliderField
@@ -865,7 +866,7 @@ export function SceneEditorShell({
                       value={sceneModel.intent.autoRotateSpeed}
                     />
 
-                    {!usesTransientAudio ? <>
+                    {!usesModernAudio ? <>
                     <SliderField
                       description="Base audio-reactive speed shaping used by the engine."
                       id="base-speed"
@@ -1478,8 +1479,8 @@ export function SceneEditorShell({
                         label="Time Multiplier"
                         value={formatFixed(sceneModel.intent.time_multiplier)}
                       />
-                      {usesTransientAudio ? (
-                        <ConfirmSummaryItem label="Audio Response" value="Beat detection" />
+                      {usesModernAudio ? (
+                        <ConfirmSummaryItem label="Audio Response" value={usesMappedAudio ? "Audio mappings" : "Beat detection"} />
                       ) : <>
                       <ConfirmSummaryItem
                         label="Audio Gain"
@@ -1578,6 +1579,7 @@ export function SceneEditorShell({
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
+                sceneKey={mode.type === 'edit' ? `edit:${mode.sceneId}` : 'create'}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               />
               </div>

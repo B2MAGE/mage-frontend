@@ -1,6 +1,9 @@
 export { MagePlayer } from './MagePlayer'
 export { MagePlayerLoading } from './MagePlayerLoading'
 export { createMagePlayer } from './infrastructure/engineAdapter'
+export { scenePlaybackIdentity } from './scenePlaybackIdentity'
+export type { MageSceneKey } from './scenePlaybackIdentity'
+export type { AudioResponseConfig, SceneAudioResponseMode } from '@shared/lib'
 export {
   buildScenePlaylistTrack,
   formatPlaylistTrackName,
@@ -16,6 +19,10 @@ export type { MagePlayerProps } from './MagePlayer'
 export type { MagePlayerPlaylistTrack } from './playlist'
 export type {
   MagePlayerAudioState,
+  MageAudioResponseState,
+  MageAudioResponseCapabilities,
+  MageAudioResponseDiagnostics,
+  MageAudioResponseEvent,
   MagePlayerController,
   MagePlayerPlaybackState,
   MageSceneBlob,

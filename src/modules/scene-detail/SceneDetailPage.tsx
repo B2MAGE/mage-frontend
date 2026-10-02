@@ -143,7 +143,7 @@ export function SceneDetailPage() {
     setSelectedTrackId,
     toggleRepeat,
     toggleShuffle,
-  } = useScenePlaylistState(scene?.sceneData)
+  } = useScenePlaylistState(scene?.sceneData, scene?.id)
 
   useEffect(() => {
     if (sceneId === null || isRestoringSession) {
@@ -596,6 +596,7 @@ export function SceneDetailPage() {
                 playlistTracks={playlistTracks}
                 repeatEnabled={isRepeatEnabled}
                 sceneBlob={scene.sceneData}
+                sceneKey={scene.id}
                 selectedTrackId={selectedTrackId}
                 shuffleEnabled={isShuffleEnabled}
               />
