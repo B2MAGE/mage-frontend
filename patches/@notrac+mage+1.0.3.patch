@@ -53,10 +53,10 @@ index 0000000..2ced43b
 +}
 diff --git a/node_modules/@notrac/mage/dist/audio-analysis.js b/node_modules/@notrac/mage/dist/audio-analysis.js
 new file mode 100644
-index 0000000..4716f19
+index 0000000..50684de
 --- /dev/null
 +++ b/node_modules/@notrac/mage/dist/audio-analysis.js
-@@ -0,0 +1,335 @@
+@@ -0,0 +1,347 @@
 +/** Pure sample-driven kernel, also embedded verbatim in the AudioWorklet. */
 +export class AudioAnalysisKernel {
 +	constructor(sampleRate, sensitivity = 1) {
@@ -74,7 +74,9 @@ index 0000000..4716f19
 +		const next = typeof value === 'number' && Number.isFinite(value) ? Math.max(0.1, Math.min(4, value)) : 1;
 +		if (next !== this.sensitivity) {
 +			this.sensitivity = next;
-+			this.detectors = null;
++			// Keep learned dynamics and cooldown while tuning; only discard an
++			// unfinished onset that began with the previous threshold.
++			if (this.detectors) for (const detector of Object.values(this.detectors)) detector.pendingStrength = 0;
 +		}
 +		return next;
 +	}
@@ -142,19 +144,29 @@ index 0000000..4716f19
 +	detectHits(levels, time) {
 +		if (this.ringCount < this.fftSize) return [];
 +		if (!this.detectors) {
-+			this.detectors = Object.fromEntries(['bass', 'mid', 'treble'].map(band => [band, { previous: levels[band], baseline: levels[band], lastHit: -Infinity }]));
++			this.detectors = Object.fromEntries(['bass', 'mid', 'treble'].map(band => [band, { previous: levels[band], baseline: levels[band], peak: levels[band], pendingStrength: 0, lastHit: -Infinity }]));
 +			return [];
 +		}
 +		const hits = [];
 +		for (const band of ['bass', 'mid', 'treble']) {
 +			const detector = this.detectors[band], level = levels[band];
 +			const novelty = Math.max(0, level - detector.previous);
-+			const floor = 0.0003;
-+			if (level > floor && novelty > Math.max(floor, detector.previous * 0.12) / this.sensitivity
-+				&& level > detector.baseline * (1 + 0.25 / this.sensitivity)
-+				&& time - detector.lastHit >= 0.1) {
-+				hits.push({ band, time, strength: Math.min(1, 2 * (level - detector.baseline) / Math.max(level, floor)) });
-+				detector.lastHit = time;
++			// Keep recent accents as a reference through the trough between beats.
++			// A short-lived baseline alone makes every isolated rise a full-strength hit.
++			detector.peak = Math.max(level, detector.peak * Math.exp(-this.hopSize / this.sampleRate / 2));
++			const reference = Math.max(0.003, detector.peak);
++			const prominence = Math.max(0, level - detector.baseline) / reference;
++			const score = novelty > Math.max(0.0006, detector.peak * 0.03) ? prominence : 0;
++			// Finish measuring the onset before applying sensitivity. This keeps a
++			// more sensitive setting from firing early with a weaker pulse.
++			if (score > detector.pendingStrength) detector.pendingStrength = score;
++			else if (detector.pendingStrength > 0) {
++				const threshold = 0.85 * Math.pow(0.035 / 0.85, (this.sensitivity - 0.1) / 3.9);
++				if (detector.pendingStrength >= threshold && time - detector.lastHit >= 0.1) {
++					hits.push({ band, time, strength: detector.pendingStrength });
++					detector.lastHit = time;
++				}
++				detector.pendingStrength = 0;
 +			}
 +			detector.baseline += (level - detector.baseline) * (level > detector.baseline ? 0.08 : 0.3);
 +			detector.previous = level;

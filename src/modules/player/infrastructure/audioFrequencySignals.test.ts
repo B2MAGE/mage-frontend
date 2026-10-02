@@ -10,6 +10,12 @@ import {
 
 const tone = (hz: number, time: number, amplitude = 0.25) => Math.sin(2 * Math.PI * hz * time) * amplitude
 
+// Smooth edges keep a bass pulse from becoming a broadband click at arbitrary sine phases.
+const pulse = (time: number, start: number, duration: number) => {
+  const age = time - start
+  return age < 0 || age >= duration ? 0 : Math.sin(Math.PI / 2 * Math.min(1, age / 0.005, (duration - age) / 0.005)) ** 2
+}
+
 function analyze(sampleRate: number, seconds: number, signal: (time: number) => number, sensitivity = 1, stereo = false) {
   const kernel = new AudioAnalysisKernel(sampleRate, sensitivity)
   const frames: AudioAnalysisFrame[] = []
@@ -63,9 +69,9 @@ describe('independent frequency signals', () => {
   it.each([44100, 48000])('detects repeated bass attacks over held midrange without a shared treble cooldown at %s Hz', (sampleRate) => {
     const starts = [0.3, 0.65, 1, 1.35]
     const frames = analyze(sampleRate, 1.7, time => {
-      const bassOn = starts.some(start => time >= start && time < start + 0.07)
-      const trebleOn = starts.some(start => time >= start - 0.03 && time < start - 0.02)
-      return tone(700, time, 0.07) + tone(90, time, bassOn ? 0.45 : 0) + tone(5000, time, trebleOn ? 0.008 : 0)
+      const bass = starts.reduce((sum, start) => sum + pulse(time, start, 0.07), 0)
+      const treble = starts.reduce((sum, start) => sum + pulse(time, start - 0.03, 0.01), 0)
+      return tone(700, time, 0.07) + tone(90, time, bass * 0.45) + tone(5000, time, treble * 0.008)
     })
     const bassHits = hitsFor(frames, 'bass')
     const trebleHits = hitsFor(frames, 'treble')
@@ -89,6 +95,71 @@ describe('independent frequency signals', () => {
     expect(hitsFor(loud, 'bass')).toHaveLength(1)
     expect(hitsFor(quiet, 'bass')).toHaveLength(1)
     expect(Math.max(...quiet.map(frame => frame.levels.bass))).toBeCloseTo(Math.max(...loud.map(frame => frame.levels.bass)) * 0.1, 4)
+  })
+
+  it.each([44100, 48000])('adds quieter accents progressively without changing shared hit strengths at %s Hz', (sampleRate) => {
+    const accents = [0.5, 0.08, 0.15, 0.25, 0.4, 0.1, 0.32, 0.6, 0.06, 0.2, 0.45, 0.12]
+    const sensitivities = [0.1, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]
+    const hits = sensitivities.map(sensitivity => hitsFor(analyze(sampleRate, 4.7, time => {
+      const index = Math.floor((time - 0.3) / 0.35)
+      const age = time - (0.3 + index * 0.35)
+      const amplitude = index >= 0 && index < accents.length && age < 0.09
+        ? accents[index] * Math.exp(-age * 16)
+        : 0.002
+      return tone(700, time, 0.07) + tone(90, time, amplitude)
+    }, sensitivity), 'bass'))
+
+    const counts = hits.map(events => events.length)
+    expect(new Set(counts).size).toBeGreaterThanOrEqual(6)
+    expect(counts[0]).toBeGreaterThan(0)
+    expect(counts[0]).toBeLessThan(counts[2])
+    expect(counts[2]).toBeLessThan(counts[5])
+    expect(counts[5]).toBeLessThan(counts.at(-1)!)
+    expect(counts.at(-1)).toBe(accents.length)
+    for (let index = 1; index < hits.length; index++) {
+      expect(hits[index].length).toBeGreaterThanOrEqual(hits[index - 1].length)
+      // Sensitivity chooses candidates; it cannot change their timing or loudness.
+      for (const hit of hits[index - 1]) expect(hits[index]).toContainEqual(hit)
+    }
+
+    const mostSensitive = hits.at(-1)!
+    for (let index = 0; index < accents.length; index++) {
+      const start = 0.3 + index * 0.35
+      expect(mostSensitive[index].time).toBeGreaterThanOrEqual(start)
+      expect(mostSensitive[index].time).toBeLessThanOrEqual(start + 0.06)
+    }
+    expect(mostSensitive[1].strength).toBeLessThan(mostSensitive[0].strength / 3)
+    expect(mostSensitive[8].strength).toBeLessThan(mostSensitive[7].strength / 3)
+    expect(new Set(mostSensitive.map(hit => hit.strength.toFixed(2))).size).toBeGreaterThan(6)
+  })
+
+  it.each([44100, 48000])('rejects quiet stationary noise and held sound throughout the sensitivity range at %s Hz', (sampleRate) => {
+    for (const sensitivity of [0.1, 1, 2, 4]) {
+      for (const held of [false, true]) {
+        let seed = 77
+        const frames = analyze(sampleRate, 1.5, time => {
+          seed = (1664525 * seed + 1013904223) >>> 0
+          const noise = (seed / 4294967296 * 2 - 1) * 0.001
+          return noise + (held ? tone(90, time, 0.2) + tone(700, time, 0.1) + tone(5000, time, 0.05) : 0)
+        }, sensitivity)
+        expect(frames.flatMap(frame => frame.hits)).toEqual([])
+      }
+    }
+  })
+
+  it.each([44100, 48000])('retains learned accents when sensitivity changes live at %s Hz', (sampleRate) => {
+    const kernel = new AudioAnalysisKernel(sampleRate, 4)
+    const warmup = Float32Array.from({ length: Math.round(sampleRate * 0.7) }, (_, index) => {
+      const time = index / sampleRate
+      return tone(90, time, time >= 0.3 && time < 0.39 ? 0.5 * Math.exp(-(time - 0.3) * 16) : 0.002)
+    })
+    kernel.process([warmup], 0)
+    kernel.setSensitivity(0.1)
+    const weakAttack = Float32Array.from({ length: Math.round(sampleRate * 0.4) }, (_, index) => {
+      const time = 0.7 + index / sampleRate
+      return tone(90, time, time >= 0.8 && time < 0.89 ? 0.08 * Math.exp(-(time - 0.8) * 16) : 0.002)
+    })
+    expect(kernel.process([weakAttack], 0.7).flatMap(frame => frame.hits).filter(hit => hit.band === 'bass')).toEqual([])
   })
 
   it('uses sensitivity for detection thresholds while leaving measured levels unchanged', () => {
