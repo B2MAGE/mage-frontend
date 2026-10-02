@@ -88,11 +88,46 @@ Route-facing surfaces now live behind module entrypoints:
 - `home`
 - `my-scenes`
 - `player`
+- `profile`
 - `scene-detail`
 - `scene-editor`
 - `settings`
 
 Cross-cutting runtime behavior lives in `app/`, reusable foundations live in `shared/`, and theming remains in the dedicated `theme/` boundary.
+
+## Public Creator Profiles
+
+The `profile` module owns public creator loading, view models, scene browsing, and
+profile states. `app/routes/AppRoutes.tsx` owns the route contract:
+
+- `/@handle` is public. Handles contain 3 to 30 letters, numbers, or underscores,
+  beginning with a letter; mixed-case URLs redirect to their lowercase form.
+- `/profile` is an authenticated shortcut. It redirects to the current account's
+  `/@handle`, or `/settings#profile` when the restored account has no handle.
+- Invalid handle-shaped paths return to Home. A valid handle that does not exist
+  shows the profile's not-found state; temporary request failures offer Retry.
+
+`GET /api/profiles/{handle}` receives the bare lowercase handle without `@`.
+Guest requests use the public API, while signed-in requests use the authenticated
+request wrapper. The public model uses the creator ID, display name, handle,
+optional description, avatar-gradient colors, creation date, and scene collection.
+It does not display email, private personal-name fields, or authentication-provider
+details. Scene, view, upvote, and save totals come from the returned scenes; they
+are not follower/subscriber counts. Edit profile is shown only to the owner.
+
+Scene browsing reuses discovery cards and dropdown styling. It searches all scene
+titles case-insensitively, sorts the full collection by newest, oldest, most viewed,
+or most liked, then paginates locally in pages of 12 (default), 24, or 48. Searching,
+changing sort, or changing page size returns to the first page; page indexes are
+clamped when results shrink. Changing pages scrolls the toolbar into view without
+refetching the profile. Navigating to another profile resets its browsing controls.
+Empty profiles and searches with no matches have distinct states.
+
+Shared creator links connect scene cards, the homepage feature, scene details,
+comments, and replies to `/@handle`. Comments show linked display names without
+handles. Profile route/data/state behavior is covered in `ProfilePage.test.tsx`,
+`ProfilePage.pagination.test.tsx`, `profileData.test.ts`, and
+`profileSceneList.test.ts`; card/comment navigation has module-local coverage.
 
 ## Dependency Direction
 
