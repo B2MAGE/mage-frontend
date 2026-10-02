@@ -46,22 +46,6 @@ html[data-theme='classic-facebook'] .scene-detail-social-row {
   border-bottom-color: #d8dfea;
 }
 
-html[data-theme='classic-facebook'] .mage-channel-card__avatar,
-html[data-theme='classic-facebook'] .mage-comment__avatar,
-html[data-theme='classic-facebook'] .scene-detail-comment-composer__avatar {
-  background: #d8dfea;
-  border-color: #bcc7d8;
-  color: #3b5998;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .mage-channel-card__avatar:hover,
-html[data-theme='classic-facebook'] .mage-comment__avatar:hover {
-  background: #e9eff8;
-  border-color: #a8b8d9;
-  box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.12);
-}
-
 html[data-theme='classic-facebook'] .mage-channel-card__copy span,
 html[data-theme='classic-facebook'] .mage-comment__meta span,
 html[data-theme='classic-facebook'] .mage-comments__header span,

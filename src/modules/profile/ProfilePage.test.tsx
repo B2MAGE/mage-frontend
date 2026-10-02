@@ -105,9 +105,12 @@ describe('ProfilePage', () => {
     authState.authenticatedFetch.mockResolvedValue(profileResponse())
     const browserUser = userEvent.setup()
 
-    renderProfilePage()
+    const { container } = renderProfilePage()
+    expect(container.querySelector('.profile-avatar--loading')).not.toHaveClass('user-avatar')
 
     expect(await screen.findByRole('heading', { name: 'Ari Rivera', level: 1 })).toBeInTheDocument()
+    expect(container.querySelector('.profile-avatar')).toHaveClass('user-avatar')
+    expect(container.querySelector('.profile-avatar')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText('@aririvera')).toBeInTheDocument()
     expect(screen.getByText('Slow visual spaces built for late-night listening.')).toBeInTheDocument()
     expect(screen.queryByText('ari@pulse.local')).not.toBeInTheDocument()

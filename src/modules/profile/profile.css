@@ -19,14 +19,7 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--border-strong);
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(183, 168, 255, 0.9), transparent 27%),
-    radial-gradient(circle at 72% 70%, rgba(82, 226, 211, 0.45), transparent 31%),
-    linear-gradient(145deg, #302767, #183c46);
-  box-shadow: 0 0 28px rgba(124, 108, 255, 0.16);
-  color: var(--text);
   font-size: 28px;
   font-weight: 800;
 }

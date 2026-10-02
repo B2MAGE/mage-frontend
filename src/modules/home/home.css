@@ -95,9 +95,6 @@
       display: grid;
       place-items: center;
       border-radius: 50%;
-      border: 0;
-      background: linear-gradient(145deg,rgba(124,108,255,.55),rgba(99,240,214,.22)),#252932;
-      color: var(--text);
       font-weight: 750;
     }
 

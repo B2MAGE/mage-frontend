@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCompactCount, formatRelativeTime } from '@shared/lib'
-import { LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
+import { LoadingRegion, PendingButtonLabel, Skeleton, UserAvatar } from '@shared/ui'
 import { readInitial } from '../selectors'
 import type { SceneComment, SceneVoteState } from '../types'
 import { SceneCommentSkeletonList } from './SceneLoadingSkeletons'
@@ -106,9 +106,7 @@ export function SceneCommentsPanel({
         key={comment.commentId}
         className={`mage-comment${isReply ? ' mage-comment--reply' : ''}`}
       >
-        <div className="mage-comment__avatar" aria-hidden="true">
-          {readInitial(comment.authorDisplayName)}
-        </div>
+        <UserAvatar className="mage-comment__avatar" initials={readInitial(comment.authorDisplayName)} />
         <div className="mage-comment__body">
           <div className="scene-detail-comment__header">
             <strong>{comment.authorDisplayName}</strong>
@@ -240,9 +238,7 @@ export function SceneCommentsPanel({
       </div>
 
       <div className="scene-detail-comment-composer">
-        <div className="scene-detail-comment-composer__avatar" aria-hidden="true">
-          {composerInitial}
-        </div>
+        <UserAvatar className="scene-detail-comment-composer__avatar" initials={composerInitial} />
         {isAuthenticated ? (
           <form className="scene-detail-comment-form" onSubmit={handleSubmitComment}>
             <textarea

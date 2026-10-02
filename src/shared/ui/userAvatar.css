@@ -1,0 +1,14 @@
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  /* A fixed base keeps the same gradient on every surface and theme. */
+  background-color: #111318;
+  background-image: linear-gradient(145deg, rgba(124,108,255,.7), rgba(99,240,214,.25));
+  color: #f4f5f7;
+  box-shadow: none;
+  text-shadow: none;
+}

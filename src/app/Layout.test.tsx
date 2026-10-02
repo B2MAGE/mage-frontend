@@ -85,6 +85,7 @@ describe('Layout', () => {
     renderLayout()
 
     expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/create-scene')
+    expect(screen.getByRole('button', { name: /open account menu for scene artist/i }).querySelector('.nav-avatar')).toHaveClass('user-avatar')
 
     await user.click(screen.getByRole('button', { name: /open account menu for scene artist/i }))
 
@@ -94,6 +95,8 @@ describe('Layout', () => {
     const viewProfile = screen.getByText('View profile')
 
     expect(profileMenuItem).toHaveAttribute('href', '/@sceneartist')
+    expect(profileMenuItem.querySelector('.nav-avatar')).toHaveClass('user-avatar')
+    expect(profileMenuItem.querySelector('.nav-avatar')).toHaveAttribute('aria-hidden', 'true')
     expect(profileIdentity).toHaveTextContent('Scene Artist')
     expect(profileIdentity).toHaveTextContent('artist@example.com')
     expect(profileIdentity).not.toHaveTextContent('View profile')

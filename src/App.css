@@ -136,11 +136,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--nav-avatar-background);
-  color: var(--nav-avatar-color);
   font-weight: 700;
   letter-spacing: 0.04em;
-  box-shadow: var(--nav-avatar-shadow);
 }
 
 .nav-avatar--large {
@@ -1031,27 +1028,9 @@
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at top left, rgba(99, 240, 214, 0.28), transparent 58%),
-    rgba(14, 30, 35, 0.96);
-  border: 1px solid rgba(99, 240, 214, 0.18);
-  color: var(--accent);
   font-weight: 700;
   flex: 0 0 auto;
   cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.mage-channel-card__avatar:hover,
-.mage-comment__avatar:hover {
-  border-color: rgba(99, 240, 214, 0.32);
-  background:
-    radial-gradient(circle at top left, rgba(99, 240, 214, 0.38), transparent 62%),
-    rgba(18, 36, 41, 0.98);
-  box-shadow: 0 0 0 4px rgba(99, 240, 214, 0.08);
 }
 
 .mage-channel-card__copy,
@@ -1305,9 +1284,6 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text);
   font-weight: 700;
 }
 
@@ -3970,13 +3946,9 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--card-avatar-border);
-  background: var(--card-avatar-background);
-  color: var(--card-avatar-color);
   font-size: 0.84rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  box-shadow: var(--card-avatar-shadow);
 }
 
 .scene-card__meta {
