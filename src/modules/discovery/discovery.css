@@ -1,0 +1,50 @@
+/* Discovery cards are shared with the homepage's recent-scene grid. */
+.scenes-filter-rail {display:flex;align-items:center;gap:18px;}
+.scenes-filter-rail > :is(.tag-filter-scroller,.tag-filter-loading-region) {flex:1 1 auto;min-width:0;}
+.tag-filter-loading-region .loading-region__visual {width:100%;}
+.discovery-sort {display:flex;align-items:center;gap:9px;flex:0 0 auto;color:var(--text-soft);font-size:12px;font-weight:600;white-space:nowrap;}
+.discovery-sort__label {color:inherit;}
+.discovery-sort__select.mage-select {width:auto;min-width:152px;min-height:42px;height:42px;padding:0 44px 0 14px;cursor:pointer;}
+.tag-filter-bar--loading {align-items:center;min-height:42px;}
+.tag-filter-bar__loading-placeholder {width:min(440px,72%);max-width:100%;height:12px;border-radius:3px;}
+.scene-card--loading {pointer-events:none;cursor:default;}
+.scene-card__thumbnail--loading {display:block;width:100%;aspect-ratio:1/1;}
+.scene-card__avatar--loading {display:block;width:40px;height:40px;}
+.scene-card--loading .scene-card__meta {display:grid;gap:4px;align-content:start;}
+.scene-card-loading__line {display:block;height:12px;border-radius:3px;}
+.scene-card-loading__line--title {width:70%;height:18px;}
+.scene-card-loading__line--creator {width:42%;height:14px;}
+.scene-card-loading__line--stats {width:56%;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) {--discovery-hover-border:rgba(194,185,255,.52);}
+html[data-theme='mage-pulse'] .scenes-page { display:block; min-width:0; width:min(calc(100% - 48px),1280px); margin:auto; padding:0 0 90px; }
+html[data-theme='mage-pulse'] .scenes-filter-rail {position:sticky;top:69px;z-index:30;margin:0 calc(50% - 50vw) 34px;padding:0 calc(50vw - 50%);border-block:1px solid var(--border);background:rgba(9,10,13,.92);backdrop-filter:blur(16px);}
+html[data-theme='mage-pulse'] .scenes-page .tag-filter-bar {min-height:66px;margin:0;padding:0;display:flex;align-items:center;gap:9px;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:30px 20px;margin:0;padding:0;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card-link {display:block;min-width:0;color:inherit;text-decoration:none;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card {min-width:0;padding:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none;transform:none;display:block;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail {position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;border:1px solid rgba(255,255,255,.06);border-radius:14px;background:#090a0d;box-shadow:none;transform:none;transition:border-color 180ms;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail::after {display:none;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail-img {display:block;width:100%;height:100%;object-fit:cover;transform:none;}
+.scene-card__preview-canvas {position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity 180ms ease;}
+.scene-card__preview-canvas.is-visible {opacity:1;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail-placeholder {width:100%;height:100%;background:radial-gradient(ellipse at center,#3a3159, #182136 60%);}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__play {position:absolute;right:14px;bottom:14px;z-index:2;width:38px;height:38px;display:grid;place-items:center;opacity:0;border:1px solid #ffffff33;border-radius:50%;background:#0a0b0eb8;font-size:12px;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card-link:hover .scene-card__play {opacity:1;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card-link:hover .scene-card__thumbnail {border-color:var(--discovery-hover-border);transform:none;box-shadow:none;}
+html[data-theme='mage-pulse'] .scenes-page .tag-filter-scroller__arrow:hover {border-color:var(--discovery-hover-border);}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__body {display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;padding:13px 3px 0;margin:0;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__avatar {display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#262a33;color:#dfe2e8;font-size:10px;font-weight:750;letter-spacing:.04em;box-shadow:none;border:0;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__meta {display:block;min-width:0;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__name {margin:0;overflow:hidden;color:var(--text);font-size:14px;font-weight:680;letter-spacing:-.01em;text-overflow:ellipsis;white-space:nowrap;line-height:1.5;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__creator {margin:2px 0 0;color:var(--text-soft);font-size:12px;line-height:1.5;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__stats {display:flex;gap:5px;flex-wrap:wrap;margin-top:2px;color:var(--text-muted);font-size:11px;line-height:1.5;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail--loading {aspect-ratio:16/10;}
+html[data-theme='mage-pulse'] :is(.scenes-page,.pulse-home,.profile-page) .scene-card--loading .scene-card__meta {display:grid;gap:4px;}
+@media(max-width:1050px){html[data-theme='mage-pulse'] .scenes-page .scene-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:1000px){html[data-theme='mage-pulse'] .pulse-home .scene-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:800px){html[data-theme='mage-pulse'] .scenes-page .scene-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:700px){html[data-theme='mage-pulse'] .scenes-page{width:calc(100% - 28px);}html[data-theme='mage-pulse'] .pulse-home .scene-grid{grid-template-columns:1fr;}}
+@media(max-width:620px){html[data-theme='mage-pulse'] .scenes-page .scene-grid{grid-template-columns:1fr;gap:26px;}html[data-theme='mage-pulse'] .scenes-page .scene-card__thumbnail{aspect-ratio:16/9;}}
+@media(max-width:620px){.scenes-filter-rail{align-items:stretch;flex-direction:column;gap:0;}.discovery-sort{justify-content:space-between;padding:0 0 12px;}.discovery-sort__select{width:min(200px,60vw);}html[data-theme='mage-pulse'] .scenes-page .tag-filter-bar{min-height:58px;}}
+
+@media(prefers-reduced-motion:reduce){.scene-card__preview-canvas{display:none;transition:none;}}

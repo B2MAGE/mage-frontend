@@ -1,13 +1,20 @@
+import './discovery.css'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchDiscoveryScenes, fetchDiscoveryTags } from './loaders'
-import { buildAvailableDiscoveryTags, readActiveDiscoveryTag } from './selectors'
-import type { DiscoveryPageState, DiscoveryScene, DiscoveryTag } from './types'
+import {
+  buildAvailableDiscoveryTags,
+  readActiveDiscoverySort,
+  readActiveDiscoveryTag,
+  sortDiscoveryScenes,
+} from './selectors'
+import type { DiscoveryPageState, DiscoveryScene, DiscoverySort, DiscoveryTag } from './types'
 import {
   DiscoveryEmptyState,
   DiscoveryErrorState,
   DiscoveryLoadingGrid,
   DiscoverySceneCard,
+  DiscoverySortSelect,
   DiscoveryTagFilterBar,
 } from './ui'
 
@@ -19,9 +26,14 @@ export function ScenesPage() {
   const [tagsLoading, setTagsLoading] = useState(true)
   const [reloadVersion, setReloadVersion] = useState(0)
   const activeTag = useMemo(() => readActiveDiscoveryTag(searchParams), [searchParams])
+  const activeSort = useMemo(() => readActiveDiscoverySort(searchParams), [searchParams])
   const availableTags = useMemo(
     () => buildAvailableDiscoveryTags(tags, activeTag),
     [activeTag, tags],
+  )
+  const sortedScenes = useMemo(
+    () => sortDiscoveryScenes(scenes, activeSort),
+    [activeSort, scenes],
   )
 
   useEffect(() => {
@@ -85,7 +97,11 @@ export function ScenesPage() {
         return
       }
 
-      setSearchParams({})
+      setSearchParams((currentParams) => {
+        const nextParams = new URLSearchParams(currentParams)
+        nextParams.delete('tag')
+        return nextParams
+      })
       return
     }
 
@@ -94,7 +110,19 @@ export function ScenesPage() {
       return
     }
 
-    setSearchParams({ tag: trimmedTag })
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('tag', trimmedTag)
+      return nextParams
+    })
+  }
+
+  function updateActiveSort(sort: DiscoverySort) {
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams)
+      nextParams.set('sort', sort)
+      return nextParams
+    })
   }
 
   function handleRetry() {
@@ -111,13 +139,16 @@ export function ScenesPage() {
           onTagSelect={updateActiveTag}
           isLoading={tagsLoading}
         />
+        <DiscoverySortSelect value={activeSort} onChange={updateActiveSort} />
       </div>
 
       {pageState === 'loading' ? <DiscoveryLoadingGrid /> : null}
-      {pageState === 'ready' && scenes.length === 0 ? <DiscoveryEmptyState activeTag={activeTag} /> : null}
-      {pageState === 'ready' && scenes.length > 0 ? (
+      {pageState === 'ready' && sortedScenes.length === 0 ? (
+        <DiscoveryEmptyState activeTag={activeTag} onClearFilter={() => updateActiveTag(null)} />
+      ) : null}
+      {pageState === 'ready' && sortedScenes.length > 0 ? (
         <div className="scene-grid" aria-label="Scene list">
-          {scenes.map((scene) => (
+          {sortedScenes.map((scene) => (
             <DiscoverySceneCard key={scene.sceneId} scene={scene} />
           ))}
         </div>
