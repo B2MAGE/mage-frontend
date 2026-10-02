@@ -1,7 +1,31 @@
 /* Classic Blue theme surface overrides grouped by app area. */
 @import './chrome.css';
+@import './controls.css';
 @import './home.css';
 @import './discovery.css';
 @import './library.css';
 @import './editor.css';
 @import './player.css';
+@import './account.css';
+@import './about.css';
+
+/* Modern components share the same semantic palette in both themes. */
+:root[data-theme='classic-facebook'] {
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-soft: #f2f5fa;
+  --surface-2: #f2f5fa;
+  --surface-hover: #e8eef8;
+  --text-soft: #4b5f80;
+  --text-muted: #5f6f88;
+  --accent-light: #3b5998;
+  --border-strong: #9aabc5;
+  --radius: 4px;
+  --radius-lg: 5px;
+  --content: 1280px;
+  --nav-height: 56px;
+  --nav-control-hover-background: #49679f;
+  --discovery-hover-border: #6d84b4;
+  --nav-menu-radius: 4px;
+  --tag-pill-radius: 3px;
+}

@@ -1,0 +1,41 @@
+/* Shared controls retain their behavior and user-selected avatar colors. */
+:root[data-theme='classic-facebook'] :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+:root[data-theme='classic-facebook'] .primary-button,
+:root[data-theme='classic-facebook'] .secondary-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: none;
+  transform: none;
+}
+:root[data-theme='classic-facebook'] .primary-button { border-color: #29447e; background: #5b74a8; color: #fff; }
+:root[data-theme='classic-facebook'] .primary-button:hover { background: #49679f; color: #fff; }
+:root[data-theme='classic-facebook'] .secondary-button { border-color: var(--border-strong); background: var(--surface-soft); color: var(--accent); }
+:root[data-theme='classic-facebook'] .secondary-button:hover { border-color: #6d84b4; background: var(--surface-hover); color: #29447e; }
+:root[data-theme='classic-facebook'] .mage-select {
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background-color: var(--surface);
+  color: var(--text);
+  box-shadow: none;
+  font-size: 14px;
+}
+:root[data-theme='classic-facebook'] .mage-select:hover { border-color: #6d84b4; }
+:root[data-theme='classic-facebook'] .mage-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+:root[data-theme='classic-facebook'] .mage-select option { background: var(--surface); color: var(--text); }
+:root[data-theme='classic-facebook'] .tag-pill { min-height: 30px; padding: 5px 10px; font-size: 11px; font-weight: 700; text-decoration: none; }
+:root[data-theme='classic-facebook'] .tag-filter-scroller__arrow { border-color: var(--border-strong); background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px #1d2a4420; }
+:root[data-theme='classic-facebook'] .tag-filter-scroller__arrow:hover { border-color: var(--accent); background: var(--surface-hover); color: #29447e; }
+:root[data-theme='classic-facebook'] a.creator-profile-link { color: var(--accent); }
+:root[data-theme='classic-facebook'] a.creator-profile-link:is(:hover, :focus-visible) { color: var(--muted); text-decoration: none; }
+:root[data-theme='classic-facebook'] input[type='checkbox'] { accent-color: var(--accent); }
+:root[data-theme='classic-facebook'] .form-alert { border-radius: 4px; border-color: #d8b2b9; background: #fff4f5; color: #8d2938; }
+:root[data-theme='classic-facebook'] .form-note { border-radius: 4px; border-color: #bfd0ec; background: #eef4ff; color: #29447e; }
+:root[data-theme='classic-facebook'] .scene-collection-state { border-radius: 4px; min-height: 230px; }
+:root[data-theme='classic-facebook'] .scene-collection-state__button { min-height: 38px; padding: 8px 14px; border: 1px solid #29447e; border-radius: 3px; background: #5b74a8; color: #fff; }
+:root[data-theme='classic-facebook'] .scene-collection-state__button:hover { background: #49679f; }
+:root[data-theme='classic-facebook'] .scene-collection-state__button--secondary { border-color: var(--border-strong); background: var(--surface-soft); color: var(--accent); }
+:root[data-theme='classic-facebook'] .scene-collection-state__button--secondary:hover { background: var(--surface-hover); color: #29447e; }

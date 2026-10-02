@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { useTheme } from '@theme'
-import { ClassicHomePage } from './ClassicHomePage'
 import { fetchScenes, fetchTags, formatMetricLabel, formatRelativeTime, type SceneListResponse, type TagResponse } from '@shared/lib'
 import { AppIcon, EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton, UserAvatar } from '@shared/ui'
 import { selectPopularHomeTags } from './selectors'
@@ -15,11 +13,6 @@ import { fetchSceneDetail, updateSceneVote, clearSceneVote, updateSceneSave } fr
 import type { SceneDetail } from '../scene-detail/types'
 import './home.css'
 import '../discovery/discovery.css'
-
-export function HomePage() {
-  const { themeId } = useTheme()
-  return themeId === 'classic-facebook' ? <ClassicHomePage /> : <PulseHomePage />
-}
 
 function FeaturedSceneSkeleton() {
   return (
@@ -59,7 +52,7 @@ function FeaturedSceneSkeleton() {
   )
 }
 
-function PulseHomePage() {
+export function HomePage() {
   const { isAuthenticated, isRestoringSession, authenticatedFetch } = useAuth()
   const navigate = useNavigate()
   const [dismissed, setDismissed] = useState(false)

@@ -6,13 +6,13 @@ html[data-theme='mage-pulse'] .settings-page__heading { margin-bottom: 36px; }
 html[data-theme='mage-pulse'] .settings-page__heading .eyebrow { display: none; }
 html[data-theme='mage-pulse'] .settings-title { margin: 0; font-size: clamp(38px, 5vw, 54px); line-height: 1; letter-spacing: -.045em; }
 html[data-theme='mage-pulse'] .settings-lead { max-width: 620px; margin: 14px 0 0; color: #a4a8b2; font-size: 15px; line-height: 1.5; }
-html[data-theme='mage-pulse'] .settings-layout { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: 34px; align-items: start; }
+html[data-theme] .settings-layout { display: grid; grid-template-columns: 190px minmax(0,1fr); gap: 34px; align-items: start; }
 html[data-theme='mage-pulse'] .settings-nav { position: sticky; top: 94px; }
-html[data-theme='mage-pulse'] .settings-nav__list { display: flex; flex-direction: column; gap: 3px; }
+html[data-theme] .settings-nav__list { display: flex; flex-direction: column; gap: 3px; }
 html[data-theme='mage-pulse'] .settings-nav__link { padding: 9px 10px; border-radius: 8px; color: #757b87; font-size: 12px; font-weight: 600; }
 html[data-theme='mage-pulse'] .settings-nav__link:hover,
 html[data-theme='mage-pulse'] .settings-nav__link[aria-current] { color: #f4f5f7; background: #171a20; }
-html[data-theme='mage-pulse'] .settings-content { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+html[data-theme] .settings-content { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
 html[data-theme='mage-pulse'] .settings-section { display: block; margin: 0; padding: 24px; scroll-margin-top: 98px; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; background: #111318; box-shadow: none; }
 html[data-theme='mage-pulse'] .settings-section__header { margin-bottom: 22px; display: block; }
 html[data-theme='mage-pulse'] .settings-section__header h2 { margin: 0 0 5px; font-size: 19px; letter-spacing: -.02em; }
@@ -41,8 +41,8 @@ html[data-theme='mage-pulse'] .settings-page .animated-thumbnail-setting__thumb 
 html[data-theme='mage-pulse'] .settings-page .animated-thumbnail-setting__input:checked + .animated-thumbnail-setting__switch { background: #7c6cff; }
 html[data-theme='mage-pulse'] .settings-page .animated-thumbnail-setting__input:checked + .animated-thumbnail-setting__switch .animated-thumbnail-setting__thumb { transform: translateX(17px); }
 html[data-theme='mage-pulse'] .settings-page .animated-thumbnail-setting__input:focus-visible + .animated-thumbnail-setting__switch { outline-color: #b2a8ff; }
-html[data-theme='mage-pulse'] .settings-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 17px; }
-html[data-theme='mage-pulse'] .settings-profile-form > :is(.settings-field--full, .settings-identity, .settings-actions, .form-alert, .form-note) { grid-column: 1 / -1; }
+html[data-theme] .settings-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 17px; }
+html[data-theme] .settings-profile-form > :is(.settings-field--full, .settings-identity, .settings-actions, .form-alert, .form-note) { grid-column: 1 / -1; }
 html[data-theme='mage-pulse'] .settings-page .field-group { min-width: 0; display: block; }
 html[data-theme='mage-pulse'] .settings-page .field-group label { display: block; margin-bottom: 6px; color: #a4a8b2; font-size: 11px; font-weight: 650; }
 html[data-theme='mage-pulse'] .settings-page .field-group :is(input, textarea) { width: 100%; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; outline: 0; background: #0d0f13; font-size: 16px; color: #f4f5f7; }
@@ -63,15 +63,15 @@ html[data-theme='mage-pulse'] .settings-actions { margin-top: 20px; display: fle
 html[data-theme='mage-pulse'] .settings-profile-form .settings-actions { margin-top: 3px; justify-content: space-between; }
 html[data-theme='mage-pulse'] .settings-page .settings-save-button { width: auto; min-width: 0; min-height: 38px; height: 38px; padding: 0 15px; border: 0; border-radius: 9px; background: #f4f5f7; color: #090a0d; font-size: 11px; font-weight: 700; box-shadow: none; }
 html[data-theme='mage-pulse'] .settings-page .settings-save-button:disabled { opacity: .38; cursor: default; }
-html[data-theme='mage-pulse'] .settings-password-form { display: grid; grid-template-columns: 1fr; gap: 14px; }
+html[data-theme] .settings-password-form { display: grid; grid-template-columns: 1fr; gap: 14px; }
 html[data-theme='mage-pulse'] .settings-security-note { margin-bottom: 4px; padding: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: #0d0f13; color: #757b87; font-size: 10px; }
 html[data-theme='mage-pulse'] .settings-security-note strong { color: #a4a8b2; }
 html[data-theme='mage-pulse'] .settings-password-form .settings-actions { margin-top: 6px; }
 @media (max-width: 760px) {
   html[data-theme='mage-pulse'] .settings-page { width: calc(100% - 28px); padding-top: 44px; }
-  html[data-theme='mage-pulse'] .settings-layout { grid-template-columns: 1fr; }
+  html[data-theme] .settings-layout { grid-template-columns: 1fr; }
   html[data-theme='mage-pulse'] .settings-nav { position: static; }
-  html[data-theme='mage-pulse'] .settings-nav__list { flex-direction: row; overflow-x: auto; }
+  html[data-theme] .settings-nav__list { flex-direction: row; overflow-x: auto; }
   html[data-theme='mage-pulse'] .settings-nav__link { flex: 0 0 auto; }
   html[data-theme='mage-pulse'] .settings-page :is(.theme-settings__grid, .settings-profile-form) { grid-template-columns: 1fr; }
 }

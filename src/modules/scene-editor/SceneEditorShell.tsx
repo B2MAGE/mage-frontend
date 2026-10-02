@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
-import { useTheme } from "@theme";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
@@ -20,11 +19,9 @@ import {
   toRadians,
 } from "./sceneEditor";
 import {
-  PLAYLIST_OPTIONS,
   additionalPassesByCategory,
   initialSceneModel,
 } from "./fixtures";
-import { SceneEditorActionBar } from "./ui/SceneEditorActionBar";
 import { SceneEditorDetailsSection } from "./ui/SceneEditorDetailsSection";
 import {
   CollapsibleEditorGroup,
@@ -68,14 +65,11 @@ export function SceneEditorShell({
   onComplete,
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
-  const { themeId } = useTheme();
-  const isPulse = themeId === "mage-pulse";
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   const [isBeatSimulated, setIsBeatSimulated] = useState(false);
   const [previewBpm, setPreviewBpm] = useState(120);
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const {
-    actionBarSentinelRef,
     availableTags,
     canCreateTagFromSearch,
     currentSection,
@@ -92,10 +86,8 @@ export function SceneEditorShell({
     handleRawSceneDataChange,
     handleShaderSelection,
     handleSectionJump,
-    handleSectionStep,
     handleTagSearchChange,
     handleThumbnailCapture,
-    isActionBarStuck,
     isCameraAdvancedEnabled,
     isConfirmJsonOpen,
     isCreatingTag,
@@ -105,13 +97,11 @@ export function SceneEditorShell({
     isTagDropdownOpen,
     movePass,
     name,
-    nextSection,
     normalizedTagSearchValue,
     openTagDropdown,
     pendingRetryTags,
     pendingTagAttachment,
     playlistValue,
-    previousSection,
     reloadAvailableTags,
     sceneData,
     sceneDataText,
@@ -499,7 +489,7 @@ export function SceneEditorShell({
     selectedTagIds,
     setErrors: (nextErrors) => {
       setErrors(nextErrors);
-      if (!isPulse || typeof nextErrors === "function") return;
+      if (typeof nextErrors === "function") return;
       if (nextErrors.name || nextErrors.description || nextErrors.thumbnail || nextErrors.tags) {
         handleSectionJump("details");
       } else if (nextErrors.sceneData) {
@@ -530,7 +520,7 @@ export function SceneEditorShell({
             : "Shape the visual, tune how it moves, add effects, then preview everything live before publishing."
         }
         eyebrow="Scene Studio"
-        title={isEditMode ? (isPulse ? "Edit your scene" : "Edit Scene") : (isPulse ? "Create a scene" : "Create Scene")}
+        title={isEditMode ? "Edit your scene" : "Create a scene"}
         titleId={titleId}
       />
 
@@ -542,7 +532,7 @@ export function SceneEditorShell({
       >
         <div className="scene-editor-layout">
           <aside className="scene-editor-stepper-rail">
-            {isPulse ? <div className="scene-editor-stepper-rail__label">Scene setup</div> : null}
+            <div className="scene-editor-stepper-rail__label">Scene setup</div>
             <div className="scene-editor-toolbar">
               <div className="scene-editor-toolbar__controls">
                 <div className="scene-editor-toolbar__control-group scene-editor-toolbar__control-group--navigation">
@@ -1402,15 +1392,7 @@ export function SceneEditorShell({
                       />
                       <ConfirmSummaryItem
                         label="Playlist"
-                        value={
-                          isPulse
-                            ? "Not available"
-                            : playlistValue
-                            ? PLAYLIST_OPTIONS.find(
-                                (option) => option.value === playlistValue,
-                              )?.label ?? playlistValue
-                            : "Not set"
-                        }
+                        value="Not available"
                       />
                       <ConfirmSummaryItem
                         label="Thumbnail"
@@ -1550,18 +1532,16 @@ export function SceneEditorShell({
                     {renderRawSceneDataEditor()}
                   </CollapsibleEditorGroup>
                 </div>
-                {isPulse ? (
-                  <div className="scene-editor-confirm-actions">
-                    <button aria-busy={isSubmitting} className="scene-editor-confirm-submit" disabled={isSubmitting} type="submit">
-                      <PendingButtonLabel
-                        pending={isSubmitting}
-                        pendingLabel={pendingTagAttachment ? "Retrying tag attachment..." : isEditMode ? "Updating scene..." : "Creating scene..."}
-                      >
-                        {pendingTagAttachment ? "Retry tag attachment" : isEditMode ? "Update scene" : "Create scene"}
-                      </PendingButtonLabel>
-                    </button>
-                  </div>
-                ) : null}
+                <div className="scene-editor-confirm-actions">
+                  <button aria-busy={isSubmitting} className="scene-editor-confirm-submit" disabled={isSubmitting} type="submit">
+                    <PendingButtonLabel
+                      pending={isSubmitting}
+                      pendingLabel={pendingTagAttachment ? "Retrying tag attachment..." : isEditMode ? "Updating scene..." : "Creating scene..."}
+                    >
+                      {pendingTagAttachment ? "Retry tag attachment" : isEditMode ? "Update scene" : "Create scene"}
+                    </PendingButtonLabel>
+                  </button>
+                </div>
               </SceneSection>
             ) : null}
           </div>
@@ -1573,17 +1553,15 @@ export function SceneEditorShell({
                   <span className="scene-editor-toolbar__eyebrow">Preview</span>
                   <h2>Live Preview</h2>
                 </div>
-                {isPulse ? (
-                  <button
-                    aria-controls="scene-editor-live-preview"
-                    aria-expanded={!isPreviewCollapsed}
-                    className="scene-editor-preview__collapse"
-                    onClick={() => setIsPreviewCollapsed((collapsed) => !collapsed)}
-                    type="button"
-                  >
-                    {isPreviewCollapsed ? "Expand" : "Collapse"}
-                  </button>
-                ) : null}
+                <button
+                  aria-controls="scene-editor-live-preview"
+                  aria-expanded={!isPreviewCollapsed}
+                  className="scene-editor-preview__collapse"
+                  onClick={() => setIsPreviewCollapsed((collapsed) => !collapsed)}
+                  type="button"
+                >
+                  {isPreviewCollapsed ? "Expand" : "Collapse"}
+                </button>
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
@@ -1602,24 +1580,6 @@ export function SceneEditorShell({
             </section>
           </aside>
 
-          {!isPulse ? <SceneEditorActionBar
-            currentSection={currentSection}
-            currentSectionIndex={currentSectionIndex}
-            isActionBarStuck={isActionBarStuck}
-            isSubmitting={isSubmitting}
-            nextSection={nextSection}
-            pendingTagAttachment={pendingTagAttachment}
-            previousSection={previousSection}
-            submitLabel={isEditMode ? "Update scene" : "Create scene"}
-            submittingLabel={isEditMode ? "Updating scene..." : "Creating scene..."}
-            onSectionStep={handleSectionStep}
-          /> : null}
-
-          <div
-            aria-hidden="true"
-            className="scene-editor-action-bar-sentinel"
-            ref={actionBarSentinelRef}
-          />
         </div>
       </form>
     </AuthPage>

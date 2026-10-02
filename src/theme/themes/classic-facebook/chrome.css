@@ -1,214 +1,78 @@
-html[data-theme='classic-facebook'] .navbar {
-  box-shadow: inset 0 -1px 0 rgba(17, 33, 74, 0.4);
+/* A familiar blue masthead with the current app's navigation and account menu. */
+:root[data-theme='classic-facebook'] #root { min-height: 100dvh; display: flex; flex-direction: column; }
+:root[data-theme='classic-facebook'] .navbar {
+  position: sticky;
+  top: 0;
+  flex: none;
+  height: 56px;
+  box-shadow: inset 0 -1px 0 #29447e;
 }
+:root[data-theme='classic-facebook'] .nav-inner { width: min(1280px, calc(100% - 48px)); height: 56px; justify-content: flex-start; gap: 30px; }
+:root[data-theme='classic-facebook'] .logo { font-size: 30px; font-weight: 800; letter-spacing: -.05em; text-transform: lowercase; line-height: 1; }
+:root[data-theme='classic-facebook'] .logo__wordmark { transition: color 350ms ease-in-out; }
+:root[data-theme='classic-facebook'] .logo:hover .logo__wordmark { color: #d8e2f2; }
+:root[data-theme='classic-facebook'] .nav-primary { display: flex; align-items: center; gap: 6px; }
+:root[data-theme='classic-facebook'] .nav-primary__link { padding: 8px 10px; border-radius: 3px; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+:root[data-theme='classic-facebook'] .nav-primary__link:hover,
+:root[data-theme='classic-facebook'] .nav-primary__link--active { background: #2f477b; }
+:root[data-theme='classic-facebook'] .nav-actions { margin-left: auto; gap: 10px; }
+:root[data-theme='classic-facebook'] :is(.nav-create, .nav-signin, .nav-profile-trigger) { min-height: 34px; height: 34px; border-radius: 3px; padding: 0 12px; font-size: 13px; gap: 8px; text-decoration: none; box-shadow: none; }
+:root[data-theme='classic-facebook'] :is(.nav-create__icon, .nav-signin__icon) { display: none; }
+:root[data-theme='classic-facebook'] .nav-profile-trigger { padding-left: 5px; padding-right: 8px; background: #334f89; border-color: #29447e; }
+:root[data-theme='classic-facebook'] .nav-profile-trigger:is(:hover, [aria-expanded='true']) { background: #29447e; color: #fff; }
+:root[data-theme='classic-facebook'] .nav-avatar { width: 26px; height: 26px; font-size: 10px; }
+:root[data-theme='classic-facebook'] .nav-profile-trigger__label { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme='classic-facebook'] .nav-profile-trigger__chevron { transition: color 180ms ease, transform 180ms ease; }
+:root[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-profile-trigger__chevron { color: #fff; transform: none; }
+:root[data-theme='classic-facebook'] .nav-profile-trigger[aria-expanded='true'] .nav-profile-trigger__chevron { color: #fff; transform: rotate(180deg); }
+:root[data-theme='classic-facebook'] .nav-profile-trigger__chevron svg { width: 14px; height: 14px; }
+:root[data-theme='classic-facebook'] .navbar :focus-visible { outline-color: #fff; outline-offset: 3px; }
+:root[data-theme='classic-facebook'] .nav-menu { top: calc(100% + 9px); width: 292px; min-width: 0; max-width: calc(100vw - 28px); padding: 8px; border-radius: 4px; }
+:root[data-theme='classic-facebook'] .nav-menu__profile-link { border-radius: 3px; padding: 10px; }
+:root[data-theme='classic-facebook'] .nav-menu__item { min-height: 40px; padding: 8px 10px; border-radius: 3px; font-size: 13px; font-weight: 600; }
+:root[data-theme='classic-facebook'] .nav-menu__icon { width: 24px; height: 24px; }
+:root[data-theme='classic-facebook'] .nav-menu :focus-visible { outline-color: var(--accent); border-color: var(--accent); box-shadow: none; }
+:root[data-theme='classic-facebook'] .nav-session-placeholder__create,
+:root[data-theme='classic-facebook'] .nav-session-placeholder__profile { height: 34px; border-radius: 3px; }
 
-html[data-theme='classic-facebook'] .nav-inner {
-  width: min(1380px, calc(100% - 48px));
-  gap: 10px;
+:root[data-theme='classic-facebook'] .app-shell { display: block; width: 100%; max-width: none; min-height: 0; margin: 0; padding: 24px 0 40px; flex: 1 0 auto; }
+:root[data-theme='classic-facebook'] .app-shell > * { margin-inline: auto; }
+:root[data-theme='classic-facebook'] .surface { border-color: var(--border); background: var(--surface); backdrop-filter: none; box-shadow: var(--surface-shadow); }
+:root[data-theme='classic-facebook'] :is(.surface--hero, .surface--form, .surface--page-header, .surface--page-panel, .surface--soft, .surface--nested) { border-radius: 4px; }
+:root[data-theme='classic-facebook'] .surface::before { display: none; }
+:root[data-theme='classic-facebook'] :is(.surface--hero, .surface--form, .surface--page-header, .surface--page-panel) { padding: 22px 24px; }
+:root[data-theme='classic-facebook'] :is(.surface--soft, .surface--nested) { background: var(--surface-soft); box-shadow: none; }
+:root[data-theme='classic-facebook'] .eyebrow { display: none; }
+:root[data-theme='classic-facebook'] :is(.page-lead, .page-footnote, .settings-lead, .auth-copy, .my-scenes-panel__lead) { color: var(--text-soft); }
+:root[data-theme='classic-facebook'] .page-mark { color: var(--text-muted); }
+:root[data-theme='classic-facebook'] :is(.demo-link, .auth-submit) { border-radius: 3px; border: 1px solid #29447e; background: #5b74a8; color: #fff; box-shadow: none; }
+:root[data-theme='classic-facebook'] :is(.demo-link, .auth-submit):hover { background: #49679f; box-shadow: none; }
+:root[data-theme='classic-facebook'] .field-group label { color: var(--text-soft); }
+:root[data-theme='classic-facebook'] .field-group :is(input, textarea, select) { border-radius: 3px; border-color: var(--border); background-color: var(--surface); color: var(--text); }
+:root[data-theme='classic-facebook'] .field-group :is(input, textarea)::placeholder { color: var(--text-muted); }
+:root[data-theme='classic-facebook'] .field-group :is(input, textarea, select):hover { border-color: #6d84b4; }
+:root[data-theme='classic-facebook'] .field-group :is(input, textarea, select):focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+:root[data-theme='classic-facebook'] .field-group :is(input, textarea, select)[aria-invalid='true'] { border-color: #b54b5b; }
+
+:root[data-theme='classic-facebook'] .pulse-footer { display: block; flex: none; margin-top: auto; }
+:root[data-theme='classic-facebook'] .pulse-footer__inner { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; width: min(1280px, calc(100% - 48px)); min-height: 56px; margin: auto; padding: 14px 0; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 11px; }
+:root[data-theme='classic-facebook'] .pulse-footer__brand { display: flex; align-items: center; gap: 14px; }
+:root[data-theme='classic-facebook'] .pulse-footer__brand strong { color: var(--accent); letter-spacing: .04em; }
+:root[data-theme='classic-facebook'] .pulse-footer__nav { display: flex; flex-wrap: wrap; gap: 18px; margin-left: auto; }
+:root[data-theme='classic-facebook'] .pulse-footer a { color: var(--accent); text-decoration: none; }
+:root[data-theme='classic-facebook'] .pulse-footer a:hover { color: var(--muted); text-decoration: underline; }
+@media (max-width: 760px) {
+  :root[data-theme='classic-facebook'] .nav-inner { width: calc(100% - 28px); gap: 14px; }
+  :root[data-theme='classic-facebook'] .nav-primary { display: none; }
+  :root[data-theme='classic-facebook'] .app-shell { padding-top: 20px; }
+  :root[data-theme='classic-facebook'] .pulse-footer__inner { width: calc(100% - 28px); }
+  :root[data-theme='classic-facebook'] .pulse-footer__brand span { display: none; }
 }
-
-html[data-theme='classic-facebook'] .nav-actions {
-  gap: 18px;
+@media (max-width: 560px) {
+  :root[data-theme='classic-facebook'] .logo { font-size: 28px; }
+  :root[data-theme='classic-facebook'] .nav-profile-trigger__label { display: none; }
+  :root[data-theme='classic-facebook'] .nav-actions { gap: 8px; }
 }
-
-html[data-theme='classic-facebook'] .logo {
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  text-transform: lowercase;
-}
-
-html[data-theme='classic-facebook'] .nav-create__icon,
-html[data-theme='classic-facebook'] .nav-signin__icon {
-  display: none;
-}
-
-html[data-theme='classic-facebook'] .nav-create,
-html[data-theme='classic-facebook'] .nav-profile-trigger {
-  min-height: 34px;
-  border: 1px solid transparent;
-  background: transparent;
-  box-shadow: none;
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .nav-create {
-  padding: 0 2px;
-}
-
-html[data-theme='classic-facebook'] .nav-profile-trigger {
-  padding: 0 2px 0 0;
-  border-radius: 2px;
-}
-
-html[data-theme='classic-facebook'] .nav-create:hover,
-html[data-theme='classic-facebook'] .nav-create:focus-visible {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-  color: #ffffff;
-  text-decoration: underline;
-  text-underline-offset: 0.18em;
-  text-decoration-thickness: 1px;
-}
-
-html[data-theme='classic-facebook'] .nav-profile-trigger:hover,
-html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-avatar,
-html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-avatar {
-  box-shadow: var(--nav-avatar-hover-shadow);
-}
-
-html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-profile-trigger__chevron,
-html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-profile-trigger__chevron {
-  color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .nav-menu {
-  top: calc(100% + 8px);
-  min-width: 280px;
-  padding: 10px 0;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__profile-link {
-  border-radius: 2px;
-}
-
-html[data-theme='classic-facebook'] .nav-menu__item {
-  min-height: 44px;
-  font-weight: 700;
-}
-
-html[data-theme='classic-facebook'] .app-shell {
-  display: block;
-  padding: 84px 16px 32px;
-}
-
-html[data-theme='classic-facebook'] .app-shell > * {
-  margin-inline: auto;
-}
-
-html[data-theme='classic-facebook'] .surface {
-  border-color: #bcc7d8;
-  background: #ffffff;
-  backdrop-filter: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-
-html[data-theme='classic-facebook'] .surface--hero,
-html[data-theme='classic-facebook'] .surface--form,
-html[data-theme='classic-facebook'] .surface--page-header,
-html[data-theme='classic-facebook'] .surface--page-panel,
-html[data-theme='classic-facebook'] .surface--soft,
-html[data-theme='classic-facebook'] .surface--nested {
-  border-radius: 4px;
-}
-
-html[data-theme='classic-facebook'] .surface--hero::before,
-html[data-theme='classic-facebook'] .surface--form::before,
-html[data-theme='classic-facebook'] .surface--page-panel::before {
-  opacity: 0;
-}
-
-html[data-theme='classic-facebook'] .surface--hero,
-html[data-theme='classic-facebook'] .surface--form,
-html[data-theme='classic-facebook'] .surface--page-header,
-html[data-theme='classic-facebook'] .surface--page-panel {
-  padding: 22px 24px;
-}
-
-html[data-theme='classic-facebook'] .surface--soft,
-html[data-theme='classic-facebook'] .surface--nested {
-  background: #f7f8fb;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .eyebrow {
-  display: none;
-}
-
-html[data-theme='classic-facebook'] .page-lead,
-html[data-theme='classic-facebook'] .page-footnote,
-html[data-theme='classic-facebook'] .settings-lead,
-html[data-theme='classic-facebook'] .auth-copy,
-html[data-theme='classic-facebook'] .my-scenes-panel__lead {
-  color: #596b93;
-}
-
-html[data-theme='classic-facebook'] .page-mark {
-  color: #7183a7;
-}
-
-html[data-theme='classic-facebook'] .demo-link,
-html[data-theme='classic-facebook'] .auth-submit,
-html[data-theme='classic-facebook'] .scene-editor-submit {
-  border-radius: 2px;
-  border: 1px solid #29447e;
-  background: #5b74a8;
-  color: #ffffff;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .demo-link:hover,
-html[data-theme='classic-facebook'] .auth-submit:hover,
-html[data-theme='classic-facebook'] .scene-editor-submit:hover {
-  background: #6d84b4;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .field-group label {
-  color: #3b5998;
-}
-
-html[data-theme='classic-facebook'] .field-group input,
-html[data-theme='classic-facebook'] .field-group textarea,
-html[data-theme='classic-facebook'] .field-group select {
-  border-radius: 2px;
-  border-color: #bdc7d8;
-  background: #ffffff;
-  color: #1d2a44;
-}
-
-html[data-theme='classic-facebook'] .field-group input::placeholder,
-html[data-theme='classic-facebook'] .field-group textarea::placeholder {
-  color: #8794b4;
-}
-
-html[data-theme='classic-facebook'] .field-group input:hover,
-html[data-theme='classic-facebook'] .field-group textarea:hover,
-html[data-theme='classic-facebook'] .field-group select:hover {
-  border-color: #6d84b4;
-}
-
-html[data-theme='classic-facebook'] .field-group input:focus,
-html[data-theme='classic-facebook'] .field-group textarea:focus,
-html[data-theme='classic-facebook'] .field-group select:focus {
-  border-color: #3b5998;
-  box-shadow: 0 0 0 3px rgba(59, 89, 152, 0.12);
-}
-
-html[data-theme='classic-facebook'] .form-alert {
-  border-radius: 4px;
-  border-color: #d8b2b9;
-  background: #fff4f5;
-  color: #7b2a38;
-}
-
-html[data-theme='classic-facebook'] .form-note {
-  border-radius: 4px;
-  border-color: #bfd0ec;
-  background: #eef4ff;
-  color: #29447e;
-}
-
-html[data-theme='classic-facebook'] .settings-page,
-html[data-theme='classic-facebook'] .my-scenes-page,
-html[data-theme='classic-facebook'] .auth-page--wide {
-  margin-top: 0;
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme='classic-facebook'] :is(.logo__wordmark, .nav-profile-trigger__chevron) { transition: none; }
 }

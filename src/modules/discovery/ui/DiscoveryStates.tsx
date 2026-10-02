@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { LoadingRegion, Skeleton } from '@shared/ui'
-import { useTheme } from '@theme'
 import { SceneCollectionState } from './SceneCollectionState'
 
 type DiscoveryEmptyStateProps = {
@@ -48,52 +47,28 @@ export function DiscoveryLoadingGrid() {
 }
 
 export function DiscoveryEmptyState({ activeTag, onClearFilter, headingLevel = 2 }: DiscoveryEmptyStateProps) {
-  const { themeId } = useTheme()
-  if (themeId === 'mage-pulse') {
-    return (
-      <SceneCollectionState
-        headingLevel={headingLevel}
-        title={activeTag ? 'No scenes match this tag' : 'No scenes here yet'}
-        description={activeTag
-          ? `Nothing has been published with “${activeTag}” yet. Try another tag or explore the full collection.`
-          : 'Every scene starts with an idea. Create the first one and give it a little motion.'}
-        action={activeTag
-          ? <button className="scene-collection-state__button" type="button" onClick={onClearFilter}>Show all scenes</button>
-          : <Link className="scene-collection-state__button" to="/create-scene">Create a scene</Link>}
-      />
-    )
-  }
   return (
-    <div className="scenes-empty" role="status">
-      <p>No scenes found{activeTag ? ` for "${activeTag}"` : ''}.</p>
-      <p className="scenes-empty__hint">
-        {activeTag
-          ? 'Try selecting a different tag or browse all scenes.'
-          : 'Scenes will appear here once they are created.'}
-      </p>
-    </div>
+    <SceneCollectionState
+      headingLevel={headingLevel}
+      title={activeTag ? 'No scenes match this tag' : 'No scenes here yet'}
+      description={activeTag
+        ? `Nothing has been published with “${activeTag}” yet. Try another tag or explore the full collection.`
+        : 'Every scene starts with an idea. Create the first one and give it a little motion.'}
+      action={activeTag
+        ? <button className="scene-collection-state__button" type="button" onClick={onClearFilter}>Show all scenes</button>
+        : <Link className="scene-collection-state__button" to="/create-scene">Create a scene</Link>}
+    />
   )
 }
 
 export function DiscoveryErrorState({ onRetry, headingLevel = 2 }: DiscoveryErrorStateProps) {
-  const { themeId } = useTheme()
-  if (themeId === 'mage-pulse') {
-    return (
-      <SceneCollectionState
-        kind="error"
-        headingLevel={headingLevel}
-        title="Scenes couldn’t be loaded"
-        description="Please try again in a moment."
-        action={<button className="scene-collection-state__button" onClick={onRetry} type="button">Try again</button>}
-      />
-    )
-  }
   return (
-    <div className="scenes-error" role="alert">
-      <p>Something went wrong loading scenes.</p>
-      <button className="demo-link" onClick={onRetry} type="button">
-        Try again
-      </button>
-    </div>
+    <SceneCollectionState
+      kind="error"
+      headingLevel={headingLevel}
+      title="Scenes couldn’t be loaded"
+      description="Please try again in a moment."
+      action={<button className="scene-collection-state__button" onClick={onRetry} type="button">Try again</button>}
+    />
   )
 }

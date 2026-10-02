@@ -49,3 +49,21 @@ Exports:
 2. Import theme state and registry metadata through `@theme`, not through deep file paths.
 3. Feature-specific theme selection UI belongs to the owning feature module, currently `@modules/settings`.
 4. The theme boundary should not depend on app wiring or feature-module internals.
+
+## Shared Layout And Behavior
+
+Pulse and Classic Blue use the same home, discovery, account, studio, and player
+components. Theme selection changes their palette and visual density, not their
+available features or navigation. Classic retains its blue masthead, light panels,
+compact borders, and Tahoma-based type; user-selected avatar gradients are unchanged.
+
+Keep responsive structure and interaction states in the feature stylesheets using
+`html[data-theme]`. Use semantic tokens, or feature-local palette variables with
+Pulse defaults, for colors. Classic-specific skins use
+`:root[data-theme='classic-facebook']` so they win over shared layout rules without
+depending on CSS import order. Do not add theme-only React branches for common
+features such as featured scenes, editor steps, confirmation, or player controls.
+
+Verify both themes at desktop and narrow widths, including menus, keyboard focus,
+selected reactions, loading/error states, and custom avatar colors. Theme runtime
+regressions live in `classicTheme.test.tsx`; feature behavior stays in its module tests.

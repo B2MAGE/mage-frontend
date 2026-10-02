@@ -1,118 +1,56 @@
-html[data-theme='classic-facebook'] .home-hero {
-  width: min(1120px, 100%);
-  padding: 0;
-  overflow: hidden;
+/* Shared homepage structure, dressed as compact Classic Blue panels. */
+:root[data-theme='classic-facebook'] .pulse-home { width: min(calc(100% - 48px), 1280px); }
+:root[data-theme='classic-facebook'] .pulse-home--without-welcome { padding-top: 0; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-section { padding-bottom: 32px; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-heading { margin-bottom: 16px; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-heading h1 { font-size: 24px; letter-spacing: -.02em; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-scene { box-shadow: var(--surface-shadow); }
+:root[data-theme='classic-facebook'] .pulse-home .featured-info { padding: 20px; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-copy { margin-top: 20px; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-copy h2 { font-size: 28px; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-description { font-size: 13px; line-height: 1.6; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-title-link,
+:root[data-theme='classic-facebook'] .pulse-home .featured-creator-profile__copy strong,
+:root[data-theme='classic-facebook'] .pulse-home .browse-link { color: var(--accent); }
+:root[data-theme='classic-facebook'] .pulse-home :is(.featured-title-link, .browse-link):hover,
+:root[data-theme='classic-facebook'] .pulse-home a.featured-creator-profile:hover strong { color: var(--muted); text-decoration: none; }
+:root[data-theme='classic-facebook'] .pulse-home .follow-button { color: var(--accent); border-radius: 3px; background: var(--surface-soft); }
+:root[data-theme='classic-facebook'] .pulse-home .follow-button:disabled { opacity: .6; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-stats { padding-bottom: 12px; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-action { padding-top: 12px; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-stats button { border-radius: 3px; }
+:root[data-theme='classic-facebook'] .pulse-home .discover-section { padding: 32px 0; }
+:root[data-theme='classic-facebook'] .pulse-home .section-heading { margin-bottom: 20px; }
+:root[data-theme='classic-facebook'] .pulse-home .section-heading h2 { font-size: 24px; }
+:root[data-theme='classic-facebook'] .pulse-home .discover-more { margin-top: 24px; }
+:root[data-theme='classic-facebook'] .pulse-home .creator-section {
+  margin: 0 0 32px;
+  padding: 28px;
+  gap: 32px;
+  background: var(--surface);
+  box-shadow: var(--surface-shadow);
 }
-
-html[data-theme='classic-facebook'] .home-hero__header {
-  padding: 28px 28px 0;
+:root[data-theme='classic-facebook'] .pulse-home .creator-copy h2 { font-size: 34px; margin-bottom: 20px; }
+:root[data-theme='classic-facebook'] .pulse-home .creator-copy p { font-size: 14px; }
+:root[data-theme='classic-facebook'] .pulse-home .creator-dismiss { border-radius: 3px; }
+:root[data-theme='classic-facebook'] .pulse-home .editor-preview { min-height: 310px; background: var(--surface-soft); }
+:root[data-theme='classic-facebook'] .pulse-home .editor-sidebar { background: var(--surface-soft); }
+:root[data-theme='classic-facebook'] .pulse-home .editor-step { border-radius: 3px; color: var(--text-soft); }
+:root[data-theme='classic-facebook'] .pulse-home .editor-step.active { background: #d8e2f2; color: #29447e; font-weight: 700; }
+:root[data-theme='classic-facebook'] .pulse-home .home-state { padding: 28px; border-radius: 4px; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-player--loading::after { background: var(--surface-soft); }
+@media (min-width: 901px) and (max-width: 1100px) {
+  :root[data-theme='classic-facebook'] .pulse-home .featured-info { padding: 16px; }
+  :root[data-theme='classic-facebook'] .pulse-home .scene-copy { margin-top: 12px; }
+  :root[data-theme='classic-facebook'] .pulse-home .scene-copy h2 { font-size: 24px; }
+  :root[data-theme='classic-facebook'] .pulse-home .featured-description { -webkit-line-clamp: 2; }
 }
-
-html[data-theme='classic-facebook'] .home-hero__title-block {
-  justify-items: center;
-  text-align: center;
-}
-
-html[data-theme='classic-facebook'] .home-hero__title-block h1 {
-  margin: 0;
-  color: #1d2a44;
-  font-size: clamp(3rem, 8vw, 4.5rem);
-  font-weight: 800;
-  letter-spacing: -0.06em;
-}
-
-html[data-theme='classic-facebook'] .home-hero__title-block .page-lead {
-  max-width: 40rem;
-  margin: 0;
-}
-
-html[data-theme='classic-facebook'] .home-hero__layout {
-  grid-template-columns: minmax(280px, 340px) minmax(420px, 560px);
-  justify-content: center;
-  align-items: start;
-  gap: 18px;
-  margin-top: 22px;
-  padding: 0 28px 24px;
-}
-
-html[data-theme='classic-facebook'] .home-hero__info-panel,
-html[data-theme='classic-facebook'] .home-hero__preview {
-  border-radius: 2px;
-  border: 1px solid #bcc7d8;
-  background: #ffffff;
-  box-shadow: none;
-}
-
-html[data-theme='classic-facebook'] .home-hero__panel-heading {
-  padding: 9px 12px;
-  border-bottom: 1px solid #bcc7d8;
-  background: #d8dfea;
-  color: #3b5998;
-  font-size: 0.94rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-html[data-theme='classic-facebook'] .home-hero__panel-body {
-  padding: 14px 14px 16px;
-  background: #f7f8fb;
-}
-
-html[data-theme='classic-facebook'] .home-hero__panel-copy {
-  color: #1d2a44;
-  font-size: 0.96rem;
-  line-height: 1.6;
-}
-
-html[data-theme='classic-facebook'] .home-hero__feature-list {
-  gap: 8px;
-  padding-left: 18px;
-  color: #1d2a44;
-  font-size: 0.93rem;
-}
-
-html[data-theme='classic-facebook'] .home-hero__feature-list li::marker {
-  color: #3b5998;
-}
-
-html[data-theme='classic-facebook'] .home-hero__panel-body .page-footnote {
-  margin-top: 2px;
-  color: #596b93;
-  font-size: 0.9rem;
-}
-
-html[data-theme='classic-facebook'] .home-hero__preview {
-  width: min(100%, 560px);
-  justify-self: center;
-  align-self: stretch;
-}
-
-html[data-theme='classic-facebook'] .home-hero__preview .home-hero__panel-heading {
-  width: 100%;
-  box-sizing: border-box;
-  justify-self: stretch;
-  text-align: center;
-}
-
-html[data-theme='classic-facebook'] .home-hero__preview-body {
-  justify-items: center;
-  padding: 14px;
-  background: transparent;
-}
-
-html[data-theme='classic-facebook'] .home-hero__preview .mage-player {
-  width: 100%;
-}
-
-html[data-theme='classic-facebook'] .home-hero__footer {
-  justify-content: flex-end;
-  padding: 0 28px 20px;
-  margin-top: 0;
-}
-
-html[data-theme='classic-facebook'] .home-hero__footer .page-mark {
-  margin-top: 0;
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
+@media (max-width: 700px) {
+  :root[data-theme='classic-facebook'] .pulse-home { width: calc(100% - 28px); }
+  :root[data-theme='classic-facebook'] .pulse-home .featured-section { padding-top: 0; }
+  :root[data-theme='classic-facebook'] .pulse-home .featured-heading { display: flex; flex-wrap: wrap; gap: 10px; }
+  :root[data-theme='classic-facebook'] .pulse-home .browse-link { margin-top: 0; font-size: 12px; }
+  :root[data-theme='classic-facebook'] .pulse-home .featured-info { padding: 18px; }
+  :root[data-theme='classic-facebook'] .pulse-home .creator-section { padding: 24px 18px; }
+  :root[data-theme='classic-facebook'] .pulse-home .creator-copy h2 { font-size: 29px; }
 }
