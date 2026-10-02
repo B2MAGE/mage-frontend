@@ -19,8 +19,11 @@ The adapter and the checked-in package patch are both infrastructure. Feature mo
 ## Current Integration
 
 The adapter loads the engine dynamically, creates it for a canvas, loads a scene blob, keeps the
-package's native control system disabled, exposes shared playback and audio controls, and disposes
-the engine on unmount.
+package's editor/control bootstrap disabled, exposes shared playback and audio controls, and disposes
+the engine on unmount. Full `MagePlayer` surfaces opt into canvas-local mouse reactions through
+`viewerMouseInteractions.ts` and bounded mouse-wheel zoom via `mouseWheelZoom: true`.
+The shared About/home artwork opts into mouse reactions but leaves wheel scrolling alone,
+while thumbnail hover previews remain noninteractive.
 
 Relevant files:
 
@@ -28,6 +31,8 @@ Relevant files:
 - `src/modules/player/MagePlayer.tsx`
 - `src/modules/player/playlist.ts`
 - `src/modules/player/infrastructure/engineAdapter.ts`
+- `src/modules/player/infrastructure/viewerMouseInteractions.ts`
+- `src/modules/player/infrastructure/viewerPointerDeformation.ts`
 
 ## Scene Data
 
@@ -144,10 +149,23 @@ No feature module should import from `patches/` or from `@notrac/mage` directly.
 - The published package types are still incomplete for the runtime behavior the frontend uses. The adapter keeps a small local bridge type for that gap.
 - The engine bundle still emits `eval` warnings during `vite build`. The build succeeds, but those warnings are coming from the published package.
 - The engine bundle is very large and still triggers Vite chunk-size warnings. That does not block builds, but it is a real startup-cost concern.
-- 1.0.3 separates mouse controls from its editor UI with `active: true, integrated: false`.
-  However, its default input bridge still includes shader reset/switch shortcuts and
-  control tooltips. The app retains `active: false, integrated: false` until a separate
-  viewer-only interaction change filters those behaviors. This upgrade does not
-  enable mouse interaction or modify saved scenes.
+- 1.0.3's native controls bootstrap also installs global listeners, editor shortcuts,
+  and control tooltips. We initialize with `active: false, integrated: false`, then
+  opt full players into a filtered, canvas-local input bridge without calling that
+  bootstrap. Native left-button orbit dragging is enabled. Full players also opt into
+  wheel zoom over their canvas, bounded to 0.4–2.5 times the authored camera-target
+  distance (with a near-clip safeguard). Limits are cleared before preset loading and
+  recalibrated afterward so one scene's limits never alter another scene's framing.
+  Artwork leaves wheel scrolling alone. Pan and touch camera gestures stay disabled;
+  Ctrl/Meta+wheel, scrolling outside the canvas, and right-click remain browser-owned.
+  Mouse-aware shaders retain their own interaction behavior. Shaders that declare but
+  ignore pointer input receive a bounded, smoothed live-material deformation while
+  hovering/pressing. Neutral input preserves the original geometry, and disposal
+  restores the original material. No source shader or saved scene is rewritten.
+  Leaving the canvas, scrolling, losing
+  focus, hiding the page, or disposing the player clears interaction state. The
+  narrow runtime-only `getEngineFields()` type stays inside player infrastructure.
+  This does not change saved scene data. The About/home artwork reuses this interaction
+  path; thumbnail hover previews remain noninteractive.
 - Published 1.0.3 still uses the legacy single-frequency-bin audio mapping. The
   unpublished bass/mid/treble analysis is not part of this upgrade.

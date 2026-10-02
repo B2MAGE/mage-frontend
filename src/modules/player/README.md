@@ -66,7 +66,11 @@ The adapter accepts scene blobs that contain at least one engine-recognized root
 - `sceneBlob={null}` or `undefined` shows the empty state
 - the engine is created once the canvas mounts
 - the current scene is applied when both the player and a valid `sceneBlob` are available
-- the package's native engine controls are disabled so embedded player UI stays frontend-owned
+- native editor controls/shortcuts stay disabled; full players support left-button drag rotation, canvas-local mouse/press reactions, and wheel-to-zoom over the canvas
+- wheel zoom uses limits relative to the scene's authored camera distance (0.4–2.5 times the distance, respecting the near clip plane); these limits reset on scene load, not on hover changes
+- shaders without their own pointer response receive a bounded live-material deformation, leaving saved scene data untouched
+- About/home artwork keeps rotation and mouse reactions but leaves wheel scrolling alone; thumbnail hover previews stay noninteractive (`createMagePlayer` defaults to `mouseInteractions: false` and `mouseWheelZoom: false`)
+- Ctrl/Meta+wheel and touch gestures remain browser-owned, and scrolling outside the player canvas is unchanged
 - `initialPlayback="paused"` freezes the scene until the user presses `Play`
 - `initialPlayback="playing"` keeps the scene running and shows a `Pause` control instead
 - invalid scene data produces a recoverable error overlay instead of crashing the page

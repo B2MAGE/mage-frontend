@@ -1,4 +1,5 @@
 import type { MAGEEngineAPI } from '@notrac/mage'
+import { attachViewerMouseInteractions, type ViewerMouseEngine } from './viewerMouseInteractions'
 
 const SCENE_BLOB_KEYS = [
   'audio',
@@ -19,6 +20,8 @@ const DEFAULT_ENGINE_CONTROLS = {
 const GENERIC_RENDER_ERROR_MESSAGE = 'Scene data could not be rendered by the MAGE engine.'
 
 type MageEngineBridge = {
+  getEngineFields: ViewerMouseEngine['getEngineFields']
+  setInputState: ViewerMouseEngine['setInputState']
   captureFramePreview?: MAGEEngineAPI['captureFramePreview']
   dispose: MAGEEngineAPI['dispose']
   getAudioDuration?: MAGEEngineAPI['getAudioDuration']
@@ -234,7 +237,8 @@ function applyPlaybackState(
 
 async function loadMageEngineModule() {
   if (!mageEngineModulePromise) {
-    mageEngineModulePromise = (import('@notrac/mage') as Promise<MageEngineModule>).catch((error) => {
+    // getEngineFields is exposed at runtime in 1.0.3 but omitted from its declarations.
+    mageEngineModulePromise = (import('@notrac/mage') as unknown as Promise<MageEngineModule>).catch((error) => {
       mageEngineModulePromise = null
       throw error
     })
@@ -245,7 +249,7 @@ async function loadMageEngineModule() {
 
 export async function createMagePlayer(
   canvas: HTMLCanvasElement,
-  options: { log?: boolean; pixelRatio?: number } = {},
+  options: { log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean } = {},
 ): Promise<MagePlayerController> {
   const { initMAGE } = await loadMageEngineModule()
   const engine = initMAGE({
@@ -257,6 +261,15 @@ export async function createMagePlayer(
   })
 
   engine.start()
+  let mouseInteractions: ReturnType<typeof attachViewerMouseInteractions> | null = null
+  try {
+    if (options.mouseInteractions) {
+      mouseInteractions = attachViewerMouseInteractions(canvas, engine, { wheelZoom: options.mouseWheelZoom ?? false })
+    }
+  } catch (error) {
+    engine.dispose()
+    throw new MagePlayerAdapterError('Scene mouse interactions could not be initialized.', { cause: error })
+  }
   let hasLoadedScene = false
   let currentSceneBlob: MageSceneBlob | null = null
   let hasAttachedAudio = false
@@ -265,6 +278,15 @@ export async function createMagePlayer(
   let currentAudioVolume = 1
   let trackedAudioStartedAtMs: number | null = null
   let playbackState: MagePlayerPlaybackState = 'playing'
+
+  function loadInteractiveSceneBlob(sceneBlob: MageSceneBlob) {
+    mouseInteractions?.prepareSceneLoad()
+    try {
+      loadSceneIntoEngine(engine, sceneBlob)
+    } finally {
+      mouseInteractions?.sceneLoaded()
+    }
+  }
 
   function getTrackedAudioDuration() {
     return typeof engine.getAudioDuration === 'function' ? clampAudioTime(engine, engine.getAudioDuration()) : 0
@@ -495,7 +517,7 @@ export async function createMagePlayer(
         currentAudioTime = 0
         trackedAudioStartedAtMs = null
         hasLoadedScene = true
-        loadSceneIntoEngine(engine, sceneBlob)
+        loadInteractiveSceneBlob(sceneBlob)
         playbackState = applyPlaybackState(engine, playbackState)
       } catch (error) {
         currentSceneBlob = null
@@ -518,7 +540,7 @@ export async function createMagePlayer(
       playbackState = 'paused'
       currentAudioTime = 0
       trackedAudioStartedAtMs = null
-      loadSceneIntoEngine(engine, currentSceneBlob)
+      loadInteractiveSceneBlob(currentSceneBlob)
 
       if (typeof engine.seek === 'function') {
         engine.seek(0)
@@ -567,6 +589,7 @@ export async function createMagePlayer(
     },
     setPlaybackState,
     dispose() {
+      mouseInteractions?.dispose()
       engine.dispose()
     },
   }
