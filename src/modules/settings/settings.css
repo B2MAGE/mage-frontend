@@ -263,6 +263,12 @@ html[data-theme='mage-pulse'] body:has(.settings-page) { background: radial-grad
   gap: 17px;
 }
 
+.settings-loading__gradient { grid-column: 1 / -1; height: 228px; border-radius: 9px; }
+
+@media (max-width: 480px) {
+  .settings-loading__gradient { height: 284px; }
+}
+
 .settings-loading__identity,
 .settings-loading__field--full,
 .settings-loading__actions {

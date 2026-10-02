@@ -197,12 +197,12 @@ function PulseHomePage() {
             <div className="creator-row">
               {featured.creatorHandle ? (
                 <Link className="featured-creator-profile" to={`/@${featured.creatorHandle}`}>
-                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} />
+                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} gradientStart={featured.creatorAvatarGradientStart} gradientEnd={featured.creatorAvatarGradientEnd} />
                   <div className="featured-creator-profile__copy"><strong>{featured.creatorDisplayName || 'MAGE creator'}</strong><span>@{featured.creatorHandle}</span></div>
                 </Link>
               ) : (
                 <div className="featured-creator-profile featured-creator-profile--static">
-                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} />
+                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} gradientStart={featured.creatorAvatarGradientStart} gradientEnd={featured.creatorAvatarGradientEnd} />
                   <div className="featured-creator-profile__copy"><strong>{featured.creatorDisplayName || 'MAGE creator'}</strong><span>Scene creator</span></div>
                 </div>
               )}

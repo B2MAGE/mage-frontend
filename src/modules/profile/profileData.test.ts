@@ -109,6 +109,22 @@ describe('profile data', () => {
     expect(authenticatedFetch).toHaveBeenCalledWith('/profiles/aririvera')
   })
 
+  it('keeps profile and scene owner gradients through public data normalization', async () => {
+    const authenticatedFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      ...profilePayload([{
+        ...scene(4, 'Copper Reef', '2026-09-20T12:00:00Z', 1200, 20, 8),
+        creatorAvatarGradientStart: '#CC1234', creatorAvatarGradientEnd: '#AD5678',
+      }]),
+      avatarGradientStart: '#CC1234', avatarGradientEnd: '#AD5678',
+    })))
+
+    const profile = buildProfileViewModel(await fetchPublicProfile(authenticatedFetch, true, 'aririvera'))
+    expect(profile).toMatchObject({ avatarGradientStart: '#cc1234', avatarGradientEnd: '#ad5678' })
+    expect(profile.scenes[0]).toMatchObject({
+      creatorAvatarGradientStart: '#cc1234', creatorAvatarGradientEnd: '#ad5678',
+    })
+  })
+
   it('distinguishes a missing profile from other request failures', async () => {
     const notFoundFetch = vi.fn().mockResolvedValue(new Response(null, { status: 404 }))
     const unavailableFetch = vi.fn().mockResolvedValue(new Response(null, { status: 503 }))

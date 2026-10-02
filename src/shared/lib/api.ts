@@ -1,3 +1,5 @@
+import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from './avatarGradient'
+
 function normalizeApiPath(path: string) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
@@ -31,6 +33,8 @@ export type SceneListResponse = {
   ownerUserId: number
   creatorDisplayName: string
   creatorHandle?: string | null
+  creatorAvatarGradientStart?: string | null
+  creatorAvatarGradientEnd?: string | null
   name: string
   description?: string | null
   sceneData: Record<string, unknown>
@@ -117,6 +121,12 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
     sceneId: item.sceneId,
     ownerUserId: item.ownerUserId,
     creatorDisplayName: item.creatorDisplayName.trim() || 'Unknown creator',
+    ...(item.creatorAvatarGradientStart !== undefined ? {
+      creatorAvatarGradientStart: normalizeAvatarColor(item.creatorAvatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
+    } : {}),
+    ...(item.creatorAvatarGradientEnd !== undefined ? {
+      creatorAvatarGradientEnd: normalizeAvatarColor(item.creatorAvatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end),
+    } : {}),
     creatorHandle:
       typeof item.creatorHandle === 'string' && item.creatorHandle.trim()
         ? item.creatorHandle.trim().toLowerCase()

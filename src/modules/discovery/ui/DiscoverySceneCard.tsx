@@ -54,7 +54,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           <span className="scene-card__play" aria-hidden="true">▶</span>
         </div>
         <div className="scene-card__body">
-          <UserAvatar className="scene-card__avatar" initials={creatorInitials} />
+          <UserAvatar className="scene-card__avatar" initials={creatorInitials} gradientStart={scene.creatorAvatarGradientStart} gradientEnd={scene.creatorAvatarGradientEnd} />
           <div className="scene-card__meta">
             <h3 className="scene-card__name">{scene.name}</h3>
             <p className="scene-card__creator">{creatorName}</p>

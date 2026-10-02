@@ -15,6 +15,8 @@ const storedUser: AuthenticatedUser = {
   displayName: 'Stored User',
   handle: 'stored_user',
   description: 'Stored profile description.',
+  avatarGradientStart: '#ab3456',
+  avatarGradientEnd: '#1234ef',
   authProvider: 'LOCAL',
 }
 
@@ -24,6 +26,8 @@ const restoredUser: AuthenticatedUser = {
   displayName: 'Restored User',
   handle: 'restored_user',
   description: 'Restored profile description.',
+  avatarGradientStart: '#3456ab',
+  avatarGradientEnd: '#ef1234',
   authProvider: 'LOCAL',
   createdAt: '2026-03-31T18:10:00Z',
 }
@@ -47,6 +51,7 @@ function AuthHarness() {
       <div data-testid="auth-user-display-name">{user?.displayName ?? 'none'}</div>
       <div data-testid="auth-user-handle">{user?.handle ?? 'none'}</div>
       <div data-testid="auth-user-description">{user?.description ?? 'none'}</div>
+      <div data-testid="auth-user-gradient">{user?.avatarGradientStart}/{user?.avatarGradientEnd}</div>
       <button type="button" onClick={logout}>
         Log out
       </button>
@@ -62,6 +67,8 @@ function AuthHarness() {
             firstName: 'Updated',
             lastName: 'Artist',
             displayName: 'Updated Artist',
+            avatarGradientStart: '#527b63',
+            avatarGradientEnd: '#263e43',
           })
         }}
       >
@@ -138,6 +145,7 @@ describe('AuthProvider', () => {
     expect(await screen.findByText('restored-user@example.com')).toBeInTheDocument()
     expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated')
     expect(screen.getByTestId('auth-user-handle')).toHaveTextContent('restored_user')
+    expect(screen.getByTestId('auth-user-gradient')).toHaveTextContent('#3456ab/#ef1234')
     expect(screen.getByTestId('auth-user-description')).toHaveTextContent(
       'Restored profile description.',
     )
@@ -205,9 +213,12 @@ describe('AuthProvider', () => {
         firstName: 'Updated',
         lastName: 'Artist',
         displayName: 'Updated Artist',
+        avatarGradientStart: '#527b63',
+        avatarGradientEnd: '#263e43',
       }),
     )
     expect(screen.getByTestId('auth-user-display-name')).toHaveTextContent('Updated Artist')
+    expect(screen.getByTestId('auth-user-gradient')).toHaveTextContent('#527b63/#263e43')
   })
 
   it('authenticated requests send the bearer token and clear auth state on a 401', async () => {

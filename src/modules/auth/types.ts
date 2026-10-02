@@ -6,6 +6,8 @@ export type AuthenticatedUser = {
   displayName: string
   handle?: string
   description?: string | null
+  avatarGradientStart?: string | null
+  avatarGradientEnd?: string | null
   authProvider: string
   createdAt?: string
 }

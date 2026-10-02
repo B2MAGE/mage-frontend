@@ -10,6 +10,8 @@ import { VoteButton } from './VoteButton'
 type SceneCommentsPanelProps = {
   actionError: string | null
   composerInitial: string
+  composerAvatarGradientStart?: string | null
+  composerAvatarGradientEnd?: string | null
   composerPrompt: string
   comments: SceneComment[]
   isAuthenticated: boolean
@@ -34,6 +36,8 @@ function formatCommentTimestamp(createdAt: string | null) {
 export function SceneCommentsPanel({
   actionError,
   composerInitial,
+  composerAvatarGradientStart,
+  composerAvatarGradientEnd,
   composerPrompt,
   comments,
   isAuthenticated,
@@ -106,7 +110,7 @@ export function SceneCommentsPanel({
         key={comment.commentId}
         className={`mage-comment${isReply ? ' mage-comment--reply' : ''}`}
       >
-        <UserAvatar className="mage-comment__avatar" initials={readInitial(comment.authorDisplayName)} />
+        <UserAvatar className="mage-comment__avatar" initials={readInitial(comment.authorDisplayName)} gradientStart={comment.authorAvatarGradientStart} gradientEnd={comment.authorAvatarGradientEnd} />
         <div className="mage-comment__body">
           <div className="scene-detail-comment__header">
             <strong>{comment.authorDisplayName}</strong>
@@ -238,7 +242,7 @@ export function SceneCommentsPanel({
       </div>
 
       <div className="scene-detail-comment-composer">
-        <UserAvatar className="scene-detail-comment-composer__avatar" initials={composerInitial} />
+        <UserAvatar className="scene-detail-comment-composer__avatar" initials={composerInitial} gradientStart={composerAvatarGradientStart} gradientEnd={composerAvatarGradientEnd} />
         {isAuthenticated ? (
           <form className="scene-detail-comment-form" onSubmit={handleSubmitComment}>
             <textarea

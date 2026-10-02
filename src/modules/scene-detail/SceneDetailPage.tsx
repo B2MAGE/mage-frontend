@@ -398,6 +398,8 @@ export function SceneDetailPage() {
     user?.displayName,
     user?.handle,
     user?.userId,
+    user?.avatarGradientStart,
+    user?.avatarGradientEnd,
   )
   const engagement = buildSceneEngagement(loadedScene)
   const sceneDescription = buildSceneDescription(loadedScene)
@@ -608,7 +610,7 @@ export function SceneDetailPage() {
             <div className="scene-detail-social-row__creator">
               {creatorProfile.handle ? (
                 <Link className="mage-channel-card" to={`/@${creatorProfile.handle}`}>
-                  <UserAvatar className="mage-channel-card__avatar" initials={readInitial(creatorProfile.displayName)} />
+                  <UserAvatar className="mage-channel-card__avatar" initials={readInitial(creatorProfile.displayName)} gradientStart={creatorProfile.avatarGradientStart} gradientEnd={creatorProfile.avatarGradientEnd} />
                   <div className="mage-channel-card__copy">
                     <strong>{creatorProfile.displayName}</strong>
                     <span>@{creatorProfile.handle}</span>
@@ -616,7 +618,7 @@ export function SceneDetailPage() {
                 </Link>
               ) : (
                 <div className="mage-channel-card">
-                <UserAvatar className="mage-channel-card__avatar" initials={readInitial(creatorProfile.displayName)} />
+                <UserAvatar className="mage-channel-card__avatar" initials={readInitial(creatorProfile.displayName)} gradientStart={creatorProfile.avatarGradientStart} gradientEnd={creatorProfile.avatarGradientEnd} />
                 <div className="mage-channel-card__copy">
                   <strong>{creatorProfile.displayName}</strong>
                 </div>
@@ -696,6 +698,8 @@ export function SceneDetailPage() {
             actionError={commentActionError}
             comments={comments}
             composerInitial={composerInitial}
+            composerAvatarGradientStart={user?.avatarGradientStart}
+            composerAvatarGradientEnd={user?.avatarGradientEnd}
             composerPrompt={composerPrompt}
             isAuthenticated={isAuthenticated}
             isLoading={isCommentsLoading}

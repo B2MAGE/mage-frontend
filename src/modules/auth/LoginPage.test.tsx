@@ -100,6 +100,8 @@ describe('LoginPage', () => {
           displayName: 'Existing User',
           handle: 'existing_user',
           description: 'Layered audio-reactive experiments.',
+          avatarGradientStart: '#AE3456',
+          avatarGradientEnd: '#1834AF',
           authProvider: 'LOCAL',
           accessToken: 'issued-login-token',
         }),
@@ -121,6 +123,8 @@ describe('LoginPage', () => {
       expect.objectContaining({
         handle: 'existing_user',
         description: 'Layered audio-reactive experiments.',
+        avatarGradientStart: '#ae3456',
+        avatarGradientEnd: '#1834af',
       }),
     )
   })

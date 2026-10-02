@@ -41,6 +41,8 @@ export function buildCreatorProfile(
   viewerDisplayName: string | undefined,
   viewerHandle: string | undefined,
   viewerUserId: number | null | undefined,
+  viewerAvatarGradientStart?: string | null,
+  viewerAvatarGradientEnd?: string | null,
 ): CreatorProfile {
   const viewerOwnsScene = viewerUserId !== null && viewerUserId !== undefined && viewerUserId === scene.ownerUserId
   const resolvedDisplayName =
@@ -49,5 +51,7 @@ export function buildCreatorProfile(
   return {
     displayName: resolvedDisplayName,
     handle: scene.creatorHandle?.trim() || (viewerOwnsScene ? viewerHandle?.trim() : null) || null,
+    avatarGradientStart: scene.creatorAvatarGradientStart ?? (viewerOwnsScene ? viewerAvatarGradientStart : undefined),
+    avatarGradientEnd: scene.creatorAvatarGradientEnd ?? (viewerOwnsScene ? viewerAvatarGradientEnd : undefined),
   }
 }

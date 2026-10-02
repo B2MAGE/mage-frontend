@@ -10,6 +10,7 @@ import { loginWithCredentials } from './client'
 import { useAuth } from './authContext'
 import { AuthFormLoadingState } from './AuthLoadingState'
 import type { AuthenticatedUser } from './types'
+import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 
 type LoginFormValues = {
   email: string
@@ -26,6 +27,8 @@ type LoginResponse = {
   displayName?: string
   handle?: string
   description?: string | null
+  avatarGradientStart?: string | null
+  avatarGradientEnd?: string | null
   authProvider?: string
   accessToken?: string
 }
@@ -174,6 +177,8 @@ export function LoginPage() {
         displayName: payload?.displayName ?? payload?.email ?? trimmedValues.email,
         handle: payload?.handle,
         description: payload?.description,
+        avatarGradientStart: normalizeAvatarColor(payload?.avatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
+        avatarGradientEnd: normalizeAvatarColor(payload?.avatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end),
         authProvider: payload?.authProvider ?? 'LOCAL',
       }
 

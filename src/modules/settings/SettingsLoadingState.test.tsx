@@ -16,6 +16,8 @@ describe('SettingsLoadingState', () => {
     expect(container.querySelectorAll('.settings-loading__nav-line')).toHaveLength(3)
     expect(container.querySelectorAll('.settings-loading__theme-card')).toHaveLength(2)
     expect(container.querySelectorAll('.settings-loading__field-input')).toHaveLength(9)
+    expect(container.querySelectorAll('.settings-loading__gradient')).toHaveLength(1)
+    expect(container.querySelector('.settings-loading__identity')?.nextElementSibling).toHaveClass('settings-loading__gradient', 'skeleton--block')
     expect(container.querySelector('.settings-loading__security-note')).toBeInTheDocument()
   })
 

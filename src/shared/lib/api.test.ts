@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildApiUrl, fetchTags } from './api'
+import { buildApiUrl, fetchTags, normalizeSceneListItem } from './api'
 
 describe('buildApiUrl', () => {
   afterEach(() => {
@@ -31,6 +31,30 @@ describe('buildApiUrl', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://mage.example.com/api')
 
     expect(buildApiUrl('/scenes/12')).toBe('https://mage.example.com/api/scenes/12')
+  })
+})
+
+describe('scene avatar colors', () => {
+  const scene = {
+    sceneId: 1, ownerUserId: 8, creatorDisplayName: 'Scene Artist',
+    name: 'Test scene', createdAt: '2026-09-30T00:00:00Z',
+  }
+
+  it('preserves the scene owner colors instead of applying visitor colors', () => {
+    expect(normalizeSceneListItem({
+      ...scene,
+      creatorAvatarGradientStart: '#AB1234',
+      creatorAvatarGradientEnd: '#9876EF',
+    })).toMatchObject({
+      creatorAvatarGradientStart: '#ab1234',
+      creatorAvatarGradientEnd: '#9876ef',
+    })
+  })
+
+  it('safely defaults malformed colors without rejecting the scene', () => {
+    expect(normalizeSceneListItem({
+      ...scene, creatorAvatarGradientStart: 'red', creatorAvatarGradientEnd: null,
+    })).toMatchObject({ creatorAvatarGradientStart: '#5c51ba', creatorAvatarGradientEnd: '#264a48' })
   })
 })
 

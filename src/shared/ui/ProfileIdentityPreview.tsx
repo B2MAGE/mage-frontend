@@ -6,12 +6,16 @@ type ProfileIdentityPreviewProps = {
   className?: string
   displayName: string
   handle: string
+  gradientStart?: string | null
+  gradientEnd?: string | null
 }
 
 export function ProfileIdentityPreview({
   className,
   displayName,
   handle,
+  gradientStart,
+  gradientEnd,
 }: ProfileIdentityPreviewProps) {
   const previewDisplayName = displayName.trim() || 'Display name'
   const handleName = handle.trim().replace(/^@+/, '')
@@ -21,7 +25,7 @@ export function ProfileIdentityPreview({
 
   return (
     <div className={joinClassNames('profile-identity-preview', className)} role="group" aria-label="Profile preview">
-      <UserAvatar className="profile-identity-preview__avatar" initials={previewInitials} />
+      <UserAvatar className="profile-identity-preview__avatar" initials={previewInitials} gradientStart={gradientStart} gradientEnd={gradientEnd} />
       <div className="profile-identity-preview__copy">
         <strong>{previewDisplayName}</strong>
         <span>{previewHandle}</span>

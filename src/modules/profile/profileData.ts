@@ -1,4 +1,5 @@
 import type { AuthenticatedFetch } from '@auth'
+import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 import {
   buildApiUrl,
   normalizeSceneList,
@@ -12,6 +13,8 @@ type PublicProfileResponse = {
   displayName: string
   handle: string
   description: string | null
+  avatarGradientStart?: string | null
+  avatarGradientEnd?: string | null
   createdAt: string
   scenes: SceneListResponse[]
 }
@@ -89,6 +92,12 @@ function normalizePublicProfile(payload: unknown): PublicProfileResponse | null 
     userId: payload.userId,
     displayName: payload.displayName.trim(),
     handle,
+    ...(payload.avatarGradientStart !== undefined ? {
+      avatarGradientStart: normalizeAvatarColor(payload.avatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
+    } : {}),
+    ...(payload.avatarGradientEnd !== undefined ? {
+      avatarGradientEnd: normalizeAvatarColor(payload.avatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end),
+    } : {}),
     description:
       typeof payload.description === 'string' && payload.description.trim()
         ? payload.description.trim()
