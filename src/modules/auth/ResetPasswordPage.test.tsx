@@ -25,7 +25,7 @@ describe('ResetPasswordPage', () => {
   it('renders a missing-token error when the link has no token', () => {
     renderResetPasswordPage('/reset-password')
 
-    expect(screen.getByRole('heading', { name: /reset password/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /reset link unavailable/i })).toBeInTheDocument()
     expect(
       screen.getByText('Password reset link is missing or invalid. Request a new reset link.'),
     ).toBeInTheDocument()

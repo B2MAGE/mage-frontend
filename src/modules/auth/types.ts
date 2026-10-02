@@ -4,6 +4,8 @@ export type AuthenticatedUser = {
   firstName?: string
   lastName?: string
   displayName: string
+  handle?: string
+  description?: string | null
   authProvider: string
   createdAt?: string
 }

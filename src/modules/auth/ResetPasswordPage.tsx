@@ -1,7 +1,9 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { AuthPage, AuthPageHeader, FormNotice, TextInputField } from '@shared/ui'
+import { AuthPage, AuthPageHeader, FormNotice, PendingButtonLabel } from '@shared/ui'
+import { AuthInput } from './AuthInput'
+import './auth.css'
 import { parseApiError } from '@shared/lib'
 import { confirmPasswordReset } from './client'
 import { useAuth } from './authContext'
@@ -123,69 +125,35 @@ export function ResetPasswordPage() {
 
   return (
     <AuthPage titleId={titleId}>
-      <AuthPageHeader
-        description="Choose a new password for your MAGE account."
-        eyebrow="Account Recovery"
-        title="Reset password"
-        titleId={titleId}
-      />
-
       {!token && !successMessage ? (
         <>
-          <FormNotice tone="error">
-            Password reset link is missing or invalid. Request a new reset link.
-          </FormNotice>
-          <p className="auth-footnote">
-            <Link className="secondary-link" to="/forgot-password">
-              Request a new reset link
-            </Link>
-          </p>
+          <AuthPageHeader description="This password reset link is missing, invalid, or no longer usable." eyebrow="Account Recovery" title="Reset link unavailable" titleId={titleId} />
+          <FormNotice tone="error">Password reset link is missing or invalid. Request a new reset link.</FormNotice>
+          <div className="auth-state-actions">
+            <Link className="auth-primary-link" to="/forgot-password">Request a new reset link</Link>
+            <Link className="auth-secondary-link" to="/login">Back to login</Link>
+          </div>
         </>
       ) : successMessage ? (
         <>
+          <AuthPageHeader description="Your password has been reset. You can now sign in with the new password." eyebrow="Account Recovery" title="You’re all set." titleId={titleId} />
           <FormNotice tone="note">{successMessage}</FormNotice>
-          <p className="auth-footnote">
-            <Link className="secondary-link" to="/login">
-              Back to login
-            </Link>
-          </p>
+          <div className="auth-state-actions"><Link className="auth-primary-link" to="/login">Back to login</Link></div>
         </>
       ) : (
-        <form className="auth-form" noValidate onSubmit={handleSubmit}>
-          <TextInputField
-            autoComplete="new-password"
-            error={errors.newPassword}
-            hint="Use 8 to 72 characters."
-            id="new-password"
-            label="New password"
-            name="newPassword"
-            onChange={(event) => handleChange('newPassword', event.target.value)}
-            required
-            type="password"
-            value={values.newPassword}
-          />
-          <TextInputField
-            autoComplete="new-password"
-            error={errors.confirmNewPassword}
-            id="confirm-new-password"
-            label="Verify new password"
-            name="confirmNewPassword"
-            onChange={(event) => handleChange('confirmNewPassword', event.target.value)}
-            required
-            type="password"
-            value={values.confirmNewPassword}
-          />
-
-          {errors.form ? (
-            <FormNotice id={formNoticeId} tone="error">
-              {errors.form}
-            </FormNotice>
-          ) : null}
-
-          <button className="demo-link auth-submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Resetting password...' : 'Update password'}
-          </button>
-        </form>
+        <>
+          <AuthPageHeader description="Choose a new password for your MAGE account." eyebrow="Account Recovery" title="Reset password" titleId={titleId} />
+          {errors.form ? <FormNotice id={formNoticeId} tone="error">{errors.form}</FormNotice> : null}
+          <form className="auth-form" noValidate onSubmit={handleSubmit}>
+            <AuthInput autoComplete="new-password" error={errors.newPassword} hint="Use 8 to 72 characters." id="new-password" label="New password" name="newPassword" placeholder="Enter new password" onChange={(event) => handleChange('newPassword', event.target.value)} required type="password" value={values.newPassword} />
+            <AuthInput autoComplete="new-password" error={errors.confirmNewPassword} id="confirm-new-password" label="Verify new password" name="confirmNewPassword" placeholder="Enter new password again" onChange={(event) => handleChange('confirmNewPassword', event.target.value)} required type="password" value={values.confirmNewPassword} />
+            <button aria-busy={isSubmitting} className="demo-link auth-submit" type="submit" disabled={isSubmitting}>
+              <PendingButtonLabel pending={isSubmitting} pendingLabel="Updating password...">
+                Update password
+              </PendingButtonLabel>
+            </button>
+          </form>
+        </>
       )}
     </AuthPage>
   )

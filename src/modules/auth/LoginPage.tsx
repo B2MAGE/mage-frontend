@@ -1,11 +1,14 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AuthPage, AuthPageHeader } from '@shared/ui'
+import { AuthPage, AuthPageHeader, PendingButtonLabel } from '@shared/ui'
 import { emailPattern, parseApiError } from '@shared/lib'
-import { FormNotice, TextInputField } from '@shared/ui'
+import { FormNotice } from '@shared/ui'
+import { AuthInput } from './AuthInput'
+import './auth.css'
 import { loginWithCredentials } from './client'
 import { useAuth } from './authContext'
+import { AuthFormLoadingState } from './AuthLoadingState'
 import type { AuthenticatedUser } from './types'
 
 type LoginFormValues = {
@@ -21,6 +24,8 @@ type LoginResponse = {
   firstName?: string
   lastName?: string
   displayName?: string
+  handle?: string
+  description?: string | null
   authProvider?: string
   accessToken?: string
 }
@@ -167,6 +172,8 @@ export function LoginPage() {
         firstName: payload?.firstName,
         lastName: payload?.lastName,
         displayName: payload?.displayName ?? payload?.email ?? trimmedValues.email,
+        handle: payload?.handle,
+        description: payload?.description,
         authProvider: payload?.authProvider ?? 'LOCAL',
       }
 
@@ -189,28 +196,29 @@ export function LoginPage() {
     return <Navigate replace to="/" />
   }
 
+  if (isRestoringSession && accessToken) {
+    return <AuthFormLoadingState label="Restoring your saved login" />
+  }
+
   return (
     <AuthPage titleId={titleId}>
-      {isRestoringSession && accessToken ? (
-        <div className="auth-state" role="status" aria-live="polite">
-          <AuthPageHeader
-            description="MAGE found a stored access token and is verifying it with the backend."
-            eyebrow="Restoring Session"
-            title="Checking your saved login."
-            titleId={titleId}
-          />
-        </div>
-      ) : (
-        <>
-          <AuthPageHeader
-            description="Enter your credentials to access your account."
-            eyebrow="Sign In"
-            title="Login"
-            titleId={titleId}
-          />
+      <AuthPageHeader
+        description="Enter your credentials to access your MAGE account."
+        eyebrow="Sign In"
+        title="Login"
+        titleId={titleId}
+      />
 
-          <form className="auth-form" noValidate onSubmit={handleSubmit}>
-            <TextInputField
+      {errors.form ? (
+        <FormNotice id={formNoticeId} tone="error">
+          {errors.form}
+        </FormNotice>
+      ) : null}
+
+      {registrationNotice ? <FormNotice tone="note">{registrationNotice}</FormNotice> : null}
+
+      <form className="auth-form" noValidate onSubmit={handleSubmit}>
+            <AuthInput
               autoComplete="email"
               error={errors.email}
               id="email"
@@ -222,10 +230,9 @@ export function LoginPage() {
               type="email"
               value={values.email}
             />
-            <TextInputField
+            <AuthInput
               autoComplete="current-password"
               error={errors.password}
-              hint="Use the same password you created during registration."
               id="password"
               label="Password"
               name="password"
@@ -236,40 +243,24 @@ export function LoginPage() {
               value={values.password}
             />
 
-            {errors.form ? (
-              <FormNotice id={formNoticeId} tone="error">
-                {errors.form}
-              </FormNotice>
-            ) : null}
+            <div className="auth-forgot-row">
+              <Link to="/forgot-password" state={{ loginEmail: values.email.trim() || undefined }}>Forgot password?</Link>
+            </div>
 
-            {registrationNotice ? <FormNotice tone="note">{registrationNotice}</FormNotice> : null}
-
-            <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
+            <button aria-busy={isSubmitting} className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
+              <PendingButtonLabel pending={isSubmitting} pendingLabel="Signing in...">
+                Sign in
+              </PendingButtonLabel>
             </button>
-          </form>
+      </form>
 
-          <p className="auth-footnote">
-            Forgot your password?{' '}
-            <Link
-              className="auth-link-button"
-              to="/forgot-password"
-              state={{
-                loginEmail: values.email.trim() || undefined,
-              }}
-            >
-              Reset it here
-            </Link>
-          </p>
-
-          <p className="auth-footnote">
-            Need an account?{' '}
-            <Link className="secondary-link" to="/register">
-              Create one here
-            </Link>
-          </p>
-        </>
-      )}
+      <div className="auth-divider" />
+      <p className="auth-footnote">
+        Need an account?{' '}
+        <Link className="secondary-link" to="/register">
+          Create one here
+        </Link>
+      </p>
     </AuthPage>
   )
 }

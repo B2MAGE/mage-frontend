@@ -13,6 +13,8 @@ const storedUser: AuthenticatedUser = {
   userId: 8,
   email: 'stored-user@example.com',
   displayName: 'Stored User',
+  handle: 'stored_user',
+  description: 'Stored profile description.',
   authProvider: 'LOCAL',
 }
 
@@ -20,6 +22,8 @@ const restoredUser: AuthenticatedUser = {
   userId: 8,
   email: 'restored-user@example.com',
   displayName: 'Restored User',
+  handle: 'restored_user',
+  description: 'Restored profile description.',
   authProvider: 'LOCAL',
   createdAt: '2026-03-31T18:10:00Z',
 }
@@ -41,6 +45,8 @@ function AuthHarness() {
       </div>
       <div data-testid="auth-user-email">{user?.email ?? 'none'}</div>
       <div data-testid="auth-user-display-name">{user?.displayName ?? 'none'}</div>
+      <div data-testid="auth-user-handle">{user?.handle ?? 'none'}</div>
+      <div data-testid="auth-user-description">{user?.description ?? 'none'}</div>
       <button type="button" onClick={logout}>
         Log out
       </button>
@@ -131,6 +137,10 @@ describe('AuthProvider', () => {
     expect(bootstrapHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
     expect(await screen.findByText('restored-user@example.com')).toBeInTheDocument()
     expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated')
+    expect(screen.getByTestId('auth-user-handle')).toHaveTextContent('restored_user')
+    expect(screen.getByTestId('auth-user-description')).toHaveTextContent(
+      'Restored profile description.',
+    )
   })
 
   it('clears invalid stored tokens when bootstrap receives a 401', async () => {

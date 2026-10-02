@@ -46,6 +46,16 @@ function readStoredUser(value: unknown): AuthenticatedUser | null {
     firstName: typeof value.firstName === 'string' ? value.firstName : derivedNames.firstName,
     lastName: typeof value.lastName === 'string' ? value.lastName : derivedNames.lastName,
     displayName,
+    handle:
+      typeof value.handle === 'string' && value.handle.trim()
+        ? value.handle.trim().replace(/^@/, '').toLowerCase()
+        : undefined,
+    description:
+      typeof value.description === 'string'
+        ? value.description
+        : value.description === null
+          ? null
+          : undefined,
     authProvider: typeof value.authProvider === 'string' ? value.authProvider : 'LOCAL',
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
   }
