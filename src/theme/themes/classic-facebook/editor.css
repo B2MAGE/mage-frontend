@@ -206,8 +206,6 @@ html[data-theme='classic-facebook'] .scene-textarea--code {
 :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-confirm-submit:not(:disabled):hover { background: #2d4373; border-color: #20365e; color: #fff; box-shadow: none; }
 :root[data-theme='classic-facebook'] .scene-editor-page :is(.scene-editor-thumbnail__frame,.scene-editor-loading__input,.scene-editor-loading__textarea) { border-radius: 2px; }
 :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-thumbnail__frame { background: #eef2f7; }
-:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-thumbnail__placeholder::before { border-radius: 50%; }
-:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-thumbnail__placeholder::after { border-radius: 50%; }
 @media (max-width: 700px) {
   :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-main { padding: 20px 16px; }
   :root[data-theme='classic-facebook'] .scene-editor-page .auth-title { font-size: 28px; }
