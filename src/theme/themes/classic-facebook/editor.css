@@ -196,7 +196,6 @@ html[data-theme='classic-facebook'] .scene-textarea--code {
 :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-layout { border-radius: 4px; box-shadow: 0 1px 3px rgba(29,42,68,.1); }
 :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-section__header h2 { font-size: 23px; letter-spacing: -.02em; }
 :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-main { padding: 22px 24px; }
-:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-beat-preview .effect-card-group { border-radius: 0; }
 :root[data-theme='classic-facebook'] .scene-editor-page :is(.scene-editor-stepper__button,.scene-editor-stepper__number,.scene-field__shell,.scene-slider,.scene-toggle:not(.scene-toggle--compact),.effect-card,.scene-confirm-section,.scene-pass-order__item,.scene-editor-thumbnail,.scene-tag-dropdown__panel,.scene-tag-dropdown__option,.scene-color-field) { border-radius: 3px; }
 :root[data-theme='classic-facebook'] .scene-editor-page :is(.scene-secondary-button,.scene-order-button,.scene-editor-collapsible__toggle,.scene-editor-preview__collapse) { border-radius: 2px; transform: none; }
 :root[data-theme='classic-facebook'] .scene-editor-page input:where(:not([type='range']):not([type='checkbox']):not([type='color'])),

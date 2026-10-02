@@ -11,10 +11,12 @@ type SectionProps = PropsWithChildren<{
 
 type SelectFieldProps = {
   description?: string
+  fieldClassName?: string
   id: string
   label: string
   onChange: (value: string) => void
   options: Array<{
+    disabled?: boolean
     label: string
     value: string
   }>
@@ -36,6 +38,14 @@ type NumberFieldProps = {
 type SliderFieldProps = NumberFieldProps & {
   formatValue?: (value: number) => string
   numericLabel?: string
+  numericStep?: number | 'any'
+  rangeScale?: {
+    min: number
+    max: number
+    step: number
+    toRange: (value: number) => number
+    fromRange: (value: number) => number
+  }
 }
 
 type ToggleFieldProps = {
@@ -112,6 +122,7 @@ export function SceneSection({ children, className, description, title }: Sectio
 
 export function SelectField({
   description,
+  fieldClassName,
   id,
   label,
   onChange,
@@ -119,7 +130,7 @@ export function SelectField({
   value,
 }: SelectFieldProps) {
   return (
-    <EditorFieldShell description={description} htmlFor={id} label={label}>
+    <EditorFieldShell description={description} fieldClassName={fieldClassName} htmlFor={id} label={label}>
       <select
         className="mage-select"
         id={id}
@@ -127,7 +138,7 @@ export function SelectField({
         onChange={(event) => onChange(event.currentTarget.value)}
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option disabled={option.disabled} key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
@@ -172,7 +183,9 @@ export function SliderField({
   max,
   min,
   numericLabel = 'Numeric value',
+  numericStep,
   onChange,
+  rangeScale,
   step = 0.01,
   value,
 }: SliderFieldProps) {
@@ -184,14 +197,15 @@ export function SliderField({
       valueLabel={formatSliderValue(value, formatValue)}
     >
       <input
+        aria-valuetext={rangeScale ? String(value) : undefined}
         className="scene-slider__range"
         id={id}
-        max={max}
-        min={min}
-        onChange={(event) => forwardNumericValue(event, onChange)}
-        step={step}
+        max={rangeScale?.max ?? max}
+        min={rangeScale?.min ?? min}
+        onChange={(event) => forwardNumericValue(event, (next) => onChange(rangeScale ? rangeScale.fromRange(next) : next))}
+        step={rangeScale?.step ?? step}
         type="range"
-        value={value}
+        value={rangeScale ? rangeScale.toRange(value) : value}
       />
       <input
         aria-label={numericLabel}
@@ -199,7 +213,13 @@ export function SliderField({
         max={max}
         min={min}
         onChange={(event) => forwardNumericValue(event, onChange)}
-        step={step}
+        onKeyDown={numericStep === 'any' ? (event) => {
+          if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+          event.preventDefault()
+          const next = Number((value + (event.key === 'ArrowUp' ? step : -step)).toPrecision(15))
+          onChange(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, next)))
+        } : undefined}
+        step={numericStep ?? step}
         type="number"
         value={Number.isFinite(value) ? value : ''}
       />

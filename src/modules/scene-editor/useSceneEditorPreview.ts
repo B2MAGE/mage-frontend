@@ -3,25 +3,14 @@ import { getSceneEditorModel, TONE_MAPPING_OPTIONS, type SceneData } from './sce
 import { buildEffectiveSceneData, buildShaderOptions, buildToneMappingOptions } from './utils'
 
 type UseSceneEditorPreviewArgs = {
-  isCameraAdvancedEnabled: boolean
-  isMotionAdvancedEnabled: boolean
   sceneData: SceneData
 }
 
 export function useSceneEditorPreview({
-  isCameraAdvancedEnabled,
-  isMotionAdvancedEnabled,
   sceneData,
 }: UseSceneEditorPreviewArgs) {
   const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData])
-  const previewSceneData = useMemo(
-    () =>
-      buildEffectiveSceneData(sceneData, {
-        isCameraAdvancedEnabled,
-        isMotionAdvancedEnabled,
-      }),
-    [sceneData, isCameraAdvancedEnabled, isMotionAdvancedEnabled],
-  )
+  const previewSceneData = useMemo(() => buildEffectiveSceneData(sceneData), [sceneData])
   const shaderSelection = useMemo(
     () => buildShaderOptions(sceneModel.visualizer.shader),
     [sceneModel.visualizer.shader],

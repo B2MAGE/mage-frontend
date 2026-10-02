@@ -1,7 +1,6 @@
 import { fetchAvailableTags, type TagResponse } from '@shared/lib'
 import {
   getSceneEditorModel,
-  mergeSceneEditorBranch,
   parseSceneDataJson,
   prettyPrintSceneData,
   sanitizeSceneData,
@@ -10,7 +9,7 @@ import {
   type SceneData,
   type ScenePassId,
 } from './sceneEditor'
-import { ALLOWED_THUMBNAIL_CONTENT_TYPES, MAX_THUMBNAIL_BYTES, initialSceneModel, passFlagsById } from './fixtures'
+import { ALLOWED_THUMBNAIL_CONTENT_TYPES, MAX_THUMBNAIL_BYTES, passFlagsById } from './fixtures'
 import type { CreateSceneFormErrors } from './types'
 
 const CAPTURED_THUMBNAIL_CONTENT_TYPE = 'image/png'
@@ -183,41 +182,13 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
   })
 }
 
-export function buildEffectiveSceneData(
-  sceneData: SceneData,
-  options: {
-    isCameraAdvancedEnabled: boolean
-    isMotionAdvancedEnabled: boolean
-  },
-) {
-  let nextSceneData = { ...sanitizeSceneData(sceneData) }
-  // These retired app controls never own the authored shader source. Remove
-  // only their metadata when editing/saving; leave the scene itself untouched.
+export function buildEffectiveSceneData(sceneData: SceneData) {
+  const nextSceneData = { ...sanitizeSceneData(sceneData) }
+  // Retired controls no longer own the authored shader. Preserve every saved
+  // setting independently of which editor disclosures are currently open.
   delete nextSceneData.reactions
   delete nextSceneData.mageTemplate
-
-  if (!options.isCameraAdvancedEnabled) {
-    nextSceneData = mergeSceneEditorBranch(nextSceneData, 'intent', {
-      ...getSceneEditorModel(nextSceneData).intent,
-      camOrientationMode: initialSceneModel.intent.camOrientationMode,
-      camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-    })
-  }
-
-  if (!options.isMotionAdvancedEnabled) {
-    nextSceneData = mergeSceneEditorBranch(
-      nextSceneData,
-      'state',
-      {
-        ...initialSceneModel.state,
-        // Switching response modes must preserve the classic setting and must
-        // not change unrelated playback identity during a live response edit.
-        volume_multiplier: getSceneEditorModel(nextSceneData).state.volume_multiplier,
-      },
-    )
-  }
-
-  return sanitizeSceneData(nextSceneData)
+  return nextSceneData
 }
 
 export function getVisiblePassOrder(passOrder: readonly ScenePassId[]) {

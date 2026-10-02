@@ -9,7 +9,7 @@ import {
   type SceneEditorModel,
   type ScenePassId,
 } from './sceneEditor'
-import { initialSceneData, initialSceneModel } from './fixtures'
+import { initialSceneData } from './fixtures'
 import type {
   CreateSceneFormErrors,
   EditorSectionId,
@@ -63,13 +63,6 @@ export function useSceneEditorState({
   const [errors, setErrors] = useState<CreateSceneFormErrors>({})
   const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false)
   const [isMotionAdvancedEnabled, setIsMotionAdvancedEnabled] = useState(false)
-  const [cameraAdvancedDraft, setCameraAdvancedDraft] = useState(() => ({
-    camOrientationMode: initialSceneModel.intent.camOrientationMode,
-    camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-  }))
-  const [motionRuntimeDraft, setMotionRuntimeDraft] = useState(
-    () => initialSceneModel.state,
-  )
   const [isConfirmJsonOpen, setIsConfirmJsonOpen] = useState(false)
   const [pendingTagAttachment, setPendingTagAttachment] =
     useState<PendingTagAttachment | null>(null)
@@ -139,10 +132,7 @@ export function useSceneEditorState({
   })
 
   function applySceneData(nextSceneData: SceneData) {
-    const sanitizedSceneData = buildEffectiveSceneData(nextSceneData, {
-      isCameraAdvancedEnabled,
-      isMotionAdvancedEnabled,
-    })
+    const sanitizedSceneData = buildEffectiveSceneData(nextSceneData)
     setSceneData(sanitizedSceneData)
     setSceneDataText(prettyPrintEditorSceneData(sanitizedSceneData))
     clearErrors('sceneData', 'form')
@@ -172,28 +162,7 @@ export function useSceneEditorState({
   const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(sceneData)) !== JSON.stringify(musicResponseDefaults)
 
   function handleCameraAdvancedToggle(nextValue: boolean) {
-    const sceneModel = getSceneEditorModel(sceneData)
-
-    if (nextValue) {
-      setIsCameraAdvancedEnabled(true)
-      updateBranch('intent', (currentIntent) => ({
-        ...currentIntent,
-        camOrientationMode: cameraAdvancedDraft.camOrientationMode,
-        camOrientationSpeed: cameraAdvancedDraft.camOrientationSpeed,
-      }))
-      return
-    }
-
-    setCameraAdvancedDraft({
-      camOrientationMode: sceneModel.intent.camOrientationMode,
-      camOrientationSpeed: sceneModel.intent.camOrientationSpeed,
-    })
-    setIsCameraAdvancedEnabled(false)
-    updateBranch('intent', (currentIntent) => ({
-      ...currentIntent,
-      camOrientationMode: initialSceneModel.intent.camOrientationMode,
-      camOrientationSpeed: initialSceneModel.intent.camOrientationSpeed,
-    }))
+    setIsCameraAdvancedEnabled(nextValue)
   }
 
   function handleShaderSelection(shaderId: string) {
@@ -207,27 +176,7 @@ export function useSceneEditorState({
   }
 
   function handleMotionAdvancedToggle(nextValue: boolean) {
-    const sceneModel = getSceneEditorModel(sceneData)
-
-    if (nextValue) {
-      setIsMotionAdvancedEnabled(true)
-      updateBranch('state', () => ({
-        ...motionRuntimeDraft,
-        ...((sceneData.audioResponse === 'transient-v1' || sceneData.audioResponse === 'mapped-v1')
-          ? { volume_multiplier: sceneModel.state.volume_multiplier }
-          : {}),
-      }))
-      return
-    }
-
-    setMotionRuntimeDraft(sceneModel.state)
-    setIsMotionAdvancedEnabled(false)
-    updateBranch('state', () => ({
-      ...initialSceneModel.state,
-      ...((sceneData.audioResponse === 'transient-v1' || sceneData.audioResponse === 'mapped-v1')
-        ? { volume_multiplier: sceneModel.state.volume_multiplier }
-        : {}),
-    }))
+    setIsMotionAdvancedEnabled(nextValue)
   }
 
   function handleNameChange(nextValue: string) {
@@ -251,10 +200,7 @@ export function useSceneEditorState({
 
     try {
       setSceneData(
-        buildEffectiveSceneData(parseSceneDataJson(nextValue), {
-          isCameraAdvancedEnabled,
-          isMotionAdvancedEnabled,
-        }),
+        buildEffectiveSceneData(parseSceneDataJson(nextValue)),
       )
     } catch {
       return

@@ -108,8 +108,6 @@ export function useSceneEditorSubmission({
   availableTags,
   captureThumbnailIfMissing,
   description,
-  isCameraAdvancedEnabled,
-  isMotionAdvancedEnabled,
   mode,
   name,
   onComplete,
@@ -149,13 +147,7 @@ export function useSceneEditorSubmission({
         return
       }
 
-      const sanitizedSceneData = buildEffectiveSceneData(
-        parsedSceneData ?? sceneData,
-        {
-          isCameraAdvancedEnabled,
-          isMotionAdvancedEnabled,
-        },
-      )
+      const sanitizedSceneData = buildEffectiveSceneData(parsedSceneData ?? sceneData)
 
       setIsSubmitting(true)
       setErrors({})
@@ -280,13 +272,7 @@ export function useSceneEditorSubmission({
       }
     }
 
-    const sanitizedSceneData = buildEffectiveSceneData(
-      parsedSceneData ?? sceneData,
-      {
-        isCameraAdvancedEnabled,
-        isMotionAdvancedEnabled,
-      },
-    )
+    const sanitizedSceneData = buildEffectiveSceneData(parsedSceneData ?? sceneData)
 
     setIsSubmitting(true)
     setErrors({})

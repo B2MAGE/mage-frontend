@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
+import { createDefaultSceneData, getSceneEditorModel } from './sceneEditor'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -41,7 +42,7 @@ vi.mock('@modules/player', async (importOriginal) => {
       }, [onCaptureFramePreviewChange, sceneBlob])
 
       return (
-        <div data-playback={initialPlayback} data-testid="mage-player">
+        <div data-playback={initialPlayback} data-scene={JSON.stringify(sceneBlob)} data-testid="mage-player">
           {sceneBlob ? 'preview-ready' : 'no-preview'}
         </div>
       )
@@ -59,6 +60,66 @@ afterEach(() => {
 })
 
 describe('EditScenePage workflow', () => {
+  it.each(['legacy', 'transient-v1', 'mapped-v1'] as const)(
+    'keeps hidden advanced values when opening, closing, and saving a %s scene',
+    async (audioResponse) => {
+      storeSceneEditorSession()
+      const initial = createDefaultSceneData()
+      const model = getSceneEditorModel(initial)
+      const sceneData = {
+        ...initial,
+        audioResponse,
+        intent: { ...model.intent, camOrientationMode: 1, camOrientationSpeed: 0.7, autoRotate: false },
+        state: { ...model.state, size: 0.3, pointerDown: 0.2, currPointerDown: 0.4, currAudio: 0.6, time: 12, volume_multiplier: 0.8 },
+      }
+      const scene = buildSceneEditorApiScene({ sceneData })
+      let submitted: Record<string, unknown> | null = null
+      mockCreateScenePageFetch((input, init) => {
+        const method = String(init?.method ?? 'GET').toUpperCase()
+        if (input === buildApiUrl('/scenes/12') && method === 'GET') return jsonResponse(scene)
+        if (input === buildApiUrl('/scenes/12') && method === 'PUT') {
+          submitted = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+          return jsonResponse({ ...scene, ...submitted })
+        }
+        if (input === buildApiUrl('/scenes/12/tags') && method === 'PUT') return jsonResponse([])
+      })
+      const user = userEvent.setup()
+      renderEditScenePage()
+      await screen.findByRole('heading', { name: /edit your scene/i })
+      const previewScene = () => screen.getByTestId('mage-player').getAttribute('data-scene')
+      const originalPreview = previewScene()
+
+      await user.click(screen.getByRole('button', { name: 'Camera' }))
+      expect(screen.getByLabelText('Automatic orbit')).not.toBeChecked()
+      expect(screen.queryByLabelText('Orbit speed')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Show advanced camera controls' }))
+      expect(screen.getByLabelText('Camera Orientation Mode')).toHaveValue(1)
+      expect(screen.getByLabelText('Camera Orientation Speed')).toHaveValue(0.7)
+      expect(previewScene()).toBe(originalPreview)
+      await user.click(screen.getByRole('button', { name: 'Hide advanced camera controls' }))
+      expect(previewScene()).toBe(originalPreview)
+
+      await user.click(screen.getByRole('button', { name: 'Motion' }))
+      await user.click(screen.getByRole('button', { name: 'Show advanced animation controls' }))
+      expect(screen.getByLabelText('Starting animation time')).toHaveValue(12)
+      expect(previewScene()).toBe(originalPreview)
+      await user.click(screen.getByRole('button', { name: 'Hide advanced animation controls' }))
+      expect(previewScene()).toBe(originalPreview)
+      expect(screen.queryByLabelText('Starting animation time')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Confirm' }))
+      await user.click(screen.getByRole('button', { name: /update scene/i }))
+      await waitFor(() => expect(submitted).toMatchObject({
+        sceneData: {
+          audioResponse,
+          intent: { camOrientationMode: 1, camOrientationSpeed: 0.7, autoRotate: false },
+          state: sceneData.state,
+        },
+      }))
+      expect(await screen.findByText('My Scenes')).toBeInTheDocument()
+    },
+  )
+
   it('loads the saved scene and preserves its audio response while updating details, tags, and thumbnail', async () => {
     storeSceneEditorSession()
     mockCaptureFramePreview.mockResolvedValue('data:image/png;base64,dXBkYXRlZA==')

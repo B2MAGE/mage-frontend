@@ -89,35 +89,40 @@ describe('scene editor presets and beat preview', () => {
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
 
-    expect(screen.getByText(/this scene uses automatic beat detection and release/i)).toBeInTheDocument()
-    for (const name of ['Audio Gain', 'Audio Curve', 'Base Speed', 'Easing Speed']) {
+    expect(screen.getByText('This scene keeps its saved beat response until you choose a version.')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('transient-v1')
+    expect(screen.getByRole('option', { name: 'Saved beat response' })).toBeDisabled()
+    expect(screen.queryByRole('option', { name: 'Automatic beats' })).not.toBeInTheDocument()
+    expect(previewScene().audioResponse).toBe('transient-v1')
+    for (const name of ['Input gain', 'Peak emphasis', 'Resting response', 'Smoothing']) {
       expect(screen.queryByRole('slider', { name })).not.toBeInTheDocument()
     }
-    expect(screen.getByRole('spinbutton', { name: 'Time Multiplier' })).toBeEnabled()
-    expect(screen.getByRole('slider', { name: 'Pointer Release Hold' })).toBeEnabled()
-    expect(screen.getByRole('slider', { name: 'Rotation Speed' })).toBeEnabled()
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Time Multiplier' }), { target: { value: '0.6' } })
-    fireEvent.change(screen.getByRole('slider', { name: 'Pointer Release Hold' }), { target: { value: '0.3' } })
-    expect(getSceneEditorModel(previewScene()).intent).toMatchObject({ time_multiplier: 0.6, pointerDownMultiplier: 0.3 })
+    expect(screen.getByRole('spinbutton', { name: 'Animation speed' })).toBeEnabled()
+    expect(screen.queryByRole('slider', { name: 'Pointer Release Hold' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: 'Orbit speed' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed' }), { target: { value: '0.6' } })
 
-    await user.click(screen.getByRole('button', { name: 'Enable Advanced' }))
+    expect(getSceneEditorModel(previewScene()).intent).toMatchObject({ time_multiplier: 0.6, pointerDownMultiplier: getSceneEditorModel(defaults).intent.pointerDownMultiplier })
+
+    await user.click(screen.getByRole('button', { name: 'Show advanced animation controls' }))
     expect(screen.queryByRole('spinbutton', { name: 'Volume Multiplier' })).not.toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'Pointer Down' })).toBeEnabled()
+    expect(screen.queryByRole('spinbutton', { name: 'Pointer Down' })).not.toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Starting animation time' })).toBeEnabled()
     expect(getSceneEditorModel(previewScene()).state.volume_multiplier).toBe(0.27)
-    await user.click(screen.getByRole('button', { name: 'Disable Advanced' }))
+    await user.click(screen.getByRole('button', { name: 'Hide advanced animation controls' }))
     expect(getSceneEditorModel(previewScene()).state.volume_multiplier).toBe(0.27)
 
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(screen.getByText('Audio Response')).toBeInTheDocument()
     expect(screen.getByText('Beat detection')).toBeInTheDocument()
-    expect(screen.queryByText('Audio Gain')).not.toBeInTheDocument()
-    expect(screen.queryByText('Audio Curve')).not.toBeInTheDocument()
+    expect(screen.queryByText('Input gain')).not.toBeInTheDocument()
+    expect(screen.queryByText('Peak emphasis')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toBeDefined())
     expect(updated?.sceneData.audioResponse).toBe('transient-v1')
     expect(getSceneEditorModel(updated!.sceneData).intent).toMatchObject({
       minimizing_factor: 1.3, power_factor: 3.4, base_speed: 0.13, easing_speed: 0.44,
-      time_multiplier: 0.6, pointerDownMultiplier: 0.3,
+      time_multiplier: 0.6, pointerDownMultiplier: getSceneEditorModel(defaults).intent.pointerDownMultiplier,
     })
     expect(getSceneEditorModel(updated!.sceneData).state.volume_multiplier).toBe(0.27)
   })
@@ -139,11 +144,11 @@ describe('scene editor presets and beat preview', () => {
     expect(previewScene()).not.toHaveProperty('mageTemplate')
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expectRetiredControlsAbsent()
-    expect(screen.getByRole('slider', { name: 'Audio Gain' })).toBeEnabled()
+    expect(screen.getByRole('slider', { name: 'Input gain' })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: 'Simulate beat' })).toBeEnabled()
   })
 
-  it.each(['mage-pulse', 'classic-facebook'] as const)('keeps beat preview in Motion with an expandable tempo card in %s', async (theme) => {
+  it.each(['mage-pulse', 'classic-facebook'] as const)('keeps temporary beat tools in Motion and preserves their state across editor sections in %s', async (theme) => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const user = userEvent.setup()
@@ -155,9 +160,12 @@ describe('scene editor presets and beat preview', () => {
 
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     const toggle = screen.getByRole('checkbox', { name: 'Simulate beat' })
-    const card = toggle.closest('.effect-card-group')
+    const card = screen.getByRole('region', { name: 'Preview tools' })
     if (!(card instanceof HTMLElement)) throw new Error('Missing simulate beat effect card')
-    expect(within(card).getByRole('heading', { name: 'Simulate beat' })).toBeInTheDocument()
+    expect(within(card).getByRole('checkbox', { name: 'Simulate beat' })).toBe(toggle)
+    expect(card.closest('aside')).toBeNull()
+    expect(screen.getByRole('combobox', { name: 'Response mode' }).compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(card.compareDocumentPosition(screen.getByRole('button', { name: 'Reset music settings' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(toggle).not.toBeChecked()
     expect(within(card).queryByRole('slider', { name: 'Tempo' })).not.toBeInTheDocument()
 
@@ -185,6 +193,39 @@ describe('scene editor presets and beat preview', () => {
     expect(previewBeat()).toEqual({ enabled: false, bpm: 60 })
     expect(screen.queryByRole('slider', { name: 'Tempo' })).not.toBeInTheDocument()
     expect(screen.queryByRole('spinbutton', { name: 'Tempo numeric value' })).not.toBeInTheDocument()
+    expect(previewScene()).toEqual(before)
+  })
+
+  it('preserves inline animation and camera tuning across sections without an Advanced tab', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage('mage-pulse')
+    await user.click(screen.getByRole('button', { name: 'Motion' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed' }), { target: { value: '0.7' } })
+    fireEvent.change(screen.getByRole('slider', { name: 'Input gain' }), { target: { value: '1.2' } })
+    await user.click(screen.getByRole('button', { name: 'Show advanced animation controls' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Starting animation time' }), { target: { value: '12' } })
+    await user.click(screen.getByRole('button', { name: 'Camera' }))
+    await user.click(screen.getByRole('button', { name: 'Show advanced camera controls' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Camera Orientation Speed' }), { target: { value: '2.3' } })
+    const before = previewScene()
+    await user.click(screen.getByRole('button', { name: 'Hide advanced camera controls' }))
+    expect(previewScene()).toEqual(before)
+    expect(screen.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reset advanced settings' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+    const exported = JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value) as SceneData
+    const after = getSceneEditorModel(exported)
+    expect(after.state.time).toBe(12)
+    expect(after.intent.camOrientationSpeed).toBe(2.3)
+    expect(after.intent.time_multiplier).toBe(0.7)
+    expect(after.intent.minimizing_factor).toBe(1.2)
+    expect(previewScene()).toEqual(before)
+    await user.click(screen.getByRole('button', { name: 'Motion' }))
+    expect(screen.getByRole('spinbutton', { name: 'Starting animation time' })).toHaveValue(12)
+    await user.click(screen.getByRole('button', { name: 'Hide advanced animation controls' }))
     expect(previewScene()).toEqual(before)
   })
 
@@ -268,7 +309,7 @@ describe('scene editor presets and beat preview', () => {
       mageTemplate: Object.freeze({ id: 'old-template', version: 1 }),
       anotherPlugin: Object.freeze({ reactions: { pulse: 7 }, mageTemplate: 'unrelated' }),
     })
-    const normalized = buildEffectiveSceneData(original, { isCameraAdvancedEnabled: false, isMotionAdvancedEnabled: false })
+    const normalized = buildEffectiveSceneData(original)
     expect(getSceneEditorModel(normalized).visualizer.shader).toBe('sphere(0.71);')
     expect(normalized).not.toHaveProperty('reactions')
     expect(normalized).not.toHaveProperty('mageTemplate')
@@ -319,8 +360,8 @@ describe('scene editor presets and beat preview', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Shader' }), shaderOption('Tidal Lantern').id)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
-    expect(screen.queryByRole('slider', { name: 'Audio Gain' })).not.toBeInTheDocument()
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Time Multiplier' }), { target: { value: '0.75' } })
+    expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed' }), { target: { value: '0.75' } })
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
     const updatedConfig = { ...config, sensitivity: 2.1 }

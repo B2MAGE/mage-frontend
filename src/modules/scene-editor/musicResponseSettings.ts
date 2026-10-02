@@ -37,6 +37,9 @@ export function changeMusicResponseMode(scene: SceneData, mode: SceneAudioRespon
   const next = { ...scene, audioResponse: mode }
   if (mode !== 'mapped-v1' || Object.hasOwn(scene, 'audioResponseConfig')) return next
   const config = normalizeAudioResponseConfig(undefined).config
+  // Existing scenes use size for distortion as well as scale. Start new editor
+  // opt-ins gently without reinterpreting any explicitly saved mapping amounts.
+  config.mappings = config.mappings.map(mapping => mapping.target === 'size' ? { ...mapping, amount: 0.1 } : mapping)
   // A first opt-in starts with the movements the compiled scene can accept.
   // Explicit saved mappings remain intact when changing modes or shaders.
   if (supportedTargets) config.mappings = config.mappings.filter(mapping => supportedTargets.includes(mapping.target))

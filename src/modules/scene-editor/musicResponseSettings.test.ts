@@ -18,13 +18,26 @@ describe('creator music response settings', () => {
     expect(defaults).not.toHaveProperty('audioResponse')
     expect(defaults).not.toHaveProperty('audioResponseConfig')
     const mapped = changeMusicResponseMode(original, 'mapped-v1', ['size'])
-    expect(mapped.audioResponseConfig).toMatchObject({ mappings: [{ target: 'size', source: 'overall-hit' }] })
+    expect(mapped.audioResponseConfig).toMatchObject({ mappings: [{ target: 'size', source: 'overall-hit', amount: 0.1 }] })
     expect(normalizeAudioResponseConfig(mapped.audioResponseConfig).config.mappings).toHaveLength(1)
     const edited = changeMusicResponseConfig(mapped, authoredConfig)
     const classic = changeMusicResponseMode(edited, 'legacy')
     const automatic = changeMusicResponseMode(classic, 'transient-v1')
     expect(changeMusicResponseMode(automatic, 'mapped-v1', ['size']).audioResponseConfig).toEqual(authoredConfig)
     expect(original).toEqual(originalCopy)
+  })
+
+  it('starts size gently while retaining other input defaults and all explicitly saved amounts', () => {
+    const original = createDefaultSceneData()
+    const mapped = changeMusicResponseMode(original, 'mapped-v1', ['size', 'bass'])
+    expect(mapped.audioResponseConfig).toMatchObject({ mappings: [
+      { target: 'size', amount: 0.1 }, { target: 'bass', amount: 1 },
+    ] })
+    const saved = normalizeAudioResponseConfig({ version: 1, mappings: [
+      { target: 'size', source: 'overall-hit', amount: 1.23 },
+    ] }).config
+    expect(changeMusicResponseMode({ ...original, audioResponseConfig: saved }, 'mapped-v1').audioResponseConfig).toEqual(saved)
+    expect(normalizeAudioResponseConfig(undefined).config.mappings.find(mapping => mapping.target === 'size')?.amount).toBe(1)
   })
 
   it.each([undefined, 'legacy', 'transient-v1', 'mapped-v1'])('restores the opening %s settings and leaves other edits intact', mode => {
@@ -61,10 +74,9 @@ describe('creator music response settings', () => {
   it('does not change playback identity or discard classic volume when switching response modes', () => {
     const initial = createDefaultSceneData()
     initial.state = { ...getSceneEditorModel(initial).state, volume_multiplier: 0.27 }
-    const options = { isCameraAdvancedEnabled: false, isMotionAdvancedEnabled: false }
-    const baseline = buildEffectiveSceneData(initial, options)
+    const baseline = buildEffectiveSceneData(initial)
     for (const mode of ['mapped-v1', 'transient-v1', 'legacy'] as const) {
-      const changed = buildEffectiveSceneData(changeMusicResponseMode(baseline, mode, ['size']), options)
+      const changed = buildEffectiveSceneData(changeMusicResponseMode(baseline, mode, ['size']))
       expect(getSceneEditorModel(changed).state.volume_multiplier).toBe(0.27)
       expect(scenePlaybackIdentity(changed, 'editor')).toBe(scenePlaybackIdentity(baseline, 'editor'))
     }

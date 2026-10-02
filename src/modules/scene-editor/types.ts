@@ -40,8 +40,6 @@ export type EditorSectionConfig = {
 export type SceneEditorStateSnapshot = {
   availableTags: Array<{ tagId: number; name: string }>
   description: string
-  isCameraAdvancedEnabled: boolean
-  isMotionAdvancedEnabled: boolean
   name: string
   pendingTagAttachment: PendingTagAttachment | null
   sceneData: SceneData
