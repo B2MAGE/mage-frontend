@@ -129,6 +129,18 @@ The audio compatibility patch also clears accumulated playback progress when
 seeking while paused. Otherwise Three's previous progress was added to the new
 offset, making the actual resume position differ from the selected time.
 
+Toon uses a scene-texture post-processing shader with stepped luminance and
+pixel-sized outlines. The package's original implementation incorrectly rebuilt
+the pass from a numeric shader choice, and its initial mesh-material Toon shader
+could not process a rendered image. The corrected pass is reused across effect
+refreshes and its resolution follows canvas resizing and thumbnail rendering.
+
+Compact presets load/export `fx.passes.bleachBypass` and `fx.passes.toon`.
+Missing flags turn these effects off when loading legacy scenes, so a reused
+player never carries either effect into another scene. The editor exposes both
+with normal effect toggles. Copy stays hidden in the editor but existing raw
+pass-order entries are preserved for compatibility.
+
 The patch does not replace the adapter. The patch fixes published-package behavior the frontend depends on, while the adapter keeps the app-facing API stable and localizes engine-specific startup and runtime logic.
 
 If the engine package version changes:

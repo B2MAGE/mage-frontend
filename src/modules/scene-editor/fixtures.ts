@@ -53,6 +53,18 @@ const additionalPasses: AdditionalPassConfig[] = [
     description: 'Flatten the palette toward a luminance-driven look.',
   },
   {
+    category: 'color',
+    flag: 'bleachBypass',
+    passId: 'bleachBypassShader',
+    description: 'Create a desaturated, high-contrast film look.',
+  },
+  {
+    category: 'color',
+    flag: 'toon',
+    passId: 'toonShader',
+    description: 'Simplify the scene into bold, cartoon-like color bands.',
+  },
+  {
     category: 'pattern',
     flag: 'sobel',
     passId: 'sobelShader',
@@ -82,6 +94,7 @@ export const additionalPassesByCategory: Record<EffectCategoryId, AdditionalPass
 export const passFlagsById: Partial<Record<ScenePassId, PersistedPassFlag>> = {
   RGBShift: 'rgbShift',
   afterImagePass: 'afterImage',
+  bleachBypassShader: 'bleachBypass',
   colorifyShader: 'colorify',
   dotShader: 'dot',
   gammaCorrectionShader: 'gammaCorrection',
@@ -92,6 +105,7 @@ export const passFlagsById: Partial<Record<ScenePassId, PersistedPassFlag>> = {
   outputPass: 'outputPass',
   sobelShader: 'sobel',
   technicolorShader: 'technicolor',
+  toonShader: 'toon',
 }
 
 export const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set(['image/png'])

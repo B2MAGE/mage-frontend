@@ -42,6 +42,7 @@ import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types
 import {
   buildCapturedThumbnailFile,
   describePassState,
+  getVisiblePassOrder,
   validateThumbnailFile,
 } from "./utils";
 
@@ -152,6 +153,7 @@ export function SceneEditorShell({
     isMotionAdvancedEnabled,
     sceneData,
   });
+  const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
@@ -1329,7 +1331,7 @@ export function SceneEditorShell({
                 title="Pass Order"
               >
                 <ol className="scene-pass-order">
-                  {sceneModel.fx.passOrder.map((passId, index) => {
+                  {visiblePassOrder.map((passId, index) => {
                     const isOutputPass = passId === "outputPass";
 
                     return (
@@ -1363,7 +1365,7 @@ export function SceneEditorShell({
                             className="scene-order-button"
                             disabled={
                               isOutputPass ||
-                              index >= sceneModel.fx.passOrder.length - 2
+                              index >= visiblePassOrder.length - 2
                             }
                             onClick={() => movePass(passId, 1)}
                             type="button"
@@ -1520,7 +1522,7 @@ export function SceneEditorShell({
                         value={
                           <ConfirmSummaryPills
                             emptyLabel="No effect passes enabled"
-                            values={sceneModel.fx.passOrder
+                            values={visiblePassOrder
                               .filter(
                                 (passId) =>
                                   describePassState(passId, sceneModel) ===
