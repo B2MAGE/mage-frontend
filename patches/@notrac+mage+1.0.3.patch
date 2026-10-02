@@ -392,6 +392,211 @@ index 0000000..4716f19
 +		this._status = 'disposed';
 +	}
 +}
+diff --git a/node_modules/@notrac/mage/dist/audio-mapping.d.ts b/node_modules/@notrac/mage/dist/audio-mapping.d.ts
+new file mode 100644
+index 0000000..5f6b887
+--- /dev/null
++++ b/node_modules/@notrac/mage/dist/audio-mapping.d.ts
+@@ -0,0 +1,34 @@
++import type { AudioResponseConfig, AudioResponseTarget, NormalizedAudioResponseConfig } from './audio-response.js';
++import type { AudioAnalysisBand, AudioAnalysisFrame } from './audio-analysis.js';
++
++export type AudioResponseOutputs = Record<AudioResponseTarget, number>;
++export interface AudioResponseEvent {
++  id: number;
++  time: number;
++  band: AudioAnalysisBand;
++  strength: number;
++}
++export interface AudioResponseSnapshot {
++  outputs: AudioResponseOutputs;
++  events: AudioResponseEvent[];
++  lastTime: number | null;
++}
++export declare class AudioResponseMapper {
++  constructor(config?: unknown);
++  readonly config: AudioResponseConfig;
++  readonly warnings: string[];
++  setConfig(config: unknown): NormalizedAudioResponseConfig;
++  reset(): void;
++  process(frames: AudioAnalysisFrame[], now: number): AudioResponseOutputs;
++  getSnapshot(): AudioResponseSnapshot;
++  /** Returns copies of retained events after a consumer-owned cursor; reads do not consume events. */
++  getEvents(afterId?: number): AudioResponseEvent[];
++}
++export declare class SyntheticAudioFrames {
++  constructor(seed?: number, tempoScale?: number);
++  readonly seed: number;
++  readonly tempoScale: number;
++  configure(seed?: number, tempoScale?: number, now?: number): void;
++  reset(now?: number): void;
++  process(now: number): AudioAnalysisFrame[];
++}
+diff --git a/node_modules/@notrac/mage/dist/audio-mapping.js b/node_modules/@notrac/mage/dist/audio-mapping.js
+new file mode 100644
+index 0000000..7a9a5cb
+--- /dev/null
++++ b/node_modules/@notrac/mage/dist/audio-mapping.js
+@@ -0,0 +1,159 @@
++import { AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig } from './audio-response.js';
++
++const HOP = 0.01;
++const MAX_EVENTS = 512;
++const MAX_GAP = 1;
++const BANDS = ['bass', 'mid', 'treble', 'overall'];
++const emptyOutputs = () => Object.fromEntries(AUDIO_RESPONSE_TARGETS.map(target => [target, 0]));
++const emptyLevels = () => Object.fromEntries(BANDS.map(band => [band, 0]));
++const unit = value => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
++const copyEvent = event => ({ ...event });
++
++function follow(value, target, elapsed, attack, release) {
++	const duration = target > value ? attack : release;
++	return duration > 0 ? target + (value - target) * Math.exp(-elapsed / duration) : target;
++}
++
++/** A separate pulse for each hit, evaluated against audio time rather than render ticks. */
++function pulse(age, attack, release) {
++	if (age < 0) return 0;
++	if (attack > 0 && age < attack) return age / attack;
++	if (release === 0) return age - attack < HOP ? 1 : 0;
++	return Math.exp(-(age - attack) / release);
++}
++
++/** Maps sampled measurements to visual controls without advancing analysis from rendering. */
++export class AudioResponseMapper {
++	constructor(config) {
++		this.nextEventId = 1;
++		this.setConfig(config);
++	}
++	setConfig(value) {
++		const normalized = normalizeAudioResponseConfig(value);
++		this.config = normalized.config;
++		this.warnings = normalized.warnings;
++		this.eventLifetime = Math.max(2, ...this.config.mappings.map(mapping => mapping.attack + mapping.release * 8 + HOP));
++		this.reset();
++		return { config: structuredClone(this.config), warnings: [...this.warnings] };
++	}
++	reset() {
++		this.levelValues = emptyOutputs();
++		this.outputs = emptyOutputs();
++		this.levels = emptyLevels();
++		this.events = [];
++		this.lastTime = null;
++		this.lastNow = null;
++		this.lastSequence = null;
++	}
++	process(frames, now) {
++		if (!Number.isFinite(now)) return { ...this.outputs };
++		if (this.lastNow !== null && (now < this.lastNow || now - this.lastNow > MAX_GAP)) this.reset();
++		this.lastNow = now;
++		const ordered = Array.isArray(frames) ? frames.filter(frame => frame && Number.isFinite(frame.time)
++			&& frame.time <= now + 1e-7 && now - frame.time <= MAX_GAP).sort((left, right) => left.time - right.time || left.sequence - right.sequence) : [];
++		for (const frame of ordered) {
++			if (this.lastTime !== null && frame.time <= this.lastTime + 1e-9) continue;
++			if (this.lastSequence !== null && Number.isFinite(frame.sequence) && frame.sequence <= this.lastSequence) {
++				// A newer timestamp with a restarted sequence identifies a fresh analysis epoch.
++				this.reset();
++				this.lastNow = now;
++			}
++			const elapsed = this.lastTime === null ? HOP : frame.time - this.lastTime;
++			this.levels = Object.fromEntries(BANDS.map(band => [band, unit(frame.levels?.[band])]));
++			for (const mapping of this.config.mappings) {
++				if (!mapping.source.endsWith('-level')) continue;
++				const band = mapping.source.slice(0, -6);
++				this.levelValues[mapping.target] = follow(this.levelValues[mapping.target], this.levels[band], elapsed, mapping.attack, mapping.release);
++			}
++			for (const hit of Array.isArray(frame.hits) ? frame.hits : []) {
++				if (!hit || !BANDS.includes(hit.band) || !Number.isFinite(hit.time) || hit.time > frame.time + 1e-7 || now - hit.time > this.eventLifetime) continue;
++				const strength = unit(hit.strength);
++				if (strength > 0) this.events.push({ id: this.nextEventId++, time: hit.time, band: hit.band, strength });
++			}
++			this.lastTime = frame.time;
++			this.lastSequence = Number.isFinite(frame.sequence) ? frame.sequence : this.lastSequence;
++		}
++		if (this.lastTime !== null && now - this.lastTime > MAX_GAP) {
++			this.reset();
++			this.lastNow = now;
++			return { ...this.outputs };
++		}
++		this.events = this.events.filter(event => now - event.time <= this.eventLifetime).slice(-MAX_EVENTS);
++		const elapsed = this.lastTime === null ? 0 : Math.max(0, now - this.lastTime);
++		this.outputs = emptyOutputs();
++		for (const mapping of this.config.mappings) {
++			let value = 0;
++			if (mapping.source.endsWith('-level')) {
++				const band = mapping.source.slice(0, -6);
++				// Projection never mutates the sampled state: more render calls cannot change the envelope.
++				value = follow(this.levelValues[mapping.target], this.levels[band], elapsed, mapping.attack, mapping.release);
++			} else {
++				const band = mapping.source.slice(0, -4);
++				for (const event of this.events) if (event.band === band) value = Math.max(value, event.strength * pulse(now - event.time, mapping.attack, mapping.release));
++			}
++			this.outputs[mapping.target] = Math.max(0, Math.min(4, value * mapping.amount));
++		}
++		return { ...this.outputs };
++	}
++	getSnapshot() {
++		return { outputs: { ...this.outputs }, events: this.events.map(copyEvent), lastTime: this.lastTime };
++	}
++	getEvents(afterId = 0) {
++		const cursor = Number.isFinite(afterId) ? afterId : 0;
++		return this.events.filter(event => event.id > cursor).map(copyEvent);
++	}
++}
++
++/** Deterministic sample frames for silent preview, consumed by the same mapper as real audio. */
++export class SyntheticAudioFrames {
++	constructor(seed = 0, tempoScale = 1) {
++		this.configure(seed, tempoScale);
++	}
++	configure(seed = 0, tempoScale = 1, now) {
++		this.seed = Number.isFinite(seed) ? Math.trunc(seed) >>> 0 : 0;
++		this.tempoScale = Number.isFinite(tempoScale) && tempoScale > 0 ? Math.max(0.25, Math.min(2, tempoScale)) : 1;
++		this.reset(now);
++	}
++	reset(now) {
++		this.origin = Number.isFinite(now) ? now : null;
++		this.lastNow = this.origin;
++		this.sequence = 0;
++		this.lastBeat = -1;
++		this.lastOffbeat = -1;
++	}
++	process(now) {
++		if (!Number.isFinite(now)) return [];
++		if (this.lastNow === null || now < this.lastNow || now - this.lastNow > MAX_GAP) {
++			this.reset(now);
++			return [];
++		}
++		this.lastNow = now;
++		const count = Math.floor((now - this.origin + 1e-9) / HOP);
++		const frames = [];
++		const duration = 60 / ((96 + this.seed % 37) * this.tempoScale);
++		while (this.sequence < count) {
++			const sequence = ++this.sequence;
++			const elapsed = sequence * HOP;
++			const time = this.origin + elapsed;
++			const beatPosition = elapsed / duration;
++			const beat = Math.floor(beatPosition);
++			const offbeatPosition = beatPosition + 0.5;
++			const offbeat = Math.floor(offbeatPosition);
++			const accent = 0.8 + Math.sin((beat + this.seed * 0.01) * 2.399963229728653) ** 2 * 0.2;
++			const bass = Math.exp(-(beatPosition - beat) * 7.5) * accent;
++			const treble = Math.exp(-(offbeatPosition - offbeat) * 12) * 0.65;
++			const mid = (0.3 + Math.sin(elapsed * 2.17 + this.seed * 0.01) ** 2 * 0.3) * (0.7 + bass * 0.3);
++			const hits = [];
++			if (beat !== this.lastBeat) {
++				hits.push({ band: 'bass', time, strength: accent });
++				if (beat % 2 === 1) hits.push({ band: 'mid', time, strength: 0.65 });
++			}
++			if (offbeat !== this.lastOffbeat && sequence > 1) hits.push({ band: 'treble', time, strength: 0.65 });
++			if (hits.length) hits.push({ band: 'overall', time, strength: Math.max(...hits.map(hit => hit.strength)) });
++			this.lastBeat = beat;
++			this.lastOffbeat = offbeat;
++			frames.push({ sequence, time, levels: { bass, mid, treble, overall: Math.sqrt((bass ** 2 + mid ** 2 + treble ** 2) / 3) }, hits });
++		}
++		return frames;
++	}
++}
 diff --git a/node_modules/@notrac/mage/dist/audio-response.d.ts b/node_modules/@notrac/mage/dist/audio-response.d.ts
 new file mode 100644
 index 0000000..87afd73
@@ -501,16 +706,17 @@ index 0000000..0be1d5e
 +	return { config, warnings };
 +}
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.d.ts b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-index 7e71e8c..7fc67a7 100644
+index 7e71e8c..51b3af9 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.d.ts
 +++ b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-@@ -1,3 +1,5 @@
+@@ -1,3 +1,6 @@
++import type { AudioResponseEvent } from "./audio-mapping.js";
 +import type { AudioAnalysisSnapshot } from "./audio-analysis.js";
-+import type { AudioResponseConfig, AudioResponseMode } from "./audio-response.js";
++import type { AudioResponseConfig, AudioResponseMode, AudioResponseSignal, AudioResponseTarget } from "./audio-response.js";
  // Auto-generated by scripts/postbuild-types.cjs
  // This declaration intentionally exposes only the supported public API surface.
  /**
-@@ -7,6 +9,8 @@
+@@ -7,6 +10,8 @@
   * The MAGEPreset can be used in conjunction with the loadPreset and toPreset methods of the MAGEEngineAPI to save and restore engine states, enabling users to create a library of presets for different visual styles and effects.
   */
  export interface MAGEPreset {
@@ -519,7 +725,7 @@ index 7e71e8c..7fc67a7 100644
    // The structure of the preset is not defined here, as it is considered an opaque type.
    // It can be any serializable object that represents the state of the MAGE engine.
    [key: string]: any;
-@@ -223,6 +227,10 @@ export interface MAGEEngineAPI {
+@@ -223,6 +228,10 @@ export interface MAGEEngineAPI {
     * Returns the current playback time of the audio in seconds. If no audio is loaded, it returns 0.
     */
    getAudioTime(): number;
@@ -530,7 +736,7 @@ index 7e71e8c..7fc67a7 100644
    /**
     * Seeks to a specific time in the audio playback.
     * @param time 
-@@ -251,6 +259,23 @@ export interface MAGEEngineAPI {
+@@ -251,6 +260,34 @@ export interface MAGEEngineAPI {
     * (URL must support CORS so things like YouTube will not work). 
     */
    loadAudio(path?: string | URL): void;
@@ -551,10 +757,21 @@ index 7e71e8c..7fc67a7 100644
 +  getAudioResponseConfig(): AudioResponseConfig | null;
 +  /** Non-consuming snapshot of the audio-clock analysis. */
 +  getAudioAnalysis(): AudioAnalysisSnapshot;
++  getAudioResponseCapabilities(): {
++    mode: AudioResponseMode; signals: AudioResponseSignal[]; targets: AudioResponseTarget[];
++    supportedTargets: AudioResponseTarget[]; unsupportedTargets: AudioResponseTarget[]; warnings: string[];
++  };
++  /** Declared uniforms are routed independently, including event times in audioTime's clock. */
++  getAudioResponseOutputs(): Record<string, number>;
++  getAudioResponseEvents(afterId?: number): AudioResponseEvent[];
++  getAudioResponseDiagnostics(): {
++    mode: AudioResponseMode; config: AudioResponseConfig | null; analysis: AudioAnalysisSnapshot;
++    outputs: Record<string, number>; events: AudioResponseEvent[]; source: 'audio' | 'synthetic' | 'none';
++  };
    /**
     * Loads a MAGEPreset into the engine, applying all the settings and configurations contained in the preset to recreate the visual output. 
     * @param {MAGEPreset} preset - presetInput The preset to load into the engine.
-@@ -347,6 +372,8 @@ export interface MAGEEngineAPI {
+@@ -347,6 +384,8 @@ export interface MAGEEngineAPI {
  export interface MAGEConfig {
    /** The HTML canvas element to render the engine on. */
    canvas: HTMLCanvasElement;
@@ -564,16 +781,17 @@ index 7e71e8c..7fc67a7 100644
    log?: boolean;
    /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index ff1861a..91d38b1 100644
+index ff1861a..2336fc8 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
-@@ -1,3 +1,5 @@
+@@ -1,3 +1,6 @@
++import { AudioResponseMapper, SyntheticAudioFrames } from "./audio-mapping.js";
 +import { AudioAnalysisSession } from "./audio-analysis.js";
-+import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from "./audio-response.js";
++import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig, normalizeAudioResponseMode } from "./audio-response.js";
  //#region \0rolldown/runtime.js
  var __commonJSMin = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
  //#endregion
-@@ -72787,6 +72789,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72787,6 +72790,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				rotateX,
  				rotateY,
  				rotateZ,
@@ -581,7 +799,7 @@ index ff1861a..91d38b1 100644
  				mirrorX,
  				mirrorY,
  				mirrorZ,
-@@ -72818,6 +72821,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72818,6 +72822,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				extrude2D,
  				getSpherical,
  				mirrorN,
@@ -590,7 +808,7 @@ index ff1861a..91d38b1 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
-@@ -100048,7 +100053,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100048,7 +100054,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				if (!(_typeof(uniformsToUpdate) === "object")) throw "createSculpture takes, (source, uniformCallback, params) the uniformCallback must be a function that returns a dictionary of uniforms to update";
  				for (var _i = 0, _Object$entries = Object.entries(uniformsToUpdate); _i < _Object$entries.length; _i++) {
  					var _Object$entries$_i = _slicedToArray(_Object$entries[_i], 2), uniform = _Object$entries$_i[0], value = _Object$entries$_i[1];
@@ -599,7 +817,15 @@ index ff1861a..91d38b1 100644
  				}
  			};
  			return mesh;
-@@ -100503,7 +100508,7 @@ var MAGEVisualizer = class {
+@@ -100455,6 +100461,7 @@ var MAGEVisualizer = class {
+ 		const { state } = this.engine.getEngineFields();
+ 		this.mesh = (0, import_shader_park_core_umd.createSculptureWithGeometry)(new BoxGeometry(2e4, 2e4, 2e4), shaderCode, () => {
+ 			return {
++				...this.engine.getAudioResponseOutputs(),
+ 				time: state.time,
+ 				size: state.size,
+ 				pointerDown: state.pointerDown,
+@@ -100503,7 +100510,7 @@ var MAGEVisualizer = class {
  //#endregion
  //#region js/MAGEPreset.js
  var MAGEPreset = class MAGEPreset {
@@ -608,7 +834,7 @@ index ff1861a..91d38b1 100644
  		this.controls = controls;
  		this.settings = settings;
  		this.state = state;
-@@ -100511,6 +100516,8 @@ var MAGEPreset = class MAGEPreset {
+@@ -100511,6 +100518,8 @@ var MAGEPreset = class MAGEPreset {
  		this.fx = fx;
  		this.visualizer = visualizer;
  		this.audioPath = audioPath;
@@ -617,7 +843,7 @@ index ff1861a..91d38b1 100644
  	}
  	static from(input) {
  		if (!input) return null;
-@@ -100529,7 +100536,9 @@ var MAGEPreset = class MAGEPreset {
+@@ -100529,7 +100538,9 @@ var MAGEPreset = class MAGEPreset {
  			intent: data.intent ?? null,
  			fx: data.fx ?? null,
  			visualizer: data.visualizer ?? null,
@@ -628,7 +854,7 @@ index ff1861a..91d38b1 100644
  		});
  	}
  };
-@@ -103584,6 +103593,43 @@ var BleachBypassShader = {
+@@ -103584,6 +103595,43 @@ var BleachBypassShader = {
  };
  //#endregion
  //#region js/MAGEFx.js
@@ -672,7 +898,7 @@ index ff1861a..91d38b1 100644
  /**
  * Full-screen textured quad shader
  */
-@@ -103736,11 +103782,10 @@ var MAGEEffects = class {
+@@ -103736,11 +103784,10 @@ var MAGEEffects = class {
  		};
  		/** @type {any} */
  		this.toonShader = {
@@ -687,7 +913,7 @@ index ff1861a..91d38b1 100644
  			}
  		};
  		this.copyShader = {
-@@ -103958,7 +104003,7 @@ var MAGEEffects = class {
+@@ -103958,7 +104005,7 @@ var MAGEEffects = class {
  	}
  	applyPostProcessing(scene, renderer, camera, composer) {
  		this.bloom.update(renderer);
@@ -696,7 +922,7 @@ index ff1861a..91d38b1 100644
  		this.colorifyShader.update();
  		composer?.dispose();
  		const newComposer = new EffectComposer(renderer);
-@@ -107066,10 +107111,75 @@ var MAGE_VERSION = "1.0.3";
+@@ -107066,10 +107113,75 @@ var MAGE_VERSION = "1.0.3";
  * @property {EngineControlSettings} [withControls={ active: true, integrated: false }] - Enable scene controls and specify their layout
  * @property {boolean} [autoStart=false] - Automatically start rendering
  */
@@ -772,11 +998,15 @@ index ff1861a..91d38b1 100644
  	#scene = null;
  	#renderer = null;
  	#composer = null;
-@@ -107084,9 +107194,25 @@ var MAGEEngine = class MAGEEngine {
+@@ -107084,9 +107196,29 @@ var MAGEEngine = class MAGEEngine {
  	#audioFile = null;
  	#reversedAudio = null;
  	#audioAnalyser = null;
 +	#audioResponseMode = "legacy";
++	#audioMapper = null;
++	#syntheticAudioFrames = null;
++	#mappedSource = "none";
++	#mappedTime = 0;
 +	#audioAnalysis = null;
 +	#audioAnalysisSource = null;
 +	#audioAnalysisFrame = null;
@@ -798,7 +1028,7 @@ index ff1861a..91d38b1 100644
  	#visualizer = null;
  	#inputs = null;
  	#state = null;
-@@ -107127,13 +107253,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107127,13 +107259,14 @@ var MAGEEngine = class MAGEEngine {
  	#previewFrameCount = 0;
  	#previewFramesTarget = 0;
  	#isLowQualityMode = false;
@@ -814,7 +1044,7 @@ index ff1861a..91d38b1 100644
  		this.#controlSettings = {
  			active: Boolean(active),
  			integrated: Boolean(integrated)
-@@ -107156,6 +107283,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107156,6 +107289,10 @@ var MAGEEngine = class MAGEEngine {
  		this.#audioBuffer = null;
  		this.#playbackTime = 0;
  		this.#isReversed = false;
@@ -825,7 +1055,7 @@ index ff1861a..91d38b1 100644
  		this.#visualizer = new MAGEVisualizer(this);
  		this.#inputs = {
  			currMouse: new Vector3(),
-@@ -107277,6 +107408,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107277,6 +107414,7 @@ var MAGEEngine = class MAGEEngine {
  			this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
  			this.#_syncSobelResolution();
  		}
@@ -833,7 +1063,7 @@ index ff1861a..91d38b1 100644
  		this.#_render();
  		if (!this.#currentPreset && !this.#visualizer.mesh) this.#_loadDefaultPreset();
  	}
-@@ -107297,16 +107429,40 @@ var MAGEEngine = class MAGEEngine {
+@@ -107297,16 +107435,40 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -875,7 +1105,7 @@ index ff1861a..91d38b1 100644
  		const clampedTime = Math.max(0, Math.min(time, duration));
  		this.#playbackTime = clampedTime;
  		const forwardWasPlaying = Boolean(this.#audio.isPlaying);
-@@ -107318,6 +107474,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107318,6 +107480,8 @@ var MAGEEngine = class MAGEEngine {
  		}
  		if (forwardWasPlaying) this.#audio.stop();
  		if (reverseWasPlaying && this.#reversedAudio) this.#reversedAudio.stop();
@@ -884,7 +1114,7 @@ index ff1861a..91d38b1 100644
  		if (forwardWasPlaying && reverseWasPlaying) if (this.#isReversed && this.#reversedAudio?.buffer) this.#reversedAudio.play();
  		else this.#audio.play();
  		else if (forwardWasPlaying) this.#audio.play();
-@@ -107333,20 +107491,158 @@ var MAGEEngine = class MAGEEngine {
+@@ -107333,20 +107497,210 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -913,6 +1143,10 @@ index ff1861a..91d38b1 100644
 +		this.#audioAnalysisFrame = null;
 +		this.#audioResponseConfig = next === "mapped-v1" ? normalizeAudioResponseConfig(null).config : null;
 +		this.#audioResponseWarnings = [];
++		this.#audioMapper = next === "mapped-v1" ? new AudioResponseMapper(this.#audioResponseConfig) : null;
++		this.#syntheticAudioFrames = next === "mapped-v1" ? new SyntheticAudioFrames(this.#syntheticPreviewSeed, this.#syntheticPreviewTempoScale) : null;
++		this.#mappedSource = "none";
++		this.#mappedTime = 0;
 +		if (this.#transientAudio) this.#_disconnectTransientAnalyser();
 +		this.#audioResponseMode = next;
 +		if (next === "transient-v1") {
@@ -920,11 +1154,46 @@ index ff1861a..91d38b1 100644
 +			this.#transientAudio.reset();
 +		} else this.#transientAudio = null;
 +	}
++	getAudioResponseCapabilities() {
++		const uniforms = this.#visualizer?.mesh?.material?.uniforms ?? {};
++		const supportedTargets = AUDIO_RESPONSE_TARGETS.filter(target => Object.hasOwn(uniforms, target));
++		const unsupportedTargets = (this.#audioResponseConfig?.mappings ?? []).map(mapping => mapping.target).filter(target => !supportedTargets.includes(target));
++		return {
++			mode: this.#audioResponseMode, signals: [...AUDIO_RESPONSE_SIGNALS], targets: [...AUDIO_RESPONSE_TARGETS],
++			supportedTargets, unsupportedTargets,
++			warnings: [...this.#audioResponseWarnings, ...unsupportedTargets.map(target => "The active shader does not declare the " + target + " input.")]
++		};
++	}
++	getAudioResponseOutputs() {
++		if (!this.#audioMapper) return {};
++		const snapshot = this.#audioMapper.getSnapshot();
++		const uniforms = { ...snapshot.outputs, audioTime: this.#mappedTime };
++		for (const band of ["bass", "mid", "treble", "overall"]) {
++			const event = snapshot.events.findLast(event => event.band === band);
++			const prefix = band === "overall" ? "audio" : band;
++			uniforms[prefix + "HitTime"] = event?.time ?? -1;
++			uniforms[prefix + "HitStrength"] = event?.strength ?? 0;
++		}
++		return uniforms;
++	}
++	getAudioResponseEvents(afterId = 0) {
++		return this.#audioMapper?.getEvents(afterId) ?? [];
++	}
++	getAudioResponseDiagnostics() {
++		return {
++			mode: this.#audioResponseMode, config: this.getAudioResponseConfig(),
++			analysis: this.getAudioAnalysis(), outputs: this.getAudioResponseOutputs(),
++			events: this.getAudioResponseEvents(), source: this.#mappedSource
++		};
++	}
 +	getAudioAnalysis() {
 +		const now = this.#audioAnalysisSource?.context?.currentTime ?? 0;
 +		return this.#audioAnalysis?.snapshot(now) ?? { status: "idle", error: null, frame: null, queuedFrames: 0, droppedFrames: 0 };
 +	}
 +	#_resetAudioAnalysis() {
++		this.#audioMapper?.reset();
++		this.#mappedSource = "none";
++		this.#mappedTime = 0;
 +		this.#audioAnalysis?.disconnect();
 +		this.#audioAnalysisSource = null;
 +		this.#audioAnalysisFrame = null;
@@ -944,16 +1213,25 @@ index ff1861a..91d38b1 100644
 +	}
 +	#_sampleMappedAudio() {
 +		this.#_syncAudioAnalysis();
-+		const now = this.#audioAnalysisSource?.context?.currentTime ?? 0;
-+		const frames = this.#audioAnalysis?.drain(now) ?? [];
++		const source = this.#audioAnalysisSource ? "audio" : this.#syntheticPreviewEnabled || this.#previewMode ? "synthetic" : "none";
++		const now = source === "audio" ? this.#audioAnalysisSource.context.currentTime : performance.now() / 1000;
++		if (source !== this.#mappedSource) {
++			this.#audioMapper.reset();
++			this.#syntheticAudioFrames.configure(this.#syntheticPreviewSeed, this.#syntheticPreviewTempoScale, now);
++			this.#mappedSource = source;
++		}
++		const frames = source === "audio" ? this.#audioAnalysis.drain(now) : source === "synthetic" ? this.#syntheticAudioFrames.process(now) : [];
 +		if (frames.length) this.#audioAnalysisFrame = frames[frames.length - 1];
 +		if (this.#audioAnalysisFrame && now - this.#audioAnalysisFrame.time > 1) this.#audioAnalysisFrame = null;
-+		return this.#audioAnalysisFrame?.levels.overall ?? 0;
++		this.#mappedTime = now;
++		return this.#audioMapper.process(frames, now);
 +	}
++
 +	setAudioResponseConfig(value) {
 +		const normalized = normalizeAudioResponseConfig(value);
 +		this.#audioResponseConfig = normalized.config;
 +		this.#audioAnalysis?.setSensitivity(normalized.config.sensitivity);
++		this.#audioMapper?.setConfig(normalized.config);
 +		this.#audioResponseWarnings = normalized.warnings;
 +		return this.getAudioResponseConfig();
 +	}
@@ -1012,6 +1290,10 @@ index ff1861a..91d38b1 100644
 +		const nextTempoScale = Number.isFinite(tempoScale) && tempoScale > 0 ? Math.min(Math.max(tempoScale, .25), 2) : 1;
 +		if (!nextEnabled || !this.#syntheticPreviewEnabled || nextSeed !== this.#syntheticPreviewSeed || nextTempoScale !== this.#syntheticPreviewTempoScale) {
 +			this.#syntheticPreviewTime = 0;
++			if (this.#mappedSource === "synthetic") {
++				this.#audioMapper?.reset();
++				this.#syntheticAudioFrames?.configure(nextSeed, nextTempoScale, performance.now() / 1000);
++			}
 +		}
 +		this.#syntheticPreviewEnabled = nextEnabled;
 +		this.#syntheticPreviewSeed = nextSeed;
@@ -1043,7 +1325,7 @@ index ff1861a..91d38b1 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -107362,6 +107658,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107362,6 +107716,8 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	loadAudio(filePath) {
@@ -1052,7 +1334,7 @@ index ff1861a..91d38b1 100644
  		const previousVolume = this.#audio?.getVolume();
  		this.#audio?.pause();
  		this.#reversedAudio?.pause();
-@@ -107399,6 +107697,26 @@ var MAGEEngine = class MAGEEngine {
+@@ -107399,6 +107755,26 @@ var MAGEEngine = class MAGEEngine {
  		});
  	}
  	/**
@@ -1079,7 +1361,7 @@ index ff1861a..91d38b1 100644
  	* Loads a preset into the engine.
  	* @param {MAGEPreset} presetInput - The preset input to load.
  	* @returns {MAGEPreset} The loaded preset.
-@@ -107411,6 +107729,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107411,6 +107787,8 @@ var MAGEEngine = class MAGEEngine {
  			return;
  		}
  		this.#currentPreset = preset;
@@ -1088,7 +1370,7 @@ index ff1861a..91d38b1 100644
  		if (preset.controls) this.#_loadControls(preset.controls);
  		if (preset.visualizer) {
  			if (preset.visualizer.skyboxPreset !== void 0 && preset.visualizer.skyboxPreset !== null) {
-@@ -107418,11 +107738,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107418,11 +107796,14 @@ var MAGEEngine = class MAGEEngine {
  				if (normalizedSkybox) this.#_loadSkybox(normalizedSkybox);
  				else if (this.log) console.warn("[MAGEEngine.loadPreset] Invalid skyboxPreset input; expected preset id, preset path, or { type, presetId }", { input: preset.visualizer.skyboxPreset });
  			}
@@ -1108,7 +1390,7 @@ index ff1861a..91d38b1 100644
  			if (typeof preset.visualizer.scale === "number") this.#visualizer.scale = preset.visualizer.scale;
  		}
  		if (preset.state) this.#_applyStatePatch(preset.state, {
-@@ -107431,6 +107754,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107431,6 +107812,10 @@ var MAGEEngine = class MAGEEngine {
  		});
  		if (typeof this.#importSettingsState === "function" && preset.settings) this.#importSettingsState(preset.settings);
  		if (preset.intent) this.#_applyCompactIntent(preset.intent);
@@ -1119,7 +1401,7 @@ index ff1861a..91d38b1 100644
  		if (preset.fx) this.#_applyCompactFx(preset.fx);
  		this.#_syncPostProcessingFromState();
  		this.#_syncSobelResolution();
-@@ -107488,7 +107815,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107488,7 +107873,7 @@ var MAGEEngine = class MAGEEngine {
  		const preset = {
  			version: MAGE_VERSION,
  			visualizer: {
@@ -1128,7 +1410,7 @@ index ff1861a..91d38b1 100644
  				skyboxPreset: this.#visualizer.skyboxPreset,
  				scale: this.#visualizer.scale
  			},
-@@ -107535,6 +107862,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107535,6 +107920,8 @@ var MAGEEngine = class MAGEEngine {
  					halftone: this.fx.halftonePass.enabled,
  					gammaCorrection: this.fx.gammaCorrectionShader.enabled,
  					kaleid: this.fx.kaleidoShader.enabled,
@@ -1137,7 +1419,7 @@ index ff1861a..91d38b1 100644
  					outputPass: this.fx.outputPass.enabled
  				},
  				params: {
-@@ -107552,6 +107881,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107552,6 +107939,8 @@ var MAGEEngine = class MAGEEngine {
  			}
  		};
  		preset.state = { ...this.#state };
@@ -1146,7 +1428,7 @@ index ff1861a..91d38b1 100644
  		if (this.log) console.log("Generated preset from current state:", preset);
  		return preset;
  	}
-@@ -107702,8 +108033,9 @@ var MAGEEngine = class MAGEEngine {
+@@ -107702,8 +108091,9 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	dispose() {
@@ -1157,7 +1439,7 @@ index ff1861a..91d38b1 100644
  		this.#isDisposed = true;
  		this.#isRunning = false;
  		if (this.#animationFrameId !== null) {
-@@ -108038,12 +108370,16 @@ var MAGEEngine = class MAGEEngine {
+@@ -108038,12 +108428,16 @@ var MAGEEngine = class MAGEEngine {
  		this.#_syncSobelResolution();
  	}
  	#_syncSobelResolution() {
@@ -1178,7 +1460,7 @@ index ff1861a..91d38b1 100644
  	}
  	#_captureFramePreviewDataUrlSync({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
  		if (!this.#renderer?.domElement) return null;
-@@ -108120,6 +108456,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108120,6 +108514,8 @@ var MAGEEngine = class MAGEEngine {
  			if (typeof fx.passes.halftone === "boolean") this.fx.halftonePass.enabled = fx.passes.halftone;
  			if (typeof fx.passes.gammaCorrection === "boolean") this.fx.gammaCorrectionShader.enabled = fx.passes.gammaCorrection;
  			if (typeof fx.passes.kaleid === "boolean") this.fx.kaleidoShader.enabled = fx.passes.kaleid;
@@ -1187,7 +1469,7 @@ index ff1861a..91d38b1 100644
  			if (typeof fx.passes.outputPass === "boolean") this.fx.outputPass.enabled = fx.passes.outputPass;
  		}
  		if (fx.params && typeof fx.params === "object") {
-@@ -108360,7 +108698,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108360,7 +108756,8 @@ var MAGEEngine = class MAGEEngine {
  		this.#renderer = new WebGLRenderer(rendererOptions);
  		if (this.#isLowQualityMode) this.#renderer.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)), false);
  		else this.#renderer.setSize(width, height, false);
@@ -1197,7 +1479,7 @@ index ff1861a..91d38b1 100644
  		else this.#renderer.setPixelRatio(window.devicePixelRatio || 1);
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
  		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
-@@ -108471,8 +108810,32 @@ var MAGEEngine = class MAGEEngine {
+@@ -108471,8 +108868,32 @@ var MAGEEngine = class MAGEEngine {
  		}
  	}
  	#_updateVisualizer() {
@@ -1231,7 +1513,7 @@ index ff1861a..91d38b1 100644
  		this.#scene.add(mesh);
  		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#viewportWidth / 4)), Math.max(1, Math.floor(this.#viewportHeight / 4)), {
  			format: RGBAFormat,
-@@ -108487,8 +108850,9 @@ var MAGEEngine = class MAGEEngine {
+@@ -108487,8 +108908,9 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#isDisposed || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
  		this.#animationFrameId = requestAnimationFrame(this.#_render);
  		this.#_syncViewport();
@@ -1243,21 +1525,21 @@ index ff1861a..91d38b1 100644
  		if (!Number.isFinite(this.#state.time_multiplier)) this.#state.time_multiplier = 1;
  		if (this.#state.time < 180 && this.#timeIncreasing) this.#state.time += this.#state.time_multiplier * delta;
  		else {
-@@ -108497,12 +108861,43 @@ var MAGEEngine = class MAGEEngine {
+@@ -108497,12 +108919,44 @@ var MAGEEngine = class MAGEEngine {
  			if (this.#state.time <= 0) this.#timeIncreasing = true;
  		}
  		let bass_input = 0;
 -		if (this.#audioAnalyser && (this.#audio && this.#audio.isPlaying || this.#reversedAudio && this.#reversedAudio.isPlaying)) {
++		let mappedOutputs = null;
 +		const hasPlayingAudio = Boolean(this.#audioAnalyser && (this.#audio && this.#audio.isPlaying || this.#reversedAudio && this.#reversedAudio.isPlaying));
 +		if (this.#audioResponseMode === "mapped-v1") {
-+			bass_input = this.#_sampleMappedAudio();
++			mappedOutputs = this.#_sampleMappedAudio();
 +		} else if (this.#audioResponseMode === "transient-v1" && hasPlayingAudio && !this.#previewMode) {
 +			bass_input = this.#_sampleTransientAudio(delta);
 +		} else if (hasPlayingAudio) {
  			const freqData = this.#audioAnalyser.getFrequencyData();
  			bass_input = Math.pow(freqData[2] / 255 * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
  			Math.pow(freqData[4] / 255 * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
--		}
 +		} else if (this.#syntheticPreviewEnabled) {
 +			this.#syntheticPreviewTime += Math.min(Math.max(delta, 0), .1) * this.#syntheticPreviewTempoScale;
 +			const bpm = 96 + this.#syntheticPreviewSeed % 37;
@@ -1275,21 +1557,22 @@ index ff1861a..91d38b1 100644
 +			bass_input = this.#audioResponseMode === "transient-v1" ? Math.min(1, kick * accent + offbeat * .5) : Math.pow(syntheticFrequency * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
 +		}
 +		if (!hasPlayingAudio && this.#transientWasPlaying) this.#_disconnectTransientAnalyser();
- 		if (this.#previewMode) this.#_simulatePreviewAudio();
-+		else if (this.#audioResponseMode === "mapped-v1") {
-+			this.#state.currAudio = bass_input;
-+			this.#state.size = .006 + bass_input;
++		if (mappedOutputs) {
++			this.#state.currAudio = mappedOutputs.audioLevel;
++			this.#state.size = .006 + mappedOutputs.size;
 +		}
++		else if (this.#previewMode) this.#_simulatePreviewAudio();
 +		else if (this.#audioResponseMode === "transient-v1") {
 +			// The versioned envelope already has attack/release. Applying legacy
 +			// power/easing here would flatten it and prevent release between hits.
 +			this.#state.currAudio = bass_input;
 +			this.#state.size = .006 + bass_input;
-+		}
+ 		}
+-		if (this.#previewMode) this.#_simulatePreviewAudio();
  		else {
  			const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
  			this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;
-@@ -108787,9 +109182,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -108787,9 +109241,10 @@ var MAGEEngine = class MAGEEngine {
  };
  //#endregion
  //#region js/mage-lib.js
@@ -1302,10 +1585,10 @@ index ff1861a..91d38b1 100644
  		withControls: {
  			active,
 diff --git a/node_modules/@notrac/mage/package.json b/node_modules/@notrac/mage/package.json
-index 14e895a..6a4d1f1 100644
+index 14e895a..ae18dee 100644
 --- a/node_modules/@notrac/mage/package.json
 +++ b/node_modules/@notrac/mage/package.json
-@@ -9,6 +9,14 @@
+@@ -9,6 +9,18 @@
      ".": {
        "types": "./dist/mage-engine.d.ts",
        "import": "./dist/mage-engine.js"
@@ -1317,6 +1600,10 @@ index 14e895a..6a4d1f1 100644
 +    "./audio-analysis": {
 +      "types": "./dist/audio-analysis.d.ts",
 +      "import": "./dist/audio-analysis.js"
++    },
++    "./audio-mapping": {
++      "types": "./dist/audio-mapping.d.ts",
++      "import": "./dist/audio-mapping.js"
      }
    },
    "files": [
