@@ -95,6 +95,8 @@ it transitively and the install hook must also work when dev dependencies are om
 The 1.0.3 upgrade retains every functional correction from our 1.0.1 patch:
 
 - ShaderPark exposes `setStepSize`, `torus`, and `cylinder` to compiled scene code.
+- ShaderPark's render callback skips undeclared uniforms, allowing custom shaders
+  to omit unused `size` or `pointerDown` inputs without crashing.
 - The render clock accumulates elapsed time, updates Three's timer, clamps suspension
   jumps, and resets the timer when resuming.
 - `pause()` stops rendering, `play()` resumes even without audio, and `dispose()`
