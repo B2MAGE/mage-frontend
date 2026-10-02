@@ -26,11 +26,12 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/display name/i), ' Countess Ada ')
   await user.type(screen.getByLabelText(/^handle$/i), 'countess_ada')
   await user.type(screen.getByLabelText(/^email$/i), ' user@example.com ')
-  await user.type(screen.getByLabelText(/password/i), 'secret-value')
+  await user.type(screen.getByLabelText(/^password$/i), 'secret-value')
+  await user.type(screen.getByLabelText(/^confirm password$/i), 'secret-value')
 }
 
 describe('RegisterPage', () => {
-  it('orders empty profile fields around the shared preview and marks only public fields', () => {
+  it('shows placeholders without prefilling profile fields and marks only public fields', () => {
     const { container } = renderRegisterPage()
     const email = screen.getByRole('textbox', { name: 'Email' })
     const preview = screen.getByRole('group', { name: 'Profile preview' })
@@ -40,16 +41,27 @@ describe('RegisterPage', () => {
     const lastName = screen.getByRole('textbox', { name: 'Last name' })
     const publicHint = screen.getByText('Shown on your public profile.')
     const password = screen.getByLabelText(/^password$/i)
-    const orderedElements = [email, preview, displayName, handle, firstName, lastName, publicHint, password]
+    const confirmation = screen.getByLabelText(/^confirm password$/i)
+    const orderedElements = [email, preview, displayName, handle, firstName, lastName, publicHint, password, confirmation]
 
     orderedElements.slice(1).forEach((element, index) => {
       expect(orderedElements[index].compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
-    for (const input of [email, displayName, handle, firstName, lastName, password]) {
+    for (const input of [email, displayName, handle, firstName, lastName, password, confirmation]) {
       expect(input).toHaveValue('')
-      expect(input).not.toHaveAttribute('placeholder')
       expect(input).toBeRequired()
     }
+    expect(email).toHaveAttribute('placeholder', 'you@example.com')
+    expect(displayName).toHaveAttribute('placeholder', 'John')
+    expect(handle).toHaveAttribute('placeholder', 'jdoe')
+    expect(firstName).toHaveAttribute('placeholder', 'John')
+    expect(lastName).toHaveAttribute('placeholder', 'Doe')
+    expect(password).toHaveAttribute('placeholder', 'At least 8 characters')
+    expect(confirmation).toHaveAttribute('placeholder', 'Enter your password again')
+    expect(confirmation).toHaveAttribute('name', 'confirmPassword')
+    expect(confirmation).toHaveAttribute('id', 'confirmPassword')
+    expect(confirmation).toHaveAttribute('autocomplete', 'new-password')
+    expect(confirmation).toHaveAttribute('type', 'password')
     expect(handle).toHaveAttribute('maxlength', '30')
     expect(within(preview).getByText('Display name')).toBeInTheDocument()
     expect(within(preview).getByText('@handle')).toBeInTheDocument()
@@ -63,7 +75,7 @@ describe('RegisterPage', () => {
       expect(input.getAttribute('aria-describedby')?.split(' ')).toContain(publicHint.id)
       expect(input).toHaveAccessibleDescription(/Shown on your public profile\./)
     }
-    for (const input of [email, firstName, lastName, password]) {
+    for (const input of [email, firstName, lastName, password, confirmation]) {
       expect(container.querySelector(`label[for="${input.id}"] .settings-public-field-marker`)).toBeNull()
       expect(input.getAttribute('aria-describedby')?.split(' ') ?? []).not.toContain(publicHint.id)
     }
@@ -132,6 +144,127 @@ describe('RegisterPage', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('shows and hides the confirmation independently without submitting or changing either password', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const user = userEvent.setup()
+    renderRegisterPage()
+    const password = screen.getByLabelText(/^password$/i)
+    const confirmation = screen.getByLabelText(/^confirm password$/i)
+    await user.type(password, 'secret-value')
+    await user.type(confirmation, 'secret-value')
+
+    const showConfirmation = screen.getByRole('button', { name: 'Show password confirmation' })
+    expect(showConfirmation).toHaveAttribute('aria-controls', confirmation.id)
+    expect(showConfirmation).toHaveAttribute('aria-pressed', 'false')
+    await user.click(showConfirmation)
+    expect(confirmation).toHaveAttribute('type', 'text')
+    expect(password).toHaveAttribute('type', 'password')
+
+    const hideConfirmation = screen.getByRole('button', { name: 'Hide password confirmation' })
+    expect(hideConfirmation).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: /^show$/i }))
+    expect(password).toHaveAttribute('type', 'text')
+    await user.click(hideConfirmation)
+    expect(confirmation).toHaveAttribute('type', 'password')
+    expect(password).toHaveAttribute('type', 'text')
+    expect(confirmation).toHaveValue('secret-value')
+    expect(password).toHaveValue('secret-value')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('requires confirmation before submitting an otherwise valid form', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const user = userEvent.setup()
+    renderRegisterPage()
+    await fillValidForm(user)
+    const confirmation = screen.getByLabelText(/^confirm password$/i)
+    await user.clear(confirmation)
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Confirm your password.')
+    expect(confirmation).toHaveAttribute('aria-invalid', 'true')
+    expect(confirmation).toHaveAccessibleDescription('Confirm your password.')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects a mismatched confirmation and clears the error when it is corrected', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const user = userEvent.setup()
+    renderRegisterPage()
+    await fillValidForm(user)
+    const confirmation = screen.getByLabelText(/^confirm password$/i)
+    await user.type(confirmation, '-different')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Passwords must match.')
+    expect(confirmation).toHaveAttribute('aria-invalid', 'true')
+    expect(confirmation).toHaveAccessibleDescription('Passwords must match.')
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    await user.clear(confirmation)
+    await user.type(confirmation, 'secret-value')
+    expect(screen.queryByText('Passwords must match.')).not.toBeInTheDocument()
+    expect(confirmation).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('clears stale confirmation errors when the original password changes but validates again on submit', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const user = userEvent.setup()
+    renderRegisterPage()
+    await fillValidForm(user)
+    const password = screen.getByLabelText(/^password$/i)
+    await user.type(password, '-different')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+    expect(screen.getByText('Passwords must match.')).toBeInTheDocument()
+
+    await user.type(password, '-still-different')
+    expect(screen.queryByText('Passwords must match.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+    expect(screen.getByText('Passwords must match.')).toBeInTheDocument()
+    expect(fetchSpy).not.toHaveBeenCalled()
+
+    await user.clear(password)
+    await user.type(password, 'secret-value')
+    expect(screen.queryByText('Passwords must match.')).not.toBeInTheDocument()
+  })
+
+  it.each([' secret-value', 'secret-value '])('requires an exact match including whitespace for %j', async (passwordValue) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const user = userEvent.setup()
+    renderRegisterPage()
+    await fillValidForm(user)
+    const password = screen.getByLabelText(/^password$/i)
+    await user.clear(password)
+    await user.type(password, passwordValue)
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(screen.getByText('Passwords must match.')).toBeInTheDocument()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('accepts identical passwords with whitespace unchanged and excludes confirmation from the API payload', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ email: 'user@example.com', created: true }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const user = userEvent.setup()
+    renderRegisterPage()
+    await fillValidForm(user)
+    for (const input of [screen.getByLabelText(/^password$/i), screen.getByLabelText(/^confirm password$/i)]) {
+      await user.clear(input)
+      await user.type(input, ' secret-value ')
+    }
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(await screen.findByRole('heading', { name: /^login$/i })).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const payload = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))
+    expect(payload.password).toBe(' secret-value ')
+    expect(payload).not.toHaveProperty('confirmPassword')
+  })
+
   it('shows client-side validation errors without calling the API', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     const user = userEvent.setup()
@@ -146,6 +279,7 @@ describe('RegisterPage', () => {
     expect(screen.getByText('Handle is required.')).toBeInTheDocument()
     expect(screen.getByText('Email is required.')).toBeInTheDocument()
     expect(screen.getByText('Password is required.')).toBeInTheDocument()
+    expect(screen.getByText('Confirm your password.')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
