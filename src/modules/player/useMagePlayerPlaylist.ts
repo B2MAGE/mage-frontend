@@ -5,6 +5,7 @@ import {
   type MagePlayerPlaylistTrack,
 } from './playlist'
 import type { MageSceneBlob } from './infrastructure/engineAdapter'
+import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 
 type UseMagePlayerPlaylistArgs = {
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
@@ -12,6 +13,7 @@ type UseMagePlayerPlaylistArgs = {
   onTrackDurationChange?: (trackId: string, duration: number) => void
   playlistTracks?: MagePlayerPlaylistTrack[]
   sceneBlob: MageSceneBlob | null | undefined
+  sceneKey?: MageSceneKey
   selectedTrackId?: string | null
 }
 
@@ -21,6 +23,7 @@ export function useMagePlayerPlaylist({
   onTrackDurationChange,
   playlistTracks,
   sceneBlob,
+  sceneKey,
   selectedTrackId,
 }: UseMagePlayerPlaylistArgs) {
   const isPlaylistControlled = playlistTracks !== undefined
@@ -34,6 +37,8 @@ export function useMagePlayerPlaylist({
     return sceneTrack?.id ?? null
   })
   const internalPlaylistTracksRef = useRef<MagePlayerPlaylistTrack[]>(internalPlaylistTracks)
+  const previousSceneIdentity = useRef<string | null | undefined>(undefined)
+  const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
 
   const tracks = playlistTracks ?? internalPlaylistTracks
   const activeSelectedTrackId = selectedTrackId ?? internalSelectedTrackId
@@ -84,6 +89,7 @@ export function useMagePlayerPlaylist({
     if (isPlaylistControlled) {
       return
     }
+    if (playbackIdentity !== null && previousSceneIdentity.current === playbackIdentity) return
 
     let isCancelled = false
     const sceneTrack = buildScenePlaylistTrack(sceneBlob)
@@ -93,6 +99,7 @@ export function useMagePlayerPlaylist({
       if (isCancelled) {
         return
       }
+      previousSceneIdentity.current = playbackIdentity
 
       setInternalPlaylistTracks((currentTracks) => {
         revokePlaylistTrackSources(currentTracks)
@@ -104,7 +111,7 @@ export function useMagePlayerPlaylist({
     return () => {
       isCancelled = true
     }
-  }, [isPlaylistControlled, sceneBlob])
+  }, [isPlaylistControlled, playbackIdentity, sceneBlob])
 
   useEffect(() => {
     let isCancelled = false

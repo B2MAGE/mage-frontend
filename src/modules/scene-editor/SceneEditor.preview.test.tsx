@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildApiUrl } from '@shared/lib'
+import { buildApiUrl, normalizeAudioResponseConfig } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel, SHADER_SCENES, type SceneData } from './sceneEditor'
 import { buildEffectiveSceneData } from './utils'
@@ -276,4 +276,71 @@ describe('scene editor presets and beat preview', () => {
     expect(original).toHaveProperty('reactions')
     expect(original).toHaveProperty('mageTemplate')
   })
+  it('preserves mapped settings through JSON import, shader selection, mocked create/update requests, and reopening', async () => {
+    storeSceneEditorSession()
+    const config = normalizeAudioResponseConfig({ sensitivity: 1.7, mappings: [
+      { target: 'size', source: 'bass-hit', amount: 0.8, attack: 0.02, release: 0.4 },
+      { target: 'treble', source: 'treble-level', amount: 0.5, attack: 0.1, release: 0.2 },
+    ] }).config
+    let stored: SceneWritePayload | undefined
+    const writes: SceneWritePayload[] = []
+    mockCreateScenePageFetch((input, init) => {
+      const method = init?.method ?? 'GET'
+      if ((input === buildApiUrl('/scenes') && method === 'POST') || (input === buildApiUrl('/scenes/12') && method === 'PUT')) {
+        stored = JSON.parse(String(init?.body)) as SceneWritePayload
+        writes.push(stored)
+        return jsonResponse(buildSceneEditorApiScene({ ...stored, tags: [] }), method === 'POST' ? 201 : 200)
+      }
+      if (input === buildApiUrl('/scenes/12') && method === 'GET') return jsonResponse(buildSceneEditorApiScene({ ...stored, tags: [] }))
+      if (input === buildApiUrl('/scenes/12/tags') && method === 'PUT') return jsonResponse([])
+    })
+    const user = userEvent.setup()
+    const create = renderCreateScenePage('mage-pulse')
+    await user.type(screen.getByLabelText(/scene name/i), 'Mapped cadence')
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+    const imported = { ...createDefaultSceneData(), audioResponse: 'mapped-v1', audioResponseConfig: config }
+    fireEvent.change(screen.getByRole('textbox', { name: 'Scene Data JSON' }), { target: { value: JSON.stringify(imported) } })
+    await user.click(screen.getByRole('button', { name: 'Format JSON' }))
+    expect(JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value).audioResponseConfig).toEqual(config)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Shader' }), shaderOption('Ripple Rings').id)
+    expect(previewScene().audioResponseConfig).toEqual(config)
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: /^create scene$/i }))
+    await screen.findByText('My Scenes')
+    expect(writes[0].sceneData).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: config })
+    create.unmount()
+
+    const edit = renderEditScenePage(undefined, 'mage-pulse')
+    await screen.findByLabelText(/scene name/i)
+    expect(previewScene().audioResponseConfig).toEqual(config)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Shader' }), shaderOption('Tidal Lantern').id)
+    await user.click(screen.getByRole('button', { name: 'Motion' }))
+    expect(screen.getByText(/this scene uses saved audio mappings/i)).toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: 'Audio Gain' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Time Multiplier' }), { target: { value: '0.75' } })
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+    const updatedConfig = { ...config, sensitivity: 2.1 }
+    const exported = JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value) as SceneData
+    expect(exported.audioResponseConfig).toEqual(config)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Scene Data JSON' }), {
+      target: { value: JSON.stringify({ ...exported, audioResponseConfig: updatedConfig }) },
+    })
+    await user.click(screen.getByRole('button', { name: /^update scene$/i }))
+    await screen.findByText('My Scenes')
+    expect(writes[1].sceneData).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: updatedConfig })
+    expect(getSceneEditorModel(writes[1].sceneData).visualizer.shader).toBe(shaderOption('Tidal Lantern').shader)
+    expect(getSceneEditorModel(writes[1].sceneData).intent.time_multiplier).toBe(0.75)
+    edit.unmount()
+
+    renderEditScenePage(undefined, 'mage-pulse')
+    await screen.findByLabelText(/scene name/i)
+    expect(previewScene()).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: updatedConfig })
+    expect(getSceneEditorModel(previewScene()).visualizer.shader).toBe(shaderOption('Tidal Lantern').shader)
+    expect(JSON.stringify(writes)).not.toMatch(/effectiveConfig|savedConfig|audioResponseOverride/)
+  })
+
 })

@@ -73,7 +73,13 @@ The adapter exposes a small player-friendly API rather than leaking the raw engi
 - `seekAudio()`
 - `setAudioVolume()`
 - `getAudioState()`
+- `getAudioResponseState()` / `setAudioResponseSettings()` / `setAudioResponseOverride()`
+- `getAudioResponseCapabilities()` / `getAudioResponseDiagnostics()` / `getAudioResponseEvents()`
 - `dispose()`
+
+Authored response settings are saved in scene JSON; viewer overrides remain temporary adapter state.
+Configuration changes use the existing player and audio source. See [Audio response configuration](audio-response.md)
+for persistence, scene identity, compatibility, and diagnostics behavior.
 
 The frontend player uses that bridge to support:
 

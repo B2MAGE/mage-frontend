@@ -21,6 +21,8 @@ import {
   type MagePlayerStatus,
 } from './magePlayerUtils'
 import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
+import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
+import { normalizeAudioResponseMode } from '@shared/lib'
 
 export type MagePlayerProps = {
   ariaLabel?: string
@@ -37,6 +39,7 @@ export type MagePlayerProps = {
   playlistTracks?: MagePlayerPlaylistTrack[]
   repeatEnabled?: boolean
   sceneBlob: MageSceneBlob | null | undefined
+  sceneKey?: MageSceneKey
   selectedTrackId?: string | null
   shuffleEnabled?: boolean
   simulatedBeat?: { enabled: boolean; bpm: number }
@@ -67,6 +70,7 @@ export function MagePlayer({
   playlistTracks,
   repeatEnabled = false,
   sceneBlob,
+  sceneKey,
   selectedTrackId,
   shuffleEnabled = false,
   simulatedBeat,
@@ -80,6 +84,8 @@ export function MagePlayer({
   const loadedTrackIdRef = useRef<string | null>(null)
   const completedTrackIdRef = useRef<string | null>(null)
   const hasConfiguredSimulatedBeatRef = useRef(false)
+  const appliedSceneRef = useRef<{ player: MagePlayerController; identity: string | null } | null>(null)
+  const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
 
   const {
     commitPlaylistTracks,
@@ -94,10 +100,12 @@ export function MagePlayer({
     onTrackDurationChange,
     playlistTracks,
     sceneBlob,
+    sceneKey,
     selectedTrackId,
   })
 
-  const [loadedSceneBlob, setLoadedSceneBlob] = useState<MageSceneBlob | null>(null)
+  const [loadedSceneIdentity, setLoadedSceneIdentity] = useState<string | null>(null)
+  const [loadedPlayerVersion, setLoadedPlayerVersion] = useState<number | null>(null)
   const [playerVersion, setPlayerVersion] = useState(0)
   const [playbackState, setPlaybackState] = useState<MagePlayerPlaybackState>(initialPlayback)
   const [audioState, setAudioState] = useState<MagePlayerAudioState>(EMPTY_AUDIO_STATE)
@@ -111,11 +119,6 @@ export function MagePlayer({
 
   useEffect(() => {
     latestSceneBlobRef.current = sceneBlob
-  }, [sceneBlob])
-
-  useEffect(() => {
-    loadedTrackIdRef.current = null
-    completedTrackIdRef.current = null
   }, [sceneBlob])
 
   useEffect(() => {
@@ -195,6 +198,9 @@ export function MagePlayer({
 
   useEffect(() => {
     if (!sceneBlob) {
+      appliedSceneRef.current = null
+      loadedTrackIdRef.current = null
+      completedTrackIdRef.current = null
       return
     }
 
@@ -207,7 +213,20 @@ export function MagePlayer({
     let isCancelled = false
 
     try {
-      player.loadSceneBlob(sceneBlob)
+      const isResponseUpdate = playbackIdentity !== null
+        && appliedSceneRef.current?.player === player
+        && appliedSceneRef.current.identity === playbackIdentity
+      if (isResponseUpdate) {
+        player.setAudioResponseSettings(
+          Object.hasOwn(sceneBlob, 'audioResponse') ? normalizeAudioResponseMode(sceneBlob.audioResponse) : undefined,
+          sceneBlob.audioResponseConfig,
+        )
+      } else {
+        player.loadSceneBlob(sceneBlob)
+        loadedTrackIdRef.current = null
+        completedTrackIdRef.current = null
+      }
+      appliedSceneRef.current = { player, identity: playbackIdentity }
       const nextPlaybackState = player.getPlaybackState()
 
       queueMicrotask(() => {
@@ -216,13 +235,15 @@ export function MagePlayer({
         }
 
         requestedPlaybackRef.current = nextPlaybackState
-        loadedTrackIdRef.current = null
         setLoadError(null)
-        setLoadedSceneBlob(sceneBlob)
+        setLoadedSceneIdentity(playbackIdentity)
+        setLoadedPlayerVersion(playerVersion)
         setPlaybackState(nextPlaybackState)
         setAudioState(player.getAudioState())
-        setAudioError(null)
-        setActiveAudioAction(null)
+        if (!isResponseUpdate) {
+          setAudioError(null)
+          setActiveAudioAction(null)
+        }
       })
     } catch (error) {
       queueMicrotask(() => {
@@ -241,14 +262,14 @@ export function MagePlayer({
     return () => {
       isCancelled = true
     }
-  }, [playerVersion, sceneBlob])
+  }, [playbackIdentity, playerVersion, sceneBlob])
 
   const status: MagePlayerStatus =
     !sceneBlob
       ? 'empty'
       : loadError?.sceneBlob === sceneBlob
         ? 'error'
-        : loadedSceneBlob === sceneBlob
+        : playbackIdentity !== null && loadedSceneIdentity === playbackIdentity && loadedPlayerVersion === playerVersion
           ? 'ready'
           : 'loading'
 

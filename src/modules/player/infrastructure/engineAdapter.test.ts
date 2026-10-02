@@ -17,6 +17,10 @@ const engineMocks = vi.hoisted(() => ({
   seek: vi.fn(),
   setAudioVolume: vi.fn(),
   setAudioResponseMode: vi.fn(),
+  setAudioResponseConfig: vi.fn(),
+  getAudioResponseCapabilities: vi.fn(),
+  getAudioResponseDiagnostics: vi.fn(),
+  getAudioResponseEvents: vi.fn(),
   setEngineTime: vi.fn(),
   setSyntheticPreview: vi.fn(),
   start: vi.fn(),
@@ -53,6 +57,10 @@ describe('createMagePlayer', () => {
       seek: engineMocks.seek,
       setAudioVolume: engineMocks.setAudioVolume,
       setAudioResponseMode: engineMocks.setAudioResponseMode,
+      setAudioResponseConfig: engineMocks.setAudioResponseConfig,
+      getAudioResponseCapabilities: engineMocks.getAudioResponseCapabilities,
+      getAudioResponseDiagnostics: engineMocks.getAudioResponseDiagnostics,
+      getAudioResponseEvents: engineMocks.getAudioResponseEvents,
       setEngineTime: engineMocks.setEngineTime,
       setSyntheticPreview: engineMocks.setSyntheticPreview,
       start: engineMocks.start,
@@ -590,4 +598,143 @@ describe('createMagePlayer', () => {
 
     player.dispose()
   })
+  it.each(['playing', 'paused'] as const)('updates mapped settings live while %s without reloading or selecting the mode again', async (playback) => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const { normalizeAudioResponseConfig } = await import('@shared/lib')
+    const config = normalizeAudioResponseConfig({ sensitivity: 1.4 }).config
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'mapped-v1', audioResponseConfig: config })
+    engineMocks.getAudioDuration.mockReturnValue(180)
+    await player.loadAudio({ sourcePath: 'song.mp3' })
+    player.seekAudio(37)
+    player.setAudioVolume(0.4)
+    player.setPlaybackState(playback)
+    for (const method of [engineMocks.setAudioResponseMode, engineMocks.setAudioResponseConfig, engineMocks.loadAudio,
+      engineMocks.loadPreset, engineMocks.unloadAudio, engineMocks.seek, engineMocks.play, engineMocks.pause]) method.mockClear()
+
+    const updated = { ...config, sensitivity: 2 }
+    expect(player.setAudioResponseSettings('mapped-v1', updated)).toMatchObject({
+      savedMode: 'mapped-v1', savedConfig: updated, override: null, effectiveConfig: updated,
+    })
+    player.setAudioResponseSettings('mapped-v1', { ...updated })
+    expect(engineMocks.setAudioResponseConfig).toHaveBeenCalledExactlyOnceWith(updated)
+    for (const method of [engineMocks.setAudioResponseMode, engineMocks.loadAudio, engineMocks.loadPreset,
+      engineMocks.unloadAudio, engineMocks.seek, engineMocks.play, engineMocks.pause]) expect(method).not.toHaveBeenCalled()
+    expect(engineMocks.initMAGE).toHaveBeenCalledTimes(1)
+    expect(player.getPlaybackState()).toBe(playback)
+    expect(player.getAudioState()).toMatchObject({ isLoaded: true, sourcePath: 'song.mp3', volume: 0.4 })
+    expect(player.getAudioState().currentTime).toBeGreaterThanOrEqual(37)
+  })
+
+  it('keeps viewer overrides separate from authored defaults and restores them on reset or a new scene', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const { normalizeAudioResponseConfig } = await import('@shared/lib')
+    const saved = normalizeAudioResponseConfig({ sensitivity: 1.2 }).config
+    const override = normalizeAudioResponseConfig({ sensitivity: 2.2 }).config
+    const updated = normalizeAudioResponseConfig({ sensitivity: 0.6 }).config
+    const scene = { visualizer: { shader: 'test' }, audioResponse: 'legacy', audioResponseConfig: saved }
+    const original = structuredClone(scene)
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob(scene)
+    expect(player.setAudioResponseOverride(override)).toMatchObject({
+      savedMode: 'legacy', savedConfig: saved, override, effectiveMode: 'mapped-v1', effectiveConfig: override,
+    })
+    engineMocks.setAudioResponseConfig.mockClear()
+    engineMocks.setAudioResponseMode.mockClear()
+    player.setAudioResponseSettings('transient-v1', updated)
+    expect(engineMocks.setAudioResponseMode).not.toHaveBeenCalled()
+    expect(engineMocks.setAudioResponseConfig).not.toHaveBeenCalled()
+    const snapshot = player.getAudioResponseState()
+    snapshot.savedConfig!.sensitivity = 99
+    snapshot.override!.mappings.length = 0
+    expect(player.getAudioResponseState()).toMatchObject({ savedConfig: updated, override })
+    player.resetPlayback()
+    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith({ ...scene, audioResponse: 'transient-v1', audioResponseConfig: updated })
+    expect(engineMocks.setAudioResponseConfig).toHaveBeenLastCalledWith(override)
+    expect(player.setAudioResponseOverride(null)).toMatchObject({
+      savedMode: 'transient-v1', savedConfig: updated, override: null, effectiveMode: 'transient-v1', effectiveConfig: null,
+    })
+    player.setAudioResponseOverride(override)
+    player.loadSceneBlob(scene)
+    expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'legacy', savedConfig: saved, override: null, effectiveMode: 'legacy' })
+    expect(scene).toEqual(original)
+  })
+
+  it('does not inject response metadata into older scenes and honors JSON deletion on live updates', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const scene = { visualizer: { shader: 'test' } }
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob(scene)
+    player.setAudioResponseSettings('mapped-v1', { sensitivity: 2 })
+    player.setAudioResponseSettings(undefined)
+    expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'legacy', savedConfig: null, effectiveConfig: null })
+    player.resetPlayback()
+    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(scene)
+  })
+
+  it('exposes defensive capability, diagnostic, and cursor-based event snapshots through the adapter', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const capabilities = { mode: 'mapped-v1', signals: ['bass-level'], targets: ['size', 'bass'], supportedTargets: ['size'], unsupportedTargets: ['bass'], warnings: ['bass is not declared'] }
+    const events = [{ id: 8, time: 1.2, band: 'bass', strength: 0.8 }]
+    const diagnostics = { mode: 'mapped-v1', config: null, analysis: {}, outputs: { size: 0.5 }, events, source: 'audio' }
+    engineMocks.getAudioResponseCapabilities.mockReturnValue(capabilities)
+    engineMocks.getAudioResponseDiagnostics.mockReturnValue(diagnostics)
+    engineMocks.getAudioResponseEvents.mockReturnValue(events)
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.getAudioResponseCapabilities()!.warnings.length = 0
+    player.getAudioResponseDiagnostics()!.outputs.size = 10
+    player.getAudioResponseEvents(7)[0].strength = 0
+    expect(capabilities.warnings).toHaveLength(1)
+    expect(diagnostics.outputs.size).toBe(0.5)
+    expect(events[0].strength).toBe(0.8)
+    expect(engineMocks.getAudioResponseEvents).toHaveBeenLastCalledWith(7)
+  })
+
+  it('rejects a superseded audio load before the newer track can trigger stale seek or playback writes', async () => {
+    vi.useFakeTimers()
+    try {
+      const { createMagePlayer } = await import('./engineAdapter')
+      let loaded = false
+      engineMocks.isAudioLoaded.mockImplementation(() => loaded)
+      engineMocks.loadAudio.mockImplementation(() => {})
+      const player = await createMagePlayer(document.createElement('canvas'))
+      player.loadSceneBlob({ visualizer: { shader: 'test' } })
+      const first = player.loadAudio({ sourcePath: 'first.mp3' })
+      const rejected = expect(first).rejects.toThrow(/superseded/)
+      const second = player.loadAudio({ sourcePath: 'second.mp3' })
+      engineMocks.seek.mockClear()
+      engineMocks.play.mockClear()
+      loaded = true
+      await vi.advanceTimersByTimeAsync(50)
+      await rejected
+      expect(await second).toMatchObject({ sourcePath: 'second.mp3', isLoaded: true })
+      expect(engineMocks.seek).toHaveBeenCalledTimes(1)
+      expect(engineMocks.play).toHaveBeenCalledTimes(1)
+    } finally { vi.useRealTimers() }
+  })
+
+  it.each(['clear', 'scene', 'dispose'] as const)('invalidates pending audio completion after %s', async (action) => {
+    vi.useFakeTimers()
+    try {
+      const { createMagePlayer } = await import('./engineAdapter')
+      let loaded = false
+      engineMocks.isAudioLoaded.mockImplementation(() => loaded)
+      engineMocks.loadAudio.mockImplementation(() => {})
+      const player = await createMagePlayer(document.createElement('canvas'))
+      player.loadSceneBlob({ visualizer: { shader: 'test' } })
+      const pending = player.loadAudio({ sourcePath: 'old.mp3' })
+      const rejected = expect(pending).rejects.toThrow(/superseded/)
+      if (action === 'clear') player.clearAudio()
+      else if (action === 'scene') player.loadSceneBlob({ visualizer: { shader: 'next' } })
+      else player.dispose()
+      engineMocks.seek.mockClear()
+      engineMocks.play.mockClear()
+      loaded = true
+      await vi.advanceTimersByTimeAsync(50)
+      await rejected
+      expect(engineMocks.seek).not.toHaveBeenCalled()
+      expect(engineMocks.play).not.toHaveBeenCalled()
+    } finally { vi.useRealTimers() }
+  })
+
 })

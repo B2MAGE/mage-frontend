@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer } from './MagePlayer'
+import { buildAudioResponseController } from '@shared/test/audioResponseController'
 import {
   createMagePlayer,
   type MagePlayerAudioState,
@@ -69,6 +70,7 @@ describe('MagePlayer playlist behavior', () => {
     }
 
     const controller: MagePlayerController = {
+      ...buildAudioResponseController(),
       clearAudio: vi.fn(() => {
         audioState = {
           currentTime: 0,
@@ -183,6 +185,7 @@ describe('MagePlayer playlist behavior', () => {
     }
 
     const controller: MagePlayerController = {
+      ...buildAudioResponseController(),
       clearAudio: vi.fn(() => audioState),
       dispose: vi.fn(),
       getAudioState: vi.fn(() => audioState),
@@ -279,6 +282,7 @@ describe('MagePlayer playlist behavior', () => {
     }
 
     const controller: MagePlayerController = {
+      ...buildAudioResponseController(),
       clearAudio: vi.fn(() => audioState),
       dispose: vi.fn(),
       getAudioState: vi.fn(() => audioState),

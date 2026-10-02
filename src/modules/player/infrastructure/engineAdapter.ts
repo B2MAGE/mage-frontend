@@ -1,5 +1,5 @@
 import type { MAGEEngineAPI } from '@notrac/mage'
-import { normalizeAudioResponseMode, type SceneAudioResponseMode } from '@shared/lib'
+import { normalizeAudioResponseMode, normalizeAudioResponseConfig, type AudioResponseConfig, type SceneAudioResponseMode } from '@shared/lib'
 import { attachViewerMouseInteractions, type ViewerMouseEngine } from './viewerMouseInteractions'
 
 const SCENE_BLOB_KEYS = [
@@ -28,6 +28,9 @@ type MageEngineBridge = {
   getAudioDuration?: MAGEEngineAPI['getAudioDuration']
   getAudioTime?: MAGEEngineAPI['getAudioTime']
   getAudioVolume?: () => number
+  getAudioResponseCapabilities?: MAGEEngineAPI['getAudioResponseCapabilities']
+  getAudioResponseDiagnostics?: MAGEEngineAPI['getAudioResponseDiagnostics']
+  getAudioResponseEvents?: MAGEEngineAPI['getAudioResponseEvents']
   getEngineTime?: MAGEEngineAPI['getEngineTime']
   isAudioLoaded?: MAGEEngineAPI['isAudioLoaded']
   loadAudio?: MAGEEngineAPI['loadAudio']
@@ -61,6 +64,17 @@ export type MageSceneBlob = Record<string, unknown>
 
 export type MagePlayerPlaybackState = 'paused' | 'playing'
 
+export type MageAudioResponseCapabilities = ReturnType<MAGEEngineAPI['getAudioResponseCapabilities']>
+export type MageAudioResponseDiagnostics = ReturnType<MAGEEngineAPI['getAudioResponseDiagnostics']>
+export type MageAudioResponseEvent = ReturnType<MAGEEngineAPI['getAudioResponseEvents']>[number]
+export type MageAudioResponseState = {
+  savedMode: SceneAudioResponseMode
+  savedConfig: AudioResponseConfig | null
+  override: AudioResponseConfig | null
+  effectiveMode: SceneAudioResponseMode
+  effectiveConfig: AudioResponseConfig | null
+}
+
 export type MagePlayerAudioState = {
   currentTime: number
   duration: number
@@ -84,12 +98,18 @@ export type MagePlayerController = {
   clearAudio: () => MagePlayerAudioState
   dispose: () => void
   getAudioState: () => MagePlayerAudioState
+  getAudioResponseState: () => MageAudioResponseState
+  getAudioResponseCapabilities: () => MageAudioResponseCapabilities | null
+  getAudioResponseDiagnostics: () => MageAudioResponseDiagnostics | null
+  getAudioResponseEvents: (afterId?: number) => MageAudioResponseEvent[]
   getPlaybackState: () => MagePlayerPlaybackState
   loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown) => void
   resetPlayback: () => MagePlayerPlaybackState
   seekAudio: (time: number) => MagePlayerAudioState
   setAudioVolume: (volume: number) => MagePlayerAudioState
+  setAudioResponseSettings: (mode: SceneAudioResponseMode | undefined, config?: unknown) => MageAudioResponseState
+  setAudioResponseOverride: (config: unknown | null) => MageAudioResponseState
   setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
   setSyntheticPreview: (enabled: boolean, seed?: number, tempoScale?: number) => void
 }
@@ -158,12 +178,6 @@ function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob)
   if (!loadedScene) {
     throw createSceneRenderError()
   }
-
-  // A reused player must not carry an opted-in response into an older scene.
-  // Apply after preset loading so it also works with engines whose preset
-  // serializer does not yet retain the top-level app metadata.
-  engine.setAudioResponseMode?.(normalizeAudioResponseMode(sceneBlob.audioResponse))
-  if (sceneBlob.audioResponse === 'mapped-v1') engine.setAudioResponseConfig?.(sceneBlob.audioResponseConfig)
 }
 
 function readSceneAudioSource(sceneBlob: MageSceneBlob) {
@@ -287,11 +301,50 @@ export async function createMagePlayer(
   let currentAudioVolume = 1
   let trackedAudioStartedAtMs: number | null = null
   let playbackState: MagePlayerPlaybackState = 'playing'
+  let savedMode: SceneAudioResponseMode = 'legacy'
+  let savedConfig: AudioResponseConfig | null = null
+  let responseOverride: AudioResponseConfig | null = null
+  let appliedResponseMode: SceneAudioResponseMode = 'legacy'
+  let appliedResponseConfig: string | null = null
+  let audioLoadGeneration = 0
+
+  function getAudioResponseState(): MageAudioResponseState {
+    const effectiveMode = responseOverride ? 'mapped-v1' : savedMode
+    return {
+      savedMode,
+      savedConfig: savedConfig ? normalizeAudioResponseConfig(savedConfig).config : null,
+      override: responseOverride ? normalizeAudioResponseConfig(responseOverride).config : null,
+      effectiveMode,
+      effectiveConfig: effectiveMode === 'mapped-v1'
+        ? normalizeAudioResponseConfig(responseOverride ?? savedConfig).config : null,
+    }
+  }
+
+  function applyAudioResponse(force = false) {
+    const response = getAudioResponseState()
+    const modeChanged = force || response.effectiveMode !== appliedResponseMode
+    const configKey = response.effectiveConfig ? JSON.stringify(response.effectiveConfig) : null
+    // Re-selecting a mode tears down its analyzer. Live configuration edits
+    // retain the audio clock and analysis history by changing only the config.
+    if (modeChanged) engine.setAudioResponseMode?.(response.effectiveMode)
+    if (response.effectiveMode === 'mapped-v1' && (modeChanged || configKey !== appliedResponseConfig)) {
+      engine.setAudioResponseConfig?.(response.effectiveConfig)
+    }
+    appliedResponseMode = response.effectiveMode
+    appliedResponseConfig = configKey
+  }
+
+  function readSavedAudioResponse(sceneBlob: MageSceneBlob) {
+    savedMode = normalizeAudioResponseMode(sceneBlob.audioResponse)
+    savedConfig = Object.hasOwn(sceneBlob, 'audioResponseConfig')
+      ? normalizeAudioResponseConfig(sceneBlob.audioResponseConfig).config : null
+  }
 
   function loadInteractiveSceneBlob(sceneBlob: MageSceneBlob) {
     mouseInteractions?.prepareSceneLoad()
     try {
       loadSceneIntoEngine(engine, sceneBlob)
+      applyAudioResponse(true)
     } finally {
       mouseInteractions?.sceneLoaded()
     }
@@ -413,6 +466,7 @@ export async function createMagePlayer(
       }
     },
     clearAudio() {
+      audioLoadGeneration += 1
       if (typeof engine.unloadAudio === 'function') {
         engine.unloadAudio()
       }
@@ -432,6 +486,34 @@ export async function createMagePlayer(
       }
     },
     getAudioState,
+    getAudioResponseState,
+    getAudioResponseCapabilities() {
+      return engine.getAudioResponseCapabilities ? structuredClone(engine.getAudioResponseCapabilities()) : null
+    },
+    getAudioResponseDiagnostics() {
+      return engine.getAudioResponseDiagnostics ? structuredClone(engine.getAudioResponseDiagnostics()) : null
+    },
+    getAudioResponseEvents(afterId) {
+      return engine.getAudioResponseEvents ? structuredClone(engine.getAudioResponseEvents(afterId)) : []
+    },
+    setAudioResponseSettings(mode, config) {
+      if (!currentSceneBlob) throw new MagePlayerAdapterError('Load a scene before changing its audio response.')
+      const nextScene = { ...currentSceneBlob }
+      if (mode === undefined) delete nextScene.audioResponse
+      else nextScene.audioResponse = normalizeAudioResponseMode(mode)
+      if (config === undefined) delete nextScene.audioResponseConfig
+      else nextScene.audioResponseConfig = normalizeAudioResponseConfig(config).config
+      currentSceneBlob = nextScene
+      readSavedAudioResponse(nextScene)
+      applyAudioResponse()
+      return getAudioResponseState()
+    },
+    setAudioResponseOverride(config) {
+      if (!currentSceneBlob) throw new MagePlayerAdapterError('Load a scene before changing its audio response.')
+      responseOverride = config === null ? null : normalizeAudioResponseConfig(config).config
+      applyAudioResponse()
+      return getAudioResponseState()
+    },
     getPlaybackState() {
       return playbackState
     },
@@ -452,6 +534,13 @@ export async function createMagePlayer(
         throw createAudioError('Choose an audio file or save an audioPath on the scene.')
       }
 
+      const loadGeneration = ++audioLoadGeneration
+      function assertCurrentAudioLoad() {
+        if (loadGeneration !== audioLoadGeneration) {
+          throw createAudioError('Audio loading was superseded by a newer player action.')
+        }
+      }
+
       if (typeof engine.unloadAudio === 'function') {
         engine.unloadAudio()
       }
@@ -468,6 +557,12 @@ export async function createMagePlayer(
         const startedAt = Date.now()
 
         function poll() {
+          try {
+            assertCurrentAudioLoad()
+          } catch (error) {
+            reject(error)
+            return
+          }
           if (typeof engine.isAudioLoaded === 'function' && engine.isAudioLoaded()) {
             resolve()
             return
@@ -483,6 +578,7 @@ export async function createMagePlayer(
 
         poll()
       })
+      assertCurrentAudioLoad()
 
       const audioTime =
         typeof engine.getEngineTime === 'function'
@@ -514,13 +610,16 @@ export async function createMagePlayer(
       if (!isMageSceneBlob(sceneBlob)) {
         throw new MagePlayerAdapterError('Scene data is missing required MAGE fields.')
       }
+      audioLoadGeneration += 1
 
       try {
         if (typeof engine.unloadAudio === 'function') {
           engine.unloadAudio()
         }
 
-        currentSceneBlob = sceneBlob
+        currentSceneBlob = { ...sceneBlob }
+        readSavedAudioResponse(sceneBlob)
+        responseOverride = null
         hasAttachedAudio = false
         currentAudioLabel = null
         currentAudioTime = 0
@@ -530,6 +629,9 @@ export async function createMagePlayer(
         playbackState = applyPlaybackState(engine, playbackState)
       } catch (error) {
         currentSceneBlob = null
+        savedMode = 'legacy'
+        savedConfig = null
+        responseOverride = null
         hasAttachedAudio = false
         currentAudioLabel = null
         hasLoadedScene = false
@@ -598,6 +700,7 @@ export async function createMagePlayer(
     },
     setPlaybackState,
     dispose() {
+      audioLoadGeneration += 1
       mouseInteractions?.dispose()
       engine.dispose()
     },

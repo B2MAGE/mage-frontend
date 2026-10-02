@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { normalizeAudioResponseConfig } from '@shared/lib'
 import {
   createDefaultSceneData,
   getSceneEditorModel,
@@ -10,7 +11,7 @@ import {
 import { buildEffectiveSceneData, prettyPrintEditorSceneData, validateForm } from './utils'
 
 describe('scene audio response persistence', () => {
-  it.each(['transient-v1', 'legacy'] as const)(
+  it.each(['transient-v1', 'legacy', 'mapped-v1'] as const)(
     'preserves %s through JSON import, structured edits, export and submission preparation',
     (audioResponse) => {
       const authoredScene = {
@@ -64,4 +65,21 @@ describe('scene audio response persistence', () => {
     expect(scene).not.toHaveProperty('reactions')
     expect(scene).not.toHaveProperty('mageTemplate')
   })
+  it.each(['legacy', 'transient-v1', 'mapped-v1'] as const)('retains explicit mappings even while %s is selected', (mode) => {
+    const config = normalizeAudioResponseConfig({ sensitivity: 1.7, mappings: [
+      { target: 'size', source: 'treble-hit', amount: 0.8, attack: 0.02, release: 0.4 },
+    ] }).config
+    const original: SceneData = { ...createDefaultSceneData(), audioResponse: mode, audioResponseConfig: config }
+    for (const enabled of [false, true]) {
+      const scene = buildEffectiveSceneData(original, { isCameraAdvancedEnabled: enabled, isMotionAdvancedEnabled: enabled })
+      expect(scene.audioResponseConfig).toEqual(config)
+      expect(parseSceneDataJson(prettyPrintEditorSceneData(scene)).audioResponseConfig).toEqual(config)
+      expect(scene.audioResponseConfig).not.toBe(config)
+    }
+    const { audioResponseConfig: removed, ...withoutConfig } = original
+    expect(removed).toEqual(config)
+    expect(sanitizeSceneData(withoutConfig)).not.toHaveProperty('audioResponseConfig')
+    expect(createDefaultSceneData()).not.toHaveProperty('audioResponseConfig')
+  })
+
 })

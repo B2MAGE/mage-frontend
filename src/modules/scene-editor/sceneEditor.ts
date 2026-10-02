@@ -1,6 +1,6 @@
 import { EMBEDDED_SHADER_SCENES } from './embeddedShaderScenes'
 import { ADDITIONAL_SHADER_SCENES } from './additionalShaderScenes'
-import { normalizeAudioResponseMode } from '@shared/lib'
+import { normalizeAudioResponseMode, normalizeAudioResponseConfig } from '@shared/lib'
 
 export type SceneData = Record<string, unknown>
 
@@ -650,6 +650,9 @@ export function sanitizeSceneData(sceneData: SceneData): SceneData {
   // rewriting legacy scene payloads that never had this field.
   if (Object.hasOwn(sceneData, 'audioResponse')) {
     nextSceneData.audioResponse = normalizeAudioResponseMode(sceneData.audioResponse)
+  }
+  if (Object.hasOwn(sceneData, 'audioResponseConfig')) {
+    nextSceneData.audioResponseConfig = normalizeAudioResponseConfig(sceneData.audioResponseConfig).config
   }
 
   nextSceneData = mergeSceneEditorBranch(nextSceneData, 'visualizer', normalizedModel.visualizer)

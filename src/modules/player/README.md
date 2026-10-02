@@ -42,6 +42,7 @@ Exports:
 `MagePlayer` accepts:
 
 - `sceneBlob`
+- `sceneKey?` (stable scene identity; pass a route scene ID when available)
 - `ariaLabel?`
 - `className?`
 - `initialPlayback?`
@@ -66,6 +67,7 @@ The adapter accepts scene blobs that contain at least one engine-recognized root
 - `sceneBlob={null}` or `undefined` shows the empty state
 - the engine is created once the canvas mounts
 - the current scene is applied when both the player and a valid `sceneBlob` are available
+- changes only to saved audio-response settings apply live, preserving the song, position, volume, and playlist; changing `sceneKey` always loads the new scene, even for identical documents
 - native editor controls/shortcuts stay disabled; full players support left-button drag rotation, canvas-local mouse/press reactions, and wheel-to-zoom over the canvas
 - wheel zoom uses limits relative to the scene's authored camera distance (0.4–2.5 times the distance, respecting the near clip plane); these limits reset on scene load, not on hover changes
 - shaders without their own pointer response receive a bounded live-material deformation, leaving saved scene data untouched
@@ -97,6 +99,12 @@ Current route defaults:
 2. Treat the engine adapter as infrastructure. Engine patch assumptions, startup workarounds, and browser/runtime quirks stay behind that layer.
 3. Full playback surfaces should embed `MagePlayer` and pass raw backend `sceneData` objects as `sceneBlob`. Controls-free previews may use `createMagePlayer()` through this public module boundary, must share renderer instances where practical, and must dispose their controller when no preview consumers remain.
 4. Route-owned playlist editing UI may keep its own state, but shared playlist types and helpers come from this module.
+
+The controller also exposes authored audio settings, temporary viewer overrides, scene capabilities,
+diagnostics, and timestamped events. Use `setAudioResponseSettings()` for authored preview settings and
+`setAudioResponseOverride()` for temporary viewer changes. An override never modifies saved scene data.
+See `docs/audio-response.md` for the full contract and `scenePlaybackIdentity()` for the shared rule
+that distinguishes a configuration update from a scene reload.
 
 ## Tests
 

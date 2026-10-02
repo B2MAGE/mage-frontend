@@ -4,6 +4,7 @@ import { createMagePlayer, type MagePlayerController } from '@modules/player'
 import { setAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
 import { BrandScene, BRAND_SCENE } from '@modules/scene-artwork'
 import { AboutScene } from './AboutScene'
+import { buildAudioResponseController } from '@shared/test/audioResponseController'
 
 vi.mock('@modules/player', async (importOriginal) => ({
   ...await importOriginal<typeof import('@modules/player')>(),
@@ -21,6 +22,7 @@ let motionChange: EventListener
 function buildController() {
   const audioState = { currentTime: 0, duration: 0, hasSource: false, isLoaded: false, sourcePath: null, volume: 1 }
   return {
+    ...buildAudioResponseController(),
     captureFramePreview: vi.fn(async (): Promise<string | null> => renderedFrame),
     clearAudio: vi.fn(() => audioState),
     dispose: vi.fn(),

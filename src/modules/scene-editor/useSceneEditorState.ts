@@ -196,7 +196,7 @@ export function useSceneEditorState({
       setIsMotionAdvancedEnabled(true)
       updateBranch('state', () => ({
         ...motionRuntimeDraft,
-        ...(sceneData.audioResponse === 'transient-v1'
+        ...((sceneData.audioResponse === 'transient-v1' || sceneData.audioResponse === 'mapped-v1')
           ? { volume_multiplier: sceneModel.state.volume_multiplier }
           : {}),
       }))
@@ -207,7 +207,7 @@ export function useSceneEditorState({
     setIsMotionAdvancedEnabled(false)
     updateBranch('state', () => ({
       ...initialSceneModel.state,
-      ...(sceneData.audioResponse === 'transient-v1'
+      ...((sceneData.audioResponse === 'transient-v1' || sceneData.audioResponse === 'mapped-v1')
         ? { volume_multiplier: sceneModel.state.volume_multiplier }
         : {}),
     }))

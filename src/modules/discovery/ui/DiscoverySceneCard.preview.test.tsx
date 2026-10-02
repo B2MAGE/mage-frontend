@@ -5,6 +5,7 @@ import { ANIMATED_SCENE_THUMBNAILS_STORAGE_KEY } from '@shared/preferences'
 import type { MagePlayerController, MagePlayerPlaybackState } from '@modules/player'
 import type { DiscoveryScene } from '../types'
 import { DiscoverySceneCard } from './DiscoverySceneCard'
+import { buildAudioResponseController } from '@shared/test/audioResponseController'
 
 const engineMocks = vi.hoisted(() => ({
   createMagePlayer: vi.fn(),
@@ -48,6 +49,7 @@ function buildMagePlayerController(
   let playbackState: MagePlayerPlaybackState = 'playing'
 
   return {
+    ...buildAudioResponseController(),
     captureFramePreview: vi.fn(async () => null),
     clearAudio: vi.fn(() => emptyAudioState),
     dispose: vi.fn(),
