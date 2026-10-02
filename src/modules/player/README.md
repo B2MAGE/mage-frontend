@@ -69,6 +69,7 @@ The adapter accepts scene blobs that contain at least one engine-recognized root
 - native editor controls/shortcuts stay disabled; full players support left-button drag rotation, canvas-local mouse/press reactions, and wheel-to-zoom over the canvas
 - wheel zoom uses limits relative to the scene's authored camera distance (0.4–2.5 times the distance, respecting the near clip plane); these limits reset on scene load, not on hover changes
 - shaders without their own pointer response receive a bounded live-material deformation, leaving saved scene data untouched
+- `simulatedBeat={{ enabled, bpm }}` provides a silent editor-only rhythm at 60–180 BPM; actual playing music takes priority, and preview tempo is not saved
 - About/home artwork keeps rotation and mouse reactions but leaves wheel scrolling alone; thumbnail hover previews stay noninteractive (`createMagePlayer` defaults to `mouseInteractions: false` and `mouseWheelZoom: false`)
 - Ctrl/Meta+wheel and touch gestures remain browser-owned, and scrolling outside the player canvas is unchanged
 - `initialPlayback="paused"` freezes the scene until the user presses `Play`

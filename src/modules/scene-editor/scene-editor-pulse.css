@@ -1,4 +1,6 @@
 /* Feature-owned Pulse studio; Classic keeps the existing document workflow. */
+.scene-editor-beat-preview { display: grid; gap: 14px; padding: 16px; border-bottom: 1px solid var(--editor-field-border, rgba(128,128,128,.2)); }
+html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__content { max-height: calc(100% - 48px); overflow-y: auto; }
 .scene-editor-stepper__number, .scene-field__meta { display: none; }
 html[data-theme="mage-pulse"]:has(.scene-editor-page) { height: 100%; overflow: hidden; }
 html[data-theme="mage-pulse"]:has(.scene-editor-page) body { height: 100dvh; min-height: 0; overflow: hidden; }
@@ -232,8 +234,11 @@ html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-action-bar-sentin
     html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-stepper__list { flex-direction: row; justify-content: center; width: max-content; min-width: 100%; gap: 3px; }
     html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-stepper__button { width: auto; min-height: 38px; padding: 7px 9px; grid-template-columns: 22px auto; }
     html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-stepper__marker { display: none; }
-    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview { order: 2; flex: 0 0 auto; width: 100%; height: auto; border-left: 0; border-bottom: 1px solid rgba(255,255,255,.16); }
-    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__header { height: 42px; padding-inline: 13px; }
+    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview { order: 2; flex: 0 0 45%; width: 100%; height: 45%; max-height: 45%; border-left: 0; border-bottom: 1px solid rgba(255,255,255,.16); }
+    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__card { display: flex; flex-direction: column; }
+    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__content { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview.is-collapsed { flex-basis: 42px; height: 42px; max-height: 42px; }
+    html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__header { flex: 0 0 42px; height: 42px; padding-inline: 13px; }
     html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__collapse { display: inline-flex; align-items: center; }
     html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport { width: min(100%, calc(28dvh * 16 / 9)); }
     html[data-theme="mage-pulse"] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__controls { min-height: 52px; height: 52px; padding: 0 12px; }

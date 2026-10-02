@@ -203,6 +203,13 @@ The shader catalog includes all fourteen built-in 1.0.3 shaders (including prese
 13, named Rose Circuit in the app). Selecting a shader does not replace camera,
 skybox, or effect settings.
 
+Create/Edit Scene can opt MagePlayer into `simulatedBeat: { enabled, bpm }`.
+This uses the existing synthetic-preview adapter with seed 24 (120 BPM) and
+`tempoScale = bpm / 120`, bounded to 60–180 BPM. Updates reuse the player and
+loaded scene. Playback pause freezes the preview; actual playing audio takes
+priority. This is silent and editor-local: neither the toggle nor tempo is
+serialized in the saved scene. Engine animation speed does not change the tempo.
+
 Ripple Rings and Tidal Lantern are additional shader choices with their own
 authored audio behavior. Audio Gain controls signal sensitivity, and Easing Speed
 controls smoothing; scene geometry responds as defined by its shader. The editor

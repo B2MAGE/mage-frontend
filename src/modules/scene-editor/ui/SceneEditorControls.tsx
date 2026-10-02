@@ -36,6 +36,7 @@ type NumberFieldProps = {
 
 type SliderFieldProps = NumberFieldProps & {
   formatValue?: (value: number) => string
+  numericLabel?: string
 }
 
 type ToggleFieldProps = {
@@ -170,6 +171,7 @@ export function SliderField({
   label,
   max,
   min,
+  numericLabel = 'Numeric value',
   onChange,
   step = 0.01,
   value,
@@ -192,7 +194,7 @@ export function SliderField({
         value={value}
       />
       <input
-        aria-label="Numeric value"
+        aria-label={numericLabel}
         className="scene-slider__number"
         max={max}
         min={min}

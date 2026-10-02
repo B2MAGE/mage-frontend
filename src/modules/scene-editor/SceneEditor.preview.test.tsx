@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
@@ -42,6 +42,10 @@ type SceneWritePayload = { name: string; sceneData: SceneData }
 
 function previewScene() {
   return JSON.parse(screen.getByTestId('scene-preview').getAttribute('data-scene') ?? '{}') as SceneData
+}
+
+function previewBeat() {
+  return JSON.parse(screen.getByTestId('scene-preview').getAttribute('data-beat') ?? '{}') as { enabled: boolean; bpm: number }
 }
 
 function shaderOption(label: string) {
@@ -136,6 +140,29 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expectRetiredControlsAbsent()
     expect(screen.getByRole('slider', { name: 'Audio Gain' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'Simulate beat' })).toBeEnabled()
+  })
+
+  it('retains silent beat preview and bounded tempo without changing scene data', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage('mage-pulse')
+    const before = previewScene()
+    expect(previewBeat()).toMatchObject({ enabled: false })
+    await user.click(screen.getByRole('checkbox', { name: 'Simulate beat' }))
+    const tempoField = screen.getByRole('slider', { name: 'Tempo' }).closest('.scene-field')
+    if (!(tempoField instanceof HTMLElement)) throw new Error('Missing tempo field')
+    const tempo = within(tempoField).getByRole('spinbutton', { name: 'Tempo numeric value' })
+    fireEvent.change(tempo, { target: { value: '150' } })
+    expect(previewBeat()).toEqual({ enabled: true, bpm: 150 })
+    fireEvent.change(tempo, { target: { value: '250' } })
+    expect(previewBeat().bpm).toBe(180)
+    fireEvent.change(tempo, { target: { value: '20' } })
+    expect(previewBeat().bpm).toBe(60)
+    await user.click(screen.getByRole('checkbox', { name: 'Simulate beat' }))
+    expect(previewBeat()).toEqual({ enabled: false, bpm: 60 })
+    expect(previewScene()).toEqual(before)
   })
 
   it('saves fixed preset source without template, reaction, or simulated preview metadata', async () => {
@@ -152,6 +179,8 @@ describe('scene editor presets and beat preview', () => {
     await user.type(screen.getByLabelText(/scene name/i), 'Quiet Rings')
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Shader' }), shaderOption('Ripple Rings').id)
+    await user.click(screen.getByRole('checkbox', { name: 'Simulate beat' }))
+    fireEvent.change(screen.getByRole('slider', { name: 'Tempo' }), { target: { value: '90' } })
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     await waitFor(() => expect(created).toBeDefined())
