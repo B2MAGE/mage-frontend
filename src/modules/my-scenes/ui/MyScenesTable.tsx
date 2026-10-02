@@ -17,187 +17,57 @@ type MyScenesTableProps = {
   onToggleSelectAll: () => void
 }
 
-function SortButton({
-  activeSortKey,
-  label,
-  sortDirection,
-  sortKey,
-  onSort,
-}: {
-  activeSortKey: SortKey
-  label: string
-  sortDirection: SortDirection
-  sortKey: SortKey
-  onSort: (sortKey: SortKey) => void
-}) {
-  return (
-    <TableSortButton
-      active={activeSortKey === sortKey}
-      aria-label={buildSortAriaLabel(label, sortKey, activeSortKey, sortDirection)}
-      className="my-scenes-table__sort-button"
-      direction={sortDirection}
-      label={label}
-      onClick={() => {
-        onSort(sortKey)
-      }}
-    />
-  )
-}
-
-function EditSceneIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M4.75 19.25h3.6L18.7 8.9a2.12 2.12 0 0 0 0-3L18.1 5.3a2.12 2.12 0 0 0-3 0L4.75 15.65v3.6Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d="m13.75 6.65 3.6 3.6"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  )
-}
-
 export function MyScenesTable({
-  allPageScenesSelected,
-  pagedScenes,
-  selectAllCheckboxRef,
-  selectedSceneIdSet,
-  sortDirection,
-  sortKey,
-  onSort,
-  onToggleSceneSelection,
-  onToggleSelectAll,
+  allPageScenesSelected, pagedScenes, selectAllCheckboxRef, selectedSceneIdSet, sortDirection, sortKey,
+  onSort, onToggleSceneSelection, onToggleSelectAll,
 }: MyScenesTableProps) {
-  return (
-    <div className="my-scenes-scroll">
-      <div className="my-scenes-table" aria-label="My scenes" role="list">
-        <div className="my-scenes-table__head">
-          <div className="my-scenes-table__primary-heading">
-            <input
-              ref={selectAllCheckboxRef}
-              checked={allPageScenesSelected}
-              className="my-scenes-table__checkbox"
-              onChange={onToggleSelectAll}
-              type="checkbox"
-              aria-label="Select all scenes on this page"
-            />
-            <span>Scene</span>
-          </div>
-          <span className="my-scenes-table__status-heading">Status</span>
-          <SortButton
-            activeSortKey={sortKey}
-            label="Updated"
-            sortDirection={sortDirection}
-            sortKey="updated"
-            onSort={onSort}
-          />
-          <SortButton
-            activeSortKey={sortKey}
-            label="Views"
-            sortDirection={sortDirection}
-            sortKey="views"
-            onSort={onSort}
-          />
-          <span>Comments</span>
-          <SortButton
-            activeSortKey={sortKey}
-            label="Likes (vs dislikes)"
-            sortDirection={sortDirection}
-            sortKey="likes"
-            onSort={onSort}
-          />
-        </div>
+  const columns: {key: SortKey; label: string; numeric?: boolean}[] = [
+    {key: 'name', label: 'Scene'}, {key: 'status', label: 'Status'}, {key: 'updated', label: 'Updated'},
+    {key: 'views', label: 'Views', numeric: true}, {key: 'comments', label: 'Comments', numeric: true},
+    {key: 'likes', label: 'Like ratio', numeric: true},
+  ]
 
-        {pagedScenes.map((scene) => (
-          <article key={scene.id} className="my-scenes-row" role="listitem">
-            <div className="my-scenes-row__primary">
-              <label className="my-scenes-row__selection">
-                <input
-                  checked={selectedSceneIdSet.has(scene.id)}
-                  className="my-scenes-table__checkbox"
-                  onChange={() => {
-                    onToggleSceneSelection(scene.id)
-                  }}
-                  type="checkbox"
-                  aria-label={`Select ${scene.name}`}
-                />
-              </label>
-              <Link
-                aria-label="Open scene preview"
-                className="my-scenes-row__thumb-link"
-                to={`/scenes/${scene.id}`}
-              >
-                {scene.thumbnailRef ? (
-                  <img
-                    className="my-scenes-row__thumb"
-                    src={scene.thumbnailRef}
-                    alt={`${scene.name} thumbnail`}
-                  />
-                ) : (
-                  <div
-                    className="my-scenes-row__thumb-fallback"
-                    aria-label={`${scene.name} thumbnail unavailable`}
-                    role="img"
-                  />
-                )}
-              </Link>
-              <div className="my-scenes-row__copy">
-                <Link className="my-scenes-row__title-link" to={`/scenes/${scene.id}`}>
-                  <strong>{scene.name}</strong>
-                </Link>
-                <div className="my-scenes-row__description-slot">
-                  <span className="my-scenes-row__description">
-                    {scene.description ?? 'Add description'}
-                  </span>
-                  <div
-                    aria-label={`Actions for ${scene.name}`}
-                    className="my-scenes-row__menu"
-                    role="group"
-                  >
-                    <Link
-                      aria-label="Edit scene"
-                      className="my-scenes-row__menu-button"
-                      title="Edit scene"
-                      to={`/scenes/${scene.id}/edit`}
-                    >
-                      <EditSceneIcon />
-                    </Link>
+  return (
+    <div className="my-scenes-scroll" tabIndex={0} role="region" aria-label="Scene library table">
+      <table className="my-scenes-table" aria-label="My scenes">
+        <thead>
+          <tr>
+            <th className="my-scenes-check-cell" scope="col">
+              <input ref={selectAllCheckboxRef} checked={allPageScenesSelected} className="my-scenes-table__checkbox" onChange={onToggleSelectAll} type="checkbox" aria-label="Select all scenes on this page" />
+            </th>
+            {columns.map((column) => (
+              <th key={column.key} scope="col" className={column.numeric ? 'my-scenes-numeric' : undefined} aria-sort={sortKey === column.key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <TableSortButton active={sortKey === column.key} aria-label={buildSortAriaLabel(column.label, column.key, sortKey, sortDirection)} className="my-scenes-table__sort-button" direction={sortDirection} label={column.label} onClick={() => onSort(column.key)} />
+              </th>
+            ))}
+            <th className="my-scenes-action-cell" scope="col"><span className="my-scenes-sort-announcement">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {pagedScenes.map((scene) => (
+            <tr key={scene.id} className="my-scenes-row" data-selected={selectedSceneIdSet.has(scene.id)}>
+              <td className="my-scenes-check-cell"><input checked={selectedSceneIdSet.has(scene.id)} className="my-scenes-table__checkbox" onChange={() => onToggleSceneSelection(scene.id)} type="checkbox" aria-label={'Select ' + scene.name} /></td>
+              <td>
+                <div className="my-scenes-row__primary">
+                  <Link aria-label="Open scene preview" className="my-scenes-row__thumb-link" to={'/scenes/' + scene.id}>
+                    {scene.thumbnailRef ? <img className="my-scenes-row__thumb" src={scene.thumbnailRef} alt={scene.name + ' thumbnail'} /> : <div className="my-scenes-row__thumb-fallback" aria-label={scene.name + ' thumbnail unavailable'} role="img" />}
+                  </Link>
+                  <div className="my-scenes-row__copy">
+                    <Link className="my-scenes-row__title-link" to={'/scenes/' + scene.id}><strong>{scene.name}</strong></Link>
+                    <span className="my-scenes-row__description">{scene.description ?? 'Add description'}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="my-scenes-row__cell my-scenes-row__cell--status">
-              <span className="my-scenes-row__pill" data-status={scene.statusLabel}>
-                {scene.statusLabel}
-              </span>
-            </div>
-
-            <div className="my-scenes-row__cell">
-              <strong>{formatCalendarDate(scene.createdAt)}</strong>
-            </div>
-
-            <div className="my-scenes-row__metric">
-              <strong>{formatCompactCount(scene.viewsCount)}</strong>
-            </div>
-
-            <div className="my-scenes-row__metric">
-              <strong>{formatCompactCount(scene.commentsCount)}</strong>
-            </div>
-
-            <div className="my-scenes-row__metric">
-              <strong>{scene.likesRatio}%</strong>
-            </div>
-          </article>
-        ))}
-      </div>
+              </td>
+              <td><span className="my-scenes-row__pill" data-status={scene.statusLabel}>{scene.statusLabel === 'Public' ? 'Published' : scene.statusLabel}</span></td>
+              <td>{formatCalendarDate(scene.createdAt)}</td>
+              <td className="my-scenes-numeric">{formatCompactCount(scene.viewsCount)}</td>
+              <td className="my-scenes-numeric">{formatCompactCount(scene.commentsCount)}</td>
+              <td className="my-scenes-numeric"><span className="my-scenes-ratio">{scene.likesRatio}%<span className="my-scenes-ratio__track" aria-hidden="true"><span style={{ width: scene.likesRatio + '%' }} /></span></span></td>
+              <td className="my-scenes-action-cell"><div role="group" aria-label={'Actions for ' + scene.name}><Link aria-label="Edit scene" className="my-scenes-edit-button" to={'/scenes/' + scene.id + '/edit'}>Edit</Link></div></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

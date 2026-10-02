@@ -63,7 +63,12 @@ describe('MyScenesPage states', () => {
 
     renderMyScenesPage()
 
-    expect(await screen.findAllByText(/loading scenes/i)).not.toHaveLength(0)
+    expect(await screen.findAllByText(/loading your scenes/i)).not.toHaveLength(0)
+    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByText(/^0 scenes$/i)).not.toBeInTheDocument()
+    expect(document.querySelectorAll('.my-scenes-loading__row')).toHaveLength(5)
+    expect(document.querySelector('.my-scenes-loading__filter-slot')).toBeInTheDocument()
+    expect(document.querySelector('.my-scenes-loader')).not.toBeInTheDocument()
     await waitFor(() => expect(resolveScenesResponse).toBeDefined())
 
     resolveScenesResponse?.(jsonResponse([]))
@@ -165,8 +170,8 @@ describe('MyScenesPage states', () => {
     expect(screen.getByText('777')).toBeInTheDocument()
     expect(screen.getByText('75%')).toBeInTheDocument()
 
-    const auroraRow = sceneLink.closest('article')
-    const signalRow = screen.getByRole('link', { name: /signal bloom/i }).closest('article')
+    const auroraRow = sceneLink.closest('tr')
+    const signalRow = screen.getByRole('link', { name: /signal bloom/i }).closest('tr')
 
     expect(auroraRow).not.toBeNull()
     expect(signalRow).not.toBeNull()
@@ -209,6 +214,13 @@ describe('MyScenesPage states', () => {
       await screen.findByText(/unable to load scenes right now\. please try again in a moment\./i),
     ).toBeInTheDocument()
     expect(fetchSpy).toHaveBeenCalledTimes(2)
+    fetchSpy.mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) return Promise.resolve(jsonResponse(storedUser))
+      if (input === buildApiUrl('/users/8/scenes')) return Promise.resolve(jsonResponse([]))
+      throw new Error('Unexpected request: ' + String(input))
+    })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('No scenes yet')).toBeInTheDocument()
   })
 
   it('shows an edit action when no description is stored', async () => {

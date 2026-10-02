@@ -4,7 +4,8 @@ import { useAuth } from '@auth'
 import { fetchUserScenes } from './loaders'
 import { buildMyScenesBoardModel, pruneSelectedSceneIds } from './selectors'
 import type { SortDirection, SortKey, StatusFilter, UserScene } from './types'
-import { MyScenesPagination, MyScenesTable, MyScenesToolbar } from './ui'
+import { MyScenesLoadingState, MyScenesPagination, MyScenesTable, MyScenesToolbar } from './ui'
+import './my-scenes.css'
 
 export function MyScenesPage() {
   const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
@@ -15,11 +16,10 @@ export function MyScenesPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
   const [selectedSceneIds, setSelectedSceneIds] = useState<number[]>([])
-  const [rowsPerPage, setRowsPerPage] = useState(30)
+  const [rowsPerPage, setRowsPerPage] = useState(5)
   const [pageIndex, setPageIndex] = useState(0)
-  const [isRowsPerPageMenuOpen, setIsRowsPerPageMenuOpen] = useState(false)
+  const [reloadVersion, setReloadVersion] = useState(0)
   const selectAllCheckboxRef = useRef<HTMLInputElement | null>(null)
-  const rowsPerPageMenuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (isRestoringSession || !isAuthenticated || typeof user?.userId !== 'number') {
@@ -59,37 +59,11 @@ export function MyScenesPage() {
     return () => {
       isCurrent = false
     }
-  }, [authenticatedFetch, isAuthenticated, isRestoringSession, user?.userId])
+  }, [authenticatedFetch, isAuthenticated, isRestoringSession, user?.userId, reloadVersion])
 
   useEffect(() => {
     setSelectedSceneIds((currentIds) => pruneSelectedSceneIds(currentIds, scenes))
   }, [scenes])
-
-  useEffect(() => {
-    if (!isRowsPerPageMenuOpen) {
-      return
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      if (!rowsPerPageMenuRef.current?.contains(event.target as Node)) {
-        setIsRowsPerPageMenuOpen(false)
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsRowsPerPageMenuOpen(false)
-      }
-    }
-
-    window.addEventListener('mousedown', handlePointerDown)
-    window.addEventListener('keydown', handleEscape)
-
-    return () => {
-      window.removeEventListener('mousedown', handlePointerDown)
-      window.removeEventListener('keydown', handleEscape)
-    }
-  }, [isRowsPerPageMenuOpen])
 
   const boardModel = useMemo(
     () =>
@@ -133,28 +107,18 @@ export function MyScenesPage() {
     setPageIndex((currentIndex) => Math.min(currentIndex, pageCount - 1))
   }, [pageCount])
 
-  if (isRestoringSession) {
-    return (
-      <main className="surface surface--hero">
-        <div className="eyebrow">My Scenes</div>
-        <h1>Loading scenes...</h1>
-        <p className="page-lead">MAGE is restoring your session and loading your saved scenes.</p>
-      </main>
-    )
-  }
-
-  if (!isAuthenticated) {
+  if (!isRestoringSession && !isAuthenticated) {
     return <Navigate replace to="/login" />
   }
 
-  if (typeof user?.userId !== 'number') {
+  if (!isRestoringSession && typeof user?.userId !== 'number') {
     return (
-      <main className="surface surface--hero">
-        <div className="eyebrow">My Scenes</div>
-        <h1>Unable to load scenes</h1>
-        <p className="page-lead">Your session is missing the user information needed to load scenes.</p>
-      </main>
+      <main className="my-scenes-page"><div className="my-scenes-library-shell"><div className="my-scenes-state"><h1>Unable to load scenes</h1><p>Your session is missing the user information needed to load scenes.</p></div></div></main>
     )
+  }
+
+  if (isRestoringSession || isLoading) {
+    return <MyScenesLoadingState />
   }
 
   function handleSort(nextSortKey: SortKey) {
@@ -198,90 +162,30 @@ export function MyScenesPage() {
 
   return (
     <main className="page-stack my-scenes-page">
-      <section className="surface surface--page-panel my-scenes-panel" aria-live="polite">
-        <header className="my-scenes-panel__header">
-          <div className="eyebrow">My Scenes</div>
-          <h1 className="my-scenes-panel__title">Scene library</h1>
-          <p className="my-scenes-panel__lead">
-            Review the scenes created by your account and stage edits, organization, or cleanup from one place.
-          </p>
-        </header>
-
-        {isLoading ? (
-          <p className="scene-status">Loading scenes...</p>
-        ) : errorMessage ? (
-          <p className="scene-status scene-status-error">{errorMessage}</p>
+      <header className="my-scenes-page__header">
+        <div>
+          <h1 className="my-scenes-panel__title">My scenes</h1>
+          <p className="my-scenes-panel__lead">Manage the scenes you’re building and the work you’ve already published.</p>
+        </div>
+        <span className="my-scenes-page__summary">
+          {errorMessage
+            ? 'Scenes unavailable'
+            : `${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}`}
+        </span>
+      </header>
+      <MyScenesToolbar availableStatuses={availableStatuses} selectedSceneCount={selectedSceneIds.length} sortSummary={sortSummary} totalScenes={sortedScenes.length} statusFilter={statusFilter} onSelectStatus={(status) => { setStatusFilter(status); setPageIndex(0) }} />
+      <section className="my-scenes-library-shell" aria-live="polite">
+        {errorMessage ? (
+          <div className="my-scenes-state"><h2>Couldn’t load your scenes</h2><p>{errorMessage}</p><button className="my-scenes-state-action" type="button" onClick={() => setReloadVersion((version) => version + 1)}>Retry</button></div>
         ) : scenes.length === 0 ? (
-          <div className="scene-empty-state">
-            <p className="scene-status">No scenes yet</p>
-            <p className="scene-status">
-              Create your first scene to start building your library.
-            </p>
-            <div className="scene-actions">
-              <Link
-                className="scene-secondary-button scene-editor-nav-button my-scenes-empty-action"
-                to="/create-scene"
-              >
-                Create Scene
-              </Link>
-            </div>
-          </div>
+          <div className="my-scenes-state"><h2>No scenes yet</h2><p>Create your first scene to start building your library.</p><Link className="my-scenes-state-action" to="/create-scene">Create scene</Link></div>
+        ) : sortedScenes.length === 0 ? (
+          <div className="my-scenes-state"><h2>No matching scenes</h2><p>No scenes in your library match this status.</p><button className="my-scenes-state-action" type="button" onClick={() => setStatusFilter('All')}>Show all scenes</button></div>
         ) : (
-          <div className="my-scenes-board">
-            <MyScenesToolbar
-              availableStatuses={availableStatuses}
-              sortSummary={sortSummary}
-              totalScenes={sortedScenes.length}
-              statusFilter={statusFilter}
-              onSelectStatus={(status) => {
-                setStatusFilter(status)
-                setPageIndex(0)
-              }}
-            />
-
-            <MyScenesTable
-              allPageScenesSelected={allPageScenesSelected}
-              pagedScenes={pagedScenes}
-              selectAllCheckboxRef={selectAllCheckboxRef}
-              selectedSceneIdSet={selectedSceneIdSet}
-              sortDirection={sortDirection}
-              sortKey={sortKey}
-              onSort={handleSort}
-              onToggleSceneSelection={handleToggleSceneSelection}
-              onToggleSelectAll={handleSelectAllVisibleScenes}
-            />
-
-            <MyScenesPagination
-              currentPageIndex={currentPageIndex}
-              isRowsPerPageMenuOpen={isRowsPerPageMenuOpen}
-              pageCount={pageCount}
-              pageEnd={pageEnd}
-              pageStart={pageStart}
-              rowsPerPage={rowsPerPage}
-              rowsPerPageMenuRef={rowsPerPageMenuRef}
-              totalScenes={totalScenes}
-              onGoToFirstPage={() => {
-                setPageIndex(0)
-              }}
-              onGoToLastPage={() => {
-                setPageIndex(pageCount - 1)
-              }}
-              onGoToNextPage={() => {
-                setPageIndex((currentIndex) => Math.min(pageCount - 1, currentIndex + 1))
-              }}
-              onGoToPreviousPage={() => {
-                setPageIndex((currentIndex) => Math.max(0, currentIndex - 1))
-              }}
-              onSelectRowsPerPage={(option) => {
-                setRowsPerPage(option)
-                setPageIndex(0)
-                setIsRowsPerPageMenuOpen(false)
-              }}
-              onToggleRowsPerPageMenu={() => {
-                setIsRowsPerPageMenuOpen((isOpen) => !isOpen)
-              }}
-            />
-          </div>
+          <>
+            <MyScenesTable allPageScenesSelected={allPageScenesSelected} pagedScenes={pagedScenes} selectAllCheckboxRef={selectAllCheckboxRef} selectedSceneIdSet={selectedSceneIdSet} sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} onToggleSceneSelection={handleToggleSceneSelection} onToggleSelectAll={handleSelectAllVisibleScenes} />
+            <MyScenesPagination currentPageIndex={currentPageIndex} pageCount={pageCount} pageEnd={pageEnd} pageStart={pageStart} rowsPerPage={rowsPerPage} totalScenes={totalScenes} onGoToNextPage={() => setPageIndex((currentIndex) => Math.min(pageCount - 1, currentIndex + 1))} onGoToPreviousPage={() => setPageIndex((currentIndex) => Math.max(0, currentIndex - 1))} onSelectRowsPerPage={(option) => { setRowsPerPage(option); setPageIndex(0) }} />
+          </>
         )}
       </section>
     </main>

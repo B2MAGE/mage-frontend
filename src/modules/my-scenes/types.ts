@@ -1,7 +1,7 @@
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
 export type SceneVisibility = 'Public' | 'Private' | 'Unlisted' | 'Draft'
-export type SortKey = 'updated' | 'views' | 'likes'
+export type SortKey = 'updated' | 'views' | 'likes' | 'name' | 'status' | 'comments'
 export type SortDirection = 'asc' | 'desc'
 export type StatusFilter = 'All' | SceneVisibility
 

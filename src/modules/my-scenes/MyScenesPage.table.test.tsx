@@ -93,9 +93,9 @@ describe('MyScenesPage table behavior', () => {
         name: /very long scene name to test wrapping in the card layout/i,
       }),
     ).toBeInTheDocument()
-    expect(screen.getAllByText('Public')).toHaveLength(4)
-    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Public' })).toBeInTheDocument()
+    expect(screen.getAllByText('Published')).toHaveLength(4)
+    expect(screen.getByRole('button', { name: 'All scenes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Published' })).toBeInTheDocument()
     expect(
       screen.getByText(/soft teal bloom with low-end drift\./i),
     ).toBeInTheDocument()
@@ -171,13 +171,18 @@ describe('MyScenesPage table behavior', () => {
 
     renderMyScenesPage()
 
-    expect(await screen.findByRole('button', { name: 'All' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Public' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'All scenes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Published' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Public' }))
+    await user.click(screen.getByRole('button', { name: 'Published' }))
 
     expect(screen.getByText('3 scenes')).toBeInTheDocument()
-    expect(screen.getAllByText('Public')).toHaveLength(4)
+    expect(screen.getAllByText('Published')).toHaveLength(4)
+    await user.click(screen.getByRole('button', { name: 'Drafts' }))
+    expect(screen.getByText('No matching scenes')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /aurora drift/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Show all scenes' }))
+    expect(screen.getByRole('link', { name: /aurora drift/i })).toBeInTheDocument()
   })
 
   it('sorts the table when updated, views, and likes headers are clicked', async () => {
@@ -236,7 +241,7 @@ describe('MyScenesPage table behavior', () => {
       'Signal Bloom',
       'Aurora Drift',
     ])
-    expect(screen.getByText('Newest items first')).toBeInTheDocument()
+    expect(screen.getByText(/Newest items first/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /sort by views descending/i }))
 
@@ -245,7 +250,7 @@ describe('MyScenesPage table behavior', () => {
       'Signal Bloom',
       'Aurora Drift',
     ])
-    expect(screen.getByText('Highest views first')).toBeInTheDocument()
+    expect(screen.getByText(/Highest views first/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /sort by views ascending/i }))
 
@@ -254,10 +259,10 @@ describe('MyScenesPage table behavior', () => {
       'Signal Bloom',
       'Solar Thread',
     ])
-    expect(screen.getByText('Lowest views first')).toBeInTheDocument()
+    expect(screen.getByText(/Lowest views first/)).toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: /sort by likes \(vs dislikes\) descending/i }),
+      screen.getByRole('button', { name: /sort by like ratio descending/i }),
     )
 
     expect(titleLinks().map((link) => link.textContent)).toEqual([
@@ -265,7 +270,7 @@ describe('MyScenesPage table behavior', () => {
       'Aurora Drift',
       'Signal Bloom',
     ])
-    expect(screen.getByText('Highest likes ratio first')).toBeInTheDocument()
+    expect(screen.getByText(/Highest likes ratio first/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /sort by updated descending/i }))
     await user.click(screen.getByRole('button', { name: /sort by updated ascending/i }))
@@ -275,7 +280,7 @@ describe('MyScenesPage table behavior', () => {
       'Signal Bloom',
       'Solar Thread',
     ])
-    expect(screen.getByText('Oldest items first')).toBeInTheDocument()
+    expect(screen.getByText(/Oldest items first/)).toBeInTheDocument()
   })
 
   it('paginates the table and shows the footer controls', async () => {
@@ -309,6 +314,8 @@ describe('MyScenesPage table behavior', () => {
 
     renderMyScenesPage()
 
+    await screen.findByText('1-5 of 31')
+    await user.selectOptions(screen.getByLabelText('Rows per page'), '30')
     expect(await screen.findByText('1-30 of 31')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Scene 31' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Scene 1' })).not.toBeInTheDocument()

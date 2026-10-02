@@ -1,6 +1,6 @@
 import type { SceneVisibility, SortDirection, SortKey, StatusFilter, UserScene } from './types'
 
-const rowsPerPageOptions = [10, 20, 30] as const
+const rowsPerPageOptions = [5, 10, 20, 30] as const
 
 function parseCreatedAtValue(createdAt: string | null) {
   if (!createdAt) {
@@ -13,6 +13,9 @@ function parseCreatedAtValue(createdAt: string | null) {
 }
 
 export function buildSortSummary(sortKey: SortKey, sortDirection: SortDirection) {
+  if (sortKey === 'name') return sortDirection === 'asc' ? 'Scene name A to Z' : 'Scene name Z to A'
+  if (sortKey === 'status') return sortDirection === 'asc' ? 'Status A to Z' : 'Status Z to A'
+  if (sortKey === 'comments') return sortDirection === 'desc' ? 'Most comments first' : 'Fewest comments first'
   if (sortKey === 'updated') {
     return sortDirection === 'desc' ? 'Newest items first' : 'Oldest items first'
   }
@@ -31,12 +34,18 @@ export function sortScenes(scenes: UserScene[], sortKey: SortKey, sortDirection:
     let leftValue = 0
     let rightValue = 0
 
+    if (sortKey === 'name') return leftScene.name.localeCompare(rightScene.name) * direction
+    if (sortKey === 'status') return leftScene.statusLabel.localeCompare(rightScene.statusLabel) * direction
+
     if (sortKey === 'updated') {
       leftValue = parseCreatedAtValue(leftScene.createdAt)
       rightValue = parseCreatedAtValue(rightScene.createdAt)
     } else if (sortKey === 'views') {
       leftValue = leftScene.viewsCount
       rightValue = rightScene.viewsCount
+    } else if (sortKey === 'comments') {
+      leftValue = leftScene.commentsCount
+      rightValue = rightScene.commentsCount
     } else {
       leftValue = leftScene.likesRatio
       rightValue = rightScene.likesRatio

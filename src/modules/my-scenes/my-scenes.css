@@ -1,0 +1,262 @@
+.my-scenes-sort-announcement { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.my-scenes-page .my-scenes-table { display: table; width: 100%; border-collapse: collapse; }
+.my-scenes-page .my-scenes-row { display: table-row; }
+.my-scenes-page .my-scenes-table :is(th, td) { padding: 13px 14px; text-align: left; }
+.my-scenes-page .my-scenes-row__primary { grid-template-columns: 94px minmax(0, 1fr); }
+.my-scenes-page .my-scenes-row:hover .my-scenes-row__description,
+.my-scenes-page .my-scenes-row:focus-within .my-scenes-row__description { opacity: 1; transform: none; }
+.my-scenes-page__header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; gap: 28px; }
+.my-scenes-library-shell { position: relative; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+.my-scenes-state { min-height: 430px; padding: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+.my-scenes-state-action, .my-scenes-edit-button { display: inline-flex; align-items: center; justify-content: center; }
+.my-scenes-pagination__rows select { margin-left: 7px; }
+.my-scenes-page-number, .my-scenes-page-button { display: inline-flex; align-items: center; justify-content: center; padding: 0 9px; height: 32px; min-width: 32px; }
+
+html[data-theme='mage-pulse'] .my-scenes-page { --my-scenes-row-selected-background: rgba(88,116,143,.12); --my-scenes-public-pill-text: #b9c7d5; --my-scenes-public-pill-border: rgba(137,160,182,.24); --my-scenes-public-pill-background: rgba(91,113,135,.12); --table-title-hover-color: #c9d7e5; width: min(calc(100% - 48px), 1360px); margin: auto; padding: 58px 0 90px; display: block; }
+html[data-theme='mage-pulse'] body:has(.my-scenes-page) { background: radial-gradient(circle at 50% -12%, rgba(124,108,255,.075), transparent 28%), #090a0d; }
+html[data-theme='mage-pulse'] .my-scenes-panel__title { margin: 0; font-size: clamp(40px, 5vw, 60px); line-height: .98; letter-spacing: -.045em; }
+html[data-theme='mage-pulse'] .my-scenes-panel__lead { max-width: 650px; margin: 14px 0 0; color: #a4a8b2; font-size: 15px; line-height: 1.5; }
+html[data-theme='mage-pulse'] .my-scenes-page__summary { padding-bottom: 5px; color: #757b87; font-size: 12px; white-space: nowrap; }
+html[data-theme='mage-pulse'] .my-scenes-board__toolbar { justify-content: flex-start; margin-bottom: 18px; padding: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; background: #111318; }
+html[data-theme='mage-pulse'] .my-scenes-board__filters { display: flex; gap: 7px; flex-wrap: wrap; }
+html[data-theme='mage-pulse'] .my-scenes-board__chip { height: 34px; min-height: 34px; padding: 0 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 999px; background: #171a20; color: #757b87; cursor: pointer; font-size: 11px; font-weight: 650; }
+html[data-theme='mage-pulse'] .my-scenes-board__chip[data-active='true'] { color: #090a0d; border-color: #f4f5f7; background: #f4f5f7; }
+html[data-theme='mage-pulse'] .my-scenes-board__chip:hover { color: #f4f5f7; border-color: rgba(255,255,255,.16); }
+html[data-theme='mage-pulse'] .my-scenes-board__chip[data-active='true']:hover { color: #090a0d; }
+html[data-theme='mage-pulse'] .my-scenes-board__toolbar-divider { width: 1px; height: 24px; background: rgba(255,255,255,.09); }
+html[data-theme='mage-pulse'] .my-scenes-board__selected-copy { color: #757b87; font-size: 11px; }
+html[data-theme='mage-pulse'] .my-scenes-library-shell { background: #111318; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; }
+html[data-theme='mage-pulse'] .my-scenes-scroll { position: relative; margin: 0; overflow-x: auto; border: 0; border-radius: 0; background: none; }
+html[data-theme='mage-pulse'] .my-scenes-table { min-width: 940px; width: 100%; table-layout: auto; }
+html[data-theme='mage-pulse'] .my-scenes-table th { height: 45px; padding: 0 14px; color: #757b87; background: #0e1014; font-size: 10px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,.09); }
+html[data-theme='mage-pulse'] .my-scenes-table td { padding: 13px 14px; color: #a4a8b2; font-size: 11px; vertical-align: middle; border-bottom: 1px solid rgba(255,255,255,.09); }
+html[data-theme='mage-pulse'] .my-scenes-table :is(th, td).my-scenes-numeric { text-align: right; }
+html[data-theme='mage-pulse'] .my-scenes-table .my-scenes-action-cell { width: 72px; text-align: right; }
+html[data-theme='mage-pulse'] .my-scenes-table .my-scenes-check-cell { width: 44px; padding-left: 16px; padding-right: 6px; }
+html[data-theme='mage-pulse'] .my-scenes-row { background: transparent; }
+html[data-theme='mage-pulse'] .my-scenes-row:hover { background: rgba(255,255,255,.018); }
+html[data-theme='mage-pulse'] .my-scenes-row[data-selected='true'] { background: var(--my-scenes-row-selected-background); }
+html[data-theme='mage-pulse'] .my-scenes-table__sort-button { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 10px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+html[data-theme='mage-pulse'] .my-scenes-table__sort-button[data-active='true'] { color: #a4a8b2; }
+html[data-theme='mage-pulse'] .my-scenes-table__sort-indicator { display: none; }
+html[data-theme='mage-pulse'] .my-scenes-table__checkbox { width: 15px; height: 15px; margin: 0; accent-color: #7c6cff; cursor: pointer; }
+html[data-theme='mage-pulse'] .my-scenes-row__primary { min-width: 290px; display: grid; grid-template-columns: 94px minmax(0,1fr); gap: 13px; align-items: center; }
+html[data-theme='mage-pulse'] :is(.my-scenes-row__thumb, .my-scenes-row__thumb-fallback) { width: 94px; height: auto; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid rgba(255,255,255,.06); border-radius: 9px; background: #171a20; box-shadow: none; }
+html[data-theme='mage-pulse'] .my-scenes-row__thumb { display: block; object-fit: cover; }
+html[data-theme='mage-pulse'] .my-scenes-row__thumb-fallback { position: relative; padding: 0; background: radial-gradient(circle at center, rgba(124,108,255,.12), transparent 60%), #171a20; }
+html[data-theme='mage-pulse'] .my-scenes-row__thumb-fallback::before { content: ''; position: absolute; inset: 30% 38%; border: 1px solid #757b87; border-radius: 40% 60% 45% 55%; }
+html[data-theme='mage-pulse'] .my-scenes-row__copy { display: block; min-width: 0; max-width: 390px; }
+html[data-theme='mage-pulse'] .my-scenes-row__copy strong { display: block; overflow: hidden; color: #f4f5f7; font-size: 13px; font-weight: 700; line-height: 1.5; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme='mage-pulse'] .my-scenes-row__description { display: block; max-width: 100%; margin-top: 3px; color: #757b87; font-size: 10px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-theme='mage-pulse'] .my-scenes-row__pill { min-width: 70px; height: 27px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.09); border-radius: 999px; font-size: 9px; font-weight: 700; }
+html[data-theme='mage-pulse'] .my-scenes-row__pill[data-status='Public'] { color: var(--my-scenes-public-pill-text); border-color: var(--my-scenes-public-pill-border); background: var(--my-scenes-public-pill-background); }
+html[data-theme='mage-pulse'] .my-scenes-row__pill[data-status='Draft'] { color: #e9d595; border-color: rgba(233,196,106,.18); background: rgba(233,196,106,.065); }
+html[data-theme='mage-pulse'] .my-scenes-ratio { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+html[data-theme='mage-pulse'] .my-scenes-ratio__track { width: 42px; height: 3px; overflow: hidden; border-radius: 99px; background: #30343d; }
+html[data-theme='mage-pulse'] .my-scenes-ratio__track > span { height: 100%; display: block; background: #b2a8ff; }
+html[data-theme='mage-pulse'] .my-scenes-edit-button { height: 32px; padding: 0 11px; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: #171a20; color: #a4a8b2; font-size: 10px; font-weight: 700; }
+html[data-theme='mage-pulse'] .my-scenes-edit-button:hover { color: #f4f5f7; border-color: rgba(255,255,255,.16); background: #1d2027; }
+html[data-theme='mage-pulse'] .my-scenes-pagination { margin: 0; min-height: 58px; padding: 10px 14px; display: flex; align-items: center; gap: 14px; background: #0e1014; border: 0; }
+html[data-theme='mage-pulse'] .my-scenes-pagination__rows { display: flex; align-items: center; gap: 7px; color: #757b87; font-size: 10px; }
+html[data-theme='mage-pulse'] .my-scenes-pagination__rows select { height: 30px; margin: 0; padding: 0 27px 0 9px; border: 1px solid rgba(255,255,255,.09); border-radius: 7px; background: #171a20; color: #a4a8b2; font-size: 10px; }
+html[data-theme='mage-pulse'] .my-scenes-pagination__range { margin-left: auto; color: #757b87; font-size: 10px; }
+html[data-theme='mage-pulse'] .my-scenes-pagination__controls { display: flex; gap: 6px; }
+html[data-theme='mage-pulse'] :is(.my-scenes-page-button, .my-scenes-page-number) { min-width: 32px; height: 32px; padding: 0 9px; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: #171a20; color: #a4a8b2; font-size: 10px; font-weight: 650; }
+html[data-theme='mage-pulse'] .my-scenes-page-button { cursor: pointer; }
+html[data-theme='mage-pulse'] .my-scenes-page-button:disabled { opacity: .35; cursor: default; }
+html[data-theme='mage-pulse'] .my-scenes-page-number { color: #090a0d; border-color: #f4f5f7; background: #f4f5f7; }
+html[data-theme='mage-pulse'] .my-scenes-state h2 { margin: 0 0 8px; font-size: 25px; letter-spacing: -.025em; }
+html[data-theme='mage-pulse'] .my-scenes-state p { max-width: 430px; margin: 0 0 20px; color: #757b87; font-size: 12px; }
+html[data-theme='mage-pulse'] .my-scenes-state-action { height: 38px; padding: 0 14px; border: 1px solid rgba(255,255,255,.16); border-radius: 9px; background: #f4f5f7; color: #090a0d; cursor: pointer; font-size: 11px; font-weight: 700; }
+@media (max-width: 780px) {
+  html[data-theme='mage-pulse'] .my-scenes-page { width: calc(100% - 28px); }
+  html[data-theme='mage-pulse'] .my-scenes-page__header { align-items: flex-start; flex-direction: column; }
+  html[data-theme='mage-pulse'] .my-scenes-page__summary { padding-bottom: 0; }
+  html[data-theme='mage-pulse'] .my-scenes-board__toolbar { align-items: flex-start; flex-direction: column; }
+  html[data-theme='mage-pulse'] .my-scenes-board__toolbar-divider { display: none; }
+  html[data-theme='mage-pulse'] .my-scenes-pagination { align-items: flex-start; flex-wrap: wrap; }
+  html[data-theme='mage-pulse'] .my-scenes-pagination__range { width: 100%; margin-left: 0; order: 3; }
+}
+
+html[data-theme='mage-pulse'] .my-scenes-table { table-layout: fixed; }
+html[data-theme='mage-pulse'] .my-scenes-table th:nth-child(2) { width: 39.27%; }
+html[data-theme='mage-pulse'] .my-scenes-table th:nth-child(3) { width: 12.1%; }
+html[data-theme='mage-pulse'] .my-scenes-table th:nth-child(4) { width: 11.12%; }
+html[data-theme='mage-pulse'] .my-scenes-table th:nth-child(5) { width: 7.01%; }
+html[data-theme='mage-pulse'] .my-scenes-table th:nth-child(6) { width: 9.98%; }
+html[data-theme='mage-pulse'] .my-scenes-table th:nth-child(7) { width: 11.97%; }
+
+html[data-theme='mage-pulse'] .my-scenes-page :is(a, button, input, select, [tabindex]):focus-visible { outline: 2px solid #b2a8ff; outline-offset: 2px; }
+
+:root[data-theme='mage-pulse']:has(.my-scenes-page) .nav-inner { width: min(calc(100% - 48px), 1360px); }
+@media (max-width: 780px) {
+  :root[data-theme='mage-pulse']:has(.my-scenes-page) .nav-inner { width: calc(100% - 28px); }
+}
+
+.my-scenes-page--loading > .loading-region__visual {
+  min-width: 0;
+}
+
+.my-scenes-loading__summary {
+  width: 70px;
+  height: 10px;
+  margin-bottom: 7px;
+}
+
+.my-scenes-loading__toolbar {
+  min-height: 60px;
+}
+
+.my-scenes-loading__filter-slot {
+  width: min(280px, 52vw);
+  height: 34px;
+  border-radius: 8px;
+}
+
+.my-scenes-loading__selection {
+  width: 70px;
+  height: 9px;
+}
+
+.my-scenes-loading__library {
+  min-width: 0;
+}
+
+.my-scenes-loading__table {
+  min-width: 940px;
+  table-layout: fixed;
+}
+
+.my-scenes-loading__table th:nth-child(2) { width: 39.27%; }
+.my-scenes-loading__table th:nth-child(3) { width: 12.1%; }
+.my-scenes-loading__table th:nth-child(4) { width: 11.12%; }
+.my-scenes-loading__table th:nth-child(5) { width: 7.01%; }
+.my-scenes-loading__table th:nth-child(6) { width: 9.98%; }
+.my-scenes-loading__table th:nth-child(7) { width: 11.97%; }
+
+.my-scenes-loading__row {
+  pointer-events: none;
+}
+
+.my-scenes-loading__checkbox {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+}
+
+.my-scenes-loading__thumbnail {
+  width: 94px;
+  aspect-ratio: 16 / 10;
+  border-radius: 9px;
+}
+
+.my-scenes-loading__scene-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-scenes-loading__scene-name {
+  width: min(82%, 220px);
+  height: 12px;
+}
+
+.my-scenes-loading__description {
+  width: min(94%, 300px);
+  height: 9px;
+}
+
+.my-scenes-loading__status {
+  width: 70px;
+  height: 27px;
+  border-radius: 8px;
+}
+
+.my-scenes-loading__date {
+  width: 74px;
+  height: 9px;
+}
+
+.my-scenes-loading__metric {
+  width: 28px;
+  height: 9px;
+  margin-left: auto;
+}
+
+.my-scenes-loading__ratio {
+  width: 58px;
+  height: 9px;
+  margin-left: auto;
+}
+
+.my-scenes-loading__edit {
+  width: 48px;
+  height: 32px;
+  margin-left: auto;
+  border-radius: 8px;
+}
+
+.my-scenes-loading__pagination {
+  display: flex;
+  align-items: center;
+}
+
+.my-scenes-loading__pagination-rows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.my-scenes-loading__rows-label {
+  width: 76px;
+  height: 9px;
+}
+
+.my-scenes-loading__rows-select {
+  width: 44px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+.my-scenes-loading__range {
+  width: 68px;
+  height: 9px;
+  margin-left: auto;
+}
+
+.my-scenes-loading__page-control {
+  width: 54px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.my-scenes-loading__page-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+@media (max-width: 780px) {
+  .my-scenes-loading__summary {
+    margin-bottom: 0;
+  }
+
+  .my-scenes-loading__toolbar {
+    align-items: stretch;
+  }
+
+  .my-scenes-loading__filter-slot {
+    width: min(100%, 280px);
+  }
+
+  .my-scenes-loading__pagination {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .my-scenes-loading__range {
+    width: 100%;
+    margin-left: 0;
+    order: 3;
+  }
+}
