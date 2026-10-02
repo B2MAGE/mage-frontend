@@ -92,7 +92,7 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
         setStatus('loading')
         // Supersample the decorative artwork only; other players keep their normal
         // device pixel ratio and GPU cost.
-        const created = await createMagePlayer(canvas, { pixelRatio: 2 })
+        const created = await createMagePlayer(canvas, { pixelRatio: 2, mouseInteractions: true })
         if (disposed || failed) {
           created.dispose()
           return

@@ -27,6 +27,9 @@ describe('MagePlayer', () => {
 
     await waitFor(() => {
       expect(createMagePlayer).toHaveBeenCalledTimes(1)
+      expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), {
+        log: false, mouseInteractions: true, mouseWheelZoom: true,
+      })
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
     })

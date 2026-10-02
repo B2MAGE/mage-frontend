@@ -154,7 +154,7 @@ export function MagePlayer({
     animationFrameId = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          nextPlayer = await createMagePlayer(canvas, { log })
+          nextPlayer = await createMagePlayer(canvas, { log, mouseInteractions: true, mouseWheelZoom: true })
 
           if (isDisposed) {
             nextPlayer.dispose()

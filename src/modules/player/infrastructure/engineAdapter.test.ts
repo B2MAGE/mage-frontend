@@ -6,6 +6,8 @@ const engineMocks = vi.hoisted(() => ({
   getAudioTime: vi.fn(),
   getAudioVolume: vi.fn(),
   getEngineTime: vi.fn(),
+  getEngineFields: vi.fn(),
+  setInputState: vi.fn(),
   initMAGE: vi.fn(),
   isAudioLoaded: vi.fn(),
   loadAudio: vi.fn(),
@@ -35,6 +37,8 @@ describe('createMagePlayer', () => {
     document.body.innerHTML = ''
 
     engineMocks.initMAGE.mockReturnValue({
+      getEngineFields: engineMocks.getEngineFields,
+      setInputState: engineMocks.setInputState,
       dispose: engineMocks.dispose,
       getAudioDuration: engineMocks.getAudioDuration,
       getAudioTime: engineMocks.getAudioTime,
@@ -53,6 +57,17 @@ describe('createMagePlayer', () => {
       unloadAudio: engineMocks.unloadAudio,
     })
     engineMocks.getAudioDuration.mockReturnValue(0)
+    engineMocks.getEngineFields.mockReturnValue({
+      controlSettings: { active: false, integrated: false },
+      controls: {
+        enabled: false, disconnect: vi.fn(), enableRotate: false, enableZoom: true, enablePan: true,
+        mouseButtons: { LEFT: 0, MIDDLE: 1, RIGHT: 2 }, touches: { ONE: 0, TWO: 2 }, cursorStyle: 'auto',
+        target: { x: 0, y: 0, z: 0 }, minDistance: 0, maxDistance: Infinity, zoomSpeed: 1,
+      },
+      camera: { near: 0.1, position: { distanceTo: vi.fn(() => 10) } },
+      state: { currMouse: { set: vi.fn() } },
+      visualizer: { render_tooltips: true, mesh: null, getActiveShader: () => null },
+    })
     engineMocks.getAudioTime.mockReturnValue(0)
     engineMocks.getAudioVolume.mockImplementation(() => audioVolume)
     engineMocks.getEngineTime.mockImplementation(() => engineTime)
@@ -451,7 +466,59 @@ describe('createMagePlayer', () => {
     expect(engineMocks.pause).toHaveBeenCalledTimes(1)
   })
 
-  it('disables native engine controls so only shared playback chrome is shown', async () => {
+  it('opts full players into native drag rotation and mouse reactions without bootstrapping engine UI', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const canvas = document.createElement('canvas')
+    const fields = engineMocks.getEngineFields()
+    const player = await createMagePlayer(canvas, { mouseInteractions: true })
+
+    expect(engineMocks.initMAGE).toHaveBeenCalledWith(expect.objectContaining({
+      withControls: { active: false, integrated: false },
+    }))
+    expect(fields.controls.disconnect).not.toHaveBeenCalled()
+    expect(fields.controlSettings).toEqual({ active: true, integrated: false })
+    expect(fields.controls).toMatchObject({
+      enabled: true, enableRotate: true, enableZoom: false, enablePan: false,
+      mouseButtons: { LEFT: 0, MIDDLE: null, RIGHT: null }, touches: { ONE: null, TWO: null }, cursorStyle: 'grab',
+    })
+    expect(canvas.style.touchAction).toBe('auto')
+    expect(fields.visualizer.render_tooltips).toBe(false)
+    engineMocks.setInputState.mockClear()
+    player.loadSceneBlob({ visualizer: { shader: 'sphere(1);' } })
+    expect(engineMocks.setInputState).toHaveBeenCalledWith(expect.objectContaining({ pointerOverUi: true, currPointerDown: 0 }))
+    player.dispose()
+    expect(fields.controlSettings.active).toBe(false)
+    expect(fields.controls.enabled).toBe(false)
+    expect(engineMocks.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('opts into bounded wheel zoom and recalibrates after each authored preset load, not against stale limits', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const canvas = document.createElement('canvas')
+    const fields = engineMocks.getEngineFields()
+    const player = await createMagePlayer(canvas, { mouseInteractions: true, mouseWheelZoom: true })
+    expect(fields.controls).toMatchObject({ enableZoom: true, minDistance: 4, maxDistance: 25, zoomSpeed: 0.65 })
+    let authoredDistance = 60
+    engineMocks.loadPreset.mockImplementation(() => {
+      // The real engine resets OrbitControls while loading: old zoom limits
+      // would otherwise clamp a new scene's authored camera before rebasing.
+      const loadedDistance = Math.min(fields.controls.maxDistance, Math.max(fields.controls.minDistance, authoredDistance))
+      fields.camera.position.distanceTo.mockReturnValue(loadedDistance)
+      return { visualizer: { shader: 'sphere(1);' } }
+    })
+
+    player.loadSceneBlob({ visualizer: { shader: 'sphere(1);' } })
+    expect(fields.controls).toMatchObject({ minDistance: 24, maxDistance: 150 })
+    authoredDistance = 1
+    player.loadSceneBlob({ visualizer: { shader: 'sphere(0.5);' } })
+    expect(fields.controls).toMatchObject({ minDistance: 0.4, maxDistance: 2.5 })
+    authoredDistance = 10
+    player.resetPlayback()
+    expect(fields.controls).toMatchObject({ minDistance: 4, maxDistance: 25 })
+    player.dispose()
+  })
+
+  it('keeps callers such as thumbnail hover previews noninteractive unless they opt in', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
 
@@ -466,6 +533,8 @@ describe('createMagePlayer', () => {
         integrated: false,
       },
     })
+    expect(engineMocks.getEngineFields).not.toHaveBeenCalled()
+    expect(engineMocks.setInputState).not.toHaveBeenCalled()
 
     player.dispose()
   })
