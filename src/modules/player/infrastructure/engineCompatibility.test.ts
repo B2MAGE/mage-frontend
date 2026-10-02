@@ -71,6 +71,24 @@ function audioSourceFixture(isPlaying: boolean) {
 }
 
 describe('installed MAGE engine compatibility', () => {
+  it('allows custom shaders to omit unused callback inputs while updating declared uniforms', () => {
+    const marker = 'mesh.onBeforeRender = function('
+    const start = engineSource.indexOf(marker)
+    const end = engineSource.indexOf('\n\t\t\t};', start)
+    if (start < 0 || end < start) throw new Error('Missing ShaderPark uniform callback.')
+    const callbackSource = engineSource.slice(start + 'mesh.onBeforeRender = '.length, end + '\n\t\t\t}'.length)
+    const callback = new Function('uniformCallback', '_typeof', '_slicedToArray', `return ${callbackSource}`)(
+      () => ({ time: 4, size: .5, pointerDown: .2, mouse: 'pointer', _scale: 10 }),
+      (value: unknown) => typeof value,
+      (value: unknown) => value,
+    ) as (...args: unknown[]) => void
+    const uniforms = { time: { value: 0 }, mouse: { value: 'initial' }, _scale: { value: 1 } }
+    expect(() => callback(null, null, null, null, { uniforms }, null)).not.toThrow()
+    expect(uniforms).toEqual({ time: { value: 4 }, mouse: { value: 'pointer' }, _scale: { value: 10 } })
+    expect(uniforms).not.toHaveProperty('size')
+    expect(uniforms).not.toHaveProperty('pointerDown')
+  })
+
   it('exposes the patched APIs in the dependency’s own TypeScript declarations', () => {
     expectTypeOf<MAGEEngineAPI['unloadAudio']>().toEqualTypeOf<() => void>()
     expectTypeOf<MAGEEngineAPI['getAudioVolume']>().toEqualTypeOf<() => number>()

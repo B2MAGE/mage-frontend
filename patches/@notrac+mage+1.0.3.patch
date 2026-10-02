@@ -40,7 +40,7 @@ index 7e71e8c..7bc2aec 100644
    log?: boolean;
    /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index ff1861a..26f1985 100644
+index ff1861a..c97bf3b 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
 @@ -72787,6 +72787,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
@@ -60,6 +60,15 @@ index ff1861a..26f1985 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
+@@ -100048,7 +100051,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 				if (!(_typeof(uniformsToUpdate) === "object")) throw "createSculpture takes, (source, uniformCallback, params) the uniformCallback must be a function that returns a dictionary of uniforms to update";
+ 				for (var _i = 0, _Object$entries = Object.entries(uniformsToUpdate); _i < _Object$entries.length; _i++) {
+ 					var _Object$entries$_i = _slicedToArray(_Object$entries[_i], 2), uniform = _Object$entries$_i[0], value = _Object$entries$_i[1];
+-					material.uniforms[uniform].value = value;
++					if (Object.prototype.hasOwnProperty.call(material.uniforms, uniform)) material.uniforms[uniform].value = value;
+ 				}
+ 			};
+ 			return mesh;
 @@ -107070,6 +107073,7 @@ var MAGEEngine = class MAGEEngine {
  	#uiController = null;
  	#engineVersion = MAGE_VERSION;
