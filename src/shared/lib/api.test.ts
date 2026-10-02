@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildApiUrl } from './api'
+import { buildApiUrl, fetchTags } from './api'
 
 describe('buildApiUrl', () => {
   afterEach(() => {
@@ -31,5 +31,31 @@ describe('buildApiUrl', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://mage.example.com/api')
 
     expect(buildApiUrl('/scenes/12')).toBe('https://mage.example.com/api/scenes/12')
+  })
+})
+
+describe('fetchTags', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  it('requests attached tags with their scene counts independently of a scene filter', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', '/api')
+    const tags = [{ tagId: 17, name: 'Glass', sceneCount: 6 }]
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(tags)))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTags({ attachedOnly: true })).resolves.toEqual(tags)
+    expect(fetchMock).toHaveBeenCalledWith('/api/tags?attachedOnly=true')
+  })
+
+  it.each(['network', 'server'] as const)('returns no tags on a %s failure instead of hardcoded options', async failure => {
+    const fetchMock = failure === 'network'
+      ? vi.fn().mockRejectedValue(new Error('offline'))
+      : vi.fn().mockResolvedValue(new Response(null, { status: 503 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTags({ attachedOnly: true })).resolves.toEqual([])
   })
 })

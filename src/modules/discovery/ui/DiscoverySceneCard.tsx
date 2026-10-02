@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { formatMetricLabel, formatRelativeTime } from '@shared/lib'
 import type { DiscoveryScene } from '../types'
+import { useSceneHoverPreview } from './useSceneHoverPreview'
 
 type DiscoverySceneCardProps = {
   scene: DiscoveryScene
@@ -21,11 +22,25 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
   const creatorInitials = buildCreatorInitials(creatorName)
   const relativeTime = formatRelativeTime(scene.createdAt)
   const viewLabel = formatMetricLabel(scene.engagement.views, 'view')
+  const {
+    onBlur,
+    onFocus,
+    onPointerEnter,
+    onPointerLeave,
+    thumbnailRef,
+  } = useSceneHoverPreview({ sceneBlob: scene.sceneData, seed: scene.sceneId })
 
   return (
-    <Link className="scene-card-link" to={`/scenes/${scene.sceneId}`}>
+    <Link
+      className="scene-card-link"
+      onBlur={onBlur}
+      onFocus={onFocus}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      to={`/scenes/${scene.sceneId}`}
+    >
       <article className="scene-card" id={`scene-${scene.sceneId}`}>
-        <div className="scene-card__thumbnail">
+        <div className="scene-card__thumbnail" ref={thumbnailRef}>
           {scene.thumbnailRef ? (
             <img
               src={scene.thumbnailRef}
@@ -35,6 +50,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           ) : (
             <div className="scene-card__thumbnail-placeholder" aria-hidden="true" />
           )}
+          <span className="scene-card__play" aria-hidden="true">▶</span>
         </div>
         <div className="scene-card__body">
           <div className="scene-card__avatar" aria-hidden="true">

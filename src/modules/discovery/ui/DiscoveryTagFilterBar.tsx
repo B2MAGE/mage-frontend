@@ -1,4 +1,4 @@
-import { ScrollableTagBar, SelectableChip } from '@shared/ui'
+import { LoadingRegion, ScrollableTagBar, SelectableChip, Skeleton } from '@shared/ui'
 import type { DiscoveryTag } from '../types'
 
 type DiscoveryTagFilterBarProps = {
@@ -8,8 +8,6 @@ type DiscoveryTagFilterBarProps = {
   onTagSelect: (tag: string | null) => void
 }
 
-const skeletonCount = 5
-
 export function DiscoveryTagFilterBar({
   activeTag,
   isLoading,
@@ -18,11 +16,13 @@ export function DiscoveryTagFilterBar({
 }: DiscoveryTagFilterBarProps) {
   if (isLoading) {
     return (
-      <div className="tag-filter-bar" aria-label="Tag filters loading">
-        {Array.from({ length: skeletonCount }, (_, index) => (
-          <span key={index} className="tag-pill tag-pill--skeleton" aria-hidden="true" />
-        ))}
-      </div>
+      <LoadingRegion
+        className="tag-filter-loading-region"
+        label="Loading scene filters"
+        visualClassName="tag-filter-bar tag-filter-bar--loading"
+      >
+        <Skeleton shape="block" className="tag-filter-bar__loading-placeholder" />
+      </LoadingRegion>
     )
   }
 

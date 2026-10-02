@@ -30,6 +30,7 @@ export type SceneListResponse = {
   sceneId: number
   ownerUserId: number
   creatorDisplayName: string
+  creatorHandle?: string | null
   name: string
   description?: string | null
   sceneData: Record<string, unknown>
@@ -41,6 +42,7 @@ export type SceneListResponse = {
 export type TagResponse = {
   tagId: number
   name: string
+  sceneCount: number
 }
 
 export type SceneEngagementVoteState = 'up' | 'down'
@@ -115,6 +117,10 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
     sceneId: item.sceneId,
     ownerUserId: item.ownerUserId,
     creatorDisplayName: item.creatorDisplayName.trim() || 'Unknown creator',
+    creatorHandle:
+      typeof item.creatorHandle === 'string' && item.creatorHandle.trim()
+        ? item.creatorHandle.trim().toLowerCase()
+        : null,
     name: item.name.trim() || `Scene ${item.sceneId}`,
     description:
       typeof item.description === 'string' && item.description.trim()

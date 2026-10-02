@@ -43,6 +43,7 @@ Request flow:
 
 User-facing behavior:
 
+- orders scenes newest first by creation time, including filtered results
 - reads the active tag from the `?tag=` query string
 - keeps the selected tag in the URL so filtered discovery is linkable
 - shows loading, empty, and error states for scene loading
