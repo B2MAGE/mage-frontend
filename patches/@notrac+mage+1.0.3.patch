@@ -1,11 +1,24 @@
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.d.ts b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-index 340c0c9..351ac6a 100644
+index 7e71e8c..7bc2aec 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.d.ts
 +++ b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-@@ -91,6 +91,14 @@ export interface MAGEEngineAPI {
-    * Unloads the currently loaded audio, if any, and stops playback.
+@@ -223,6 +223,10 @@ export interface MAGEEngineAPI {
+    * Returns the current playback time of the audio in seconds. If no audio is loaded, it returns 0.
     */
-   unloadAudio(): void;
+   getAudioTime(): number;
++  /** Returns the active master volume, between 0 and 1. */
++  getAudioVolume(): number;
++  /** Sets both audio sources' volume, clamped between 0 and 1. Returns the applied volume. */
++  setAudioVolume(volume: number): number;
+   /**
+    * Seeks to a specific time in the audio playback.
+    * @param time 
+@@ -251,6 +255,16 @@ export interface MAGEEngineAPI {
+    * (URL must support CORS so things like YouTube will not work). 
+    */
+   loadAudio(path?: string | URL): void;
++  /** Unloads the currently loaded audio and clears playback state. */
++  unloadAudio(): void;
 +  /**
 +   * Enables or disables a silent, deterministic beat signal for lightweight scene previews.
 +   * Playing audio always takes precedence over the synthetic signal.
@@ -17,20 +30,20 @@ index 340c0c9..351ac6a 100644
    /**
     * Loads a MAGEPreset into the engine, applying all the settings and configurations contained in the preset to recreate the visual output. 
     * @param {MAGEPreset} preset - presetInput The preset to load into the engine.
-@@ -158,6 +166,8 @@ export interface MAGEEngineAPI {
-  */
- export declare function initMAGE(options?: {
-   canvas?: HTMLCanvasElement;
+@@ -347,6 +361,8 @@ export interface MAGEEngineAPI {
+ export interface MAGEConfig {
+   /** The HTML canvas element to render the engine on. */
+   canvas: HTMLCanvasElement;
 +  /** Optional render density, clamped to 1-3; defaults to the device pixel ratio. */
 +  pixelRatio?: number;
+   /** Whether to enable engine logging. Defaults to false. */
    log?: boolean;
-   withControls?: { active: boolean; integrated: boolean };
-   autoStart?: boolean;
+   /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index 13dcc32..3aaafe1 100644
+index ff1861a..26f1985 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
-@@ -71848,6 +71848,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72787,6 +72787,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				rotateX,
  				rotateY,
  				rotateZ,
@@ -38,7 +51,7 @@ index 13dcc32..3aaafe1 100644
  				mirrorX,
  				mirrorY,
  				mirrorZ,
-@@ -71879,6 +71880,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72818,6 +72819,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				extrude2D,
  				getSpherical,
  				mirrorN,
@@ -47,15 +60,15 @@ index 13dcc32..3aaafe1 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
-@@ -112764,6 +112767,7 @@ var MAGE_VERSION = "1.0.0";
- */
- var MAGEEngine = class MAGEEngine {
+@@ -107070,6 +107073,7 @@ var MAGEEngine = class MAGEEngine {
+ 	#uiController = null;
+ 	#engineVersion = MAGE_VERSION;
  	#canvas = null;
 +	#pixelRatio = null;
  	#scene = null;
  	#renderer = null;
  	#composer = null;
-@@ -112783,6 +112787,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107087,6 +107091,10 @@ var MAGEEngine = class MAGEEngine {
  	#audioBuffer = null;
  	#playbackTime = 0;
  	#isReversed = false;
@@ -66,22 +79,23 @@ index 13dcc32..3aaafe1 100644
  	#visualizer = null;
  	#inputs = null;
  	#state = null;
-@@ -112809,12 +112817,13 @@ var MAGEEngine = class MAGEEngine {
- 		fadeMs: 700
- 	};
- 	#_pendingSkyboxLoad = null;
--	constructor({ canvas, log = false, autoStart = false, withControls: { active = false, integrated = false } = {} } = {}) {
-+	constructor({ canvas, pixelRatio, log = false, autoStart = false, withControls: { active = false, integrated = false } = {} } = {}) {
+@@ -107127,13 +107135,14 @@ var MAGEEngine = class MAGEEngine {
+ 	#previewFrameCount = 0;
+ 	#previewFramesTarget = 0;
+ 	#isLowQualityMode = false;
+-	constructor({ canvas, log = false, autoStart = false, withControls: { active = false, integrated = false } = {}, lowQualityMode = false } = {}) {
++	constructor({ canvas, pixelRatio, log = false, autoStart = false, withControls: { active = false, integrated = false } = {}, lowQualityMode = false } = {}) {
  		if (log) {
- 			this.#log = true;
- 			console.log(`Initializing MAGE Engine v${MAGE_VERSION}...`);
- 		}
+ 			console.log(`Initializing MAGE Engine v${this.#engineVersion}...`);
+ 			this.log = true;
+ 		} else this.log = false;
+ 		this.fx = new MAGEEffects(this);
  		this.#canvas = canvas || null;
 +		this.#pixelRatio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? Math.min(Math.max(pixelRatio, 1), 3) : null;
  		this.#controlSettings = {
  			active: Boolean(active),
  			integrated: Boolean(integrated)
-@@ -112837,6 +112846,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107156,6 +107165,10 @@ var MAGEEngine = class MAGEEngine {
  		this.#audioBuffer = null;
  		this.#playbackTime = 0;
  		this.#isReversed = false;
@@ -90,17 +104,17 @@ index 13dcc32..3aaafe1 100644
 +		this.#syntheticPreviewTime = 0;
 +		this.#syntheticPreviewTempoScale = 1;
  		this.#visualizer = new MAGEVisualizer(this);
- 		this.#effects = new MAGEEffects();
  		this.#inputs = {
-@@ -112905,6 +112918,7 @@ var MAGEEngine = class MAGEEngine {
- 			this.#composer = this.#effects.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
+ 			currMouse: new Vector3(),
+@@ -107277,6 +107290,7 @@ var MAGEEngine = class MAGEEngine {
+ 			this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
  			this.#_syncSobelResolution();
  		}
 +		this.#clock.reset();
  		this.#_render();
  		if (!this.#currentPreset && !this.#visualizer.mesh) this.#_loadDefaultPreset();
  	}
-@@ -112922,9 +112936,31 @@ var MAGEEngine = class MAGEEngine {
+@@ -107297,16 +107311,38 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -132,7 +146,24 @@ index 13dcc32..3aaafe1 100644
  	* Seeks to a specific time in the audio.
  	* @param {number} time - The time to seek to, in seconds.
  	* @returns {boolean} True if the seek was successful, false otherwise.
-@@ -112958,10 +112994,41 @@ var MAGEEngine = class MAGEEngine {
+ 	*/
+ 	seek(time) {
+ 		const duration = this.getAudioDuration();
+-		if (duration <= 0) return false;
++		if (duration <= 0 || !Number.isFinite(time)) return false;
+ 		const clampedTime = Math.max(0, Math.min(time, duration));
+ 		this.#playbackTime = clampedTime;
+ 		const forwardWasPlaying = Boolean(this.#audio.isPlaying);
+@@ -107318,6 +107354,8 @@ var MAGEEngine = class MAGEEngine {
+ 		}
+ 		if (forwardWasPlaying) this.#audio.stop();
+ 		if (reverseWasPlaying && this.#reversedAudio) this.#reversedAudio.stop();
++		this.#audio._progress = 0;
++		if (this.#reversedAudio) this.#reversedAudio._progress = 0;
+ 		if (forwardWasPlaying && reverseWasPlaying) if (this.#isReversed && this.#reversedAudio?.buffer) this.#reversedAudio.play();
+ 		else this.#audio.play();
+ 		else if (forwardWasPlaying) this.#audio.play();
+@@ -107333,10 +107371,41 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -174,7 +205,7 @@ index 13dcc32..3aaafe1 100644
  		if (!this.isAudioLoaded()) return;
  		if (this.#audio && !this.#audio.isPlaying) this.#audio.play();
  	}
-@@ -112972,6 +113039,11 @@ var MAGEEngine = class MAGEEngine {
+@@ -107347,6 +107416,11 @@ var MAGEEngine = class MAGEEngine {
  	pause() {
  		if (this.#audio?.isPlaying) this.#audio.pause();
  		if (this.#reversedAudio?.isPlaying) this.#reversedAudio.pause();
@@ -186,7 +217,7 @@ index 13dcc32..3aaafe1 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -113025,6 +113097,24 @@ var MAGEEngine = class MAGEEngine {
+@@ -107399,6 +107473,24 @@ var MAGEEngine = class MAGEEngine {
  		});
  	}
  	/**
@@ -211,7 +242,36 @@ index 13dcc32..3aaafe1 100644
  	* Loads a preset into the engine.
  	* @param {MAGEPreset} presetInput - The preset input to load.
  	* @returns {MAGEPreset} The loaded preset.
-@@ -113310,7 +113400,6 @@ var MAGEEngine = class MAGEEngine {
+@@ -107418,11 +107510,14 @@ var MAGEEngine = class MAGEEngine {
+ 				if (normalizedSkybox) this.#_loadSkybox(normalizedSkybox);
+ 				else if (this.log) console.warn("[MAGEEngine.loadPreset] Invalid skyboxPreset input; expected preset id, preset path, or { type, presetId }", { input: preset.visualizer.skyboxPreset });
+ 			}
+-			if (preset.visualizer.shader) this.#visualizer.load({
+-				shader: preset.visualizer.shader,
+-				addToHistory: true,
+-				clearHistory: true
+-			});
++			if (preset.visualizer.shader) {
++				this.#visualizer.load({
++					shader: preset.visualizer.shader,
++					addToHistory: true,
++					clearHistory: true
++				});
++				this.#_updateVisualizer();
++			}
+ 			if (typeof preset.visualizer.scale === "number") this.#visualizer.scale = preset.visualizer.scale;
+ 		}
+ 		if (preset.state) this.#_applyStatePatch(preset.state, {
+@@ -107488,7 +107583,7 @@ var MAGEEngine = class MAGEEngine {
+ 		const preset = {
+ 			version: MAGE_VERSION,
+ 			visualizer: {
+-				shader: this.#visualizer.shader,
++				shader: this.#visualizer.getActiveShader() ?? this.#visualizer.shader,
+ 				skyboxPreset: this.#visualizer.skyboxPreset,
+ 				scale: this.#visualizer.scale
+ 			},
+@@ -107703,7 +107798,6 @@ var MAGEEngine = class MAGEEngine {
  	*/
  	dispose() {
  		if (this.#isDisposed) return;
@@ -219,16 +279,51 @@ index 13dcc32..3aaafe1 100644
  		this.#isDisposed = true;
  		this.#isRunning = false;
  		if (this.#animationFrameId !== null) {
-@@ -113759,7 +113848,7 @@ var MAGEEngine = class MAGEEngine {
- 		if (this.#canvas) rendererOptions.canvas = this.#canvas;
+@@ -108360,7 +108454,8 @@ var MAGEEngine = class MAGEEngine {
  		this.#renderer = new WebGLRenderer(rendererOptions);
- 		this.#renderer.setSize(width, height, false);
--		this.#renderer.setPixelRatio(window.devicePixelRatio);
-+		this.#renderer.setPixelRatio(this.#pixelRatio ?? window.devicePixelRatio);
+ 		if (this.#isLowQualityMode) this.#renderer.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)), false);
+ 		else this.#renderer.setSize(width, height, false);
+-		if (this.#isLowQualityMode) this.#renderer.setPixelRatio(.1);
++		if (this.#pixelRatio !== null) this.#renderer.setPixelRatio(this.#pixelRatio);
++		else if (this.#isLowQualityMode) this.#renderer.setPixelRatio(.1);
+ 		else this.#renderer.setPixelRatio(window.devicePixelRatio || 1);
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
- 		this.#renderer.toneMappingExposure = this.#effects.toneMapping.exposure;
- 		this.#renderer.outputColorSpace = SRGBColorSpace;
-@@ -113879,8 +113968,9 @@ var MAGEEngine = class MAGEEngine {
+ 		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
+@@ -108471,8 +108566,32 @@ var MAGEEngine = class MAGEEngine {
+ 		}
+ 	}
+ 	#_updateVisualizer() {
+-		this.#_clearScene();
+ 		const mesh = this.#visualizer.mesh;
++		if (!this.#scene || !mesh) return;
++		const retainedGeometries = new Set();
++		const retainedMaterials = new Set();
++		mesh.traverse((object) => {
++			if (object.geometry) retainedGeometries.add(object.geometry);
++			const materials = Array.isArray(object.material) ? object.material : [object.material];
++			for (const material of materials) if (material) retainedMaterials.add(material);
++		});
++		const disposedGeometries = new Set();
++		const disposedMaterials = new Set();
++		const disposeReplacedResources = (object) => {
++			if (object.geometry && !retainedGeometries.has(object.geometry) && !disposedGeometries.has(object.geometry)) {
++				disposedGeometries.add(object.geometry);
++				object.geometry.dispose();
++			}
++			const materials = Array.isArray(object.material) ? object.material : [object.material];
++			for (const material of materials) if (material && !retainedMaterials.has(material) && !disposedMaterials.has(material)) {
++				disposedMaterials.add(material);
++				material.dispose();
++			}
++		};
++		this.#scene.traverse(disposeReplacedResources);
++		this.#rtScene?.traverse(disposeReplacedResources);
++		this.#renderTarget?.dispose();
++		this.#_clearScene();
+ 		this.#scene.add(mesh);
+ 		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#viewportWidth / 4)), Math.max(1, Math.floor(this.#viewportHeight / 4)), {
+ 			format: RGBAFormat,
+@@ -108487,8 +108606,9 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#isDisposed || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
  		this.#animationFrameId = requestAnimationFrame(this.#_render);
  		this.#_syncViewport();
@@ -240,9 +335,9 @@ index 13dcc32..3aaafe1 100644
  		if (!Number.isFinite(this.#state.time_multiplier)) this.#state.time_multiplier = 1;
  		if (this.#state.time < 180 && this.#timeIncreasing) this.#state.time += this.#state.time_multiplier * delta;
  		else {
-@@ -113891,10 +113981,26 @@ var MAGEEngine = class MAGEEngine {
- 		this.#state.pointerDown = .1 * this.#state.currPointerDown + .9 * this.#state.pointerDown;
- 		this.#state.mouse.lerp(this.#state.currMouse, .05);
+@@ -108497,10 +108617,26 @@ var MAGEEngine = class MAGEEngine {
+ 			if (this.#state.time <= 0) this.#timeIncreasing = true;
+ 		}
  		let bass_input = 0;
 -		if (this.#audioAnalyser && (this.#audio && this.#audio.isPlaying || this.#reversedAudio && this.#reversedAudio.isPlaying)) {
 +		const hasPlayingAudio = Boolean(this.#audioAnalyser && (this.#audio && this.#audio.isPlaying || this.#reversedAudio && this.#reversedAudio.isPlaying));
@@ -266,20 +361,17 @@ index 13dcc32..3aaafe1 100644
 +			const syntheticFrequency = Math.min(.98, .42 + kick * .5 * accent + offbeat + texture);
 +			bass_input = Math.pow(syntheticFrequency * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
  		}
- 		const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
- 		this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;
-@@ -115568,12 +115674,13 @@ var MAGEEngine = class MAGEEngine {
- * @param {MAGEOptions} options
- * @returns {MAGEEngine}
- */
--function initMAGE({ canvas, log = false, withControls = {
-+function initMAGE({ canvas, pixelRatio, log = false, withControls = {
- 	active: true,
- 	integrated: false
- }, autoStart = false } = {}) {
+ 		if (this.#previewMode) this.#_simulatePreviewAudio();
+ 		else {
+@@ -108787,9 +108923,10 @@ var MAGEEngine = class MAGEEngine {
+ };
+ //#endregion
+ //#region js/mage-lib.js
+-function initMAGE({ canvas, log = false, withControls: { active = false, integrated = false } = {}, autoStart = false } = {}) {
++function initMAGE({ canvas, pixelRatio, log = false, withControls: { active = false, integrated = false } = {}, autoStart = false } = {}) {
  	return new MAGEEngine({
  		canvas,
 +		pixelRatio,
  		log,
- 		withControls,
- 		autoStart
+ 		withControls: {
+ 			active,
