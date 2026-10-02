@@ -38,7 +38,7 @@
   --studio-alert-background: rgba(255,116,116,.07);
   --studio-preview: #0b0d10;
 }
-.scene-editor-beat-preview { display: grid; gap: 14px; padding: 16px; border-bottom: 1px solid var(--editor-field-border, rgba(128,128,128,.2)); }
+.scene-editor-beat-preview { display: grid; min-width: 0; }
 html[data-theme] .scene-editor-page .scene-editor-preview__content { max-height: calc(100% - 48px); overflow-y: auto; }
 .scene-editor-stepper__number, .scene-field__meta { display: none; }
 html[data-theme]:has(.scene-editor-page) { height: 100%; overflow: hidden; }

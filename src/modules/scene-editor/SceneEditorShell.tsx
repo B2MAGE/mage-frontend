@@ -771,6 +771,12 @@ export function SceneEditorShell({
                 title="Motion"
               >
                 <div className="scene-editor-stack">
+                  <BeatPreviewControls
+                    enabled={isBeatSimulated}
+                    bpm={previewBpm}
+                    onEnabledChange={setIsBeatSimulated}
+                    onBpmChange={setPreviewBpm}
+                  />
                   <div className="scene-editor-grid">
                     <NumberField
                       description="Overall engine time multiplier."
@@ -1565,8 +1571,6 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
-              <BeatPreviewControls enabled={isBeatSimulated} bpm={previewBpm}
-                onEnabledChange={setIsBeatSimulated} onBpmChange={setPreviewBpm} />
               <MagePlayer
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
