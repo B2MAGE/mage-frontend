@@ -377,9 +377,10 @@ html[data-theme] .pulse-home .browse-link {text-decoration:none;transition:color
 html[data-theme] .pulse-home .browse-link__label {text-decoration:none;}
 html[data-theme] .pulse-home .browse-link:hover {color:var(--muted);}
 html[data-theme] .pulse-home .scene-stats button {padding:6px 8px;border-radius:8px;}
-html[data-theme] .pulse-home .featured-engagement-button .engagement-button__icon-visual {transition:color .18s ease;}
-html[data-theme] .pulse-home .featured-engagement-button:not(:disabled):hover .engagement-button__icon-visual {color:var(--accent-light);}
-html[data-theme] .pulse-home .featured-engagement-button:disabled {cursor:not-allowed;}
+html[data-theme] .pulse-home .scene-stats .featured-engagement-button {color:var(--text-muted);transition:color .18s ease,background-color .18s ease,border-color .18s ease;}
+html[data-theme] .pulse-home .scene-stats .featured-engagement-button[aria-pressed='false']:not(:disabled):hover {color:var(--text-soft);}
+html[data-theme='mage-pulse'] .pulse-home .scene-stats .featured-engagement-button:is([aria-pressed='true'],.is-selected) .engagement-button__icon-visual {color:var(--accent-light);}
+html[data-theme] .pulse-home .scene-stats .featured-engagement-button:disabled {cursor:not-allowed;}
 html[data-theme] .pulse-home .discover-more {display:flex;justify-content:center;margin-top:34px;}
 
 /* The home mockup uses roomier card captions than the discovery page. */

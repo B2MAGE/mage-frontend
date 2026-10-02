@@ -15,6 +15,47 @@ describe('EngagementButton', () => {
     expect(container.querySelector('svg')).toHaveAttribute('data-icon', iconName)
   })
 
+  it.each([
+    ['upvote', 'lucide-arrow-big-up'],
+    ['downvote', 'lucide-arrow-big-down'],
+  ] as const)('fills the same %s arrow only while selected', (kind, iconClass) => {
+    const { container, rerender } = render(
+      <EngagementButton ariaLabel={kind} count={3} kind={kind} />,
+    )
+    const button = screen.getByRole('button', { name: kind })
+    const svg = container.querySelector('svg')
+    const path = container.querySelector('path')
+    const pathData = path?.getAttribute('d')
+    const count = container.querySelector('.engagement-button__count')
+
+    expect(svg).toHaveClass(iconClass)
+    expect(svg).toHaveAttribute('fill', 'none')
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(count).toHaveTextContent('3')
+
+    rerender(
+      <EngagementButton ariaLabel={kind} count={4} isSelected kind={kind} />,
+    )
+
+    expect(container.querySelector('svg')).toBe(svg)
+    expect(container.querySelector('path')).toBe(path)
+    expect(container.querySelector('.engagement-button__count')).toBe(count)
+    expect(path).toHaveAttribute('d', pathData)
+    expect(svg).toHaveAttribute('fill', 'currentColor')
+    expect(button).toHaveAttribute('aria-pressed', 'true')
+    expect(count).toHaveTextContent('4')
+
+    rerender(<EngagementButton ariaLabel={kind} count={3} kind={kind} />)
+
+    expect(container.querySelector('svg')).toBe(svg)
+    expect(container.querySelector('path')).toBe(path)
+    expect(container.querySelector('.engagement-button__count')).toBe(count)
+    expect(path).toHaveAttribute('d', pathData)
+    expect(svg).toHaveAttribute('fill', 'none')
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(count).toHaveTextContent('3')
+  })
+
   it('keeps the icon and count mounted while the busy spinner is overlaid', () => {
     const { container, rerender } = render(
       <EngagementButton ariaLabel="Upvote 12" count="12" kind="upvote" />,
@@ -50,6 +91,8 @@ describe('EngagementButton', () => {
       <EngagementButton ariaLabel="Save 2" count={2} kind="save" />,
     )
     const heartPath = container.querySelector('path')
+    const svg = container.querySelector('svg')
+    const count = container.querySelector('.engagement-button__count')
     const pathData = heartPath?.getAttribute('d')
 
     expect(container.querySelector('svg')).toHaveClass('lucide-heart')
@@ -67,6 +110,22 @@ describe('EngagementButton', () => {
     expect(container.querySelector('path')).toBe(heartPath)
     expect(heartPath).toHaveAttribute('d', pathData)
     expect(container.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
+    expect(screen.getByRole('button', { name: 'Saved 2' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    rerender(<EngagementButton ariaLabel="Save 2" count={2} kind="save" />)
+
+    expect(container.querySelector('svg')).toBe(svg)
+    expect(container.querySelector('path')).toBe(heartPath)
+    expect(container.querySelector('.engagement-button__count')).toBe(count)
+    expect(heartPath).toHaveAttribute('d', pathData)
+    expect(svg).toHaveAttribute('fill', 'none')
+    expect(screen.getByRole('button', { name: 'Save 2' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 
   it('forwards its accessible state, styling hook, and click handler', () => {
