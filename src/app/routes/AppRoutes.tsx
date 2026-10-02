@@ -18,6 +18,7 @@ import { ProfilePage } from '@modules/profile'
 import { CreateScenePage, EditScenePage, SceneEditorLoadingState } from '@modules/scene-editor'
 import { SceneDetailPage } from '@modules/scene-detail'
 import { SettingsLoadingState, SettingsPage } from '@modules/settings'
+import { RouteScrollReset } from './RouteScrollReset'
 
 const HANDLE_PATH_PATTERN = /^@[a-z][a-z0-9_]{2,29}$/
 
@@ -44,6 +45,7 @@ function HandleProfileRoute() {
 export function AppRoutes() {
   return (
     <Layout>
+      <RouteScrollReset />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />

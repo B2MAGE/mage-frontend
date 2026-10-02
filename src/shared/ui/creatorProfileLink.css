@@ -1,0 +1,29 @@
+a.creator-profile-link {
+  position: relative;
+  z-index: 3;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  vertical-align: top;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+a.creator-profile-link:is(:hover, :focus-visible) {
+  color: color-mix(in srgb, var(--muted) 60%, var(--text) 40%);
+  text-decoration: none;
+}
+
+a.creator-profile-link:focus-visible {
+  outline: 2px solid var(--accent-light, var(--accent));
+  outline-offset: -1px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.creator-profile-link { transition: none; }
+}

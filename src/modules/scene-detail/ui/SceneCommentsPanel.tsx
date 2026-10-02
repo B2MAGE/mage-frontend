@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { formatCompactCount, formatRelativeTime } from '@shared/lib'
-import { LoadingRegion, PendingButtonLabel, Skeleton, UserAvatar } from '@shared/ui'
+import { CreatorProfileLink, LoadingRegion, PendingButtonLabel, Skeleton, UserAvatar } from '@shared/ui'
 import { readInitial } from '../selectors'
 import type { SceneComment, SceneVoteState } from '../types'
 import { SceneCommentSkeletonList } from './SceneLoadingSkeletons'
@@ -113,15 +112,11 @@ export function SceneCommentsPanel({
         <UserAvatar className="mage-comment__avatar" initials={readInitial(comment.authorDisplayName)} gradientStart={comment.authorAvatarGradientStart} gradientEnd={comment.authorAvatarGradientEnd} />
         <div className="mage-comment__body">
           <div className="scene-detail-comment__header">
-            <strong>{comment.authorDisplayName}</strong>
-            {comment.authorHandle ? (
-              <Link
-                className="scene-detail-comment__handle"
-                to={`/@${comment.authorHandle}`}
-              >
-                @{comment.authorHandle}
-              </Link>
-            ) : null}
+            <strong className="scene-detail-comment__author">
+              <CreatorProfileLink className="scene-detail-comment__author-link" handle={comment.authorHandle}>
+                {comment.authorDisplayName}
+              </CreatorProfileLink>
+            </strong>
             <span>{formatCommentTimestamp(comment.createdAt)}</span>
           </div>
           <p>{comment.text}</p>

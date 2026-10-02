@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
@@ -39,6 +39,7 @@ describe('SceneDetailPage recommendations', () => {
     const sceneResponse = buildSceneDetailResponse()
     const creatorSceneResponse = buildSceneDetailResponse({
       createdAt: '2026-04-08T14:00:00Z',
+      creatorHandle: 'sceneartist',
       engagement: {
         currentUserSaved: false,
         currentUserVote: null,
@@ -55,6 +56,7 @@ describe('SceneDetailPage recommendations', () => {
     const tagSceneResponse = buildSceneDetailResponse({
       createdAt: '2026-04-09T14:00:00Z',
       creatorDisplayName: 'Night Archive',
+      creatorHandle: 'nightarchive',
       engagement: {
         currentUserSaved: false,
         currentUserVote: null,
@@ -115,6 +117,10 @@ describe('SceneDetailPage recommendations', () => {
     expect(screen.getByRole('link', { name: /afterglow static/i })).toBeInTheDocument()
     expect(screen.getByText(/4\.3K views/i)).toBeInTheDocument()
     expect(screen.getByText(/5 views/i)).toBeInTheDocument()
+    const recommendations = within(screen.getByRole('region', { name: /recommended scenes/i }))
+    expect(recommendations.getByRole('link', { name: 'Scene Artist' })).toHaveAttribute('href', '/@sceneartist')
+    expect(recommendations.getByRole('link', { name: 'Night Archive' })).toHaveAttribute('href', '/@nightarchive')
+    expect(recommendations.getByRole('link', { name: 'Signal Bloom' })).toHaveAttribute('href', '/scenes/16')
 
     const allFilter = screen.getByRole('button', { name: /^all$/i })
     const ambientFilter = screen.getByRole('button', { name: /^ambient$/i })

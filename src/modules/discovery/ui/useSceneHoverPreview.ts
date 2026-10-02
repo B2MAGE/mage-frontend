@@ -86,7 +86,7 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
     syncPreview()
   }, [preferenceEnabled, syncPreview])
 
-  const onPointerEnter = useCallback((event: PointerEvent<HTMLAnchorElement>) => {
+  const onPointerEnter = useCallback((event: PointerEvent<HTMLElement>) => {
     if (event.pointerType === 'touch') {
       return
     }
@@ -105,7 +105,7 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
     syncPreview()
   }, [syncPreview])
 
-  const onBlur = useCallback((event: FocusEvent<HTMLAnchorElement>) => {
+  const onBlur = useCallback((event: FocusEvent<HTMLElement>) => {
     if (event.currentTarget.contains(event.relatedTarget)) {
       return
     }

@@ -25,6 +25,7 @@ function buildRecommendedScenesFromList(
         id: scene.sceneId,
         title: scene.name,
         creator: scene.creatorDisplayName,
+        creatorHandle: scene.creatorHandle ?? null,
         meta: `${formatMetricLabel(scene.engagement.views, 'view')} | ${formatRelativeTime(scene.createdAt)}`,
         accent: buildRecommendationAccent(scene.sceneId),
         thumbnailRef: scene.thumbnailRef,

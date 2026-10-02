@@ -456,11 +456,11 @@ describe('SceneDetailPage route states', () => {
 
     expect(await screen.findByText('This scene has a great pulse.')).toBeInTheDocument()
     expect(screen.getByText('A reply from the crowd.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '@commentartist' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Comment Artist' })).toHaveAttribute(
       'href',
       '/@commentartist',
     )
-    expect(screen.getByRole('link', { name: '@replyartist' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Reply Artist' })).toHaveAttribute(
       'href',
       '/@replyartist',
     )
