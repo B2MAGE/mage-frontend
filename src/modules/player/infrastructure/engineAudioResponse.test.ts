@@ -1,5 +1,6 @@
 import engineSource from '@notrac/mage?raw'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
+import { AudioAnalysisSession } from '@notrac/mage/audio-analysis'
 import { describe, expect, it, vi } from 'vitest'
 
 type Harness = Record<string, unknown>
@@ -22,7 +23,7 @@ const engineClassSource = engineSource.slice(engineStart)
 // Execute the installed implementation with fake audio resources, not a second
 // implementation of the detector or engine logic.
 function engineMethod(name: string, dependencies: Record<string, unknown> = {}): Method {
-  dependencies = { normalizeAudioResponseConfig, normalizeAudioResponseMode, ...dependencies }
+  dependencies = { normalizeAudioResponseConfig, normalizeAudioResponseMode, AudioAnalysisSession, ...dependencies }
   const publicStart = engineClassSource.indexOf(`\n\t${name}(`)
   const start = publicStart >= 0 ? publicStart : engineClassSource.indexOf(`\n\t#${name}(`)
   const end = engineClassSource.indexOf('\n\t}', start)
@@ -134,6 +135,27 @@ describe('installed transient audio response', () => {
 })
 
 describe('installed audio response mode integration', () => {
+  it('attaches one sample-clock session and consumes all measurements between visual frames', () => {
+    const analysis = { connect: vi.fn(), disconnect: vi.fn(), drain: vi.fn(() => [
+      { time: 2.01, levels: { overall: 0.2 } }, { time: 2.02, levels: { overall: 0.6 } },
+    ]) }
+    const source = { isPlaying: true, context: { currentTime: 2.025 }, pause: vi.fn() }
+    const engine: Harness = {
+      audioAnalysis: analysis, audio: source, isRunning: true, animationFrameId: null,
+      _resetAudioAnalysis: engineMethod('_resetAudioAnalysis'),
+      _syncAudioAnalysis: engineMethod('_syncAudioAnalysis'),
+    }
+    const sample = engineMethod('_sampleMappedAudio')
+    expect(sample.call(engine)).toBe(0.6)
+    sample.call(engine)
+    expect(analysis.connect).toHaveBeenCalledExactlyOnceWith(source)
+    expect(analysis.drain).toHaveBeenCalledWith(2.025)
+    expect(engine.audioAnalysisFrame).toEqual({ time: 2.02, levels: { overall: 0.6 } })
+    engineMethod('pause').call(engine)
+    expect(engine.audioAnalysisFrame).toBeNull()
+    expect(engine.audioAnalysisSource).toBeNull()
+  })
+
   it('replaces mapped settings on scene load and clears them when returning to an older scene', () => {
     const presetStart = engineSource.indexOf('var MAGEPreset = class MAGEPreset {')
     const presetEnd = engineSource.indexOf('\n//#endregion', presetStart)

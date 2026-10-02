@@ -25,3 +25,15 @@ Sensitivity is clamped to 0.1–4. Mapping amount is clamped to 0–4, attack to
 Sensitivity controls detection responsiveness; amount controls movement strength. Attack and release control how quickly the mapped movement rises and returns. These settings must not change audible playback volume.
 
 Engine changes belong in `patches/@notrac+mage+1.0.3.patch`, including these lightweight entry points and package exports. A clean install must apply the patch before testing or building. The configuration contract is exercised by `src/modules/player/infrastructure/audioResponseConfig.test.ts` against the installed patched package.
+
+## Analysis timing and lifecycle
+
+Mapped response uses a dedicated `AudioWorklet` side branch. It reads PCM samples on the audio rendering thread, independent of animation frames and display refresh rate. The initial analysis kernel emits one measurement per 10 ms of audio (441 samples at 44.1 kHz or 480 samples at 48 kHz). A measurement arrives after its first complete hop, plus the browser's audio block/message delivery latency. This is not a guarantee of 10 ms total audible-to-visible latency: device output latency and the next animation frame also contribute.
+
+The worklet's output is silence. It connects to the destination solely to keep the analysis graph active; the existing audible playback path, gain, and volume remain intact. Stereo energy is measured independently in each channel before averaging power, so opposite-polarity channels do not cancel analysis. The pure kernel is shared with tests and embedded into the actual worklet module.
+
+`AudioAnalysisSession.connect(source)` accepts a Three.js audio source with `context` and `getOutput()`. It returns a promise indicating successful connection. `drain(context.currentTime)` returns newly available timestamped measurements exactly once; `snapshot(context.currentTime)` retains the most recent fresh measurement for diagnostics. Returned measurements are independent copies. The queue is capped at 512 frames, and measurements more than one second old are discarded to prevent a burst after a long frame stall.
+
+Pause, seek, track changes, scene changes, and disposal must reset or disconnect the session. `reset()` keeps an established connection while starting a new analysis epoch and clearing measurements. Epoch and connection-generation checks reject late messages or asynchronous module loads from prior playback. `disconnect()` removes only the analysis side branch. `dispose()` also prevents future connections. Temporary worklet module URLs are revoked on both success and failure; a loaded module is shared by sessions in the same audio context.
+
+Unsupported AudioWorklet environments report `unsupported`; module or processor failures report `error` with a message. Mapped analysis does not silently fall back to frame-dependent polling. The existing legacy and transient modes remain available. AR02 initially supplies overall RMS level and timestamped frames; independent frequency levels and hit detection are introduced in AR03.
