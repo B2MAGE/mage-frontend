@@ -216,6 +216,7 @@ export function ProfileDetailsForm({
           fieldClassName="settings-field--full"
           name="displayName"
           onChange={(event) => handleFieldChange('displayName', event.target.value)}
+          placeholder="John"
           type="text"
           value={profileFields.displayName}
         />
@@ -228,6 +229,7 @@ export function ProfileDetailsForm({
           fieldClassName="settings-field--full"
           hint="Use 3–30 letters, numbers, or underscores, starting with a letter."
           onValueChange={(nextValue) => handleFieldChange('handle', nextValue)}
+          placeholder="jdoe"
           required
           value={profileFields.handle}
         />
@@ -237,6 +239,7 @@ export function ProfileDetailsForm({
           label="First name"
           name="firstName"
           onChange={(event) => handleFieldChange('firstName', event.target.value)}
+          placeholder="John"
           type="text"
           value={profileFields.firstName}
         />
@@ -246,6 +249,7 @@ export function ProfileDetailsForm({
           label="Last name"
           name="lastName"
           onChange={(event) => handleFieldChange('lastName', event.target.value)}
+          placeholder="Doe"
           type="text"
           value={profileFields.lastName}
         />
@@ -262,6 +266,7 @@ export function ProfileDetailsForm({
             maxLength={300}
             name="description"
             onChange={(event) => handleFieldChange('description', event.target.value)}
+            placeholder="Tell people about the scenes you make."
             rows={4}
             value={profileFields.description}
           />

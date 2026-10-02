@@ -127,6 +127,7 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
             error={errors.currentPassword}
             id="settings-current-password"
             label="Current password"
+            placeholder="Enter current password"
             name="currentPassword"
             onChange={(event) => handleChange('currentPassword', event.target.value)}
             required
@@ -138,6 +139,7 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
             error={errors.newPassword}
             id="settings-new-password"
             label="New password"
+            placeholder="Enter new password"
             name="newPassword"
             onChange={(event) => handleChange('newPassword', event.target.value)}
             required
@@ -149,6 +151,7 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
             error={errors.confirmNewPassword}
             id="settings-confirm-new-password"
             label="Verify new password"
+            placeholder="Enter new password again"
             name="confirmNewPassword"
             onChange={(event) => handleChange('confirmNewPassword', event.target.value)}
             required

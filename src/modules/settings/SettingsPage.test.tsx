@@ -109,21 +109,24 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText(/verify new password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save password/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /reset password/i })).not.toBeInTheDocument()
-    const textFieldLabels = [
-      /^email$/i,
-      /display name/i,
-      /^handle$/i,
-      /first name/i,
-      /last name/i,
-      /^description$/i,
-      /current password/i,
-      /^new password$/i,
-      /verify new password/i,
+    expect(emailInput).not.toHaveAttribute('placeholder')
+    const fieldPlaceholders = [
+      ['Display name', 'John'],
+      ['Handle', 'jdoe'],
+      ['First name', 'John'],
+      ['Last name', 'Doe'],
+      ['Description', 'Tell people about the scenes you make.'],
+      ['Current password', 'Enter current password'],
+      ['New password', 'Enter new password'],
+      ['Verify new password', 'Enter new password again'],
     ]
 
-    textFieldLabels.forEach((label) => {
-      expect(screen.getByLabelText(label)).not.toHaveAttribute('placeholder')
+    fieldPlaceholders.forEach(([label, placeholder]) => {
+      expect(screen.getByLabelText(label)).toHaveAttribute('placeholder', placeholder)
     })
+    for (const label of ['Current password', 'New password', 'Verify new password']) {
+      expect(screen.getByLabelText(label)).toHaveValue('')
+    }
   })
 
   it('marks only public profile fields and associates their shared explanation without changing labels', async () => {
@@ -259,7 +262,7 @@ describe('SettingsPage', () => {
     await user.clear(displayNameInput)
 
     expect(displayNameInput).toHaveValue('')
-    expect(displayNameInput).not.toHaveAttribute('placeholder')
+    expect(displayNameInput).toHaveAttribute('placeholder', 'John')
     expect(preview.getByText('Display name')).toBeInTheDocument()
     expect(preview.getByText('MG')).toBeInTheDocument()
 
@@ -274,7 +277,7 @@ describe('SettingsPage', () => {
     await user.keyboard('{Backspace}')
 
     expect(handleInput).toHaveValue('')
-    expect(handleInput).not.toHaveAttribute('placeholder')
+    expect(handleInput).toHaveAttribute('placeholder', 'jdoe')
     expect(handlePrefix).toHaveTextContent('@')
     expect(handlePrefix).toHaveAttribute('aria-hidden', 'true')
     expect(preview.getByText('@handle')).toBeInTheDocument()
