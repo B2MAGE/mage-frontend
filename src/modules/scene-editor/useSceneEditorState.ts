@@ -4,6 +4,7 @@ import {
   getSceneEditorModel,
   mergeSceneEditorBranch,
   parseSceneDataJson,
+  SHADER_SCENES,
   type SceneData,
   type SceneEditorModel,
   type ScenePassId,
@@ -183,6 +184,16 @@ export function useSceneEditorState({
     }))
   }
 
+  function handleShaderSelection(shaderId: string) {
+    const shader = SHADER_SCENES.find((option) => option.id === shaderId)
+    if (!shader) return
+    const selectedScene = mergeSceneEditorBranch(sceneData, 'visualizer', {
+      ...getSceneEditorModel(sceneData).visualizer,
+      shader: shader.shader,
+    })
+    applySceneData(selectedScene)
+  }
+
   function handleMotionAdvancedToggle(nextValue: boolean) {
     const sceneModel = getSceneEditorModel(sceneData)
 
@@ -271,6 +282,7 @@ export function useSceneEditorState({
     handleMotionAdvancedToggle,
     handleNameChange,
     handleRawSceneDataChange,
+    handleShaderSelection,
     handleSectionJump,
     handleSectionStep,
     handleTagSearchChange,
