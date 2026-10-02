@@ -1,5 +1,23 @@
+diff --git a/node_modules/@notrac/mage/dist/mage-engine.d.ts b/node_modules/@notrac/mage/dist/mage-engine.d.ts
+index 340c0c9..fcf07b3 100644
+--- a/node_modules/@notrac/mage/dist/mage-engine.d.ts
++++ b/node_modules/@notrac/mage/dist/mage-engine.d.ts
+@@ -91,6 +91,13 @@ export interface MAGEEngineAPI {
+    * Unloads the currently loaded audio, if any, and stops playback.
+    */
+   unloadAudio(): void;
++  /**
++   * Enables or disables a silent, deterministic beat signal for lightweight scene previews.
++   * Playing audio always takes precedence over the synthetic signal.
++   * @param enabled Whether synthetic preview reactivity is enabled.
++   * @param seed Stable value used to vary the preview rhythm.
++   */
++  setSyntheticPreview(enabled: boolean, seed?: number): void;
+   /**
+    * Loads a MAGEPreset into the engine, applying all the settings and configurations contained in the preset to recreate the visual output. 
+    * @param {MAGEPreset} preset - presetInput The preset to load into the engine.
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index 13dcc32..0204f23 100644
+index 13dcc32..85a2d43 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
 @@ -71848,6 +71848,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
@@ -19,7 +37,35 @@ index 13dcc32..0204f23 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
-@@ -112922,9 +112925,31 @@ var MAGEEngine = class MAGEEngine {
+@@ -112783,6 +112786,9 @@ var MAGEEngine = class MAGEEngine {
+ 	#audioBuffer = null;
+ 	#playbackTime = 0;
+ 	#isReversed = false;
++	#syntheticPreviewEnabled = false;
++	#syntheticPreviewSeed = 0;
++	#syntheticPreviewTime = 0;
+ 	#visualizer = null;
+ 	#inputs = null;
+ 	#state = null;
+@@ -112837,6 +112843,9 @@ var MAGEEngine = class MAGEEngine {
+ 		this.#audioBuffer = null;
+ 		this.#playbackTime = 0;
+ 		this.#isReversed = false;
++		this.#syntheticPreviewEnabled = false;
++		this.#syntheticPreviewSeed = 0;
++		this.#syntheticPreviewTime = 0;
+ 		this.#visualizer = new MAGEVisualizer(this);
+ 		this.#effects = new MAGEEffects();
+ 		this.#inputs = {
+@@ -112905,6 +112914,7 @@ var MAGEEngine = class MAGEEngine {
+ 			this.#composer = this.#effects.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
+ 			this.#_syncSobelResolution();
+ 		}
++		this.#clock.reset();
+ 		this.#_render();
+ 		if (!this.#currentPreset && !this.#visualizer.mesh) this.#_loadDefaultPreset();
+ 	}
+@@ -112922,9 +112932,31 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -51,7 +97,7 @@ index 13dcc32..0204f23 100644
  	* Seeks to a specific time in the audio.
  	* @param {number} time - The time to seek to, in seconds.
  	* @returns {boolean} True if the seek was successful, false otherwise.
-@@ -112958,10 +112983,22 @@ var MAGEEngine = class MAGEEngine {
+@@ -112958,10 +112990,38 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -66,6 +112,22 @@ index 13dcc32..0204f23 100644
 +		return nextVolume;
 +	}
 +	/**
++	* Enables a silent, deterministic beat signal for lightweight scene previews.
++	* Playing audio always takes precedence over the synthetic signal.
++	* @param {boolean} enabled - Whether synthetic preview reactivity is enabled.
++	* @param {number} [seed=0] - Stable value used to vary the preview rhythm.
++	* @returns {void}
++	*/
++	setSyntheticPreview(enabled, seed = 0) {
++		const nextEnabled = Boolean(enabled);
++		const nextSeed = Number.isFinite(seed) ? Math.trunc(seed) >>> 0 : 0;
++		if (!nextEnabled || !this.#syntheticPreviewEnabled || nextSeed !== this.#syntheticPreviewSeed) {
++			this.#syntheticPreviewTime = 0;
++		}
++		this.#syntheticPreviewEnabled = nextEnabled;
++		this.#syntheticPreviewSeed = nextSeed;
++	}
++	/**
  	* Plays the currently loaded audio if it is not already playing. If no audio is loaded, this method does nothing.
  	* @returns {void}
  	*/
@@ -74,7 +136,7 @@ index 13dcc32..0204f23 100644
  		if (!this.isAudioLoaded()) return;
  		if (this.#audio && !this.#audio.isPlaying) this.#audio.play();
  	}
-@@ -112972,6 +113009,11 @@ var MAGEEngine = class MAGEEngine {
+@@ -112972,6 +113032,11 @@ var MAGEEngine = class MAGEEngine {
  	pause() {
  		if (this.#audio?.isPlaying) this.#audio.pause();
  		if (this.#reversedAudio?.isPlaying) this.#reversedAudio.pause();
@@ -86,7 +148,7 @@ index 13dcc32..0204f23 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -113025,6 +113067,24 @@ var MAGEEngine = class MAGEEngine {
+@@ -113025,6 +113090,24 @@ var MAGEEngine = class MAGEEngine {
  		});
  	}
  	/**
@@ -111,7 +173,7 @@ index 13dcc32..0204f23 100644
  	* Loads a preset into the engine.
  	* @param {MAGEPreset} presetInput - The preset input to load.
  	* @returns {MAGEPreset} The loaded preset.
-@@ -113310,7 +113370,6 @@ var MAGEEngine = class MAGEEngine {
+@@ -113310,7 +113393,6 @@ var MAGEEngine = class MAGEEngine {
  	*/
  	dispose() {
  		if (this.#isDisposed) return;
@@ -119,3 +181,43 @@ index 13dcc32..0204f23 100644
  		this.#isDisposed = true;
  		this.#isRunning = false;
  		if (this.#animationFrameId !== null) {
+@@ -113879,8 +113961,9 @@ var MAGEEngine = class MAGEEngine {
+ 		if (this.#isDisposed || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
+ 		this.#animationFrameId = requestAnimationFrame(this.#_render);
+ 		this.#_syncViewport();
++		this.#clock.update();
+-		const delta = this.#clock.getDelta();
+-		this.#state.time = delta;
++		const delta = Math.min(Math.max(this.#clock.getDelta(), 0), .1);
++		if (!Number.isFinite(this.#state.time)) this.#state.time = 0;
+ 		if (!Number.isFinite(this.#state.time_multiplier)) this.#state.time_multiplier = 1;
+ 		if (this.#state.time < 180 && this.#timeIncreasing) this.#state.time += this.#state.time_multiplier * delta;
+ 		else {
+@@ -113891,10 +113974,26 @@ var MAGEEngine = class MAGEEngine {
+ 		this.#state.pointerDown = .1 * this.#state.currPointerDown + .9 * this.#state.pointerDown;
+ 		this.#state.mouse.lerp(this.#state.currMouse, .05);
+ 		let bass_input = 0;
+-		if (this.#audioAnalyser && (this.#audio && this.#audio.isPlaying || this.#reversedAudio && this.#reversedAudio.isPlaying)) {
++		const hasPlayingAudio = Boolean(this.#audioAnalyser && (this.#audio && this.#audio.isPlaying || this.#reversedAudio && this.#reversedAudio.isPlaying));
++		if (hasPlayingAudio) {
+ 			const freqData = this.#audioAnalyser.getFrequencyData();
+ 			bass_input = Math.pow(freqData[2] / 255 * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
+ 			Math.pow(freqData[4] / 255 * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
++		} else if (this.#syntheticPreviewEnabled) {
++			this.#syntheticPreviewTime += Math.min(Math.max(delta, 0), .1);
++			const bpm = 96 + this.#syntheticPreviewSeed % 37;
++			const beatDuration = 60 / bpm;
++			const beatNumber = this.#syntheticPreviewTime / beatDuration;
++			const beatPosition = beatNumber - Math.floor(beatNumber);
++			const beatIndex = Math.floor(beatNumber);
++			const kick = Math.exp(-beatPosition * 7.5);
++			const offbeatPosition = (beatPosition + .5) % 1;
++			const offbeat = Math.exp(-offbeatPosition * 12) * .32;
++			const accentPhase = (beatIndex + this.#syntheticPreviewSeed * .01) * 2.399963229728653;
++			const accent = .82 + Math.pow(Math.sin(accentPhase), 2) * .18;
++			const texture = (Math.sin((this.#syntheticPreviewTime * 2.17 + this.#syntheticPreviewSeed * .001) * Math.PI * 2) + 1) * .025;
++			const syntheticFrequency = Math.min(.98, .42 + kick * .5 * accent + offbeat + texture);
++			bass_input = Math.pow(syntheticFrequency * this.#state.minimizing_factor, this.#state.power_factor) + delta * this.#state.base_speed;
+ 		}
+ 		const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
+ 		this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;

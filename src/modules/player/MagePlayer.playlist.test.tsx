@@ -123,6 +123,7 @@ describe('MagePlayer playlist behavior', () => {
 
         return audioState
       }),
+      setSyntheticPreview: vi.fn(),
       setPlaybackState: vi.fn((nextPlaybackState: MagePlayerPlaybackState) => {
         playbackState = nextPlaybackState
         return playbackState
@@ -217,6 +218,7 @@ describe('MagePlayer playlist behavior', () => {
         audioState = { ...audioState, volume }
         return audioState
       }),
+      setSyntheticPreview: vi.fn(),
       setPlaybackState: vi.fn((nextPlaybackState: MagePlayerPlaybackState) => {
         playbackState = nextPlaybackState
         return playbackState
@@ -312,6 +314,7 @@ describe('MagePlayer playlist behavior', () => {
         audioState = { ...audioState, volume }
         return audioState
       }),
+      setSyntheticPreview: vi.fn(),
       setPlaybackState: vi.fn((nextPlaybackState: MagePlayerPlaybackState) => {
         playbackState = nextPlaybackState
         return playbackState

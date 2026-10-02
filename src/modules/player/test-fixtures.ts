@@ -131,6 +131,7 @@ export function buildMagePlayerController(
 
       return audioState
     }),
+    setSyntheticPreview: vi.fn(),
     setPlaybackState: vi.fn((nextPlaybackState: MagePlayerPlaybackState) => {
       playbackState = nextPlaybackState
       return playbackState
