@@ -25,10 +25,10 @@ function EngagementIcon({
 }) {
   return (
     <AppIcon
-      name={kind === 'save' ? 'heart' : kind === 'upvote' ? 'arrow-up' : 'arrow-down'}
+      name={kind === 'save' ? 'heart' : kind === 'upvote' ? 'arrow-big-up' : 'arrow-big-down'}
       className="engagement-button__svg"
       data-icon={kind}
-      fill={kind === 'save' && isSelected ? 'currentColor' : 'none'}
+      fill={isSelected ? 'currentColor' : 'none'}
     />
   )
 }

@@ -18,6 +18,8 @@
 :root[data-theme='classic-facebook'] .pulse-home .follow-button:disabled { opacity: .6; }
 :root[data-theme='classic-facebook'] .pulse-home .scene-stats { padding-bottom: 12px; }
 :root[data-theme='classic-facebook'] .pulse-home .featured-action { padding-top: 12px; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-stats .featured-engagement-button { min-height: 30px; padding: 3px 5px; border: 1px solid transparent; border-radius: 2px; background: transparent; color: #6076a8; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-stats .featured-engagement-button[aria-pressed='false']:not(:disabled):hover { color: #2d4373; border-color: #bcc7d8; background: #eef2f7; }
 :root[data-theme='classic-facebook'] .pulse-home .scene-stats button { border-radius: 3px; }
 :root[data-theme='classic-facebook'] .pulse-home .discover-section { padding: 32px 0; }
 :root[data-theme='classic-facebook'] .pulse-home .section-heading { margin-bottom: 20px; }

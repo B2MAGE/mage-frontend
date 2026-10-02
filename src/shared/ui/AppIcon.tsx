@@ -1,5 +1,5 @@
 import {
-  ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, Check,
+  ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, Check,
   ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   CircleAlert, GripVertical, Heart, Images, Layers, ListMusic,
   LogOut, Maximize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
@@ -10,6 +10,8 @@ import './appIcon.css'
 
 // Import only the icons the app uses; never load Lucide's full dynamic catalog.
 const icons = {
+  'arrow-big-down': ArrowBigDown,
+  'arrow-big-up': ArrowBigUp,
   'arrow-down': ArrowDown,
   'arrow-right': ArrowRight,
   'arrow-up': ArrowUp,
