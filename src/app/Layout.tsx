@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type PropsWithChildren } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '@auth'
+import { Skeleton } from '@shared/ui'
+import './pulseChrome.css'
 
 function UserIcon() {
   return (
@@ -57,21 +59,17 @@ function ScenesIcon() {
   )
 }
 
-function BrowseIcon() {
+function SettingsIcon() {
   return (
     <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
       <path
-        d="M12 4.75a7.25 7.25 0 1 1 0 14.5 7.25 7.25 0 0 1 0-14.5Z"
+        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"
         stroke="currentColor"
-        strokeWidth="1.9"
-      />
-      <path
-        stroke="currentColor"
-        d="M12 5.95c1.5 1.43 2.35 3.62 2.35 6.05 0 2.42-.85 4.62-2.35 6.05M12 5.95c-1.5 1.43-2.35 3.62-2.35 6.05 0 2.42.85 4.62 2.35 6.05M5.9 12h12.2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth="1.9"
+        strokeWidth="1.7"
       />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
     </svg>
   )
 }
@@ -157,8 +155,26 @@ export function Layout({ children }: PropsWithChildren) {
       <header className="navbar">
         <div className="nav-inner">
           <Link className="logo" to="/">
-            MAGE
+            <span className="pulse-orbit" aria-hidden="true"><span className="pulse-orbit-core" /></span><span>MAGE</span>
           </Link>
+          <nav className="nav-primary" aria-label="Primary navigation">
+            <NavLink
+              className={({ isActive }) =>
+                `nav-primary__link${isActive ? ' nav-primary__link--active' : ''}`
+              }
+              to="/scenes"
+            >
+              Explore
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                `nav-primary__link${isActive ? ' nav-primary__link--active' : ''}`
+              }
+              to="/about"
+            >
+              About
+            </NavLink>
+          </nav>
           {isAuthenticated && user ? (
             <div className="nav-actions" ref={accountMenuRef}>
               <Link className="nav-create" to="/create-scene">
@@ -180,6 +196,7 @@ export function Layout({ children }: PropsWithChildren) {
                 <span className="nav-avatar" aria-hidden="true">
                   {profileInitials}
                 </span>
+                <span className="nav-profile-trigger__label">{profileName}</span>
                 <span className="nav-profile-trigger__chevron" aria-hidden="true">
                   <ChevronDownIcon />
                 </span>
@@ -197,7 +214,7 @@ export function Layout({ children }: PropsWithChildren) {
                       className="nav-menu__profile-link"
                       onClick={() => setIsAccountMenuOpen(false)}
                       role="menuitem"
-                      to="/settings"
+                      to={user.handle ? `/@${user.handle}` : '/profile'}
                     >
                       <span className="nav-avatar nav-avatar--large" aria-hidden="true">
                         {profileInitials}
@@ -207,26 +224,15 @@ export function Layout({ children }: PropsWithChildren) {
                         <span className="nav-menu__identity-email" title={profileEmail}>
                           {profileEmail}
                         </span>
-                        <button className="nav-menu__channel-link" type="button">
-                          View your channel
-                        </button>
                       </div>
+                      <span className="nav-menu__channel-link">
+                        View profile
+                      </span>
                     </Link>
                   </div>
 
                   <div className="nav-menu__divider" />
 
-                  <Link
-                    className="nav-menu__item"
-                    onClick={() => setIsAccountMenuOpen(false)}
-                    role="menuitem"
-                    to="/"
-                  >
-                    <span className="nav-menu__icon">
-                      <BrowseIcon />
-                    </span>
-                    <span>Browse</span>
-                  </Link>
 
                   <Link
                     className="nav-menu__item"
@@ -238,6 +244,18 @@ export function Layout({ children }: PropsWithChildren) {
                       <ScenesIcon />
                     </span>
                     <span>My Scenes</span>
+                  </Link>
+
+                  <Link
+                    className="nav-menu__item"
+                    onClick={() => setIsAccountMenuOpen(false)}
+                    role="menuitem"
+                    to="/settings"
+                  >
+                    <span className="nav-menu__icon">
+                      <SettingsIcon />
+                    </span>
+                    <span>Settings</span>
                   </Link>
 
                   <button
@@ -258,8 +276,12 @@ export function Layout({ children }: PropsWithChildren) {
               ) : null}
             </div>
           ) : isRestoringSession && accessToken ? (
-            <div className="nav-status-pill" aria-live="polite">
-              Restoring session...
+            <div aria-hidden="true" className="nav-actions nav-session-placeholder">
+              <Skeleton className="nav-session-placeholder__create" shape="block" />
+              <div className="nav-session-placeholder__profile">
+                <Skeleton className="nav-session-placeholder__avatar" shape="circle" />
+                <Skeleton className="nav-session-placeholder__name" shape="line" />
+              </div>
             </div>
           ) : (
             <div className="nav-actions">
@@ -274,6 +296,19 @@ export function Layout({ children }: PropsWithChildren) {
         </div>
       </header>
       <div className="app-shell">{children}</div>
+      <footer className="pulse-footer">
+        <div className="pulse-footer__inner">
+          <div className="pulse-footer__brand">
+            <strong>MAGE</strong>
+            <span>Musical Autonomous Generated Environments</span>
+          </div>
+          <nav aria-label="Footer navigation" className="pulse-footer__nav">
+            <Link to="/">Home</Link>
+            <Link to="/scenes">Explore</Link>
+            <Link to="/about">About</Link>
+          </nav>
+        </div>
+      </footer>
     </>
   )
 }
