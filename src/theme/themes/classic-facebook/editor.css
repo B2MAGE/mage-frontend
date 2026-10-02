@@ -99,7 +99,7 @@ html[data-theme='classic-facebook'] .scene-editor-preview__card {
   top: 80px;
 }
 
-html[data-theme='classic-facebook'] .scene-select,
+html[data-theme='classic-facebook'] .mage-select,
 html[data-theme='classic-facebook'] .scene-number-input,
 html[data-theme='classic-facebook'] .scene-slider__number,
 html[data-theme='classic-facebook'] .scene-textarea {
@@ -112,13 +112,13 @@ html[data-theme='classic-facebook'] .scene-textarea {
   color: #1d2a44;
 }
 
-html[data-theme='classic-facebook'] .scene-select,
+html[data-theme='classic-facebook'] .mage-select,
 html[data-theme='classic-facebook'] .scene-number-input,
 html[data-theme='classic-facebook'] .scene-slider__number {
   min-height: 42px;
 }
 
-html[data-theme='classic-facebook'] .scene-select {
+html[data-theme='classic-facebook'] .mage-select {
   padding-right: 44px;
   background-image:
     linear-gradient(45deg, transparent 50%, #5b74a8 50%),
@@ -136,28 +136,23 @@ html[data-theme='classic-facebook'] .scene-select {
   background-color: #ffffff;
 }
 
-html[data-theme='classic-facebook'] .scene-select--navigation {
-  border-color: #bcc7d8;
-  background-color: #ffffff;
-}
-
-html[data-theme='classic-facebook'] .scene-select::-ms-expand {
+html[data-theme='classic-facebook'] .mage-select::-ms-expand {
   display: none;
 }
 
-html[data-theme='classic-facebook'] .scene-select option {
+html[data-theme='classic-facebook'] .mage-select option {
   color: #1d2a44;
   background: #ffffff;
 }
 
-html[data-theme='classic-facebook'] .scene-select:hover,
+html[data-theme='classic-facebook'] .mage-select:hover,
 html[data-theme='classic-facebook'] .scene-number-input:hover,
 html[data-theme='classic-facebook'] .scene-slider__number:hover,
 html[data-theme='classic-facebook'] .scene-textarea:hover {
   border-color: #98abd3;
 }
 
-html[data-theme='classic-facebook'] .scene-select:focus,
+html[data-theme='classic-facebook'] .mage-select:focus,
 html[data-theme='classic-facebook'] .scene-number-input:focus,
 html[data-theme='classic-facebook'] .scene-slider__number:focus,
 html[data-theme='classic-facebook'] .scene-textarea:focus {
@@ -166,7 +161,7 @@ html[data-theme='classic-facebook'] .scene-textarea:focus {
 }
 
 html[data-theme='classic-facebook'] .scene-textarea::placeholder,
-html[data-theme='classic-facebook'] .scene-select::placeholder,
+html[data-theme='classic-facebook'] .mage-select::placeholder,
 html[data-theme='classic-facebook'] .scene-number-input::placeholder,
 html[data-theme='classic-facebook'] .scene-slider__number::placeholder {
   color: #8b9cb9;

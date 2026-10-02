@@ -12,6 +12,10 @@ html[data-theme='classic-facebook'] .scenes-filter-rail {
   border-bottom: 1px solid #d8dfea;
 }
 
+html[data-theme='classic-facebook'] .discovery-sort {
+  color: #596b93;
+}
+
 html[data-theme='classic-facebook'] .tag-filter-scroller__arrow {
   display: none;
 }

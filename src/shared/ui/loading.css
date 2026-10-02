@@ -1,0 +1,105 @@
+.loading-region {
+  min-width: 0;
+}
+
+.loading-region__visual {
+  min-width: 0;
+}
+
+.loading-region__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--skeleton-base);
+}
+
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--skeleton-highlight) 50%,
+    transparent 100%
+  );
+  content: '';
+  transform: translateX(-100%);
+  animation: mage-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton--block {
+  border-radius: 14px;
+}
+
+.skeleton--circle {
+  border-radius: 50%;
+}
+
+.skeleton--line {
+  border-radius: 6px;
+}
+
+@keyframes mage-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    content: none;
+  }
+}
+
+.pending-button-label {
+  display: inline-grid;
+  place-items: center;
+}
+
+.pending-button-label__content {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  visibility: hidden;
+}
+
+.pending-button-label__content[data-visible='true'] {
+  visibility: visible;
+}
+
+.pending-button-label__spinner {
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: pending-button-spin 750ms linear infinite;
+}
+
+@keyframes pending-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending-button-label__spinner {
+    animation: none;
+    border-right-color: currentColor;
+  }
+}

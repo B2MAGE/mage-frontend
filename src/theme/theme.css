@@ -1,3 +1,4 @@
 /* Shared design tokens first, then one entrypoint per non-default theme. */
 @import './tokens.css';
 @import './themes/classic-facebook/index.css';
+@import './themes/mage-pulse/index.css';
