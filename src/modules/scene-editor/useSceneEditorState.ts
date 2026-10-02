@@ -17,6 +17,7 @@ import type {
 } from './types'
 import {
   buildEffectiveSceneData,
+  moveVisiblePass,
   prettyPrintEditorSceneData,
   validateSceneDataText,
   validateSceneName,
@@ -242,33 +243,14 @@ export function useSceneEditorState({
   }
 
   function movePass(passId: ScenePassId, direction: -1 | 1) {
-    if (passId === 'outputPass') {
+    if (passId === 'outputPass' || passId === 'copyShader') {
       return
     }
 
     updateBranch('fx', (currentFx) => {
-      const movablePasses = currentFx.passOrder.filter(
-        (currentPassId): currentPassId is Exclude<ScenePassId, 'outputPass'> =>
-          currentPassId !== 'outputPass',
-      )
-      const currentIndex = movablePasses.indexOf(passId)
-      const nextIndex = currentIndex + direction
-
-      if (
-        currentIndex < 0 ||
-        nextIndex < 0 ||
-        nextIndex >= movablePasses.length
-      ) {
-        return currentFx
-      }
-
-      const nextPassOrder = [...movablePasses]
-      const [movedPass] = nextPassOrder.splice(currentIndex, 1)
-      nextPassOrder.splice(nextIndex, 0, movedPass)
-
       return {
         ...currentFx,
-        passOrder: [...nextPassOrder, 'outputPass'],
+        passOrder: moveVisiblePass(currentFx.passOrder, passId, direction),
       }
     })
   }

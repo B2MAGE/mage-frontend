@@ -40,7 +40,7 @@ index 7e71e8c..7bc2aec 100644
    log?: boolean;
    /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index ff1861a..c97bf3b 100644
+index ff1861a..47c2709 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
 @@ -72787,6 +72787,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
@@ -69,7 +69,75 @@ index ff1861a..c97bf3b 100644
  				}
  			};
  			return mesh;
-@@ -107070,6 +107073,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -103584,6 +103587,43 @@ var BleachBypassShader = {
+ };
+ //#endregion
+ //#region js/MAGEFx.js
++// Toon must sample the completed scene. The bundled Three ToonShader variants
++// are mesh materials, not post-processing shaders, and cannot be used here.
++var MageToonPostShader = {
++	name: "MageToonPostShader",
++	uniforms: {
++		tDiffuse: { value: null },
++		resolution: { value: new Vector2(1, 1) }
++	},
++	vertexShader: `
++		varying vec2 vUv;
++		void main() {
++			vUv = uv;
++			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
++		}`,
++	fragmentShader: `
++		uniform sampler2D tDiffuse;
++		uniform vec2 resolution;
++		varying vec2 vUv;
++		float toonLuma(vec3 color) {
++			return dot(max(color, vec3(0.0)), vec3(0.2126, 0.7152, 0.0722));
++		}
++		void main() {
++			vec4 base = texture2D(tDiffuse, vUv);
++			float luma = toonLuma(base.rgb);
++			// Quantize brightness in perceptual space; keep the original hue and
++			// allow HDR highlights through to the existing tone/output passes.
++			float band = pow(floor(pow(luma, 1.0 / 2.2) * 5.0 + 0.5) / 5.0, 2.2);
++			vec3 shaded = base.rgb * (band / max(luma, 0.00001));
++			vec2 pixel = 1.0 / max(resolution, vec2(1.0));
++			float left = toonLuma(texture2D(tDiffuse, vUv - vec2(pixel.x, 0.0)).rgb);
++			float right = toonLuma(texture2D(tDiffuse, vUv + vec2(pixel.x, 0.0)).rgb);
++			float top = toonLuma(texture2D(tDiffuse, vUv + vec2(0.0, pixel.y)).rgb);
++			float bottom = toonLuma(texture2D(tDiffuse, vUv - vec2(0.0, pixel.y)).rgb);
++			float edge = smoothstep(0.05, 0.25, length(vec2(right - left, top - bottom)));
++			gl_FragColor = vec4(shaded * (1.0 - edge * 0.65), base.a);
++		}`
++};
+ /**
+ * Full-screen textured quad shader
+ */
+@@ -103736,11 +103776,10 @@ var MAGEEffects = class {
+ 		};
+ 		/** @type {any} */
+ 		this.toonShader = {
+-			shader: new ShaderPass(ToonShader1),
++			shader: new ShaderPass(MageToonPostShader),
+ 			enabled: false,
+-			toonShaderChoice: 0,
+-			update: function() {
+-				this.shader = new ShaderPass(this.toonShaderChoice);
++			update: function(renderer) {
++				if (renderer?.getDrawingBufferSize) renderer.getDrawingBufferSize(this.shader.uniforms.resolution.value);
+ 			}
+ 		};
+ 		this.copyShader = {
+@@ -103958,7 +103997,7 @@ var MAGEEffects = class {
+ 	}
+ 	applyPostProcessing(scene, renderer, camera, composer) {
+ 		this.bloom.update(renderer);
+-		this.toonShader.update();
++		this.toonShader.update(renderer);
+ 		this.colorifyShader.update();
+ 		composer?.dispose();
+ 		const newComposer = new EffectComposer(renderer);
+@@ -107070,6 +107109,7 @@ var MAGEEngine = class MAGEEngine {
  	#uiController = null;
  	#engineVersion = MAGE_VERSION;
  	#canvas = null;
@@ -77,7 +145,7 @@ index ff1861a..c97bf3b 100644
  	#scene = null;
  	#renderer = null;
  	#composer = null;
-@@ -107087,6 +107091,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107087,6 +107127,10 @@ var MAGEEngine = class MAGEEngine {
  	#audioBuffer = null;
  	#playbackTime = 0;
  	#isReversed = false;
@@ -88,7 +156,7 @@ index ff1861a..c97bf3b 100644
  	#visualizer = null;
  	#inputs = null;
  	#state = null;
-@@ -107127,13 +107135,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107127,13 +107171,14 @@ var MAGEEngine = class MAGEEngine {
  	#previewFrameCount = 0;
  	#previewFramesTarget = 0;
  	#isLowQualityMode = false;
@@ -104,7 +172,7 @@ index ff1861a..c97bf3b 100644
  		this.#controlSettings = {
  			active: Boolean(active),
  			integrated: Boolean(integrated)
-@@ -107156,6 +107165,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107156,6 +107201,10 @@ var MAGEEngine = class MAGEEngine {
  		this.#audioBuffer = null;
  		this.#playbackTime = 0;
  		this.#isReversed = false;
@@ -115,7 +183,7 @@ index ff1861a..c97bf3b 100644
  		this.#visualizer = new MAGEVisualizer(this);
  		this.#inputs = {
  			currMouse: new Vector3(),
-@@ -107277,6 +107290,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107277,6 +107326,7 @@ var MAGEEngine = class MAGEEngine {
  			this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
  			this.#_syncSobelResolution();
  		}
@@ -123,7 +191,7 @@ index ff1861a..c97bf3b 100644
  		this.#_render();
  		if (!this.#currentPreset && !this.#visualizer.mesh) this.#_loadDefaultPreset();
  	}
-@@ -107297,16 +107311,38 @@ var MAGEEngine = class MAGEEngine {
+@@ -107297,16 +107347,38 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -163,7 +231,7 @@ index ff1861a..c97bf3b 100644
  		const clampedTime = Math.max(0, Math.min(time, duration));
  		this.#playbackTime = clampedTime;
  		const forwardWasPlaying = Boolean(this.#audio.isPlaying);
-@@ -107318,6 +107354,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107318,6 +107390,8 @@ var MAGEEngine = class MAGEEngine {
  		}
  		if (forwardWasPlaying) this.#audio.stop();
  		if (reverseWasPlaying && this.#reversedAudio) this.#reversedAudio.stop();
@@ -172,7 +240,7 @@ index ff1861a..c97bf3b 100644
  		if (forwardWasPlaying && reverseWasPlaying) if (this.#isReversed && this.#reversedAudio?.buffer) this.#reversedAudio.play();
  		else this.#audio.play();
  		else if (forwardWasPlaying) this.#audio.play();
-@@ -107333,10 +107371,41 @@ var MAGEEngine = class MAGEEngine {
+@@ -107333,10 +107407,41 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -214,7 +282,7 @@ index ff1861a..c97bf3b 100644
  		if (!this.isAudioLoaded()) return;
  		if (this.#audio && !this.#audio.isPlaying) this.#audio.play();
  	}
-@@ -107347,6 +107416,11 @@ var MAGEEngine = class MAGEEngine {
+@@ -107347,6 +107452,11 @@ var MAGEEngine = class MAGEEngine {
  	pause() {
  		if (this.#audio?.isPlaying) this.#audio.pause();
  		if (this.#reversedAudio?.isPlaying) this.#reversedAudio.pause();
@@ -226,7 +294,7 @@ index ff1861a..c97bf3b 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -107399,6 +107473,24 @@ var MAGEEngine = class MAGEEngine {
+@@ -107399,6 +107509,24 @@ var MAGEEngine = class MAGEEngine {
  		});
  	}
  	/**
@@ -251,7 +319,7 @@ index ff1861a..c97bf3b 100644
  	* Loads a preset into the engine.
  	* @param {MAGEPreset} presetInput - The preset input to load.
  	* @returns {MAGEPreset} The loaded preset.
-@@ -107418,11 +107510,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107418,11 +107546,14 @@ var MAGEEngine = class MAGEEngine {
  				if (normalizedSkybox) this.#_loadSkybox(normalizedSkybox);
  				else if (this.log) console.warn("[MAGEEngine.loadPreset] Invalid skyboxPreset input; expected preset id, preset path, or { type, presetId }", { input: preset.visualizer.skyboxPreset });
  			}
@@ -271,7 +339,18 @@ index ff1861a..c97bf3b 100644
  			if (typeof preset.visualizer.scale === "number") this.#visualizer.scale = preset.visualizer.scale;
  		}
  		if (preset.state) this.#_applyStatePatch(preset.state, {
-@@ -107488,7 +107583,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107431,6 +107562,10 @@ var MAGEEngine = class MAGEEngine {
+ 		});
+ 		if (typeof this.#importSettingsState === "function" && preset.settings) this.#importSettingsState(preset.settings);
+ 		if (preset.intent) this.#_applyCompactIntent(preset.intent);
++		// Older scenes omit these newly exposed effects. Never inherit them
++		// from the previously loaded scene in a reused player.
++		this.fx.bleachBypassShader.enabled = preset.fx?.passes?.bleachBypass === true;
++		this.fx.toonShader.enabled = preset.fx?.passes?.toon === true;
+ 		if (preset.fx) this.#_applyCompactFx(preset.fx);
+ 		this.#_syncPostProcessingFromState();
+ 		this.#_syncSobelResolution();
+@@ -107488,7 +107623,7 @@ var MAGEEngine = class MAGEEngine {
  		const preset = {
  			version: MAGE_VERSION,
  			visualizer: {
@@ -280,7 +359,16 @@ index ff1861a..c97bf3b 100644
  				skyboxPreset: this.#visualizer.skyboxPreset,
  				scale: this.#visualizer.scale
  			},
-@@ -107703,7 +107798,6 @@ var MAGEEngine = class MAGEEngine {
+@@ -107535,6 +107670,8 @@ var MAGEEngine = class MAGEEngine {
+ 					halftone: this.fx.halftonePass.enabled,
+ 					gammaCorrection: this.fx.gammaCorrectionShader.enabled,
+ 					kaleid: this.fx.kaleidoShader.enabled,
++					bleachBypass: this.fx.bleachBypassShader.enabled,
++					toon: this.fx.toonShader.enabled,
+ 					outputPass: this.fx.outputPass.enabled
+ 				},
+ 				params: {
+@@ -107703,7 +107840,6 @@ var MAGEEngine = class MAGEEngine {
  	*/
  	dispose() {
  		if (this.#isDisposed) return;
@@ -288,7 +376,37 @@ index ff1861a..c97bf3b 100644
  		this.#isDisposed = true;
  		this.#isRunning = false;
  		if (this.#animationFrameId !== null) {
-@@ -108360,7 +108454,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108038,12 +108174,16 @@ var MAGEEngine = class MAGEEngine {
+ 		this.#_syncSobelResolution();
+ 	}
+ 	#_syncSobelResolution() {
+-		if (!this.#renderer || !this.fx.sobelShader?.shader?.uniforms?.resolution?.value) return;
+-		const resolution = this.fx.sobelShader.shader.uniforms.resolution.value;
++		if (!this.#renderer) return;
+ 		const bufferWidth = this.#renderer.domElement?.width || Math.max(1, Math.floor(window.innerWidth * window.devicePixelRatio));
+ 		const bufferHeight = this.#renderer.domElement?.height || Math.max(1, Math.floor(window.innerHeight * window.devicePixelRatio));
+-		resolution.x = bufferWidth;
+-		resolution.y = bufferHeight;
++		for (const pass of [this.fx.sobelShader, this.fx.toonShader]) {
++			const resolution = pass?.shader?.uniforms?.resolution?.value;
++			if (resolution) {
++				resolution.x = bufferWidth;
++				resolution.y = bufferHeight;
++			}
++		}
+ 	}
+ 	#_captureFramePreviewDataUrlSync({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
+ 		if (!this.#renderer?.domElement) return null;
+@@ -108120,6 +108260,8 @@ var MAGEEngine = class MAGEEngine {
+ 			if (typeof fx.passes.halftone === "boolean") this.fx.halftonePass.enabled = fx.passes.halftone;
+ 			if (typeof fx.passes.gammaCorrection === "boolean") this.fx.gammaCorrectionShader.enabled = fx.passes.gammaCorrection;
+ 			if (typeof fx.passes.kaleid === "boolean") this.fx.kaleidoShader.enabled = fx.passes.kaleid;
++			if (typeof fx.passes.bleachBypass === "boolean") this.fx.bleachBypassShader.enabled = fx.passes.bleachBypass;
++			if (typeof fx.passes.toon === "boolean") this.fx.toonShader.enabled = fx.passes.toon;
+ 			if (typeof fx.passes.outputPass === "boolean") this.fx.outputPass.enabled = fx.passes.outputPass;
+ 		}
+ 		if (fx.params && typeof fx.params === "object") {
+@@ -108360,7 +108502,8 @@ var MAGEEngine = class MAGEEngine {
  		this.#renderer = new WebGLRenderer(rendererOptions);
  		if (this.#isLowQualityMode) this.#renderer.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)), false);
  		else this.#renderer.setSize(width, height, false);
@@ -298,7 +416,7 @@ index ff1861a..c97bf3b 100644
  		else this.#renderer.setPixelRatio(window.devicePixelRatio || 1);
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
  		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
-@@ -108471,8 +108566,32 @@ var MAGEEngine = class MAGEEngine {
+@@ -108471,8 +108614,32 @@ var MAGEEngine = class MAGEEngine {
  		}
  	}
  	#_updateVisualizer() {
@@ -332,7 +450,7 @@ index ff1861a..c97bf3b 100644
  		this.#scene.add(mesh);
  		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#viewportWidth / 4)), Math.max(1, Math.floor(this.#viewportHeight / 4)), {
  			format: RGBAFormat,
-@@ -108487,8 +108606,9 @@ var MAGEEngine = class MAGEEngine {
+@@ -108487,8 +108654,9 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#isDisposed || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
  		this.#animationFrameId = requestAnimationFrame(this.#_render);
  		this.#_syncViewport();
@@ -344,7 +462,7 @@ index ff1861a..c97bf3b 100644
  		if (!Number.isFinite(this.#state.time_multiplier)) this.#state.time_multiplier = 1;
  		if (this.#state.time < 180 && this.#timeIncreasing) this.#state.time += this.#state.time_multiplier * delta;
  		else {
-@@ -108497,10 +108617,26 @@ var MAGEEngine = class MAGEEngine {
+@@ -108497,10 +108665,26 @@ var MAGEEngine = class MAGEEngine {
  			if (this.#state.time <= 0) this.#timeIncreasing = true;
  		}
  		let bass_input = 0;
@@ -372,7 +490,7 @@ index ff1861a..c97bf3b 100644
  		}
  		if (this.#previewMode) this.#_simulatePreviewAudio();
  		else {
-@@ -108787,9 +108923,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -108787,9 +108971,10 @@ var MAGEEngine = class MAGEEngine {
  };
  //#endregion
  //#region js/mage-lib.js

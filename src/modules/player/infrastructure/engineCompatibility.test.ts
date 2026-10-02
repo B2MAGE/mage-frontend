@@ -216,6 +216,7 @@ describe('installed MAGE engine compatibility', () => {
       viewportHeight: 360,
       controls: { enabled: false },
       controlSettings: { active: false },
+      fx: { bleachBypassShader: { enabled: false }, toonShader: { enabled: false } },
       _clearScene: engineMethod('_clearScene'),
       _updateVisualizer: engineMethod('_updateVisualizer', {
         Scene: SceneFixture, WebGLRenderTarget: RenderTargetFixture, RGBAFormat: 1, UnsignedByteType: 1,
@@ -243,6 +244,8 @@ describe('installed MAGE engine compatibility', () => {
     }
     const fx = {
       ...Object.fromEntries(['RGBShift', 'dotShader', 'technicolorShader', 'luminosityShader', 'afterImagePass', 'sobelShader', 'glitchPass', 'colorifyShader', 'halftonePass', 'gammaCorrectionShader', 'kaleidoShader', 'outputPass'].map(name => [name, pass])),
+      bleachBypassShader: { enabled: true },
+      toonShader: { enabled: true },
       getPassOrder: () => ['outputPass'],
       bloom: { enabled: false, settings: { strength: 0, radius: 0, threshold: 0 } },
       toneMapping: { method: 4 },
@@ -260,8 +263,87 @@ describe('installed MAGE engine compatibility', () => {
     expect(engineMethod('toPreset', { MAGE_VERSION: 'test' }).call(engine)).toMatchObject({
       visualizer: { shader, skyboxPreset: 6, scale: 1.25 },
       state: { time: 3, size: 0.2 },
+      fx: { passes: { bleachBypass: true, toon: true } },
     })
     expect(getActiveShader).toHaveBeenCalledOnce()
+  })
+
+  it('loads, disables, and resets the new effects when an older scene omits their flags', () => {
+    const fx = { bleachBypassShader: { enabled: false }, toonShader: { enabled: false } }
+    const engine: EngineHarness = {
+      fx, controls: { enabled: false }, controlSettings: { active: false },
+      setAudioResponseMode: vi.fn(),
+      _applyCompactFx: engineMethod('_applyCompactFx'),
+      _syncPostProcessingFromState: vi.fn(), _syncSobelResolution: vi.fn(),
+    }
+    const load = engineMethod('loadPreset', { MAGEPreset: { from: (value: unknown) => value } })
+    load.call(engine, { fx: { passes: { bleachBypass: true, toon: true } } })
+    expect(fx).toEqual({ bleachBypassShader: { enabled: true }, toonShader: { enabled: true } })
+    load.call(engine, { fx: { passes: { bleachBypass: false, toon: false } } })
+    expect(fx).toEqual({ bleachBypassShader: { enabled: false }, toonShader: { enabled: false } })
+    load.call(engine, { fx: { passes: { bleachBypass: true, toon: true } } })
+    load.call(engine, {})
+    expect(fx).toEqual({ bleachBypassShader: { enabled: false }, toonShader: { enabled: false } })
+    load.call(engine, { fx: { passes: { bleachBypass: true, toon: true } } })
+    load.call(engine, { fx: { passes: {} } })
+    expect(fx).toEqual({ bleachBypassShader: { enabled: false }, toonShader: { enabled: false } })
+  })
+
+  it('uses a scene-texture Toon shader and reuses its pass when effects refresh', () => {
+    const start = engineSource.indexOf('var MageToonPostShader = {')
+    const end = engineSource.indexOf('\n};', start)
+    expect(start).toBeGreaterThan(0)
+    expect(end).toBeGreaterThan(start)
+    class Vector2Fixture {
+      x = 1
+      y = 1
+    }
+    const shader = new Function('Vector2', `${engineSource.slice(start, end + 3)}; return MageToonPostShader;`)(Vector2Fixture)
+    expect(shader.uniforms).toMatchObject({ tDiffuse: { value: null }, resolution: { value: { x: 1, y: 1 } } })
+    expect(shader.vertexShader).toContain('vUv = uv')
+    expect(shader.fragmentShader).toContain('texture2D(tDiffuse, vUv)')
+    expect(shader.fragmentShader).toContain('base.a')
+    expect(shader.fragmentShader).not.toContain('vNormal')
+    expect(shader.fragmentShader).not.toContain('colorspace_fragment')
+
+    const toonStart = engineSource.indexOf('\n\t\tthis.toonShader = {', engineSource.indexOf('var MAGEEffects = class'))
+    const toonEnd = engineSource.indexOf('\n\t\t};', toonStart)
+    expect(toonStart).toBeGreaterThan(0)
+    expect(toonEnd).toBeGreaterThan(toonStart)
+    const constructPass = vi.fn()
+    class ShaderPassFixture {
+      uniforms = shader.uniforms
+      constructor(definition: unknown) { constructPass(definition) }
+    }
+    const createToon = new Function('ShaderPass', 'MageToonPostShader', `return function() { ${engineSource.slice(toonStart, toonEnd + 5)} }`)(ShaderPassFixture, shader)
+    const fx = {} as { toonShader: { shader: ShaderPassFixture; enabled: boolean; update: (renderer: unknown) => void } }
+    createToon.call(fx)
+    const initialPass = fx.toonShader.shader
+    const renderer = { getDrawingBufferSize: (value: Vector2Fixture) => { value.x = 1280; value.y = 720 } }
+    fx.toonShader.update(renderer)
+    fx.toonShader.update(renderer)
+    expect(fx.toonShader.enabled).toBe(false)
+    expect(constructPass).toHaveBeenCalledExactlyOnceWith(shader)
+    expect(fx.toonShader.shader).toBe(initialPass)
+    expect(initialPass.uniforms.resolution.value).toMatchObject({ x: 1280, y: 720 })
+  })
+
+  it('keeps Toon outline pixels sized correctly after a canvas resize', () => {
+    const sobel = { x: 1, y: 1 }
+    const toon = { x: 1, y: 1 }
+    const engine = {
+      renderer: { domElement: { width: 1600, height: 900 } },
+      fx: {
+        sobelShader: { shader: { uniforms: { resolution: { value: sobel } } } },
+        toonShader: { shader: { uniforms: { resolution: { value: toon } } } },
+      },
+    }
+    engineMethod('_syncSobelResolution').call(engine)
+    expect(sobel).toEqual({ x: 1600, y: 900 })
+    expect(toon).toEqual(sobel)
+    engine.renderer.domElement = { width: 640, height: 480 }
+    engineMethod('_syncSobelResolution').call(engine)
+    expect(toon).toEqual({ x: 640, y: 480 })
   })
 
   it('disposes a replaced visualizer mesh without disposing its replacement', () => {

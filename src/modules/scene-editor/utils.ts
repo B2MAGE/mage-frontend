@@ -211,6 +211,28 @@ export function buildEffectiveSceneData(
   return sanitizeSceneData(nextSceneData)
 }
 
+export function getVisiblePassOrder(passOrder: readonly ScenePassId[]) {
+  return passOrder.filter((passId) => passId !== 'copyShader')
+}
+
+export function moveVisiblePass(passOrder: ScenePassId[], passId: ScenePassId, direction: -1 | 1) {
+  if (passId === 'copyShader' || passId === 'outputPass') return passOrder
+
+  const movablePasses = getVisiblePassOrder(passOrder).filter((id) => id !== 'outputPass')
+  const visibleIndex = movablePasses.indexOf(passId)
+  const neighbor = movablePasses[visibleIndex + direction]
+  if (visibleIndex < 0 || !neighbor) return passOrder
+
+  // Swap visible neighbors in the complete payload so legacy hidden passes
+  // retain their original slots instead of being removed or silently moved.
+  const currentIndex = passOrder.indexOf(passId)
+  const neighborIndex = passOrder.indexOf(neighbor)
+  const nextPassOrder = [...passOrder]
+  nextPassOrder[currentIndex] = neighbor
+  nextPassOrder[neighborIndex] = passId
+  return nextPassOrder
+}
+
 export function describePassState(
   passId: ScenePassId,
   sceneModel: ReturnType<typeof getSceneEditorModel>,
@@ -219,7 +241,7 @@ export function describePassState(
     return sceneModel.fx.bloom.enabled ? 'Enabled' : 'Disabled'
   }
 
-  if (passId === 'copyShader' || passId === 'bleachBypassShader' || passId === 'toonShader') {
+  if (passId === 'copyShader') {
     return 'Included'
   }
 

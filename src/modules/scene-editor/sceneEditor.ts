@@ -38,6 +38,8 @@ export type PersistedPassFlag =
   | 'halftone'
   | 'gammaCorrection'
   | 'kaleid'
+  | 'bleachBypass'
+  | 'toon'
   | 'outputPass'
 
 export type ShaderSceneOption = {
@@ -250,6 +252,8 @@ const DEFAULT_SCENE_DATA: SceneEditorModel = {
       halftone: false,
       gammaCorrection: false,
       kaleid: false,
+      bleachBypass: false,
+      toon: false,
       outputPass: true,
     },
     params: {
@@ -494,6 +498,8 @@ export function getSceneEditorModel(sceneData: SceneData): SceneEditorModel {
           defaults.fx.passes.gammaCorrection,
         ),
         kaleid: readBoolean(fxPasses.kaleid, defaults.fx.passes.kaleid),
+        bleachBypass: readBoolean(fxPasses.bleachBypass, defaults.fx.passes.bleachBypass),
+        toon: readBoolean(fxPasses.toon, defaults.fx.passes.toon),
         outputPass: readBoolean(fxPasses.outputPass, defaults.fx.passes.outputPass),
       },
       params: {
