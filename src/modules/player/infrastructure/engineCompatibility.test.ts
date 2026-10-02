@@ -71,6 +71,27 @@ function audioSourceFixture(isPlaying: boolean) {
 }
 
 describe('installed MAGE engine compatibility', () => {
+  it('supplies bass-only and mixed size/new-input shaders independently', () => {
+    const start = engineSource.indexOf('var MAGEVisualizer = class {')
+    const end = engineSource.indexOf('var MAGEPreset = class MAGEPreset {', start)
+    const callbacks: Array<() => Record<string, unknown>> = []
+    const createMesh = classMethod(engineSource.slice(start, end), 'createMesh', {
+      BoxGeometry: class {},
+      import_shader_park_core_umd: {
+        createSculptureWithGeometry: (_geometry: unknown, _shader: string, callback: () => Record<string, unknown>) => {
+          callbacks.push(callback)
+          return {}
+        },
+      },
+    })
+    const state = { time: 1, size: 0.206, pointerDown: 0, mouse: {} }
+    const visualizer = { engine: { getEngineFields: () => ({ state }), getAudioResponseOutputs: () => ({ bass: 0.8, mid: 0.2, size: 0.2 }) }, scale: 2 }
+    createMesh.call(visualizer, 'let bass = input(); sphere(bass);')
+    createMesh.call(visualizer, 'let size = input(); let mid = input(); sphere(size + mid);')
+    expect(callbacks[0]()).toMatchObject({ bass: 0.8 })
+    expect(callbacks[1]()).toMatchObject({ size: 0.206, mid: 0.2, bass: 0.8 })
+  })
+
   it('allows custom shaders to omit unused callback inputs while updating declared uniforms', () => {
     const marker = 'mesh.onBeforeRender = function('
     const start = engineSource.indexOf(marker)
