@@ -39,7 +39,12 @@ Run npm test, npm run lint and npm run build. During this migration the real loc
 
 ## Integration Acceptance Notes — October 1, 2026
 
-The paragraph above records historical checks, not a complete verification of the
+The reconstructed frontend stack passed all 549 tests, lint, and the production
+build. The backend stack passed all 341 tests, including PostgreSQL integration
+coverage. Merge results are compared with the tested source trees. Story-to-PR
+mapping and completion status are recorded in [#117](https://github.com/B2MAGE/mage-frontend/issues/117).
+
+The earlier Verification section records historical checks, not a complete verification of the
 final integration. Passing tests, lint, and builds does not establish visual,
 keyboard, contrast, or touch-target acceptance. The remaining review is tracked
 explicitly:

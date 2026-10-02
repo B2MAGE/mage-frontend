@@ -2,7 +2,7 @@
 
 For full frontend plus backend deployment instructions, including plain Docker and Coolify, see the versioned [full-stack deployment guide](https://github.com/B2MAGE/mage-backend/blob/main/docs/full-stack-deployment.md).
 
-Integration status (October 1, 2026): that guide is delivered by [backend PR #144](https://github.com/B2MAGE/mage-backend/pull/144), which is awaiting the backend's required review and merge. Until it reaches `main`, use the [guide on its review branch](https://github.com/B2MAGE/mage-backend/blob/story/137-full-stack-deployment-guide/docs/full-stack-deployment.md). The source merge does not deploy services or transfer a developer's local scene database.
+The guide was merged into backend `main` by [backend PR #144](https://github.com/B2MAGE/mage-backend/pull/144). Source merges do not deploy services or transfer a developer's local scene database.
 
 This repository is designed to be deployed with a same-origin routing setup.
 
