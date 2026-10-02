@@ -134,7 +134,7 @@ describe('EditScenePage workflow', () => {
 
     renderEditScenePage()
 
-    expect(await screen.findByRole('heading', { name: /edit scene/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /edit your scene/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Aurora Drift')
     expect(screen.getByLabelText(/description/i)).toHaveValue(
       'Soft teal bloom with low-end drift.',
@@ -153,6 +153,7 @@ describe('EditScenePage workflow', () => {
     await user.type(screen.getByLabelText(/description/i), ' Updated from My Scenes. ')
     await selectExistingTag(user, 'focus-friendly')
     await user.click(screen.getByRole('button', { name: /capture again/i }))
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /update scene/i }))
 
     await waitFor(() =>
@@ -210,7 +211,8 @@ describe('EditScenePage workflow', () => {
 
     renderEditScenePage()
 
-    expect(await screen.findByRole('heading', { name: /edit scene/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /edit your scene/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /update scene/i }))
 
     expect(await screen.findAllByText(/failed to fetch tags/i)).not.toHaveLength(0)

@@ -1,0 +1,158 @@
+/* Current account layouts, with the compact white panels and blue accents of Classic. */
+:root[data-theme='classic-facebook'] .settings-page {
+  width: min(1040px, calc(100% - 48px));
+  display: block;
+  padding: 8px 0 40px;
+}
+
+:root[data-theme='classic-facebook'] .settings-page__heading { margin-bottom: 24px; }
+:root[data-theme='classic-facebook'] .settings-title,
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-title { margin: 0; font-size: 28px; line-height: 1.2; letter-spacing: -.025em; }
+:root[data-theme='classic-facebook'] .settings-lead { margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
+:root[data-theme='classic-facebook'] .settings-layout { grid-template-columns: 160px minmax(0, 1fr); gap: 24px; }
+:root[data-theme='classic-facebook'] .settings-nav { position: sticky; top: 86px; }
+:root[data-theme='classic-facebook'] .settings-nav__link { padding: 9px 12px; border: 1px solid transparent; border-radius: 2px; color: var(--text-soft); font-size: 13px; font-weight: 700; }
+:root[data-theme='classic-facebook'] .settings-nav__link:hover { background: var(--surface-hover); color: var(--accent); }
+:root[data-theme='classic-facebook'] .settings-nav__link[aria-current] { border-color: var(--border); background: #dfe7f4; color: #29447e; }
+:root[data-theme='classic-facebook'] .settings-section { display: block; margin: 0; padding: 22px; scroll-margin-top: 88px; background: var(--surface); }
+:root[data-theme='classic-facebook'] .settings-section__header { display: block; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+:root[data-theme='classic-facebook'] .settings-section__header h2 { margin: 0 0 6px; color: var(--text); font-size: 18px; letter-spacing: -.015em; }
+:root[data-theme='classic-facebook'] .settings-section__header p { max-width: 600px; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+
+/* Inputs share settings and registration markup, including the fixed @ prefix. */
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-group { min-width: 0; display: block; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group label, .auth-field label) { display: block; margin-bottom: 6px; color: var(--text-soft); font-size: 12px; font-weight: 700; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input) { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 2px; outline: none; background: var(--surface); color: var(--text); font-size: 14px; box-shadow: none; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input)::placeholder { color: var(--text-muted); opacity: 1; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input):hover { border-color: #8198bf; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input):focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 89, 152, .12); }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input)[aria-invalid='true'] { border-color: #af4455; box-shadow: 0 0 0 3px rgba(175, 68, 85, .1); }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .text-input-control--prefixed > input { padding-inline-start: 34px; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.text-input-control--action, .auth-password-wrap) > input { padding-inline-end: 64px; }
+:root[data-theme='classic-facebook'] .settings-page .field-group input[readonly] { background: var(--surface-soft); color: var(--text-muted); }
+:root[data-theme='classic-facebook'] .settings-page .field-group textarea { min-height: 110px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-hint { margin: 6px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-error { margin-top: 6px; color: #9e3044; font-size: 11px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.form-note, .form-alert) { margin: 0; padding: 11px 12px; font-size: 12px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] .settings-description-hint { display: flex; justify-content: flex-end; }
+:root[data-theme='classic-facebook'] .profile-identity-preview { padding: 14px; border-color: var(--border); border-radius: 3px; background: var(--surface-soft); }
+:root[data-theme='classic-facebook'] .profile-identity-preview__copy strong { font-size: 13px; }
+:root[data-theme='classic-facebook'] .profile-identity-preview__copy span { font-size: 11px; }
+:root[data-theme='classic-facebook'] .settings-actions { margin-top: 4px; gap: 12px; }
+:root[data-theme='classic-facebook'] .settings-action-button { min-width: 124px; min-height: 36px; padding: 0 14px; font-size: 12px; }
+:root[data-theme='classic-facebook'] .settings-save-button:disabled,
+:root[data-theme='classic-facebook'] .settings-save-button:disabled:hover { border-color: var(--border); background: #e4e8ef; color: #778398; opacity: 1; cursor: default; box-shadow: none; }
+:root[data-theme='classic-facebook'] .settings-security-note { padding: 12px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface-soft); color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] .settings-security-note strong { color: var(--text-soft); }
+
+/* Theme previews retain their own palette; only their surrounding controls use Classic. */
+:root[data-theme='classic-facebook'] .theme-settings__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+:root[data-theme='classic-facebook'] .theme-option { display: block; min-width: 0; overflow: hidden; padding: 0; border: 1px solid var(--border-strong); border-radius: 3px; background: var(--surface); box-shadow: none; }
+:root[data-theme='classic-facebook'] .theme-option:hover { border-color: #8198bf; background: var(--surface-soft); transform: none; box-shadow: none; }
+:root[data-theme='classic-facebook'] .theme-option[data-active='true'] { border-color: var(--accent); background: #eef3fb; box-shadow: inset 0 0 0 1px var(--accent); }
+:root[data-theme='classic-facebook'] .theme-option__preview { min-height: 0; aspect-ratio: 16 / 9; grid-template-rows: 13px minmax(0, 1fr); gap: 7px; padding: 10px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+:root[data-theme='classic-facebook'] .theme-option__preview-bar { height: auto; border-radius: 2px; }
+:root[data-theme='classic-facebook'] .theme-option__preview-body { grid-template-columns: 23% minmax(0, 1fr); gap: 7px; }
+:root[data-theme='classic-facebook'] .theme-option__preview-main { grid-template-rows: 1fr .75fr; gap: 7px; }
+:root[data-theme='classic-facebook'] .theme-option__preview-grid { gap: 5px; }
+:root[data-theme='classic-facebook'] :is(.theme-option__preview-rail, .theme-option__preview-card) { min-height: 0; border-color: rgba(128, 128, 128, .22); border-radius: 2px; }
+:root[data-theme='classic-facebook'] .theme-option__details { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 13px; }
+:root[data-theme='classic-facebook'] .theme-option__copy { min-width: 0; gap: 4px; }
+:root[data-theme='classic-facebook'] .theme-option__copy strong { color: var(--text); font-size: 13px; letter-spacing: 0; }
+:root[data-theme='classic-facebook'] .theme-option__copy span { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] .theme-option__status { flex: 0 0 auto; min-height: 24px; padding: 3px 6px; border-radius: 2px; background: #edf0f5; color: #566680; font-size: 10px; letter-spacing: 0; text-transform: none; }
+:root[data-theme='classic-facebook'] .theme-option[data-active='true'] .theme-option__status { background: #dce6f6; color: #29447e; }
+:root[data-theme='classic-facebook'] .animated-thumbnail-setting { margin-top: 18px; padding: 14px; border-color: var(--border); border-radius: 3px; background: var(--surface-soft); }
+:root[data-theme='classic-facebook'] .animated-thumbnail-setting__copy strong { font-size: 13px; }
+:root[data-theme='classic-facebook'] .animated-thumbnail-setting__copy span { color: var(--text-muted); font-size: 11px; }
+:root[data-theme='classic-facebook'] .animated-thumbnail-setting__switch { background: #b5c0d1; }
+:root[data-theme='classic-facebook'] .animated-thumbnail-setting__input:checked + .animated-thumbnail-setting__switch { background: var(--accent); }
+
+/* The chosen avatar colors are user content, not theme colors. */
+:root[data-theme='classic-facebook'] .avatar-gradient-picker legend { color: var(--text-soft); font-size: 12px; }
+:root[data-theme='classic-facebook'] .avatar-gradient-preset { border-color: var(--border); border-radius: 3px; background: var(--surface-soft); color: var(--text-soft); font-size: 12px; }
+:root[data-theme='classic-facebook'] .avatar-gradient-preset:hover { border-color: #8198bf; background: #edf2fa; }
+:root[data-theme='classic-facebook'] .avatar-gradient-preset[aria-pressed='true'] { border-color: var(--accent); background: #e7eef9; color: #29447e; }
+:root[data-theme='classic-facebook'] .settings-page .avatar-gradient-color-control input[type='color'] { padding: 4px; border-radius: 2px; }
+
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) { width: min(440px, calc(100% - 48px)); margin: 12px auto 32px; }
+:root[data-theme='classic-facebook'] .auth-page--registration:not(.scene-editor-page) { width: min(520px, calc(100% - 48px)); }
+:root[data-theme='classic-facebook'] .auth-page--wide:not(.scene-editor-page) { width: min(640px, calc(100% - 48px)); }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) > .surface,
+:root[data-theme='classic-facebook'] .auth-page--loading:not(.scene-editor-page) > .loading-region__visual > .surface { width: 100%; padding: 26px; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-header { display: block; margin-bottom: 22px; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-copy { margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-field-label-row label { margin-bottom: 0; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-field .field-error { margin: 0; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) > .surface > :is(.form-alert, .form-note) { margin-bottom: 18px; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-submit { min-height: 38px; font-size: 13px; }
+:root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-submit:disabled { opacity: .55; cursor: default; }
+:root[data-theme='classic-facebook'] .auth-forgot-row { display: flex; justify-content: flex-end; margin-top: -4px; font-size: 12px; }
+:root[data-theme='classic-facebook'] .auth-divider { height: 1px; margin: 22px 0 16px; background: var(--border); }
+:root[data-theme='classic-facebook'] .auth-footnote { margin: 0; color: var(--text-muted); font-size: 12px; text-align: center; }
+:root[data-theme='classic-facebook'] .auth-footnote .secondary-link { padding: 0; border: 0; background: none; color: var(--accent); font-size: inherit; }
+:root[data-theme='classic-facebook'] :is(.registration-show-password, .auth-show-password) { color: var(--text-muted); font-size: 11px; }
+:root[data-theme='classic-facebook'] :is(.registration-show-password, .auth-show-password):hover { color: var(--accent); }
+:root[data-theme='classic-facebook'] .auth-confirmation-email { margin: 16px 0 0; padding: 12px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface-soft); color: var(--text-soft); font-size: 13px; overflow-wrap: anywhere; }
+:root[data-theme='classic-facebook'] .auth-state-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+:root[data-theme='classic-facebook'] :is(.auth-primary-link, .auth-secondary-link) { min-height: 38px; display: flex; align-items: center; justify-content: center; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface-soft); color: var(--accent); font-size: 13px; font-weight: 700; }
+:root[data-theme='classic-facebook'] .auth-primary-link { border-color: #29447e; background: #5b74a8; color: #fff; }
+:root[data-theme='classic-facebook'] .auth-primary-link:hover { background: #4e679d; }
+:root[data-theme='classic-facebook'] .auth-secondary-link:hover { background: #e7edf7; }
+
+/* Public profiles use the existing cards, sort control and pagination behavior. */
+:root[data-theme='classic-facebook'] .profile-page { width: min(1180px, calc(100% - 48px)); padding: 8px 0 36px; }
+:root[data-theme='classic-facebook'] .profile-hero { gap: 20px; padding: 24px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+:root[data-theme='classic-facebook'] .profile-avatar { width: 88px; height: 88px; font-size: 25px; box-shadow: none; }
+:root[data-theme='classic-facebook'] .profile-identity h1 { font-size: clamp(25px, 3vw, 34px); line-height: 1.2; letter-spacing: -.025em; }
+:root[data-theme='classic-facebook'] .profile-identity__handle { color: var(--text-muted); font-size: 12px; }
+:root[data-theme='classic-facebook'] .profile-identity__description { max-width: 650px; color: var(--text-soft); font-size: 13px; line-height: 1.6; }
+:root[data-theme='classic-facebook'] .profile-stats { gap: 18px; margin-top: 17px; }
+:root[data-theme='classic-facebook'] .profile-stat { font-size: 12px; }
+:root[data-theme='classic-facebook'] .profile-edit-button { min-height: 34px; padding: 0 12px; border: 1px solid #29447e; border-radius: 2px; background: #5b74a8; color: #fff; font-size: 12px; }
+:root[data-theme='classic-facebook'] .profile-edit-button:hover { background: #4e679d; color: #fff; }
+:root[data-theme='classic-facebook'] .profile-scenes { margin-top: 22px; }
+/* Discovery's shared four-column default must not override profile breakpoints. */
+:root[data-theme='classic-facebook'] .profile-page .scene-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+:root[data-theme='classic-facebook'] .profile-scenes__toolbar { min-height: 50px; gap: 16px; margin-bottom: 20px; border-bottom-color: var(--border-strong); }
+:root[data-theme='classic-facebook'] .profile-scenes__tab { color: var(--accent); font-size: 14px; }
+:root[data-theme='classic-facebook'] .profile-scenes__tab::after { background: var(--accent); }
+:root[data-theme='classic-facebook'] .profile-scenes__search input { height: 34px; border-color: var(--border-strong); border-radius: 2px; background: var(--surface); color: var(--text); font-size: 12px; }
+:root[data-theme='classic-facebook'] .profile-scenes__search input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(59, 89, 152, .12); }
+:root[data-theme='classic-facebook'] .profile-scenes .discovery-sort__select.mage-select { min-height: 34px; height: 34px; }
+:root[data-theme='classic-facebook'] .profile-scenes-pagination { padding-top: 18px; margin-top: 24px; border-top-color: var(--border); color: var(--text-muted); font-size: 12px; }
+:root[data-theme='classic-facebook'] .profile-scenes-pagination__size .mage-select { min-height: 32px; height: 32px; border-radius: 2px; }
+:root[data-theme='classic-facebook'] .profile-scenes-pagination__button { width: 32px; height: 32px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface); color: var(--accent); }
+:root[data-theme='classic-facebook'] .profile-scenes-pagination__button:hover:not(:disabled) { border-color: #8198bf; background: #e7edf7; color: #29447e; }
+:root[data-theme='classic-facebook'] .profile-scenes-pagination__button:disabled { background: var(--surface-soft); color: #8794a8; opacity: .5; }
+
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page), .profile-page) :is(a, button, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+:root[data-theme='classic-facebook'] :is(.auth-loading__display-preview, .auth-loading__input, .auth-loading__submit, .settings-loading__gradient, .settings-loading__theme-card) { border-radius: 3px; }
+:root[data-theme='classic-facebook'] .settings-loading__visual { display: block; }
+
+@media (max-width: 900px) {
+  :root[data-theme='classic-facebook'] .profile-page .scene-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  :root[data-theme='classic-facebook'] .settings-layout { grid-template-columns: 1fr; gap: 18px; }
+  :root[data-theme='classic-facebook'] .settings-nav { position: static; }
+  :root[data-theme='classic-facebook'] .settings-nav__link { flex: 0 0 auto; }
+  :root[data-theme='classic-facebook'] .settings-section { padding: 18px; }
+  :root[data-theme='classic-facebook'] .settings-page .theme-settings__grid { grid-template-columns: 1fr; }
+  :root[data-theme='classic-facebook'] .profile-hero { padding: 20px; }
+}
+
+@media (max-width: 560px) {
+  :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page), .profile-page) { width: calc(100% - 28px); }
+  :root[data-theme='classic-facebook'] .settings-profile-form { grid-template-columns: 1fr; }
+  :root[data-theme='classic-facebook'] .settings-profile-form .settings-actions { flex-wrap: wrap; }
+  :root[data-theme='classic-facebook'] .settings-actions .settings-save-button { margin-left: auto; }
+  :root[data-theme='classic-facebook'] .settings-page__heading { margin-bottom: 18px; }
+  :root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) > .surface,
+  :root[data-theme='classic-facebook'] .auth-page--loading:not(.scene-editor-page) > .loading-region__visual > .surface { padding: 20px; }
+  :root[data-theme='classic-facebook'] .profile-hero { gap: 16px; }
+  :root[data-theme='classic-facebook'] .profile-actions { justify-self: stretch; }
+  :root[data-theme='classic-facebook'] .profile-stats { gap: 12px; }
+  :root[data-theme='classic-facebook'] .profile-page .scene-grid { grid-template-columns: minmax(0, 1fr); }
+}

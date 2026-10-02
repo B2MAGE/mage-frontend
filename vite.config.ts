@@ -29,6 +29,9 @@ export default defineConfig({
     },
   },
   test: {
+    // Local browser profiles can contain third-party extension test files.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    maxWorkers: 4,
     css: true,
     environment: 'jsdom',
     setupFiles: './src/shared/test/setup.ts',

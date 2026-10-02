@@ -9,7 +9,6 @@ import type { SceneEngagementSummary } from '../scene-detail/types'
 
 let authState = { isAuthenticated:false, isRestoringSession:false, authenticatedFetch:vi.fn() }
 vi.mock('@auth',()=>({useAuth:()=>authState}))
-vi.mock('@modules/discovery',()=>({ScenesPage:()=> <div>Classic scene discovery</div>}))
 vi.mock('@shared/lib',async original=>({ ...await original<typeof import('@shared/lib')>(), fetchScenes:vi.fn(), fetchTags:vi.fn() }))
 vi.mock('../scene-detail/loaders',()=>({fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
 vi.mock('@modules/player',()=>({MagePlayer:()=> <div>Live featured player</div>}))
@@ -254,22 +253,23 @@ describe('Homepage mockup behavior',()=>{
   await waitFor(()=>expect(screen.queryByText('Loading recent scenes')).not.toBeInTheDocument())
   expect(fetchSceneDetail).toHaveBeenCalledTimes(initialCalls)
  })
- it('preserves the original guest homepage in Classic Blue',()=>{
+ it('shares the featured scene, welcome artwork, and discovery in Classic Blue',async()=>{
   show('classic-facebook')
-  expect(screen.getByRole('heading',{name:'MAGE'})).toBeInTheDocument()
-  expect(screen.getByRole('region',{name:'Welcome to MAGE'})).toBeInTheDocument()
-  expect(screen.getByRole('region',{name:'Live scene preview'})).toBeInTheDocument()
-  expect(screen.queryByRole('heading',{name:'Featured Scenes'})).not.toBeInTheDocument()
-  expect(fetchScenes).not.toHaveBeenCalled()
-  expect(fetchTags).not.toHaveBeenCalled()
-  expect(fetchSceneDetail).not.toHaveBeenCalled()
+  expect(screen.getByRole('heading',{name:'Build something that reacts.'})).toBeInTheDocument()
+  expect(screen.getByTestId('welcome-brand-scene')).toHaveAttribute('data-react-to-beat','false')
+  expect(screen.getByRole('heading',{name:'Featured Scenes'})).toBeInTheDocument()
+  expect(await screen.findByText('Live featured player')).toBeInTheDocument()
+  expect(screen.getByRole('link',{name:/Ari Rivera@aririvera/})).toHaveAttribute('href','/@aririvera')
+  expect(screen.getByLabelText('For You scenes')).toBeInTheDocument()
+  expect(fetchTags).toHaveBeenCalledWith({attachedOnly:true})
  })
- it('preserves Classic Blue signed-in scene discovery',()=>{
+ it('keeps Classic Blue featured content and working filters when signed in',async()=>{
   authState.isAuthenticated=true
   show('classic-facebook')
-  expect(screen.getByText('Classic scene discovery')).toBeInTheDocument()
-  expect(screen.queryByRole('heading',{name:'Featured Scenes'})).not.toBeInTheDocument()
-  expect(fetchSceneDetail).not.toHaveBeenCalled()
-  expect(fetchTags).not.toHaveBeenCalled()
+  expect(screen.queryByRole('heading',{name:'Build something that reacts.'})).not.toBeInTheDocument()
+  expect(await screen.findByText('Live featured player')).toBeInTheDocument()
+  fireEvent.click(await screen.findByRole('button',{name:'Ambient'}))
+  await waitFor(()=>expect(fetchScenes).toHaveBeenCalledWith('Ambient'))
+  expect(screen.getByRole('link',{name:/Open scene/})).toHaveAttribute('href','/scenes/1')
  })
 })

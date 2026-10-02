@@ -25,10 +25,10 @@ const APP_THEME_CONFIG = [
     colorScheme: 'light',
     id: 'classic-facebook',
     label: 'Classic Blue',
-    description: 'A brighter, traditional social-platform layout.',
+    description: 'Familiar blue-and-white styling with the full MAGE experience.',
     preview: {
       background: '#e9edf4',
-      bar: '#4267b2',
+      bar: '#3b5998',
       rail: '#ffffff',
       card: '#ffffff',
     },

@@ -1,3 +1,4 @@
+.scene-detail-page { --watch-stage: #050609; --watch-shadow: rgba(0,0,0,.24); --watch-thumbnail-border: #171b24; --watch-playlist-border: rgba(178,168,255,.22); --watch-playlist-tint: rgba(124,108,255,.06); --watch-submit-hover: #dedee8; }
 /* Watch-page layout matched to mage-scene-detail-watch-mockup.html. */
 .scene-detail-page .scene-detail-comment__header strong.scene-detail-comment__author {
   min-width: 0;
@@ -32,15 +33,15 @@
   outline: 2px solid var(--accent-light, var(--accent));
   outline-offset: 2px;
 }
-html[data-theme='mage-pulse']:has(.scene-detail-page) .nav-inner {
+html[data-theme]:has(.scene-detail-page) .nav-inner {
   width: min(calc(100% - 48px), 1360px);
 }
 @media (max-width: 760px) {
-  html[data-theme='mage-pulse']:has(.scene-detail-page) .nav-inner {
+  html[data-theme]:has(.scene-detail-page) .nav-inner {
     width: calc(100% - 28px);
   }
 }
-html[data-theme='mage-pulse'] .scene-detail-page {
+html[data-theme] .scene-detail-page {
   width: min(calc(100% - 48px), 1360px);
   min-width: 0;
   margin: 0 auto;
@@ -50,7 +51,7 @@ html[data-theme='mage-pulse'] .scene-detail-page {
 
   & .mage-watch { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
   & .mage-watch__main { min-width: 0; }
-  & .mage-player-shell { width: 100%; overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: #050609; box-shadow: 0 24px 70px rgba(0,0,0,.24); }
+  & .mage-player-shell { width: 100%; overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--watch-stage); box-shadow: 0 24px 70px var(--watch-shadow); }
   & .scene-detail-stage { aspect-ratio: auto; min-height: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   & .scene-detail-stage::after { display: none; }
   & .scene-detail-player { width: 100%; height: auto; gap: 0; }
@@ -135,12 +136,12 @@ html[data-theme='mage-pulse'] .scene-detail-page {
   & .mage-watch__rail-list { display: flex; flex-direction: column; padding: 10px; gap: 10px; }
   & .mage-watch__rail .mage-scene-card { width: 100%; padding: 9px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 12px; border-radius: 10px; background: none; }
   & .mage-watch__rail .mage-scene-card:hover { background: var(--surface-hover); }
-  & .mage-watch__rail .mage-scene-card__thumb { width: 100%; height: auto; aspect-ratio: 16 / 9; border: 1px solid #171b24; border-radius: 8px; box-shadow: none; }
+  & .mage-watch__rail .mage-scene-card__thumb { width: 100%; height: auto; aspect-ratio: 16 / 9; border: 1px solid var(--watch-thumbnail-border); border-radius: 8px; box-shadow: none; }
   & .mage-watch__rail .mage-scene-card__body { display: flex; flex-direction: column; gap: 3px; padding-top: 0; }
   & .mage-watch__rail .mage-scene-card__body strong { color: var(--text); font-size: 12px; line-height: 1.35; }
   & .mage-watch__rail .mage-scene-card__body span { color: var(--text-muted); font-size: 10px; line-height: 1.5; white-space: normal; }
   & .mage-watch__rail-empty { padding: 16px; color: var(--text-muted); font-size: 12px; }
-  & .mage-watch__playlist-panel { margin-bottom: 14px; padding: 0; gap: 0; border: 1px solid rgba(178,168,255,.22); border-radius: 14px; background: linear-gradient(180deg,rgba(124,108,255,.06),transparent 40%),var(--surface); box-shadow: none; }
+  & .mage-watch__playlist-panel { margin-bottom: 14px; padding: 0; gap: 0; border: 1px solid var(--watch-playlist-border); border-radius: 14px; background: linear-gradient(180deg,var(--watch-playlist-tint),transparent 40%),var(--surface); box-shadow: none; }
   & .mage-watch__playlist-header { padding: 14px 12px; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
   & .mage-watch__playlist-header strong { font-size: 13px; }
   & .mage-watch__playlist-header span { margin-top: 0; font-size: 10px; color: var(--text-muted); }
@@ -159,7 +160,7 @@ html[data-theme='mage-pulse'] .scene-detail-page {
   & .scene-detail-follow-button { transition: border-color .18s ease, background-color .18s ease, color .18s ease; }
   & .scene-detail-follow-button:not(:disabled):hover { border-color: var(--tag-pill-hover-border); background: var(--surface-hover); color: var(--text); box-shadow: none; }
   & .scene-detail-sort-chip:not(:disabled):hover { border-color: var(--tag-pill-hover-border); background: var(--surface-hover); color: var(--text); }
-  & .scene-detail-comment-submit-button:not(:disabled):hover { background: #dedee8; border-color: transparent; color: var(--bg); }
+  & .scene-detail-comment-submit-button:not(:disabled):hover { background: var(--watch-submit-hover); border-color: transparent; color: var(--bg); }
   & .scene-detail-description-toggle { transition: color .18s ease; }
   & .scene-detail-description-toggle:hover { color: var(--accent-light); }
   @media (max-width: 1080px) {

@@ -1,5 +1,5 @@
 /* Empty/error states for scene collections on Home and Explore. */
-html[data-theme='mage-pulse'] .scene-collection-state {
+html[data-theme] .scene-collection-state {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -14,7 +14,7 @@ html[data-theme='mage-pulse'] .scene-collection-state {
   text-align: center;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__illustration {
+html[data-theme] .scene-collection-state__illustration {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -24,9 +24,9 @@ html[data-theme='mage-pulse'] .scene-collection-state__illustration {
   color: var(--accent-light);
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__copy { min-width: 0; }
+html[data-theme] .scene-collection-state__copy { min-width: 0; }
 
-html[data-theme='mage-pulse'] .scene-collection-state .scene-collection-state__title {
+html[data-theme] .scene-collection-state .scene-collection-state__title {
   margin: 0 0 8px;
   font-size: 23px;
   font-weight: 650;
@@ -35,7 +35,7 @@ html[data-theme='mage-pulse'] .scene-collection-state .scene-collection-state__t
   overflow-wrap: anywhere;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state .scene-collection-state__description {
+html[data-theme] .scene-collection-state .scene-collection-state__description {
   max-width: 440px;
   margin: 0;
   color: var(--text-soft);
@@ -44,7 +44,7 @@ html[data-theme='mage-pulse'] .scene-collection-state .scene-collection-state__d
   overflow-wrap: anywhere;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__actions {
+html[data-theme] .scene-collection-state__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -53,7 +53,7 @@ html[data-theme='mage-pulse'] .scene-collection-state__actions {
   margin-top: 22px;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__button {
+html[data-theme] .scene-collection-state__button {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -74,25 +74,25 @@ html[data-theme='mage-pulse'] .scene-collection-state__button {
   cursor: pointer;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__button:hover { background: #dedee8; }
+html[data-theme] .scene-collection-state__button:hover { background: #dedee8; }
 
-html[data-theme='mage-pulse'] .scene-collection-state__button--secondary {
+html[data-theme] .scene-collection-state__button--secondary {
   border-color: var(--border-strong);
   background: transparent;
   color: var(--text-soft);
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__button--secondary:hover {
+html[data-theme] .scene-collection-state__button--secondary:hover {
   background: var(--surface-hover);
   color: var(--text);
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state__button:focus-visible {
+html[data-theme] .scene-collection-state__button:focus-visible {
   outline: 2px solid var(--accent-light);
   outline-offset: 4px;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state--error {
+html[data-theme] .scene-collection-state--error {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;
   gap: 24px;
@@ -101,24 +101,24 @@ html[data-theme='mage-pulse'] .scene-collection-state--error {
   text-align: left;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state--error .scene-collection-state__illustration {
+html[data-theme] .scene-collection-state--error .scene-collection-state__illustration {
   width: 48px;
   height: 48px;
   margin: 0;
 }
 
-html[data-theme='mage-pulse'] .scene-collection-state--error .scene-collection-state__title { font-size: 20px; }
-html[data-theme='mage-pulse'] .scene-collection-state--error .scene-collection-state__actions { margin: 0; }
+html[data-theme] .scene-collection-state--error .scene-collection-state__title { font-size: 20px; }
+html[data-theme] .scene-collection-state--error .scene-collection-state__actions { margin: 0; }
 
 @media (max-width: 760px) {
-  html[data-theme='mage-pulse'] .scene-collection-state--error {
+  html[data-theme] .scene-collection-state--error {
     display: flex;
     gap: 0;
     padding: 30px 22px;
     text-align: center;
   }
 
-  html[data-theme='mage-pulse'] .scene-collection-state--error .scene-collection-state__illustration { margin-bottom: 16px; }
-  html[data-theme='mage-pulse'] .scene-collection-state--error .scene-collection-state__actions { margin-top: 22px; }
-  html[data-theme='mage-pulse'] .scene-collection-state .scene-collection-state__title { font-size: 21px; }
+  html[data-theme] .scene-collection-state--error .scene-collection-state__illustration { margin-bottom: 16px; }
+  html[data-theme] .scene-collection-state--error .scene-collection-state__actions { margin-top: 22px; }
+  html[data-theme] .scene-collection-state .scene-collection-state__title { font-size: 21px; }
 }

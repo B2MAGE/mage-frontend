@@ -16,7 +16,6 @@ html[data-theme='classic-facebook'] .scene-editor-preview__header p,
 html[data-theme='classic-facebook'] .scene-effect-footnote,
 html[data-theme='classic-facebook'] .effect-card__header p,
 html[data-theme='classic-facebook'] .scene-pass-order__copy span,
-html[data-theme='classic-facebook'] .scene-editor-action-bar__meta span:last-child,
 html[data-theme='classic-facebook'] .scene-thumbnail-choice__description {
   color: #596b93;
 }
@@ -70,29 +69,6 @@ html[data-theme='classic-facebook'] .scene-confirm-vector__value {
 
 html[data-theme='classic-facebook'] .scene-editor-collapsible__toggle {
   min-height: 34px;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-submit {
-  min-width: 220px;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-action-bar {
-  bottom: 16px;
-  width: 100%;
-  margin-inline: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--editor-action-bar-border);
-  border-radius: 4px;
-  background: var(--editor-action-bar-background);
-  box-shadow: var(--editor-action-bar-shadow);
-}
-
-html[data-theme='classic-facebook'] .scene-editor-action-bar:not(.scene-editor-action-bar--stuck) {
-  border-radius: 4px;
-}
-
-html[data-theme='classic-facebook'] .scene-editor-action-bar__meta strong {
-  color: #1d2a44;
 }
 
 html[data-theme='classic-facebook'] .scene-editor-preview__card {
@@ -164,10 +140,76 @@ html[data-theme='classic-facebook'] .scene-textarea::placeholder,
 html[data-theme='classic-facebook'] .mage-select::placeholder,
 html[data-theme='classic-facebook'] .scene-number-input::placeholder,
 html[data-theme='classic-facebook'] .scene-slider__number::placeholder {
-  color: #8b9cb9;
+  color: #5f6f88;
 }
 
 html[data-theme='classic-facebook'] .scene-textarea--code {
   background: #fbfcff;
   color: #1d2a44;
+}
+
+/* Palette for the shared studio, with Classic's compact rectangular surfaces. */
+:root[data-theme='classic-facebook'] .scene-editor-page {
+  --studio-field: #ffffff;
+  --studio-border: #d8dfea;
+  --studio-focus-border: #5b74a8;
+  --studio-control: #f7f8fb;
+  --studio-border-strong: #bcc7d8;
+  --studio-text: #1d2a44;
+  --studio-control-hover: #eef2f7;
+  --studio-accent-border: #98abd3;
+  --studio-track: #d8dfea;
+  --studio-accent-solid: #3b5998;
+  --studio-muted: #596b93;
+  --studio-panel: #ffffff;
+  --studio-shadow: rgba(29,42,68,.08);
+  --studio-rail: #f7f8fb;
+  --studio-subtle: #596b93;
+  --studio-selected: #e9eff8;
+  --studio-accent-fill: #dce6f5;
+  --studio-accent: #3b5998;
+  --studio-success-border: #a2c5af;
+  --studio-success: #287747;
+  --studio-error-border: #c86f6f;
+  --studio-error: #a42d2d;
+  --studio-scroll-track: #eef2f7;
+  --studio-placeholder: #5f6f88;
+  --studio-focus-outline: #5b74a8;
+  --studio-focus-ring: rgba(91,116,168,.14);
+  --studio-error-ring: rgba(164,45,45,.12);
+  --studio-placeholder-primary: #5b74a8;
+  --studio-placeholder-secondary: #98abd3;
+  --studio-menu-shadow: rgba(29,42,68,.16);
+  --studio-pill-border: #bcc7d8;
+  --studio-pill-background: #e9eff8;
+  --studio-primary-hover: #2d4373;
+  --studio-primary-ring: rgba(91,116,168,.16);
+  --studio-alert-border: #c86f6f;
+  --studio-alert-background: #fff4f3;
+  --studio-preview: #f7f8fb;
+}
+
+:root[data-theme='classic-facebook'] .scene-editor-page .auth-header { margin-bottom: 18px; }
+:root[data-theme='classic-facebook'] .scene-editor-page .auth-title { font-size: clamp(28px, 3vw, 38px); letter-spacing: -.025em; }
+:root[data-theme='classic-facebook'] .scene-editor-page .auth-copy { margin-top: 9px; font-size: 13px; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-layout { border-radius: 4px; box-shadow: 0 1px 3px rgba(29,42,68,.1); }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-section__header h2 { font-size: 23px; letter-spacing: -.02em; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-main { padding: 22px 24px; }
+:root[data-theme='classic-facebook'] .scene-editor-page :is(.scene-editor-stepper__button,.scene-editor-stepper__number,.scene-field__shell,.scene-slider,.scene-toggle:not(.scene-toggle--compact),.effect-card,.scene-confirm-section,.scene-pass-order__item,.scene-editor-thumbnail,.scene-tag-dropdown__panel,.scene-tag-dropdown__option,.scene-color-field) { border-radius: 3px; }
+:root[data-theme='classic-facebook'] .scene-editor-page :is(.scene-secondary-button,.scene-order-button,.scene-editor-collapsible__toggle,.scene-editor-preview__collapse) { border-radius: 2px; transform: none; }
+:root[data-theme='classic-facebook'] .scene-editor-page input:where(:not([type='range']):not([type='checkbox']):not([type='color'])),
+:root[data-theme='classic-facebook'] .scene-editor-page textarea { border-radius: 2px; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-stepper__button--active { color: #25477e; background: #dce6f5; box-shadow: inset 3px 0 #3b5998; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-stepper__number { background: #fff; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-confirm-submit { border: 1px solid #29467c; border-radius: 2px; background: #3b5998; color: #fff; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-confirm-submit:not(:disabled):hover { background: #2d4373; border-color: #20365e; color: #fff; box-shadow: none; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-beat-preview { padding: 12px; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-beat-preview :is(.scene-toggle,.scene-slider) { padding: 12px; }
+:root[data-theme='classic-facebook'] .scene-editor-page :is(.scene-editor-thumbnail__frame,.scene-editor-loading__input,.scene-editor-loading__textarea) { border-radius: 2px; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-thumbnail__frame { background: #eef2f7; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-thumbnail__placeholder::before { border-radius: 50%; }
+:root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-thumbnail__placeholder::after { border-radius: 50%; }
+@media (max-width: 700px) {
+  :root[data-theme='classic-facebook'] .scene-editor-page .scene-editor-main { padding: 20px 16px; }
+  :root[data-theme='classic-facebook'] .scene-editor-page .auth-title { font-size: 28px; }
 }

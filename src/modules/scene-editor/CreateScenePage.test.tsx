@@ -66,13 +66,13 @@ describe('CreateScenePage workflow', () => {
 
     renderCreateScenePage()
 
-    expect(screen.getByRole('heading', { name: /create scene/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /create a scene/i })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /basic/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^scene$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^camera$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^motion$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^effects$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^start with the basics\.$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^choose the visual foundation\.$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^frame the scene\.$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^tune how it moves\.$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^finish the look\.$/i })).not.toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /section navigation/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^details$/i })).toHaveAttribute('aria-current', 'step')
     expect(screen.getByRole('button', { name: /^scene$/i })).toBeInTheDocument()
@@ -95,9 +95,6 @@ describe('CreateScenePage workflow', () => {
     fireEvent.change(screen.getByLabelText(/description/i), {
       target: { value: 'A soft drifting scene for night scenes.' },
     })
-    fireEvent.change(screen.getByLabelText(/playlists/i), {
-      target: { value: 'ambient-atlas' },
-    })
     await user.click(
       screen.getByRole('button', { name: /capture thumbnail/i }),
     )
@@ -105,7 +102,8 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByLabelText(/description/i)).toHaveValue(
       'A soft drifting scene for night scenes.',
     )
-    expect(screen.getByLabelText(/playlists/i)).toHaveValue('ambient-atlas')
+    expect(screen.getByLabelText(/playlists/i)).toBeDisabled()
+    expect(screen.getByLabelText(/playlists/i)).toHaveValue('')
     expect(
       screen.getByAltText(/captured thumbnail preview/i),
     ).toBeInTheDocument()
@@ -140,7 +138,7 @@ describe('CreateScenePage workflow', () => {
     expect(await screen.findByRole('button', { name: /capture again/i })).toBeEnabled()
   })
 
-  it('keeps the first section ordered around scene metadata and shows sticky navigation actions', async () => {
+  it('keeps the first section ordered around scene metadata with publishing reserved for Confirm', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
 
@@ -154,7 +152,7 @@ describe('CreateScenePage workflow', () => {
     })
     const tagSearchField = await screen.findByLabelText(/select existing tags/i)
 
-    expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^start with the basics\.$/i })).toBeInTheDocument()
     expect(
       nameField.compareDocumentPosition(descriptionField) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -172,9 +170,9 @@ describe('CreateScenePage workflow', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
-    expect(screen.getByRole('button', { name: /^back$/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^next$/i })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /create scene/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^back$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^next$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /create scene/i })).not.toBeInTheDocument()
   })
 
   it('shows a clear thumbnail error when the live preview cannot be captured', async () => {
@@ -205,7 +203,7 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^motion$/i }))
 
-    expect(screen.getByRole('heading', { name: /^motion$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^tune how it moves\.$/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/auto rotate/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/time multiplier/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/audio gain/i)).toBeInTheDocument()
@@ -218,7 +216,7 @@ describe('CreateScenePage workflow', () => {
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
   })
 
-  it('moves between sections with the next and back buttons and keeps the menu in sync', async () => {
+  it('moves between sections with the shared section menu and keeps its active state in sync', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
 
@@ -232,15 +230,15 @@ describe('CreateScenePage workflow', () => {
     expect(detailsStep).toHaveAttribute('aria-current', 'step')
     expect(sceneStep).not.toHaveAttribute('aria-current')
 
-    await user.click(screen.getByRole('button', { name: /^next$/i }))
+    await user.click(sceneStep)
 
-    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^choose the visual foundation\.$/i })).toBeInTheDocument()
     expect(sceneStep).toHaveAttribute('aria-current', 'step')
     expect(screen.getByLabelText(/custom shader/i)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /^back$/i }))
+    await user.click(detailsStep)
 
-    expect(screen.getByRole('heading', { name: /^details$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^start with the basics\.$/i })).toBeInTheDocument()
     expect(detailsStep).toHaveAttribute('aria-current', 'step')
     expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
   })
@@ -277,7 +275,7 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^scene$/i }))
 
-    expect(screen.getByRole('heading', { name: /^scene$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^choose the visual foundation\.$/i })).toBeInTheDocument()
     expect(detailsStep).toHaveClass('scene-editor-stepper__button--invalid')
     expect(detailsStep).not.toHaveClass('scene-editor-stepper__button--complete')
     expect(detailsStep).toHaveAttribute('title', 'Scene name is required.')
@@ -293,8 +291,8 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^effects$/i }))
 
-    expect(screen.getByRole('heading', { name: /^effects$/i })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^pass order$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^finish the look\.$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^control the effect stack\.$/i })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^finish & output$/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^channel & motion$/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /^color & tone$/i })).toBeInTheDocument()
@@ -306,7 +304,7 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^pass order$/i }))
 
-    expect(screen.getByRole('heading', { name: /^pass order$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^control the effect stack\.$/i })).toBeInTheDocument()
     expect(screen.getByText(/^output$/i)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^finish & output$/i })).not.toBeInTheDocument()
   })
@@ -321,7 +319,7 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
 
-    expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^frame the scene\.$/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /enable advanced/i }))
     expect(screen.getByLabelText(/camera orientation mode/i)).toBeInTheDocument()
@@ -331,7 +329,7 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^motion$/i }))
 
-    expect(screen.getByRole('heading', { name: /^motion$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^tune how it moves\.$/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/state size/i)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /enable advanced/i }))
     expect(screen.getByLabelText(/state size/i)).toBeInTheDocument()
@@ -339,7 +337,7 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
 
-    expect(screen.getByRole('heading', { name: /^confirm$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^review before publishing\.$/i })).toBeInTheDocument()
     expect(screen.getByText(/^scene name$/i)).toBeInTheDocument()
     expect(screen.getByText(/^motion & effects$/i)).toBeInTheDocument()
     expect(screen.queryByText(/^advanced camera$/i)).not.toBeInTheDocument()
@@ -352,12 +350,12 @@ describe('CreateScenePage workflow', () => {
   })
 })
 
-describe('Pulse scene studio', () => {
+describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (themeId) => {
   it('keeps draft values across all seven steps and offers publishing only on Confirm', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const user = userEvent.setup()
-    renderCreateScenePage('mage-pulse')
+    renderCreateScenePage(themeId)
 
     expect(screen.getByRole('heading', { name: 'Create a scene' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Start with the basics.' })).toBeInTheDocument()
@@ -389,7 +387,7 @@ describe('Pulse scene studio', () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const user = userEvent.setup()
-    renderCreateScenePage('mage-pulse')
+    renderCreateScenePage(themeId)
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     expect(screen.getByRole('heading', { name: 'Start with the basics.' })).toBeInTheDocument()

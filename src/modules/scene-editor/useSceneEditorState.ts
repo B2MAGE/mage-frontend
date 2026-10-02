@@ -24,7 +24,6 @@ import {
   validateSceneName,
   validateThumbnailFile,
 } from './utils'
-import { useSceneEditorActionBarState } from './useSceneEditorActionBarState'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 
@@ -43,12 +42,8 @@ export function useSceneEditorState({
     currentSection,
     currentSectionIndex,
     handleSectionJump,
-    handleSectionStep,
-    nextSection,
-    previousSection,
     sectionMenuValue,
   } = useSceneEditorNavigation()
-  const { actionBarSentinelRef, isActionBarStuck } = useSceneEditorActionBarState()
   const [name, setName] = useState(() => initialState?.name ?? '')
   const [description, setDescription] = useState(() => initialState?.description ?? '')
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
@@ -277,7 +272,6 @@ export function useSceneEditorState({
   }
 
   return {
-    actionBarSentinelRef,
     availableTags,
     canCreateTagFromSearch,
     currentSection,
@@ -294,10 +288,8 @@ export function useSceneEditorState({
     handleRawSceneDataChange,
     handleShaderSelection,
     handleSectionJump,
-    handleSectionStep,
     handleTagSearchChange,
     handleThumbnailCapture,
-    isActionBarStuck,
     isCameraAdvancedEnabled,
     isConfirmJsonOpen,
     isCreatingTag,
@@ -307,12 +299,10 @@ export function useSceneEditorState({
     isTagDropdownOpen,
     movePass,
     name,
-    nextSection,
     openTagDropdown,
     pendingRetryTags,
     pendingTagAttachment,
     playlistValue,
-    previousSection,
     reloadAvailableTags,
     sceneData,
     sceneDataText,

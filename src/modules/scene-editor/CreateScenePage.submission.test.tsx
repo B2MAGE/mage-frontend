@@ -84,10 +84,11 @@ describe('CreateScenePage submission', () => {
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await user.type(screen.getByLabelText(/description/i), 'Soft teal bloom with low-end drift.')
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
-    expect(screen.getByRole('heading', { name: /^camera$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^frame the scene\.$/i })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/camera orientation/i), {
       target: { value: '90' },
     })
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     await waitFor(() => expect(submittedBody).not.toBeNull())
@@ -151,6 +152,7 @@ describe('CreateScenePage submission', () => {
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     await screen.findByText('My Scenes')
@@ -214,12 +216,14 @@ describe('CreateScenePage submission', () => {
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(
       await screen.findByText(/scene created, but we couldn't attach focus-friendly\./i),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /retry tag attachment/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^details$/i }))
     expect(screen.getByText(/waiting to retry attachment for:/i)).toBeInTheDocument()
     expect(attachCalls).toEqual([1, 2])
   })
@@ -286,6 +290,7 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     await waitFor(() => expect(presignBody).not.toBeNull())
@@ -328,6 +333,7 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(
@@ -361,6 +367,7 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(await screen.findByText(/preview capture must return a png data url\./i)).toBeInTheDocument()
@@ -404,6 +411,7 @@ describe('CreateScenePage submission', () => {
     renderCreateScenePage()
 
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
     expect(

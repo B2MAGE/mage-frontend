@@ -1,0 +1,32 @@
+/* The illustration remains a live MAGE scene; only its frame follows the theme. */
+:root[data-theme='classic-facebook'] .about-page { --about-section-gap: 28px; width: min(1100px, calc(100% - 48px)); padding: 8px 0 32px; }
+:root[data-theme='classic-facebook'] .about-hero { grid-template-columns: minmax(0, 1fr) minmax(280px, 390px); gap: 38px; padding: 30px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+:root[data-theme='classic-facebook'] .about-hero h1 { font-size: clamp(38px, 4.5vw, 58px); line-height: 1.08; letter-spacing: -.035em; }
+:root[data-theme='classic-facebook'] .about-hero__copy > p { margin: 20px 0 0; color: var(--text-soft); font-size: 15px; line-height: 1.7; }
+:root[data-theme='classic-facebook'] .about-hero__actions { margin-top: 24px; }
+:root[data-theme='classic-facebook'] .about-page :is(.primary-button, .secondary-button) { min-height: 36px; padding: 0 13px; border-radius: 2px; font-size: 12px; }
+:root[data-theme='classic-facebook'] .about-scene { border-color: var(--border-strong); border-radius: 3px; background: #080a10; }
+:root[data-theme='classic-facebook'] .about-introduction { padding: 24px 30px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+:root[data-theme='classic-facebook'] :is(.about-introduction, .about-callout) h2 { margin: 0; color: var(--text); font-size: 25px; line-height: 1.25; letter-spacing: -.025em; }
+:root[data-theme='classic-facebook'] .about-introduction > p { max-width: 780px; margin-top: 14px; color: var(--text-soft); font-size: 14px; line-height: 1.7; }
+:root[data-theme='classic-facebook'] .about-principles { gap: 24px; margin-top: 24px; }
+:root[data-theme='classic-facebook'] .about-principles article { padding-top: 16px; border-top: 2px solid #dbe4f3; }
+:root[data-theme='classic-facebook'] .about-principles h3 { color: var(--accent); font-size: 16px; }
+:root[data-theme='classic-facebook'] .about-principles p { color: var(--text-muted); font-size: 13px; line-height: 1.65; }
+:root[data-theme='classic-facebook'] .about-callout { gap: 24px; padding: 24px 30px; border: 1px solid #c7d5eb; border-radius: 4px; background: #e8eef8; }
+:root[data-theme='classic-facebook'] .about-callout h2 { font-size: 23px; }
+:root[data-theme='classic-facebook'] .about-callout p { color: var(--text-soft); font-size: 13px; }
+
+@media (max-width: 850px) {
+  :root[data-theme='classic-facebook'] .about-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  :root[data-theme='classic-facebook'] .about-scene { width: min(100%, 460px); justify-self: center; }
+  :root[data-theme='classic-facebook'] .about-principles { gap: 18px; }
+}
+
+@media (max-width: 560px) {
+  :root[data-theme='classic-facebook'] .about-page { --about-section-gap: 18px; width: calc(100% - 28px); }
+  :root[data-theme='classic-facebook'] :is(.about-hero, .about-introduction, .about-callout) { padding: 22px 18px; }
+  :root[data-theme='classic-facebook'] .about-hero h1 { font-size: 40px; }
+  :root[data-theme='classic-facebook'] .about-hero__copy > p { font-size: 14px; }
+  :root[data-theme='classic-facebook'] .about-callout { align-items: flex-start; flex-direction: column; }
+}

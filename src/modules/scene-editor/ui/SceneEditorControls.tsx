@@ -1,5 +1,4 @@
 import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
-import { useTheme } from '@theme'
 import type { Vector3Value } from '../sceneEditor'
 import { joinClassNames } from '@shared/lib'
 import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
@@ -86,7 +85,6 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
 }
 
 export function SceneSection({ children, className, description, title }: SectionProps) {
-  const { themeId } = useTheme()
   const headings: Record<string, { number: number; title: string }> = {
     Details: { number: 1, title: 'Start with the basics.' },
     Scene: { number: 2, title: 'Choose the visual foundation.' },
@@ -96,7 +94,7 @@ export function SceneSection({ children, className, description, title }: Sectio
     'Pass Order': { number: 6, title: 'Control the effect stack.' },
     Confirm: { number: 7, title: 'Review before publishing.' },
   }
-  const heading = themeId === 'mage-pulse' ? headings[title] : undefined
+  const heading = headings[title]
 
   return (
     <section className={joinClassNames('scene-editor-section', className)} data-section={title}>

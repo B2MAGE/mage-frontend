@@ -214,7 +214,7 @@ html[data-theme='classic-facebook'] .mage-watch__playlist-track::after {
 }
 
 html[data-theme='classic-facebook'] .mage-watch__playlist-track-index {
-  color: #7b8cad;
+  color: #5f6f88;
 }
 
 html[data-theme='classic-facebook'] .mage-watch__playlist-track-editor {
@@ -240,4 +240,71 @@ html[data-theme='classic-facebook'] .mage-scene-card.is-active .mage-scene-card_
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.15em;
+}
+
+/* Shared player and watch-page geometry; only the Classic skin is overridden. */
+:root[data-theme='classic-facebook'] .mage-player {
+  --player-inline-bar: #f7f8fb;
+  --player-inline-progress: #3b5998;
+  --player-inline-track: #c9d2e1;
+  --player-meta-text: #49618d;
+  --player-track-summary-hover-text: #29467c;
+  --player-feedback-text: #a42d2d;
+  --player-button-text: #3b5998;
+  --player-button-disabled-text: #6076a8;
+  --player-button-disabled-background: #f7f8fb;
+  --player-slider-thumb-background: #3b5998;
+}
+:root[data-theme='classic-facebook'] .mage-player__viewport { min-height: 0; }
+:root[data-theme='classic-facebook'] .mage-player__controls { min-height: 58px; border-color: #bcc7d8; }
+:root[data-theme='classic-facebook'] .mage-player__control-button { border: 1px solid transparent; border-radius: 2px; color: #49618d; transition: color .16s ease, background-color .16s ease, border-color .16s ease; transform: none; }
+:root[data-theme='classic-facebook'] .mage-player__control-button:not(.mage-player__control-button--playback):enabled:hover { border-color: #bcc7d8; background: #e9eff8; color: #29467c; }
+:root[data-theme='classic-facebook'] .mage-player__control-button--playback { border: 1px solid #29467c; border-radius: 2px; background: #3b5998; color: #fff; }
+:root[data-theme='classic-facebook'] .mage-player__control-button--playback:enabled:hover { background: #2d4373; color: #fff; }
+:root[data-theme='classic-facebook'] .mage-player__timeline-slider::-webkit-slider-thumb { background: #3b5998; }
+:root[data-theme='classic-facebook'] .mage-player__timeline-slider::-moz-range-thumb { background: #3b5998; }
+:root[data-theme='classic-facebook'] .mage-player__control-button:focus-visible { outline-color: #5b74a8; }
+:root[data-theme='classic-facebook'] .mage-player__volume-panel { z-index: 3; }
+:root[data-theme='classic-facebook'] .scene-detail-page {
+  --watch-stage: #090a0f;
+  --watch-shadow: rgba(29,42,68,.1);
+  --watch-thumbnail-border: #bcc7d8;
+  --watch-playlist-border: #bcc7d8;
+  --watch-playlist-tint: transparent;
+  --watch-submit-hover: #2d4373;
+  padding-top: 24px;
+}
+:root[data-theme='classic-facebook'] .scene-detail-page .mage-watch__main { display: block; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.mage-player-shell,.scene-detail-description-card,.scene-detail-recommendations,.mage-watch__playlist-panel) { border-radius: 4px; }
+:root[data-theme='classic-facebook'] .scene-detail-page .mage-watch__title { font-size: clamp(27px, 3vw, 36px); letter-spacing: -.025em; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-social-row { padding-bottom: 18px; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.scene-detail-follow-button,.scene-detail-action-chip,.scene-detail-sort-chip) { min-height: 34px; border: 1px solid #bcc7d8; border-radius: 2px; background: #f7f8fb; color: #3b5998; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.scene-detail-follow-button,.scene-detail-action-chip,.scene-detail-sort-chip):not(:disabled):hover { border-color: #98abd3; background: #eef2f7; color: #2d4373; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-action-chip:is([aria-pressed='true'],.is-selected) { background: #dce6f5; border-color: #5b74a8; color: #25477e; }
+:root[data-theme='classic-facebook'] .engagement-button__icon { color: inherit; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment__action { min-height: 30px; padding: 3px 5px; border: 1px solid transparent; border-radius: 2px; background: transparent; color: #6076a8; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment__action.engagement-button[aria-pressed='false'] { color: #6076a8; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment__action:not(:disabled):hover { color: #2d4373; border-color: #bcc7d8; background: #eef2f7; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment__action.engagement-button:is([aria-pressed='true'],.is-selected) { color: #25477e; border-color: #98abd3; background: #dce6f5; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.scene-detail-comment-form,.scene-detail-comment-composer__field--button,.scene-detail-reply-composer textarea) { border: 1px solid #bcc7d8; border-radius: 2px; background: #fff; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment-form:focus-within,
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-reply-composer textarea:focus { border-color: #5b74a8; box-shadow: 0 0 0 2px rgba(91,116,168,.12); }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment-composer__textarea:focus { border: 0; box-shadow: none; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.scene-detail-comment-submit-button,.scene-detail-comment-cancel-button) { border-radius: 2px; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment-submit-button { border: 1px solid #29467c; background: #3b5998; color: #fff; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment-submit-button:not(:disabled):hover { border-color: #20365e; background: #2d4373; color: #fff; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-comment-cancel-button:not(:disabled):hover { border-color: #98abd3; background: #eef2f7; color: #2d4373; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-description-toggle { margin-left: 0; color: #3b5998; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-description-toggle:hover { color: #596b93; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.mage-channel-card,.scene-detail-comment__author-link) { text-decoration: none; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.mage-channel-card:hover .mage-channel-card__copy strong,.scene-detail-comment__author-link:hover) { color: #596b93; text-decoration: none; }
+:root[data-theme='classic-facebook'] .scene-detail-page :is(.mage-scene-card,.mage-scene-card__thumb,.mage-watch__playlist-track,.mage-watch__playlist-action) { border-radius: 2px; }
+:root[data-theme='classic-facebook'] .scene-detail-page .scene-detail-action-error { color: #a42d2d; }
+:root[data-theme='classic-facebook'] .scene-detail-page button:focus-visible { outline: 2px solid #5b74a8; outline-offset: 2px; }
+@media (max-width: 1080px) {
+  :root[data-theme='classic-facebook'] .scene-detail-page { padding-top: 0; }
+  :root[data-theme='classic-facebook'] .scene-detail-page .mage-watch__main { display: contents; }
+}
+@media (max-width: 520px) {
+  :root[data-theme='classic-facebook'] .scene-detail-page .mage-player-shell { border-radius: 0; }
 }

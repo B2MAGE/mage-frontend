@@ -314,13 +314,22 @@ describe('ScenesPage', () => {
     expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it.each([null, 'fire'])('preserves the Classic Blue empty state with filter %s', async (tag) => {
+  it.each([null, 'fire'])('provides the shared Classic Blue empty-state action with filter %s', async (tag) => {
     mockFetchResponses(mockTags, [])
+    const user = userEvent.setup()
 
     renderScenesPage(tag ? `/scenes?tag=${tag}` : '/scenes', 'classic-facebook')
 
-    expect(await screen.findByText(tag ? `No scenes found for "${tag}".` : 'No scenes found.')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Create a scene' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: tag ? 'No scenes match this tag' : 'No scenes here yet' })).toBeInTheDocument()
+    if (tag) {
+      expect(screen.getByRole('status')).toHaveTextContent(tag)
+      expect(screen.queryByRole('link', { name: 'Create a scene' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Show all scenes' }))
+      expect(await screen.findByRole('heading', { name: 'No scenes here yet' })).toBeInTheDocument()
+      expect(screen.getByTestId('location-search')).not.toHaveTextContent('tag=')
+      expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true')
+    }
+    expect(screen.getByRole('link', { name: 'Create a scene' })).toHaveAttribute('href', '/create-scene')
     expect(screen.queryByRole('button', { name: 'Show all scenes' })).not.toBeInTheDocument()
   })
 
@@ -367,7 +376,7 @@ describe('ScenesPage', () => {
     })
   })
 
-  it('retries a failed scene request and restores the collection', async () => {
+  it.each(['mage-pulse', 'classic-facebook'] as const)('retries a failed scene request and restores the collection in %s', async (themeId) => {
     let scenesFailed = false
     vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       const url = typeof input === 'string' ? input : (input as Request).url
@@ -393,7 +402,7 @@ describe('ScenesPage', () => {
     })
     const user = userEvent.setup()
 
-    renderScenesPage()
+    renderScenesPage('/scenes', themeId)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Scenes couldn’t be loaded')
     expect(screen.queryByRole('heading', { name: 'No scenes here yet' })).not.toBeInTheDocument()
