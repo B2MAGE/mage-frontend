@@ -1,99 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { Skeleton, UserAvatar } from '@shared/ui'
+import { AppIcon, Skeleton, UserAvatar } from '@shared/ui'
 import './pulseChrome.css'
-
-function UserIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path
-        d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Zm0 2.1c-4.5 0-8.1 2.4-8.1 5.3 0 .3.2.5.5.5h15.2c.3 0 .5-.2.5-.5 0-2.9-3.6-5.3-8.1-5.3Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-function CreateIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path
-        d="M12 4.5a1 1 0 0 1 1 1v5.5h5.5a1 1 0 1 1 0 2H13V18.5a1 1 0 1 1-2 0V13H5.5a1 1 0 1 1 0-2H11V5.5a1 1 0 0 1 1-1Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path
-        d="M6.7 9.3a1 1 0 0 1 1.4 0l3.9 3.9 3.9-3.9a1 1 0 1 1 1.4 1.4l-4.6 4.6a1 1 0 0 1-1.4 0L6.7 10.7a1 1 0 0 1 0-1.4Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-function ScenesIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M4.75 6.5A1.75 1.75 0 0 1 6.5 4.75h11A1.75 1.75 0 0 1 19.25 6.5v11a1.75 1.75 0 0 1-1.75 1.75h-11A1.75 1.75 0 0 1 4.75 17.5z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.9"
-      />
-      <path
-        d="M7.5 15.45 10.2 12.3a.6.6 0 0 1 .92 0l1.7 2.05a.6.6 0 0 0 .93.02l1.6-1.82a.6.6 0 0 1 .91.02L17.5 14.1"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.9"
-      />
-      <path d="M8.95 9.25a1.05 1.05 0 1 0 0-.001" fill="currentColor" />
-    </svg>
-  )
-}
-
-function SettingsIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
-    </svg>
-  )
-}
-
-function SignOutIcon() {
-  return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M13.5 7.5 18 12l-4.5 4.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="M17.75 12H9.25M10.75 4.75H6.5a1.75 1.75 0 0 0-1.75 1.75v11A1.75 1.75 0 0 0 6.5 19.25h4.25"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  )
-}
 
 function getProfileInitials(displayName: string, email: string) {
   const source = displayName.trim() || email.trim()
@@ -179,7 +88,7 @@ export function Layout({ children }: PropsWithChildren) {
             <div className="nav-actions" ref={accountMenuRef}>
               <Link className="nav-create" to="/create-scene">
                 <span className="nav-create__icon" aria-hidden="true">
-                  <CreateIcon />
+                  <AppIcon name="plus" />
                 </span>
                 <span>Create</span>
               </Link>
@@ -196,7 +105,7 @@ export function Layout({ children }: PropsWithChildren) {
                 <UserAvatar className="nav-avatar" initials={profileInitials} gradientStart={user?.avatarGradientStart} gradientEnd={user?.avatarGradientEnd} />
                 <span className="nav-profile-trigger__label">{profileName}</span>
                 <span className="nav-profile-trigger__chevron" aria-hidden="true">
-                  <ChevronDownIcon />
+                  <AppIcon name="chevron-down" />
                 </span>
               </button>
 
@@ -237,7 +146,7 @@ export function Layout({ children }: PropsWithChildren) {
                     to="/my-scenes"
                   >
                     <span className="nav-menu__icon">
-                      <ScenesIcon />
+                      <AppIcon name="images" />
                     </span>
                     <span>My Scenes</span>
                   </Link>
@@ -249,7 +158,7 @@ export function Layout({ children }: PropsWithChildren) {
                     to="/settings"
                   >
                     <span className="nav-menu__icon">
-                      <SettingsIcon />
+                      <AppIcon name="settings" />
                     </span>
                     <span>Settings</span>
                   </Link>
@@ -264,7 +173,7 @@ export function Layout({ children }: PropsWithChildren) {
                     type="button"
                   >
                     <span className="nav-menu__icon">
-                      <SignOutIcon />
+                      <AppIcon name="log-out" />
                     </span>
                     <span>Sign out</span>
                   </button>
@@ -283,7 +192,7 @@ export function Layout({ children }: PropsWithChildren) {
             <div className="nav-actions">
               <Link className="nav-signin" to="/login">
                 <span className="nav-signin__icon" aria-hidden="true">
-                  <UserIcon />
+                  <AppIcon name="user" />
                 </span>
                 <span>Sign in</span>
               </Link>

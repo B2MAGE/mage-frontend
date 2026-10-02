@@ -15,17 +15,13 @@ html[data-theme='mage-pulse'] .scene-collection-state {
 }
 
 html[data-theme='mage-pulse'] .scene-collection-state__illustration {
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
   width: 56px;
   height: 56px;
   margin-bottom: 16px;
   color: var(--accent-light);
-}
-
-html[data-theme='mage-pulse'] .scene-collection-state__illustration svg {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 html[data-theme='mage-pulse'] .scene-collection-state__copy { min-width: 0; }

@@ -60,6 +60,7 @@ describe('Layout', () => {
     renderLayout()
 
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: /sign in/i }).querySelector('.app-icon')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getAllByRole('link', { name: 'About', hidden: true })).toHaveLength(2)
     for (const aboutLink of screen.getAllByRole('link', { name: 'About', hidden: true })) {
       expect(aboutLink).toHaveAttribute('href', '/about')
@@ -89,6 +90,7 @@ describe('Layout', () => {
     renderLayout()
 
     expect(screen.getByRole('link', { name: /create/i })).toHaveAttribute('href', '/create-scene')
+    expect(screen.getByRole('link', { name: /create/i }).querySelector('.app-icon')).toHaveAttribute('fill', 'none')
     expect(screen.getByRole('button', { name: /open account menu for scene artist/i }).querySelector('.nav-avatar')).toHaveClass('user-avatar')
 
     await user.click(screen.getByRole('button', { name: /open account menu for scene artist/i }))
@@ -118,6 +120,12 @@ describe('Layout', () => {
       '/settings',
     )
     expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument()
+    for (const name of [/my scenes/i, /settings/i, /sign out/i]) {
+      const icon = screen.getByRole('menuitem', { name }).querySelector('.app-icon')
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+      expect(icon).toHaveAttribute('focusable', 'false')
+      expect(icon).toHaveAttribute('stroke-width', '2')
+    }
 
     await user.click(screen.getByRole('menuitem', { name: /sign out/i }))
 

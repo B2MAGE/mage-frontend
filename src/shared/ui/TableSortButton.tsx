@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
+import { AppIcon } from './AppIcon'
 
 type TableSortButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'type'> & {
   active: boolean
@@ -15,18 +16,7 @@ function SortIndicator({
 }) {
   return (
     <span className="my-scenes-table__sort-indicator" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="none">
-        <path
-          d="M8 3.5 5.25 6.25h5.5L8 3.5Z"
-          fill="currentColor"
-          opacity={active && direction === 'asc' ? '1' : '0.45'}
-        />
-        <path
-          d="m8 12.5 2.75-2.75h-5.5L8 12.5Z"
-          fill="currentColor"
-          opacity={active && direction === 'desc' ? '1' : '0.45'}
-        />
-      </svg>
+      <AppIcon name={!active ? 'arrow-up-down' : direction === 'asc' ? 'arrow-up' : 'arrow-down'} size={16} />
     </span>
   )
 }

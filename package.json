@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "patch-package",
+    "prebuild": "patch-package && npm run icons:generate",
+    "icons:generate": "node scripts/generate-icon-assets.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "postinstall": "patch-package",
@@ -14,13 +15,14 @@
   },
   "dependencies": {
     "@notrac/mage": "^1.0.1",
+    "lucide-react": "1.49.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1"
   },
   "optionalDependencies": {
-    "@swc/core-linux-x64-gnu": "1.15.18",
-    "@rollup/rollup-linux-x64-gnu": "4.59.0"
+    "@rollup/rollup-linux-x64-gnu": "4.59.0",
+    "@swc/core-linux-x64-gnu": "1.15.18"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -105,8 +105,8 @@
 }
 
 .mage-watch__playlist-action--icon svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .mage-watch__playlist-action[aria-pressed="true"] {

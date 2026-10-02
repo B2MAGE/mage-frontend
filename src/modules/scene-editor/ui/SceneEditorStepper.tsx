@@ -1,4 +1,5 @@
 import { EDITOR_SECTIONS } from '../fixtures'
+import { AppIcon } from '@shared/ui'
 import type { EditorSectionConfig, EditorSectionId } from '../types'
 
 type SceneEditorStepperProps = {
@@ -6,25 +7,6 @@ type SceneEditorStepperProps = {
   currentSectionIndex: number
   sectionIssuesById: Partial<Record<EditorSectionId, string | null>>
   onSectionJump: (sectionId: EditorSectionId) => void
-}
-
-function CheckIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path
-        d="m9.55 16.65-4.2-4.2 1.4-1.4 2.8 2.8 7.65-7.65 1.4 1.4Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-function AlertIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M11 6h2v8h-2zm0 10h2v2h-2z" fill="currentColor" />
-    </svg>
-  )
 }
 
 export function SceneEditorStepper({
@@ -65,7 +47,7 @@ export function SceneEditorStepper({
                 <span aria-hidden="true" className="scene-editor-stepper__number">{index + 1}</span>
                 <span className="scene-editor-stepper__label">{section.title}</span>
                 <span aria-hidden="true" className="scene-editor-stepper__marker">
-                  {isInvalid ? <AlertIcon /> : isComplete ? <CheckIcon /> : null}
+                  {isInvalid ? <AppIcon name="circle-alert" /> : isComplete ? <AppIcon name="check" /> : null}
                 </span>
               </button>
             </li>

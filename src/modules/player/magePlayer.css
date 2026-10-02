@@ -251,13 +251,18 @@
 
 .mage-player__control-icon {
   display: inline-flex;
-  width: 1rem;
-  height: 1rem;
+  width: 20px;
+  height: 20px;
 }
 
 .mage-player__control-icon svg {
   width: 100%;
   height: 100%;
+}
+
+.mage-player__control-button--playback .mage-player__control-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .mage-player__volume-control {
@@ -420,4 +425,4 @@
   .mage-player__controls > .mage-player__control-button--playback {grid-column:2;grid-row:2;}
 }
 
-.mage-player__control-button--fullscreen svg {display:block;width:16px;height:16px;}
+.mage-player__control-button--fullscreen svg {display:block;width:20px;height:20px;}

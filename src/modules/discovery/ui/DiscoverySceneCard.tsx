@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { formatMetricLabel, formatRelativeTime } from '@shared/lib'
-import { UserAvatar } from '@shared/ui'
+import { AppIcon, UserAvatar } from '@shared/ui'
 import type { DiscoveryScene } from '../types'
 import { useSceneHoverPreview } from './useSceneHoverPreview'
 
@@ -51,7 +51,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           ) : (
             <div className="scene-card__thumbnail-placeholder" aria-hidden="true" />
           )}
-          <span className="scene-card__play" aria-hidden="true">▶</span>
+          <span className="scene-card__play" aria-hidden="true"><AppIcon name="play" size={16} /></span>
         </div>
         <div className="scene-card__body">
           <UserAvatar className="scene-card__avatar" initials={creatorInitials} gradientStart={scene.creatorAvatarGradientStart} gradientEnd={scene.creatorAvatarGradientEnd} />

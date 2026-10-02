@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
+import { AppIcon } from '@shared/ui'
 import type { SceneDescription, SceneEngagement } from '../types'
 
 type SceneDescriptionCardProps = {
@@ -43,15 +44,7 @@ export function SceneDescriptionCard({
         }`}
         aria-hidden="true"
       >
-        <svg viewBox="0 0 16 16" fill="none">
-          <path
-            d="M3.5 6 8 10.5 12.5 6"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <AppIcon name="chevron-down" size={16} />
       </span>
     </button>
   )

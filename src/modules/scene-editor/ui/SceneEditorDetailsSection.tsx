@@ -1,7 +1,7 @@
 import type { RefObject } from 'react'
 import { useTheme } from '@theme'
 import type { TagResponse } from '@shared/lib'
-import { LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
+import { AppIcon, LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
 import { PLAYLIST_OPTIONS } from '../fixtures'
 import type { CreateSceneFormErrors, PendingTagAttachment } from '../types'
 import { FieldGroupLabel } from './SceneEditorLayout'
@@ -367,6 +367,7 @@ function TagEditor({
                 type="button"
               >
                 {tag.name}
+                <AppIcon className="scene-tag-editor__selected-remove-icon" name="x" size={12} />
               </button>
             ))}
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { joinClassNames } from '@shared/lib'
+import { AppIcon } from './AppIcon'
 
 type ScrollableTagBarProps = {
   ariaLabel: string
@@ -104,15 +105,7 @@ export function ScrollableTagBar({
           }}
           type="button"
         >
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="M9.75 3.5 5.25 8l4.5 4.5"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.6"
-            />
-          </svg>
+          <AppIcon name="chevron-left" size={16} />
         </button>
       ) : null}
 
@@ -134,15 +127,7 @@ export function ScrollableTagBar({
           }}
           type="button"
         >
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="M6.25 3.5 10.75 8l-4.5 4.5"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.6"
-            />
-          </svg>
+          <AppIcon name="chevron-right" size={16} />
         </button>
       ) : null}
     </div>

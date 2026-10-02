@@ -4,7 +4,7 @@ import { useAuth } from '@auth'
 import { useTheme } from '@theme'
 import { ClassicHomePage } from './ClassicHomePage'
 import { fetchScenes, fetchTags, formatMetricLabel, formatRelativeTime, type SceneListResponse, type TagResponse } from '@shared/lib'
-import { EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton, UserAvatar } from '@shared/ui'
+import { AppIcon, EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton, UserAvatar } from '@shared/ui'
 import { selectPopularHomeTags } from './selectors'
 import { MagePlayer } from '@modules/player'
 import { BrandScene } from '@modules/scene-artwork'
@@ -155,12 +155,12 @@ function PulseHomePage() {
   return (
     <main className={`pulse-home${showWelcome ? '' : ' pulse-home--without-welcome'}`}>
       {showWelcome && <section className="creator-section" aria-label="Create with MAGE">
-        <button className="creator-dismiss" type="button" aria-label="Dismiss create prompt" title="Dismiss" onClick={() => setDismissed(true)}>×</button>
+        <button className="creator-dismiss" type="button" aria-label="Dismiss create prompt" title="Dismiss" onClick={() => setDismissed(true)}><AppIcon name="x" size={18} /></button>
         <div className="creator-copy">
           <h2>Build something that reacts.</h2>
           <p>Start with a visual scene, shape its motion and effects, then pair it with sound and publish it for others to explore.</p>
           <div className="creator-actions">
-            <Link className="primary-button" to="/register">Sign up <span aria-hidden="true">→</span></Link>
+            <Link className="primary-button" to="/register">Sign up <AppIcon name="arrow-right" size={16} /></Link>
             <Link className="secondary-button" to="/login">Sign in</Link>
           </div>
         </div>
@@ -174,7 +174,7 @@ function PulseHomePage() {
       <section className="featured-section" aria-labelledby="featured-heading">
         <div className="featured-heading">
           <h1 id="featured-heading">Featured Scenes</h1>
-          <Link className="browse-link" to="/scenes?sort=featured"><span className="browse-link__label">Browse all featured</span> <span aria-hidden="true">→</span></Link>
+          <Link className="browse-link" to="/scenes?sort=featured"><span className="browse-link__label">Browse all featured</span> <AppIcon name="arrow-right" size={16} /></Link>
         </div>
         {featuredLoading && !featured && <FeaturedSceneSkeleton />}
         {featuredError && <SceneCollectionState
@@ -223,7 +223,7 @@ function PulseHomePage() {
             </div>
             {actionError && <p role="alert">{actionError}</p>}
             <div className="featured-action">
-              <Link className="primary-button" to={`/scenes/${featured.id}`}>Open scene <span aria-hidden="true">→</span></Link>
+              <Link className="primary-button" to={`/scenes/${featured.id}`}>Open scene <AppIcon name="arrow-right" size={16} /></Link>
             </div>
           </div>
         </article>}
@@ -260,7 +260,7 @@ function PulseHomePage() {
         />}
         {!loading && !error && scenes.length > 0 && <>
           <div className="scene-grid" aria-label="For You scenes">{scenes.slice(0,8).map(scene=><DiscoverySceneCard key={scene.sceneId} scene={scene}/>)}</div>
-          <div className="discover-more"><Link className="secondary-button" to="/scenes?sort=recommended">See all recommended <span aria-hidden="true">→</span></Link></div>
+          <div className="discover-more"><Link className="secondary-button" to="/scenes?sort=recommended">See all recommended <AppIcon name="arrow-right" size={16} /></Link></div>
         </>}
       </section>
     </main>
