@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer } from "@modules/player";
+import { MagePlayer, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseMapping, type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
   NumberField,
@@ -14,6 +15,7 @@ import {
 } from "./ui/SceneEditorControls";
 import {
   PASS_LABELS,
+  getSceneEditorModel,
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
@@ -35,6 +37,7 @@ import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
+import { MusicResponseControls } from "./ui/MusicResponseControls";
 import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
@@ -68,8 +71,11 @@ export function SceneEditorShell({
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   const [isBeatSimulated, setIsBeatSimulated] = useState(false);
   const [previewBpm, setPreviewBpm] = useState(120);
+  const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
+  const [disabledMappingDrafts, setDisabledMappingDrafts] = useState<Partial<Record<AudioResponseTarget, AudioResponseMapping>>>({});
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const {
+    canResetAudioResponse,
     availableTags,
     canCreateTagFromSearch,
     currentSection,
@@ -79,6 +85,9 @@ export function SceneEditorShell({
     filteredSelectableTags,
     formErrorId,
     handleCameraAdvancedToggle,
+    handleAudioResponseModeChange,
+    handleAudioResponseConfigChange,
+    handleAudioResponseReset,
     handleCreateTag,
     handleFormatJson,
     handleMotionAdvancedToggle,
@@ -149,6 +158,12 @@ export function SceneEditorShell({
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
   const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
   const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
+  const audioResponseConfig = normalizeAudioResponseConfig(sceneData.audioResponseConfig).config;
+  // Keep controls steady through response edits, but never display the prior
+  // shader's movement list while a different shader is compiling.
+  const supportedAudioTargets = audioResponseCapabilities
+    && getSceneEditorModel(audioResponseCapabilities.sceneBlob).visualizer.shader === sceneModel.visualizer.shader
+    ? audioResponseCapabilities.capabilities.supportedTargets : null;
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
@@ -778,6 +793,17 @@ export function SceneEditorShell({
                     onEnabledChange={setIsBeatSimulated}
                     onBpmChange={setPreviewBpm}
                   />
+                  <MusicResponseControls
+                    mode={normalizeAudioResponseMode(sceneData.audioResponse)}
+                    config={audioResponseConfig}
+                    supportedTargets={supportedAudioTargets}
+                    onModeChange={(nextMode) => handleAudioResponseModeChange(nextMode, supportedAudioTargets ?? undefined)}
+                    onConfigChange={handleAudioResponseConfigChange}
+                    onReset={handleAudioResponseReset}
+                    canReset={canResetAudioResponse}
+                    disabledMappingDrafts={disabledMappingDrafts}
+                    onDisabledMappingDraftsChange={setDisabledMappingDrafts}
+                  />
                   <div className="scene-editor-grid">
                     <NumberField
                       description="Overall engine time multiplier."
@@ -793,9 +819,9 @@ export function SceneEditorShell({
                       value={sceneModel.intent.time_multiplier}
                     />
 
-                    {usesModernAudio ? (
+                    {usesMappedAudio ? null : usesModernAudio ? (
                       <p className="scene-editor-grid__item--full">
-                        {usesMappedAudio ? "This scene uses saved audio mappings." : "This scene uses automatic beat detection and release."} Legacy audio gain, curve, base speed, easing, and volume controls do not apply.
+                        This scene uses automatic beat detection and release.
                       </p>
                     ) : <>
                     <SliderField
@@ -1579,6 +1605,7 @@ export function SceneEditorShell({
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
+                onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
                 sceneKey={mode.type === 'edit' ? `edit:${mode.sceneId}` : 'create'}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               />

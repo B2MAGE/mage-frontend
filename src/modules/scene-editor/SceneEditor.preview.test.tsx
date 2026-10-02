@@ -318,7 +318,7 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Shader' }), shaderOption('Tidal Lantern').id)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
-    expect(screen.getByText(/this scene uses saved audio mappings/i)).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
     expect(screen.queryByRole('slider', { name: 'Audio Gain' })).not.toBeInTheDocument()
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Time Multiplier' }), { target: { value: '0.75' } })
     await user.click(screen.getByRole('button', { name: 'Confirm' }))

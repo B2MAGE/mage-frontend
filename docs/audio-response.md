@@ -64,6 +64,18 @@ Shaders may also declare `audioTime`, `bassHitTime`, `midHitTime`, `trebleHitTim
 
 For a native browser check, open `/scripts/audio-response-browser-check.html` on the development server. Its generated tones remain silent, and its rendering check verifies real WebGL uniform delivery for bass-only and mixed-input shaders. The optional `?minified=1` check expects a separately bundled ESM copy of the analysis module at `.local/audio-analysis-built.js`.
 
+## Creator music controls
+
+AR06 adds **Music response** to the editor's Motion section. Classic, Automatic beats, and Custom music response select the existing `legacy`, `transient-v1`, and `mapped-v1` modes. Opening an older scene does not opt it in. Its applicable classic controls remain available, and switching modes preserves inactive tuning.
+
+Custom response lists only targets declared by the compiled shader. `MagePlayer.onAudioResponseCapabilitiesChange` reports a scene-associated snapshot through the adapter boundary. A different shader, failed preview, or replacement player clears the prior capabilities; response-only edits retain controls until the updated snapshot arrives, preserving focus during keyboard and slider adjustments. First-time custom mode uses defaults for the supported movements. Saved mappings for other targets remain in the document and become editable if a later shader supports them.
+
+Each movement can follow bass, mids, treble, or the whole mix, using sustained sound or sharp hits. Sensitivity changes hit detection only. Amount changes movement strength, with zero producing no mapped movement. Response presets are Quick (0.01-second rise / 0.12-second fade), Balanced (0.04 / 0.35), and Flowing (0.2 / 1). Fine-tune response exposes both times independently; arbitrary saved values display as Custom and are not rounded to a preset. A disabled movement is absent from the saved mapping list; its tuning is retained in the current editor session for re-enabling, including across editor sections.
+
+Reset to scene defaults restores the response mode, explicit configuration (or its absence), classic gain/curve/speed/easing, and classic volume multiplier from when the editor opened. It preserves unrelated scene edits. Saved configurations remain separate from viewer overrides. Reset also clears temporary disabled-movement drafts.
+
+The UI uses labeled native selects, ranges, number inputs, a checkbox, and a timing disclosure. Numeric inputs have distinct accessible labels. The panel spans the Motion grid and stacks at mobile widths using the existing theme colors. Browser checks cover both themes at desktop and 390-pixel mobile widths, keyboard tuning with focus retained, and settings changes during playing and paused audio. Automated tests cover mode switching, reset, disabled tuning, supported capabilities, and editor save/reopen flows.
+
 ## Platform settings and persistence
 
 An authored scene stores the mode and configuration in its existing JSON document:

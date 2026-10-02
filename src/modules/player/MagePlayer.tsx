@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as React
 import { MagePlayerLoading } from './MagePlayerLoading'
 import {
   createMagePlayer,
+  type MageAudioResponseCapabilities,
   type MagePlayerAudioState,
   type MagePlayerController,
   type MagePlayerPlaybackState,
@@ -24,11 +25,17 @@ import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { normalizeAudioResponseMode } from '@shared/lib'
 
+export type MagePlayerAudioResponseCapabilitiesSnapshot = {
+  sceneBlob: MageSceneBlob
+  capabilities: MageAudioResponseCapabilities
+}
+
 export type MagePlayerProps = {
   ariaLabel?: string
   className?: string
   initialPlayback?: MagePlayerPlaybackState
   log?: boolean
+  onAudioResponseCapabilitiesChange?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
   onCaptureFramePreviewChange?: (
     captureFramePreview: (() => Promise<string | null>) | null,
   ) => void
@@ -62,6 +69,7 @@ export function MagePlayer({
   className,
   initialPlayback = 'playing',
   log = false,
+  onAudioResponseCapabilitiesChange,
   onCaptureFramePreviewChange,
   onPlaylistChange,
   onRequestPlaylistOpen,
@@ -79,6 +87,7 @@ export function MagePlayer({
   const audioInputRef = useRef<HTMLInputElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MagePlayerController | null>(null)
+  const capabilitiesCallbackRef = useRef(onAudioResponseCapabilitiesChange)
   const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
   const requestedPlaybackRef = useRef<MagePlayerPlaybackState>(initialPlayback)
   const loadedTrackIdRef = useRef<string | null>(null)
@@ -116,6 +125,15 @@ export function MagePlayer({
   const [loadError, setLoadError] = useState<{ message: string; sceneBlob: MageSceneBlob } | null>(
     null,
   )
+  const [capabilitiesResult, setCapabilitiesResult] = useState<{
+    player: MagePlayerController
+    identity: string | null
+    snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null
+  } | null>(null)
+
+  useEffect(() => {
+    capabilitiesCallbackRef.current = onAudioResponseCapabilitiesChange
+  }, [onAudioResponseCapabilitiesChange])
 
   useEffect(() => {
     latestSceneBlobRef.current = sceneBlob
@@ -192,6 +210,7 @@ export function MagePlayer({
       isDisposed = true
       window.cancelAnimationFrame(animationFrameId)
       playerRef.current = null
+      capabilitiesCallbackRef.current?.(null)
       nextPlayer?.dispose()
     }
   }, [log])
@@ -230,10 +249,23 @@ export function MagePlayer({
       const nextPlaybackState = player.getPlaybackState()
 
       queueMicrotask(() => {
-        if (isCancelled) {
+        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
           return
         }
 
+        // Read capabilities only after this exact document has reached this
+        // player. A missing older-engine API must not make playback fail.
+        let capabilities: MageAudioResponseCapabilities | null = null
+        try {
+          capabilities = player.getAudioResponseCapabilities?.() ?? null
+        } catch {
+          capabilities = null
+        }
+        setCapabilitiesResult({
+          player,
+          identity: playbackIdentity,
+          snapshot: capabilities ? { sceneBlob, capabilities } : null,
+        })
         requestedPlaybackRef.current = nextPlaybackState
         setLoadError(null)
         setLoadedSceneIdentity(playbackIdentity)
@@ -247,7 +279,7 @@ export function MagePlayer({
       })
     } catch (error) {
       queueMicrotask(() => {
-        if (isCancelled) {
+        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
           return
         }
 
@@ -272,6 +304,23 @@ export function MagePlayer({
         : playbackIdentity !== null && loadedSceneIdentity === playbackIdentity && loadedPlayerVersion === playerVersion
           ? 'ready'
           : 'loading'
+
+  const hasCapabilitiesCallback = Boolean(onAudioResponseCapabilitiesChange)
+
+  useEffect(() => {
+    if (!hasCapabilitiesCallback) return
+    const matchesCompiledPlayer = status === 'ready'
+      && capabilitiesResult?.player === playerRef.current
+      && capabilitiesResult?.identity === playbackIdentity
+    // Response-only edits keep the same compiled shader. Retain its published
+    // capabilities until the exact updated document is ready, so editor
+    // controls do not unmount during a slider drag or keyboard adjustment.
+    if (matchesCompiledPlayer && capabilitiesResult.snapshot
+      && capabilitiesResult.snapshot.sceneBlob !== sceneBlob) return
+    const matchesLoadedScene = matchesCompiledPlayer
+      && capabilitiesResult.snapshot?.sceneBlob === sceneBlob
+    capabilitiesCallbackRef.current?.(matchesLoadedScene ? capabilitiesResult.snapshot : null)
+  }, [capabilitiesResult, hasCapabilitiesCallback, playbackIdentity, playerVersion, sceneBlob, status])
 
   const hasSimulatedBeat = simulatedBeat !== undefined
   const simulatedBeatEnabled = simulatedBeat?.enabled ?? false
