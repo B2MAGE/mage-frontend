@@ -37,7 +37,7 @@ function sessionHarness(addModule: () => Promise<void> = async () => {}) {
   const context = { currentTime: 0, destination: {}, audioWorklet: { addModule: vi.fn(addModule) } }
   const output = { connect: vi.fn(), disconnect: vi.fn() }
   const node = { port: { onmessage: null as null | ((event: { data: unknown }) => void), postMessage: vi.fn(), close: vi.fn() }, connect: vi.fn(), disconnect: vi.fn(), onprocessorerror: null as null | (() => void) }
-  const nodeFactory = vi.fn((_context: unknown, _name: string, _options: AudioWorkletNodeOptions) => node as unknown as AudioWorkletNode)
+  const nodeFactory = vi.fn<(context: unknown, name: string, options: AudioWorkletNodeOptions) => AudioWorkletNode>(() => node as unknown as AudioWorkletNode)
   const session = new AudioAnalysisSession({ nodeFactory })
   const source = { context, getOutput: () => output } as unknown as AudioAnalysisSource
   return {
