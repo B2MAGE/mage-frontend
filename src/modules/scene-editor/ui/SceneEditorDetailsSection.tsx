@@ -1,6 +1,8 @@
 import type { RefObject } from 'react'
+import { useTheme } from '@theme'
 import type { TagResponse } from '@shared/lib'
-import { PLAYLIST_OPTIONS, TAG_SKELETON_COUNT } from '../fixtures'
+import { LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
+import { PLAYLIST_OPTIONS } from '../fixtures'
 import type { CreateSceneFormErrors, PendingTagAttachment } from '../types'
 import { FieldGroupLabel } from './SceneEditorLayout'
 import { SceneSection } from './SceneEditorControls'
@@ -11,6 +13,7 @@ type SceneEditorDetailsSectionProps = {
   description: string
   errors: CreateSceneFormErrors
   filteredSelectableTags: TagResponse[]
+  isCapturingThumbnail: boolean
   isCreatingTag: boolean
   isExactMatchedTagSelected: boolean
   isSubmitting: boolean
@@ -46,7 +49,7 @@ function SceneNameField({
 }: Pick<SceneEditorDetailsSectionProps, 'errors' | 'name' | 'onNameChange'>) {
   return (
     <div className="field-group">
-      <FieldGroupLabel htmlFor="name" label="Scene Name" />
+      <FieldGroupLabel htmlFor="name" label="Scene Name" meta="Required · 2+ characters" />
       <input
         id="name"
         minLength={2}
@@ -79,7 +82,7 @@ function SceneDescriptionField({
 }: Pick<SceneEditorDetailsSectionProps, 'description' | 'errors' | 'onDescriptionChange'>) {
   return (
     <div className="field-group">
-      <FieldGroupLabel htmlFor="description" label="Description" />
+      <FieldGroupLabel htmlFor="description" label="Description" meta={`${description.length} / 1000`} />
       <textarea
         aria-describedby={errors.description ? 'description-error' : undefined}
         aria-invalid={Boolean(errors.description)}
@@ -101,13 +104,47 @@ function SceneDescriptionField({
 
 function ThumbnailField({
   errors,
+  isCapturingThumbnail,
   isSubmitting,
   thumbnailPreviewUrl,
   onThumbnailCaptureRequest,
 }: Pick<
   SceneEditorDetailsSectionProps,
-  'errors' | 'isSubmitting' | 'thumbnailPreviewUrl' | 'onThumbnailCaptureRequest'
+  'errors' | 'isCapturingThumbnail' | 'isSubmitting' | 'thumbnailPreviewUrl' | 'onThumbnailCaptureRequest'
 >) {
+  const { themeId } = useTheme()
+  if (themeId === 'mage-pulse') {
+    return (
+      <div className="field-group">
+        <FieldGroupLabel label="Thumbnail" />
+        <div className="scene-editor-thumbnail">
+          <div className="scene-editor-thumbnail__frame">
+            {thumbnailPreviewUrl ? (
+              <img alt="Captured thumbnail preview" src={thumbnailPreviewUrl} />
+            ) : (
+              <span aria-hidden="true" className="scene-editor-thumbnail__placeholder" />
+            )}
+          </div>
+          <div className="scene-editor-thumbnail__copy">
+            <strong>Capture the current scene frame</strong>
+            <p>Use the current live preview frame as the scene thumbnail. It is captured automatically when creating if needed.</p>
+            <button
+              aria-busy={isCapturingThumbnail}
+              className="scene-secondary-button"
+              disabled={isSubmitting || isCapturingThumbnail}
+              onClick={onThumbnailCaptureRequest}
+              type="button"
+            >
+              <PendingButtonLabel pending={isCapturingThumbnail} pendingLabel="Capturing...">
+                {thumbnailPreviewUrl ? 'Capture Again' : 'Capture Thumbnail'}
+              </PendingButtonLabel>
+            </button>
+          </div>
+        </div>
+        {errors.thumbnail ? <p className="field-error" role="alert">{errors.thumbnail}</p> : null}
+      </div>
+    )
+  }
   return (
     <div className="field-group">
       <FieldGroupLabel label="Thumbnail" />
@@ -116,7 +153,8 @@ function ThumbnailField({
           <div className="scene-thumbnail-picker__grid">
             <button
               className={`scene-thumbnail-choice${thumbnailPreviewUrl ? ' is-selected' : ''}`}
-              disabled={isSubmitting}
+              aria-busy={isCapturingThumbnail}
+              disabled={isSubmitting || isCapturingThumbnail}
               onClick={onThumbnailCaptureRequest}
               type="button"
             >
@@ -124,7 +162,9 @@ function ThumbnailField({
                 {thumbnailPreviewUrl ? 'Recapture' : 'Live Preview'}
               </span>
               <strong className="scene-thumbnail-choice__title">
-                {thumbnailPreviewUrl ? 'Capture Again' : 'Capture Thumbnail'}
+                <PendingButtonLabel pending={isCapturingThumbnail} pendingLabel="Capturing...">
+                  {thumbnailPreviewUrl ? 'Capture Again' : 'Capture Thumbnail'}
+                </PendingButtonLabel>
               </strong>
               <span className="scene-thumbnail-choice__description">
                 Use the current live preview frame as the scene thumbnail.
@@ -219,11 +259,16 @@ function TagEditor({
 
       <div className="scene-tag-editor__picker" role="group" aria-label="Available tags">
         {tagsLoading ? (
-          <div className="tag-filter-bar" aria-label="Available tags loading">
-            {Array.from({ length: TAG_SKELETON_COUNT }, (_, index) => (
-              <span key={index} className="tag-pill tag-pill--skeleton" aria-hidden="true" />
-            ))}
-          </div>
+          <LoadingRegion className="scene-tag-editor__loading" label="Loading available tags">
+            <label htmlFor={`${tagSearchInputId}-loading`}>Select existing tags</label>
+            <input
+              disabled
+              id={`${tagSearchInputId}-loading`}
+              placeholder="Loading available tags"
+              type="text"
+            />
+            <Skeleton className="scene-tag-editor__loading-results" shape="block" />
+          </LoadingRegion>
         ) : (
           <div className="scene-tag-dropdown" ref={tagDropdownRef}>
             <div className="scene-tag-dropdown__search">
@@ -277,6 +322,7 @@ function TagEditor({
                     ))}
                     {canCreateTagFromSearch ? (
                       <button
+                        aria-busy={isCreatingTag}
                         className="scene-tag-dropdown__option scene-tag-dropdown__option--create"
                         disabled={isCreatingTag}
                         onClick={() => {
@@ -284,9 +330,12 @@ function TagEditor({
                         }}
                         type="button"
                       >
-                        {isCreatingTag
-                          ? `Adding "${normalizedTagSearchValue}"...`
-                          : `Add tag "${normalizedTagSearchValue}"`}
+                        <PendingButtonLabel
+                          pending={isCreatingTag}
+                          pendingLabel={`Adding "${normalizedTagSearchValue}"...`}
+                        >
+                          {`Add tag "${normalizedTagSearchValue}"`}
+                        </PendingButtonLabel>
                       </button>
                     ) : null}
                   </div>
@@ -349,9 +398,11 @@ function TagEditor({
 }
 
 export function SceneEditorDetailsSection(props: SceneEditorDetailsSectionProps) {
+  const { themeId } = useTheme()
+  const isPulse = themeId === 'mage-pulse'
   return (
     <SceneSection
-      description="Start with the saved scene metadata before moving into the engine controls."
+      description="Set the scene metadata, capture a thumbnail from the live preview, and choose tags for discovery."
       title="Details"
     >
       <div className="scene-editor-stack">
@@ -363,24 +414,30 @@ export function SceneEditorDetailsSection(props: SceneEditorDetailsSectionProps)
         />
 
         <div className="field-group">
-          <FieldGroupLabel htmlFor="playlists" label="Playlists" />
+          <FieldGroupLabel htmlFor="playlists" label="Playlists" meta={isPulse ? 'Unavailable' : 'Optional'} />
           <select
-            className="scene-select"
+            aria-describedby={isPulse ? 'scene-playlist-unavailable' : undefined}
+            className="mage-select"
+            disabled={isPulse}
             id="playlists"
             onChange={(event) => props.onPlaylistValueChange(event.currentTarget.value)}
             value={props.playlistValue}
           >
-            <option value="">Select playlist</option>
-            {PLAYLIST_OPTIONS.map((option) => (
+            <option value="">{isPulse ? 'Playlists coming soon' : 'Select playlist'}</option>
+            {(!isPulse ? PLAYLIST_OPTIONS : []).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </select>
+          {isPulse ? (
+            <p className="field-hint" id="scene-playlist-unavailable">Saved playlists are not available yet. You can add local audio in the live preview.</p>
+          ) : null}
         </div>
 
         <ThumbnailField
           errors={props.errors}
+          isCapturingThumbnail={props.isCapturingThumbnail}
           isSubmitting={props.isSubmitting}
           thumbnailPreviewUrl={props.thumbnailPreviewUrl}
           onThumbnailCaptureRequest={props.onThumbnailCaptureRequest}

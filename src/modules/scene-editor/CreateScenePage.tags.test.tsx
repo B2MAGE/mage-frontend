@@ -40,8 +40,10 @@ describe('CreateScenePage tags', () => {
 
     expect(screen.queryByLabelText(/create a new tag/i)).not.toBeInTheDocument()
     expect(screen.getByText(/^selected tags$/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^focus-friendly$/i })).toBeInTheDocument()
+    const ambientTag = screen.getByRole('button', { name: /^ambient$/i })
+    const focusFriendlyTag = screen.getByRole('button', { name: /^focus-friendly$/i })
+    expect(ambientTag).toHaveClass('tag-pill', 'tag-pill--active')
+    expect(focusFriendlyTag).toHaveClass('tag-pill')
   })
 
   it('creates a new tag in the editor and auto-selects it after success', async () => {

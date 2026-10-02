@@ -1,3 +1,4 @@
+import { PendingButtonLabel } from '@shared/ui'
 import { EDITOR_SECTIONS } from '../fixtures'
 import type { EditorSectionConfig } from '../types'
 
@@ -61,14 +62,13 @@ export function SceneEditorActionBar({
           Next
         </button>
 
-        <button className="demo-link auth-submit scene-editor-submit" disabled={isSubmitting} type="submit">
-          {isSubmitting
-            ? pendingTagAttachment
-              ? 'Retrying tag attachment...'
-              : submittingLabel
-            : pendingTagAttachment
-              ? 'Retry tag attachment'
-              : submitLabel}
+        <button aria-busy={isSubmitting} className="demo-link auth-submit scene-editor-submit" disabled={isSubmitting} type="submit">
+          <PendingButtonLabel
+            pending={isSubmitting}
+            pendingLabel={pendingTagAttachment ? 'Retrying tag attachment...' : submittingLabel}
+          >
+            {pendingTagAttachment ? 'Retry tag attachment' : submitLabel}
+          </PendingButtonLabel>
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
+import { useTheme } from '@theme'
 import type { Vector3Value } from '../sceneEditor'
 import { joinClassNames } from '@shared/lib'
 import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
@@ -84,10 +85,23 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
 }
 
 export function SceneSection({ children, className, description, title }: SectionProps) {
+  const { themeId } = useTheme()
+  const headings: Record<string, { number: number; title: string }> = {
+    Details: { number: 1, title: 'Start with the basics.' },
+    Scene: { number: 2, title: 'Choose the visual foundation.' },
+    Camera: { number: 3, title: 'Frame the scene.' },
+    Motion: { number: 4, title: 'Tune how it moves.' },
+    Effects: { number: 5, title: 'Finish the look.' },
+    'Pass Order': { number: 6, title: 'Control the effect stack.' },
+    Confirm: { number: 7, title: 'Review before publishing.' },
+  }
+  const heading = themeId === 'mage-pulse' ? headings[title] : undefined
+
   return (
-    <section className={joinClassNames('scene-editor-section', className)}>
+    <section className={joinClassNames('scene-editor-section', className)} data-section={title}>
       <div className="scene-editor-section__header">
-        <h2>{title}</h2>
+        {heading ? <span className="scene-editor-section__eyebrow">{heading.number} · {title}</span> : null}
+        <h2>{heading?.title ?? title}</h2>
         <p>{description}</p>
       </div>
       <div className="scene-editor-section__content">{children}</div>
@@ -106,7 +120,7 @@ export function SelectField({
   return (
     <EditorFieldShell description={description} htmlFor={id} label={label}>
       <select
-        className="scene-select"
+        className="mage-select"
         id={id}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}

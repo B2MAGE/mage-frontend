@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { normalizeSceneListItem, parseApiError, type SceneListResponse } from '@shared/lib'
+import { SceneEditorLoadingState } from './SceneEditorLoadingState'
 import { SceneEditorShell } from './SceneEditorShell'
 
 type EditableScene = SceneListResponse & {
@@ -26,7 +27,6 @@ function EditSceneState({
 }) {
   return (
     <main className="surface surface--hero">
-      <div className="eyebrow">Scene Studio</div>
       <h1>{title}</h1>
       <p className="page-lead">{description}</p>
     </main>
@@ -115,12 +115,7 @@ export function EditScenePage() {
   }, [authenticatedFetch, isAuthenticated, isRestoringSession, sceneId, user?.userId])
 
   if (isRestoringSession) {
-    return (
-      <EditSceneState
-        description="MAGE is restoring your session before opening the editor."
-        title="Loading scene..."
-      />
-    )
+    return <SceneEditorLoadingState label="Restoring your session before loading the scene editor" />
   }
 
   if (!isAuthenticated) {
@@ -137,12 +132,7 @@ export function EditScenePage() {
   }
 
   if (isLoading) {
-    return (
-      <EditSceneState
-        description="MAGE is loading the saved scene before opening the editor."
-        title="Loading scene..."
-      />
-    )
+    return <SceneEditorLoadingState />
   }
 
   if (errorMessage || !scene) {

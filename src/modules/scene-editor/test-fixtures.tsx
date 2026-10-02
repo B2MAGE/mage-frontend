@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
+import { APP_THEME_STORAGE_KEY, ThemeProvider, type AppThemeId } from '@theme'
 import { AuthProvider, type AuthenticatedUser } from '@auth'
 import { buildApiUrl } from '@shared/lib'
 import { buildAuthenticatedUser, storeAuthenticatedSession } from '@shared/test/auth'
@@ -129,15 +130,18 @@ export function mockCreateScenePageFetch(
   })
 }
 
-export function renderCreateScenePage() {
+export function renderCreateScenePage(themeId: AppThemeId = 'classic-facebook') {
+  window.localStorage.setItem(APP_THEME_STORAGE_KEY, themeId)
   return render(
     <MemoryRouter initialEntries={['/create-scene']}>
+      <ThemeProvider>
       <AuthProvider>
         <Routes>
           <Route path="/create-scene" element={<CreateScenePage />} />
           <Route path="/my-scenes" element={<div>My Scenes</div>} />
         </Routes>
       </AuthProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   )
 }
@@ -178,9 +182,11 @@ export function buildSceneEditorApiScene(
   }
 }
 
-export function renderEditScenePage(initialEntries = ['/scenes/12/edit']) {
+export function renderEditScenePage(initialEntries = ['/scenes/12/edit'], themeId: AppThemeId = 'classic-facebook') {
+  window.localStorage.setItem(APP_THEME_STORAGE_KEY, themeId)
   return render(
     <MemoryRouter initialEntries={initialEntries}>
+      <ThemeProvider>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<div>Login</div>} />
@@ -188,6 +194,7 @@ export function renderEditScenePage(initialEntries = ['/scenes/12/edit']) {
           <Route path="/scenes/:id/edit" element={<EditScenePage />} />
         </Routes>
       </AuthProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   )
 }
@@ -196,7 +203,9 @@ export async function selectExistingTag(
   user: ReturnType<typeof userEvent.setup>,
   tagName: string,
 ) {
-  const searchInput = await screen.findByLabelText(/select existing tags/i)
+  const searchInput = await screen.findByLabelText(/select existing tags/i, {
+    selector: 'input:not(:disabled)',
+  })
 
   await user.click(searchInput)
   await user.clear(searchInput)
@@ -211,7 +220,9 @@ export async function addTagFromSearch(
   tagName: string,
 ) {
   const normalizedTagName = tagName.trim().toLowerCase()
-  const searchInput = await screen.findByLabelText(/select existing tags/i)
+  const searchInput = await screen.findByLabelText(/select existing tags/i, {
+    selector: 'input:not(:disabled)',
+  })
 
   await user.click(searchInput)
   await user.clear(searchInput)

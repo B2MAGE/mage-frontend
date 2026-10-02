@@ -1,6 +1,8 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
-import { AuthPage, AuthPageHeader } from "@shared/ui";
+import { useTheme } from "@theme";
+import "./scene-editor-pulse.css";
+import { AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
 import {
   EffectCard,
@@ -65,6 +67,10 @@ export function SceneEditorShell({
   onComplete,
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
+  const { themeId } = useTheme();
+  const isPulse = themeId === "mage-pulse";
+  const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+  const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const {
     actionBarSentinelRef,
     availableTags,
@@ -131,6 +137,9 @@ export function SceneEditorShell({
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
   });
+  useEffect(() => {
+    if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
+  }, [sectionMenuValue]);
   const {
     previewSceneData,
     sceneModel,
@@ -146,6 +155,8 @@ export function SceneEditorShell({
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
+  const thumbnailCaptureInFlightRef = useRef(false);
+  const [isCapturingThumbnail, setIsCapturingThumbnail] = useState(false);
 
   async function captureThumbnailFromPreview() {
     if (!captureFramePreviewRef.current) {
@@ -174,6 +185,13 @@ export function SceneEditorShell({
   }
 
   async function handleThumbnailCaptureRequest() {
+    if (thumbnailCaptureInFlightRef.current) {
+      return;
+    }
+
+    thumbnailCaptureInFlightRef.current = true;
+    setIsCapturingThumbnail(true);
+
     try {
       await captureThumbnailFromPreview();
     } catch (error) {
@@ -185,6 +203,9 @@ export function SceneEditorShell({
             ? error.message
             : "The live preview could not be captured right now. Please try again.",
       }));
+    } finally {
+      thumbnailCaptureInFlightRef.current = false;
+      setIsCapturingThumbnail(false);
     }
   }
 
@@ -470,7 +491,19 @@ export function SceneEditorShell({
     sceneData,
     sceneDataText,
     selectedTagIds,
-    setErrors,
+    setErrors: (nextErrors) => {
+      setErrors(nextErrors);
+      if (!isPulse || typeof nextErrors === "function") return;
+      if (nextErrors.name || nextErrors.description || nextErrors.thumbnail || nextErrors.tags) {
+        handleSectionJump("details");
+      } else if (nextErrors.sceneData) {
+        handleSectionJump("confirm");
+        setIsConfirmJsonOpen(true);
+      }
+      if (editorScrollRef.current && Object.keys(nextErrors).length > 0) {
+        editorScrollRef.current.scrollTop = 0;
+      }
+    },
     setIsSubmitting,
     setPendingTagAttachment,
     tagsError,
@@ -480,7 +513,7 @@ export function SceneEditorShell({
 
   return (
     <AuthPage
-      className="auth-page--wide"
+      className="auth-page--wide scene-editor-page"
       cardClassName="surface--editor"
       titleId={titleId}
     >
@@ -488,10 +521,10 @@ export function SceneEditorShell({
         description={
           isEditMode
             ? "Refine the saved scene details and preview the current scene configuration."
-            : "Build a scene with curated controls and effect shaping."
+            : "Shape the visual, tune how it moves, add effects, then preview everything live before publishing."
         }
         eyebrow="Scene Studio"
-        title={isEditMode ? "Edit Scene" : "Create Scene"}
+        title={isEditMode ? (isPulse ? "Edit your scene" : "Edit Scene") : (isPulse ? "Create a scene" : "Create Scene")}
         titleId={titleId}
       />
 
@@ -502,7 +535,8 @@ export function SceneEditorShell({
         onSubmit={handleSubmit}
       >
         <div className="scene-editor-layout">
-          <div className="scene-editor-main">
+          <aside className="scene-editor-stepper-rail">
+            {isPulse ? <div className="scene-editor-stepper-rail__label">Scene setup</div> : null}
             <div className="scene-editor-toolbar">
               <div className="scene-editor-toolbar__controls">
                 <div className="scene-editor-toolbar__control-group scene-editor-toolbar__control-group--navigation">
@@ -515,7 +549,9 @@ export function SceneEditorShell({
                 </div>
               </div>
             </div>
+          </aside>
 
+          <div className="scene-editor-main" ref={editorScrollRef}>
             {errors.form ? (
               <div className="form-alert" id={formErrorId} role="alert">
                 {errors.form}
@@ -529,6 +565,7 @@ export function SceneEditorShell({
                 description={description}
                 errors={errors}
                 filteredSelectableTags={filteredSelectableTags}
+                isCapturingThumbnail={isCapturingThumbnail}
                 isCreatingTag={isCreatingTag}
                 isExactMatchedTagSelected={isExactMatchedTagSelected}
                 isSubmitting={isSubmitting}
@@ -562,7 +599,7 @@ export function SceneEditorShell({
 
             {sectionMenuValue === "scene" ? (
               <SceneSection
-                description="Choose the visual style, background environment, and overall size of the scene."
+                description="Choose a bundled shader, environment, and overall scale. Editing the source makes this a custom shader."
                 title="Scene"
               >
                 <div className="scene-editor-grid">
@@ -1288,7 +1325,7 @@ export function SceneEditorShell({
 
             {sectionMenuValue === "pass-order" ? (
               <SceneSection
-                description="Change the order of effects to control how the final image is layered. Output always stays last."
+                description="Move passes up or down to change how the final image is layered. Output always stays last."
                 title="Pass Order"
               >
                 <ol className="scene-pass-order">
@@ -1338,10 +1375,11 @@ export function SceneEditorShell({
 
             {sectionMenuValue === "confirm" ? (
               <SceneSection
+                className="scene-editor-section--confirm"
                 description={
                   isEditMode
                     ? "Review the scene setup before updating it and expand the raw JSON only if you need a final low-level check."
-                    : "Review the scene setup before creating it and expand the raw JSON only if you need a final low-level check."
+                    : "Review every saved value, then create the scene. You can still jump back to any section."
                 }
                 title="Confirm"
               >
@@ -1359,7 +1397,9 @@ export function SceneEditorShell({
                       <ConfirmSummaryItem
                         label="Playlist"
                         value={
-                          playlistValue
+                          isPulse
+                            ? "Not available"
+                            : playlistValue
                             ? PLAYLIST_OPTIONS.find(
                                 (option) => option.value === playlistValue,
                               )?.label ?? playlistValue
@@ -1500,19 +1540,43 @@ export function SceneEditorShell({
                     {renderRawSceneDataEditor()}
                   </CollapsibleEditorGroup>
                 </div>
+                {isPulse ? (
+                  <div className="scene-editor-confirm-actions">
+                    <button aria-busy={isSubmitting} className="scene-editor-confirm-submit" disabled={isSubmitting} type="submit">
+                      <PendingButtonLabel
+                        pending={isSubmitting}
+                        pendingLabel={pendingTagAttachment ? "Retrying tag attachment..." : isEditMode ? "Updating scene..." : "Creating scene..."}
+                      >
+                        {pendingTagAttachment ? "Retry tag attachment" : isEditMode ? "Update scene" : "Create scene"}
+                      </PendingButtonLabel>
+                    </button>
+                  </div>
+                ) : null}
               </SceneSection>
             ) : null}
           </div>
 
-          <aside className="scene-editor-preview">
+          <aside className={`scene-editor-preview${isPreviewCollapsed ? " is-collapsed" : ""}`}>
             <section className="surface surface--soft scene-editor-preview__card">
               <div className="scene-editor-preview__header">
                 <div>
                   <span className="scene-editor-toolbar__eyebrow">Preview</span>
                   <h2>Live Preview</h2>
                 </div>
+                {isPulse ? (
+                  <button
+                    aria-controls="scene-editor-live-preview"
+                    aria-expanded={!isPreviewCollapsed}
+                    className="scene-editor-preview__collapse"
+                    onClick={() => setIsPreviewCollapsed((collapsed) => !collapsed)}
+                    type="button"
+                  >
+                    {isPreviewCollapsed ? "Expand" : "Collapse"}
+                  </button>
+                ) : null}
               </div>
 
+              <div id="scene-editor-live-preview" className="scene-editor-preview__content">
               <MagePlayer
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
@@ -1521,10 +1585,11 @@ export function SceneEditorShell({
                 }}
                 sceneBlob={previewSceneData}
               />
+              </div>
             </section>
           </aside>
 
-          <SceneEditorActionBar
+          {!isPulse ? <SceneEditorActionBar
             currentSection={currentSection}
             currentSectionIndex={currentSectionIndex}
             isActionBarStuck={isActionBarStuck}
@@ -1535,7 +1600,7 @@ export function SceneEditorShell({
             submitLabel={isEditMode ? "Update scene" : "Create scene"}
             submittingLabel={isEditMode ? "Updating scene..." : "Creating scene..."}
             onSectionStep={handleSectionStep}
-          />
+          /> : null}
 
           <div
             aria-hidden="true"
