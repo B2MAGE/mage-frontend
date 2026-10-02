@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>MAGE audio response browser check</title>
+<style>body{font:16px system-ui;background:#101522;color:#ecf1ff;padding:32px;max-width:1000px;margin:auto}button{padding:12px 18px;font:inherit;cursor:pointer}pre{white-space:pre-wrap;line-height:1.7;padding:20px;background:#1c2539;border-radius:12px}h1{font-size:28px}</style>
+<h1>MAGE audio response browser check</h1>
+<p>Runs the installed engine analysis in a real AudioWorklet using silent, generated test tones.</p>
+<button id="run">Run audio check</button>
+<pre id="results">Ready.</pre>
+<script type="module">
+const modulePath = new URLSearchParams(location.search).has('minified')
+  ? '/.local/audio-analysis-built.js' : '/node_modules/@notrac/mage/dist/audio-analysis.js'
+const { AudioAnalysisSession } = await import(/* @vite-ignore */ modulePath)
+const button = document.querySelector('#run')
+const results = document.querySelector('#results')
+button.addEventListener('click', async () => {
+  button.disabled = true
+  results.textContent = 'Checking native audio processing…\n'
+  try {
+    for (const requestedRate of [44100, 48000]) {
+      const context = new AudioContext({ sampleRate: requestedRate })
+      const oscillator = context.createOscillator()
+      oscillator.frequency.value = 100
+      const level = context.createGain()
+      level.gain.value = 0.2
+      oscillator.connect(level)
+      const session = new AudioAnalysisSession()
+      try {
+        await context.resume()
+        if (!await session.connect({ context, getOutput: () => level })) throw new Error(JSON.stringify(session.snapshot(context.currentTime)))
+        oscillator.start()
+        for (const fps of [30, 60, 120]) {
+          session.reset()
+          const frames = []
+          const until = performance.now() + 600
+          while (performance.now() < until) {
+            await new Promise(resolve => setTimeout(resolve, 1000 / fps))
+            frames.push(...session.drain(context.currentTime))
+          }
+          const gaps = frames.slice(1).map((frame, i) => frame.time - frames[i].time)
+          const valid = frames.length >= 40 && gaps.every(gap => Math.abs(gap - 0.01) < 0.00001)
+          if (!valid) throw new Error(`Clock check failed at ${context.sampleRate} Hz / ${fps} FPS: ${frames.length} frames, ${Math.max(...gaps)} largest gap`)
+          results.textContent += `PASS · ${context.sampleRate} Hz · ${fps} FPS consumer · ${frames.length} measurements · 10 ms interval\n`
+        }
+        for (const [band, frequency] of [['bass', 100], ['mid', 700], ['treble', 5000]]) {
+          oscillator.frequency.value = frequency
+          await new Promise(resolve => setTimeout(resolve, 250))
+          const measured = session.snapshot(context.currentTime).frame?.levels
+          if (!measured || measured[band] < 0.05 || ['bass', 'mid', 'treble'].some(other => other !== band && measured[other] > measured[band] * 0.1)) {
+            throw new Error(`${frequency} Hz tone routed incorrectly: ${JSON.stringify(measured)}`)
+          }
+          results.textContent += `PASS · ${frequency} Hz tone → ${band} signal\n`
+        }
+        session.disconnect()
+        if (session.drain(context.currentTime).length || session.snapshot(context.currentTime).frame) throw new Error('Stale measurements after disconnect')
+        results.textContent += 'PASS · disconnect clears pending measurements\n'
+      } finally {
+        session.dispose()
+        oscillator.stop()
+        await context.close()
+      }
+    }
+    results.textContent += '\nAll native audio checks passed.'
+  } catch (error) {
+    results.textContent += `\nFAIL · ${error.stack || error}`
+  } finally {
+    button.disabled = false
+  }
+})
+</script>
+</html>
