@@ -1,10 +1,18 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import {
   formatHandleInput,
-  HANDLE_INPUT_MAX_LENGTH,
+  HANDLE_FORMAT_ERROR,
   validateHandleInput,
 } from '@auth/handle'
-import { FormNotice, PendingButtonLabel, SurfaceCard, TextInputField } from '@shared/ui'
+import { HandleInputField } from '@auth/HandleInputField'
+import {
+  FormNotice,
+  PendingButtonLabel,
+  ProfileIdentityPreview,
+  PublicProfileMarker,
+  SurfaceCard,
+  TextInputField,
+} from '@shared/ui'
 import type { ProfileDetailsFields, ProfileSaveResult } from '../types'
 
 type ProfileDetailsFormProps = {
@@ -32,12 +40,12 @@ export function ProfileDetailsForm({
   lastName,
   onSave,
 }: ProfileDetailsFormProps) {
-  const formattedHandle = formatHandleInput(handle)
+  const handleName = formatHandleInput(handle).replace(/^@/, '')
   const [profileFields, setProfileFields] = useState<EditableProfileFields>(() => ({
     firstName,
     lastName,
     displayName,
-    handle: formattedHandle,
+    handle: handleName,
     description,
   }))
   const [errors, setErrors] = useState<ProfileFormErrors>({})
@@ -49,7 +57,7 @@ export function ProfileDetailsForm({
     profileFields.firstName !== firstName ||
     profileFields.lastName !== lastName ||
     profileFields.displayName !== displayName ||
-    profileFields.handle !== formattedHandle ||
+    profileFields.handle !== handleName ||
     profileFields.description !== description
 
   useEffect(() => {
@@ -57,7 +65,7 @@ export function ProfileDetailsForm({
       firstName,
       lastName,
       displayName,
-      handle: formatHandleInput(handle),
+      handle: formatHandleInput(handle).replace(/^@/, ''),
       description,
     })
   }, [description, firstName, handle, lastName, displayName])
@@ -84,8 +92,11 @@ export function ProfileDetailsForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const trimmedHandle = profileFields.handle.trim()
-    const handleError = validateHandleInput(trimmedHandle)
+    const formattedHandle = formatHandleInput(profileFields.handle)
+    const handleValidationError = validateHandleInput(formattedHandle)
+    const handleError = handleValidationError === HANDLE_FORMAT_ERROR
+      ? 'Use 3–30 letters, numbers, or underscores, starting with a letter.'
+      : handleValidationError
     const descriptionError =
       profileFields.description.length > 300
         ? 'Description must be at most 300 characters.'
@@ -109,7 +120,7 @@ export function ProfileDetailsForm({
         firstName: profileFields.firstName.trim(),
         lastName: profileFields.lastName.trim(),
         displayName: profileFields.displayName.trim(),
-        handle: trimmedHandle,
+        handle: formattedHandle,
         description: profileFields.description.trim() || null,
       })
 
@@ -144,37 +155,43 @@ export function ProfileDetailsForm({
         <p>Your display name, handle, and description appear publicly on your profile.</p>
       </div>
       <form className="settings-fields settings-profile-form" onSubmit={handleSubmit}>
-        <div className="settings-identity">
-          <span className="settings-identity__avatar" aria-hidden="true">{displayName.trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'MG'}</span>
-          <div className="settings-identity__copy"><strong>{displayName}</strong><span>{email}</span></div>
-        </div>
         <TextInputField
+          id="settings-email"
+          label="Email"
+          fieldClassName="settings-field--full"
+          hint="Your sign-in email. It can't be changed here."
+          name="email"
+          readOnly
+          type="email"
+          value={email}
+        />
+        <ProfileIdentityPreview
+          className="settings-identity"
+          displayName={profileFields.displayName}
+          handle={profileFields.handle}
+        />
+        <TextInputField
+          aria-describedby="settings-public-profile-hint"
           error={errors.displayName}
           id="settings-display-name"
           label="Display name"
+          labelSuffix={<PublicProfileMarker />}
           fieldClassName="settings-field--full"
-          hint="Shown publicly on your scenes and comments."
           name="displayName"
           onChange={(event) => handleFieldChange('displayName', event.target.value)}
-          placeholder="Display name"
           type="text"
           value={profileFields.displayName}
         />
-        <TextInputField
-          autoCapitalize="none"
-          autoComplete="username"
+        <HandleInputField
+          aria-describedby="settings-public-profile-hint"
           error={errors.handle}
           id="settings-handle"
           label="Handle"
+          labelSuffix={<PublicProfileMarker />}
           fieldClassName="settings-field--full"
-          hint="Your unique profile address. Start with @ and use 3–30 letters, numbers, or underscores."
-          maxLength={HANDLE_INPUT_MAX_LENGTH}
-          name="handle"
-          onChange={(event) => handleFieldChange('handle', event.target.value)}
-          placeholder="@sceneartist"
+          hint="Use 3–30 letters, numbers, or underscores, starting with a letter."
+          onValueChange={(nextValue) => handleFieldChange('handle', nextValue)}
           required
-          spellCheck={false}
-          type="text"
           value={profileFields.handle}
         />
         <TextInputField
@@ -183,7 +200,6 @@ export function ProfileDetailsForm({
           label="First name"
           name="firstName"
           onChange={(event) => handleFieldChange('firstName', event.target.value)}
-          placeholder="First name"
           type="text"
           value={profileFields.firstName}
         />
@@ -193,30 +209,27 @@ export function ProfileDetailsForm({
           label="Last name"
           name="lastName"
           onChange={(event) => handleFieldChange('lastName', event.target.value)}
-          placeholder="Last name"
           type="text"
           value={profileFields.lastName}
         />
         <div className="field-group settings-field--full">
-          <label htmlFor="settings-description">Description</label>
+          <label htmlFor="settings-description">Description<PublicProfileMarker /></label>
           <textarea
             aria-describedby={
               errors.description
-                ? 'settings-description-hint settings-description-error'
-                : 'settings-description-hint'
+                ? 'settings-public-profile-hint settings-description-count settings-description-error'
+                : 'settings-public-profile-hint settings-description-count'
             }
             aria-invalid={Boolean(errors.description) || undefined}
             id="settings-description"
             maxLength={300}
             name="description"
             onChange={(event) => handleFieldChange('description', event.target.value)}
-            placeholder="Tell people about the scenes you make."
             rows={4}
             value={profileFields.description}
           />
-          <p className="field-hint settings-description-hint" id="settings-description-hint">
-            <span>Shown on your public profile.</span>
-            <span>{profileFields.description.length} / 300</span>
+          <p className="field-hint settings-description-hint">
+            <span id="settings-description-count">{profileFields.description.length} / 300</span>
           </p>
           {errors.description ? (
             <p className="field-error" id="settings-description-error" role="alert">
@@ -234,6 +247,9 @@ export function ProfileDetailsForm({
         {successMessage ? <FormNotice tone="note">{successMessage}</FormNotice> : null}
 
         <div className="settings-actions">
+          <p className="field-hint public-profile-hint" id="settings-public-profile-hint">
+            <PublicProfileMarker />Shown on your public profile.
+          </p>
           <button
             aria-busy={isSubmitting}
             className="demo-link auth-submit settings-action-button settings-save-button"
