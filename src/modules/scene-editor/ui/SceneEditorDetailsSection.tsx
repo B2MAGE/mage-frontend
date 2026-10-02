@@ -118,7 +118,7 @@ function ThumbnailField({
             {thumbnailPreviewUrl ? (
               <img alt="Captured thumbnail preview" src={thumbnailPreviewUrl} />
             ) : (
-              <span aria-hidden="true" className="scene-editor-thumbnail__placeholder" />
+              <span className="scene-editor-thumbnail__placeholder">No thumbnail captured</span>
             )}
           </div>
           <div className="scene-editor-thumbnail__copy">

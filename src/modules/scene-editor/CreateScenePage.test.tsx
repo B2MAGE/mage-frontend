@@ -357,6 +357,11 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
     const user = userEvent.setup()
     renderCreateScenePage(themeId)
 
+    const emptyThumbnail = screen.getByText('No thumbnail captured')
+    const thumbnailFrame = emptyThumbnail.closest('.scene-editor-thumbnail__frame')
+    expect(thumbnailFrame).not.toBeNull()
+    expect(thumbnailFrame?.querySelector('svg')).toBeNull()
+    expect(within(thumbnailFrame as HTMLElement).queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Create a scene' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Start with the basics.' })).toBeInTheDocument()
     expect(screen.getByLabelText('Playlists')).toBeDisabled()
@@ -368,6 +373,7 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
     await user.type(screen.getByLabelText(/description/i), 'A live scene draft.')
     await user.click(screen.getByRole('button', { name: /capture thumbnail/i }))
     expect(screen.getByAltText('Captured thumbnail preview')).toBeInTheDocument()
+    expect(screen.queryByText('No thumbnail captured')).not.toBeInTheDocument()
 
     const navigation = within(screen.getByRole('navigation', { name: 'Section navigation' }))
     expect(navigation.getAllByRole('button')).toHaveLength(7)
