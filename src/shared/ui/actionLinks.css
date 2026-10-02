@@ -1,0 +1,26 @@
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.primary-button { background: var(--text); color: var(--bg); }
+.secondary-button { border-color: var(--border-strong); background: var(--surface); color: var(--text); }
+.primary-button:hover { background: #dedee8; color: var(--bg); }
+.secondary-button:hover { border-color: var(--tag-pill-hover-border); background: var(--surface-hover); color: var(--text); }
+.primary-button:focus-visible,
+.secondary-button:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button, .secondary-button { transition: none; }
+}
