@@ -125,11 +125,12 @@ export function SettingsLoadingState() {
           >
             <SectionHeading title="Profile details" />
             <div className="settings-profile-form settings-loading__profile-form">
+              <FieldSkeleton full />
               <div className="settings-loading__identity">
                 <Skeleton className="settings-loading__avatar" shape="circle" />
                 <div className="settings-loading__identity-copy">
                   <Skeleton className="settings-loading__identity-name" shape="line" />
-                  <Skeleton className="settings-loading__identity-email" shape="line" />
+                  <Skeleton className="settings-loading__identity-handle" shape="line" />
                 </div>
               </div>
               <FieldSkeleton full />

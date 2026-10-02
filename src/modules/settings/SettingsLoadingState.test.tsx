@@ -15,7 +15,7 @@ describe('SettingsLoadingState', () => {
     expect(container.querySelector('.settings-title')).toHaveTextContent('Settings')
     expect(container.querySelectorAll('.settings-loading__nav-line')).toHaveLength(3)
     expect(container.querySelectorAll('.settings-loading__theme-card')).toHaveLength(2)
-    expect(container.querySelectorAll('.settings-loading__field-input')).toHaveLength(8)
+    expect(container.querySelectorAll('.settings-loading__field-input')).toHaveLength(9)
     expect(container.querySelector('.settings-loading__security-note')).toBeInTheDocument()
   })
 

@@ -1,0 +1,33 @@
+.text-input-control--prefixed,
+.text-input-control--action {
+  position: relative;
+}
+
+.text-input-prefix {
+  position: absolute;
+  inset-inline-start: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted, #757b87);
+  font-size: 16px;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.field-group .text-input-control--prefixed > input {
+  padding-inline-start: 34px;
+}
+
+.field-group .text-input-control--action > input {
+  padding-inline-end: 64px;
+}
+
+.text-input-action {
+  position: absolute;
+  inset-inline-end: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}

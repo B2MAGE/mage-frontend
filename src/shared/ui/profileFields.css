@@ -1,0 +1,69 @@
+.public-profile-marker {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+label .public-profile-marker {
+  margin-left: 4px;
+}
+
+.public-profile-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-identity-preview {
+  min-width: 0;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--surface-soft-border);
+  border-radius: 13px;
+  background: var(--surface-nested-bg);
+  color: var(--text);
+}
+
+.profile-identity-preview__avatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.profile-identity-preview__copy {
+  min-width: 0;
+}
+
+.profile-identity-preview__copy strong {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-identity-preview__copy span {
+  display: block;
+  overflow: hidden;
+  color: var(--text-muted, var(--muted));
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-theme='mage-pulse'] .profile-identity-preview {
+  border-color: rgba(255,255,255,.09);
+  background: #111318;
+}
+
+html[data-theme='classic-facebook'] .profile-identity-preview {
+  border-radius: 3px;
+}
