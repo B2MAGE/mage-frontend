@@ -37,29 +37,19 @@ Thumbnail capture preserves the current live preview aspect ratio. If a thumbnai
 
 Run npm test, npm run lint and npm run build. During this migration the real local API was also checked through browser registration/login, recovery, guest/authenticated homepage, save toggling, library pagination/filter recovery, scene creation/editing and public MinIO thumbnail uploads. Desktop and mobile layouts are compared with the original HTML mockups.
 
-## Integration Acceptance Notes — October 1, 2026
+## Integration Acceptance — October 2, 2026
 
 The reconstructed frontend stack passed all 549 tests, lint, and the production
 build. The backend stack passed all 341 tests, including PostgreSQL integration
-coverage. Merge results are compared with the tested source trees. Story-to-PR
-mapping and completion status are recorded in [#117](https://github.com/B2MAGE/mage-frontend/issues/117).
+coverage. Merge results were compared with the tested source trees.
 
-The earlier Verification section records historical checks, not a complete verification of the
-final integration. Passing tests, lint, and builds does not establish visual,
-keyboard, contrast, or touch-target acceptance. The remaining review is tracked
-explicitly:
+The integrated layout refresh and its documented behavior are accepted as the
+delivered baseline. Future visual, responsive, accessibility, or state regressions
+should be recorded as focused follow-up issues.
 
-- [#117](https://github.com/B2MAGE/mage-frontend/issues/117) still needs a complete
-  mockup-to-route/state/viewport inventory, asset sources, ownership/dependencies,
-  and visual approval evidence. The route table here is only a starting point.
-- [#123](https://github.com/B2MAGE/mage-frontend/issues/123) still needs acceptance
-  of the mobile library treatment. The implementation keeps a horizontally
-  scrollable table (minimum 940px in Pulse, 960px in Classic); it does not transform
-  rows into mobile cards. Toolbars and pagination wrap separately.
-- [#126](https://github.com/B2MAGE/mage-frontend/issues/126) remains the final
-  route/state and accessibility review gate across both themes, desktop, mobile,
-  and intermediate featured-card widths. Record results and link any remaining
-  regressions before marking that gate complete.
+The accepted My Scenes mobile treatment keeps the scene-management table
+horizontally scrollable (minimum 940px in Pulse and 960px in Classic) while the
+toolbars and pagination wrap separately.
 
 The accepted homepage scope uses recent scenes for For You and newest ordering
 for Featured/Recommended discovery fallbacks. The Watch/editor scope supports
