@@ -24,6 +24,10 @@ Demo account: ari@pulse.local / PulseDemo2026!. These are disposable local fixtu
 | /reset-password | Token-based password reset and invalid-link state. |
 | /settings | Appearance, profile and password panels. |
 | /my-scenes | Owner's published scenes, filtering, pagination and Edit links. |
+| /@handle | Public creator identity and searchable, sortable, paginated scenes. |
+| /profile | Signed-in shortcut to the account's public handle or profile settings. |
+| /scenes/:id/edit | Owner-only editing through the shared scene studio. |
+| /about | Product introduction with shared, engine-rendered brand artwork. |
 
 The scene editor's Edit links preserve ownership checks. Local audio is selected from the user's device; fixture scenes do not claim to contain the mockup's sample audio tracks. Follow remains unavailable because the backend has no creator-follow feature. Draft filtering returns an honest empty state because saved drafts are not supported by the backend. The editor's saved-playlist selector is explicitly unavailable; local audio queues in the player still work.
 
@@ -33,4 +37,26 @@ Thumbnail capture preserves the current live preview aspect ratio. If a thumbnai
 
 Run npm test, npm run lint and npm run build. During this migration the real local API was also checked through browser registration/login, recovery, guest/authenticated homepage, save toggling, library pagination/filter recovery, scene creation/editing and public MinIO thumbnail uploads. Desktop and mobile layouts are compared with the original HTML mockups.
 
-This work is kept on the local pulse-mockups-local branch. Do not push or merge it without explicit approval.
+## Integration Acceptance Notes — October 1, 2026
+
+The paragraph above records historical checks, not a complete verification of the
+final integration. Passing tests, lint, and builds does not establish visual,
+keyboard, contrast, or touch-target acceptance. The remaining review is tracked
+explicitly:
+
+- [#117](https://github.com/B2MAGE/mage-frontend/issues/117) still needs a complete
+  mockup-to-route/state/viewport inventory, asset sources, ownership/dependencies,
+  and visual approval evidence. The route table here is only a starting point.
+- [#123](https://github.com/B2MAGE/mage-frontend/issues/123) still needs acceptance
+  of the mobile library treatment. The implementation keeps a horizontally
+  scrollable table (minimum 940px in Pulse, 960px in Classic); it does not transform
+  rows into mobile cards. Toolbars and pagination wrap separately.
+- [#126](https://github.com/B2MAGE/mage-frontend/issues/126) remains the final
+  route/state and accessibility review gate across both themes, desktop, mobile,
+  and intermediate featured-card widths. Record results and link any remaining
+  regressions before marking that gate complete.
+
+The accepted homepage scope uses recent scenes for For You and newest ordering
+for Featured/Recommended discovery fallbacks. The Watch/editor scope supports
+local audio queues; server-saved playlists and creator following are not delivered
+by this layout refresh. Preserve these boundaries when recording issue completion.
