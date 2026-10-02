@@ -13,6 +13,9 @@ vi.mock('@modules/discovery',()=>({ScenesPage:()=> <div>Classic scene discovery<
 vi.mock('@shared/lib',async original=>({ ...await original<typeof import('@shared/lib')>(), fetchScenes:vi.fn(), fetchTags:vi.fn() }))
 vi.mock('../scene-detail/loaders',()=>({fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
 vi.mock('@modules/player',()=>({MagePlayer:()=> <div>Live featured player</div>}))
+vi.mock('@modules/scene-artwork',()=>({
+ BrandScene:({reactToBeat,className}:{reactToBeat?:boolean;className?:string})=> <div data-testid="welcome-brand-scene" className={className} data-react-to-beat={String(reactToBeat)} />,
+}))
 const engagement={views:18,upvotes:4,downvotes:0,saves:2,currentUserVote:null,currentUserSaved:false}
 const scene={sceneId:1,ownerUserId:1,creatorDisplayName:'Ari Rivera',creatorHandle:'aririvera',name:'Neon Bloom',description:'A reactive scene.',thumbnailRef:null,sceneData:{},createdAt:'2026-09-20T00:00:00Z',engagement}
 function show(themeId: AppThemeId = 'mage-pulse') {
@@ -48,6 +51,9 @@ describe('Homepage mockup behavior',()=>{
  it('shows the welcome panel to guests and links featured browsing to scenes',async()=>{
   show()
   expect(screen.getByRole('heading',{name:'Build something that reacts.'})).toBeInTheDocument()
+  expect(screen.getByTestId('welcome-brand-scene')).toHaveAttribute('data-react-to-beat','false')
+  expect(screen.getByTestId('welcome-brand-scene')).toHaveClass('editor-brand-scene')
+  expect(screen.getByTestId('welcome-brand-scene').closest('.editor-canvas')).toBeInTheDocument()
   expect(screen.getByRole('link',{name:/Sign up/})).toHaveAttribute('href','/register')
   expect(screen.getByRole('link',{name:/Browse all featured/})).toHaveAttribute('href','/scenes?sort=featured')
   expect(await screen.findByText('Live featured player')).toBeInTheDocument()
@@ -80,6 +86,7 @@ describe('Homepage mockup behavior',()=>{
   show()
   expect(screen.queryByRole('heading',{name:'Build something that reacts.'})).not.toBeInTheDocument()
   expect(await screen.findByText('Live featured player')).toBeInTheDocument()
+  expect(screen.queryByTestId('welcome-brand-scene')).not.toBeInTheDocument()
   expect(screen.getByRole('heading',{name:'Featured Scenes'})).toBeInTheDocument()
   expect(screen.getByRole('heading',{name:'For You'})).toBeInTheDocument()
  })

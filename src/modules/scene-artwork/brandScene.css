@@ -1,0 +1,21 @@
+.brand-scene {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  width: 100%;
+  aspect-ratio: 410 / 350;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg, 20px);
+}
+
+.brand-scene__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.brand-scene__canvas[data-ready='true'] { visibility: visible; }

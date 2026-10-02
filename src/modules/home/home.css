@@ -257,61 +257,16 @@
       display: grid;
       place-items: center;
       overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 42%, rgba(124,108,255,.24), transparent 31%),
-
-
-        #08090c;
+      background: #08090c;
     }
 
-    html[data-theme='mage-pulse'] .pulse-home .editor-pulse {
-      position: relative;
-      width: 158px;
-      aspect-ratio: 1;
-      animation: editor-pulse-drift 7s ease-in-out infinite;
-      will-change: transform;
-    }
-
-    html[data-theme='mage-pulse'] .pulse-home .editor-pulse-ring {
+    html[data-theme='mage-pulse'] .pulse-home .editor-brand-scene {
       position: absolute;
-      border-radius: 40% 60% 57% 43% / 47% 42% 58% 53%;
-      pointer-events: none;
-    }
-
-    html[data-theme='mage-pulse'] .pulse-home .editor-pulse-ring--outer {
       inset: 0;
-      border: 2px solid rgba(204,196,255,.78);
-      box-shadow:
-        0 0 42px rgba(124,108,255,.58),
-        inset 0 0 30px rgba(124,108,255,.16);
-    }
-
-    html[data-theme='mage-pulse'] .pulse-home .editor-pulse-ring--two {
-      inset: 14%;
-      border: 1px solid rgba(99,240,214,.58);
-      transform: rotate(31deg);
-    }
-
-    html[data-theme='mage-pulse'] .pulse-home .editor-pulse-ring--three {
-      inset: 29%;
-      border: 1px solid rgba(255,104,197,.48);
-      transform: rotate(-38deg);
-    }
-
-    html[data-theme='mage-pulse'] .pulse-home .editor-pulse-ring--core {
-      inset: 43%;
-      border: 1px solid rgba(178,166,255,.7);
-      background: radial-gradient(circle, rgba(124,108,255,.62), rgba(124,108,255,.08) 68%, transparent 72%);
-      box-shadow: 0 0 18px rgba(124,108,255,.55);
-    }
-
-    @keyframes editor-pulse-drift {
-      0%, 100% { transform: translateY(0) rotate(22deg) scale(1); }
-      50% { transform: translateY(-7px) rotate(29deg) scale(1.045); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      html[data-theme='mage-pulse'] .pulse-home .editor-pulse { animation: none; }
+      height: 100%;
+      aspect-ratio: auto;
+      border: 0;
+      border-radius: 0;
     }
 
     @media (max-width: 1000px) {

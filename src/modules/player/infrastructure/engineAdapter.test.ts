@@ -104,6 +104,26 @@ describe('createMagePlayer', () => {
     expect(engineMocks.play).toHaveBeenCalledTimes(1)
   })
 
+  it('forwards an opt-in render pixel ratio without changing the control configuration', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const canvas = document.createElement('canvas')
+
+    const player = await createMagePlayer(canvas, { pixelRatio: 2 })
+
+    expect(engineMocks.initMAGE).toHaveBeenCalledWith({
+      autoStart: false,
+      canvas,
+      log: false,
+      pixelRatio: 2,
+      withControls: {
+        active: false,
+        integrated: false,
+      },
+    })
+    expect(engineMocks.start).toHaveBeenCalledTimes(1)
+    player.dispose()
+  })
+
   it('does not reset engine time when it is already past zero', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
@@ -388,6 +408,17 @@ describe('createMagePlayer', () => {
 
     expect(engineMocks.setSyntheticPreview).toHaveBeenLastCalledWith(false, undefined)
     expect(engineMocks.setSyntheticPreview).toHaveBeenCalledTimes(2)
+  })
+
+  it('forwards an optional slower tempo without changing the default preview rhythm', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+
+    player.setSyntheticPreview(true, 73, 0.5)
+    expect(engineMocks.setSyntheticPreview).toHaveBeenLastCalledWith(true, 73, 0.5)
+    player.setSyntheticPreview(true, 73)
+    expect(engineMocks.setSyntheticPreview).toHaveBeenLastCalledWith(true, 73)
+    expect(engineMocks.loadAudio).not.toHaveBeenCalled()
   })
 
   it('resets scene and audio playback back to the beginning', async () => {

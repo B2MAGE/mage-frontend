@@ -7,6 +7,7 @@ import { fetchScenes, fetchTags, formatMetricLabel, formatRelativeTime, type Sce
 import { EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton, UserAvatar } from '@shared/ui'
 import { selectPopularHomeTags } from './selectors'
 import { MagePlayer } from '@modules/player'
+import { BrandScene } from '@modules/scene-artwork'
 import { DiscoverySceneCard } from '../discovery/ui/DiscoverySceneCard'
 import { SceneCollectionState } from '../discovery/ui/SceneCollectionState'
 import { DiscoveryEmptyState, DiscoveryErrorState, SceneGridSkeleton } from '../discovery/ui/DiscoveryStates'
@@ -163,9 +164,9 @@ function PulseHomePage() {
         </div>
         <div className="editor-preview" aria-hidden="true">
           <div className="editor-sidebar">{['Details','Scene','Camera','Motion','Effects','Confirm'].map((step,i) => <span key={step} className={`editor-step${i === 0 ? ' active' : ''}`}>{step}</span>)}</div>
-          <div className="editor-canvas"><div className="editor-pulse">
-            {['outer','two','three','core'].map(ring => <span key={ring} className={`editor-pulse-ring editor-pulse-ring--${ring}`} />)}
-          </div></div>
+          <div className="editor-canvas">
+            <BrandScene className="editor-brand-scene" reactToBeat={false} />
+          </div>
         </div>
       </section>}
       <section className="featured-section" aria-labelledby="featured-heading">

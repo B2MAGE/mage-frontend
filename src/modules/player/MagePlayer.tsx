@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
-import { LoadingRegion } from '@shared/ui'
+import { MagePlayerLoading } from './MagePlayerLoading'
 import {
   createMagePlayer,
   type MagePlayerAudioState,
@@ -600,10 +600,7 @@ export function MagePlayer({
   let message = 'Pass a scene blob into this player to render it in the browser.'
   let role: 'alert' | 'status' = 'status'
 
-  if (status === 'loading') {
-    title = 'Loading scene preview.'
-    message = 'Initializing the MAGE engine and applying the scene blob.'
-  } else if (status === 'error') {
+  if (status === 'error') {
     title = 'Unable to render this scene.'
     message = loadError?.message ?? 'MAGE could not render this scene.'
     role = 'alert'
@@ -625,15 +622,7 @@ export function MagePlayer({
           type="file"
         />
         {status === 'loading' ? (
-          <LoadingRegion
-            className="mage-player__overlay mage-player__overlay--loading"
-            label={title}
-          >
-            <div className="mage-player__overlay-copy">
-              <span className="mage-player__loading-indicator" />
-              <strong>Loading preview</strong>
-            </div>
-          </LoadingRegion>
+          <MagePlayerLoading />
         ) : status !== 'ready' ? (
           <div className="mage-player__overlay" role={role} aria-live="polite">
             <div className="mage-player__overlay-copy">
