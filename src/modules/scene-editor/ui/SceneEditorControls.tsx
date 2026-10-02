@@ -39,6 +39,7 @@ type SliderFieldProps = NumberFieldProps & {
 }
 
 type ToggleFieldProps = {
+  ariaLabel?: string
   compact?: boolean
   description?: string
   id: string
@@ -62,6 +63,7 @@ type EffectCardProps = PropsWithChildren<{
   footer?: ReactNode
   onToggle?: (enabled: boolean) => void
   title: string
+  toggleLabel?: string
 }>
 
 function readNumericValue(event: ChangeEvent<HTMLInputElement>) {
@@ -206,6 +208,7 @@ export function SliderField({
 }
 
 export function ToggleField({
+  ariaLabel,
   checked,
   compact = false,
   description,
@@ -227,6 +230,7 @@ export function ToggleField({
           </div>
           <span className="scene-toggle__control">
             <input
+              aria-label={ariaLabel}
               checked={checked}
               className="scene-toggle__input"
               id={id}
@@ -285,6 +289,7 @@ export function EffectCard({
   footer,
   onToggle,
   title,
+  toggleLabel,
 }: EffectCardProps) {
   const isEnabled = enabled ?? true
   const hasContent = children !== undefined && children !== null
@@ -300,6 +305,7 @@ export function EffectCard({
           </div>
           {onToggle ? (
             <ToggleField
+              ariaLabel={toggleLabel}
               checked={isEnabled}
               compact
               id={toggleId}
