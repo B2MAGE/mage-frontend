@@ -156,6 +156,17 @@ the About/home artwork in a browser. Unit tests alone cannot validate WebGL outp
 
 No feature module should import from `patches/` or from `@notrac/mage` directly.
 
+## Editor shaders and beat preview
+
+The shader catalog includes all fourteen built-in 1.0.3 shaders (including preset
+13, named Rose Circuit in the app). Selecting a shader does not replace camera,
+skybox, or effect settings.
+
+Ripple Rings and Tidal Lantern are additional shader choices with their own
+authored audio behavior. Audio Gain controls signal sensitivity, and Easing Speed
+controls smoothing; scene geometry responds as defined by its shader. The editor
+does not rewrite shader source or apply additional scene-wide audio transforms.
+
 ## Current Caveats
 
 - The published package types are still incomplete for the runtime behavior the frontend uses. The adapter keeps a small local bridge type for that gap.

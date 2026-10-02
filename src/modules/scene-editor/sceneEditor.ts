@@ -1,4 +1,5 @@
 import { EMBEDDED_SHADER_SCENES } from './embeddedShaderScenes'
+import { ADDITIONAL_SHADER_SCENES } from './additionalShaderScenes'
 
 export type SceneData = Record<string, unknown>
 
@@ -158,7 +159,7 @@ export const PASS_LABELS: Record<ScenePassId, string> = {
   toonShader: 'Toon',
 }
 
-export const SHADER_SCENES: ShaderSceneOption[] = [...EMBEDDED_SHADER_SCENES]
+export const SHADER_SCENES: ShaderSceneOption[] = [...EMBEDDED_SHADER_SCENES, ...ADDITIONAL_SHADER_SCENES]
 
 export const TONE_MAPPING_OPTIONS: ToneMappingOption[] = [
   {

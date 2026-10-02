@@ -190,7 +190,11 @@ export function buildEffectiveSceneData(
     isMotionAdvancedEnabled: boolean
   },
 ) {
-  let nextSceneData = sanitizeSceneData(sceneData)
+  let nextSceneData = { ...sanitizeSceneData(sceneData) }
+  // These retired app controls never own the authored shader source. Remove
+  // only their metadata when editing/saving; leave the scene itself untouched.
+  delete nextSceneData.reactions
+  delete nextSceneData.mageTemplate
 
   if (!options.isCameraAdvancedEnabled) {
     nextSceneData = mergeSceneEditorBranch(nextSceneData, 'intent', {

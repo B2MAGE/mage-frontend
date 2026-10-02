@@ -15,7 +15,6 @@ import {
 } from "./ui/SceneEditorControls";
 import {
   PASS_LABELS,
-  SHADER_SCENES,
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
@@ -88,6 +87,7 @@ export function SceneEditorShell({
     handleMotionAdvancedToggle,
     handleNameChange,
     handleRawSceneDataChange,
+    handleShaderSelection,
     handleSectionJump,
     handleSectionStep,
     handleTagSearchChange,
@@ -612,20 +612,7 @@ export function SceneEditorShell({
                     }
                     id="shader"
                     label="Shader"
-                    onChange={(nextValue) => {
-                      const nextShaderScene = SHADER_SCENES.find(
-                        (shaderScene) => shaderScene.id === nextValue,
-                      );
-
-                      if (!nextShaderScene) {
-                        return;
-                      }
-
-                      updateBranch("visualizer", (currentVisualizer) => ({
-                        ...currentVisualizer,
-                        shader: nextShaderScene.shader,
-                      }));
-                    }}
+                    onChange={handleShaderSelection}
                     options={shaderSelection.options}
                     value={shaderSelection.value}
                   />
@@ -667,7 +654,7 @@ export function SceneEditorShell({
 
                 <div className="field-group">
                   <FieldGroupLabel
-                    description="Edit the actual shader source saved into visualizer.shader for this scene."
+                    description="Edit the scene's shader source directly. Changes switch the selection to Custom Shader."
                     htmlFor="shader-source"
                     label="Custom Shader"
                   />

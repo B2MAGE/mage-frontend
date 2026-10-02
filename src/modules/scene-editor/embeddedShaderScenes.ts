@@ -514,4 +514,62 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
       blend(nsin(time * size) * 0.20502448998246994);
     `,
   },
+  {
+    id: 'embedded-scene-13',
+    label: 'Rose Circuit',
+    description: 'Bundled engine scene with twin metallic rings, a cylinder, and shifting rose-colored highlights.',
+    shader: `
+      setGeometryQuality(24);
+      setStepSize(0.7838);
+      setMaxIterations(48);
+      let size = input();
+      let pointerDown = input();
+      let mx = mouse.x;
+      let my = mouse.y;
+      let rayDir = normalize(getRayDirection());
+      let t = time * 0.226 +1.5716;
+      let baseSize = max(0.2708, 0.3225 + size * 1.2464 + pointerDown * 0.0867);
+      reset();
+      rotateY(rayDir.x * 0.8003 + mx * 0.83 + sin(t * 1.0544) * 0.0592);
+      rotateX(rayDir.y * 1.3923 + my * 2.2418 + cos(t * 1.5395) * 0.0513);
+      rotateZ(rayDir.z * 0.9036 + sin(t * 0.3942 + 2.9702) * 0.1384);
+      rotateX(1.1899 + sin(t * 1.8883 + 5.4271) * 0.0054);
+      rotateY(1.364 + cos(t * 1.8883 + 5.4271) * 0.0054);
+      rotateZ(-0.2239 + nsin(t * 1.8883 + 5.4271) * 0.0054);
+      let s0 = getSpace();
+      expand(noise(s0 * 2.0455) * 0.0094 + nsin(t * 1.9359 + 2.4569) * 0.0046);
+      color(min(1.0, max(0.0, 0.745 + rayDir.x * 0.3719 + sin(t * 0.8768 + 0) * 0.305)), min(1.0, max(0.0, 0.2488 + rayDir.y * 0.3719 + cos(t * 0.5164 + 0) * 0.2285)), min(1.0, max(0.0, 0.6122 + rayDir.z * 0.3719 + nsin(t * 1.553 + 0) * 0.273)));
+      metal(max(0.0, min(1.0, 0.6355 + pointerDown * 0.12)));
+      shine(max(0.0, min(1.0, 0.4079 + size * 0.05)));
+      torus(max(0.1314, baseSize * 0.6537 + pointerDown * 0.1257 + sin(t * 1.8883 + 2.4569) * 0.0108), max(0.0807, max(0.1314, baseSize * 0.6537 + pointerDown * 0.1257 + sin(t * 1.8883 + 2.4569) * 0.0108) * 0.1909));
+      blend(max(0.02, min(0.45, 0.1098 + nsin(t * 0.6211 + 0.5089) * 0.0234)));
+      reset();
+      rotateY(rayDir.x * 0.8003 + mx * 0.83 + sin(t * 1.0544) * 0.0592);
+      rotateX(rayDir.y * 1.3923 + my * 2.2418 + cos(t * 1.5395) * 0.0513);
+      rotateZ(rayDir.z * 0.9036 + sin(t * 0.3942 + 2.9702) * 0.1384);
+      rotateX(0.8582 + sin(t * 1.0024 + 9.101) * 0.0042);
+      rotateY(1.4936 + cos(t * 1.0024 + 9.101) * 0.0042);
+      rotateZ(1.5492 + nsin(t * 1.0024 + 9.101) * 0.0042);
+      let s1 = getSpace();
+      expand(noise(s1 * 2.6572) * 0.0002 + nsin(t * 1.6689 + 6.1307) * 0.0059);
+      color(min(1.0, max(0.0, 0.745 + rayDir.x * 0.3719 + sin(t * 0.8768 + 0.0589) * 0.305)), min(1.0, max(0.0, 0.2488 + rayDir.y * 0.3719 + cos(t * 0.5164 + 0.0589) * 0.2285)), min(1.0, max(0.0, 0.6122 + rayDir.z * 0.3719 + nsin(t * 1.553 + 0.0589) * 0.273)));
+      metal(max(0.0, min(1.0, 0.6355 + pointerDown * 0.12)));
+      shine(max(0.0, min(1.0, 0.4079 + size * 0.05)));
+      torus(max(0.1324, baseSize * 0.6252 + pointerDown * 0.1172 + sin(t * 1.0024 + 6.1307) * 0.0083), max(0.041, max(0.1324, baseSize * 0.6252 + pointerDown * 0.1172 + sin(t * 1.0024 + 6.1307) * 0.0083) * 0.1639));
+      blend(max(0.02, min(0.45, 0.1098 + nsin(t * 0.6211 + 1.0179) * 0.0234)));
+      reset();
+      rotateY(rayDir.x * 0.8003 + mx * 0.83 + sin(t * 1.0544) * 0.0592);
+      rotateX(rayDir.y * 1.3923 + my * 2.2418 + cos(t * 1.5395) * 0.0513);
+      rotateZ(rayDir.z * 0.9036 + sin(t * 0.3942 + 2.9702) * 0.1384);
+      rotateX(-1.0307 + sin(t * 0.5909 + 5.4207) * 0.0041);
+      rotateY(0.8766 + cos(t * 0.5909 + 5.4207) * 0.0041);
+      rotateZ(-0.0164 + nsin(t * 0.5909 + 5.4207) * 0.0041);
+      let s2 = getSpace();
+      expand(noise(s2 * 1.0838) * 0.01 + nsin(t * 2.1073 + 2.4505) * 0.0003);
+      color(min(1.0, max(0.0, 0.745 + rayDir.x * 0.3719 + sin(t * 0.8768 + 0.1178) * 0.305)), min(1.0, max(0.0, 0.2488 + rayDir.y * 0.3719 + cos(t * 0.5164 + 0.1178) * 0.2285)), min(1.0, max(0.0, 0.6122 + rayDir.z * 0.3719 + nsin(t * 1.553 + 0.1178) * 0.273)));
+      metal(max(0.0, min(1.0, 0.6355 + pointerDown * 0.12)));
+      shine(max(0.0, min(1.0, 0.4079 + size * 0.05)));
+      cylinder(max(0.1318, max(0.0904, baseSize * 0.1671 + pointerDown * 0.1318 + sin(t * 0.5909 + 2.4505) * 0.0081) * 0.2033), max(0.0904, max(0.0904, baseSize * 0.1671 + pointerDown * 0.1318 + sin(t * 0.5909 + 2.4505) * 0.0081) * 1.7875));
+    `,
+  },
 ]
