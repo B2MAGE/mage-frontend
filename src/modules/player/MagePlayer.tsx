@@ -3,6 +3,7 @@ import { MagePlayerLoading } from './MagePlayerLoading'
 import {
   createMagePlayer,
   type MageAudioResponseCapabilities,
+  type MageEngineDiagnostics,
   type MagePlayerAudioState,
   type MagePlayerController,
   type MagePlayerPlaybackState,
@@ -36,6 +37,7 @@ export type MagePlayerProps = {
   initialPlayback?: MagePlayerPlaybackState
   log?: boolean
   onAudioResponseCapabilitiesChange?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
+  onEngineDiagnosticsChange?: (diagnostics: MageEngineDiagnostics | null) => void
   onCaptureFramePreviewChange?: (
     captureFramePreview: (() => Promise<string | null>) | null,
   ) => void
@@ -70,6 +72,7 @@ export function MagePlayer({
   initialPlayback = 'playing',
   log = false,
   onAudioResponseCapabilitiesChange,
+  onEngineDiagnosticsChange,
   onCaptureFramePreviewChange,
   onPlaylistChange,
   onRequestPlaylistOpen,
@@ -88,6 +91,7 @@ export function MagePlayer({
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MagePlayerController | null>(null)
   const capabilitiesCallbackRef = useRef(onAudioResponseCapabilitiesChange)
+  const diagnosticsCallbackRef = useRef(onEngineDiagnosticsChange)
   const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
   const requestedPlaybackRef = useRef<MagePlayerPlaybackState>(initialPlayback)
   const loadedTrackIdRef = useRef<string | null>(null)
@@ -134,6 +138,10 @@ export function MagePlayer({
   useEffect(() => {
     capabilitiesCallbackRef.current = onAudioResponseCapabilitiesChange
   }, [onAudioResponseCapabilitiesChange])
+
+  useEffect(() => {
+    diagnosticsCallbackRef.current = onEngineDiagnosticsChange
+  }, [onEngineDiagnosticsChange])
 
   useEffect(() => {
     latestSceneBlobRef.current = sceneBlob
@@ -211,6 +219,7 @@ export function MagePlayer({
       window.cancelAnimationFrame(animationFrameId)
       playerRef.current = null
       capabilitiesCallbackRef.current?.(null)
+      diagnosticsCallbackRef.current?.(null)
       nextPlayer?.dispose()
     }
   }, [log])
@@ -321,6 +330,42 @@ export function MagePlayer({
       && capabilitiesResult.snapshot?.sceneBlob === sceneBlob
     capabilitiesCallbackRef.current?.(matchesLoadedScene ? capabilitiesResult.snapshot : null)
   }, [capabilitiesResult, hasCapabilitiesCallback, playbackIdentity, playerVersion, sceneBlob, status])
+
+  const hasDiagnosticsCallback = Boolean(onEngineDiagnosticsChange)
+
+  useEffect(() => {
+    if (!hasDiagnosticsCallback) return
+    const player = playerRef.current
+    if (!player || status !== 'ready') {
+      diagnosticsCallbackRef.current?.(null)
+      return
+    }
+
+    let previous: MageEngineDiagnostics | null | undefined
+    function publishMeasurements() {
+      if (playerRef.current !== player) return
+      let next: MageEngineDiagnostics | null = null
+      try {
+        next = player?.getEngineDiagnostics?.() ?? null
+      } catch {
+        next = null
+      }
+      if (previous !== undefined && (previous === next || previous && next
+        && previous.size === next.size && previous.pointerDown === next.pointerDown
+        && previous.currPointerDown === next.currPointerDown && previous.currAudio === next.currAudio)) return
+      previous = next
+      diagnosticsCallbackRef.current?.(next)
+    }
+
+    publishMeasurements()
+    // Consumers opt in by supplying a callback. Keep live readings off the
+    // animation frame path and skip unchanged values.
+    const intervalId = window.setInterval(publishMeasurements, 250)
+    return () => {
+      window.clearInterval(intervalId)
+      diagnosticsCallbackRef.current?.(null)
+    }
+  }, [hasDiagnosticsCallback, playbackIdentity, playerVersion, status])
 
   const hasSimulatedBeat = simulatedBeat !== undefined
   const simulatedBeatEnabled = simulatedBeat?.enabled ?? false

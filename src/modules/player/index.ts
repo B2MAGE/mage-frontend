@@ -23,6 +23,7 @@ export type {
   MageAudioResponseCapabilities,
   MageAudioResponseDiagnostics,
   MageAudioResponseEvent,
+  MageEngineDiagnostics,
   MagePlayerController,
   MagePlayerPlaybackState,
   MageSceneBlob,

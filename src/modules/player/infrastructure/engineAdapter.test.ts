@@ -145,6 +145,35 @@ describe('createMagePlayer', () => {
       .toBeGreaterThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
   })
 
+  it('copies finite live measurements without exposing or changing engine state', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    expect(player.getEngineDiagnostics?.()).toBeNull()
+    expect(engineMocks.getEngineFields).not.toHaveBeenCalled()
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    const fields = engineMocks.getEngineFields()
+    Object.assign(fields.state, { size: 1.5, pointerDown: 0.4, currPointerDown: 1, currAudio: 0.6 })
+    const readings = player.getEngineDiagnostics?.()
+    expect(readings).toEqual({ size: 1.5, pointerDown: 0.4, currPointerDown: 1, currAudio: 0.6 })
+    Object.assign(fields.state, { size: 2, pointerDown: NaN, currPointerDown: '1', currAudio: Infinity })
+    expect(readings?.size).toBe(1.5)
+    expect(player.getEngineDiagnostics?.()).toEqual({ size: 2, pointerDown: null, currPointerDown: null, currAudio: null })
+    expect(fields.state.currPointerDown).toBe('1')
+    player.dispose()
+    expect(player.getEngineDiagnostics?.()).toBeNull()
+  })
+
+  it('reports diagnostics unavailable when the runtime boundary cannot be read', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.getEngineFields.mockReturnValueOnce(undefined)
+    expect(player.getEngineDiagnostics?.()).toBeNull()
+    engineMocks.getEngineFields.mockImplementationOnce(() => { throw new Error('Unavailable') })
+    expect(player.getEngineDiagnostics?.()).toBeNull()
+    expect(player.getPlaybackState()).toBe('playing')
+  })
+
   it('restores the authored audio response when playback is reset', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
     const player = await createMagePlayer(document.createElement('canvas'))
