@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_THEME_STORAGE_KEY, ThemeProvider } from '@theme'
+import { ANIMATED_SCENE_THUMBNAILS_STORAGE_KEY } from '@shared/preferences'
 import { SettingsPage } from './SettingsPage'
 
 let authState = {
@@ -14,9 +15,11 @@ let authState = {
   updateAuthenticatedUser: vi.fn(),
   user: null as null | {
     authProvider: string
+    description?: string | null
     displayName: string
     email: string
     firstName?: string
+    handle?: string
     lastName?: string
     userId: number | null
   },
@@ -58,8 +61,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -68,19 +73,23 @@ describe('SettingsPage', () => {
     renderSettingsPage()
 
     expect(screen.getByRole('heading', { name: /^settings$/i, level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /theme/i, level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /appearance/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /profile details/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /password/i, level: 2 })).toBeInTheDocument()
     expect(
       screen.getByText(
-        /manage your mage profile details and choose the interface theme that fits this device/i,
+        /manage how MAGE looks on this device and update the account details tied to your profile/i,
       ),
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /mage pulse/i })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByLabelText(/email/i)).toHaveValue('artist@example.com')
+    expect(screen.getByText('artist@example.com')).toBeInTheDocument()
     expect(screen.getByLabelText(/first name/i)).toHaveValue('Scene')
     expect(screen.getByLabelText(/display name/i)).toHaveValue('Scene Artist')
+    expect(screen.getByLabelText(/^handle$/i)).toHaveValue('@sceneartist')
     expect(screen.getByLabelText(/last name/i)).toHaveValue('Artist')
+    expect(screen.getByLabelText(/^description$/i)).toHaveValue(
+      'Audio-reactive scenes with a human touch.',
+    )
     expect(screen.queryByText('LOCAL')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
     expect(screen.getByLabelText(/current password/i)).toBeInTheDocument()
@@ -98,8 +107,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -119,7 +130,40 @@ describe('SettingsPage', () => {
     expect(window.localStorage.getItem(APP_THEME_STORAGE_KEY)).toBe('classic-facebook')
   })
 
-  it('saves updated names through the authenticated backend flow', async () => {
+  it('enables animated scene thumbnails by default and saves the device preference', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        handle: 'sceneartist',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    const animatedThumbnailSwitch = screen.getByRole('switch', {
+      name: /animated scene thumbnails/i,
+    })
+
+    expect(animatedThumbnailSwitch).toBeChecked()
+
+    await user.click(animatedThumbnailSwitch)
+
+    expect(animatedThumbnailSwitch).not.toBeChecked()
+    expect(window.localStorage.getItem(ANIMATED_SCENE_THUMBNAILS_STORAGE_KEY)).toBe('false')
+  })
+
+  it('saves updated profile details through the authenticated backend flow', async () => {
     authState = {
       ...authState,
       accessToken: 'token',
@@ -128,8 +172,10 @@ describe('SettingsPage', () => {
           JSON.stringify({
             authProvider: 'LOCAL',
             displayName: 'Updated Artist',
+            description: 'New profile description.',
             email: 'artist@example.com',
             firstName: 'Updated',
+            handle: 'updated_artist',
             lastName: 'Artist',
             userId: 8,
           }),
@@ -146,8 +192,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -161,6 +209,10 @@ describe('SettingsPage', () => {
     await user.type(screen.getByLabelText(/first name/i), 'Updated')
     await user.clear(screen.getByLabelText(/display name/i))
     await user.type(screen.getByLabelText(/display name/i), 'Updated Artist')
+    await user.clear(screen.getByLabelText(/^handle$/i))
+    await user.type(screen.getByLabelText(/^handle$/i), ' @Updated_Artist ')
+    await user.clear(screen.getByLabelText(/^description$/i))
+    await user.type(screen.getByLabelText(/^description$/i), ' New profile description. ')
     await user.click(screen.getByRole('button', { name: /save changes/i }))
 
     await waitFor(() =>
@@ -172,6 +224,8 @@ describe('SettingsPage', () => {
             firstName: 'Updated',
             lastName: 'Artist',
             displayName: 'Updated Artist',
+            handle: '@Updated_Artist',
+            description: 'New profile description.',
           }),
         }),
       ),
@@ -183,6 +237,8 @@ describe('SettingsPage', () => {
           firstName: 'Updated',
           lastName: 'Artist',
           displayName: 'Updated Artist',
+          handle: 'updated_artist',
+          description: 'New profile description.',
         }),
       ),
     )
@@ -202,6 +258,8 @@ describe('SettingsPage', () => {
               firstName: 'firstName must not be blank',
               lastName: 'lastName must not be blank',
               displayName: 'displayName must not be blank',
+              handle: 'That handle is already in use.',
+              description: 'description must be at most 300 characters',
             },
           }),
           {
@@ -217,8 +275,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -236,7 +296,43 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('firstName must not be blank')).toBeInTheDocument()
     expect(screen.getByText('lastName must not be blank')).toBeInTheDocument()
     expect(screen.getByText('displayName must not be blank')).toBeInTheDocument()
+    expect(screen.getByText('That handle is already in use.')).toBeInTheDocument()
+    expect(screen.getByText('description must be at most 300 characters')).toBeInTheDocument()
     expect(screen.getByText('Request validation failed.')).toBeInTheDocument()
+    expect(authState.updateAuthenticatedUser).not.toHaveBeenCalled()
+  })
+
+  it('validates the required handle before saving profile details', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      authenticatedFetch: vi.fn(),
+      isAuthenticated: true,
+      updateAuthenticatedUser: vi.fn(),
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        description: null,
+        email: 'artist@example.com',
+        firstName: 'Scene',
+        handle: 'sceneartist',
+        lastName: 'Artist',
+        userId: 8,
+      },
+    }
+
+    const user = userEvent.setup()
+
+    renderSettingsPage()
+
+    await user.clear(screen.getByLabelText(/^handle$/i))
+    await user.type(screen.getByLabelText(/^handle$/i), 'not valid')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+
+    expect(
+      await screen.findByText(/start with @, then use 3–30 letters, numbers, or underscores/i),
+    ).toBeInTheDocument()
+    expect(authState.authenticatedFetch).not.toHaveBeenCalled()
     expect(authState.updateAuthenticatedUser).not.toHaveBeenCalled()
   })
 
@@ -250,8 +346,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -281,8 +379,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -325,8 +425,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -377,8 +479,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -423,8 +527,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'LOCAL',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },
@@ -464,8 +570,10 @@ describe('SettingsPage', () => {
       user: {
         authProvider: 'GOOGLE',
         displayName: 'Scene Artist',
+        description: 'Audio-reactive scenes with a human touch.',
         email: 'artist@example.com',
         firstName: 'Scene',
+        handle: 'sceneartist',
         lastName: 'Artist',
         userId: 8,
       },

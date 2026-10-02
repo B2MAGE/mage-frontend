@@ -1,7 +1,9 @@
-export type ProfileNameFields = {
+export type ProfileDetailsFields = {
   firstName: string
   lastName: string
   displayName: string
+  handle: string
+  description: string | null
 }
 
 export type UserProfileResponse = {
@@ -10,6 +12,8 @@ export type UserProfileResponse = {
   firstName?: string
   lastName?: string
   displayName: string
+  handle: string
+  description: string | null
   authProvider: string
   createdAt?: string
 }

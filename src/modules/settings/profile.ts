@@ -1,13 +1,13 @@
 import { parseApiError } from '@shared/lib'
 import type { AuthenticatedFetch } from '@auth'
-import type { ProfileNameFields, ProfileSaveResult, UserProfileResponse } from './types'
+import type { ProfileDetailsFields, ProfileSaveResult, UserProfileResponse } from './types'
 
 export const PROFILE_SAVE_UNAVAILABLE_MESSAGE =
   'Profile updates are unavailable right now. Please try again in a moment.'
 
 export async function saveUserProfile(
   authenticatedFetch: AuthenticatedFetch,
-  nameFields: ProfileNameFields,
+  profileFields: ProfileDetailsFields,
 ): Promise<ProfileSaveResult & { user?: UserProfileResponse }> {
   try {
     const response = await authenticatedFetch('/users/me', {
@@ -15,7 +15,7 @@ export async function saveUserProfile(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(nameFields),
+      body: JSON.stringify(profileFields),
     })
 
     if (!response.ok) {
