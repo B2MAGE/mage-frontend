@@ -1,0 +1,70 @@
+.music-response-controls {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 14px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--studio-text, inherit);
+}
+
+.music-response-controls__message,
+.music-response-controls__reset p {
+  margin: 5px 0 0;
+  color: var(--studio-muted, inherit);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.music-response-controls__mapping {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.music-response-controls__group {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 0 0;
+  border: 0;
+}
+
+.music-response-controls__group legend {
+  padding: 0 8px 0 0;
+  color: var(--studio-text, inherit);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.music-response-controls__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.music-response-controls__grid > *,
+.music-response-controls .mage-select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.music-response-controls__reset {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  padding-top: 12px;
+  border-top: 1px solid var(--studio-border, var(--editor-field-border));
+}
+
+@media (max-width: 640px) {
+  .music-response-controls__grid { grid-template-columns: minmax(0, 1fr); }
+  .music-response-controls__reset .scene-secondary-button { width: 100%; }
+}

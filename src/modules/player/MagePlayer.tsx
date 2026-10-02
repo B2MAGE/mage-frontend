@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as React
 import { MagePlayerLoading } from './MagePlayerLoading'
 import {
   createMagePlayer,
+  type MageAudioResponseCapabilities,
+  type MageEngineDiagnostics,
   type MagePlayerAudioState,
   type MagePlayerController,
   type MagePlayerPlaybackState,
@@ -24,11 +26,18 @@ import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { normalizeAudioResponseMode } from '@shared/lib'
 
+export type MagePlayerAudioResponseCapabilitiesSnapshot = {
+  sceneBlob: MageSceneBlob
+  capabilities: MageAudioResponseCapabilities
+}
+
 export type MagePlayerProps = {
   ariaLabel?: string
   className?: string
   initialPlayback?: MagePlayerPlaybackState
   log?: boolean
+  onAudioResponseCapabilitiesChange?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
+  onEngineDiagnosticsChange?: (diagnostics: MageEngineDiagnostics | null) => void
   onCaptureFramePreviewChange?: (
     captureFramePreview: (() => Promise<string | null>) | null,
   ) => void
@@ -62,6 +71,8 @@ export function MagePlayer({
   className,
   initialPlayback = 'playing',
   log = false,
+  onAudioResponseCapabilitiesChange,
+  onEngineDiagnosticsChange,
   onCaptureFramePreviewChange,
   onPlaylistChange,
   onRequestPlaylistOpen,
@@ -79,6 +90,8 @@ export function MagePlayer({
   const audioInputRef = useRef<HTMLInputElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MagePlayerController | null>(null)
+  const capabilitiesCallbackRef = useRef(onAudioResponseCapabilitiesChange)
+  const diagnosticsCallbackRef = useRef(onEngineDiagnosticsChange)
   const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
   const requestedPlaybackRef = useRef<MagePlayerPlaybackState>(initialPlayback)
   const loadedTrackIdRef = useRef<string | null>(null)
@@ -116,6 +129,19 @@ export function MagePlayer({
   const [loadError, setLoadError] = useState<{ message: string; sceneBlob: MageSceneBlob } | null>(
     null,
   )
+  const [capabilitiesResult, setCapabilitiesResult] = useState<{
+    player: MagePlayerController
+    identity: string | null
+    snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null
+  } | null>(null)
+
+  useEffect(() => {
+    capabilitiesCallbackRef.current = onAudioResponseCapabilitiesChange
+  }, [onAudioResponseCapabilitiesChange])
+
+  useEffect(() => {
+    diagnosticsCallbackRef.current = onEngineDiagnosticsChange
+  }, [onEngineDiagnosticsChange])
 
   useEffect(() => {
     latestSceneBlobRef.current = sceneBlob
@@ -192,6 +218,8 @@ export function MagePlayer({
       isDisposed = true
       window.cancelAnimationFrame(animationFrameId)
       playerRef.current = null
+      capabilitiesCallbackRef.current?.(null)
+      diagnosticsCallbackRef.current?.(null)
       nextPlayer?.dispose()
     }
   }, [log])
@@ -230,10 +258,23 @@ export function MagePlayer({
       const nextPlaybackState = player.getPlaybackState()
 
       queueMicrotask(() => {
-        if (isCancelled) {
+        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
           return
         }
 
+        // Read capabilities only after this exact document has reached this
+        // player. A missing older-engine API must not make playback fail.
+        let capabilities: MageAudioResponseCapabilities | null = null
+        try {
+          capabilities = player.getAudioResponseCapabilities?.() ?? null
+        } catch {
+          capabilities = null
+        }
+        setCapabilitiesResult({
+          player,
+          identity: playbackIdentity,
+          snapshot: capabilities ? { sceneBlob, capabilities } : null,
+        })
         requestedPlaybackRef.current = nextPlaybackState
         setLoadError(null)
         setLoadedSceneIdentity(playbackIdentity)
@@ -247,7 +288,7 @@ export function MagePlayer({
       })
     } catch (error) {
       queueMicrotask(() => {
-        if (isCancelled) {
+        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
           return
         }
 
@@ -272,6 +313,59 @@ export function MagePlayer({
         : playbackIdentity !== null && loadedSceneIdentity === playbackIdentity && loadedPlayerVersion === playerVersion
           ? 'ready'
           : 'loading'
+
+  const hasCapabilitiesCallback = Boolean(onAudioResponseCapabilitiesChange)
+
+  useEffect(() => {
+    if (!hasCapabilitiesCallback) return
+    const matchesCompiledPlayer = status === 'ready'
+      && capabilitiesResult?.player === playerRef.current
+      && capabilitiesResult?.identity === playbackIdentity
+    // Response-only edits keep the same compiled shader. Retain its published
+    // capabilities until the exact updated document is ready, so editor
+    // controls do not unmount during a slider drag or keyboard adjustment.
+    if (matchesCompiledPlayer && capabilitiesResult.snapshot
+      && capabilitiesResult.snapshot.sceneBlob !== sceneBlob) return
+    const matchesLoadedScene = matchesCompiledPlayer
+      && capabilitiesResult.snapshot?.sceneBlob === sceneBlob
+    capabilitiesCallbackRef.current?.(matchesLoadedScene ? capabilitiesResult.snapshot : null)
+  }, [capabilitiesResult, hasCapabilitiesCallback, playbackIdentity, playerVersion, sceneBlob, status])
+
+  const hasDiagnosticsCallback = Boolean(onEngineDiagnosticsChange)
+
+  useEffect(() => {
+    if (!hasDiagnosticsCallback) return
+    const player = playerRef.current
+    if (!player || status !== 'ready') {
+      diagnosticsCallbackRef.current?.(null)
+      return
+    }
+
+    let previous: MageEngineDiagnostics | null | undefined
+    function publishMeasurements() {
+      if (playerRef.current !== player) return
+      let next: MageEngineDiagnostics | null = null
+      try {
+        next = player?.getEngineDiagnostics?.() ?? null
+      } catch {
+        next = null
+      }
+      if (previous !== undefined && (previous === next || previous && next
+        && previous.size === next.size && previous.pointerDown === next.pointerDown
+        && previous.currPointerDown === next.currPointerDown && previous.currAudio === next.currAudio)) return
+      previous = next
+      diagnosticsCallbackRef.current?.(next)
+    }
+
+    publishMeasurements()
+    // Consumers opt in by supplying a callback. Keep live readings off the
+    // animation frame path and skip unchanged values.
+    const intervalId = window.setInterval(publishMeasurements, 250)
+    return () => {
+      window.clearInterval(intervalId)
+      diagnosticsCallbackRef.current?.(null)
+    }
+  }, [hasDiagnosticsCallback, playbackIdentity, playerVersion, status])
 
   const hasSimulatedBeat = simulatedBeat !== undefined
   const simulatedBeatEnabled = simulatedBeat?.enabled ?? false

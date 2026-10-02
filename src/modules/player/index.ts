@@ -15,7 +15,7 @@ export {
   revokePlaylistTrackSources,
   shufflePlaylistTracks,
 } from './playlist'
-export type { MagePlayerProps } from './MagePlayer'
+export type { MagePlayerProps, MagePlayerAudioResponseCapabilitiesSnapshot } from './MagePlayer'
 export type { MagePlayerPlaylistTrack } from './playlist'
 export type {
   MagePlayerAudioState,
@@ -23,6 +23,7 @@ export type {
   MageAudioResponseCapabilities,
   MageAudioResponseDiagnostics,
   MageAudioResponseEvent,
+  MageEngineDiagnostics,
   MagePlayerController,
   MagePlayerPlaybackState,
   MageSceneBlob,

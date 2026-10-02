@@ -8,13 +8,9 @@ export function BeatPreviewControls({ enabled, bpm, onEnabledChange, onBpmChange
 }) {
   return (
     <div className="scene-editor-beat-preview">
-      <EffectCard
-        title="Simulate beat"
-        toggleLabel="Simulate beat"
-        description="Preview only. Playing music takes priority."
-        enabled={enabled}
-        onToggle={onEnabledChange}
-      >
+      <EffectCard title="Simulate beat" toggleLabel="Simulate beat" enabled={enabled}
+        description="Preview only; not saved with the scene. Playing music takes priority."
+        onToggle={onEnabledChange}>
         <SliderField
           id="preview-tempo" label="Tempo" numericLabel="Tempo numeric value" min={60} max={180} step={1} value={bpm}
           formatValue={(value) => `${value} BPM`}

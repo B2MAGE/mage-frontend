@@ -180,9 +180,10 @@ html[data-theme] .scene-editor-page .scene-toggle__input:checked + .scene-toggle
 html[data-theme] .scene-editor-page .scene-toggle__input:focus-visible + .scene-toggle__switch { outline: 2px solid var(--studio-accent); outline-offset: 4px; border-radius: 999px; }
 html[data-theme] .scene-editor-page .scene-vector-field { gap: 10px; }
 html[data-theme] .scene-editor-page .scene-vector-field__axis span { font-size: 10px; }
-html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-field__shell { padding: 0; border: 0; background: none; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-field__shell,
+html[data-theme] .scene-editor-page .scene-field--plain .scene-field__shell { padding: 0; border: 0; background: none; }
 html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-field--slider { grid-column: 1 / -1; }
-html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack { grid-template-columns: minmax(0,1fr); gap: 28px; }
 html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack > .scene-editor-grid { display: contents; }
 html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack > .scene-editor-collapsible { grid-column: 1 / -1; }
 html[data-theme] .scene-editor-page .scene-effects-grid { gap: 28px; }
@@ -561,3 +562,9 @@ html[data-theme] .scene-editor-loading .scene-editor-main {
     min-height: 160px;
   }
 }
+
+/* Only the settings and preview panels scroll; focusing a control must not
+   scroll the clipped outer layout and displace its section navigation. */
+html[data-theme] .scene-editor-page .scene-editor-layout,
+html[data-theme] .scene-editor-page .scene-editor-preview,
+html[data-theme] .scene-editor-page .scene-editor-preview__card { overflow: clip; }

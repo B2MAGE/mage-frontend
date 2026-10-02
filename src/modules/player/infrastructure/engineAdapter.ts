@@ -64,6 +64,13 @@ export type MageSceneBlob = Record<string, unknown>
 
 export type MagePlayerPlaybackState = 'paused' | 'playing'
 
+export type MageEngineDiagnostics = Readonly<{
+  size: number | null
+  pointerDown: number | null
+  currPointerDown: number | null
+  currAudio: number | null
+}>
+
 export type MageAudioResponseCapabilities = ReturnType<MAGEEngineAPI['getAudioResponseCapabilities']>
 export type MageAudioResponseDiagnostics = ReturnType<MAGEEngineAPI['getAudioResponseDiagnostics']>
 export type MageAudioResponseEvent = ReturnType<MAGEEngineAPI['getAudioResponseEvents']>[number]
@@ -103,6 +110,7 @@ export type MagePlayerController = {
   getAudioResponseDiagnostics: () => MageAudioResponseDiagnostics | null
   getAudioResponseEvents: (afterId?: number) => MageAudioResponseEvent[]
   getPlaybackState: () => MagePlayerPlaybackState
+  getEngineDiagnostics?: () => MageEngineDiagnostics | null
   loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown) => void
   resetPlayback: () => MagePlayerPlaybackState
@@ -496,6 +504,23 @@ export async function createMagePlayer(
     getAudioResponseEvents(afterId) {
       return engine.getAudioResponseEvents ? structuredClone(engine.getAudioResponseEvents(afterId)) : []
     },
+    getEngineDiagnostics() {
+      if (!hasLoadedScene) return null
+      try {
+        const state: unknown = engine.getEngineFields()?.state
+        if (!isRecord(state)) return null
+        const measurement = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null
+        // Copy measurements rather than exposing the engine's mutable state.
+        return {
+          size: measurement(state.size),
+          pointerDown: measurement(state.pointerDown),
+          currPointerDown: measurement(state.currPointerDown),
+          currAudio: measurement(state.currAudio),
+        }
+      } catch {
+        return null
+      }
+    },
     setAudioResponseSettings(mode, config) {
       if (!currentSceneBlob) throw new MagePlayerAdapterError('Load a scene before changing its audio response.')
       const nextScene = { ...currentSceneBlob }
@@ -701,6 +726,7 @@ export async function createMagePlayer(
     setPlaybackState,
     dispose() {
       audioLoadGeneration += 1
+      hasLoadedScene = false
       mouseInteractions?.dispose()
       engine.dispose()
     },

@@ -41,7 +41,7 @@ vi.mock('@modules/player', async (importOriginal) => {
       }, [onCaptureFramePreviewChange, sceneBlob])
 
       return (
-        <div data-playback={initialPlayback} data-testid="mage-player">
+        <div data-playback={initialPlayback} data-scene={JSON.stringify(sceneBlob)} data-testid="mage-player">
           {sceneBlob ? 'preview-ready' : 'no-preview'}
         </div>
       )
@@ -77,6 +77,7 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByRole('button', { name: /^details$/i })).toHaveAttribute('aria-current', 'step')
     expect(screen.getByRole('button', { name: /^scene$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^pass order$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^advanced$/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^confirm$/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/jump to section/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
@@ -193,7 +194,7 @@ describe('CreateScenePage workflow', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps the Motion section focused on the persisted MAGE engine motion controls', async () => {
+  it('groups animation and music in Motion while keeping camera and raw state elsewhere', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
 
@@ -204,14 +205,15 @@ describe('CreateScenePage workflow', () => {
     await user.click(screen.getByRole('button', { name: /^motion$/i }))
 
     expect(screen.getByRole('heading', { name: /^tune how it moves\.$/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/auto rotate/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/time multiplier/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/audio gain/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/audio curve/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/pointer release hold/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/base speed/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/easing speed/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/rotation speed/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^animation speed$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^input gain$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^peak emphasis$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^resting response$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^smoothing$/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/pointer release hold/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/automatic orbit/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/orbit speed/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/state size|current pointer|current audio|pointer down/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
   })
@@ -309,31 +311,43 @@ describe('CreateScenePage workflow', () => {
     expect(screen.queryByRole('heading', { name: /^finish & output$/i })).not.toBeInTheDocument()
   })
 
-  it('moves advanced controls into collapsible groups and uses confirm as the final review step', async () => {
+  it('reveals inline advanced controls without changing scene data and keeps raw data in Confirm', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
 
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    const previewScene = () => screen.getByTestId('mage-player').getAttribute('data-scene')
+    const originalScene = previewScene()
 
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
 
     expect(screen.getByRole('heading', { name: /^frame the scene\.$/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /enable advanced/i }))
+    await user.click(screen.getByRole('button', { name: /show advanced camera controls/i }))
     expect(screen.getByLabelText(/camera orientation mode/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/camera orientation speed/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /disable advanced/i }))
+    expect(previewScene()).toBe(originalScene)
+    await user.click(screen.getByRole('button', { name: /hide advanced camera controls/i }))
     expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
+    expect(previewScene()).toBe(originalScene)
 
     await user.click(screen.getByRole('button', { name: /^motion$/i }))
 
     expect(screen.getByRole('heading', { name: /^tune how it moves\.$/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/state size/i)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /enable advanced/i }))
-    expect(screen.getByLabelText(/state size/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/volume multiplier/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/starting animation time/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /show advanced animation controls/i }))
+    expect(screen.getByLabelText(/starting animation time/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/state size|current pointer|current audio|pointer down/i)).not.toBeInTheDocument()
+    expect(previewScene()).toBe(originalScene)
+    await user.click(screen.getByRole('button', { name: /hide advanced animation controls/i }))
+    expect(screen.queryByLabelText(/starting animation time/i)).not.toBeInTheDocument()
+    expect(previewScene()).toBe(originalScene)
+
+    expect(screen.queryByRole('button', { name: /^advanced$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show scene data|show engine diagnostics|reset advanced settings/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
 
@@ -341,12 +355,12 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByText(/^scene name$/i)).toBeInTheDocument()
     expect(screen.getByText(/^motion & effects$/i)).toBeInTheDocument()
     expect(screen.queryByText(/^advanced camera$/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/^runtime seed$/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/scene data json/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /show shader/i })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /show raw json/i }))
     expect(screen.getByLabelText(/scene data json/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /format json/i })).toBeInTheDocument()
+    expect(previewScene()).toBe(originalScene)
   })
 })
 

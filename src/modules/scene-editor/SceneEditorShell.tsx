@@ -2,18 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer } from "@modules/player";
+import { MagePlayer, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
   NumberField,
   SceneSection,
   SelectField,
   SliderField,
-  ToggleField,
   Vector3Field,
 } from "./ui/SceneEditorControls";
 import {
   PASS_LABELS,
+  getSceneEditorModel,
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
@@ -35,6 +36,7 @@ import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
+import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
@@ -68,8 +70,11 @@ export function SceneEditorShell({
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   const [isBeatSimulated, setIsBeatSimulated] = useState(false);
   const [previewBpm, setPreviewBpm] = useState(120);
+  const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
+  const [customTimingDrafts, setCustomTimingDrafts] = useState<Partial<Record<AudioResponseTarget, { attack: number; release: number }>>>({});
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const {
+    canResetAudioResponse,
     availableTags,
     canCreateTagFromSearch,
     currentSection,
@@ -79,6 +84,9 @@ export function SceneEditorShell({
     filteredSelectableTags,
     formErrorId,
     handleCameraAdvancedToggle,
+    handleAudioResponseModeChange,
+    handleAudioResponseConfigChange,
+    handleAudioResponseReset,
     handleCreateTag,
     handleFormatJson,
     handleMotionAdvancedToggle,
@@ -141,14 +149,16 @@ export function SceneEditorShell({
     selectedToneMapping,
     shaderSelection,
     toneMappingSelection,
-  } = useSceneEditorPreview({
-    isCameraAdvancedEnabled,
-    isMotionAdvancedEnabled,
-    sceneData,
-  });
+  } = useSceneEditorPreview({ sceneData });
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
   const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
   const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
+  const audioResponseConfig = normalizeAudioResponseConfig(sceneData.audioResponseConfig).config;
+  // Keep controls steady through response edits, but never display the prior
+  // shader's movement list while a different shader is compiling.
+  const supportedAudioTargets = audioResponseCapabilities
+    && getSceneEditorModel(audioResponseCapabilities.sceneBlob).visualizer.shader === sceneModel.visualizer.shader
+    ? audioResponseCapabilities.capabilities.supportedTargets : null;
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
@@ -275,89 +285,13 @@ export function SceneEditorShell({
     );
   }
 
-  function renderRuntimeStateFields() {
-    return (
-      <div className="scene-editor-grid">
-        <NumberField
-          description="Low-level runtime state."
-          id="state-size"
-          label="State Size"
-          onChange={(nextValue) =>
-            updateBranch("state", (currentState) => ({
-              ...currentState,
-              size: nextValue,
-            }))
-          }
-          step={0.01}
-          value={sceneModel.state.size}
-        />
-        <NumberField
-          description="Initial runtime pointer state."
-          id="state-pointer-down"
-          label="Pointer Down"
-          onChange={(nextValue) =>
-            updateBranch("state", (currentState) => ({
-              ...currentState,
-              pointerDown: nextValue,
-            }))
-          }
-          step={0.01}
-          value={sceneModel.state.pointerDown}
-        />
-        <NumberField
-          description="Initial smoothed pointer state."
-          id="state-current-pointer-down"
-          label="Current Pointer"
-          onChange={(nextValue) =>
-            updateBranch("state", (currentState) => ({
-              ...currentState,
-              currPointerDown: nextValue,
-            }))
-          }
-          step={0.01}
-          value={sceneModel.state.currPointerDown}
-        />
-        <NumberField
-          description="Initial runtime audio input."
-          id="state-current-audio"
-          label="Current Audio"
-          onChange={(nextValue) =>
-            updateBranch("state", (currentState) => ({
-              ...currentState,
-              currAudio: nextValue,
-            }))
-          }
-          step={0.01}
-          value={sceneModel.state.currAudio}
-        />
-        <NumberField
-          description="Initial runtime time value."
-          id="state-time"
-          label="State Time"
-          onChange={(nextValue) =>
-            updateBranch("state", (currentState) => ({
-              ...currentState,
-              time: nextValue,
-            }))
-          }
-          step={0.01}
-          value={sceneModel.state.time}
-        />
-        {!usesModernAudio ? <NumberField
-          description="Initial runtime volume multiplier."
-          id="state-volume"
-          label="Volume Multiplier"
-          onChange={(nextValue) =>
-            updateBranch("state", (currentState) => ({
-              ...currentState,
-              volume_multiplier: nextValue,
-            }))
-          }
-          step={0.01}
-          value={sceneModel.state.volume_multiplier}
-        /> : null}
-      </div>
-    );
+  function handleClassicSettingChange(key: keyof ClassicMusicResponseSettings, value: number) {
+    if (key === "responseOffset") {
+      updateBranch("state", current => ({ ...current, volume_multiplier: value }));
+      return;
+    }
+    const intentKeys = { inputGain: "minimizing_factor", peakEmphasis: "power_factor", restingResponse: "base_speed", smoothing: "easing_speed" } as const;
+    updateBranch("intent", current => ({ ...current, [intentKeys[key]]: value }));
   }
 
   function renderRawSceneDataEditor() {
@@ -431,56 +365,11 @@ export function SceneEditorShell({
     );
   }
 
-  function formatRuntimeStateSummary() {
-    const runtimeStatePairs: Array<[string, number, number]> = [
-      ["Size", sceneModel.state.size, initialSceneModel.state.size] as [
-        string,
-        number,
-        number,
-      ],
-      [
-        "Pointer",
-        sceneModel.state.pointerDown,
-        initialSceneModel.state.pointerDown,
-      ] as [string, number, number],
-      [
-        "Current Pointer",
-        sceneModel.state.currPointerDown,
-        initialSceneModel.state.currPointerDown,
-      ] as [string, number, number],
-      [
-        "Current Audio",
-        sceneModel.state.currAudio,
-        initialSceneModel.state.currAudio,
-      ] as [string, number, number],
-      ["Time", sceneModel.state.time, initialSceneModel.state.time] as [
-        string,
-        number,
-        number,
-      ],
-      [
-        "Volume",
-        sceneModel.state.volume_multiplier,
-        initialSceneModel.state.volume_multiplier,
-      ] as [string, number, number],
-    ].filter(([label, value, initialValue]) => value !== initialValue && (!usesModernAudio || label !== "Volume"));
-
-    if (runtimeStatePairs.length === 0) {
-      return "Default";
-    }
-
-    return runtimeStatePairs
-      .map(([label, value]) => `${label} ${formatFixed(value)}`)
-      .join(" • ");
-  }
-
   const { handleSubmit } = useSceneEditorSubmission({
     authenticatedFetch,
     availableTags,
     captureThumbnailIfMissing: captureThumbnailFromPreview,
     description,
-    isCameraAdvancedEnabled,
-    isMotionAdvancedEnabled,
     mode,
     name,
     onComplete,
@@ -751,14 +640,29 @@ export function SceneEditorShell({
                     />
                   </div>
 
+                  <section className="scene-effects-category" aria-labelledby="camera-movement-title">
+                    <h3 className="scene-effects-category__title" id="camera-movement-title">Camera movement</h3>
+                    <EffectCard title="Automatic orbit" toggleLabel="Automatic orbit" enabled={sceneModel.intent.autoRotate}
+                      description="Let the camera travel around the scene on its own."
+                      onToggle={value => updateBranch("intent", current => ({ ...current, autoRotate: value }))}
+                    >
+                      <SliderField
+                        id="rotation-speed" label="Orbit speed" min={0.1} max={50} step={0.1}
+                        description="How quickly the camera moves around the scene."
+                        value={sceneModel.intent.autoRotateSpeed}
+                        onChange={value => updateBranch("intent", current => ({ ...current, autoRotateSpeed: value }))}
+                      />
+                    </EffectCard>
+                  </section>
+
                   <CollapsibleEditorGroup
-                    hideLabel="Disable Advanced"
+                    hideLabel="Hide advanced camera controls"
                     id="camera-advanced-options"
                     isOpen={isCameraAdvancedEnabled}
                     onToggle={() =>
                       handleCameraAdvancedToggle(!isCameraAdvancedEnabled)
                     }
-                    showLabel="Enable Advanced"
+                    showLabel="Show advanced camera controls"
                   >
                     {renderCameraAdvancedFields()}
                   </CollapsibleEditorGroup>
@@ -767,166 +671,51 @@ export function SceneEditorShell({
             ) : null}
 
             {sectionMenuValue === "motion" ? (
-              <SceneSection
-                description="Adjust how the scene moves and how strongly it responds to audio and input."
-                title="Motion"
-              >
+              <SceneSection description="Set the animation, then choose how it responds to music." title="Motion">
                 <div className="scene-editor-stack">
-                  <BeatPreviewControls
-                    enabled={isBeatSimulated}
-                    bpm={previewBpm}
-                    onEnabledChange={setIsBeatSimulated}
-                    onBpmChange={setPreviewBpm}
-                  />
-                  <div className="scene-editor-grid">
+                  <section className="scene-effects-category" aria-labelledby="animation-title">
+                    <h3 className="scene-effects-category__title" id="animation-title">Animation</h3>
                     <NumberField
-                      description="Overall engine time multiplier."
-                      id="time-multiplier"
-                      label="Time Multiplier"
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          time_multiplier: nextValue,
-                        }))
-                      }
-                      step={0.05}
+                      id="time-multiplier" label="Animation speed" step={0.05}
+                      description="Speed up or slow down the scene’s animation. Music playback stays at its original speed."
                       value={sceneModel.intent.time_multiplier}
+                      onChange={value => updateBranch("intent", current => ({ ...current, time_multiplier: value }))}
                     />
-
-                    {usesModernAudio ? (
-                      <p className="scene-editor-grid__item--full">
-                        {usesMappedAudio ? "This scene uses saved audio mappings." : "This scene uses automatic beat detection and release."} Legacy audio gain, curve, base speed, easing, and volume controls do not apply.
-                      </p>
-                    ) : <>
-                    <SliderField
-                      description="Audio sensitivity: how strongly the scene picks up music before its response curve."
-                      id="audio-gain"
-                      label="Audio Gain"
-                      max={2}
-                      min={0.01}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          minimizing_factor: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.intent.minimizing_factor}
-                    />
-
-                    <SliderField
-                      description="Shapes how sharply the audio response ramps up. Higher values make peaks more selective."
-                      id="audio-curve"
-                      label="Audio Curve"
-                      max={10}
-                      min={1}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          power_factor: nextValue,
-                        }))
-                      }
-                      step={0.1}
-                      value={sceneModel.intent.power_factor}
-                    />
-                    </>}
-
-                  </div>
-
-                  <div className="scene-editor-grid">
-                    <SliderField
-                      description="Controls how much pointer-down influence lingers after release for shaders that read pointer input."
-                      id="pointer-release-hold"
-                      label="Pointer Release Hold"
-                      max={1}
-                      min={0}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          pointerDownMultiplier: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.intent.pointerDownMultiplier}
-                    />
-
-                    <SliderField
-                      description="How quickly the auto rotation travels when enabled."
-                      id="rotation-speed"
-                      label="Rotation Speed"
-                      max={50}
-                      min={0.1}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          autoRotateSpeed: nextValue,
-                        }))
-                      }
-                      step={0.1}
-                      value={sceneModel.intent.autoRotateSpeed}
-                    />
-
-                    {!usesModernAudio ? <>
-                    <SliderField
-                      description="Base audio-reactive speed shaping used by the engine."
-                      id="base-speed"
-                      label="Base Speed"
-                      max={0.9}
-                      min={0.01}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          base_speed: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.intent.base_speed}
-                    />
-
-                    <SliderField
-                      description="Reaction smoothing: lower values follow the beat quickly; higher values ease into each change."
-                      id="easing-speed"
-                      label="Easing Speed"
-                      max={0.9}
-                      min={0.01}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          easing_speed: nextValue,
-                        }))
-                      }
-                      step={0.01}
-                      value={sceneModel.intent.easing_speed}
-                    />
-                    </> : null}
-
-                    <div className="scene-editor-grid__item--full">
-                      <ToggleField
-                        checked={sceneModel.intent.autoRotate}
-                        description="Keep the scene gently rotating on its own."
-                        id="auto-rotate"
-                        label="Auto Rotate"
-                        onChange={(nextValue) =>
-                          updateBranch("intent", (currentIntent) => ({
-                            ...currentIntent,
-                            autoRotate: nextValue,
-                          }))
-                        }
+                    <CollapsibleEditorGroup
+                      id="animation-advanced-options" isOpen={isMotionAdvancedEnabled}
+                      showLabel="Show advanced animation controls" hideLabel="Hide advanced animation controls"
+                      onToggle={() => handleMotionAdvancedToggle(!isMotionAdvancedEnabled)}
+                    >
+                      <NumberField
+                        id="state-time" label="Starting animation time" step={0.01}
+                        description="Choose where in its animation the scene begins."
+                        value={sceneModel.state.time}
+                        onChange={value => updateBranch("state", current => ({ ...current, time: value }))}
                       />
-                    </div>
-                  </div>
-
-                  <CollapsibleEditorGroup
-                    hideLabel="Disable Advanced"
-                    id="motion-runtime-state"
-                    isOpen={isMotionAdvancedEnabled}
-                    onToggle={() =>
-                      handleMotionAdvancedToggle(!isMotionAdvancedEnabled)
+                    </CollapsibleEditorGroup>
+                  </section>
+                  <MusicResponseControls
+                    mode={normalizeAudioResponseMode(sceneData.audioResponse)}
+                    config={audioResponseConfig}
+                    supportedTargets={supportedAudioTargets}
+                    onModeChange={nextMode => handleAudioResponseModeChange(nextMode, supportedAudioTargets ?? undefined)}
+                    onConfigChange={handleAudioResponseConfigChange}
+                    onReset={handleAudioResponseReset}
+                    canReset={canResetAudioResponse}
+                    customTimingDrafts={customTimingDrafts}
+                    onCustomTimingDraftsChange={setCustomTimingDrafts}
+                    classicSettings={{ inputGain: sceneModel.intent.minimizing_factor, peakEmphasis: sceneModel.intent.power_factor,
+                      restingResponse: sceneModel.intent.base_speed, smoothing: sceneModel.intent.easing_speed,
+                      responseOffset: sceneModel.state.volume_multiplier }}
+                    onClassicSettingChange={handleClassicSettingChange}
+                    previewTools={
+                      <section className="scene-effects-category" aria-labelledby="preview-tools-title">
+                        <h3 className="scene-effects-category__title" id="preview-tools-title">Preview tools</h3>
+                        <BeatPreviewControls enabled={isBeatSimulated} bpm={previewBpm}
+                          onEnabledChange={setIsBeatSimulated} onBpmChange={setPreviewBpm} />
+                      </section>
                     }
-                    showLabel="Enable Advanced"
-                  >
-                    {renderRuntimeStateFields()}
-                  </CollapsibleEditorGroup>
+                  />
                 </div>
               </SceneSection>
             ) : null}
@@ -1461,7 +1250,7 @@ export function SceneEditorShell({
                         label="Zoom"
                         value={formatFixed(sceneModel.controls.zoom0)}
                       />
-                      {isCameraAdvancedEnabled ? (
+                      {sceneModel.intent.camOrientationMode !== initialSceneModel.intent.camOrientationMode || sceneModel.intent.camOrientationSpeed !== initialSceneModel.intent.camOrientationSpeed ? (
                         <ConfirmSummaryItem
                           label="Advanced Camera"
                           value={
@@ -1472,35 +1261,33 @@ export function SceneEditorShell({
                           }
                         />
                       ) : null}
+                      <ConfirmSummaryItem label="Automatic orbit" value={sceneModel.intent.autoRotate ? "On" : "Off"} />
+                      {sceneModel.intent.autoRotate ? <ConfirmSummaryItem label="Orbit speed" value={formatFixed(sceneModel.intent.autoRotateSpeed)} /> : null}
                     </ConfirmSummarySection>
 
                     <ConfirmSummarySection title="Motion & Effects">
                       <ConfirmSummaryItem
-                        label="Time Multiplier"
+                        label="Animation speed"
                         value={formatFixed(sceneModel.intent.time_multiplier)}
                       />
                       {usesModernAudio ? (
                         <ConfirmSummaryItem label="Audio Response" value={usesMappedAudio ? "Audio mappings" : "Beat detection"} />
                       ) : <>
                       <ConfirmSummaryItem
-                        label="Audio Gain"
+                        label="Input gain"
                         value={formatFixed(sceneModel.intent.minimizing_factor)}
                       />
                       <ConfirmSummaryItem
-                        label="Audio Curve"
+                        label="Peak emphasis"
                         value={formatFixed(sceneModel.intent.power_factor)}
                       />
                       </>}
-                      <ConfirmSummaryItem
-                        label="Auto Rotate"
-                        value={sceneModel.intent.autoRotate ? "On" : "Off"}
-                      />
-                      {isMotionAdvancedEnabled ? (
-                        <ConfirmSummaryItem
-                          label="Runtime Seed"
-                          value={formatRuntimeStateSummary()}
-                        />
-                      ) : null}
+                      <ConfirmSummaryItem label="Starting animation time" value={formatFixed(sceneModel.state.time)} />
+                      {!usesModernAudio ? <>
+                        <ConfirmSummaryItem label="Resting response" value={formatFixed(sceneModel.intent.base_speed)} />
+                        <ConfirmSummaryItem label="Smoothing" value={formatFixed(sceneModel.intent.easing_speed)} />
+                        <ConfirmSummaryItem label="Response offset" value={formatFixed(sceneModel.state.volume_multiplier)} />
+                      </> : null}
                       <ConfirmSummaryItem
                         label="Tone Mapping"
                         value={selectedToneMapping.label}
@@ -1579,6 +1366,7 @@ export function SceneEditorShell({
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
+                onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
                 sceneKey={mode.type === 'edit' ? `edit:${mode.sceneId}` : 'create'}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               />
