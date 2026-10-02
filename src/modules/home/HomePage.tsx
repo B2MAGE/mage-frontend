@@ -51,7 +51,9 @@ function FeaturedSceneSkeleton() {
         <div className="scene-stats featured-loading__stats">
           <Skeleton shape="line" className="featured-loading__stats-line" />
         </div>
-        <Skeleton shape="block" className="featured-loading__action" />
+        <div className="featured-action">
+          <Skeleton shape="block" className="featured-loading__action" />
+        </div>
       </div>
     </LoadingRegion>
   )
@@ -207,18 +209,22 @@ function PulseHomePage() {
               <button className="follow-button" type="button" disabled title="Following creators is not available yet">Follow</button>
             </div>
             <div className="scene-copy">
-              <h2>{featured.name}</h2>
+              <h2><Link className="featured-title-link" to={`/scenes/${featured.id}`} title={featured.name}>{featured.name}</Link></h2>
               <p className="scene-published">{formatMetricLabel(featured.engagement.views, 'view')}{featured.createdAt && <> · {formatRelativeTime(featured.createdAt)}</>}</p>
-              <p>{featured.description}</p>
+              <p className="featured-description">{featured.description}</p>
             </div>
-            <div className="tag-row">{featured.tags.map(t=><Link key={t} className="tag-pill" to={`/scenes?tag=${encodeURIComponent(t)}`}>{t}</Link>)}</div>
+            <ScrollableTagBar ariaLabel="Featured scene categories" barClassName="tag-row featured-tags">
+              {featured.tags.map(t=><Link key={t} className="tag-pill" to={`/scenes?tag=${encodeURIComponent(t)}`}>{t}</Link>)}
+            </ScrollableTagBar>
             <div className="scene-stats">
               <EngagementButton ariaLabel="Upvote featured scene" className="featured-engagement-button" count={featured.engagement.upvotes} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='up'} isSelected={featured.engagement.currentUserVote==='up'} kind="upvote" onClick={()=>void engage('up')} />
               <EngagementButton ariaLabel="Downvote featured scene" className="featured-engagement-button" count={featured.engagement.downvotes} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='down'} isSelected={featured.engagement.currentUserVote==='down'} kind="downvote" onClick={()=>void engage('down')} />
               <EngagementButton ariaLabel="Save featured scene" className="featured-engagement-button" count={featured.engagement.saves} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='save'} isSelected={featured.engagement.currentUserSaved} kind="save" onClick={()=>void engage('save')} />
             </div>
             {actionError && <p role="alert">{actionError}</p>}
-            <Link className="primary-button" to={`/scenes/${featured.id}`}>Open scene <span aria-hidden="true">→</span></Link>
+            <div className="featured-action">
+              <Link className="primary-button" to={`/scenes/${featured.id}`}>Open scene <span aria-hidden="true">→</span></Link>
+            </div>
           </div>
         </article>}
       </section>
