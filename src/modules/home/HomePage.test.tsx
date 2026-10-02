@@ -102,7 +102,7 @@ describe('Homepage mockup behavior',()=>{
   expect(upvote.querySelector('.engagement-button__icon svg')).toBeInTheDocument()
   expect(downvote.querySelector('.engagement-button__icon svg')).toBeInTheDocument()
   expect(save.querySelector('.engagement-button__icon svg')).toBeInTheDocument()
-  expect(save.querySelector('.engagement-button__icon path')).toHaveAttribute('fill','none')
+  expect(save.querySelector('.engagement-button__icon svg')).toHaveAttribute('fill','none')
  })
  it('keeps the featured reaction content in place while a vote is pending',async()=>{
   let resolveVote!: (value: SceneEngagementSummary)=>void

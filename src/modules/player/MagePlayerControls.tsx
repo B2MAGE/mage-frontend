@@ -1,5 +1,5 @@
 import { type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
-import { PendingButtonLabel } from '@shared/ui'
+import { AppIcon, PendingButtonLabel } from '@shared/ui'
 import {
   readPlaylistTrackSummaryName,
   type MagePlayerPlaylistTrack,
@@ -28,40 +28,6 @@ type MagePlayerControlsProps = {
   showPlaylistButton: boolean
   tracksCount: number
   volumeControlRef: RefObject<HTMLDivElement | null>
-}
-
-function PauseIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M7.5 5.5h3.25v13H7.5zM13.25 5.5h3.25v13h-3.25z" fill="currentColor" />
-    </svg>
-  )
-}
-
-function PlayIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M8 5.5v13L18.5 12 8 5.5Z" fill="currentColor" />
-    </svg>
-  )
-}
-
-function AddAudioIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 4v10.5a3.25 3.25 0 1 1-2-3V6l6-2v9.5a3.25 3.25 0 1 1-2-3" />
-      <path d="M4 6v6M1 9h6" />
-    </svg>
-  )
-}
-
-function VolumeIcon({ muted }: { muted: boolean }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 10v4h4l5 4V6l-5 4H4z" />
-      {muted ? <path d="m17 10 4 4m0-4-4 4" /> : <><path d="M16 9.5a4 4 0 0 1 0 5" /><path d="M18.5 7a7.25 7.25 0 0 1 0 10" /></>}
-    </svg>
-  )
 }
 
 export function MagePlayerControls({
@@ -103,7 +69,7 @@ export function MagePlayerControls({
           type="button"
         >
           <span className="mage-player__control-icon">
-            {playbackState === 'playing' ? <PauseIcon /> : <PlayIcon />}
+            <AppIcon name={playbackState === 'playing' ? 'pause' : 'play'} size={16} />
           </span>
         </button>
       <div className="mage-player__controls-main">
@@ -163,7 +129,7 @@ export function MagePlayerControls({
               Add
             </PendingButtonLabel>
           </span>
-          <span className="mage-player__control-icon mage-player__add-audio-icon"><AddAudioIcon /></span>
+          <span className="mage-player__control-icon mage-player__add-audio-icon"><AppIcon name="plus" size={22} /></span>
         </button>
         <div className="mage-player__volume-control" ref={volumeControlRef}>
           <button
@@ -181,7 +147,7 @@ export function MagePlayerControls({
             type="button"
           >
             <span className="mage-player__control-icon">
-              <VolumeIcon muted={audioState.volume <= 0.001} />
+              <AppIcon name={audioState.volume <= 0.001 ? 'volume-x' : 'volume-2'} />
             </span>
           </button>
           {isVolumeOpen ? (
@@ -206,7 +172,7 @@ export function MagePlayerControls({
         </div>
 
 
-        <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M8.5 4H4v4.5M15.5 4H20v4.5M20 15.5V20h-4.5M4 15.5V20h4.5"/></svg></button>
+        <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
         {showPlaylistButton && (
           <button
             className="mage-player__control-button mage-player__control-button--playlist"
@@ -216,9 +182,7 @@ export function MagePlayerControls({
             onClick={onTrackSummaryClick}
           >
             <span className="mage-player__control-icon">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M8 6h12M8 12h12M8 18h12M3 6h1M3 12h1M3 18h1" />
-              </svg>
+              <AppIcon name="list-music" />
             </span>
           </button>
         )}

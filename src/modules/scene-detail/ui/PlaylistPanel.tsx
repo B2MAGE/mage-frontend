@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react'
 import type { MagePlayerPlaylistTrack } from '@modules/player'
 import { PlaylistTrackRow } from './PlaylistTrackRow'
-import { EditIcon, RepeatIcon, ShuffleIcon } from './playlistPanelIcons'
+import { CloseIcon, EditIcon, RepeatIcon, ShuffleIcon } from './playlistPanelIcons'
 import './playlistPanel.css'
 
 type PlaylistDropIndicator = {
@@ -326,11 +326,11 @@ export function PlaylistPanel({
           ) : null}
           <button
             aria-label="Close playlist"
-            className="mage-watch__playlist-action mage-watch__playlist-action--close"
+            className="mage-watch__playlist-action mage-watch__playlist-action--icon mage-watch__playlist-action--close"
             onClick={onClose}
             type="button"
           >
-            ×
+            <CloseIcon />
           </button>
         </div>
       </header>

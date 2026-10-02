@@ -113,7 +113,9 @@ html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-editor__selected { p
 html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-editor__selected-label, html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-dropdown__search > label { display: none; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-dropdown__search { gap: 0; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-editor__selected-list { gap: 7px; --tag-pill-active-border: var(--tag-pill-border); --tag-pill-active-background: var(--tag-pill-background); --tag-pill-active-text: var(--tag-pill-text); --tag-pill-active-hover-border: var(--tag-pill-hover-border); --tag-pill-active-hover-background: var(--tag-pill-hover-background); --tag-pill-active-hover-text: var(--tag-pill-hover-text); }
-html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-editor__selected-list .tag-pill::after { content: " ×"; margin-left: 6px; }
+.scene-editor-page .scene-tag-editor__selected-remove-icon,
+.scene-editor-page .scene-pass-order__grip { display: none; }
+html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-editor__selected-remove-icon { display: inline-flex; flex: 0 0 auto; margin-left: 6px; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-dropdown__panel { border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: #111318; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-dropdown__option { min-height: 34px; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; font-size: 11px; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-tag-dropdown__option:hover { background: #1d2027; }
@@ -156,7 +158,7 @@ html[data-theme="mage-pulse"] .scene-editor-page .effect-card__details { margin:
 html[data-theme="mage-pulse"] .scene-editor-page .effect-card__details .scene-field__shell, html[data-theme="mage-pulse"] .scene-editor-page .effect-card__details .scene-slider { padding: 0; border: 0; border-radius: 0; background: none; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order { gap: 8px; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order__item { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; padding: 11px 12px; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; background: #0d0f13; }
-html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order__item::before { content: "⋮⋮"; color: #757b87; font-size: 13px; }
+html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order__grip { display: inline-flex; align-items: center; justify-content: center; color: #757b87; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order__copy { gap: 2px; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order__copy strong { font-size: 11px; }
 html[data-theme="mage-pulse"] .scene-editor-page .scene-pass-order__copy span { font-size: 9px; }

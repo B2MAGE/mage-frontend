@@ -39,6 +39,26 @@ function openTrackEditor() {
 
 
 describe('PlaylistPanel playback modes', () => {
+  it('uses shared library icons for playlist controls and closes accessibly', () => {
+    const props = createProps()
+    render(<PlaylistPanel {...props} />)
+
+    const controls = [
+      ['Enable shuffle playback', 'shuffle'],
+      ['Enable repeat playback', 'repeat'],
+      ['Edit playlist', 'pencil'],
+      ['Close playlist', 'x'],
+    ]
+    for (const [label, iconName] of controls) {
+      const icon = screen.getByRole('button', { name: label }).querySelector('svg')
+      expect(icon).toHaveClass('app-icon', `lucide-${iconName}`)
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close playlist' }))
+    expect(props.onClose).toHaveBeenCalledOnce()
+  })
+
   it('toggles playback modes and reflects their controlled on and off states', () => {
     const props = {
       ...createProps(),

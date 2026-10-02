@@ -1,4 +1,6 @@
 export { AuthPage, AuthPageHeader } from './AuthPage'
+export { AppIcon } from './AppIcon'
+export type { AppIconName } from './AppIcon'
 export { EditorFieldShell, SliderFieldShell } from './EditorFieldShell'
 export { EngagementButton } from './EngagementButton'
 export type { EngagementButtonKind, EngagementButtonProps } from './EngagementButton'

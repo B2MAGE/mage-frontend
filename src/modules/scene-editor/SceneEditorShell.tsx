@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import { useTheme } from "@theme";
 import "./scene-editor-pulse.css";
-import { AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
+import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
 import { MagePlayer } from "@modules/player";
 import {
   EffectCard,
@@ -1334,6 +1334,11 @@ export function SceneEditorShell({
 
                     return (
                       <li className="scene-pass-order__item" key={passId}>
+                        <AppIcon
+                          className="scene-pass-order__grip"
+                          name="grip-vertical"
+                          size={16}
+                        />
                         <div className="scene-pass-order__copy">
                           <div className="scene-pass-order__header">
                             <strong>{PASS_LABELS[passId]}</strong>

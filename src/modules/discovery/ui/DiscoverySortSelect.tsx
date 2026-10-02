@@ -3,6 +3,8 @@ import type { DiscoverySort } from '../types'
 type DiscoverySortSelectProps = {
   value: DiscoverySort
   onChange: (sort: DiscoverySort) => void
+  options?: ReadonlyArray<{ label: string; value: DiscoverySort }>
+  disabled?: boolean
 }
 
 const SORT_OPTIONS: Array<{ label: string; value: DiscoverySort }> = [
@@ -14,17 +16,18 @@ const SORT_OPTIONS: Array<{ label: string; value: DiscoverySort }> = [
   { label: 'Recommended', value: 'recommended' },
 ]
 
-export function DiscoverySortSelect({ value, onChange }: DiscoverySortSelectProps) {
+export function DiscoverySortSelect({ value, onChange, options = SORT_OPTIONS, disabled = false }: DiscoverySortSelectProps) {
   return (
     <label className="discovery-sort">
       <span className="discovery-sort__label">Sort by</span>
       <select
         aria-label="Sort scenes"
         className="mage-select discovery-sort__select"
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value as DiscoverySort)}
       >
-        {SORT_OPTIONS.map((option) => (
+        {options.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>

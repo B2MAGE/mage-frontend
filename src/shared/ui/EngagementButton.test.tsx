@@ -52,7 +52,8 @@ describe('EngagementButton', () => {
     const heartPath = container.querySelector('path')
     const pathData = heartPath?.getAttribute('d')
 
-    expect(heartPath).toHaveAttribute('fill', 'none')
+    expect(container.querySelector('svg')).toHaveClass('lucide-heart')
+    expect(container.querySelector('svg')).toHaveAttribute('fill', 'none')
 
     rerender(
       <EngagementButton
@@ -65,7 +66,7 @@ describe('EngagementButton', () => {
 
     expect(container.querySelector('path')).toBe(heartPath)
     expect(heartPath).toHaveAttribute('d', pathData)
-    expect(heartPath).toHaveAttribute('fill', 'currentColor')
+    expect(container.querySelector('svg')).toHaveAttribute('fill', 'currentColor')
   })
 
   it('forwards its accessible state, styling hook, and click handler', () => {
