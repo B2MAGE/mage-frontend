@@ -26,6 +26,8 @@ import {
 } from './utils'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
+import type { AudioResponseConfig, AudioResponseTarget, SceneAudioResponseMode } from '@shared/lib'
+import { changeMusicResponseConfig, changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
 
 type UseSceneEditorStateArgs = {
   authenticatedFetch: AuthenticatedFetch
@@ -57,6 +59,7 @@ export function useSceneEditorState({
   const [sceneDataText, setSceneDataText] = useState(() =>
     prettyPrintEditorSceneData(initialState?.sceneData ?? initialSceneData),
   )
+  const [musicResponseDefaults] = useState(() => readMusicResponseDefaults(initialState?.sceneData ?? initialSceneData))
   const [errors, setErrors] = useState<CreateSceneFormErrors>({})
   const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false)
   const [isMotionAdvancedEnabled, setIsMotionAdvancedEnabled] = useState(false)
@@ -153,6 +156,20 @@ export function useSceneEditorState({
     const nextBranch = recipe(currentModel[branch])
     applySceneData(mergeSceneEditorBranch(sceneData, branch, nextBranch))
   }
+
+  function handleAudioResponseModeChange(mode: SceneAudioResponseMode, supportedTargets?: readonly AudioResponseTarget[]) {
+    applySceneData(changeMusicResponseMode(sceneData, mode, supportedTargets))
+  }
+
+  function handleAudioResponseConfigChange(config: AudioResponseConfig) {
+    applySceneData(changeMusicResponseConfig(sceneData, config))
+  }
+
+  function handleAudioResponseReset() {
+    applySceneData(restoreMusicResponseDefaults(sceneData, musicResponseDefaults))
+  }
+
+  const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(sceneData)) !== JSON.stringify(musicResponseDefaults)
 
   function handleCameraAdvancedToggle(nextValue: boolean) {
     const sceneModel = getSceneEditorModel(sceneData)
@@ -272,6 +289,7 @@ export function useSceneEditorState({
   }
 
   return {
+    canResetAudioResponse,
     availableTags,
     canCreateTagFromSearch,
     currentSection,
@@ -281,6 +299,9 @@ export function useSceneEditorState({
     filteredSelectableTags,
     formErrorId,
     handleCameraAdvancedToggle,
+    handleAudioResponseModeChange,
+    handleAudioResponseConfigChange,
+    handleAudioResponseReset,
     handleCreateTag,
     handleFormatJson,
     handleMotionAdvancedToggle,

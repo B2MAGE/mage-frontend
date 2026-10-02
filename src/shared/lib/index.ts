@@ -17,7 +17,7 @@ export type {
 export { parseApiError } from './apiErrors'
 export type { ApiErrorResponse } from './apiErrors'
 export { normalizeAudioResponseMode, normalizeAudioResponseConfig } from './audioResponse'
-export type { SceneAudioResponseMode, AudioResponseConfig } from './audioResponse'
+export type { SceneAudioResponseMode, AudioResponseConfig, AudioResponseMapping, AudioResponseSignal, AudioResponseTarget } from './audioResponse'
 export { joinClassNames } from './classNames'
 export {
   formatCalendarDate,

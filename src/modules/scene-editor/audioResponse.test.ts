@@ -66,7 +66,7 @@ describe('scene audio response persistence', () => {
     expect(scene).not.toHaveProperty('mageTemplate')
   })
   it.each(['legacy', 'transient-v1', 'mapped-v1'] as const)('retains explicit mappings even while %s is selected', (mode) => {
-    const config = normalizeAudioResponseConfig({ sensitivity: 1.7, mappings: [
+    const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 1.7, mappings: [
       { target: 'size', source: 'treble-hit', amount: 0.8, attack: 0.02, release: 0.4 },
     ] }).config
     const original: SceneData = { ...createDefaultSceneData(), audioResponse: mode, audioResponseConfig: config }
