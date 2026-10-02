@@ -71,7 +71,7 @@ export function createQualityRenderer(canvas) {
       engine.pause();
       const samples = []; let best;
       for (const phase of [0.5, 3.5, 8, 15, 30, 55, 90, 145, 179]) {
-        engine.loadPreset({ state: { time: phase, size: idleSize } });
+        engine.loadPreset({ audioResponse: sceneData.audioResponse, state: { time: phase, size: idleSize } });
         const dataUrl = await engine.captureFramePreview({ width: 640, height: 360, type: 'image/png' });
         if (!dataUrl) throw new Error('Engine did not return a captured frame');
         const stats = await measure(dataUrl, background);
@@ -82,13 +82,13 @@ export function createQualityRenderer(canvas) {
       }
       // Stress loud input at distant animation points without changing the saved scene.
       for (const phase of [15, 90, 179]) {
-        engine.loadPreset({ state: { time: phase, size: 0.9 } });
+        engine.loadPreset({ audioResponse: sceneData.audioResponse, state: { time: phase, size: 0.9 } });
         const stats = await measure(await engine.captureFramePreview({ width: 640, height: 360 }), background);
         samples.push({ phase, peakInput: true, ...stats, valid: stats.central > 0.0015 && stats.colored < 0.6 && stats.edge < 0.035 && stats.deviation > 5 });
       }
       let audio = null;
       if (checkAudio) {
-        engine.loadPreset({ state: { time: 1, size: idleSize } });
+        engine.loadPreset({ audioResponse: sceneData.audioResponse, state: { time: 1, size: idleSize } });
         const url = testTone();
         try {
           engine.loadAudio(url);

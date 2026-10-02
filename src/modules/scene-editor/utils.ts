@@ -208,7 +208,14 @@ export function buildEffectiveSceneData(
     nextSceneData = mergeSceneEditorBranch(
       nextSceneData,
       'state',
-      initialSceneModel.state,
+      {
+        ...initialSceneModel.state,
+        // Editing a beat-detection scene must not overwrite its hidden legacy
+        // setting when the advanced controls are disabled.
+        ...(nextSceneData.audioResponse === 'transient-v1'
+          ? { volume_multiplier: getSceneEditorModel(nextSceneData).state.volume_multiplier }
+          : {}),
+      },
     )
   }
 

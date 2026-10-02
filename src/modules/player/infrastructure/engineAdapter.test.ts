@@ -16,6 +16,7 @@ const engineMocks = vi.hoisted(() => ({
   play: vi.fn(),
   seek: vi.fn(),
   setAudioVolume: vi.fn(),
+  setAudioResponseMode: vi.fn(),
   setEngineTime: vi.fn(),
   setSyntheticPreview: vi.fn(),
   start: vi.fn(),
@@ -51,6 +52,7 @@ describe('createMagePlayer', () => {
       play: engineMocks.play,
       seek: engineMocks.seek,
       setAudioVolume: engineMocks.setAudioVolume,
+      setAudioResponseMode: engineMocks.setAudioResponseMode,
       setEngineTime: engineMocks.setEngineTime,
       setSyntheticPreview: engineMocks.setSyntheticPreview,
       start: engineMocks.start,
@@ -117,6 +119,56 @@ describe('createMagePlayer', () => {
     expect(engineMocks.setEngineTime).toHaveBeenCalledWith(1 / 60)
     expect(engineMocks.start).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).toHaveBeenCalledTimes(1)
+  })
+
+  it('resets audio response for every scene load instead of leaking an opt-in to legacy scenes', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+
+    player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'transient-v1' })
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'legacy' })
+    player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'unsupported-version' })
+
+    expect(engineMocks.setAudioResponseMode.mock.calls).toEqual([
+      ['transient-v1'], ['legacy'], ['legacy'], ['legacy'],
+    ])
+    expect(engineMocks.setAudioResponseMode.mock.invocationCallOrder[0])
+      .toBeGreaterThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
+  })
+
+  it('restores the authored audio response when playback is reset', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'transient-v1' })
+    engineMocks.setAudioResponseMode.mockClear()
+
+    player.resetPlayback()
+
+    expect(engineMocks.setAudioResponseMode).toHaveBeenCalledExactlyOnceWith('transient-v1')
+  })
+
+  it('supports older engine bridges that do not expose audio response selection', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const engine = engineMocks.initMAGE.getMockImplementation()?.()
+    engineMocks.initMAGE.mockReturnValue({ ...engine, setAudioResponseMode: undefined })
+    const player = await createMagePlayer(document.createElement('canvas'))
+
+    expect(() => player.loadSceneBlob({
+      visualizer: { shader: 'test' }, audioResponse: 'transient-v1',
+    })).not.toThrow()
+    expect(engineMocks.setAudioResponseMode).not.toHaveBeenCalled()
+  })
+
+  it('does not apply audio response metadata after a failed scene load', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    engineMocks.loadPreset.mockReturnValue(null)
+
+    expect(() => player.loadSceneBlob({
+      visualizer: { shader: 'test' }, audioResponse: 'transient-v1',
+    })).toThrow()
+    expect(engineMocks.setAudioResponseMode).not.toHaveBeenCalled()
   })
 
   it('forwards an opt-in render pixel ratio without changing the control configuration', async () => {

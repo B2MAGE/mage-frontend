@@ -16,6 +16,8 @@ export type {
 } from './api'
 export { parseApiError } from './apiErrors'
 export type { ApiErrorResponse } from './apiErrors'
+export { normalizeAudioResponseMode } from './audioResponse'
+export type { SceneAudioResponseMode } from './audioResponse'
 export { joinClassNames } from './classNames'
 export {
   formatCalendarDate,

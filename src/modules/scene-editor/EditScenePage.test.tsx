@@ -59,12 +59,16 @@ afterEach(() => {
 })
 
 describe('EditScenePage workflow', () => {
-  it('loads the saved scene into the editor and updates details, tags, and thumbnail', async () => {
+  it('loads the saved scene and preserves its audio response while updating details, tags, and thumbnail', async () => {
     storeSceneEditorSession()
     mockCaptureFramePreview.mockResolvedValue('data:image/png;base64,dXBkYXRlZA==')
 
     const scene = buildSceneEditorApiScene({
       tags: ['ambient'],
+      sceneData: {
+        ...buildSceneEditorApiScene().sceneData,
+        audioResponse: 'transient-v1',
+      },
     })
     let updateSceneBody: Record<string, unknown> | null = null
     let replaceTagsBody: Record<string, unknown> | null = null
@@ -156,6 +160,7 @@ describe('EditScenePage workflow', () => {
         description: 'Updated from My Scenes.',
         name: 'Updated Scene',
         sceneData: {
+          audioResponse: 'transient-v1',
           visualizer: {
             shader: 'nebula',
           },
