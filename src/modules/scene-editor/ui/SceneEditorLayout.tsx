@@ -4,10 +4,12 @@ export function FieldGroupLabel({
   description,
   htmlFor,
   label,
+  meta,
 }: {
   description?: string
   htmlFor?: string
   label: string
+  meta?: string
 }) {
   return (
     <div className="scene-field__copy">
@@ -19,6 +21,7 @@ export function FieldGroupLabel({
         ) : (
           <span className="scene-field__label">{label}</span>
         )}
+        {meta ? <span className="scene-field__meta">{meta}</span> : null}
       </div>
       {description ? <p className="scene-field__description">{description}</p> : null}
     </div>

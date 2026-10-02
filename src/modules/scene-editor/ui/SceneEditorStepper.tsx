@@ -47,6 +47,7 @@ export function SceneEditorStepper({
           return (
             <li className="scene-editor-stepper__item" key={section.id}>
               <button
+                aria-label={section.title}
                 aria-current={isActive ? 'step' : undefined}
                 className={
                   isActive
@@ -58,9 +59,10 @@ export function SceneEditorStepper({
                         : 'scene-editor-stepper__button'
                 }
                 onClick={() => onSectionJump(section.id)}
-                title={isInvalid ? issueMessage ?? undefined : undefined}
+                title={isInvalid ? issueMessage ?? section.title : section.title}
                 type="button"
               >
+                <span aria-hidden="true" className="scene-editor-stepper__number">{index + 1}</span>
                 <span className="scene-editor-stepper__label">{section.title}</span>
                 <span aria-hidden="true" className="scene-editor-stepper__marker">
                   {isInvalid ? <AlertIcon /> : isComplete ? <CheckIcon /> : null}

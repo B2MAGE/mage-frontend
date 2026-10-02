@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import {
@@ -113,6 +113,31 @@ describe('CreateScenePage workflow', () => {
       screen.getByRole('button', { name: /capture again/i }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
+  })
+
+  it('shows capture progress and prevents duplicate thumbnail requests', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    let resolveCapture!: (value: string | null) => void
+    mockCaptureFramePreview.mockImplementationOnce(() =>
+      new Promise((resolve) => {
+        resolveCapture = resolve
+      }),
+    )
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    await user.click(screen.getByRole('button', { name: /capture thumbnail/i }))
+
+    const captureButton = screen.getByRole('button', { name: /capturing/i })
+    expect(captureButton).toBeDisabled()
+    expect(captureButton).toHaveAttribute('aria-busy', 'true')
+    await user.click(captureButton)
+    expect(mockCaptureFramePreview).toHaveBeenCalledTimes(1)
+
+    resolveCapture(CAPTURED_THUMBNAIL_DATA_URL)
+    expect(await screen.findByRole('button', { name: /capture again/i })).toBeEnabled()
   })
 
   it('keeps the first section ordered around scene metadata and shows sticky navigation actions', async () => {
@@ -325,4 +350,57 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByLabelText(/scene data json/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /format json/i })).toBeInTheDocument()
   })
+})
+
+describe('Pulse scene studio', () => {
+  it('keeps draft values across all seven steps and offers publishing only on Confirm', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage('mage-pulse')
+
+    expect(screen.getByRole('heading', { name: 'Create a scene' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Start with the basics.' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Playlists')).toBeDisabled()
+    expect(screen.getByLabelText('Playlists')).toHaveClass('mage-select')
+    expect(screen.queryByRole('option', { name: 'Ambient Atlas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^create scene$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^next$/i })).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText(/scene name/i), 'Neon Studio')
+    await user.type(screen.getByLabelText(/description/i), 'A live scene draft.')
+    await user.click(screen.getByRole('button', { name: /capture thumbnail/i }))
+    expect(screen.getByAltText('Captured thumbnail preview')).toBeInTheDocument()
+
+    const navigation = within(screen.getByRole('navigation', { name: 'Section navigation' }))
+    expect(navigation.getAllByRole('button')).toHaveLength(7)
+    for (const section of ['Scene', 'Camera', 'Motion', 'Effects', 'Pass Order', 'Confirm']) {
+      await user.click(navigation.getByRole('button', { name: section }))
+      expect(navigation.getByRole('button', { name: section })).toHaveAttribute('aria-current', 'step')
+    }
+    expect(screen.getByRole('heading', { name: 'Review before publishing.' })).toBeInTheDocument()
+    expect(screen.getByText('Neon Studio')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^create scene$/i })).toBeEnabled()
+    await user.click(navigation.getByRole('button', { name: 'Details' }))
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Neon Studio')
+    expect(screen.getByLabelText(/description/i)).toHaveValue('A live scene draft.')
+  })
+
+  it('returns to invalid details and exposes invalid JSON when submitting from Confirm', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage('mage-pulse')
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: /^create scene$/i }))
+    expect(screen.getByRole('heading', { name: 'Start with the basics.' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/scene name/i)).toHaveAttribute('aria-invalid', 'true')
+    await user.type(screen.getByLabelText(/scene name/i), 'Valid name')
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+    fireEvent.change(screen.getByLabelText(/scene data json/i), { target: { value: '{bad json' } })
+    await user.click(screen.getByRole('button', { name: /^create scene$/i }))
+    expect(screen.getByLabelText(/scene data json/i)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByTestId('mage-player')).toHaveTextContent('preview-ready')
+  })
+
 })

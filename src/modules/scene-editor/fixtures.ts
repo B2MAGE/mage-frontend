@@ -98,4 +98,3 @@ export const ALLOWED_THUMBNAIL_CONTENT_TYPES = new Set(['image/png'])
 
 export const MAX_THUMBNAIL_BYTES = 5 * 1024 * 1024
 export const MAX_TAG_NAME_LENGTH = 64
-export const TAG_SKELETON_COUNT = 5
