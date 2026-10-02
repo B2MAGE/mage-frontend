@@ -62,7 +62,6 @@ html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible {
 
 html[data-theme='classic-facebook'] .nav-profile-trigger:hover .nav-avatar,
 html[data-theme='classic-facebook'] .nav-profile-trigger:focus-visible .nav-avatar {
-  background: var(--nav-avatar-hover-background);
   box-shadow: var(--nav-avatar-hover-shadow);
 }
 

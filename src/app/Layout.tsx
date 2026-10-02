@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { Skeleton } from '@shared/ui'
+import { Skeleton, UserAvatar } from '@shared/ui'
 import './pulseChrome.css'
 
 function UserIcon() {
@@ -193,9 +193,7 @@ export function Layout({ children }: PropsWithChildren) {
                 onClick={() => setIsAccountMenuOpen((currentValue) => !currentValue)}
                 type="button"
               >
-                <span className="nav-avatar" aria-hidden="true">
-                  {profileInitials}
-                </span>
+                <UserAvatar className="nav-avatar" initials={profileInitials} />
                 <span className="nav-profile-trigger__label">{profileName}</span>
                 <span className="nav-profile-trigger__chevron" aria-hidden="true">
                   <ChevronDownIcon />
@@ -216,9 +214,7 @@ export function Layout({ children }: PropsWithChildren) {
                       role="menuitem"
                       to={user.handle ? `/@${user.handle}` : '/profile'}
                     >
-                      <span className="nav-avatar nav-avatar--large" aria-hidden="true">
-                        {profileInitials}
-                      </span>
+                      <UserAvatar className="nav-avatar nav-avatar--large" initials={profileInitials} />
                       <div className="nav-menu__identity">
                         <strong>{profileName}</strong>
                         <span className="nav-menu__identity-email" title={profileEmail}>

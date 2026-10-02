@@ -34,8 +34,8 @@ html[data-theme='mage-pulse'] .scene-detail-page {
   & a.mage-channel-card .mage-channel-card__copy strong,
   & a.mage-channel-card .mage-channel-card__copy span { cursor: pointer; }
   & a.mage-channel-card:hover .mage-channel-card__copy strong { color: var(--muted); text-decoration: none; }
-  & .mage-channel-card__avatar { width: 42px; height: 42px; font-size: 12px; font-weight: 750; border: 0; color: var(--text); background: linear-gradient(145deg,rgba(124,108,255,.55),rgba(99,240,214,.22)),#252932; }
-  & .mage-channel-card__avatar, & .mage-comment__avatar { cursor: default; transform: none; box-shadow: none; }
+  & .mage-channel-card__avatar { width: 42px; height: 42px; font-size: 12px; font-weight: 750; }
+  & .mage-channel-card__avatar, & .mage-comment__avatar { cursor: default; transform: none; }
   & .mage-channel-card__copy { gap: 0; }
   & .mage-channel-card__copy strong { color: var(--text); font-size: 14px; text-decoration: none; cursor: default; }
   & .mage-channel-card__copy span { color: var(--text-muted); font-size: 11px; }
@@ -66,7 +66,7 @@ html[data-theme='mage-pulse'] .scene-detail-page {
   & .mage-comments__header span { color: var(--text-muted); font-size: 13px; font-weight: 500; }
   & .scene-detail-sort-chip { width: auto; min-height: 0; height: 32px; padding: 0 11px; font-size: 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-soft); text-transform: none; letter-spacing: normal; }
   & .scene-detail-comment-composer { display: grid; grid-template-columns: 36px minmax(0,1fr); align-items: start; margin-top: 20px; padding: 0; gap: 11px; border: 0; background: none; }
-  & .scene-detail-comment-composer__avatar, & .mage-comment__avatar { width: 36px; height: 36px; border: 0; background: #272a31; color: var(--text); font-size: 10px; font-weight: 700; }
+  & .scene-detail-comment-composer__avatar, & .mage-comment__avatar { width: 36px; height: 36px; font-size: 10px; font-weight: 700; }
   & .scene-detail-comment-form { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); gap: 0; }
   & .scene-detail-comment-composer__textarea { width: 100%; min-height: 68px; resize: vertical; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; line-height: 1.45; box-shadow: none; }
   & .scene-detail-comment-composer__textarea:focus { box-shadow: none; }

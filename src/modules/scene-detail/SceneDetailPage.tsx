@@ -3,7 +3,7 @@ import './sceneDetail.css'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { MagePlayer } from '@modules/player'
-import { EngagementButton, PendingButtonLabel } from '@shared/ui'
+import { EngagementButton, PendingButtonLabel, UserAvatar } from '@shared/ui'
 import {
   clearSceneCommentVote,
   clearSceneVote,
@@ -608,9 +608,7 @@ export function SceneDetailPage() {
             <div className="scene-detail-social-row__creator">
               {creatorProfile.handle ? (
                 <Link className="mage-channel-card" to={`/@${creatorProfile.handle}`}>
-                  <div className="mage-channel-card__avatar" aria-hidden="true">
-                    {readInitial(creatorProfile.displayName)}
-                  </div>
+                  <UserAvatar className="mage-channel-card__avatar" initials={readInitial(creatorProfile.displayName)} />
                   <div className="mage-channel-card__copy">
                     <strong>{creatorProfile.displayName}</strong>
                     <span>@{creatorProfile.handle}</span>
@@ -618,9 +616,7 @@ export function SceneDetailPage() {
                 </Link>
               ) : (
                 <div className="mage-channel-card">
-                <div className="mage-channel-card__avatar" aria-hidden="true">
-                  {readInitial(creatorProfile.displayName)}
-                </div>
+                <UserAvatar className="mage-channel-card__avatar" initials={readInitial(creatorProfile.displayName)} />
                 <div className="mage-channel-card__copy">
                   <strong>{creatorProfile.displayName}</strong>
                 </div>

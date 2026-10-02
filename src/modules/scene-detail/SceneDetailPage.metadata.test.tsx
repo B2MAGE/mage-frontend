@@ -83,6 +83,7 @@ describe('SceneDetailPage metadata', () => {
       'href',
       '/@peterb5825',
     )
+    expect(screen.getByRole('link', { name: /peter.*@peterb5825/i }).querySelector('.mage-channel-card__avatar')).toHaveClass('user-avatar')
     expect(screen.getByRole('button', { name: /from peter/i })).toBeInTheDocument()
     expect(screen.queryByText('Talia North')).not.toBeInTheDocument()
   })

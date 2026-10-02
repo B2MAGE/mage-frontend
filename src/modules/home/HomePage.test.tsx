@@ -41,6 +41,9 @@ describe('Homepage mockup behavior',()=>{
   expect(container.querySelector('.home-filter-loading__placeholder')).toBeInTheDocument()
   expect(container.querySelectorAll('.scene-card--loading')).toHaveLength(8)
   expect(container.querySelector('.tag-pill--skeleton')).not.toBeInTheDocument()
+  expect(container.querySelector('.featured-loading__avatar')).not.toHaveClass('user-avatar')
+  expect(container.querySelector('.featured-scene--loading .user-avatar')).not.toBeInTheDocument()
+  expect(container.querySelector('.scene-card--loading .user-avatar')).not.toBeInTheDocument()
  })
  it('shows the welcome panel to guests and links featured browsing to scenes',async()=>{
   show()
@@ -55,6 +58,13 @@ describe('Homepage mockup behavior',()=>{
  })
  it('uses the shared category pill style for featured tags and For You filters',async()=>{
   show()
+  expect(screen.getByRole('link',{name:/Ari Rivera@aririvera/}).querySelector('.creator-avatar')).toHaveClass('user-avatar')
+  const discoveryAvatars=screen.getByLabelText('For You scenes').querySelectorAll('.scene-card__avatar')
+  expect(discoveryAvatars).toHaveLength(2)
+  discoveryAvatars.forEach(avatar=>{
+   expect(avatar).toHaveClass('user-avatar')
+   expect(avatar).toHaveAttribute('aria-hidden','true')
+  })
   const featuredSection=screen.getByRole('region',{name:'Featured Scenes'})
   const featuredTag=await within(featuredSection).findByRole('link',{name:'Ambient'})
   const filters=within(await screen.findByLabelText('Filter recent scenes'))

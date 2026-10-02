@@ -7,7 +7,7 @@ import {
   SceneGridSkeleton,
 } from '@modules/discovery'
 import { formatCompactCount } from '@shared/lib'
-import { Skeleton } from '@shared/ui'
+import { Skeleton, UserAvatar } from '@shared/ui'
 import {
   buildProfileViewModel,
   fetchPublicProfile,
@@ -196,7 +196,7 @@ export function ProfilePage() {
   return (
     <main className="profile-page" aria-labelledby="profile-page-title">
       <section className="profile-hero" aria-label="Profile summary">
-        <div className="profile-avatar" aria-hidden="true">{profile.initials}</div>
+        <UserAvatar className="profile-avatar" initials={profile.initials} />
 
         <div className="profile-identity">
           <h1 id="profile-page-title">{profile.displayName}</h1>

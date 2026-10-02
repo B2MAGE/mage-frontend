@@ -63,6 +63,8 @@ describe('SceneDetailPage route states', () => {
     expect(document.querySelector('.scene-detail-skeleton__player')).toBeInTheDocument()
     expect(screen.getByTestId('scene-comment-skeleton-list').children).toHaveLength(3)
     expect(screen.getByTestId('scene-recommendation-skeleton-list').children).toHaveLength(4)
+    expect(screen.getByTestId('scene-comment-skeleton-list').querySelector('.user-avatar')).not.toBeInTheDocument()
+    expect(screen.getByTestId('scene-recommendation-skeleton-list').querySelector('.user-avatar')).not.toBeInTheDocument()
     expect(screen.queryByText('Scene Detail')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /loading scene/i })).not.toBeInTheDocument()
   })
@@ -468,6 +470,9 @@ describe('SceneDetailPage route states', () => {
       .closest('.mage-comment')
 
     expect(topLevelCommentElement).not.toBeNull()
+    expect(topLevelCommentElement?.querySelector('.mage-comment__avatar')).toHaveClass('user-avatar')
+    expect(screen.getByText('A reply from the crowd.').closest('.mage-comment')?.querySelector('.mage-comment__avatar')).toHaveClass('user-avatar')
+    expect(document.querySelector('.scene-detail-comment-composer__avatar')).toHaveClass('user-avatar')
 
     const topLevelCommentActionElement = topLevelCommentElement?.querySelector(
       '.scene-detail-comment__actions',

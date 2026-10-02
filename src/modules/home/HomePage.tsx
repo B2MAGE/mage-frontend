@@ -4,7 +4,7 @@ import { useAuth } from '@auth'
 import { useTheme } from '@theme'
 import { ClassicHomePage } from './ClassicHomePage'
 import { fetchScenes, fetchTags, formatMetricLabel, formatRelativeTime, type SceneListResponse, type TagResponse } from '@shared/lib'
-import { EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton } from '@shared/ui'
+import { EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton, UserAvatar } from '@shared/ui'
 import { selectPopularHomeTags } from './selectors'
 import { MagePlayer } from '@modules/player'
 import { DiscoverySceneCard } from '../discovery/ui/DiscoverySceneCard'
@@ -194,12 +194,12 @@ function PulseHomePage() {
             <div className="creator-row">
               {featured.creatorHandle ? (
                 <Link className="featured-creator-profile" to={`/@${featured.creatorHandle}`}>
-                  <div className="creator-avatar" aria-hidden="true">{(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')}</div>
+                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} />
                   <div className="featured-creator-profile__copy"><strong>{featured.creatorDisplayName || 'MAGE creator'}</strong><span>@{featured.creatorHandle}</span></div>
                 </Link>
               ) : (
                 <div className="featured-creator-profile featured-creator-profile--static">
-                  <div className="creator-avatar" aria-hidden="true">{(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')}</div>
+                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} />
                   <div className="featured-creator-profile__copy"><strong>{featured.creatorDisplayName || 'MAGE creator'}</strong><span>Scene creator</span></div>
                 </div>
               )}
