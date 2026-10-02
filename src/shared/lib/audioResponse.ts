@@ -1,6 +1,3 @@
-export type SceneAudioResponseMode = 'legacy' | 'transient-v1'
-
-// Missing or unsupported modes must never opt an existing scene into a new response.
-export function normalizeAudioResponseMode(value: unknown): SceneAudioResponseMode {
-  return value === 'transient-v1' ? 'transient-v1' : 'legacy'
-}
+// Share the lightweight contract with the patched engine without loading WebGL.
+export { normalizeAudioResponseMode, normalizeAudioResponseConfig } from '@notrac/mage/audio-response'
+export type { AudioResponseMode as SceneAudioResponseMode, AudioResponseConfig } from '@notrac/mage/audio-response'

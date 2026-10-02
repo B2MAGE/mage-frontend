@@ -37,6 +37,7 @@ type MageEngineBridge = {
   seek?: MAGEEngineAPI['seek']
   setAudioVolume?: (volume: number) => number
   setAudioResponseMode?: (mode: SceneAudioResponseMode) => void
+  setAudioResponseConfig?: MAGEEngineAPI['setAudioResponseConfig']
   setEngineTime?: (time: number) => boolean
   setSyntheticPreview: MAGEEngineAPI['setSyntheticPreview']
   start: MAGEEngineAPI['start']
@@ -162,6 +163,7 @@ function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob)
   // Apply after preset loading so it also works with engines whose preset
   // serializer does not yet retain the top-level app metadata.
   engine.setAudioResponseMode?.(normalizeAudioResponseMode(sceneBlob.audioResponse))
+  if (sceneBlob.audioResponse === 'mapped-v1') engine.setAudioResponseConfig?.(sceneBlob.audioResponseConfig)
 }
 
 function readSceneAudioSource(sceneBlob: MageSceneBlob) {
