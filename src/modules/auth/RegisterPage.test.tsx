@@ -24,6 +24,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/first name/i), ' Ada ')
   await user.type(screen.getByLabelText(/last name/i), ' Lovelace ')
   await user.type(screen.getByLabelText(/display name/i), ' Countess Ada ')
+  await user.type(screen.getByLabelText(/handle/i), ' @countess_ada ')
   await user.type(screen.getByLabelText(/^email$/i), ' user@example.com ')
   await user.type(screen.getByLabelText(/password/i), 'secret-value')
 }
@@ -36,7 +37,7 @@ describe('RegisterPage', () => {
     renderRegisterPage()
 
     expect(
-      screen.getByText('This is the public name shown on scenes and comments.'),
+      screen.getByText('This is the public name people will see on your scenes and comments.'),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /create account/i }))
@@ -44,6 +45,7 @@ describe('RegisterPage', () => {
     expect(await screen.findByText('First name is required.')).toBeInTheDocument()
     expect(screen.getByText('Last name is required.')).toBeInTheDocument()
     expect(screen.getByText('Display name is required.')).toBeInTheDocument()
+    expect(screen.getByText('Handle is required.')).toBeInTheDocument()
     expect(screen.getByText('Email is required.')).toBeInTheDocument()
     expect(screen.getByText('Password is required.')).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
@@ -79,6 +81,7 @@ describe('RegisterPage', () => {
       firstName: 'Ada',
       lastName: 'Lovelace',
       displayName: 'Countess Ada',
+      handle: '@countess_ada',
       email: 'user@example.com',
       password: 'secret-value',
     })
@@ -136,6 +139,7 @@ describe('RegisterPage', () => {
             firstName: 'firstName must not be blank',
             lastName: 'lastName must not be blank',
             displayName: 'displayName must not be blank',
+            handle: 'That handle is already in use.',
             email: 'email must not be blank',
             password: 'password must not be blank',
           },
@@ -158,7 +162,25 @@ describe('RegisterPage', () => {
     expect(await screen.findByText('firstName must not be blank')).toBeInTheDocument()
     expect(screen.getByText('lastName must not be blank')).toBeInTheDocument()
     expect(screen.getByText('displayName must not be blank')).toBeInTheDocument()
+    expect(screen.getByText('That handle is already in use.')).toBeInTheDocument()
     expect(screen.getByText('email must not be blank')).toBeInTheDocument()
     expect(screen.getByText('password must not be blank')).toBeInTheDocument()
+  })
+
+  it('rejects handles that do not start with @ or use the supported format', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const user = userEvent.setup()
+
+    renderRegisterPage()
+
+    await fillValidForm(user)
+    await user.clear(screen.getByLabelText(/handle/i))
+    await user.type(screen.getByLabelText(/handle/i), 'two words')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    expect(
+      await screen.findByText(/start with @, then use 3–30 letters, numbers, or underscores/i),
+    ).toBeInTheDocument()
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

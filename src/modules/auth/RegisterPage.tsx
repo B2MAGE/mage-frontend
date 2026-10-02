@@ -1,15 +1,19 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AuthPage, AuthPageHeader } from '@shared/ui'
+import { AuthPage, AuthPageHeader, PendingButtonLabel } from '@shared/ui'
 import { emailPattern, parseApiError } from '@shared/lib'
-import { FormNotice, TextInputField } from '@shared/ui'
+import { FormNotice } from '@shared/ui'
+import { AuthInput } from './AuthInput'
+import './auth.css'
 import { registerLocalAccount } from './client'
+import { HANDLE_INPUT_MAX_LENGTH, validateHandleInput } from './handle'
 
 type RegistrationFormValues = {
   firstName: string
   lastName: string
   displayName: string
+  handle: string
   email: string
   password: string
 }
@@ -22,6 +26,8 @@ type RegistrationResponse = {
   firstName?: string
   lastName?: string
   displayName?: string
+  handle?: string
+  description?: string | null
   authProvider?: string
   created?: boolean
 }
@@ -30,6 +36,7 @@ const initialValues: RegistrationFormValues = {
   firstName: '',
   lastName: '',
   displayName: '',
+  handle: '',
   email: '',
   password: '',
 }
@@ -53,6 +60,12 @@ function validateRegistrationForm(values: RegistrationFormValues): RegistrationF
     errors.displayName = 'Display name is required.'
   } else if (values.displayName.trim().length < 2) {
     errors.displayName = 'Display name must be at least 2 characters.'
+  }
+
+  const handleError = validateHandleInput(values.handle)
+
+  if (handleError) {
+    errors.handle = handleError
   }
 
   if (!values.email.trim()) {
@@ -107,6 +120,7 @@ export function RegisterPage() {
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
       displayName: values.displayName.trim(),
+      handle: values.handle.trim(),
       email: values.email.trim(),
       password: values.password,
     }
@@ -129,13 +143,14 @@ export function RegisterPage() {
         const backendDetails = apiError?.details ?? {}
         const conflictMessage =
           response.status === 409
-            ? apiError?.message ?? 'An account already exists for that email address.'
+            ? apiError?.message ?? 'That email address or handle is already in use.'
             : undefined
 
         setErrors({
           firstName: backendDetails.firstName,
           lastName: backendDetails.lastName,
           displayName: backendDetails.displayName,
+          handle: backendDetails.handle,
           email: backendDetails.email,
           password: backendDetails.password,
           form:
@@ -165,17 +180,24 @@ export function RegisterPage() {
   }
 
   return (
-    <AuthPage titleId={titleId}>
+    <AuthPage titleId={titleId} className="auth-page--registration">
       <>
         <AuthPageHeader
-          description="Use your email address to create a local account for the MAGE platform."
+          description="Create a local MAGE account with your email address."
           eyebrow="Create Account"
           title="Register"
           titleId={titleId}
         />
 
+          {errors.form ? (
+            <FormNotice id={formErrorId} tone="error">
+              {errors.form}
+            </FormNotice>
+          ) : null}
+
         <form className="auth-form" noValidate onSubmit={handleSubmit}>
-          <TextInputField
+          <div className="auth-name-grid">
+          <AuthInput
             autoComplete="given-name"
             error={errors.firstName}
             id="firstName"
@@ -188,7 +210,7 @@ export function RegisterPage() {
             type="text"
             value={values.firstName}
           />
-          <TextInputField
+          <AuthInput
             autoComplete="family-name"
             error={errors.lastName}
             id="lastName"
@@ -201,21 +223,45 @@ export function RegisterPage() {
             type="text"
             value={values.lastName}
           />
-          <TextInputField
+          </div>
+          <AuthInput
             autoComplete="nickname"
             error={errors.displayName}
-            hint="This is the public name shown on scenes and comments."
+            hint="This is the public name people will see on your scenes and comments."
             id="displayName"
             label="Display name"
             minLength={2}
             name="displayName"
             onChange={(event) => handleChange('displayName', event.target.value)}
-            placeholder="Mir Ahnaf Ali"
+            placeholder="Scene Artist"
             required
             type="text"
             value={values.displayName}
+          >
+            <div className="auth-display-preview">
+              <span className="auth-preview-avatar" aria-hidden="true">
+                {values.displayName.trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'MG'}
+              </span>
+              <div><strong>{values.displayName.trim() || 'Your display name'}</strong><span>Public profile preview</span></div>
+            </div>
+          </AuthInput>
+          <AuthInput
+            autoCapitalize="none"
+            autoComplete="username"
+            error={errors.handle}
+            hint="This creates your profile address, such as /@sceneartist."
+            id="handle"
+            label="Handle"
+            maxLength={HANDLE_INPUT_MAX_LENGTH}
+            name="handle"
+            onChange={(event) => handleChange('handle', event.target.value)}
+            placeholder="@sceneartist"
+            required
+            spellCheck={false}
+            type="text"
+            value={values.handle}
           />
-          <TextInputField
+          <AuthInput
             autoComplete="email"
             error={errors.email}
             id="email"
@@ -227,11 +273,12 @@ export function RegisterPage() {
             type="email"
             value={values.email}
           />
-          <TextInputField
+          <AuthInput
             autoComplete="new-password"
             error={errors.password}
             id="password"
             label="Password"
+            hint="Use at least 8 characters."
             minLength={8}
             name="password"
             onChange={(event) => handleChange('password', event.target.value)}
@@ -241,17 +288,14 @@ export function RegisterPage() {
             value={values.password}
           />
 
-          {errors.form ? (
-            <FormNotice id={formErrorId} tone="error">
-              {errors.form}
-            </FormNotice>
-          ) : null}
-
-          <button className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
-            {isSubmitting ? 'Creating account...' : 'Create account'}
+          <button aria-busy={isSubmitting} className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>
+            <PendingButtonLabel pending={isSubmitting} pendingLabel="Creating account...">
+              Create account
+            </PendingButtonLabel>
           </button>
         </form>
 
+        <div className="auth-divider" />
         <p className="auth-footnote">
           Already have an account?{' '}
           <Link className="secondary-link" to="/login">

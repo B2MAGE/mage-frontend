@@ -9,6 +9,7 @@ type RegisterRequest = {
   firstName: string
   lastName: string
   displayName: string
+  handle: string
   email: string
   password: string
 }

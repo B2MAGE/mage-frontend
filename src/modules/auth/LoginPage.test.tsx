@@ -98,6 +98,8 @@ describe('LoginPage', () => {
           userId: 14,
           email: 'user@example.com',
           displayName: 'Existing User',
+          handle: 'existing_user',
+          description: 'Layered audio-reactive experiments.',
           authProvider: 'LOCAL',
           accessToken: 'issued-login-token',
         }),
@@ -111,7 +113,16 @@ describe('LoginPage', () => {
     )
 
     expect(await screen.findByText('Home page')).toBeInTheDocument()
-    expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain('issued-login-token')
+    const storedSession = JSON.parse(
+      window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY) ?? 'null',
+    ) as { user?: { handle?: string; description?: string }; accessToken?: string }
+    expect(storedSession.accessToken).toBe('issued-login-token')
+    expect(storedSession.user).toEqual(
+      expect.objectContaining({
+        handle: 'existing_user',
+        description: 'Layered audio-reactive experiments.',
+      }),
+    )
   })
 
   it('prefills the email and shows the registration handoff notice', () => {
@@ -134,7 +145,7 @@ describe('LoginPage', () => {
     renderLoginPage()
 
     await user.type(screen.getByLabelText(/^email$/i), 'artist@example.com')
-    await user.click(screen.getByRole('link', { name: /reset it here/i }))
+    await user.click(screen.getByRole('link', { name: /forgot password/i }))
 
     expect(await screen.findByText('Forgot password page')).toBeInTheDocument()
   })

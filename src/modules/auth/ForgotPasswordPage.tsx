@@ -1,7 +1,9 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { AuthPage, AuthPageHeader, FormNotice, TextInputField } from '@shared/ui'
+import { AuthPage, AuthPageHeader, FormNotice, PendingButtonLabel } from '@shared/ui'
+import { AuthInput } from './AuthInput'
+import './auth.css'
 import { emailPattern, parseApiError } from '@shared/lib'
 import { requestPasswordReset } from './client'
 import { useAuth } from './authContext'
@@ -142,61 +144,30 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthPage titleId={titleId}>
-      <AuthPageHeader
-        description="Enter your email address and MAGE will start the password recovery process."
-        eyebrow="Account Recovery"
-        title="Forgot password"
-        titleId={titleId}
-      />
-
       {confirmationMessage ? (
         <>
-          <FormNotice tone="note">{confirmationMessage}</FormNotice>
-          <p className="auth-footnote">
-            If the address is registered, use the reset link from that recovery message to continue.
-          </p>
-          <p className="auth-footnote">
-            Sent to: <strong>{submittedEmail}</strong>
-          </p>
-          <p className="auth-footnote">
-            <Link className="secondary-link" to="/login">
-              Back to login
-            </Link>
-          </p>
+          <AuthPageHeader description={confirmationMessage} eyebrow="Account Recovery" title="Reset link sent" titleId={titleId} />
+          <FormNotice tone="note">Use the reset link in that message to continue.</FormNotice>
+          <p className="auth-confirmation-email">Sent to: <strong>{submittedEmail}</strong></p>
+          <div className="auth-state-actions">
+            <Link className="auth-primary-link" to="/login">Back to login</Link>
+            <button className="auth-secondary-link" type="button" onClick={() => { setConfirmationMessage(''); setSubmittedEmail(''); setValues(initialValues) }}>Try another email</button>
+          </div>
         </>
       ) : (
         <>
+          <AuthPageHeader description="Enter your email address and we’ll start the recovery process." eyebrow="Account Recovery" title="Forgot password?" titleId={titleId} />
+          {errors.form ? <FormNotice id={formNoticeId} tone="error">{errors.form}</FormNotice> : null}
           <form className="auth-form" noValidate onSubmit={handleSubmit}>
-            <TextInputField
-              autoComplete="email"
-              error={errors.email}
-              id="email"
-              label="Email"
-              name="email"
-              onChange={(event) => handleChange(event.target.value)}
-              placeholder="you@example.com"
-              required
-              type="email"
-              value={values.email}
-            />
-
-            {errors.form ? (
-              <FormNotice id={formNoticeId} tone="error">
-                {errors.form}
-              </FormNotice>
-            ) : null}
-
-            <button className="demo-link auth-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Sending reset link...' : 'Send reset link'}
+            <AuthInput autoComplete="email" error={errors.email} id="email" label="Email" name="email" onChange={(event) => handleChange(event.target.value)} placeholder="you@example.com" required type="email" value={values.email} />
+            <button aria-busy={isSubmitting} className="demo-link auth-submit" type="submit" disabled={isSubmitting}>
+              <PendingButtonLabel pending={isSubmitting} pendingLabel="Sending reset link...">
+                Send reset link
+              </PendingButtonLabel>
             </button>
           </form>
-
-          <p className="auth-footnote">
-            Remembered your password?{' '}
-            <Link className="secondary-link" to="/login">
-              Back to login
-            </Link>
-          </p>
+          <div className="auth-divider" />
+          <p className="auth-footnote">Remembered your password? <Link className="secondary-link" to="/login">Back to login</Link></p>
         </>
       )}
     </AuthPage>
