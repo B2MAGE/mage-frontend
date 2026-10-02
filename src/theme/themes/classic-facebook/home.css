@@ -1,6 +1,5 @@
 /* Shared homepage structure, dressed as compact Classic Blue panels. */
-:root[data-theme='classic-facebook'] .pulse-home { width: min(calc(100% - 48px), 1280px); }
-:root[data-theme='classic-facebook'] .pulse-home--without-welcome { padding-top: 0; }
+:root[data-theme='classic-facebook'] .pulse-home { width: min(calc(100% - 48px), 1280px); padding-top: var(--page-content-top-gap); }
 :root[data-theme='classic-facebook'] .pulse-home .featured-section { padding-bottom: 32px; }
 :root[data-theme='classic-facebook'] .pulse-home .featured-heading { margin-bottom: 16px; }
 :root[data-theme='classic-facebook'] .pulse-home .featured-heading h1 { font-size: 24px; letter-spacing: -.02em; }

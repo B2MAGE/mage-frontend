@@ -2,7 +2,8 @@
 :root[data-theme='classic-facebook'] .settings-page {
   width: min(1040px, calc(100% - 48px));
   display: block;
-  padding: 8px 0 40px;
+  margin-top: 0;
+  padding: var(--page-content-top-gap) 0 40px;
 }
 
 :root[data-theme='classic-facebook'] .settings-page__heading { margin-bottom: 24px; }
@@ -11,7 +12,7 @@
 :root[data-theme='classic-facebook'] .settings-lead { margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
 :root[data-theme='classic-facebook'] .settings-layout { grid-template-columns: 160px minmax(0, 1fr); gap: 24px; }
 :root[data-theme='classic-facebook'] .settings-nav { position: sticky; top: 86px; }
-:root[data-theme='classic-facebook'] .settings-nav__link { padding: 9px 12px; border: 1px solid transparent; border-radius: 2px; color: var(--text-soft); font-size: 13px; font-weight: 700; }
+:root[data-theme='classic-facebook'] .settings-nav__link { padding: 9px 12px; border: 1px solid transparent; border-radius: 2px; color: var(--text-soft); font-size: 13px; font-weight: 700; text-decoration: none; }
 :root[data-theme='classic-facebook'] .settings-nav__link:hover { background: var(--surface-hover); color: var(--accent); }
 :root[data-theme='classic-facebook'] .settings-nav__link[aria-current] { border-color: var(--border); background: #dfe7f4; color: #29447e; }
 :root[data-theme='classic-facebook'] .settings-section { display: block; margin: 0; padding: 22px; scroll-margin-top: 88px; background: var(--surface); }
