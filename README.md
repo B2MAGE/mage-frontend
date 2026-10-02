@@ -77,10 +77,11 @@ Before running the frontend locally, make sure you have:
 
 ## Configuration
 
-The frontend supports one optional environment variable:
+The frontend supports optional environment variables:
 
 ```bash
 VITE_API_BASE_URL=
+VITE_HOME_FEATURED_SCENE_ID=
 ```
 
 Behavior:
@@ -96,6 +97,8 @@ http://localhost:8080
 ```
 
 That proxy is configured in [vite.config.ts](./vite.config.ts).
+
+VITE_HOME_FEATURED_SCENE_ID selects a real scene for the homepage feature. If unset, the newest available scene is featured. See [Pulse local review](docs/pulse-layout-review.md) for the seeded mockup review setup.
 
 ## Deployment
 
