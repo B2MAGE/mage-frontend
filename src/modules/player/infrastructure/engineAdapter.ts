@@ -43,6 +43,7 @@ type MageEngineModule = {
     autoStart?: boolean
     canvas: HTMLCanvasElement
     log?: boolean
+    pixelRatio?: number
     withControls?: {
       active?: boolean
       integrated?: boolean
@@ -84,7 +85,7 @@ export type MagePlayerController = {
   seekAudio: (time: number) => MagePlayerAudioState
   setAudioVolume: (volume: number) => MagePlayerAudioState
   setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
-  setSyntheticPreview: (enabled: boolean, seed?: number) => void
+  setSyntheticPreview: (enabled: boolean, seed?: number, tempoScale?: number) => void
 }
 
 export class MagePlayerAdapterError extends Error {
@@ -244,13 +245,14 @@ async function loadMageEngineModule() {
 
 export async function createMagePlayer(
   canvas: HTMLCanvasElement,
-  options: { log?: boolean } = {},
+  options: { log?: boolean; pixelRatio?: number } = {},
 ): Promise<MagePlayerController> {
   const { initMAGE } = await loadMageEngineModule()
   const engine = initMAGE({
     canvas,
     autoStart: false,
     log: options.log ?? false,
+    ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
     withControls: DEFAULT_ENGINE_CONTROLS,
   })
 
@@ -556,8 +558,12 @@ export async function createMagePlayer(
 
       return getAudioState()
     },
-    setSyntheticPreview(enabled, seed) {
-      engine.setSyntheticPreview(enabled, seed)
+    setSyntheticPreview(enabled, seed, tempoScale) {
+      if (tempoScale === undefined) {
+        engine.setSyntheticPreview(enabled, seed)
+      } else {
+        engine.setSyntheticPreview(enabled, seed, tempoScale)
+      }
     },
     setPlaybackState,
     dispose() {

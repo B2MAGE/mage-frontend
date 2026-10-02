@@ -1,0 +1,50 @@
+.about-page {
+  --about-section-gap: 56px;
+  width: min(calc(100% - 48px), 1180px);
+  margin: 0 auto;
+  padding: 48px 0 56px;
+  color: var(--text);
+}
+
+.about-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 410px);
+  align-items: center;
+  gap: 64px;
+}
+
+.about-hero__copy { min-width: 0; }
+.about-hero h1 { margin: 0; font-size: clamp(48px, 7vw, 80px); line-height: .96; letter-spacing: -.055em; }
+.about-hero__copy > p { max-width: 620px; margin: 20px 0 0; color: var(--text-soft); font-size: 17px; line-height: 1.65; }
+.about-hero__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.about-page :is(.primary-button, .secondary-button) { min-height: 40px; padding: 0 14px; border-radius: 9px; font-size: 12px; font-weight: 700; }
+
+.about-introduction { margin-top: var(--about-section-gap); padding-top: 32px; border-top: 1px solid var(--border); }
+.about-introduction h2 { margin: 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.04em; }
+.about-introduction > p { max-width: 720px; margin: 12px 0 34px; color: var(--text-soft); font-size: 15px; line-height: 1.7; }
+.about-principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.about-principles article { padding-top: 18px; border-top: 1px solid var(--border-strong); }
+.about-principles h3 { margin: 0; font-size: 16px; }
+.about-principles p { margin: 8px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+
+.about-callout { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin-top: var(--about-section-gap); padding-top: 32px; border-top: 1px solid var(--border); }
+.about-callout h2 { margin: 0; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.035em; }
+.about-callout p { margin: 7px 0 0; color: var(--text-muted); font-size: 12px; }
+.about-callout > a { flex-shrink: 0; }
+
+@media (max-width: 1000px) {
+  .about-hero { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 36px; }
+}
+
+@media (max-width: 850px) {
+  .about-page { --about-section-gap: 48px; padding-top: 40px; }
+  .about-hero { grid-template-columns: 1fr; gap: 32px; }
+  .about-scene { max-width: 520px; justify-self: center; }
+  .about-principles { grid-template-columns: 1fr; gap: 22px; }
+}
+
+@media (max-width: 650px) {
+  .about-page { --about-section-gap: 40px; width: calc(100% - 28px); padding-top: 32px; padding-bottom: 40px; }
+  .about-hero { gap: 28px; }
+  .about-callout { align-items: flex-start; flex-direction: column; gap: 20px; }
+}

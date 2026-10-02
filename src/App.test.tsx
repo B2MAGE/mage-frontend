@@ -13,6 +13,10 @@ vi.mock('@modules/home', () => ({
   HomePage: () => <div>Home page</div>,
 }))
 
+vi.mock('./modules/about/AboutScene', () => ({
+  AboutScene: () => <div>Decorative About scene</div>,
+}))
+
 vi.mock('@modules/my-scenes', () => ({
   MyScenesLoadingState: () => <div>Loading my scenes</div>,
   MyScenesPage: () => <div>My scenes page</div>,
@@ -81,15 +85,16 @@ describe('App routing', () => {
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
-  it('renders the public About placeholder route', () => {
+  it('renders the public About page', () => {
     render(
       <MemoryRouter initialEntries={['/about']}>
         <App />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'About MAGE' })).toBeInTheDocument()
-    expect(screen.getByText('This page is coming soon.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Music you can see.' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Explore scenes' })).toHaveAttribute('href', '/scenes')
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
   it('keeps the profile placeholder behind authentication', async () => {

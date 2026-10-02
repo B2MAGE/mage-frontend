@@ -1,4 +1,5 @@
 export { MagePlayer } from './MagePlayer'
+export { MagePlayerLoading } from './MagePlayerLoading'
 export { createMagePlayer } from './infrastructure/engineAdapter'
 export {
   buildScenePlaylistTrack,
