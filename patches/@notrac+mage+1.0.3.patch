@@ -1,16 +1,130 @@
+diff --git a/node_modules/@notrac/mage/dist/audio-response.d.ts b/node_modules/@notrac/mage/dist/audio-response.d.ts
+new file mode 100644
+index 0000000..87afd73
+--- /dev/null
++++ b/node_modules/@notrac/mage/dist/audio-response.d.ts
+@@ -0,0 +1,26 @@
++export type AudioResponseMode = 'legacy' | 'transient-v1' | 'mapped-v1';
++export type AudioResponseSignal = 'bass-level' | 'mid-level' | 'treble-level' | 'overall-level' | 'bass-hit' | 'mid-hit' | 'treble-hit' | 'overall-hit';
++export type AudioResponseTarget = 'size' | 'bass' | 'mid' | 'treble' | 'audioLevel' | 'audioHit';
++export interface AudioResponseMapping {
++  target: AudioResponseTarget;
++  source: AudioResponseSignal;
++  amount: number;
++  /** Attack time in seconds. */
++  attack: number;
++  /** Release time in seconds. */
++  release: number;
++}
++export interface AudioResponseConfig {
++  version: 1;
++  sensitivity: number;
++  mappings: AudioResponseMapping[];
++}
++export interface NormalizedAudioResponseConfig {
++  config: AudioResponseConfig;
++  warnings: string[];
++}
++export declare const AUDIO_RESPONSE_SIGNALS: readonly AudioResponseSignal[];
++export declare const AUDIO_RESPONSE_TARGETS: readonly AudioResponseTarget[];
++export declare function createDefaultAudioResponseConfig(): AudioResponseConfig;
++export declare function normalizeAudioResponseMode(value: unknown): AudioResponseMode;
++export declare function normalizeAudioResponseConfig(value: unknown): NormalizedAudioResponseConfig;
+diff --git a/node_modules/@notrac/mage/dist/audio-response.js b/node_modules/@notrac/mage/dist/audio-response.js
+new file mode 100644
+index 0000000..0be1d5e
+--- /dev/null
++++ b/node_modules/@notrac/mage/dist/audio-response.js
+@@ -0,0 +1,70 @@
++// This module deliberately has no rendering, DOM, or audio-context dependencies.
++export const AUDIO_RESPONSE_SIGNALS = Object.freeze([
++	'bass-level', 'mid-level', 'treble-level', 'overall-level',
++	'bass-hit', 'mid-hit', 'treble-hit', 'overall-hit',
++]);
++export const AUDIO_RESPONSE_TARGETS = Object.freeze(['size', 'bass', 'mid', 'treble', 'audioLevel', 'audioHit']);
++const DEFAULT_SOURCES = ['overall-hit', 'bass-level', 'mid-level', 'treble-level', 'overall-level', 'overall-hit'];
++const MAX_INPUT_MAPPINGS = 128;
++
++export function createDefaultAudioResponseConfig() {
++	return {
++		version: 1,
++		sensitivity: 1,
++		mappings: AUDIO_RESPONSE_TARGETS.map((target, index) => ({
++			target, source: DEFAULT_SOURCES[index], amount: 1, attack: 0.04, release: 0.35,
++		})),
++	};
++}
++
++export function normalizeAudioResponseMode(value) {
++	return value === 'mapped-v1' || value === 'transient-v1' ? value : 'legacy';
++}
++
++function boundedNumber(value, fallback, min, max, label, warnings) {
++	if (value === undefined) return fallback;
++	if (typeof value !== 'number' || !Number.isFinite(value)) {
++		warnings.push(`${label} must be a finite number; using ${fallback}.`);
++		return fallback;
++	}
++	const normalized = Math.max(min, Math.min(max, value));
++	if (normalized !== value) warnings.push(`${label} was clamped to ${normalized}.`);
++	return normalized;
++}
++
++export function normalizeAudioResponseConfig(value) {
++	const config = createDefaultAudioResponseConfig();
++	const warnings = [];
++	if (value === undefined || value === null) return { config, warnings };
++	if (typeof value !== 'object' || Array.isArray(value) || value.version !== 1) {
++		warnings.push('Unsupported audio-response configuration; using version 1 defaults.');
++		return { config, warnings };
++	}
++	config.sensitivity = boundedNumber(value.sensitivity, 1, 0.1, 4, 'sensitivity', warnings);
++	if (value.mappings === undefined) return { config, warnings };
++	if (!Array.isArray(value.mappings)) {
++		warnings.push('mappings must be an array; using default mappings.');
++		return { config, warnings };
++	}
++	const mappings = new Map();
++	if (value.mappings.length > MAX_INPUT_MAPPINGS) {
++		warnings.push(`Only the first ${MAX_INPUT_MAPPINGS} mappings are processed.`);
++	}
++	for (const [index, mapping] of value.mappings.slice(0, MAX_INPUT_MAPPINGS).entries()) {
++		if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)
++			|| !AUDIO_RESPONSE_TARGETS.includes(mapping.target) || !AUDIO_RESPONSE_SIGNALS.includes(mapping.source)) {
++			warnings.push(`mappings[${index}] has an unsupported target or source and was dropped.`);
++			continue;
++		}
++		if (mappings.has(mapping.target)) warnings.push(`Duplicate target ${mapping.target}; the last valid mapping wins.`);
++		mappings.set(mapping.target, {
++			target: mapping.target,
++			source: mapping.source,
++			amount: boundedNumber(mapping.amount, 1, 0, 4, `mappings[${index}].amount`, warnings),
++			attack: boundedNumber(mapping.attack, 0.04, 0, 2, `mappings[${index}].attack`, warnings),
++			release: boundedNumber(mapping.release, 0.35, 0, 5, `mappings[${index}].release`, warnings),
++		});
++	}
++	config.mappings = [...mappings.values()];
++	return { config, warnings };
++}
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.d.ts b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-index 7e71e8c..cb4e73f 100644
+index 7e71e8c..bdd7190 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.d.ts
 +++ b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-@@ -7,6 +7,7 @@
+@@ -1,3 +1,4 @@
++import type { AudioResponseConfig, AudioResponseMode } from "./audio-response.js";
+ // Auto-generated by scripts/postbuild-types.cjs
+ // This declaration intentionally exposes only the supported public API surface.
+ /**
+@@ -7,6 +8,8 @@
   * The MAGEPreset can be used in conjunction with the loadPreset and toPreset methods of the MAGEEngineAPI to save and restore engine states, enabling users to create a library of presets for different visual styles and effects.
   */
  export interface MAGEPreset {
-+  audioResponse?: 'legacy' | 'transient-v1';
++  audioResponse?: AudioResponseMode;
++  audioResponseConfig?: AudioResponseConfig;
    // The structure of the preset is not defined here, as it is considered an opaque type.
    // It can be any serializable object that represents the state of the MAGE engine.
    [key: string]: any;
-@@ -223,6 +224,10 @@ export interface MAGEEngineAPI {
+@@ -223,6 +226,10 @@ export interface MAGEEngineAPI {
     * Returns the current playback time of the audio in seconds. If no audio is loaded, it returns 0.
     */
    getAudioTime(): number;
@@ -21,7 +135,7 @@ index 7e71e8c..cb4e73f 100644
    /**
     * Seeks to a specific time in the audio playback.
     * @param time 
-@@ -251,6 +256,18 @@ export interface MAGEEngineAPI {
+@@ -251,6 +258,21 @@ export interface MAGEEngineAPI {
     * (URL must support CORS so things like YouTube will not work). 
     */
    loadAudio(path?: string | URL): void;
@@ -36,11 +150,14 @@ index 7e71e8c..cb4e73f 100644
 +   */
 +  setSyntheticPreview(enabled: boolean, seed?: number, tempoScale?: number): void;
 +  /** Select versioned audio analysis. Missing/legacy preserves the original mapping. */
-+  setAudioResponseMode(mode?: 'legacy' | 'transient-v1'): void;
++  setAudioResponseMode(mode?: AudioResponseMode): void;
++  /** Updates settings without restarting playback. Mode remains explicitly opt-in. */
++  setAudioResponseConfig(value: unknown): AudioResponseConfig;
++  getAudioResponseConfig(): AudioResponseConfig | null;
    /**
     * Loads a MAGEPreset into the engine, applying all the settings and configurations contained in the preset to recreate the visual output. 
     * @param {MAGEPreset} preset - presetInput The preset to load into the engine.
-@@ -347,6 +364,8 @@ export interface MAGEEngineAPI {
+@@ -347,6 +369,8 @@ export interface MAGEEngineAPI {
  export interface MAGEConfig {
    /** The HTML canvas element to render the engine on. */
    canvas: HTMLCanvasElement;
@@ -50,10 +167,15 @@ index 7e71e8c..cb4e73f 100644
    log?: boolean;
    /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index ff1861a..d9074b5 100644
+index ff1861a..1fa14ea 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
-@@ -72787,6 +72787,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -1,3 +1,4 @@
++import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from "./audio-response.js";
+ //#region \0rolldown/runtime.js
+ var __commonJSMin = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+ //#endregion
+@@ -72787,6 +72788,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				rotateX,
  				rotateY,
  				rotateZ,
@@ -61,7 +183,7 @@ index ff1861a..d9074b5 100644
  				mirrorX,
  				mirrorY,
  				mirrorZ,
-@@ -72818,6 +72819,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72818,6 +72820,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				extrude2D,
  				getSpherical,
  				mirrorN,
@@ -70,7 +192,7 @@ index ff1861a..d9074b5 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
-@@ -100048,7 +100051,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100048,7 +100052,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				if (!(_typeof(uniformsToUpdate) === "object")) throw "createSculpture takes, (source, uniformCallback, params) the uniformCallback must be a function that returns a dictionary of uniforms to update";
  				for (var _i = 0, _Object$entries = Object.entries(uniformsToUpdate); _i < _Object$entries.length; _i++) {
  					var _Object$entries$_i = _slicedToArray(_Object$entries[_i], 2), uniform = _Object$entries$_i[0], value = _Object$entries$_i[1];
@@ -79,34 +201,36 @@ index ff1861a..d9074b5 100644
  				}
  			};
  			return mesh;
-@@ -100503,7 +100506,7 @@ var MAGEVisualizer = class {
+@@ -100503,7 +100507,7 @@ var MAGEVisualizer = class {
  //#endregion
  //#region js/MAGEPreset.js
  var MAGEPreset = class MAGEPreset {
 -	constructor({ controls = null, settings = null, state = null, intent = null, fx = null, visualizer = null, audioPath = null } = {}) {
-+	constructor({ controls = null, settings = null, state = null, intent = null, fx = null, visualizer = null, audioPath = null, audioResponse = "legacy" } = {}) {
++	constructor({ controls = null, settings = null, state = null, intent = null, fx = null, visualizer = null, audioPath = null, audioResponse = "legacy", audioResponseConfig = null } = {}) {
  		this.controls = controls;
  		this.settings = settings;
  		this.state = state;
-@@ -100511,6 +100514,7 @@ var MAGEPreset = class MAGEPreset {
+@@ -100511,6 +100515,8 @@ var MAGEPreset = class MAGEPreset {
  		this.fx = fx;
  		this.visualizer = visualizer;
  		this.audioPath = audioPath;
-+		this.audioResponse = audioResponse === "transient-v1" ? audioResponse : "legacy";
++		this.audioResponse = normalizeAudioResponseMode(audioResponse);
++		if (this.audioResponse === "mapped-v1") this.audioResponseConfig = normalizeAudioResponseConfig(audioResponseConfig).config;
  	}
  	static from(input) {
  		if (!input) return null;
-@@ -100529,7 +100533,8 @@ var MAGEPreset = class MAGEPreset {
+@@ -100529,7 +100535,9 @@ var MAGEPreset = class MAGEPreset {
  			intent: data.intent ?? null,
  			fx: data.fx ?? null,
  			visualizer: data.visualizer ?? null,
 -			audioPath: data.audioPath ?? data.audio ?? null
 +			audioPath: data.audioPath ?? data.audio ?? null,
-+			audioResponse: data.audioResponse
++			audioResponse: data.audioResponse,
++			audioResponseConfig: data.audioResponseConfig
  		});
  	}
  };
-@@ -103584,6 +103589,43 @@ var BleachBypassShader = {
+@@ -103584,6 +103592,43 @@ var BleachBypassShader = {
  };
  //#endregion
  //#region js/MAGEFx.js
@@ -150,7 +274,7 @@ index ff1861a..d9074b5 100644
  /**
  * Full-screen textured quad shader
  */
-@@ -103736,11 +103778,10 @@ var MAGEEffects = class {
+@@ -103736,11 +103781,10 @@ var MAGEEffects = class {
  		};
  		/** @type {any} */
  		this.toonShader = {
@@ -165,7 +289,7 @@ index ff1861a..d9074b5 100644
  			}
  		};
  		this.copyShader = {
-@@ -103958,7 +103999,7 @@ var MAGEEffects = class {
+@@ -103958,7 +104002,7 @@ var MAGEEffects = class {
  	}
  	applyPostProcessing(scene, renderer, camera, composer) {
  		this.bloom.update(renderer);
@@ -174,7 +298,7 @@ index ff1861a..d9074b5 100644
  		this.colorifyShader.update();
  		composer?.dispose();
  		const newComposer = new EffectComposer(renderer);
-@@ -107066,10 +107107,75 @@ var MAGE_VERSION = "1.0.3";
+@@ -107066,10 +107110,75 @@ var MAGE_VERSION = "1.0.3";
  * @property {EngineControlSettings} [withControls={ active: true, integrated: false }] - Enable scene controls and specify their layout
  * @property {boolean} [autoStart=false] - Automatically start rendering
  */
@@ -250,11 +374,13 @@ index ff1861a..d9074b5 100644
  	#scene = null;
  	#renderer = null;
  	#composer = null;
-@@ -107084,9 +107190,20 @@ var MAGEEngine = class MAGEEngine {
+@@ -107084,9 +107193,22 @@ var MAGEEngine = class MAGEEngine {
  	#audioFile = null;
  	#reversedAudio = null;
  	#audioAnalyser = null;
 +	#audioResponseMode = "legacy";
++	#audioResponseConfig = null;
++	#audioResponseWarnings = [];
 +	#transientAudio = null;
 +	#transientAnalyser = null;
 +	#transientSource = null;
@@ -271,7 +397,7 @@ index ff1861a..d9074b5 100644
  	#visualizer = null;
  	#inputs = null;
  	#state = null;
-@@ -107127,13 +107244,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107127,13 +107249,14 @@ var MAGEEngine = class MAGEEngine {
  	#previewFrameCount = 0;
  	#previewFramesTarget = 0;
  	#isLowQualityMode = false;
@@ -287,7 +413,7 @@ index ff1861a..d9074b5 100644
  		this.#controlSettings = {
  			active: Boolean(active),
  			integrated: Boolean(integrated)
-@@ -107156,6 +107274,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107156,6 +107279,10 @@ var MAGEEngine = class MAGEEngine {
  		this.#audioBuffer = null;
  		this.#playbackTime = 0;
  		this.#isReversed = false;
@@ -298,7 +424,7 @@ index ff1861a..d9074b5 100644
  		this.#visualizer = new MAGEVisualizer(this);
  		this.#inputs = {
  			currMouse: new Vector3(),
-@@ -107277,6 +107399,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107277,6 +107404,7 @@ var MAGEEngine = class MAGEEngine {
  			this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
  			this.#_syncSobelResolution();
  		}
@@ -306,7 +432,7 @@ index ff1861a..d9074b5 100644
  		this.#_render();
  		if (!this.#currentPreset && !this.#visualizer.mesh) this.#_loadDefaultPreset();
  	}
-@@ -107297,16 +107420,39 @@ var MAGEEngine = class MAGEEngine {
+@@ -107297,16 +107425,39 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -347,7 +473,7 @@ index ff1861a..d9074b5 100644
  		const clampedTime = Math.max(0, Math.min(time, duration));
  		this.#playbackTime = clampedTime;
  		const forwardWasPlaying = Boolean(this.#audio.isPlaying);
-@@ -107318,6 +107464,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107318,6 +107469,8 @@ var MAGEEngine = class MAGEEngine {
  		}
  		if (forwardWasPlaying) this.#audio.stop();
  		if (reverseWasPlaying && this.#reversedAudio) this.#reversedAudio.stop();
@@ -356,7 +482,7 @@ index ff1861a..d9074b5 100644
  		if (forwardWasPlaying && reverseWasPlaying) if (this.#isReversed && this.#reversedAudio?.buffer) this.#reversedAudio.play();
  		else this.#audio.play();
  		else if (forwardWasPlaying) this.#audio.play();
-@@ -107333,10 +107481,94 @@ var MAGEEngine = class MAGEEngine {
+@@ -107333,10 +107486,105 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -377,13 +503,24 @@ index ff1861a..d9074b5 100644
 +	* @returns {void}
 +	*/
 +	setAudioResponseMode(mode = "legacy") {
-+		const next = mode === "transient-v1" ? mode : "legacy";
++		const next = normalizeAudioResponseMode(mode);
++		this.#audioResponseConfig = next === "mapped-v1" ? normalizeAudioResponseConfig(null).config : null;
++		this.#audioResponseWarnings = [];
 +		if (this.#transientAudio) this.#_disconnectTransientAnalyser();
 +		this.#audioResponseMode = next;
 +		if (next === "transient-v1") {
 +			this.#transientAudio ??= new MAGETransientAudioResponse();
 +			this.#transientAudio.reset();
 +		} else this.#transientAudio = null;
++	}
++	setAudioResponseConfig(value) {
++		const normalized = normalizeAudioResponseConfig(value);
++		this.#audioResponseConfig = normalized.config;
++		this.#audioResponseWarnings = normalized.warnings;
++		return this.getAudioResponseConfig();
++	}
++	getAudioResponseConfig() {
++		return this.#audioResponseConfig ? normalizeAudioResponseConfig(this.#audioResponseConfig).config : null;
 +	}
 +	#_disconnectTransientAnalyser() {
 +		if (this.#transientAnalyser) {
@@ -451,7 +588,7 @@ index ff1861a..d9074b5 100644
  		if (!this.isAudioLoaded()) return;
  		if (this.#audio && !this.#audio.isPlaying) this.#audio.play();
  	}
-@@ -107347,6 +107579,11 @@ var MAGEEngine = class MAGEEngine {
+@@ -107347,6 +107595,11 @@ var MAGEEngine = class MAGEEngine {
  	pause() {
  		if (this.#audio?.isPlaying) this.#audio.pause();
  		if (this.#reversedAudio?.isPlaying) this.#reversedAudio.pause();
@@ -463,7 +600,7 @@ index ff1861a..d9074b5 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -107362,6 +107599,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107362,6 +107615,7 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	loadAudio(filePath) {
@@ -471,7 +608,7 @@ index ff1861a..d9074b5 100644
  		const previousVolume = this.#audio?.getVolume();
  		this.#audio?.pause();
  		this.#reversedAudio?.pause();
-@@ -107399,6 +107637,25 @@ var MAGEEngine = class MAGEEngine {
+@@ -107399,6 +107653,25 @@ var MAGEEngine = class MAGEEngine {
  		});
  	}
  	/**
@@ -497,15 +634,16 @@ index ff1861a..d9074b5 100644
  	* Loads a preset into the engine.
  	* @param {MAGEPreset} presetInput - The preset input to load.
  	* @returns {MAGEPreset} The loaded preset.
-@@ -107411,6 +107668,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107411,6 +107684,8 @@ var MAGEEngine = class MAGEEngine {
  			return;
  		}
  		this.#currentPreset = preset;
 +		this.setAudioResponseMode(preset.audioResponse);
++		if (this.#audioResponseMode === "mapped-v1") this.setAudioResponseConfig(preset.audioResponseConfig);
  		if (preset.controls) this.#_loadControls(preset.controls);
  		if (preset.visualizer) {
  			if (preset.visualizer.skyboxPreset !== void 0 && preset.visualizer.skyboxPreset !== null) {
-@@ -107418,11 +107676,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107418,11 +107693,14 @@ var MAGEEngine = class MAGEEngine {
  				if (normalizedSkybox) this.#_loadSkybox(normalizedSkybox);
  				else if (this.log) console.warn("[MAGEEngine.loadPreset] Invalid skyboxPreset input; expected preset id, preset path, or { type, presetId }", { input: preset.visualizer.skyboxPreset });
  			}
@@ -525,7 +663,7 @@ index ff1861a..d9074b5 100644
  			if (typeof preset.visualizer.scale === "number") this.#visualizer.scale = preset.visualizer.scale;
  		}
  		if (preset.state) this.#_applyStatePatch(preset.state, {
-@@ -107431,6 +107692,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107431,6 +107709,10 @@ var MAGEEngine = class MAGEEngine {
  		});
  		if (typeof this.#importSettingsState === "function" && preset.settings) this.#importSettingsState(preset.settings);
  		if (preset.intent) this.#_applyCompactIntent(preset.intent);
@@ -536,7 +674,7 @@ index ff1861a..d9074b5 100644
  		if (preset.fx) this.#_applyCompactFx(preset.fx);
  		this.#_syncPostProcessingFromState();
  		this.#_syncSobelResolution();
-@@ -107488,7 +107753,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107488,7 +107770,7 @@ var MAGEEngine = class MAGEEngine {
  		const preset = {
  			version: MAGE_VERSION,
  			visualizer: {
@@ -545,7 +683,7 @@ index ff1861a..d9074b5 100644
  				skyboxPreset: this.#visualizer.skyboxPreset,
  				scale: this.#visualizer.scale
  			},
-@@ -107535,6 +107800,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107535,6 +107817,8 @@ var MAGEEngine = class MAGEEngine {
  					halftone: this.fx.halftonePass.enabled,
  					gammaCorrection: this.fx.gammaCorrectionShader.enabled,
  					kaleid: this.fx.kaleidoShader.enabled,
@@ -554,15 +692,16 @@ index ff1861a..d9074b5 100644
  					outputPass: this.fx.outputPass.enabled
  				},
  				params: {
-@@ -107552,6 +107819,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107552,6 +107836,8 @@ var MAGEEngine = class MAGEEngine {
  			}
  		};
  		preset.state = { ...this.#state };
-+		if (this.#audioResponseMode === "transient-v1") preset.audioResponse = this.#audioResponseMode;
++		if (this.#audioResponseMode !== "legacy") preset.audioResponse = this.#audioResponseMode;
++		if (this.#audioResponseMode === "mapped-v1") preset.audioResponseConfig = this.getAudioResponseConfig();
  		if (this.log) console.log("Generated preset from current state:", preset);
  		return preset;
  	}
-@@ -107703,7 +107971,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107703,7 +107989,7 @@ var MAGEEngine = class MAGEEngine {
  	*/
  	dispose() {
  		if (this.#isDisposed) return;
@@ -571,7 +710,7 @@ index ff1861a..d9074b5 100644
  		this.#isDisposed = true;
  		this.#isRunning = false;
  		if (this.#animationFrameId !== null) {
-@@ -108038,12 +108306,16 @@ var MAGEEngine = class MAGEEngine {
+@@ -108038,12 +108324,16 @@ var MAGEEngine = class MAGEEngine {
  		this.#_syncSobelResolution();
  	}
  	#_syncSobelResolution() {
@@ -592,7 +731,7 @@ index ff1861a..d9074b5 100644
  	}
  	#_captureFramePreviewDataUrlSync({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
  		if (!this.#renderer?.domElement) return null;
-@@ -108120,6 +108392,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108120,6 +108410,8 @@ var MAGEEngine = class MAGEEngine {
  			if (typeof fx.passes.halftone === "boolean") this.fx.halftonePass.enabled = fx.passes.halftone;
  			if (typeof fx.passes.gammaCorrection === "boolean") this.fx.gammaCorrectionShader.enabled = fx.passes.gammaCorrection;
  			if (typeof fx.passes.kaleid === "boolean") this.fx.kaleidoShader.enabled = fx.passes.kaleid;
@@ -601,7 +740,7 @@ index ff1861a..d9074b5 100644
  			if (typeof fx.passes.outputPass === "boolean") this.fx.outputPass.enabled = fx.passes.outputPass;
  		}
  		if (fx.params && typeof fx.params === "object") {
-@@ -108360,7 +108634,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108360,7 +108652,8 @@ var MAGEEngine = class MAGEEngine {
  		this.#renderer = new WebGLRenderer(rendererOptions);
  		if (this.#isLowQualityMode) this.#renderer.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)), false);
  		else this.#renderer.setSize(width, height, false);
@@ -611,7 +750,7 @@ index ff1861a..d9074b5 100644
  		else this.#renderer.setPixelRatio(window.devicePixelRatio || 1);
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
  		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
-@@ -108471,8 +108746,32 @@ var MAGEEngine = class MAGEEngine {
+@@ -108471,8 +108764,32 @@ var MAGEEngine = class MAGEEngine {
  		}
  	}
  	#_updateVisualizer() {
@@ -645,7 +784,7 @@ index ff1861a..d9074b5 100644
  		this.#scene.add(mesh);
  		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#viewportWidth / 4)), Math.max(1, Math.floor(this.#viewportHeight / 4)), {
  			format: RGBAFormat,
-@@ -108487,8 +108786,9 @@ var MAGEEngine = class MAGEEngine {
+@@ -108487,8 +108804,9 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#isDisposed || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
  		this.#animationFrameId = requestAnimationFrame(this.#_render);
  		this.#_syncViewport();
@@ -657,7 +796,7 @@ index ff1861a..d9074b5 100644
  		if (!Number.isFinite(this.#state.time_multiplier)) this.#state.time_multiplier = 1;
  		if (this.#state.time < 180 && this.#timeIncreasing) this.#state.time += this.#state.time_multiplier * delta;
  		else {
-@@ -108497,12 +108797,37 @@ var MAGEEngine = class MAGEEngine {
+@@ -108497,12 +108815,37 @@ var MAGEEngine = class MAGEEngine {
  			if (this.#state.time <= 0) this.#timeIncreasing = true;
  		}
  		let bass_input = 0;
@@ -697,7 +836,7 @@ index ff1861a..d9074b5 100644
  		else {
  			const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
  			this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;
-@@ -108787,9 +109112,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -108787,9 +109130,10 @@ var MAGEEngine = class MAGEEngine {
  };
  //#endregion
  //#region js/mage-lib.js
@@ -709,3 +848,18 @@ index ff1861a..d9074b5 100644
  		log,
  		withControls: {
  			active,
+diff --git a/node_modules/@notrac/mage/package.json b/node_modules/@notrac/mage/package.json
+index 14e895a..ed027a5 100644
+--- a/node_modules/@notrac/mage/package.json
++++ b/node_modules/@notrac/mage/package.json
+@@ -9,6 +9,10 @@
+     ".": {
+       "types": "./dist/mage-engine.d.ts",
+       "import": "./dist/mage-engine.js"
++    },
++    "./audio-response": {
++      "types": "./dist/audio-response.d.ts",
++      "import": "./dist/audio-response.js"
+     }
+   },
+   "files": [

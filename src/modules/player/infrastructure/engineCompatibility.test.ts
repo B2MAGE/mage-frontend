@@ -93,7 +93,7 @@ describe('installed MAGE engine compatibility', () => {
     expectTypeOf<MAGEEngineAPI['unloadAudio']>().toEqualTypeOf<() => void>()
     expectTypeOf<MAGEEngineAPI['getAudioVolume']>().toEqualTypeOf<() => number>()
     expectTypeOf<MAGEEngineAPI['setAudioVolume']>().toEqualTypeOf<(volume: number) => number>()
-    expectTypeOf<MAGEEngineAPI['setAudioResponseMode']>().toEqualTypeOf<(mode?: 'legacy' | 'transient-v1') => void>()
+    expectTypeOf<MAGEEngineAPI['setAudioResponseMode']>().toEqualTypeOf<(mode?: 'legacy' | 'transient-v1' | 'mapped-v1') => void>()
     expectTypeOf<MAGEEngineAPI['setSyntheticPreview']>().toEqualTypeOf<(enabled: boolean, seed?: number, tempoScale?: number) => void>()
     expectTypeOf<MAGEConfig['pixelRatio']>().toEqualTypeOf<number | undefined>()
   })

@@ -1,4 +1,5 @@
 import engineSource from '@notrac/mage?raw'
+import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
 import { describe, expect, it, vi } from 'vitest'
 
 type Harness = Record<string, unknown>
@@ -21,6 +22,7 @@ const engineClassSource = engineSource.slice(engineStart)
 // Execute the installed implementation with fake audio resources, not a second
 // implementation of the detector or engine logic.
 function engineMethod(name: string, dependencies: Record<string, unknown> = {}): Method {
+  dependencies = { normalizeAudioResponseConfig, normalizeAudioResponseMode, ...dependencies }
   const publicStart = engineClassSource.indexOf(`\n\t${name}(`)
   const start = publicStart >= 0 ? publicStart : engineClassSource.indexOf(`\n\t#${name}(`)
   const end = engineClassSource.indexOf('\n\t}', start)
@@ -132,10 +134,32 @@ describe('installed transient audio response', () => {
 })
 
 describe('installed audio response mode integration', () => {
+  it('replaces mapped settings on scene load and clears them when returning to an older scene', () => {
+    const presetStart = engineSource.indexOf('var MAGEPreset = class MAGEPreset {')
+    const presetEnd = engineSource.indexOf('\n//#endregion', presetStart)
+    const Preset = new Function('normalizeAudioResponseConfig', 'normalizeAudioResponseMode', `${engineSource.slice(presetStart, presetEnd)}; return MAGEPreset;`)(normalizeAudioResponseConfig, normalizeAudioResponseMode)
+    const engine: Harness = {
+      setAudioResponseMode: engineMethod('setAudioResponseMode', { MAGETransientAudioResponse: TransientAudioResponse }),
+      setAudioResponseConfig: engineMethod('setAudioResponseConfig'),
+      getAudioResponseConfig: engineMethod('getAudioResponseConfig'),
+      fx: { bleachBypassShader: { enabled: false }, toonShader: { enabled: false } },
+      controls: {}, controlSettings: { active: false },
+      _syncPostProcessingFromState: vi.fn(), _syncSobelResolution: vi.fn(),
+    }
+    const load = engineMethod('loadPreset', { MAGEPreset: Preset })
+    const settings = { version: 1, sensitivity: 2, mappings: [{ target: 'bass', source: 'bass-hit', amount: 3 }] }
+    load.call(engine, JSON.stringify({ audioResponse: 'mapped-v1', audioResponseConfig: settings }))
+    expect(engine.audioResponseConfig).toEqual(normalizeAudioResponseConfig(settings).config)
+    load.call(engine, { audioResponse: 'mapped-v1' })
+    expect(engine.audioResponseConfig).toEqual(normalizeAudioResponseConfig(null).config)
+    load.call(engine, {})
+    expect(engine).toMatchObject({ audioResponseMode: 'legacy', audioResponseConfig: null })
+  })
+
   it('loads opt-in presets and defaults omitted or invalid modes to legacy without leaking state', () => {
     const presetStart = engineSource.indexOf('var MAGEPreset = class MAGEPreset {')
     const presetEnd = engineSource.indexOf('\n//#endregion', presetStart)
-    const Preset = new Function(`${engineSource.slice(presetStart, presetEnd)}; return MAGEPreset;`)() as { from: (value: unknown) => unknown }
+    const Preset = new Function('normalizeAudioResponseConfig', 'normalizeAudioResponseMode', `${engineSource.slice(presetStart, presetEnd)}; return MAGEPreset;`)(normalizeAudioResponseConfig, normalizeAudioResponseMode) as { from: (value: unknown) => unknown }
     const disconnect = vi.fn()
     const engine: Harness = {
       transientAudio: null,
