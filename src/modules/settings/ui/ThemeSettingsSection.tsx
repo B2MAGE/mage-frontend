@@ -1,6 +1,7 @@
 import { type AppThemeDefinition, useTheme } from '@theme'
 import type { CSSProperties } from 'react'
 import { SurfaceCard } from '@shared/ui'
+import { AnimatedThumbnailSetting } from './AnimatedThumbnailSetting'
 import './themeSettingsSection.css'
 
 type ThemePreviewProps = {
@@ -43,13 +44,14 @@ export function ThemeSettingsSection() {
   return (
     <SurfaceCard
       as="section"
-      className="settings-section"
+      className="settings-section settings-section--appearance"
+      id="appearance"
       tone="soft"
       aria-labelledby="theme-settings-title"
     >
       <div className="settings-section__header">
-        <h2 id="theme-settings-title">Theme</h2>
-        <p>Choose how MAGE looks across the app. Changes apply immediately and stay saved on this device.</p>
+        <h2 id="theme-settings-title">Appearance</h2>
+        <p>Choose the visual theme used across MAGE. The change applies immediately and stays saved on this device.</p>
       </div>
 
       <div
@@ -71,15 +73,19 @@ export function ThemeSettingsSection() {
               type="button"
             >
               <ThemePreview theme={theme} />
+              <span className="theme-option__details">
               <span className="theme-option__copy">
                 <strong>{theme.label}</strong>
                 <span>{theme.description}</span>
               </span>
               <span className="theme-option__status">{isActive ? 'Active theme' : 'Switch theme'}</span>
+              </span>
             </button>
           )
         })}
       </div>
+
+      <AnimatedThumbnailSetting />
     </SurfaceCard>
   )
 }

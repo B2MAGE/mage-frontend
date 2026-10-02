@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { useAuth } from '@auth'
 import { changePassword } from './password'
 import { saveUserProfile } from './profile'
 import { PasswordChangeForm, ProfileDetailsForm, ThemeSettingsSection } from './ui'
+import './settings.css'
 
 export function SettingsPage() {
   const { authenticatedFetch, updateAuthenticatedUser, user } = useAuth()
+  const [activeSection, setActiveSection] = useState('appearance')
 
   if (!user) {
     return (
@@ -20,36 +23,56 @@ export function SettingsPage() {
 
   return (
     <main className="page-stack settings-page">
-      <section className="surface surface--page-panel">
+      <header className="settings-page__heading">
         <div className="eyebrow">Settings</div>
         <h1 className="settings-title">Settings</h1>
         <p className="settings-lead">
-          Manage your MAGE profile details and choose the interface theme that fits this device.
+          Manage how MAGE looks on this device and update the account details tied to your profile.
         </p>
+      </header>
 
-        <ThemeSettingsSection />
+      <div className="settings-layout">
+        <aside className="settings-nav">
+          <nav aria-label="Settings sections" className="settings-nav__list">
+            <a className="settings-nav__link" aria-current={activeSection === 'appearance' ? 'location' : undefined} href="#appearance" onClick={() => setActiveSection('appearance')}>
+              Appearance
+            </a>
+            <a className="settings-nav__link" aria-current={activeSection === 'profile' ? 'location' : undefined} href="#profile" onClick={() => setActiveSection('profile')}>
+              Profile
+            </a>
+            <a className="settings-nav__link" aria-current={activeSection === 'security' ? 'location' : undefined} href="#security" onClick={() => setActiveSection('security')}>
+              Password
+            </a>
+          </nav>
+        </aside>
 
-        <ProfileDetailsForm
-          email={user.email}
-          firstName={user.firstName ?? ''}
-          lastName={user.lastName ?? ''}
-          displayName={user.displayName}
-          onSave={async (nameFields) => {
-            const result = await saveUserProfile(authenticatedFetch, nameFields)
+        <section className="settings-content">
+          <ThemeSettingsSection />
 
-            if (result.ok && result.user) {
-              updateAuthenticatedUser(result.user)
-            }
+          <ProfileDetailsForm
+            description={user.description ?? ''}
+            email={user.email}
+            firstName={user.firstName ?? ''}
+            handle={user.handle ?? ''}
+            lastName={user.lastName ?? ''}
+            displayName={user.displayName}
+            onSave={async (profileFields) => {
+              const result = await saveUserProfile(authenticatedFetch, profileFields)
 
-            return result
-          }}
-        />
+              if (result.ok && result.user) {
+                updateAuthenticatedUser(result.user)
+              }
 
-        <PasswordChangeForm
-          authProvider={user.authProvider}
-          onSave={(passwordFields) => changePassword(authenticatedFetch, passwordFields)}
-        />
-      </section>
+              return result
+            }}
+          />
+
+          <PasswordChangeForm
+            authProvider={user.authProvider}
+            onSave={(passwordFields) => changePassword(authenticatedFetch, passwordFields)}
+          />
+        </section>
+      </div>
     </main>
   )
 }

@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react'
-import { FormNotice, SurfaceCard, TextInputField } from '@shared/ui'
+import { FormNotice, PendingButtonLabel, SurfaceCard, TextInputField } from '@shared/ui'
 import type { PasswordChangeFields, PasswordChangeResult } from '../types'
 
 type PasswordChangeFormProps = {
@@ -103,7 +103,13 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
   }
 
   return (
-    <SurfaceCard as="section" className="settings-section" tone="soft" aria-label="Password">
+    <SurfaceCard
+      as="section"
+      className="settings-section settings-section--security"
+      id="security"
+      tone="soft"
+      aria-label="Password"
+    >
       <div className="settings-section__header">
         <h2>Password</h2>
         <p>Change the password used to sign in with this MAGE account.</p>
@@ -114,12 +120,14 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
           Password changes are managed by Google for this account.
         </FormNotice>
       ) : (
-        <form className="settings-fields" noValidate onSubmit={handleSubmit}>
+        <form className="settings-fields settings-password-form" noValidate onSubmit={handleSubmit}>
+          <div className="settings-security-note"><strong>Use 8–72 characters.</strong> You’ll need your current password before MAGE can save a new one.</div>
           <TextInputField
             autoComplete="current-password"
             error={errors.currentPassword}
             id="settings-current-password"
             label="Current password"
+            placeholder="Enter current password"
             name="currentPassword"
             onChange={(event) => handleChange('currentPassword', event.target.value)}
             required
@@ -129,9 +137,9 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
           <TextInputField
             autoComplete="new-password"
             error={errors.newPassword}
-            hint="Use 8 to 72 characters."
             id="settings-new-password"
             label="New password"
+            placeholder="Enter new password"
             name="newPassword"
             onChange={(event) => handleChange('newPassword', event.target.value)}
             required
@@ -143,6 +151,7 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
             error={errors.confirmNewPassword}
             id="settings-confirm-new-password"
             label="Verify new password"
+            placeholder="Enter new password again"
             name="confirmNewPassword"
             onChange={(event) => handleChange('confirmNewPassword', event.target.value)}
             required
@@ -160,11 +169,14 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
 
           <div className="settings-actions">
             <button
+              aria-busy={isSubmitting}
               className="demo-link auth-submit settings-action-button settings-save-button"
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? 'Saving password...' : 'Save password'}
+              <PendingButtonLabel pending={isSubmitting} pendingLabel="Saving password...">
+                Save password
+              </PendingButtonLabel>
             </button>
           </div>
         </form>
