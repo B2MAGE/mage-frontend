@@ -37,6 +37,7 @@ import { SceneEditorStepper } from "./ui/SceneEditorStepper";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
+import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
@@ -70,6 +71,8 @@ export function SceneEditorShell({
   const { themeId } = useTheme();
   const isPulse = themeId === "mage-pulse";
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+  const [isBeatSimulated, setIsBeatSimulated] = useState(false);
+  const [previewBpm, setPreviewBpm] = useState(120);
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const {
     actionBarSentinelRef,
@@ -1584,6 +1587,8 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
+              <BeatPreviewControls enabled={isBeatSimulated} bpm={previewBpm}
+                onEnabledChange={setIsBeatSimulated} onBpmChange={setPreviewBpm} />
               <MagePlayer
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
@@ -1591,6 +1596,7 @@ export function SceneEditorShell({
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
+                simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               />
               </div>
             </section>

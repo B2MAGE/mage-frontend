@@ -39,6 +39,7 @@ export type MagePlayerProps = {
   sceneBlob: MageSceneBlob | null | undefined
   selectedTrackId?: string | null
   shuffleEnabled?: boolean
+  simulatedBeat?: { enabled: boolean; bpm: number }
 }
 
 function blurMouseActivatedControl(control: HTMLButtonElement, clickCount: number) {
@@ -68,6 +69,7 @@ export function MagePlayer({
   sceneBlob,
   selectedTrackId,
   shuffleEnabled = false,
+  simulatedBeat,
 }: MagePlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const audioInputRef = useRef<HTMLInputElement | null>(null)
@@ -77,6 +79,7 @@ export function MagePlayer({
   const requestedPlaybackRef = useRef<MagePlayerPlaybackState>(initialPlayback)
   const loadedTrackIdRef = useRef<string | null>(null)
   const completedTrackIdRef = useRef<string | null>(null)
+  const hasConfiguredSimulatedBeatRef = useRef(false)
 
   const {
     commitPlaylistTracks,
@@ -248,6 +251,36 @@ export function MagePlayer({
         : loadedSceneBlob === sceneBlob
           ? 'ready'
           : 'loading'
+
+  const hasSimulatedBeat = simulatedBeat !== undefined
+  const simulatedBeatEnabled = simulatedBeat?.enabled ?? false
+  const requestedBeatBpm = simulatedBeat?.bpm ?? 120
+  const simulatedBeatBpm = Number.isFinite(requestedBeatBpm)
+    ? Math.min(180, Math.max(60, requestedBeatBpm))
+    : 120
+
+  useEffect(() => {
+    const player = playerRef.current
+
+    if (!player || status !== 'ready') {
+      return
+    }
+
+    // Ordinary scene players never opt into editor-only preview audio. Disable
+    // an earlier preview if the prop is removed from this mounted player.
+    if (!hasSimulatedBeat && !hasConfiguredSimulatedBeatRef.current) {
+      return
+    }
+
+    // Seed 24 has a base tempo of 120 BPM. Actual playing audio automatically
+    // takes priority inside the engine, without changing the preview preference.
+    player.setSyntheticPreview(
+      simulatedBeatEnabled && playbackState === 'playing',
+      24,
+      simulatedBeatBpm / 120,
+    )
+    hasConfiguredSimulatedBeatRef.current = hasSimulatedBeat
+  }, [hasSimulatedBeat, playbackState, playerVersion, simulatedBeatBpm, simulatedBeatEnabled, status])
 
   useEffect(() => {
     if (!onCaptureFramePreviewChange) {
