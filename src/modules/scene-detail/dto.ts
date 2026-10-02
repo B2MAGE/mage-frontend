@@ -1,4 +1,5 @@
 import { normalizeSceneListEngagement } from '@shared/lib'
+import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 import type { SceneComment, SceneDetail, SceneEngagementSummary, SceneVoteState } from './types'
 
 type SceneDetailResponse = {
@@ -6,6 +7,8 @@ type SceneDetailResponse = {
   ownerUserId?: number
   creatorDisplayName?: string
   creatorHandle?: string
+  creatorAvatarGradientStart?: unknown
+  creatorAvatarGradientEnd?: unknown
   name?: string
   description?: string | null
   sceneData?: unknown
@@ -31,6 +34,8 @@ type SceneCommentResponse = {
   authorUserId?: unknown
   authorDisplayName?: unknown
   authorHandle?: unknown
+  authorAvatarGradientStart?: unknown
+  authorAvatarGradientEnd?: unknown
   text?: unknown
   createdAt?: unknown
   replyCount?: unknown
@@ -99,6 +104,12 @@ export function normalizeSceneComment(payload: unknown): SceneComment | null {
     parentCommentId:
       typeof resolvedPayload.parentCommentId === 'number' ? resolvedPayload.parentCommentId : null,
     authorUserId: typeof resolvedPayload.authorUserId === 'number' ? resolvedPayload.authorUserId : null,
+    ...(resolvedPayload.authorAvatarGradientStart !== undefined ? {
+      authorAvatarGradientStart: normalizeAvatarColor(resolvedPayload.authorAvatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
+    } : {}),
+    ...(resolvedPayload.authorAvatarGradientEnd !== undefined ? {
+      authorAvatarGradientEnd: normalizeAvatarColor(resolvedPayload.authorAvatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end),
+    } : {}),
     authorDisplayName:
       typeof resolvedPayload.authorDisplayName === 'string' && resolvedPayload.authorDisplayName.trim()
         ? resolvedPayload.authorDisplayName.trim()
@@ -176,6 +187,12 @@ export function normalizeSceneDetail(payload: unknown): SceneDetail | null {
   return {
     id: sceneId,
     ownerUserId: typeof resolvedPayload.ownerUserId === 'number' ? resolvedPayload.ownerUserId : null,
+    ...(resolvedPayload.creatorAvatarGradientStart !== undefined ? {
+      creatorAvatarGradientStart: normalizeAvatarColor(resolvedPayload.creatorAvatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
+    } : {}),
+    ...(resolvedPayload.creatorAvatarGradientEnd !== undefined ? {
+      creatorAvatarGradientEnd: normalizeAvatarColor(resolvedPayload.creatorAvatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end),
+    } : {}),
     creatorDisplayName:
       typeof resolvedPayload.creatorDisplayName === 'string' && resolvedPayload.creatorDisplayName.trim()
         ? resolvedPayload.creatorDisplayName.trim()

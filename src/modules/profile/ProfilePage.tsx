@@ -196,7 +196,7 @@ export function ProfilePage() {
   return (
     <main className="profile-page" aria-labelledby="profile-page-title">
       <section className="profile-hero" aria-label="Profile summary">
-        <UserAvatar className="profile-avatar" initials={profile.initials} />
+        <UserAvatar className="profile-avatar" initials={profile.initials} gradientStart={profile.avatarGradientStart} gradientEnd={profile.avatarGradientEnd} />
 
         <div className="profile-identity">
           <h1 id="profile-page-title">{profile.displayName}</h1>

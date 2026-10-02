@@ -4,6 +4,8 @@ export type ProfileDetailsFields = {
   displayName: string
   handle: string
   description: string | null
+  avatarGradientStart?: string
+  avatarGradientEnd?: string
 }
 
 export type UserProfileResponse = {
@@ -16,6 +18,8 @@ export type UserProfileResponse = {
   description: string | null
   authProvider: string
   createdAt?: string
+  avatarGradientStart?: string
+  avatarGradientEnd?: string
 }
 
 export type ProfileSaveResult =

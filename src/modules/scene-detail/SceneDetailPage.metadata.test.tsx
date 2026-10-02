@@ -35,10 +35,12 @@ describe('SceneDetailPage metadata', () => {
   it('shows the real creator name for another users scene', async () => {
     storeSceneDetailSession()
 
-    const storedUser = buildSceneDetailStoredUser()
+    const storedUser = buildSceneDetailStoredUser({ avatarGradientStart: '#111111', avatarGradientEnd: '#222222' })
     const creatorScene = buildSceneDetailResponse({
       creatorDisplayName: 'Peter',
       creatorHandle: 'peterb5825',
+      creatorAvatarGradientStart: '#a25279',
+      creatorAvatarGradientEnd: '#4c416d',
       name: 'Test 3',
       ownerUserId: 77,
       sceneId: 44,
@@ -84,6 +86,7 @@ describe('SceneDetailPage metadata', () => {
       '/@peterb5825',
     )
     expect(screen.getByRole('link', { name: /peter.*@peterb5825/i }).querySelector('.mage-channel-card__avatar')).toHaveClass('user-avatar')
+    expect(screen.getByRole('link', { name: /peter.*@peterb5825/i }).querySelector('.mage-channel-card__avatar')).toHaveStyle({ backgroundImage: 'linear-gradient(145deg, #a25279, #4c416d)' })
     expect(screen.getByRole('button', { name: /from peter/i })).toBeInTheDocument()
     expect(screen.queryByText('Talia North')).not.toBeInTheDocument()
   })

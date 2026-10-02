@@ -1,0 +1,24 @@
+.avatar-gradient-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.avatar-gradient-picker legend { padding: 0; font-size: 11px; font-weight: 650; color: var(--text-soft, var(--muted)); }
+.avatar-gradient-picker legend .public-profile-marker { margin-left: 4px; }
+.avatar-gradient-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.settings-page .avatar-gradient-preset { display: flex; align-items: center; gap: 9px; min-width: 0; min-height: 48px; padding: 8px 10px; border: 1px solid var(--surface-soft-border); border-radius: 9px; background: var(--bg-soft); color: var(--text-soft, var(--muted)); font-size: 11px; font-weight: 600; text-align: left; box-shadow: none; transform: none; transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease; }
+.settings-page .avatar-gradient-preset:hover { border-color: var(--text-soft, var(--muted)); color: var(--text); background: var(--bg-soft); transform: none; box-shadow: none; }
+.settings-page .avatar-gradient-preset[aria-pressed='true'] { border-color: #b2a8ff; color: var(--text); }
+.settings-page .avatar-gradient-preset:focus-visible { outline: 2px solid #b2a8ff; outline-offset: 3px; }
+.avatar-gradient-swatch { width: 28px; height: 28px; }
+.avatar-gradient-colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.avatar-gradient-color-control { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 8px; }
+.settings-page .avatar-gradient-color-control input[type='color'] { width: 42px; min-width: 42px; height: 42px; min-height: 42px; padding: 5px; cursor: pointer; border-radius: 9px; }
+.avatar-gradient-color-control input[type='color']::-webkit-color-swatch-wrapper { padding: 0; }
+.avatar-gradient-color-control input[type='color']::-webkit-color-swatch { border: 0; border-radius: 4px; }
+.avatar-gradient-color-control input[type='color']::-moz-color-swatch { border: 0; border-radius: 4px; }
+.settings-page .avatar-gradient-color-control input[type='text'] { min-width: 0; width: 100%; font-variant-numeric: tabular-nums; }
+.avatar-gradient-picker:disabled { opacity: .65; }
+html[data-theme='mage-pulse'] .settings-page .avatar-gradient-preset { font-size: 11px; font-weight: 600; }
+html[data-theme='mage-pulse'] .settings-page .avatar-gradient-color-control input[type='color'] { padding: 5px; }
+@media (max-width: 480px) {
+  .avatar-gradient-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .avatar-gradient-colors { gap: 10px; }
+  html[data-theme] .settings-page .avatar-gradient-color-control input[type='text'] { padding-inline: 6px; font-size: 13px; }
+}

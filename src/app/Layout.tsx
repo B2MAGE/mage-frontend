@@ -193,7 +193,7 @@ export function Layout({ children }: PropsWithChildren) {
                 onClick={() => setIsAccountMenuOpen((currentValue) => !currentValue)}
                 type="button"
               >
-                <UserAvatar className="nav-avatar" initials={profileInitials} />
+                <UserAvatar className="nav-avatar" initials={profileInitials} gradientStart={user?.avatarGradientStart} gradientEnd={user?.avatarGradientEnd} />
                 <span className="nav-profile-trigger__label">{profileName}</span>
                 <span className="nav-profile-trigger__chevron" aria-hidden="true">
                   <ChevronDownIcon />
@@ -214,7 +214,7 @@ export function Layout({ children }: PropsWithChildren) {
                       role="menuitem"
                       to={user.handle ? `/@${user.handle}` : '/profile'}
                     >
-                      <UserAvatar className="nav-avatar nav-avatar--large" initials={profileInitials} />
+                      <UserAvatar className="nav-avatar nav-avatar--large" initials={profileInitials} gradientStart={user?.avatarGradientStart} gradientEnd={user?.avatarGradientEnd} />
                       <div className="nav-menu__identity">
                         <strong>{profileName}</strong>
                         <span className="nav-menu__identity-email" title={profileEmail}>

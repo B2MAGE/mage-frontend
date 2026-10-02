@@ -7,6 +7,8 @@ export type SceneDetail = {
   ownerUserId: number | null
   creatorDisplayName: string | null
   creatorHandle?: string | null
+  creatorAvatarGradientStart?: string | null
+  creatorAvatarGradientEnd?: string | null
   name: string
   description: string | null
   sceneData: MageSceneBlob
@@ -30,6 +32,8 @@ export type SceneComment = {
   authorUserId: number | null
   authorDisplayName: string
   authorHandle: string | null
+  authorAvatarGradientStart?: string | null
+  authorAvatarGradientEnd?: string | null
   createdAt: string | null
   text: string
   replyCount: number
@@ -42,6 +46,8 @@ export type SceneComment = {
 export type CreatorProfile = {
   displayName: string
   handle: string | null
+  avatarGradientStart?: string | null
+  avatarGradientEnd?: string | null
 }
 
 export type SceneVoteState = 'up' | 'down'

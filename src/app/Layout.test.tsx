@@ -19,6 +19,8 @@ let authState = {
     displayName: string
     email: string
     handle?: string
+    avatarGradientStart?: string
+    avatarGradientEnd?: string
     firstName?: string
     lastName?: string
     userId: number | null
@@ -76,6 +78,8 @@ describe('Layout', () => {
         displayName: 'Scene Artist',
         email: 'artist@example.com',
         handle: 'sceneartist',
+        avatarGradientStart: '#527b63',
+        avatarGradientEnd: '#263e43',
         userId: 8,
       },
     }
@@ -96,6 +100,8 @@ describe('Layout', () => {
 
     expect(profileMenuItem).toHaveAttribute('href', '/@sceneartist')
     expect(profileMenuItem.querySelector('.nav-avatar')).toHaveClass('user-avatar')
+    expect(profileMenuItem.querySelector('.nav-avatar')).toHaveStyle({ backgroundImage: 'linear-gradient(145deg, #527b63, #263e43)' })
+    expect(screen.getByRole('button', { name: /open account menu for scene artist/i }).querySelector('.nav-avatar')).toHaveStyle({ backgroundImage: 'linear-gradient(145deg, #527b63, #263e43)' })
     expect(profileMenuItem.querySelector('.nav-avatar')).toHaveAttribute('aria-hidden', 'true')
     expect(profileIdentity).toHaveTextContent('Scene Artist')
     expect(profileIdentity).toHaveTextContent('artist@example.com')

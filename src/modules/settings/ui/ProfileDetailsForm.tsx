@@ -5,6 +5,8 @@ import {
   validateHandleInput,
 } from '@auth/handle'
 import { HandleInputField } from '@auth/HandleInputField'
+import { DEFAULT_AVATAR_GRADIENT, isAvatarColor, normalizeAvatarColor } from '@shared/lib/avatarGradient'
+import { AvatarGradientPicker } from './AvatarGradientPicker'
 import {
   FormNotice,
   PendingButtonLabel,
@@ -16,6 +18,8 @@ import {
 import type { ProfileDetailsFields, ProfileSaveResult } from '../types'
 
 type ProfileDetailsFormProps = {
+  avatarGradientStart?: string | null
+  avatarGradientEnd?: string | null
   description: string
   displayName: string
   email: string
@@ -27,11 +31,15 @@ type ProfileDetailsFormProps = {
 
 type EditableProfileFields = Omit<ProfileDetailsFields, 'description'> & {
   description: string
+  avatarGradientStart: string
+  avatarGradientEnd: string
 }
 
 type ProfileFormErrors = Partial<Record<keyof EditableProfileFields | 'form', string>>
 
 export function ProfileDetailsForm({
+  avatarGradientStart,
+  avatarGradientEnd,
   description,
   displayName,
   email,
@@ -41,12 +49,16 @@ export function ProfileDetailsForm({
   onSave,
 }: ProfileDetailsFormProps) {
   const handleName = formatHandleInput(handle).replace(/^@/, '')
+  const savedStart = normalizeAvatarColor(avatarGradientStart, DEFAULT_AVATAR_GRADIENT.start)
+  const savedEnd = normalizeAvatarColor(avatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end)
   const [profileFields, setProfileFields] = useState<EditableProfileFields>(() => ({
     firstName,
     lastName,
     displayName,
     handle: handleName,
     description,
+    avatarGradientStart: savedStart,
+    avatarGradientEnd: savedEnd,
   }))
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -58,7 +70,9 @@ export function ProfileDetailsForm({
     profileFields.lastName !== lastName ||
     profileFields.displayName !== displayName ||
     profileFields.handle !== handleName ||
-    profileFields.description !== description
+    profileFields.description !== description ||
+    profileFields.avatarGradientStart.toLowerCase() !== savedStart ||
+    profileFields.avatarGradientEnd.toLowerCase() !== savedEnd
 
   useEffect(() => {
     setProfileFields({
@@ -67,8 +81,10 @@ export function ProfileDetailsForm({
       displayName,
       handle: formatHandleInput(handle).replace(/^@/, ''),
       description,
+      avatarGradientStart: savedStart,
+      avatarGradientEnd: savedEnd,
     })
-  }, [description, firstName, handle, lastName, displayName])
+  }, [description, firstName, handle, lastName, displayName, savedStart, savedEnd])
 
   function handleFieldChange(field: keyof EditableProfileFields, nextValue: string) {
     setProfileFields((currentFields) => ({
@@ -102,10 +118,15 @@ export function ProfileDetailsForm({
         ? 'Description must be at most 300 characters.'
         : undefined
 
-    if (handleError || descriptionError) {
+    const avatarError = !isAvatarColor(profileFields.avatarGradientStart) || !isAvatarColor(profileFields.avatarGradientEnd)
+      ? 'Choose two colors using six-digit hex values, like #5c51ba.'
+      : undefined
+
+    if (handleError || descriptionError || avatarError) {
       setErrors({
         handle: handleError,
         description: descriptionError,
+        avatarGradientStart: avatarError,
       })
       setSuccessMessage('')
       return
@@ -122,6 +143,8 @@ export function ProfileDetailsForm({
         displayName: profileFields.displayName.trim(),
         handle: formattedHandle,
         description: profileFields.description.trim() || null,
+        avatarGradientStart: profileFields.avatarGradientStart.toLowerCase(),
+        avatarGradientEnd: profileFields.avatarGradientEnd.toLowerCase(),
       })
 
       if (!result.ok) {
@@ -131,6 +154,8 @@ export function ProfileDetailsForm({
           displayName: result.details.displayName,
           handle: result.details.handle,
           description: result.details.description,
+          avatarGradientStart: result.details.avatarGradientStart,
+          avatarGradientEnd: result.details.avatarGradientEnd,
           form: result.message,
         })
         return
@@ -152,7 +177,7 @@ export function ProfileDetailsForm({
     >
       <div className="settings-section__header">
         <h2>Profile details</h2>
-        <p>Your display name, handle, and description appear publicly on your profile.</p>
+        <p>Your avatar, display name, handle, and description appear publicly on your profile.</p>
       </div>
       <form className="settings-fields settings-profile-form" onSubmit={handleSubmit}>
         <TextInputField
@@ -169,6 +194,18 @@ export function ProfileDetailsForm({
           className="settings-identity"
           displayName={profileFields.displayName}
           handle={profileFields.handle}
+          gradientStart={profileFields.avatarGradientStart}
+          gradientEnd={profileFields.avatarGradientEnd}
+        />
+        <AvatarGradientPicker
+          start={profileFields.avatarGradientStart}
+          end={profileFields.avatarGradientEnd}
+          disabled={isSubmitting}
+          error={errors.avatarGradientStart || errors.avatarGradientEnd}
+          onChange={(start, end) => {
+            handleFieldChange('avatarGradientStart', start)
+            handleFieldChange('avatarGradientEnd', end)
+          }}
         />
         <TextInputField
           aria-describedby="settings-public-profile-hint"

@@ -50,6 +50,8 @@ export function SettingsPage() {
           <ThemeSettingsSection />
 
           <ProfileDetailsForm
+            avatarGradientStart={user.avatarGradientStart}
+            avatarGradientEnd={user.avatarGradientEnd}
             description={user.description ?? ''}
             email={user.email}
             firstName={user.firstName ?? ''}

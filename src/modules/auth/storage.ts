@@ -1,4 +1,5 @@
 import { readStorageItem, removeStorageItem, writeStorageItem } from '@shared/lib'
+import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 import type { AuthenticatedUser, StoredAuthSession } from './types'
 
 export const AUTH_SESSION_STORAGE_KEY = 'mage.auth.session'
@@ -57,6 +58,12 @@ function readStoredUser(value: unknown): AuthenticatedUser | null {
           ? null
           : undefined,
     authProvider: typeof value.authProvider === 'string' ? value.authProvider : 'LOCAL',
+    ...(value.avatarGradientStart !== undefined ? {
+      avatarGradientStart: normalizeAvatarColor(value.avatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
+    } : {}),
+    ...(value.avatarGradientEnd !== undefined ? {
+      avatarGradientEnd: normalizeAvatarColor(value.avatarGradientEnd, DEFAULT_AVATAR_GRADIENT.end),
+    } : {}),
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
   }
 }

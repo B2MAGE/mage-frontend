@@ -17,7 +17,7 @@ vi.mock('@modules/scene-artwork',()=>({
  BrandScene:({reactToBeat,className}:{reactToBeat?:boolean;className?:string})=> <div data-testid="welcome-brand-scene" className={className} data-react-to-beat={String(reactToBeat)} />,
 }))
 const engagement={views:18,upvotes:4,downvotes:0,saves:2,currentUserVote:null,currentUserSaved:false}
-const scene={sceneId:1,ownerUserId:1,creatorDisplayName:'Ari Rivera',creatorHandle:'aririvera',name:'Neon Bloom',description:'A reactive scene.',thumbnailRef:null,sceneData:{},createdAt:'2026-09-20T00:00:00Z',engagement}
+const scene={sceneId:1,ownerUserId:1,creatorDisplayName:'Ari Rivera',creatorHandle:'aririvera',creatorAvatarGradientStart:'#ab6645',creatorAvatarGradientEnd:'#663d54',name:'Neon Bloom',description:'A reactive scene.',thumbnailRef:null,sceneData:{},createdAt:'2026-09-20T00:00:00Z',engagement}
 function show(themeId: AppThemeId = 'mage-pulse') {
  window.localStorage.setItem(APP_THEME_STORAGE_KEY, themeId)
  return render(<MemoryRouter><ThemeProvider><HomePage/></ThemeProvider></MemoryRouter>)
@@ -59,10 +59,12 @@ describe('Homepage mockup behavior',()=>{
   expect(await screen.findByText('Live featured player')).toBeInTheDocument()
   expect(screen.getByRole('link',{name:/Ari Rivera@aririvera/})).toHaveAttribute('href','/@aririvera')
   expect(screen.getByRole('link',{name:/Ari Rivera@aririvera/}).querySelector('.creator-avatar')).toHaveClass('user-avatar')
+  expect(screen.getByRole('link',{name:/Ari Rivera@aririvera/}).querySelector('.creator-avatar')).toHaveStyle({backgroundImage:'linear-gradient(145deg, #ab6645, #663d54)'})
   const discoveryAvatars=screen.getByLabelText('For You scenes').querySelectorAll('.scene-card__avatar')
   expect(discoveryAvatars).toHaveLength(2)
   discoveryAvatars.forEach(avatar=>{
    expect(avatar).toHaveClass('user-avatar')
+   expect(avatar).toHaveStyle({backgroundImage:'linear-gradient(145deg, #ab6645, #663d54)'})
    expect(avatar).toHaveAttribute('aria-hidden','true')
   })
   expect(screen.queryByText('Scene creator')).not.toBeInTheDocument()

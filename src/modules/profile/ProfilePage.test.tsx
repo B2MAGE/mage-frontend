@@ -10,6 +10,8 @@ type MockUser = {
   displayName: string
   email: string
   handle: string
+  avatarGradientStart?: string
+  avatarGradientEnd?: string
   userId: number | null
 }
 
@@ -53,6 +55,8 @@ function profilePayload(scenes = [
   return {
     createdAt: '2026-01-01T12:00:00Z',
     description: 'Slow visual spaces built for late-night listening.',
+    avatarGradientStart: '#286d9b',
+    avatarGradientEnd: '#23494f',
     displayName: 'Ari Rivera',
     handle: 'aririvera',
     scenes,
@@ -92,6 +96,8 @@ describe('ProfilePage', () => {
         displayName: 'Ari Rivera',
         email: 'ari@pulse.local',
         handle: 'aririvera',
+        avatarGradientStart: '#111111',
+        avatarGradientEnd: '#222222',
         userId: 1,
       },
     }
@@ -110,6 +116,7 @@ describe('ProfilePage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Ari Rivera', level: 1 })).toBeInTheDocument()
     expect(container.querySelector('.profile-avatar')).toHaveClass('user-avatar')
+    expect(container.querySelector('.profile-avatar')).toHaveStyle({ backgroundImage: 'linear-gradient(145deg, #286d9b, #23494f)' })
     expect(container.querySelector('.profile-avatar')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText('@aririvera')).toBeInTheDocument()
     expect(screen.getByText('Slow visual spaces built for late-night listening.')).toBeInTheDocument()

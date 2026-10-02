@@ -156,8 +156,11 @@ describe('SettingsPage', () => {
     expect(publicHint.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(publicHint).toHaveAttribute('id', 'settings-public-profile-hint')
     expect(publicHint.querySelector(markerSelector)).toHaveAttribute('aria-hidden', 'true')
-    expect(container.querySelectorAll(markerSelector)).toHaveLength(4)
+    expect(container.querySelectorAll(markerSelector)).toHaveLength(5)
     expect(container.querySelectorAll(`label ${markerSelector}`)).toHaveLength(3)
+    const gradientPicker = screen.getByRole('group', { name: 'Avatar gradient' })
+    expect(gradientPicker.querySelector(`legend ${markerSelector}`)).toHaveAttribute('aria-hidden', 'true')
+    expect(gradientPicker).toHaveAccessibleDescription(/Shown on your public profile\./)
 
     for (const name of ['Display name', 'Handle', 'Description']) {
       const input = screen.getByRole('textbox', { name })
@@ -394,6 +397,8 @@ describe('SettingsPage', () => {
             displayName: 'Updated Artist',
             handle: '@Updated_Artist',
             description: 'New profile description.',
+            avatarGradientStart: '#5c51ba',
+            avatarGradientEnd: '#264a48',
           }),
         }),
       ),

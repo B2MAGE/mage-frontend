@@ -133,6 +133,7 @@ export function SettingsLoadingState() {
                   <Skeleton className="settings-loading__identity-handle" shape="line" />
                 </div>
               </div>
+              <Skeleton className="settings-loading__gradient" shape="block" />
               <FieldSkeleton full />
               <FieldSkeleton full />
               <FieldSkeleton />
