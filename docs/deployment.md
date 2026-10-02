@@ -1,5 +1,7 @@
 # Frontend Deployment
 
+For full frontend plus backend deployment instructions, including plain Docker and Coolify, see [../../DEPLOYMENT.md](../../DEPLOYMENT.md).
+
 This repository is designed to be deployed with a same-origin routing setup.
 
 ## Supported Production Model
