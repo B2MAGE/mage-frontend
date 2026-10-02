@@ -134,6 +134,25 @@
   justify-content: space-between;
   gap: 24px;
   border-bottom: 1px solid var(--border);
+  scroll-margin-top: 96px;
+}
+
+.profile-scenes__filters {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-scenes__filters .discovery-sort__select.mage-select {
+  height: 36px;
+  min-height: 36px;
+  font-size: 12px;
+}
+
+.profile-scenes__filters .discovery-sort__select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .profile-scenes__tabs { display: flex; align-items: stretch; }
@@ -163,7 +182,7 @@
 
 .profile-scenes__search {
   position: relative;
-  width: min(260px, 42vw);
+  width: min(260px, 28vw);
   align-self: center;
 }
 
@@ -175,8 +194,7 @@
   height: 16px;
   z-index: 1;
   transform: translateY(-50%);
-  stroke: var(--text-muted);
-  stroke-width: 1.8;
+  color: var(--text-muted);
   pointer-events: none;
 }
 
@@ -205,6 +223,67 @@
 
 .profile-scenes__content { min-height: 300px; }
 
+.profile-scenes-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.profile-scenes-pagination__size,
+.profile-scenes-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-scenes-pagination__size { white-space: nowrap; }
+.profile-scenes-pagination__size .mage-select {
+  width: 76px;
+  height: 36px;
+  font-size: 12px;
+}
+
+.profile-scenes-pagination__range { margin-left: auto; }
+.profile-scenes-pagination__page {
+  min-width: 72px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile-scenes-pagination__button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.profile-scenes-pagination__button span { display: flex; }
+.profile-scenes-pagination__button svg { width: 16px; height: 16px; }
+.profile-scenes-pagination__button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+.profile-scenes-pagination__button:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 3px;
+}
+.profile-scenes-pagination__button:disabled { opacity: 0.4; cursor: default; }
+
 .profile-scenes__tab-loading {
   width: 76px;
   height: 14px;
@@ -212,11 +291,13 @@
 }
 
 .profile-scenes__search-loading {
-  width: min(260px, 42vw);
+  width: min(260px, 28vw);
   height: 36px;
   align-self: center;
   border-radius: 9px;
 }
+
+.profile-scenes__sort-loading { width: 152px; height: 36px; border-radius: 9px; }
 
 .profile-page--state {
   min-height: min(620px, calc(100vh - 180px));
@@ -247,7 +328,17 @@ html[data-theme='mage-pulse'] .profile-page .scene-card__stats { margin-top: 4px
 @media (max-width: 560px) {
   .profile-hero { grid-template-columns: 1fr; }
   .profile-avatar { width: 88px; height: 88px; }
-  .profile-scenes__toolbar { gap: 14px; }
-  .profile-scenes__search { width: min(220px, 48vw); }
+  .profile-scenes__toolbar { flex-direction: column; gap: 14px; padding-bottom: 14px; }
+  .profile-scenes__tabs { align-self: flex-start; min-height: 34px; }
+  .profile-scenes__filters { width: 100%; flex-wrap: wrap; }
+  .profile-scenes__search,
+  .profile-scenes__search-loading { width: 100%; }
+  .profile-scenes__filters .discovery-sort { width: 100%; }
+  .profile-scenes__filters .discovery-sort__select.mage-select { flex: 1; min-width: 0; }
+  .profile-scenes__sort-loading { width: 100%; }
+  .profile-scenes-pagination { gap: 14px; }
+  .profile-scenes-pagination__size { width: 100%; }
+  .profile-scenes-pagination__range { margin-left: 0; }
+  .profile-scenes-pagination__controls { margin-left: auto; }
   html[data-theme='mage-pulse'] .profile-page .scene-grid { grid-template-columns: 1fr; }
 }
