@@ -60,6 +60,7 @@ export function buildSceneCommentResponse(
 
   return {
     authorDisplayName: 'Comment Artist',
+    authorHandle: 'commentartist',
     authorUserId: 31,
     commentId,
     createdAt: '2026-04-10T14:00:00Z',

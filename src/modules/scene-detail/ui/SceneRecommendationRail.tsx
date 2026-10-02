@@ -1,10 +1,11 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { ScrollableTagBar } from '@shared/ui'
+import { LoadingRegion, ScrollableTagBar } from '@shared/ui'
 import type { MagePlayerPlaylistTrack } from '@modules/player'
 import { buildTagRecommendationFilter, readRecommendationFilterTag } from '../recommendations'
 import type { RecommendedSceneCard, RecommendationFilter } from '../types'
 import { PlaylistPanel } from './PlaylistPanel'
+import { SceneRecommendationSkeletonList } from './SceneLoadingSkeletons'
 
 type SceneRecommendationRailProps = {
   creatorDisplayName: string
@@ -112,6 +113,7 @@ export function SceneRecommendationRail({
         selectedTrackId={selectedTrackId}
         shuffleEnabled={shuffleEnabled}
       />
+      <section className="scene-detail-recommendations" aria-label="Recommended scenes">
       <ScrollableTagBar
         ariaLabel="Filter recommended scenes"
         barClassName="scene-detail-recommendation-filters"
@@ -128,6 +130,7 @@ export function SceneRecommendationRail({
           All
         </button>
         <button
+          aria-label={`From ${creatorDisplayName}`}
           aria-pressed={recommendationFilter === 'creator'}
           className={`tag-pill${recommendationFilter === 'creator' ? ' tag-pill--active' : ''}`}
           onClick={() => {
@@ -135,7 +138,7 @@ export function SceneRecommendationRail({
           }}
           type="button"
         >
-          From {creatorDisplayName}
+          From {creatorDisplayName.split(' ')[0]}
         </button>
         {currentSceneTags.map((tag) => {
           const tagFilter = buildTagRecommendationFilter(tag)
@@ -157,12 +160,14 @@ export function SceneRecommendationRail({
       </ScrollableTagBar>
 
       {isLoading ? (
-        <p className="mage-watch__rail-empty">{loadingCopy}</p>
+        <LoadingRegion className="scene-detail-recommendations-loading" label={loadingCopy}>
+          <SceneRecommendationSkeletonList />
+        </LoadingRegion>
       ) : recommendedScenes.length === 0 ? (
         <p className="mage-watch__rail-empty">{emptyCopy}</p>
       ) : (
         <div className="mage-watch__rail-list">
-          {recommendedScenes.map((recommendedScene) => (
+          {recommendedScenes.slice(0, 4).map((recommendedScene) => (
             <Link className="mage-scene-card" key={recommendedScene.id} to={`/scenes/${recommendedScene.id}`}>
               {recommendedScene.thumbnailRef ? (
                 <img
@@ -186,6 +191,7 @@ export function SceneRecommendationRail({
           ))}
         </div>
       )}
+      </section>
     </aside>
   )
 }

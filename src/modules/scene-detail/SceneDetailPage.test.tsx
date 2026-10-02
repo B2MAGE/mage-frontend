@@ -40,6 +40,77 @@ vi.mock('@modules/player', async (importOriginal) => {
 })
 
 describe('SceneDetailPage route states', () => {
+  it('uses a scene-shaped skeleton while the initial scene request is pending', async () => {
+    storeSceneDetailSession()
+
+    const storedUser = buildSceneDetailStoredUser()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/scenes/12')) {
+        return new Promise<Response>(() => undefined)
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading scene')
+    expect(document.querySelector('.scene-detail-skeleton__player')).toBeInTheDocument()
+    expect(screen.getByTestId('scene-comment-skeleton-list').children).toHaveLength(3)
+    expect(screen.getByTestId('scene-recommendation-skeleton-list').children).toHaveLength(4)
+    expect(screen.queryByText('Scene Detail')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /loading scene/i })).not.toBeInTheDocument()
+  })
+
+  it('uses row and mini-card skeletons while comments and recommendations load', async () => {
+    storeSceneDetailSession()
+
+    const storedUser = buildSceneDetailStoredUser()
+    const sceneResponse = buildSceneDetailResponse()
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/users/me')) {
+        return Promise.resolve(jsonResponse(storedUser))
+      }
+
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes/12/views')) {
+        return Promise.resolve(jsonResponse(sceneResponse.engagement))
+      }
+
+      if (input === buildApiUrl('/scenes/12/comments')) {
+        return new Promise<Response>(() => undefined)
+      }
+
+      if (
+        input === buildApiUrl('/scenes') ||
+        input === buildApiUrl('/scenes?tag=ambient') ||
+        input === buildApiUrl('/scenes?tag=focus-friendly')
+      ) {
+        return new Promise<Response>(() => undefined)
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
+    expect(await screen.findByText('Loading comments')).toBeInTheDocument()
+    expect(screen.getByText('Loading related scenes...')).toBeInTheDocument()
+    expect(screen.getByTestId('scene-comment-skeleton-list').children).toHaveLength(3)
+    expect(screen.getByTestId('scene-recommendation-skeleton-list').children).toHaveLength(4)
+    expect(screen.queryByText('Loading comments...')).not.toBeInTheDocument()
+  })
+
   it('loads scene detail on a direct route visit and renders the player', async () => {
     storeSceneDetailSession()
 
@@ -105,7 +176,7 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^show more$/i })).toBeInTheDocument()
     expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
     expect(
@@ -136,6 +207,55 @@ describe('SceneDetailPage route states', () => {
     const sceneRequestHeaders = fetchSpy.mock.calls[1][1]?.headers as Headers
 
     expect(sceneRequestHeaders.get('Authorization')).toBe('Bearer stored-auth-token')
+  })
+
+  it('shows Share as busy and ignores duplicate clicks while copying the scene link', async () => {
+    const user = userEvent.setup()
+    const sceneResponse = buildSceneDetailResponse({ tags: [] })
+    let finishCopy: (() => void) | undefined
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishCopy = resolve
+        }),
+    )
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      if (input === buildApiUrl('/scenes/12')) {
+        return Promise.resolve(jsonResponse(sceneResponse))
+      }
+
+      if (input === buildApiUrl('/scenes/12/views')) {
+        return Promise.resolve(jsonResponse(sceneResponse.engagement))
+      }
+
+      if (input === buildApiUrl('/scenes/12/comments')) {
+        return Promise.resolve(jsonResponse([]))
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        return Promise.resolve(jsonResponse([sceneResponse]))
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    const shareButton = await screen.findByRole('button', { name: /^share$/i })
+
+    await user.click(shareButton)
+
+    expect(screen.getByRole('button', { name: /copying/i })).toBeDisabled()
+    expect(shareButton).toHaveAttribute('aria-busy', 'true')
+
+    await user.click(shareButton)
+    expect(writeText).toHaveBeenCalledTimes(1)
+
+    finishCopy?.()
+
+    expect(await screen.findByText('Scene link copied.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^share$/i })).toHaveAttribute('aria-busy', 'false')
   })
 
   it('renders backend engagement counts and current-user state', async () => {
@@ -263,6 +383,7 @@ describe('SceneDetailPage route states', () => {
     })
     const replyResponse = buildSceneCommentResponse({
       authorDisplayName: 'Reply Artist',
+      authorHandle: 'replyartist',
       authorUserId: 32,
       commentId: 502,
       parentCommentId: 501,
@@ -333,8 +454,37 @@ describe('SceneDetailPage route states', () => {
 
     expect(await screen.findByText('This scene has a great pulse.')).toBeInTheDocument()
     expect(screen.getByText('A reply from the crowd.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '@commentartist' })).toHaveAttribute(
+      'href',
+      '/@commentartist',
+    )
+    expect(screen.getByRole('link', { name: '@replyartist' })).toHaveAttribute(
+      'href',
+      '/@replyartist',
+    )
 
-    await user.click(screen.getByRole('button', { name: /upvote 2/i }))
+    const topLevelCommentElement = screen
+      .getByText('This scene has a great pulse.')
+      .closest('.mage-comment')
+
+    expect(topLevelCommentElement).not.toBeNull()
+
+    const topLevelCommentActionElement = topLevelCommentElement?.querySelector(
+      '.scene-detail-comment__actions',
+    )
+
+    expect(topLevelCommentActionElement).not.toBeNull()
+
+    const topLevelCommentActions = within(topLevelCommentActionElement as HTMLElement)
+    const neutralUpvoteButton = topLevelCommentActions.getByRole('button', { name: /upvote 2/i })
+    const neutralDownvoteButton = topLevelCommentActions.getByRole('button', { name: /downvote 0/i })
+
+    expect(neutralUpvoteButton).toHaveAttribute('aria-pressed', 'false')
+    expect(neutralUpvoteButton).not.toHaveClass('is-selected')
+    expect(neutralDownvoteButton).toHaveAttribute('aria-pressed', 'false')
+    expect(neutralDownvoteButton).not.toHaveClass('is-selected')
+
+    await user.click(neutralUpvoteButton)
     expect(await screen.findByRole('button', { name: /upvote 3/i })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -382,7 +532,7 @@ describe('SceneDetailPage route states', () => {
 
     expect(await screen.findByText('No description provided.')).toBeInTheDocument()
     expect(screen.queryByText(/lorem ipsum/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^show more$/i })).not.toBeInTheDocument()
   })
 
   it('does not show the description toggle when a short description has no hidden content', async () => {
@@ -406,7 +556,7 @@ describe('SceneDetailPage route states', () => {
     renderSceneDetailPage()
 
     expect(await screen.findByText('Short saved description.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^show$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^show more$/i })).not.toBeInTheDocument()
   })
 
   it('preserves saved description line breaks on the player page', async () => {
@@ -437,7 +587,7 @@ describe('SceneDetailPage route states', () => {
     expect(descriptionParagraphs[0]?.textContent).toBe('First lineSecond line')
     expect(descriptionParagraphs[0]?.querySelectorAll('br')).toHaveLength(1)
     expect(descriptionParagraphs[1]?.textContent).toBe('Second paragraph')
-    expect(screen.getByRole('button', { name: /^show$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^show more$/i })).toBeInTheDocument()
   })
 
   it('shows a clear error state for an invalid scene route id', async () => {

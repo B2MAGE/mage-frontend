@@ -10,6 +10,8 @@ Exports:
 
 - `MagePlayer`
 - `MagePlayerProps`
+- `createMagePlayer()`
+- `MagePlayerController`
 - `MageSceneBlob`
 - `MagePlayerPlaybackState`
 - `MagePlayerAudioState`
@@ -88,7 +90,7 @@ Current route defaults:
 
 1. Feature modules should import from `@modules/player`, not from `@notrac/mage` or `infrastructure/engineAdapter.ts`.
 2. Treat the engine adapter as infrastructure. Engine patch assumptions, startup workarounds, and browser/runtime quirks stay behind that layer.
-3. Pages should embed playback through `MagePlayer` and pass raw backend `sceneData` objects as `sceneBlob`.
+3. Full playback surfaces should embed `MagePlayer` and pass raw backend `sceneData` objects as `sceneBlob`. Controls-free previews may use `createMagePlayer()` through this public module boundary, must share renderer instances where practical, and must dispose their controller when no preview consumers remain.
 4. Route-owned playlist editing UI may keep its own state, but shared playlist types and helpers come from this module.
 
 ## Tests

@@ -3,7 +3,7 @@ import type { SceneDetailErrorCode } from './types'
 export function readInitial(value: string) {
   const trimmedValue = value.trim()
 
-  return trimmedValue ? trimmedValue[0].toUpperCase() : 'M'
+  return trimmedValue ? trimmedValue.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() : 'M'
 }
 
 export function readSceneId(value: string | undefined) {

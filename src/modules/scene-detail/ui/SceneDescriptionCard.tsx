@@ -36,7 +36,7 @@ export function SceneDescriptionCard({
       aria-expanded={isDescriptionExpanded}
       onClick={onToggleDescription}
     >
-      <span>{isDescriptionExpanded ? 'Hide' : 'Show'}</span>
+      <span>{isDescriptionExpanded ? 'Show less' : 'Show more'}</span>
       <span
         className={`scene-detail-description-toggle__chevron${
           isDescriptionExpanded ? ' is-expanded' : ''

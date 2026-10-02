@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react'
 import type { MagePlayerPlaylistTrack } from '@modules/player'
 import { PlaylistTrackRow } from './PlaylistTrackRow'
 import { EditIcon, RepeatIcon, ShuffleIcon } from './playlistPanelIcons'
@@ -55,6 +55,34 @@ export function PlaylistPanel({
   const [dropIndicator, setDropIndicator] = useState<PlaylistDropIndicator | null>(null)
   const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false)
   const [playlistNameDraft, setPlaylistNameDraft] = useState(playlistName)
+  const panelRef = useRef<HTMLElement>(null)
+  const [isNarrow, setIsNarrow] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia?.('(max-width: 1080px)')
+    if (!query) return
+    const sync = () => setIsNarrow(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (isNarrow) panelRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Close playlist"]')?.focus()
+    const handleKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose() }
+      if (event.key !== 'Tab' || !isNarrow) return
+      const controls = panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input, [tabindex="0"]')
+      if (!controls?.length) return
+      const first = controls[0], last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => { document.removeEventListener('keydown', handleKey); if (isNarrow) previousFocus?.focus() }
+  }, [isOpen, isNarrow, onClose])
 
   useEffect(() => {
     if (!isOpen || playlistTracks.length === 0) {
@@ -221,7 +249,9 @@ export function PlaylistPanel({
   }
 
   return (
-    <section className="mage-watch__playlist-panel">
+    <>
+    <button className="scene-detail-playlist-backdrop" type="button" tabIndex={-1} aria-label="Close playlist backdrop" onClick={onClose} />
+    <section ref={panelRef} className="mage-watch__playlist-panel" role={isNarrow ? 'dialog' : 'region'} aria-modal={isNarrow || undefined} aria-label="Scene playlist">
       <header className="mage-watch__playlist-header">
         <div className="mage-watch__playlist-heading">
           {isEditingPlaylist ? (
@@ -264,7 +294,7 @@ export function PlaylistPanel({
             className="mage-watch__playlist-action mage-watch__playlist-action--icon"
             disabled={playlistTracks.length <= 1}
             onClick={onToggleShuffle}
-            title="Shuffle"
+            title={playlistTracks.length <= 1 ? 'Add at least two tracks to shuffle' : `Shuffle: ${shuffleEnabled ? 'on' : 'off'}`}
             type="button"
           >
             <ShuffleIcon />
@@ -275,7 +305,7 @@ export function PlaylistPanel({
             className="mage-watch__playlist-action mage-watch__playlist-action--icon"
             disabled={playlistTracks.length === 0}
             onClick={onToggleRepeat}
-            title="Repeat"
+            title={playlistTracks.length === 0 ? 'Add tracks to repeat the playlist' : `Repeat playlist: ${repeatEnabled ? 'on' : 'off'}`}
             type="button"
           >
             <RepeatIcon />
@@ -300,7 +330,7 @@ export function PlaylistPanel({
             onClick={onClose}
             type="button"
           >
-            Close
+            ×
           </button>
         </div>
       </header>
@@ -340,5 +370,6 @@ export function PlaylistPanel({
         </div>
       )}
     </section>
+    </>
   )
 }

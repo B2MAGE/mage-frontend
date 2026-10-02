@@ -138,7 +138,7 @@ describe('MagePlayer', () => {
     })
   })
 
-  it('publishes a capture callback once the live preview is ready', async () => {
+  it('captures the live aspect ratio after resizing, with a drawing-buffer fallback', async () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
@@ -162,14 +162,45 @@ describe('MagePlayer', () => {
     const captureFramePreview =
       onCaptureFramePreviewChange.mock.calls.at(-1)?.[0]
 
+    const canvas = screen.getByLabelText('MAGE scene preview') as HTMLCanvasElement
+    canvas.width = 1280
+    canvas.height = 720
     const previewDataUrl = await captureFramePreview?.()
 
     expect(controller.captureFramePreview).toHaveBeenCalledWith({
-      height: 512,
+      height: 288,
       type: 'image/png',
       width: 512,
     })
     expect(previewDataUrl).toMatch(/^data:image\/png;base64,/)
+
+    const readBounds = vi.spyOn(canvas, 'getBoundingClientRect')
+    readBounds.mockReturnValue({ width: 450, height: 800 } as DOMRect)
+    await captureFramePreview?.()
+    expect(controller.captureFramePreview).toHaveBeenLastCalledWith({
+      height: 512,
+      type: 'image/png',
+      width: 288,
+    })
+
+    readBounds.mockReturnValue({ width: 0, height: 0 } as DOMRect)
+    canvas.width = 512
+    canvas.height = 512
+    await captureFramePreview?.()
+    expect(controller.captureFramePreview).toHaveBeenLastCalledWith({
+      height: 512,
+      type: 'image/png',
+      width: 512,
+    })
+  })
+
+  it('opens a connected playlist even before audio has been selected', async () => {
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const onRequestPlaylistOpen = vi.fn()
+    render(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} onRequestPlaylistOpen={onRequestPlaylistOpen} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Open playlist' }))
+    expect(onRequestPlaylistOpen).toHaveBeenCalledTimes(1)
   })
 
   it('suppresses playback controls while the player is empty', async () => {

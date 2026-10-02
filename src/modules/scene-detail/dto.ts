@@ -5,6 +5,7 @@ type SceneDetailResponse = {
   sceneId?: number
   ownerUserId?: number
   creatorDisplayName?: string
+  creatorHandle?: string
   name?: string
   description?: string | null
   sceneData?: unknown
@@ -29,6 +30,7 @@ type SceneCommentResponse = {
   parentCommentId?: unknown
   authorUserId?: unknown
   authorDisplayName?: unknown
+  authorHandle?: unknown
   text?: unknown
   createdAt?: unknown
   replyCount?: unknown
@@ -101,6 +103,10 @@ export function normalizeSceneComment(payload: unknown): SceneComment | null {
       typeof resolvedPayload.authorDisplayName === 'string' && resolvedPayload.authorDisplayName.trim()
         ? resolvedPayload.authorDisplayName.trim()
         : 'Mage user',
+    authorHandle:
+      typeof resolvedPayload.authorHandle === 'string' && resolvedPayload.authorHandle.trim()
+        ? resolvedPayload.authorHandle.trim().replace(/^@/, '').toLowerCase()
+        : null,
     createdAt:
       typeof resolvedPayload.createdAt === 'string' && resolvedPayload.createdAt.trim()
         ? resolvedPayload.createdAt
@@ -173,6 +179,10 @@ export function normalizeSceneDetail(payload: unknown): SceneDetail | null {
     creatorDisplayName:
       typeof resolvedPayload.creatorDisplayName === 'string' && resolvedPayload.creatorDisplayName.trim()
         ? resolvedPayload.creatorDisplayName.trim()
+        : null,
+    creatorHandle:
+      typeof resolvedPayload.creatorHandle === 'string' && resolvedPayload.creatorHandle.trim()
+        ? resolvedPayload.creatorHandle.trim().toLowerCase()
         : null,
     name:
       typeof resolvedPayload.name === 'string' && resolvedPayload.name.trim()

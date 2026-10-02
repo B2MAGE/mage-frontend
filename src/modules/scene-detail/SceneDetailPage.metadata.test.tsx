@@ -38,6 +38,7 @@ describe('SceneDetailPage metadata', () => {
     const storedUser = buildSceneDetailStoredUser()
     const creatorScene = buildSceneDetailResponse({
       creatorDisplayName: 'Peter',
+      creatorHandle: 'peterb5825',
       name: 'Test 3',
       ownerUserId: 77,
       sceneId: 44,
@@ -46,6 +47,7 @@ describe('SceneDetailPage metadata', () => {
     })
     const relatedScene = buildSceneDetailResponse({
       creatorDisplayName: 'Peter',
+      creatorHandle: 'peterb5825',
       createdAt: '2026-04-08T14:00:00Z',
       name: 'Pulse Coast',
       ownerUserId: 77,
@@ -77,6 +79,10 @@ describe('SceneDetailPage metadata', () => {
     renderSceneDetailPage(['/scenes/44'])
 
     expect(await screen.findAllByText('Peter')).not.toHaveLength(0)
+    expect(screen.getByRole('link', { name: /peter.*@peterb5825/i })).toHaveAttribute(
+      'href',
+      '/@peterb5825',
+    )
     expect(screen.getByRole('button', { name: /from peter/i })).toBeInTheDocument()
     expect(screen.queryByText('Talia North')).not.toBeInTheDocument()
   })
@@ -131,9 +137,10 @@ describe('SceneDetailPage metadata', () => {
     renderSceneDetailPage()
 
     await screen.findByRole('heading', { name: /aurora drift/i })
-    await user.click(screen.getByRole('button', { name: /^show$/i }))
+    await user.click(screen.getByRole('button', { name: /^show more$/i }))
 
     const ambientTagLink = screen.getByRole('link', { name: /^ambient$/i })
+    expect(ambientTagLink).toHaveClass('tag-pill')
     expect(ambientTagLink).toHaveAttribute('href', '/scenes?tag=ambient')
     expect(screen.getByRole('link', { name: /^focus-friendly$/i })).toHaveAttribute(
       'href',

@@ -2,7 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer } from './MagePlayer'
-import { createMagePlayer } from './infrastructure/engineAdapter'
+import {
+  createMagePlayer,
+  type MagePlayerAudioState,
+} from './infrastructure/engineAdapter'
 import {
   buildMagePlayerController,
   buildMagePlayerSceneBlob,
@@ -45,6 +48,53 @@ describe('MagePlayer audio controls', () => {
     fireEvent.click(trackSummaryButton)
 
     expect(onRequestPlaylistOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows selected-track loading beside the track while leaving the Add action copy unchanged', async () => {
+    let finishLoadingTrack: (() => void) | undefined
+    const loadedAudioState: MagePlayerAudioState = {
+      currentTime: 0,
+      duration: 185,
+      hasSource: true,
+      isLoaded: true,
+      sourcePath: '/audio/crimson-reactor.mp3',
+      volume: 1,
+    }
+    const controller = buildMagePlayerController({
+      loadAudio: vi.fn(
+        () =>
+          new Promise<MagePlayerAudioState>((resolve) => {
+            finishLoadingTrack = () => {
+              resolve(loadedAudioState)
+            }
+          }),
+      ),
+    })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+
+    const sceneBlob = buildMagePlayerSceneBlob({
+      audioPath: '/audio/crimson-reactor.mp3',
+    })
+
+    render(<MagePlayer sceneBlob={sceneBlob} />)
+
+    const loadingStatus = await screen.findByText('Loading track…')
+    const addButton = screen.getByRole('button', { name: /add audio tracks/i })
+
+    expect(loadingStatus).toHaveTextContent('Loading track…')
+    expect(loadingStatus.closest('.mage-player__control-meta')).toHaveAttribute('aria-busy', 'true')
+    expect(addButton).toBeDisabled()
+    expect(addButton).toHaveAttribute('aria-busy', 'false')
+    expect(addButton.querySelector('.pending-button-label__content--pending')).toHaveAttribute(
+      'data-visible',
+      'false',
+    )
+
+    finishLoadingTrack?.()
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading track…')).not.toBeInTheDocument()
+    })
   })
 
   it('adds local audio tracks to the playlist and auto-loads the first added track', async () => {

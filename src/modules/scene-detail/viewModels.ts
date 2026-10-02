@@ -1,23 +1,5 @@
 import { formatCalendarDate } from '@shared/lib'
-import { pickCreatorProfileBlueprint } from './fixtures'
 import type { CreatorProfile, SceneDescription, SceneDetail, SceneEngagement } from './types'
-
-function buildSubscriberLabel(seed: number) {
-  const subscriberCount = 1720 + seed * 38
-
-  if (subscriberCount >= 1000) {
-    return `${(subscriberCount / 1000).toFixed(2)}K subscribers`
-  }
-
-  return `${subscriberCount} subscribers`
-}
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-}
 
 function buildDescriptionParagraphs(description: string | null) {
   const normalizedDescription = description?.replace(/\r\n/g, '\n').trim()
@@ -57,25 +39,15 @@ export function buildSceneDescription(scene: SceneDetail): SceneDescription {
 export function buildCreatorProfile(
   scene: SceneDetail,
   viewerDisplayName: string | undefined,
+  viewerHandle: string | undefined,
   viewerUserId: number | null | undefined,
 ): CreatorProfile {
-  const resolvedDisplayName = scene.creatorDisplayName?.trim() || viewerDisplayName?.trim() || 'Your Studio'
-
-  if (viewerUserId !== null && viewerUserId !== undefined && viewerUserId === scene.ownerUserId) {
-    return {
-      displayName: resolvedDisplayName,
-      handle: `@${slugify(resolvedDisplayName) || 'magecreator'}`,
-      subscribersLabel: buildSubscriberLabel(scene.id),
-      primaryActionLabel: 'Subscribe',
-    }
-  }
-
-  const blueprint = pickCreatorProfileBlueprint(scene.ownerUserId ?? scene.id)
+  const viewerOwnsScene = viewerUserId !== null && viewerUserId !== undefined && viewerUserId === scene.ownerUserId
+  const resolvedDisplayName =
+    scene.creatorDisplayName?.trim() || (viewerOwnsScene ? viewerDisplayName?.trim() : null) || 'Unknown creator'
 
   return {
-    ...blueprint,
     displayName: resolvedDisplayName,
-    handle: `@${slugify(resolvedDisplayName) || slugify(blueprint.displayName) || 'magecreator'}`,
-    primaryActionLabel: 'Subscribe',
+    handle: scene.creatorHandle?.trim() || (viewerOwnsScene ? viewerHandle?.trim() : null) || null,
   }
 }

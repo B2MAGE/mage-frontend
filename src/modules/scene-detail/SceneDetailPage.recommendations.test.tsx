@@ -116,12 +116,19 @@ describe('SceneDetailPage recommendations', () => {
     expect(screen.getByText(/4\.3K views/i)).toBeInTheDocument()
     expect(screen.getByText(/5 views/i)).toBeInTheDocument()
 
+    const allFilter = screen.getByRole('button', { name: /^all$/i })
+    const ambientFilter = screen.getByRole('button', { name: /^ambient$/i })
+    expect(allFilter).toHaveClass('tag-pill', 'tag-pill--active')
+    expect(ambientFilter).toHaveClass('tag-pill')
+    expect(ambientFilter).not.toHaveClass('tag-pill--active')
+
     await user.click(screen.getByRole('button', { name: /from scene artist/i }))
 
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /afterglow static/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^ambient$/i }))
+    expect(ambientFilter).toHaveClass('tag-pill', 'tag-pill--active')
 
     expect(screen.getByRole('link', { name: /afterglow static/i })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /signal bloom/i })).not.toBeInTheDocument()
@@ -131,5 +138,117 @@ describe('SceneDetailPage recommendations', () => {
     expect(screen.getByRole('link', { name: /signal bloom/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /afterglow static/i })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /unrelated echo/i })).not.toBeInTheDocument()
+  })
+
+  it('keeps recommendation thumbnails mounted while scene engagement changes', async () => {
+    storeSceneDetailSession()
+
+    const user = userEvent.setup()
+    const storedUser = buildSceneDetailStoredUser()
+    const initialEngagement = {
+      currentUserSaved: false,
+      currentUserVote: null,
+      downvotes: 32,
+      saves: 150,
+      upvotes: 416,
+      views: 2999,
+    }
+    const sceneResponse = buildSceneDetailResponse({
+      engagement: initialEngagement,
+      tags: [],
+    })
+    const recommendedSceneResponse = buildSceneDetailResponse({
+      createdAt: '2026-04-08T14:00:00Z',
+      engagement: {
+        currentUserSaved: false,
+        currentUserVote: null,
+        downvotes: 0,
+        saves: 8,
+        upvotes: 50,
+        views: 4321,
+      },
+      name: 'Signal Bloom',
+      sceneId: 16,
+      tags: [],
+      thumbnailRef: 'thumbnails/scene-16.png',
+    })
+    let recommendationRequestCount = 0
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input === buildApiUrl('/users/me')) {
+        return jsonResponse(storedUser)
+      }
+
+      if (input === buildApiUrl('/scenes/12')) {
+        return jsonResponse(sceneResponse)
+      }
+
+      if (input === buildApiUrl('/scenes/12/views')) {
+        return new Promise<Response>(() => undefined)
+      }
+
+      if (input === buildApiUrl('/scenes/12/comments')) {
+        return jsonResponse([])
+      }
+
+      if (input === buildApiUrl('/scenes')) {
+        recommendationRequestCount += 1
+        return jsonResponse([sceneResponse, recommendedSceneResponse])
+      }
+
+      if (input === buildApiUrl('/scenes/12/vote')) {
+        const { vote } = JSON.parse(String(init?.body)) as { vote: 'up' | 'down' }
+
+        return jsonResponse({
+          ...initialEngagement,
+          currentUserVote: vote,
+          downvotes: vote === 'down' ? 33 : 32,
+          upvotes: vote === 'up' ? 417 : 416,
+        })
+      }
+
+      if (input === buildApiUrl('/scenes/12/save')) {
+        return jsonResponse({
+          ...initialEngagement,
+          currentUserSaved: true,
+          currentUserVote: 'down',
+          downvotes: 33,
+          saves: 151,
+        })
+      }
+
+      throw new Error(`Unexpected request: ${String(input)}`)
+    })
+
+    renderSceneDetailPage()
+
+    const thumbnail = await screen.findByRole('img', { name: /signal bloom thumbnail/i })
+    const expectStableRecommendation = () => {
+      expect(recommendationRequestCount).toBe(1)
+      expect(screen.getByRole('img', { name: /signal bloom thumbnail/i })).toBe(thumbnail)
+    }
+
+    expectStableRecommendation()
+
+    await user.click(screen.getByRole('button', { name: /upvote 416/i }))
+    expect(await screen.findByRole('button', { name: /upvote 417/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expectStableRecommendation()
+
+    await user.click(screen.getByRole('button', { name: /downvote 32/i }))
+    expect(await screen.findByRole('button', { name: /downvote 33/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expectStableRecommendation()
+
+    await user.click(screen.getByRole('button', { name: /save 150/i }))
+    expect(await screen.findByRole('button', { name: /saved 151/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expectStableRecommendation()
   })
 })

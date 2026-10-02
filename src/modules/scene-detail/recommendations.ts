@@ -1,6 +1,8 @@
 import { formatMetricLabel, formatRelativeTime, type SceneListResponse } from '@shared/lib'
 import type { RecommendationFilter, RecommendedSceneCard, RecommendedSceneGroups, SceneDetail } from './types'
 
+export type SceneRecommendationSource = Pick<SceneDetail, 'id' | 'ownerUserId' | 'tags'>
+
 function buildRecommendationAccent(sceneId: number) {
   const accents = ['#63f0d6', '#9fd9ff', '#ffb26b', '#7ef0c0', '#7f9bff']
   return accents[Math.abs(sceneId) % accents.length]
@@ -62,7 +64,7 @@ export function createEmptyRecommendedSceneGroups(): RecommendedSceneGroups {
 }
 
 export function buildRecommendedSceneGroups(
-  scene: SceneDetail,
+  scene: SceneRecommendationSource,
   allScenes: SceneListResponse[],
   tagScenesByTag: Record<string, SceneListResponse[]>,
 ): RecommendedSceneGroups {

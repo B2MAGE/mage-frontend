@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import './sceneDetail.css'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { MagePlayer } from '@modules/player'
+import { EngagementButton, PendingButtonLabel } from '@shared/ui'
 import {
   clearSceneCommentVote,
   clearSceneVote,
@@ -26,7 +28,14 @@ import type {
   SceneEngagementSummary,
   SceneVoteState,
 } from './types'
-import { SceneCommentsPanel, SceneDescriptionCard, SceneDetailState, SceneRecommendationRail, VoteButton } from './ui'
+import {
+  SceneCommentsPanel,
+  SceneDescriptionCard,
+  SceneDetailLoadingState,
+  SceneDetailState,
+  SceneRecommendationRail,
+  VoteButton,
+} from './ui'
 import { useScenePlaylistState } from './useScenePlaylistState'
 import { buildCreatorProfile, buildSceneDescription, buildSceneEngagement } from './viewModels'
 
@@ -85,6 +94,8 @@ function replaceSceneComment(comments: SceneComment[], updatedComment: SceneComm
   })
 }
 
+const EMPTY_RECOMMENDATION_TAGS: string[] = []
+
 export function SceneDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -93,13 +104,16 @@ export function SceneDetailPage() {
   const [errorCode, setErrorCode] = useState<SceneDetailErrorCode | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [engagementActionError, setEngagementActionError] = useState<string | null>(null)
+  const [pendingEngagementAction, setPendingEngagementAction] = useState<SceneVoteState | 'save' | null>(null)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
+  const [isSharing, setIsSharing] = useState(false)
   const [comments, setComments] = useState<SceneComment[]>([])
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [commentsError, setCommentsError] = useState<string | null>(null)
   const [commentActionError, setCommentActionError] = useState<string | null>(null)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [submittingReplyCommentId, setSubmittingReplyCommentId] = useState<number | null>(null)
-  const [pendingCommentVoteId, setPendingCommentVoteId] = useState<number | null>(null)
+  const [pendingCommentVote, setPendingCommentVote] = useState<{ commentId: number; vote: SceneVoteState } | null>(null)
   const [recommendedSceneGroups, setRecommendedSceneGroups] = useState<RecommendedSceneGroups>(
     createEmptyRecommendedSceneGroups(),
   )
@@ -107,8 +121,11 @@ export function SceneDetailPage() {
   const [recommendationFilter, setRecommendationFilter] = useState<RecommendationFilter>('all')
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const recordedViewSceneIds = useRef<Set<number>>(new Set())
+  const shareInFlightRef = useRef(false)
   const sceneId = readSceneId(id)
   const loadedSceneId = scene?.id ?? null
+  const recommendationOwnerUserId = scene?.ownerUserId ?? null
+  const recommendationSceneTags = scene?.tags ?? EMPTY_RECOMMENDATION_TAGS
   const {
     handlePlaylistChange,
     handleRemoveTrack,
@@ -173,9 +190,13 @@ export function SceneDetailPage() {
     setIsDescriptionExpanded(false)
     setRecommendationFilter('all')
     setEngagementActionError(null)
+    setShareStatus(null)
+    setIsSharing(false)
+    shareInFlightRef.current = false
     setCommentActionError(null)
     setCommentsError(null)
-    setPendingCommentVoteId(null)
+    setPendingEngagementAction(null)
+    setPendingCommentVote(null)
     setSubmittingReplyCommentId(null)
   }, [loadedSceneId])
 
@@ -267,13 +288,17 @@ export function SceneDetailPage() {
   }, [authenticatedFetch, isAuthenticated, loadedSceneId])
 
   useEffect(() => {
-    if (!scene) {
+    if (loadedSceneId === null) {
       setRecommendedSceneGroups(createEmptyRecommendedSceneGroups())
       setIsRecommendationsLoading(false)
       return
     }
 
-    const currentScene = scene
+    const currentScene = {
+      id: loadedSceneId,
+      ownerUserId: recommendationOwnerUserId,
+      tags: recommendationSceneTags,
+    }
     let isCurrent = true
 
     async function loadRecommendedScenes() {
@@ -305,7 +330,7 @@ export function SceneDetailPage() {
     return () => {
       isCurrent = false
     }
-  }, [scene])
+  }, [loadedSceneId, recommendationOwnerUserId, recommendationSceneTags])
 
   if (sceneId === null) {
     const { description, title } = readErrorCopy('invalid-id')
@@ -331,16 +356,7 @@ export function SceneDetailPage() {
   }
 
   if (isRestoringSession || isLoading) {
-    return (
-      <SceneDetailState
-        title="Loading scene..."
-        description={
-          isRestoringSession
-            ? 'MAGE is restoring your session before loading this scene.'
-            : 'MAGE is fetching scene metadata and loading the embedded player.'
-        }
-      />
-    )
+    return <SceneDetailLoadingState />
   }
 
   if (errorCode || !scene) {
@@ -377,7 +393,12 @@ export function SceneDetailPage() {
   }
 
   const loadedScene = scene
-  const creatorProfile = buildCreatorProfile(loadedScene, user?.displayName, user?.userId)
+  const creatorProfile = buildCreatorProfile(
+    loadedScene,
+    user?.displayName,
+    user?.handle,
+    user?.userId,
+  )
   const engagement = buildSceneEngagement(loadedScene)
   const sceneDescription = buildSceneDescription(loadedScene)
   const filteredRecommendedScenes = selectRecommendedScenes(
@@ -400,13 +421,21 @@ export function SceneDetailPage() {
     )
   }
 
-  async function runAuthenticatedEngagementAction(action: () => Promise<SceneEngagementSummary>) {
+  async function runAuthenticatedEngagementAction(
+    pendingAction: SceneVoteState | 'save',
+    action: () => Promise<SceneEngagementSummary>,
+  ) {
     if (!isAuthenticated) {
       navigate('/login')
       return
     }
 
+    if (pendingEngagementAction !== null) {
+      return
+    }
+
     setEngagementActionError(null)
+    setPendingEngagementAction(pendingAction)
 
     try {
       applySceneEngagement(await action())
@@ -417,11 +446,13 @@ export function SceneDetailPage() {
       }
 
       setEngagementActionError('Unable to update this interaction right now.')
+    } finally {
+      setPendingEngagementAction(null)
     }
   }
 
   function handleVoteClick(vote: SceneVoteState) {
-    void runAuthenticatedEngagementAction(() =>
+    void runAuthenticatedEngagementAction(vote, () =>
       engagement.currentUserVote === vote
         ? clearSceneVote(authenticatedFetch, loadedScene.id)
         : updateSceneVote(authenticatedFetch, loadedScene.id, vote),
@@ -429,9 +460,29 @@ export function SceneDetailPage() {
   }
 
   function handleSaveClick() {
-    void runAuthenticatedEngagementAction(() =>
+    void runAuthenticatedEngagementAction('save', () =>
       updateSceneSave(authenticatedFetch, loadedScene.id, !engagement.currentUserSaved),
     )
+  }
+
+  async function handleShare() {
+    if (shareInFlightRef.current) {
+      return
+    }
+
+    shareInFlightRef.current = true
+    setIsSharing(true)
+    setShareStatus(null)
+
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setShareStatus('Scene link copied.')
+    } catch {
+      setShareStatus('Unable to copy automatically. Copy this page’s address to share the scene.')
+    } finally {
+      shareInFlightRef.current = false
+      setIsSharing(false)
+    }
   }
 
   async function handleSubmitComment(text: string, parentCommentId: number | null = null) {
@@ -491,12 +542,12 @@ export function SceneDetailPage() {
       return
     }
 
-    if (pendingCommentVoteId !== null) {
+    if (pendingCommentVote !== null) {
       return
     }
 
     setCommentActionError(null)
-    setPendingCommentVoteId(comment.commentId)
+    setPendingCommentVote({ commentId: comment.commentId, vote })
 
     async function updateCommentVote() {
       try {
@@ -514,7 +565,7 @@ export function SceneDetailPage() {
 
         setCommentActionError('Unable to update this comment vote right now.')
       } finally {
-        setPendingCommentVoteId(null)
+        setPendingCommentVote(null)
       }
     }
 
@@ -555,28 +606,41 @@ export function SceneDetailPage() {
 
           <section className="scene-detail-social-row">
             <div className="scene-detail-social-row__creator">
-              <div className="mage-channel-card">
+              {creatorProfile.handle ? (
+                <Link className="mage-channel-card" to={`/@${creatorProfile.handle}`}>
+                  <div className="mage-channel-card__avatar" aria-hidden="true">
+                    {readInitial(creatorProfile.displayName)}
+                  </div>
+                  <div className="mage-channel-card__copy">
+                    <strong>{creatorProfile.displayName}</strong>
+                    <span>@{creatorProfile.handle}</span>
+                  </div>
+                </Link>
+              ) : (
+                <div className="mage-channel-card">
                 <div className="mage-channel-card__avatar" aria-hidden="true">
                   {readInitial(creatorProfile.displayName)}
                 </div>
                 <div className="mage-channel-card__copy">
                   <strong>{creatorProfile.displayName}</strong>
-                  <span>{creatorProfile.subscribersLabel}</span>
                 </div>
-              </div>
+                </div>
+              )}
 
-              {creatorProfile.primaryActionLabel ? (
-                <button className="scene-detail-follow-button" type="button">
-                  {creatorProfile.primaryActionLabel}
-                </button>
-              ) : null}
+              {user?.userId === scene.ownerUserId ? (
+                <Link className="scene-detail-follow-button" to={`/scenes/${scene.id}/edit`}>Edit scene</Link>
+              ) : (
+                <button className="scene-detail-follow-button" disabled title="Following creators is not available yet" type="button">Follow</button>
+              )}
             </div>
 
             <div className="scene-detail-action-row">
               <VoteButton
                 className="scene-detail-action-chip"
                 count={engagement.upvotesLabel}
+                disabled={pendingEngagementAction !== null}
                 direction="up"
+                isBusy={pendingEngagementAction === 'up'}
                 isSelected={engagement.currentUserVote === 'up'}
                 onClick={() => {
                   handleVoteClick('up')
@@ -585,26 +649,37 @@ export function SceneDetailPage() {
               <VoteButton
                 className="scene-detail-action-chip"
                 count={engagement.downvotesLabel}
+                disabled={pendingEngagementAction !== null}
                 direction="down"
+                isBusy={pendingEngagementAction === 'down'}
                 isSelected={engagement.currentUserVote === 'down'}
                 onClick={() => {
                   handleVoteClick('down')
                 }}
               />
-              <button className="scene-detail-action-chip" type="button">
-                Share
-              </button>
               <button
-                aria-label={`${engagement.currentUserSaved ? 'Saved' : 'Save'} ${engagement.savesLabel}`}
-                aria-pressed={engagement.currentUserSaved}
-                className={`scene-detail-action-chip${engagement.currentUserSaved ? ' is-selected' : ''}`}
-                onClick={handleSaveClick}
+                aria-busy={isSharing}
+                className="scene-detail-action-chip"
+                disabled={isSharing}
+                onClick={() => { void handleShare() }}
                 type="button"
               >
-                <span>{engagement.currentUserSaved ? 'Saved' : 'Save'}</span>
-                <span>{engagement.savesLabel}</span>
+                <PendingButtonLabel pending={isSharing} pendingLabel="Copying...">
+                  Share
+                </PendingButtonLabel>
               </button>
+              <EngagementButton
+                ariaLabel={`${engagement.currentUserSaved ? 'Saved' : 'Save'} ${engagement.savesLabel}`}
+                className="scene-detail-action-chip"
+                count={engagement.savesLabel}
+                disabled={pendingEngagementAction !== null}
+                isBusy={pendingEngagementAction === 'save'}
+                isSelected={engagement.currentUserSaved}
+                kind="save"
+                onClick={handleSaveClick}
+              />
             </div>
+            {shareStatus ? <p className="scene-detail-share-status" role="status">{shareStatus}</p> : null}
             {engagementActionError ? (
               <p className="scene-detail-action-error" role="status">
                 {engagementActionError}
@@ -630,7 +705,7 @@ export function SceneDetailPage() {
             isLoading={isCommentsLoading}
             isSubmittingComment={isSubmittingComment}
             loadingError={commentsError}
-            pendingVoteCommentId={pendingCommentVoteId}
+            pendingVote={pendingCommentVote}
             submittingReplyCommentId={submittingReplyCommentId}
             onRequestSignIn={() => {
               navigate('/login')

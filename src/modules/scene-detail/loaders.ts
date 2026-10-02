@@ -5,11 +5,10 @@ import {
   normalizeSceneDetail,
   normalizeSceneEngagement,
 } from './dto'
-import { buildRecommendedSceneGroups } from './recommendations'
+import { buildRecommendedSceneGroups, type SceneRecommendationSource } from './recommendations'
 import type {
   AuthenticatedFetch,
   RecommendedSceneGroups,
-  SceneDetail,
   SceneDetailErrorCode,
   SceneEngagementSummary,
   SceneComment,
@@ -214,7 +213,7 @@ export async function updateSceneSave(
 }
 
 export async function fetchRecommendedSceneGroups(
-  scene: SceneDetail,
+  scene: SceneRecommendationSource,
 ): Promise<RecommendedSceneGroups> {
   const recommendationRequests = [fetchScenes(), ...scene.tags.map((tag) => fetchScenes(tag))]
   const [allScenesResult, ...tagSceneResults] = await Promise.allSettled(recommendationRequests)
