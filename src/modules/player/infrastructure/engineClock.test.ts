@@ -14,7 +14,9 @@ type EngineTimer = { update(): void; reset(): void; getDelta(): number }
 const renderStart = engineSource.indexOf('#_render = () => {')
 const viewportSync = 'this.#_syncViewport();'
 const clockStart = engineSource.indexOf(viewportSync, renderStart) + viewportSync.length
-const clockEnd = engineSource.indexOf('this.#state.pointerDown = ', clockStart)
+// Pointer easing moved into the input bridge in 1.0.3. Audio processing remains
+// immediately after the clock and gives this extraction a stable boundary.
+const clockEnd = engineSource.indexOf('let bass_input = 0;', clockStart)
 const timerStart = engineSource.indexOf('var Timer = class {')
 const timerEnd = engineSource.indexOf('function handleVisibilityChange()', timerStart)
 

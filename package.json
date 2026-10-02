@@ -5,17 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "patch-package && npm run icons:generate",
+    "prebuild": "patch-package --error-on-fail && npm run icons:generate",
     "icons:generate": "node scripts/generate-icon-assets.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package --error-on-fail",
     "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@notrac/mage": "^1.0.1",
+    "@notrac/mage": "1.0.3",
     "lucide-react": "1.49.0",
+    "patch-package": "^8.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1"
@@ -38,7 +39,6 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "jsdom": "^29.0.1",
-    "patch-package": "^8.0.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1",
