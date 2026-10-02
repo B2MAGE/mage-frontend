@@ -6,6 +6,7 @@ import { APP_THEME_STORAGE_KEY, ThemeProvider, type AppThemeId } from '@theme'
 import { fetchScenes, fetchTags } from '@shared/lib'
 import { fetchSceneDetail, updateSceneVote } from '../scene-detail/loaders'
 import type { SceneEngagementSummary } from '../scene-detail/types'
+import { HOME_CREATE_PROMPT_HIDDEN_STORAGE_KEY } from './welcomePromptPreference'
 
 let authState = { isAuthenticated:false, isRestoringSession:false, authenticatedFetch:vi.fn() }
 vi.mock('@auth',()=>({useAuth:()=>authState}))
@@ -26,6 +27,7 @@ describe('Homepage mockup behavior',()=>{
  beforeEach(()=>{
   vi.clearAllMocks()
   vi.stubEnv('VITE_HOME_FEATURED_SCENE_ID','1')
+  window.localStorage.removeItem(HOME_CREATE_PROMPT_HIDDEN_STORAGE_KEY)
   authState={isAuthenticated:false,isRestoringSession:false,authenticatedFetch:vi.fn()}
   vi.mocked(fetchScenes).mockResolvedValue([scene,{...scene,sceneId:2,name:'Newest scene',createdAt:'2026-09-28T00:00:00Z'}])
   vi.mocked(fetchTags).mockResolvedValue([{tagId:1,name:'Ambient',sceneCount:3}])
@@ -54,6 +56,7 @@ describe('Homepage mockup behavior',()=>{
   expect(screen.getByTestId('welcome-brand-scene')).toHaveClass('editor-brand-scene')
   expect(screen.getByTestId('welcome-brand-scene').closest('.editor-canvas')).toBeInTheDocument()
   expect(screen.getByRole('link',{name:/Sign up/})).toHaveAttribute('href','/register')
+  expect(screen.getByRole('checkbox',{name:"Don't show this again"})).not.toBeChecked()
   expect(screen.getByRole('link',{name:/Browse all featured/})).toHaveAttribute('href','/scenes?sort=featured')
   expect(await screen.findByText('Live featured player')).toBeInTheDocument()
   expect(screen.getByRole('link',{name:/Ari Rivera@aririvera/})).toHaveAttribute('href','/@aririvera')
@@ -91,6 +94,20 @@ describe('Homepage mockup behavior',()=>{
   expect(await screen.findByText('Live featured player')).toBeInTheDocument()
   expect(screen.getByRole('heading',{name:'Featured Scenes'})).toBeInTheDocument()
   expect(screen.getByRole('heading',{name:'For You'})).toBeInTheDocument()
+ })
+ it('keeps the guest welcome panel hidden on later visits when requested',()=>{
+  const {unmount}=show()
+  const checkbox=screen.getByRole('checkbox',{name:"Don't show this again"})
+  const actions=screen.getByRole('link',{name:/Sign up/}).closest('.creator-actions')
+  const option=checkbox.closest('.creator-opt-out')
+  expect(option).toBe(actions?.nextElementSibling)
+  fireEvent.click(checkbox)
+  expect(checkbox).toBeChecked()
+  expect(window.localStorage.getItem(HOME_CREATE_PROMPT_HIDDEN_STORAGE_KEY)).toBe('true')
+  expect(screen.getByRole('heading',{name:'Build something that reacts.'})).toBeInTheDocument()
+  unmount()
+  show()
+  expect(screen.queryByRole('heading',{name:'Build something that reacts.'})).not.toBeInTheDocument()
  })
  it('uses the shared SVG reaction icons for the featured scene',async()=>{
   show()
@@ -186,11 +203,15 @@ describe('Homepage mockup behavior',()=>{
   expect(fetchTags).toHaveBeenCalledTimes(1)
  })
  it('dismisses only the guest panel and leaves featured content visible',async()=>{
-  show()
+  const {unmount}=show()
   await screen.findByText('Live featured player')
   fireEvent.click(screen.getByRole('button',{name:'Dismiss create prompt'}))
   expect(screen.queryByRole('heading',{name:'Build something that reacts.'})).not.toBeInTheDocument()
   expect(screen.getByRole('heading',{name:'Featured Scenes'})).toBeInTheDocument()
+  expect(window.localStorage.getItem(HOME_CREATE_PROMPT_HIDDEN_STORAGE_KEY)).toBeNull()
+  unmount()
+  show()
+  expect(screen.getByRole('heading',{name:'Build something that reacts.'})).toBeInTheDocument()
  })
  it('shows a retry when scene loading fails',async()=>{
   vi.mocked(fetchScenes).mockRejectedValueOnce(new Error('offline'))

@@ -11,6 +11,7 @@ import { SceneCollectionState } from '../discovery/ui/SceneCollectionState'
 import { DiscoveryEmptyState, DiscoveryErrorState, SceneGridSkeleton } from '../discovery/ui/DiscoveryStates'
 import { fetchSceneDetail, updateSceneVote, clearSceneVote, updateSceneSave } from '../scene-detail/loaders'
 import type { SceneDetail } from '../scene-detail/types'
+import { isHomeCreatePromptHidden, setHomeCreatePromptHidden } from './welcomePromptPreference'
 import './home.css'
 import '../discovery/discovery.css'
 
@@ -55,7 +56,8 @@ function FeaturedSceneSkeleton() {
 export function HomePage() {
   const { isAuthenticated, isRestoringSession, authenticatedFetch } = useAuth()
   const navigate = useNavigate()
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(isHomeCreatePromptHidden)
+  const [hideOnFutureVisits, setHideOnFutureVisits] = useState(false)
   const [scenes, setScenes] = useState<SceneListResponse[]>([])
   const [featured, setFeatured] = useState<SceneDetail | null>(null)
   const [tag, setTag] = useState<string | null>(null)
@@ -156,6 +158,18 @@ export function HomePage() {
             <Link className="primary-button" to="/register">Sign up <AppIcon name="arrow-right" size={16} /></Link>
             <Link className="secondary-button" to="/login">Sign in</Link>
           </div>
+          <label className="creator-opt-out">
+            <input
+              checked={hideOnFutureVisits}
+              onChange={(event) => {
+                const shouldHide = event.currentTarget.checked
+                setHideOnFutureVisits(shouldHide)
+                setHomeCreatePromptHidden(shouldHide)
+              }}
+              type="checkbox"
+            />
+            <span>Don't show this again</span>
+          </label>
         </div>
         <div className="editor-preview" aria-hidden="true">
           <div className="editor-sidebar">{['Details','Scene','Camera','Motion','Effects','Confirm'].map((step,i) => <span key={step} className={`editor-step${i === 0 ? ' active' : ''}`}>{step}</span>)}</div>
