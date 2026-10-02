@@ -1,13 +1,12 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AuthPage, AuthPageHeader, PendingButtonLabel } from '@shared/ui'
+import { AuthPage, AuthPageHeader, FormNotice, PendingButtonLabel, ProfileIdentityPreview, PublicProfileMarker, TextInputField } from '@shared/ui'
 import { emailPattern, parseApiError } from '@shared/lib'
-import { FormNotice } from '@shared/ui'
-import { AuthInput } from './AuthInput'
+import { HandleInputField } from './HandleInputField'
 import './auth.css'
 import { registerLocalAccount } from './client'
-import { HANDLE_INPUT_MAX_LENGTH, validateHandleInput } from './handle'
+import { formatHandleInput, HANDLE_FORMAT_ERROR, validateHandleInput } from './handle'
 
 type RegistrationFormValues = {
   firstName: string
@@ -65,7 +64,9 @@ function validateRegistrationForm(values: RegistrationFormValues): RegistrationF
   const handleError = validateHandleInput(values.handle)
 
   if (handleError) {
-    errors.handle = handleError
+    errors.handle = handleError === HANDLE_FORMAT_ERROR
+      ? 'Use 3–30 letters, numbers, or underscores, starting with a letter.'
+      : handleError
   }
 
   if (!values.email.trim()) {
@@ -88,6 +89,7 @@ export function RegisterPage() {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<RegistrationFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [passwordVisible, setPasswordVisible] = useState(false)
 
   const formErrorId = useId()
   const titleId = 'register-title'
@@ -120,7 +122,7 @@ export function RegisterPage() {
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
       displayName: values.displayName.trim(),
-      handle: values.handle.trim(),
+      handle: formatHandleInput(values.handle),
       email: values.email.trim(),
       password: values.password,
     }
@@ -183,97 +185,88 @@ export function RegisterPage() {
     <AuthPage titleId={titleId} className="auth-page--registration">
       <>
         <AuthPageHeader
-          description="Create a local MAGE account with your email address."
+          description="Create your account and choose how you appear on MAGE."
           eyebrow="Create Account"
           title="Register"
           titleId={titleId}
         />
 
-          {errors.form ? (
-            <FormNotice id={formErrorId} tone="error">
-              {errors.form}
-            </FormNotice>
-          ) : null}
+        {errors.form ? (
+          <FormNotice id={formErrorId} tone="error">
+            {errors.form}
+          </FormNotice>
+        ) : null}
 
-        <form className="auth-form" noValidate onSubmit={handleSubmit}>
-          <div className="auth-name-grid">
-          <AuthInput
-            autoComplete="given-name"
-            error={errors.firstName}
-            id="firstName"
-            label="First name"
-            minLength={2}
-            name="firstName"
-            onChange={(event) => handleChange('firstName', event.target.value)}
-            placeholder="John"
-            required
-            type="text"
-            value={values.firstName}
-          />
-          <AuthInput
-            autoComplete="family-name"
-            error={errors.lastName}
-            id="lastName"
-            label="Last name"
-            minLength={2}
-            name="lastName"
-            onChange={(event) => handleChange('lastName', event.target.value)}
-            placeholder="Doe"
-            required
-            type="text"
-            value={values.lastName}
-          />
-          </div>
-          <AuthInput
-            autoComplete="nickname"
-            error={errors.displayName}
-            hint="This is the public name people will see on your scenes and comments."
-            id="displayName"
-            label="Display name"
-            minLength={2}
-            name="displayName"
-            onChange={(event) => handleChange('displayName', event.target.value)}
-            placeholder="Scene Artist"
-            required
-            type="text"
-            value={values.displayName}
-          >
-            <div className="auth-display-preview">
-              <span className="auth-preview-avatar" aria-hidden="true">
-                {values.displayName.trim().split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'MG'}
-              </span>
-              <div><strong>{values.displayName.trim() || 'Your display name'}</strong><span>Public profile preview</span></div>
-            </div>
-          </AuthInput>
-          <AuthInput
-            autoCapitalize="none"
-            autoComplete="username"
-            error={errors.handle}
-            hint="This creates your profile address, such as /@sceneartist."
-            id="handle"
-            label="Handle"
-            maxLength={HANDLE_INPUT_MAX_LENGTH}
-            name="handle"
-            onChange={(event) => handleChange('handle', event.target.value)}
-            placeholder="@sceneartist"
-            required
-            spellCheck={false}
-            type="text"
-            value={values.handle}
-          />
-          <AuthInput
+        <form className="auth-form registration-form" noValidate onSubmit={handleSubmit}>
+          <TextInputField
             autoComplete="email"
             error={errors.email}
             id="email"
             label="Email"
             name="email"
             onChange={(event) => handleChange('email', event.target.value)}
-            placeholder="you@example.com"
             required
             type="email"
             value={values.email}
           />
-          <AuthInput
+
+          <ProfileIdentityPreview displayName={values.displayName} handle={values.handle} />
+
+          <TextInputField
+            aria-describedby="register-public-profile-hint"
+            autoComplete="nickname"
+            error={errors.displayName}
+            id="displayName"
+            label="Display name"
+            labelSuffix={<PublicProfileMarker />}
+            minLength={2}
+            name="displayName"
+            onChange={(event) => handleChange('displayName', event.target.value)}
+            required
+            type="text"
+            value={values.displayName}
+          />
+          <HandleInputField
+            aria-describedby="register-public-profile-hint"
+            error={errors.handle}
+            hint="Use 3–30 letters, numbers, or underscores, starting with a letter."
+            id="handle"
+            label="Handle"
+            labelSuffix={<PublicProfileMarker />}
+            onValueChange={(value) => handleChange('handle', value)}
+            required
+            value={values.handle}
+          />
+          <div className="auth-name-grid">
+            <TextInputField
+              autoComplete="given-name"
+              error={errors.firstName}
+              id="firstName"
+              label="First name"
+              minLength={2}
+              name="firstName"
+              onChange={(event) => handleChange('firstName', event.target.value)}
+              required
+              type="text"
+              value={values.firstName}
+            />
+            <TextInputField
+              autoComplete="family-name"
+              error={errors.lastName}
+              id="lastName"
+              label="Last name"
+              minLength={2}
+              name="lastName"
+              onChange={(event) => handleChange('lastName', event.target.value)}
+              required
+              type="text"
+              value={values.lastName}
+            />
+          </div>
+          <p className="field-hint public-profile-hint" id="register-public-profile-hint">
+            <PublicProfileMarker />Shown on your public profile.
+          </p>
+          <TextInputField
             autoComplete="new-password"
             error={errors.password}
             id="password"
@@ -282,10 +275,20 @@ export function RegisterPage() {
             minLength={8}
             name="password"
             onChange={(event) => handleChange('password', event.target.value)}
-            placeholder="At least 8 characters"
             required
-            type="password"
+            type={passwordVisible ? 'text' : 'password'}
             value={values.password}
+            inputAction={
+              <button
+                className="registration-show-password"
+                type="button"
+                aria-controls="password"
+                aria-pressed={passwordVisible}
+                onClick={() => setPasswordVisible((visible) => !visible)}
+              >
+                {passwordVisible ? 'Hide' : 'Show'}
+              </button>
+            }
           />
 
           <button aria-busy={isSubmitting} className="demo-link auth-submit" type="submit" disabled={isSubmitDisabled}>

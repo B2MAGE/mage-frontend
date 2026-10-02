@@ -48,17 +48,16 @@ export function AuthFormLoadingState({
 
         <div className="auth-form auth-loading__form">
           {variant === 'register' ? (
-            <div className="auth-name-grid">
-              <AuthLoadingField />
-              <AuthLoadingField />
-            </div>
-          ) : null}
-          {variant === 'register' ? (
             <>
               <AuthLoadingField />
               <AuthDisplayPreviewLoadingState />
               <AuthLoadingField />
               <AuthLoadingField />
+              <div className="auth-name-grid">
+                <AuthLoadingField />
+                <AuthLoadingField />
+              </div>
+              <Skeleton className="auth-loading__copy" shape="line" />
               <AuthLoadingField />
             </>
           ) : (

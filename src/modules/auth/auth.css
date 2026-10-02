@@ -11,7 +11,7 @@ html[data-theme='mage-pulse'] body:has(.auth-page) {
   background: radial-gradient(circle at 18% 24%, rgba(124,108,255,.11), transparent 24%), radial-gradient(circle at 82% 78%, rgba(99,240,214,.07), transparent 20%), #090a0d;
 }
 
-html[data-theme='mage-pulse'] .auth-page--registration { max-width: 480px; width: min(calc(100% - 48px), 480px); }
+html[data-theme='mage-pulse'] .auth-page--registration { max-width: 520px; width: min(calc(100% - 48px), 520px); }
 html[data-theme='mage-pulse'] .auth-page > .surface {
   width: 100%;
   padding: 30px;
@@ -54,11 +54,6 @@ html[data-theme='mage-pulse'] .auth-page .auth-footnote a { color: #f4f5f7; font
 html[data-theme='mage-pulse'] .auth-page :is(.form-note, .form-alert) { margin-bottom: 18px; padding: 11px 12px; border-radius: 9px; font-size: 11px; line-height: 1.5; }
 html[data-theme='mage-pulse'] .auth-page .form-note { border: 1px solid rgba(103,215,161,.22); background: rgba(103,215,161,.06); color: #9be8c0; }
 html[data-theme='mage-pulse'] .auth-page .form-alert { border: 1px solid rgba(255,116,116,.22); background: rgba(255,116,116,.06); color: #ffabab; }
-html[data-theme='mage-pulse'] .auth-display-preview { margin-top: 8px; padding: 10px 11px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; background: #0d0f13; }
-html[data-theme='mage-pulse'] .auth-preview-avatar { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(145deg, rgba(124,108,255,.65), rgba(99,240,214,.25)); font-size: 9px; font-weight: 800; }
-html[data-theme='mage-pulse'] .auth-display-preview > div { min-width: 0; }
-html[data-theme='mage-pulse'] .auth-display-preview strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-html[data-theme='mage-pulse'] .auth-display-preview div span { display: block; color: #757b87; font-size: 9px; }
 html[data-theme='mage-pulse'] .auth-confirmation-email { margin: 16px 0 0; padding: 11px 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; background: #0d0f13; color: #a4a8b2; font-size: 11px; }
 html[data-theme='mage-pulse'] .auth-confirmation-email strong { color: #f4f5f7; overflow-wrap: anywhere; }
 html[data-theme='mage-pulse'] .auth-state-actions { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -72,6 +67,24 @@ html[data-theme='mage-pulse'] .auth-secondary-link { border: 1px solid rgba(255,
 }
 
 html[data-theme='mage-pulse'] .auth-page > .surface::before { display: none; }
+
+html[data-theme='mage-pulse'] .auth-page--registration > .surface { padding: 24px; background: #111318; box-shadow: none; backdrop-filter: none; }
+html[data-theme='mage-pulse'] .auth-page .registration-form { gap: 17px; }
+html[data-theme='mage-pulse'] .registration-form .field-group { min-width: 0; display: block; }
+html[data-theme='mage-pulse'] .registration-form .field-group label { display: block; margin-bottom: 6px; color: #a4a8b2; font-size: 11px; font-weight: 650; }
+html[data-theme='mage-pulse'] .registration-form .field-group input { width: 100%; height: 42px; min-height: 42px; padding: 0 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 9px; outline: 0; background: #0d0f13; color: #f4f5f7; font-size: 16px; }
+html[data-theme='mage-pulse'] .registration-form .field-group input:hover { border-color: rgba(255,255,255,.16); box-shadow: none; transform: none; }
+html[data-theme='mage-pulse'] .registration-form .field-group input:focus { border-color: rgba(178,168,255,.5); box-shadow: 0 0 0 3px rgba(124,108,255,.08); }
+html[data-theme='mage-pulse'] .registration-form .field-group input[aria-invalid='true'] { border-color: rgba(255,116,116,.5); }
+html[data-theme='mage-pulse'] .registration-form .text-input-control--prefixed > input { padding-inline-start: 34px; }
+html[data-theme='mage-pulse'] .registration-form .text-input-control--action > input { padding-inline-end: 64px; }
+html[data-theme='mage-pulse'] .registration-form .field-hint { margin: 6px 0 0; color: #757b87; font-size: 9px; }
+html[data-theme='mage-pulse'] .registration-form > .public-profile-hint { margin: 0; }
+html[data-theme='mage-pulse'] .registration-form .field-error { margin-top: 6px; color: #ffabab; font-size: 10px; }
+.registration-show-password { height: 28px; padding: 0 7px; border: 0; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 10px; font-weight: 650; }
+html[data-theme='mage-pulse'] .registration-show-password { font-size: 10px; font-weight: 650; }
+.registration-show-password:hover { color: var(--text); background: transparent; box-shadow: none; transform: none; }
+.registration-show-password:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 1px; border-radius: 4px; }
 
 .auth-page--loading > .loading-region__visual {
   width: 100%;
@@ -181,6 +194,16 @@ html[data-theme='mage-pulse'] .auth-page--loading > .loading-region__visual > .s
 html[data-theme='mage-pulse'] .auth-page--loading > .loading-region__visual > .surface::before {
   display: none;
 }
+
+html[data-theme='mage-pulse'] .auth-page--registration.auth-page--loading > .loading-region__visual > .surface {
+  padding: 24px;
+  background: #111318;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+html[data-theme='mage-pulse'] .auth-page--registration .auth-loading__input { height: 42px; }
+html[data-theme='mage-pulse'] .auth-page--registration .auth-loading__display-preview { padding: 16px; border-radius: 13px; background: #111318; }
 
 @media (max-width: 760px) {
   html[data-theme='mage-pulse'] .auth-page--loading > .loading-region__visual > .surface {
