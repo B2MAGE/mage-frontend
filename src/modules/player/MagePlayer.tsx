@@ -16,13 +16,12 @@ import './pulsePlayer.css'
 import {
   audioStatesMatch,
   buildMagePlayerClassName,
-  createPlaylistTrackId,
   EMPTY_AUDIO_STATE,
-  readAudioFileDuration,
   readMagePlayerErrorMessage,
   type MagePlayerStatus,
 } from './magePlayerUtils'
 import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
+import { useMagePlayerAudioSelection } from './useMagePlayerAudioSelection'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { normalizeAudioResponseMode } from '@shared/lib'
 import { hasSceneDocumentMarkers } from './templates/sceneContract'
@@ -83,6 +82,27 @@ function blurMouseActivatedControl(control: HTMLButtonElement, clickCount: numbe
 
 /** Keep recovery controls and editor state outside the renderer's lifetime. */
 export function MagePlayer(props: MagePlayerProps) {
+  const audioInputRef = useRef<HTMLInputElement>(null)
+  const playlist = useMagePlayerPlaylist(props)
+  const audioSelection = useMagePlayerAudioSelection({
+    inputRef: audioInputRef,
+    playlist,
+    sceneIdentity: scenePlaybackIdentity(props.sceneBlob, props.sceneKey),
+    onRequestPlaylistOpen: props.onRequestPlaylistOpen,
+  })
+  return <>
+    <input accept="audio/*" className="mage-player__audio-input" hidden multiple
+      onChange={event => { void audioSelection.select(event) }} ref={audioInputRef} type="file" />
+    <MagePlayerSession {...props} playlist={playlist} audioSelection={audioSelection} />
+  </>
+}
+
+type SessionAudioProps = {
+  playlist: ReturnType<typeof useMagePlayerPlaylist>
+  audioSelection: ReturnType<typeof useMagePlayerAudioSelection>
+}
+
+function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   const validationError = useMemo(() => {
     if (!props.sceneBlob) return null
     try { validateSceneForPlayback(props.sceneBlob); return null }
@@ -90,7 +110,7 @@ export function MagePlayer(props: MagePlayerProps) {
   }, [props.sceneBlob])
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const [rendererInstance, setRendererInstance] = useState(0)
-  const playlist = useMagePlayerPlaylist(props)
+  const { playlist, audioSelection } = props
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
   const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
@@ -183,6 +203,7 @@ export function MagePlayer(props: MagePlayerProps) {
 
   return <MagePlayerRenderer key={`${target}:${rendererInstance}`} {...props}
     playlist={playlist}
+    audioSelection={audioSelection}
     onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
     onSafeMode={() => sceneRecovery.setSafeMode(true)}
   />
@@ -207,9 +228,9 @@ function MagePlayerRenderer({
   onStopRendering,
   onSafeMode,
   playlist,
-}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; playlist: ReturnType<typeof useMagePlayerPlaylist> }) {
+  audioSelection,
+}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void } & SessionAudioProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const audioInputRef = useRef<HTMLInputElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MagePlayerController | null>(null)
   const capabilitiesCallbackRef = useRef(onAudioResponseCapabilitiesChange)
@@ -223,7 +244,6 @@ function MagePlayerRenderer({
   const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
 
   const {
-    commitPlaylistTracks,
     commitSelectedTrackId,
     commitTrackDuration,
     currentTrack,
@@ -750,7 +770,7 @@ function MagePlayerRenderer({
     tracks,
   ])
 
-  const controlsBusy = activeAudioAction !== null
+  const controlsBusy = activeAudioAction !== null || audioSelection.adding
   const audioProgressPercent =
     audioState.duration > 0
       ? `${Math.min((audioState.currentTime / audioState.duration) * 100, 100)}%`
@@ -772,63 +792,11 @@ function MagePlayerRenderer({
   }
 
   function handleOpenAudioPicker(event: ReactMouseEvent<HTMLButtonElement>) {
-    const audioInput = audioInputRef.current
-
-    if (!audioInput || controlsBusy || status !== 'ready') {
+    if (controlsBusy || status !== 'ready') {
       return
     }
-
-    audioInput.value = ''
-    audioInput.click()
+    audioSelection.open()
     blurMouseActivatedControl(event.currentTarget, event.detail)
-  }
-
-  async function handleAudioSelection() {
-    const audioInput = audioInputRef.current
-
-    if (!audioInput) {
-      return
-    }
-
-    const selectedFiles = Array.from(audioInput.files ?? [])
-
-    if (selectedFiles.length === 0) {
-      return
-    }
-
-    setActiveAudioAction('add')
-    setAudioError(null)
-
-    try {
-      const nextTracks = await Promise.all(
-        selectedFiles.map(async (selectedFile) => {
-          const sourcePath = URL.createObjectURL(selectedFile)
-          const duration = await readAudioFileDuration(sourcePath)
-
-          return {
-            duration,
-            id: createPlaylistTrackId(),
-            name: selectedFile.name,
-            sourcePath,
-            sourceType: 'device' as const,
-          }
-        }),
-      )
-
-      const nextPlaylist = [...tracks, ...nextTracks]
-      commitPlaylistTracks(nextPlaylist)
-
-      if (!currentTrack && nextTracks[0]) {
-        commitSelectedTrackId(nextTracks[0].id)
-      }
-
-      onRequestPlaylistOpen?.()
-    } catch (error) {
-      setAudioError(readMagePlayerErrorMessage(error))
-    } finally {
-      setActiveAudioAction(null)
-      audioInput.value = ''
-    }
   }
 
   function handleSeekAudio(event: ChangeEvent<HTMLInputElement>) {
@@ -888,17 +856,6 @@ function MagePlayerRenderer({
     <section className={buildMagePlayerClassName('mage-player', className)} data-state={status}>
       <div className="mage-player__viewport" aria-busy={status === 'loading'}>
         <canvas aria-label={ariaLabel} className="mage-player__canvas" ref={canvasRef} />
-        <input
-          accept="audio/*"
-          className="mage-player__audio-input"
-          hidden
-          multiple
-          onChange={() => {
-            void handleAudioSelection()
-          }}
-          ref={audioInputRef}
-          type="file"
-        />
         {status === 'loading' ? (
           <MagePlayerLoading />
         ) : status !== 'ready' ? (
@@ -912,8 +869,8 @@ function MagePlayerRenderer({
       </div>
         {status === 'ready' ? (
           <MagePlayerControls
-            activeAudioAction={activeAudioAction}
-            audioError={audioError}
+            activeAudioAction={audioSelection.adding ? 'add' : activeAudioAction}
+            audioError={audioSelection.error ?? audioError}
             audioProgressPercent={audioProgressPercent}
             audioState={audioState}
             currentTrack={currentTrack}
