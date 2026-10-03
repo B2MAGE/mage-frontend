@@ -145,7 +145,7 @@ class SceneHoverPreviewCoordinator {
     registration.target.append(canvas)
 
     try {
-      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId })
+      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId, renderProfile: 'preview', initialSceneBlob: registration.sceneBlob })
       if (this.active !== activation || !this.canPreview(id)) {
         controller.dispose()
         if (this.active === activation) this.stopActivePreview(false)

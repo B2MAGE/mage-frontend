@@ -1,5 +1,7 @@
 // Development-only harness. Frames come from the same engine as the scene player.
 import { initMAGE } from '@notrac/mage';
+import { validateSceneForPlayback } from '../src/modules/player/policy/sceneValidation.ts';
+import { getRenderBudget } from '../src/modules/player/policy/renderBudget.ts';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const frames = async count => {
@@ -52,10 +54,16 @@ function testTone() {
 }
 
 export function createQualityRenderer(canvas) {
-  const engine = initMAGE({ canvas, log: false, withControls: { active: false, integrated: false }, autoStart: false });
-  engine.start();
+  let engine;
   return {
     async captureScene(sceneData, { checkAudio = false } = {}) {
+      const document = validateSceneForPlayback(sceneData);
+      if (document.kind !== 'custom') throw new Error('The quality corpus requires explicit engine data.');
+      sceneData = document.scene;
+      if (!engine) {
+        engine = initMAGE({ canvas, renderBudget: getRenderBudget('preview'), log: false, withControls: { active: false, integrated: false }, autoStart: false });
+        engine.start();
+      }
       engine.pause(); engine.unloadAudio(); engine.setSyntheticPreview(false);
       // Compare each frame against its own skybox, not a color heuristic: white
       // geometry is valid, but a starfield without geometry must fail.
@@ -105,6 +113,6 @@ export function createQualityRenderer(canvas) {
       return { dataUrl: best.dataUrl, selectedPhase: best.phase, clockAdvanced: endTime - startTime, samples, audio,
         valid: samples.every(sample => sample.valid) && (!audio || audio.reactive) };
     },
-    dispose() { engine.dispose(); },
+    dispose() { engine?.dispose(); engine = undefined; },
   };
 }

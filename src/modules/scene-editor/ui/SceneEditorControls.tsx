@@ -49,6 +49,7 @@ type SliderFieldProps = NumberFieldProps & {
 }
 
 type ToggleFieldProps = {
+  disabled?: boolean
   ariaLabel?: string
   compact?: boolean
   description?: string
@@ -59,6 +60,8 @@ type ToggleFieldProps = {
 }
 
 type Vector3FieldProps = {
+  min?: number
+  max?: number
   description?: string
   id: string
   label: string
@@ -68,6 +71,7 @@ type Vector3FieldProps = {
 }
 
 type EffectCardProps = PropsWithChildren<{
+  toggleDisabled?: boolean
   description: string
   enabled?: boolean
   footer?: ReactNode
@@ -228,6 +232,7 @@ export function SliderField({
 }
 
 export function ToggleField({
+  disabled,
   ariaLabel,
   checked,
   compact = false,
@@ -252,6 +257,7 @@ export function ToggleField({
             <input
               aria-label={ariaLabel}
               checked={checked}
+              disabled={disabled}
               className="scene-toggle__input"
               id={id}
               onChange={(event) => onChange(event.currentTarget.checked)}
@@ -268,6 +274,8 @@ export function ToggleField({
 }
 
 export function Vector3Field({
+  min,
+  max,
   description,
   id,
   label,
@@ -290,6 +298,9 @@ export function Vector3Field({
             <span>{axis.toUpperCase()}</span>
             <input
               className="scene-number-input"
+              min={min}
+              max={max}
+              aria-label={`${label} ${axis.toUpperCase()}`}
               onChange={(event) => forwardNumericValue(event, (nextValue) => handleAxisChange(axis, nextValue))}
               step={step}
               type="number"
@@ -303,6 +314,7 @@ export function Vector3Field({
 }
 
 export function EffectCard({
+  toggleDisabled,
   children,
   description,
   enabled,
@@ -327,6 +339,7 @@ export function EffectCard({
             <ToggleField
               ariaLabel={toggleLabel}
               checked={isEnabled}
+              disabled={toggleDisabled}
               compact
               id={toggleId}
               label={isEnabled ? 'On' : 'Off'}

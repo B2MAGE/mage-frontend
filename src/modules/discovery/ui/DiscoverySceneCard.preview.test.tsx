@@ -215,7 +215,7 @@ describe('DiscoverySceneCard animated preview', () => {
     renderCard()
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
-    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), { sceneKey: scene.sceneId })
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), { sceneKey: scene.sceneId, renderProfile: 'preview', initialSceneBlob: scene.sceneData })
     await act(async () => blockAvailability())
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })

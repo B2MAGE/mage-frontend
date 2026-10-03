@@ -25,6 +25,7 @@ function fixture() {
   const listeners = new Set<(event: { type: string }) => void>()
   const state = { time: 10, time_multiplier: 0, size: 0, base_speed: 0, easing_speed: 0.5, volume_multiplier: 0 }
   const engine: Engine = {
+    renderBudget: { maxFramesPerSecond: 60 }, lastRenderTime: null,
     isRunning: true, isDisposed: false, scene: {}, camera: {}, renderer: { render }, composer: null,
     animationFrameId: null, state, timeIncreasing: true, audioResponseMode: 'legacy', audioAnalyser: null,
     syntheticPreviewEnabled: false, transientWasPlaying: false, previewMode: false,
@@ -32,7 +33,7 @@ function fixture() {
     _syncViewport() {}, _updateViewportInteractionFromBridge() {}, renderLifecycleListeners: listeners,
     _notifyRenderLifecycle: method('#_notifyRenderLifecycle'),
   }
-  return { engine, state, render, request, cancel, listeners, tick: () => createRender(request, cancel).call(engine) }
+  return { engine, state, render, request, cancel, listeners, tick: () => { engine.lastRenderTime = null; createRender(request, cancel).call(engine) } }
 }
 
 describe('installed engine render lifecycle hooks', () => {

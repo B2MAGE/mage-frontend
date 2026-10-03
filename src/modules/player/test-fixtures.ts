@@ -29,10 +29,12 @@ export function buildMagePlayerSceneBlob(
   overrides: Partial<Record<string, unknown>> = {},
 ) {
   return {
-    visualizer: {
-      skyboxPreset: 6,
-    },
     ...overrides,
+    visualizer: {
+      shader: 'sphere(0.5);',
+      skyboxPreset: 6,
+      ...(typeof overrides.visualizer === 'object' && overrides.visualizer ? overrides.visualizer : {}),
+    },
   }
 }
 

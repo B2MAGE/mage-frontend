@@ -100,7 +100,7 @@ scene ID. The server's `SCENE_UPGRADE_REQUIRED` status blocks automatic playback
 an explicit successful save upgrades transport, without clearing an operator
 disable or enabling the global rendering switch. `sceneMode` is returned metadata,
 never a client-selected permission. PP-B03 owns the template-first authoring UI;
-PP-V02 adds full client resource policy and detailed field validation.
+PP-V02 adds client resource policy and detailed field validation.
 
 Deploy this frontend together with the PP-B02 API. The earlier API rejects the
 new envelope, while the strict API rejects writes from older cached frontend
@@ -109,3 +109,30 @@ old tabs to refresh before saving. Keep the custom-rendering release gate off.
 Rolling back only the frontend is not a compatible write path; retain a client
 that understands saved versioned documents, and never rewrite stored scenes to
 make an old client work.
+
+## Editor preflight and repair (PP-V02)
+
+Raw JSON imports, structured edits, and saves use the player module's shared
+versioned policy. Original values are checked before preview defaults or audio
+normalization can hide invalid fields. The submitted custom document retains its
+authored values; omitted settings are not silently written back as defaults.
+Unknown fields, invalid numbers/types, source and document byte budgets,
+duplicate import keys, and excess effects produce actionable errors.
+
+An invalid draft stays editable and downloadable from Confirm → Raw JSON. A new
+invalid draft keeps the last valid preview visible with an explanation. Invalid
+saved repair data starts without a player; it is never substituted with a default
+scene. Structured edits change only the chosen fields, preserving unrelated repair
+values. Fix invalid imported JSON before switching back to structured controls.
+Preview captures are disabled for invalid drafts and cancelled if settings change.
+
+Controls use the server's permitted ranges. Bloom and optional passes share a
+four-effect budget; Output and hidden Copy are excluded. At the limit, enabled
+effects remain available to turn off, while additional effects cannot be enabled.
+Both create and update check complete request size before thumbnail work and
+again before the final write. Server errors retain nested field details, and
+HTTP 413 remains actionable even if the response body is not JSON.
+
+Editor players request the bounded `preview` render profile. These checks do not
+make custom source trusted or enable the global custom-rendering release gate.
+Template documents remain read-only here until PP-B03.

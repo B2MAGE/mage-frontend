@@ -8,7 +8,7 @@ import {
   type MagePlayerAudioState,
   type MagePlayerController,
 } from './infrastructure/engineAdapter'
-import { buildMagePlayerController, buildMagePlayerSceneBlob } from './test-fixtures'
+import { buildMagePlayerController, buildMagePlayerSceneBlob, buildMagePlayerTrack } from './test-fixtures'
 
 vi.mock('./infrastructure/engineAdapter', () => ({ createMagePlayer: vi.fn() }))
 
@@ -66,14 +66,15 @@ describe('player audio-response capabilities bridge', () => {
       loadAudio: vi.fn(() => new Promise<MagePlayerAudioState>(resolve => { finishTrack = resolve })),
     })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
-    const first = buildMagePlayerSceneBlob({ audioPath: '/song.mp3' })
+    const first = buildMagePlayerSceneBlob()
+    const tracks = [buildMagePlayerTrack({ sourcePath: '/song.mp3' })]
     const second = { ...first, audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } }
     const onChange = vi.fn()
-    const { rerender } = render(<MagePlayer sceneBlob={first} sceneKey="editor" onAudioResponseCapabilitiesChange={onChange} />)
+    const { rerender } = render(<MagePlayer sceneBlob={first} sceneKey="editor" onAudioResponseCapabilitiesChange={onChange} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await screen.findByText('Loading track…')
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: first, capabilities: capabilities('size') }))
     onChange.mockClear()
-    rerender(<MagePlayer sceneBlob={second} sceneKey="editor" onAudioResponseCapabilitiesChange={onChange} />)
+    rerender(<MagePlayer sceneBlob={second} sceneKey="editor" onAudioResponseCapabilitiesChange={onChange} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: second, capabilities: capabilities('size') }))
     expect(onChange.mock.calls.every(([snapshot]) => snapshot !== null && snapshot.sceneBlob === second)).toBe(true)
     expect(controller.loadSceneBlob).toHaveBeenCalledOnce()

@@ -12,7 +12,7 @@ const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-sce
 describe('versioned scene transport compatibility', () => {
   it('wraps existing engine settings as explicit custom data without modifying the original', () => {
     const original = JSON.stringify(source)
-    expect(buildSceneSubmissionDocument(source)).toEqual({ schemaVersion: 1, kind: 'custom', scene: buildEffectiveSceneData(source) })
+    expect(buildSceneSubmissionDocument(source)).toEqual({ schemaVersion: 1, kind: 'custom', scene: source })
     expect(JSON.stringify(source)).toBe(original)
   })
 

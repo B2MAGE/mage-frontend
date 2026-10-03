@@ -85,7 +85,7 @@ describe('installed MAGE engine compatibility', () => {
       },
     })
     const state = { time: 1, size: 0.206, pointerDown: 0, mouse: {} }
-    const visualizer = { engine: { getEngineFields: () => ({ state }), getAudioResponseOutputs: () => ({ bass: 0.8, mid: 0.2, size: 0.2 }) }, scale: 2 }
+    const visualizer = { engine: { getEngineFields: () => ({ state }), getRenderBudget: () => ({ maxRaymarchIterations: 200 }), getAudioResponseOutputs: () => ({ bass: 0.8, mid: 0.2, size: 0.2 }) }, scale: 2 }
     createMesh.call(visualizer, 'let bass = input(); sphere(bass);')
     createMesh.call(visualizer, 'let size = input(); let mid = input(); sphere(size + mid);')
     expect(callbacks[0]()).toMatchObject({ bass: 0.8 })
@@ -231,7 +231,7 @@ describe('installed MAGE engine compatibility', () => {
     const engine: EngineHarness = {
       visualizer,
       scene,
-      renderer: {},
+      renderer: { domElement: { width: 640, height: 360 } },
       camera: {},
       renderTarget: previousTarget,
       viewportWidth: 640,
@@ -400,6 +400,7 @@ describe('installed MAGE engine compatibility', () => {
     const oldTarget = new RenderTargetFixture()
     const engine: EngineHarness = {
       visualizer: { mesh: nextMesh }, scene, rtScene: pickingScene, renderTarget: oldTarget,
+      renderer: { domElement: { width: 640, height: 360 } },
       camera: {}, viewportWidth: 640, viewportHeight: 360, _clearScene: engineMethod('_clearScene'),
     }
     const update = engineMethod('_updateVisualizer', {
@@ -579,13 +580,13 @@ describe('installed MAGE engine compatibility', () => {
     expect(playing.syntheticPreviewTime).toBe(0)
   })
 
-  it('passes explicit density through initialization and bounds it without changing the default device density', () => {
+  it('passes density through initialization and caps requests before bounded renderer sizing', () => {
     const constructorStart = engineClassSource.indexOf('\n\tconstructor(')
     const densityAssignment = engineClassSource.slice(constructorStart).match(/this\.#pixelRatio\s*=\s*[^;]+;/)?.[0]
     if (!densityAssignment) throw new Error('The MAGE pixel-density constructor contract is missing.')
     const normalize = new Function('pixelRatio', `${densityAssignment.replaceAll('this.#', 'this.')}; return this.pixelRatio;`) as EngineMethod
-    for (const [input, expected] of [[undefined, null], [0, null], [-1, null], [Number.NaN, null], [Number.POSITIVE_INFINITY, null], [0.5, 1], [2, 2], [5, 3]]) {
-      expect(normalize.call({}, input)).toBe(expected)
+    for (const [input, expected] of [[undefined, null], [0, null], [-1, null], [Number.NaN, null], [Number.POSITIVE_INFINITY, null], [0.5, 0.5], [2, 1.5], [5, 1.5]]) {
+      expect(normalize.call({ renderBudget: { maxDevicePixelRatio: 1.5 } }, input)).toBe(expected)
     }
 
     const initStart = engineSource.indexOf('function initMAGE(')
@@ -598,13 +599,12 @@ describe('installed MAGE engine compatibility', () => {
     const init = new Function('MAGEEngine', `${engineSource.slice(initStart, initEnd)}; return initMAGE;`)(ConfigReceiver) as (config: Partial<MAGEConfig>) => ConfigReceiver
     expect(init({ pixelRatio: 2 }).config.pixelRatio).toBe(2)
 
-    const renderer = { debug: {} as { onShaderError?: () => void }, setSize: vi.fn(), setPixelRatio: vi.fn(), setClearColor: vi.fn() }
+    const renderer = { debug: {} as { onShaderError?: () => void }, setClearColor: vi.fn() }
     class Renderer { constructor() { return renderer } }
     const createRenderer = engineMethod('_createRenderer', { WebGLRenderer: Renderer, Color: class {}, SRGBColorSpace: 'srgb', window: { devicePixelRatio: 1.5 } })
-    for (const [pixelRatio, lowQuality, expected] of [[2, false, 2], [null, false, 1.5], [null, true, 0.1], [2, true, 2]]) {
-      createRenderer.call({ pixelRatio, isLowQualityMode: lowQuality, _getViewportSize: () => ({ width: 640, height: 360 }), fx: { toneMapping: { exposure: 1 } } })
-      expect(renderer.setPixelRatio).toHaveBeenLastCalledWith(expected)
-    }
+    const syncViewport = vi.fn()
+    createRenderer.call({ _syncViewport: syncViewport, fx: { toneMapping: { exposure: 1 } } })
+    expect(syncViewport).toHaveBeenCalledExactlyOnceWith(true)
     expect(() => renderer.debug.onShaderError?.()).toThrow(/GPU program could not be compiled/)
   })
 

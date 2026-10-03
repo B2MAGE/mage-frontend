@@ -3,6 +3,7 @@
 This directory is the frontend-owned boundary for scene playback.
 
 See [scene availability](../../../docs/scene-availability.md) for PP-R03's polling bounds, operator workflow, and remaining isolation release dependency.
+See [render budgets](../../../docs/render-budgets.md) for PP-V02's shared validation policy, preview profiles, and runtime ceilings.
 
 ## Public API
 
@@ -18,6 +19,8 @@ Exports:
 - `SceneAvailabilityAdminControls` (server-authorized operator controls)
 - `listSceneTemplates()` (immutable picker metadata, without executable source)
 - `parseSceneDocument()` / `hasSceneDocumentMarkers()` / `SceneContractError` (strict document validation; marker-bearing input must never fall back to raw scene data)
+- `validateSceneDocument()` / `validateSceneForPlayback()` / `parseSceneImport()` / `SceneValidationError` (bounded policy validation before normalization or renderer creation)
+- `getRenderBudget()` / `boundCaptureSize()` / `RenderProfile` (host-owned full/preview limits, shared with future isolation adapters)
 - `SceneDocument`, `TemplateSceneDocument`, `CustomSceneDocument`, `SceneTemplate`
 - `MagePlayerController`
 - `MageSceneBlob`
@@ -57,6 +60,7 @@ Exports:
 - `ariaLabel?`
 - `className?`
 - `initialPlayback?`
+- `renderProfile?` (`full` by default; editor and hover previews use `preview`)
 - `log?`
 
 Optional route-level playlist props:
@@ -75,8 +79,10 @@ The adapter accepts versioned template/custom documents described in
 before any engine load and resolved from the immutable platform library. The source never
 comes from the submitted document. All 16 existing shader presets have a version 1 entry.
 
-For compatibility, the adapter also accepts legacy scene blobs with an engine-recognized root
-branch such as `visualizer`, `controls`, `intent`, `fx`, `state`, `settings`, `audioPath`, or `audio`.
+For compatibility, the adapter also accepts raw custom scene blobs that satisfy the shared
+submission policy: `visualizer.shader` is required, and only documented scene fields are allowed.
+Renderer settings, audio URLs, external assets, unknown keys, and out-of-range values are rejected.
+Load playlist audio through the explicit host audio API, never through scene data.
 Legacy blobs and explicit custom documents remain **untrusted**, even when their source matches
 a template. PP-B01 does not isolate their existing execution path; PP-I01–I03 own that work.
 Documents with any version/kind/template markers cannot fall back to legacy loading when invalid.
@@ -84,7 +90,8 @@ Documents with any version/kind/template markers cannot fall back to legacy load
 ## Runtime Behavior
 
 - `sceneBlob={null}` or `undefined` shows the empty state
-- the engine is created once the canvas mounts
+- original scene data is validated before the engine is created; pass `initialSceneBlob` when using `createMagePlayer()` directly
+- engine pixel dimensions, DPR, frame rate, raymarch steps, effects, and captures are bounded without changing the saved document
 - the current scene is applied when both the player and a valid `sceneBlob` are available
 - changes only to saved audio-response settings apply live, preserving the song, position, volume, and playlist; changing `sceneKey` always loads the new scene, even for identical documents
 - native editor controls/shortcuts stay disabled; full players support left-button drag rotation, canvas-local mouse/press reactions, and wheel-to-zoom over the canvas

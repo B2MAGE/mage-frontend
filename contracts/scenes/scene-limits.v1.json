@@ -1,0 +1,493 @@
+{
+  "policyVersion": 1,
+  "description": "Authoritative limits for new or replaced legacy MAGE scene data. This is data validation, not source safety or a runtime sandbox. Versioned template/custom documents require PP-B02.",
+  "limits": {
+    "requestBytes": 524288,
+    "sceneBytes": 262144,
+    "sourceBytes": 65536,
+    "sceneDepth": 16,
+    "arrayItems": 64,
+    "objectKeys": 64,
+    "totalKeys": 512,
+    "totalNodes": 2048,
+    "keyBytes": 64,
+    "optionalEffects": 4
+  },
+  "defaults": {
+    "optionalEffects": false,
+    "outputPass": true,
+    "audioResponse": "legacy"
+  },
+  "runtimeCeilings": {
+    "enforcement": "PP-V02 renderer integration; PP-V01 rejects unknown scene rendering/asset fields and does not execute, inspect, or rewrite shader source.",
+    "renderPixels": 2073600,
+    "longestEdge": 1920,
+    "devicePixelRatio": 1.5,
+    "previewPixels": 230400,
+    "previewLongestEdge": 640,
+    "framesPerSecond": 60,
+    "previewFramesPerSecond": 30,
+    "raymarchIterations": 200,
+    "raymarchRationale": "The initial candidate was 128; the 16 immutable version-1 templates include authored values up to 198. The adopted ceiling of 200 preserves that catalog. Runtime enforcement belongs to PP-V02."
+  },
+  "sourcePolicy": "visualizer.shader is the only accepted source field. It remains untrusted text, not parsed or evaluated. Unknown fields, source aliases, external assets, and submitted renderer settings are rejected.",
+  "optionalEffectFlags": [
+    "rgbShift",
+    "dot",
+    "technicolor",
+    "luminosity",
+    "afterImage",
+    "sobel",
+    "glitch",
+    "colorify",
+    "halftone",
+    "gammaCorrection",
+    "kaleid",
+    "bleachBypass",
+    "toon"
+  ],
+  "scene": {
+    "type": "object",
+    "fields": {
+      "visualizer": {
+        "type": "object",
+        "fields": {
+          "shader": {
+            "type": "source"
+          },
+          "scale": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "skyboxPreset": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "shader"
+        ]
+      },
+      "controls": {
+        "type": "object",
+        "fields": {
+          "position0": {
+            "type": "object",
+            "fields": {
+              "x": {
+                "type": "number",
+                "minimum": -1000,
+                "maximum": 1000
+              },
+              "y": {
+                "type": "number",
+                "minimum": -1000,
+                "maximum": 1000
+              },
+              "z": {
+                "type": "number",
+                "minimum": -1000,
+                "maximum": 1000
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          },
+          "target0": {
+            "type": "object",
+            "fields": {
+              "x": {
+                "type": "number",
+                "minimum": -1000,
+                "maximum": 1000
+              },
+              "y": {
+                "type": "number",
+                "minimum": -1000,
+                "maximum": 1000
+              },
+              "z": {
+                "type": "number",
+                "minimum": -1000,
+                "maximum": 1000
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "z"
+            ]
+          },
+          "zoom0": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 100
+          }
+        },
+        "required": ["position0", "target0", "zoom0"]
+      },
+      "intent": {
+        "type": "object",
+        "fields": {
+          "time_multiplier": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "minimizing_factor": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 2
+          },
+          "power_factor": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "pointerDownMultiplier": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "base_speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "easing_speed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "camTilt": {
+            "type": "number",
+            "minimum": -6.283185307179586,
+            "maximum": 6.283185307179586
+          },
+          "camOrientationMode": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "camOrientationSpeed": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "autoRotate": {
+            "type": "boolean"
+          },
+          "autoRotateSpeed": {
+            "type": "number",
+            "minimum": -50,
+            "maximum": 50
+          },
+          "fov": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 179
+          }
+        }
+      },
+      "fx": {
+        "type": "object",
+        "fields": {
+          "passOrder": {
+            "type": "array",
+            "maxItems": 16,
+            "unique": true,
+            "items": {
+              "type": "enum",
+              "values": [
+                "glitchPass",
+                "bloom",
+                "RGBShift",
+                "dotShader",
+                "technicolorShader",
+                "luminosityShader",
+                "afterImagePass",
+                "sobelShader",
+                "colorifyShader",
+                "halftonePass",
+                "gammaCorrectionShader",
+                "kaleidoShader",
+                "copyShader",
+                "bleachBypassShader",
+                "toonShader",
+                "outputPass"
+              ]
+            }
+          },
+          "bloom": {
+            "type": "object",
+            "fields": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "strength": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "radius": {
+                "type": "number",
+                "minimum": -10,
+                "maximum": 10
+              },
+              "threshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              }
+            }
+          },
+          "toneMapping": {
+            "type": "object",
+            "fields": {
+              "method": {
+                "type": "enum",
+                "values": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4,
+                  6,
+                  7
+                ]
+              },
+              "exposure": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              }
+            }
+          },
+          "passes": {
+            "type": "object",
+            "fields": {
+              "rgbShift": {
+                "type": "boolean"
+              },
+              "dot": {
+                "type": "boolean"
+              },
+              "technicolor": {
+                "type": "boolean"
+              },
+              "luminosity": {
+                "type": "boolean"
+              },
+              "afterImage": {
+                "type": "boolean"
+              },
+              "sobel": {
+                "type": "boolean"
+              },
+              "glitch": {
+                "type": "boolean"
+              },
+              "colorify": {
+                "type": "boolean"
+              },
+              "halftone": {
+                "type": "boolean"
+              },
+              "gammaCorrection": {
+                "type": "boolean"
+              },
+              "kaleid": {
+                "type": "boolean"
+              },
+              "bleachBypass": {
+                "type": "boolean"
+              },
+              "toon": {
+                "type": "boolean"
+              },
+              "outputPass": {
+                "type": "boolean"
+              }
+            }
+          },
+          "params": {
+            "type": "object",
+            "fields": {
+              "rgbShift": {
+                "type": "object",
+                "fields": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 0.1
+                  },
+                  "angle": {
+                    "type": "number",
+                    "minimum": -6.283185307179586,
+                    "maximum": 6.283185307179586
+                  }
+                }
+              },
+              "afterImage": {
+                "type": "object",
+                "fields": {
+                  "damp": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                }
+              },
+              "colorify": {
+                "type": "object",
+                "fields": {
+                  "color": {
+                    "type": "color"
+                  }
+                }
+              },
+              "kaleid": {
+                "type": "object",
+                "fields": {
+                  "sides": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 24
+                  },
+                  "angle": {
+                    "type": "number",
+                    "minimum": -6.283185307179586,
+                    "maximum": 6.283185307179586
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "state": {
+        "type": "object",
+        "fields": {
+          "size": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "pointerDown": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "currPointerDown": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "currAudio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "time": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 86400
+          },
+          "volume_multiplier": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          }
+        }
+      },
+      "audioResponse": {
+        "type": "enum",
+        "values": [
+          "legacy",
+          "transient-v1",
+          "mapped-v1"
+        ]
+      },
+      "audioResponseConfig": {
+        "type": "object",
+        "fields": {
+          "version": {
+            "type": "enum",
+            "values": [
+              1
+            ]
+          },
+          "sensitivity": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 4
+          },
+          "mappings": {
+            "type": "array",
+            "maxItems": 6,
+            "uniqueBy": "target",
+            "items": {
+              "type": "object",
+              "fields": {
+                "target": {
+                  "type": "enum",
+                  "values": [
+                    "size",
+                    "bass",
+                    "mid",
+                    "treble",
+                    "audioLevel",
+                    "audioHit"
+                  ]
+                },
+                "source": {
+                  "type": "enum",
+                  "values": [
+                    "bass-level",
+                    "mid-level",
+                    "treble-level",
+                    "overall-level",
+                    "bass-hit",
+                    "mid-hit",
+                    "treble-hit",
+                    "overall-hit"
+                  ]
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 4
+                },
+                "attack": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "release": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 5
+                }
+              },
+              "required": [
+                "target",
+                "source"
+              ]
+            }
+          }
+        },
+        "required": [
+          "version"
+        ]
+      }
+    },
+    "required": [
+      "visualizer"
+    ]
+  }
+}

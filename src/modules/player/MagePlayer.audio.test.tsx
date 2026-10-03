@@ -9,27 +9,28 @@ import {
 import {
   buildMagePlayerController,
   buildMagePlayerSceneBlob,
+  buildMagePlayerTrack,
 } from './test-fixtures'
 
 vi.mock('./infrastructure/engineAdapter', () => ({
   createMagePlayer: vi.fn(),
 }))
 
+const savedTracks = [{ ...buildMagePlayerTrack({ name: 'crimson-reactor.mp3', sourcePath: '/audio/crimson-reactor.mp3' }), sourceType: 'scene' as const }]
+
 describe('MagePlayer audio controls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('auto-loads saved scene audio into the playlist and exposes a clickable track summary', async () => {
+  it('loads the selected host playlist track and exposes a clickable track summary', async () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
     const onRequestPlaylistOpen = vi.fn()
-    const sceneBlob = buildMagePlayerSceneBlob({
-      audioPath: '/audio/crimson-reactor.mp3',
-    })
+    const sceneBlob = buildMagePlayerSceneBlob()
 
-    render(<MagePlayer onRequestPlaylistOpen={onRequestPlaylistOpen} sceneBlob={sceneBlob} />)
+    render(<MagePlayer onRequestPlaylistOpen={onRequestPlaylistOpen} sceneBlob={sceneBlob} playlistTracks={savedTracks} selectedTrackId={savedTracks[0].id} />)
 
     await waitFor(() => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
@@ -72,11 +73,9 @@ describe('MagePlayer audio controls', () => {
     })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
-    const sceneBlob = buildMagePlayerSceneBlob({
-      audioPath: '/audio/crimson-reactor.mp3',
-    })
+    const sceneBlob = buildMagePlayerSceneBlob()
 
-    render(<MagePlayer sceneBlob={sceneBlob} />)
+    render(<MagePlayer sceneBlob={sceneBlob} playlistTracks={savedTracks} selectedTrackId={savedTracks[0].id} />)
 
     const loadingStatus = await screen.findByText('Loading track…')
     const addButton = screen.getByRole('button', { name: /add audio tracks/i })
@@ -139,11 +138,9 @@ describe('MagePlayer audio controls', () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
-    const sceneBlob = buildMagePlayerSceneBlob({
-      audioPath: '/audio/crimson-reactor.mp3',
-    })
+    const sceneBlob = buildMagePlayerSceneBlob()
 
-    render(<MagePlayer sceneBlob={sceneBlob} />)
+    render(<MagePlayer sceneBlob={sceneBlob} playlistTracks={savedTracks} selectedTrackId={savedTracks[0].id} />)
 
     await waitFor(() => {
       expect(controller.loadAudio).toHaveBeenCalled()
@@ -173,15 +170,22 @@ describe('MagePlayer audio controls', () => {
 
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
-    const sceneBlob = buildMagePlayerSceneBlob({
-      audioPath: '/audio/crimson-reactor.mp3',
-    })
+    const sceneBlob = buildMagePlayerSceneBlob()
 
-    render(<MagePlayer sceneBlob={sceneBlob} />)
+    render(<MagePlayer sceneBlob={sceneBlob} playlistTracks={savedTracks} selectedTrackId={savedTracks[0].id} />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Audio could not be loaded from the configured source.',
     )
+  })
+
+  it('rejects embedded scene audio fields before initializing or loading audio', async () => {
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    render(<MagePlayer sceneBlob={buildMagePlayerSceneBlob({ audioPath: '/audio/embedded.mp3' })} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('audioPath: Unknown field is not allowed.')
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(controller.loadAudio).not.toHaveBeenCalled()
   })
 })
 

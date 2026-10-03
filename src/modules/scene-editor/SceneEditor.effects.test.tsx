@@ -54,8 +54,7 @@ function savedEffectsScene(): SceneData {
     fx: {
       ...model.fx,
       passOrder: ['bloom', 'copyShader', 'toonShader', 'bleachBypassShader', 'outputPass'],
-      passes: { ...model.fx.passes, toon: true, bleachBypass: true, copyShader: true, futureEffect: true },
-      futureSettings: { amount: 0.25 },
+      passes: { ...model.fx.passes, toon: true, bleachBypass: true },
     },
   }
 }
@@ -85,7 +84,7 @@ describe('editor effect persistence', () => {
   })
 
   it.each([[true, true], [true, false], [false, true], [false, false]])(
-    'round-trips Toon=%s and Bleach Bypass=%s without losing legacy raw data',
+    'round-trips Toon=%s and Bleach Bypass=%s while retaining pass order',
     (toon, bleachBypass) => {
       const saved = savedEffectsScene()
       const model = getSceneEditorModel(saved)
@@ -96,8 +95,7 @@ describe('editor effect persistence', () => {
       const roundTrip = parseSceneDataJson(prettyPrintSceneData(sanitizeSceneData(edited)))
       expect(getSceneEditorModel(roundTrip).fx.passes).toMatchObject({ toon, bleachBypass })
       expect(roundTrip).toMatchObject({ fx: {
-        passes: { toon, bleachBypass, copyShader: true, futureEffect: true },
-        futureSettings: { amount: 0.25 },
+        passes: { toon, bleachBypass },
       } })
       const order = getSceneEditorModel(roundTrip).fx.passOrder
       expect(order).toContain('copyShader')
@@ -183,7 +181,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('loads saved flags, reorders across hidden Copy, and saves changed flags without deleting legacy data', async () => {
+  it('loads saved flags, reorders across hidden Copy, and saves changed flags', async () => {
     storeSceneEditorSession()
     const scene = buildSceneEditorApiScene({ sceneData: savedEffectsScene(), tags: [] })
     let updated: unknown
@@ -215,8 +213,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toMatchObject({ sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: {
-      passes: { toon: false, bleachBypass: true, copyShader: true, futureEffect: true },
-      futureSettings: { amount: 0.25 },
+      passes: { toon: false, bleachBypass: true },
     } } } }))
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })

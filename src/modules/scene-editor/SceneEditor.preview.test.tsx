@@ -257,7 +257,7 @@ describe('scene editor presets and beat preview', () => {
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('preserves legacy/custom shader text while dropping only retired app metadata during editing and saving', async () => {
+  it('keeps unsupported legacy metadata for owner repair without previewing or silently deleting it', async () => {
     storeSceneEditorSession()
     const source = '// An authored audio response\nlet size = input();\ncolor(0.2, 0.6, 0.8);\nsphere(0.3 + size * 0.7);'
     const saved = {
@@ -286,35 +286,25 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.getByRole('textbox', { name: 'Custom Shader' })).toHaveValue(source)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expectRetiredControlsAbsent()
-    expect(getSceneEditorModel(previewScene()).visualizer.shader).toBe(source)
-    expect(previewScene()).not.toHaveProperty('reactions')
-    expect(previewScene()).not.toHaveProperty('mageTemplate')
+    expect(screen.queryByTestId('scene-preview')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
-    await waitFor(() => expect(updated).toBeDefined())
-    expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).visualizer.shader).toBe(source)
-    expect(readEditableSceneData(updated!.sceneData)).not.toHaveProperty('reactions')
-    expect(readEditableSceneData(updated!.sceneData)).not.toHaveProperty('mageTemplate')
-    expect(readEditableSceneData(updated!.sceneData).otherExtension).toEqual({ preserve: true })
-    expect(readEditableSceneData(updated!.sceneData).visualizer).toMatchObject({ customVisualizerSetting: true })
+    expect(updated).toBeUndefined()
+    expect(JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)).toEqual(saved)
+    expect(screen.getByRole('button', { name: 'Download scene JSON' })).toBeEnabled()
     expect(saved.visualizer.shader).toBe(source)
     expect(saved).toHaveProperty('reactions')
     expect(saved).toHaveProperty('mageTemplate')
-    expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('normalizes old metadata without modifying the original scene or unrelated extension values', () => {
+  it('rejects unsupported metadata instead of deleting it or changing the original', () => {
     const original = Object.freeze({
       visualizer: Object.freeze({ shader: 'sphere(0.71);', skyboxPreset: 6 }),
       reactions: Object.freeze({ version: 1, pulse: 1, deformation: 1 }),
       mageTemplate: Object.freeze({ id: 'old-template', version: 1 }),
       anotherPlugin: Object.freeze({ reactions: { pulse: 7 }, mageTemplate: 'unrelated' }),
     })
-    const normalized = buildEffectiveSceneData(original)
-    expect(getSceneEditorModel(normalized).visualizer.shader).toBe('sphere(0.71);')
-    expect(normalized).not.toHaveProperty('reactions')
-    expect(normalized).not.toHaveProperty('mageTemplate')
-    expect(normalized.anotherPlugin).toEqual(original.anotherPlugin)
+    expect(() => buildEffectiveSceneData(original)).toThrow('Unknown field')
     expect(original).toHaveProperty('reactions')
     expect(original).toHaveProperty('mageTemplate')
   })

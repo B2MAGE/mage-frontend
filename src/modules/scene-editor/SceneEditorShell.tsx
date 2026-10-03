@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -146,6 +146,8 @@ export function SceneEditorShell({
   }, [sectionMenuValue]);
   const {
     previewSceneData,
+    previewOriginalSceneData,
+    previewError,
     sceneModel,
     selectedShaderScene,
     selectedToneMapping,
@@ -155,8 +157,12 @@ export function SceneEditorShell({
   // Match Watch's original custom-document identity before editor defaults are
   // applied. The envelope carries identity only, never playback permission.
   const recoverySceneData = useMemo(() => initialState?.sceneData?.kind === 'custom'
-    ? { schemaVersion: 1, kind: 'custom', scene: sceneData } : sceneData,
-  [initialState?.sceneData?.kind, sceneData]);
+    ? { schemaVersion: 1, kind: 'custom', scene: previewOriginalSceneData } : previewOriginalSceneData,
+  [initialState?.sceneData?.kind, previewOriginalSceneData]);
+  const sceneDraftError = sectionIssuesById.confirm ?? previewError;
+  const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
+    .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
+  const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
   const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
   const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
@@ -174,6 +180,12 @@ export function SceneEditorShell({
   const [isCapturingThumbnail, setIsCapturingThumbnail] = useState(false);
 
   useEffect(() => {
+    thumbnailCaptureGenerationRef.current += 1;
+    thumbnailCaptureInFlightRef.current = false;
+    setIsCapturingThumbnail(false);
+  }, [sceneDraftError, previewOriginalSceneData]);
+
+  useEffect(() => {
     const unsubscribe = sceneAvailabilityStore.subscribe(availabilityTarget, () => {
       if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
         thumbnailCaptureGenerationRef.current += 1;
@@ -189,6 +201,7 @@ export function SceneEditorShell({
   }, [availabilityTarget]);
 
   async function captureThumbnailFromPreview() {
+    if (sceneDraftError) throw new Error("Fix the scene settings before capturing a thumbnail.");
     const generation = thumbnailCaptureGenerationRef.current;
     if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
       throw new Error("Thumbnail capture is unavailable while scene playback is paused.");
@@ -260,6 +273,7 @@ export function SceneEditorShell({
       <EffectCard
         description={passConfig.description}
         enabled={sceneModel.fx.passes[passConfig.flag]}
+        toggleDisabled={effectBudgetFull && !sceneModel.fx.passes[passConfig.flag]}
         key={String(passConfig.flag)}
         onToggle={(nextValue) =>
           updateBranch("fx", (currentFx) => ({
@@ -292,10 +306,11 @@ export function SceneEditorShell({
           id="camera-orientation-mode"
           label="Camera Orientation Mode"
           min={0}
+          max={2}
           onChange={(nextValue) =>
             updateBranch("intent", (currentIntent) => ({
               ...currentIntent,
-              camOrientationMode: Math.max(0, Math.round(nextValue)),
+              camOrientationMode: nextValue,
             }))
           }
           step={1}
@@ -307,6 +322,7 @@ export function SceneEditorShell({
           id="camera-orientation-speed"
           label="Camera Orientation Speed"
           min={0}
+          max={10}
           onChange={(nextValue) =>
             updateBranch("intent", (currentIntent) => ({
               ...currentIntent,
@@ -351,6 +367,14 @@ export function SceneEditorShell({
           >
             Format JSON
           </button>
+          <button className="scene-secondary-button" type="button" onClick={() => {
+            const url = URL.createObjectURL(new Blob([sceneDataText], { type: 'application/json' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = mode.type === 'edit' ? `scene-${mode.sceneId}.json` : 'scene-draft.json';
+            link.click();
+            URL.revokeObjectURL(url);
+          }}>Download scene JSON</button>
         </div>
         <textarea
           aria-describedby={
@@ -504,7 +528,7 @@ export function SceneEditorShell({
                 tagsError={tagsError}
                 tagsLoading={tagsLoading}
                 thumbnailPreviewUrl={thumbnailPreviewUrl}
-                isThumbnailCaptureAvailable={availability.allowed}
+                isThumbnailCaptureAvailable={availability.allowed && !sceneDraftError}
                 onCreateTag={handleCreateTag}
                 onDescriptionChange={handleDescriptionChange}
                 onNameChange={handleNameChange}
@@ -602,6 +626,7 @@ export function SceneEditorShell({
                 <div className="scene-editor-stack">
                   <div className="scene-editor-grid">
                     <Vector3Field
+                      min={-1000} max={1000}
                       description="The camera position in the scene."
                       id="camera-position"
                       label="Camera Position"
@@ -615,6 +640,7 @@ export function SceneEditorShell({
                     />
 
                     <Vector3Field
+                      min={-1000} max={1000}
                       description="Where the camera points while the scene loads."
                       id="camera-target"
                       label="Camera Target"
@@ -632,7 +658,7 @@ export function SceneEditorShell({
                       formatValue={(value) => formatFixed(value, 0)}
                       id="field-of-view"
                       label="FOV"
-                      max={359}
+                      max={179}
                       min={1}
                       onChange={(nextValue) =>
                         updateBranch("intent", (currentIntent) => ({
@@ -662,7 +688,8 @@ export function SceneEditorShell({
                     />
 
                     <NumberField
-                      description="Free-form camera zoom for precise framing."
+                      description="Set camera zoom from 0.01 to 100."
+                      min={0.01} max={100}
                       id="zoom"
                       label="Zoom"
                       onChange={(nextValue) =>
@@ -713,6 +740,7 @@ export function SceneEditorShell({
                     <h3 className="scene-effects-category__title" id="animation-title">Animation</h3>
                     <NumberField
                       id="time-multiplier" label="Animation speed" step={0.05}
+                      min={0} max={10}
                       description="Speed up or slow down the scene’s animation. Music playback stays at its original speed."
                       value={sceneModel.intent.time_multiplier}
                       onChange={value => updateBranch("intent", current => ({ ...current, time_multiplier: value }))}
@@ -724,6 +752,7 @@ export function SceneEditorShell({
                     >
                       <NumberField
                         id="state-time" label="Starting animation time" step={0.01}
+                        min={0} max={86400}
                         description="Choose where in its animation the scene begins."
                         value={sceneModel.state.time}
                         onChange={value => updateBranch("state", current => ({ ...current, time: value }))}
@@ -761,6 +790,7 @@ export function SceneEditorShell({
                 description="Add glow, color treatment, distortion, and other finishing effects."
                 title="Effects"
               >
+                <p className="field-hint" role="status">{enabledEffectCount} of {SCENE_LIMITS.optionalEffects} optional effects enabled, including bloom. {effectBudgetFull ? 'Turn an effect off before enabling another.' : 'Output does not count toward this limit.'}</p>
                 <div className="scene-effects-grid">
                   <div className="scene-effects-category">
                     <h3 className="scene-effects-category__title">
@@ -770,6 +800,7 @@ export function SceneEditorShell({
                       <EffectCard
                         description="Soft glow for bright edges and highlights."
                         enabled={sceneModel.fx.bloom.enabled}
+                        toggleDisabled={effectBudgetFull && !sceneModel.fx.bloom.enabled}
                         onToggle={(nextValue) =>
                           updateBranch("fx", (currentFx) => ({
                             ...currentFx,
@@ -874,8 +905,8 @@ export function SceneEditorShell({
                             description="Brighten or darken the post-tonemapped output."
                             id="tone-mapping-exposure"
                             label="Exposure"
-                            max={500}
-                            min={-500}
+                            max={10}
+                            min={0}
                             onChange={(nextValue) =>
                               updateBranch("fx", (currentFx) => ({
                                 ...currentFx,
@@ -885,7 +916,7 @@ export function SceneEditorShell({
                                 },
                               }))
                             }
-                            step={1}
+                            step={0.1}
                             value={sceneModel.fx.toneMapping.exposure}
                           />
                         </div>
@@ -905,6 +936,7 @@ export function SceneEditorShell({
                       <EffectCard
                         description="Shift the red, green, and blue channels apart for chromatic distortion."
                         enabled={sceneModel.fx.passes.rgbShift}
+                        toggleDisabled={effectBudgetFull && !sceneModel.fx.passes.rgbShift}
                         onToggle={(nextValue) =>
                           updateBranch("fx", (currentFx) => ({
                             ...currentFx,
@@ -967,6 +999,7 @@ export function SceneEditorShell({
                       <EffectCard
                         description="Leave fading trails behind moving geometry."
                         enabled={sceneModel.fx.passes.afterImage}
+                        toggleDisabled={effectBudgetFull && !sceneModel.fx.passes.afterImage}
                         onToggle={(nextValue) =>
                           updateBranch("fx", (currentFx) => ({
                             ...currentFx,
@@ -1015,6 +1048,7 @@ export function SceneEditorShell({
                       <EffectCard
                         description="Wash the output toward a chosen tint."
                         enabled={sceneModel.fx.passes.colorify}
+                        toggleDisabled={effectBudgetFull && !sceneModel.fx.passes.colorify}
                         onToggle={(nextValue) =>
                           updateBranch("fx", (currentFx) => ({
                             ...currentFx,
@@ -1078,6 +1112,7 @@ export function SceneEditorShell({
                       <EffectCard
                         description="Mirror the frame into repeating radial segments."
                         enabled={sceneModel.fx.passes.kaleid}
+                        toggleDisabled={effectBudgetFull && !sceneModel.fx.passes.kaleid}
                         onToggle={(nextValue) =>
                           updateBranch("fx", (currentFx) => ({
                             ...currentFx,
@@ -1395,19 +1430,21 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
-              <MagePlayer
+              {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {previewSceneData ? 'The preview shows your last valid settings.' : 'Fix these settings before previewing.'}</p> : null}
+              {previewSceneData ? <MagePlayer
+                renderProfile="preview"
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
                 onCaptureFramePreviewChange={(nextCapture) => {
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
-                recoverySceneBlob={recoverySceneData}
+                recoverySceneBlob={recoverySceneData ?? undefined}
                 posterUrl={thumbnailPreviewUrl}
                 onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
                 sceneKey={mode.type === 'edit' ? mode.sceneId : undefined}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
-              />
+              /> : null}
               </div>
             </section>
           </aside>
