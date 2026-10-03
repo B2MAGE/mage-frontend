@@ -11,6 +11,7 @@ export function createIsolatedPlaybackHost(options: {
   container: HTMLElement; rendererUrl: string; onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void; startupTimeoutMs?: number; progressTimeoutMs?: number
   decodeCapture?: typeof createImageBitmap
+  useInlineFrameStyles?: boolean
 }) {
   const url = validateRendererUrl(options.rendererUrl)
   const startupMs = options.startupTimeoutMs ?? 15000, progressMs = options.progressTimeoutMs ?? 10000
@@ -19,7 +20,7 @@ export function createIsolatedPlaybackHost(options: {
   frame.title = 'Isolated scene player'
   frame.setAttribute('sandbox', 'allow-scripts'); frame.setAttribute('referrerpolicy', 'no-referrer')
   frame.setAttribute('credentialless', ''); frame.setAttribute('allow', DENIED_FEATURES)
-  frame.style.cssText = 'display:block;width:100%;height:100%;border:0;pointer-events:none;background:#090b10'
+  if (options.useInlineFrameStyles !== false) frame.style.cssText = 'display:block;width:100%;height:100%;border:0;pointer-events:none;background:#090b10'
   let closed = false, connected = false, available = false, loaded = false, playing = true
   let port: MessagePort | null = null
   const session = crypto.randomUUID()

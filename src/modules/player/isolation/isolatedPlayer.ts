@@ -10,6 +10,7 @@ export type IsolatedPlayerOptions = {
   rendererUrl: string
   profile?: RenderProfile
   wheelZoom?: boolean
+  useInlineFrameStyles?: boolean
   onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void
 }
@@ -163,7 +164,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
 
   try {
     host = (dependencies.createHost ?? createIsolatedPlaybackHost)({
-      container: options.container, rendererUrl: options.rendererUrl,
+      container: options.container, rendererUrl: options.rendererUrl, useInlineFrameStyles: options.useInlineFrameStyles,
       onStatus(status) {
         if (status === 'disposed' && !disposed) dispose()
         try { options.onStatus?.(status) } catch { /* Observers cannot interfere with the bridge. */ }

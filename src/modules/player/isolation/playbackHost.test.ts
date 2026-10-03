@@ -8,10 +8,10 @@ class Port {
   receive(data:unknown){this.onmessage?.({data} as MessageEvent)}
 }
 const channels:Array<{port1:Port;port2:Port}>=[]
-function setup(decodeCapture?: typeof createImageBitmap) {
+function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true) {
   const container=document.createElement('div');document.body.append(container)
   const failure=vi.fn(),status=vi.fn()
-  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,startupTimeoutMs:100,progressTimeoutMs:1000,decodeCapture})
+  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,startupTimeoutMs:100,progressTimeoutMs:1000,decodeCapture,useInlineFrameStyles})
   const frame=container.querySelector('iframe')!,post=vi.spyOn(frame.contentWindow!,'postMessage').mockImplementation(()=>{})
   frame.dispatchEvent(new Event('load'))
   const port=channels.at(-1)!.port1
@@ -28,6 +28,12 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('can use an external stylesheet without introducing inline frame styles',()=>{
+    const s=setup(undefined,false)
+    expect(s.frame.hasAttribute('style')).toBe(false)
+    expect(s.frame.getAttribute('sandbox')).toBe('allow-scripts')
+    s.host.dispose()
+  })
   it('sends bootstrap to the exact opaque frame with only a private port and session',async()=>{
     const s=setup();await s.host.ready
     expect(s.post).toHaveBeenCalledWith(playbackMessage('connect',SESSION,0,0,null),'*',[channels[0].port2])
