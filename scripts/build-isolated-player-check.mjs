@@ -9,9 +9,27 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const outDir = resolve(root, 'dist-player-check')
 const isolationDirectory = resolve(root, 'src/modules/player/isolation').replaceAll('\\', '/')
 const allowedModules = new Set([
-  `${isolationDirectory}/live-check/main.ts`, `${isolationDirectory}/live-check/boundaryCheck.ts`,
-  `${isolationDirectory}/rendererHost.ts`, `${isolationDirectory}/protocol.ts`,
-])
+  'src/modules/player/isolation/live-check/main.ts',
+  'src/modules/player/isolation/live-check/musicCheck.ts',
+  'src/modules/player/isolation/live-check/testRhythm.ts',
+  'src/modules/player/isolation/live-check/boundaryCheck.ts',
+  'src/modules/player/isolation/isolatedPlayer.ts',
+  'src/modules/player/isolation/parentAudio.ts',
+  'src/modules/player/isolation/playbackHost.ts',
+  'src/modules/player/isolation/playbackProtocol.ts',
+  'src/modules/player/isolation/rendererHost.ts',
+  'src/modules/player/isolation/protocol.ts',
+  'src/modules/player/isolation/capture.ts',
+  'src/modules/player/policy/sceneValidation.ts',
+  'src/modules/player/policy/renderBudget.ts',
+  'src/modules/player/templates/sceneContract.ts',
+  'src/modules/player/templates/templateSettings.ts',
+  'src/modules/player/templates/resolveScene.ts',
+  'src/modules/player/templates/templateRegistry.ts',
+  'src/modules/player/templates/versions/v1/definitions.ts',
+  'contracts/scenes/scene-limits.v1.json',
+  'node_modules/@notrac/mage/dist/audio-analysis.js',
+].map(path => resolve(root, path).replaceAll('\\', '/')))
 const integrityOf = body => `sha384-${createHash('sha384').update(body).digest('base64')}`
 
 await build({

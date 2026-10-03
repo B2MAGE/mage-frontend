@@ -22,7 +22,7 @@ export interface IsolatedRendererHost {
 
 const DEFAULT_TIMEOUT_MS = 10_000
 const MAX_OUTPUTS_PER_SECOND = 30
-const DENIED_FEATURES = [
+export const DENIED_FEATURES = [
   'accelerometer', 'autoplay', 'camera', 'clipboard-read', 'clipboard-write',
   'display-capture', 'encrypted-media', 'fullscreen', 'geolocation', 'gyroscope',
   'hid', 'idle-detection', 'magnetometer', 'microphone', 'midi', 'payment',

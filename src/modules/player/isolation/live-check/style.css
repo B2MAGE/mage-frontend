@@ -1,8 +1,9 @@
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0c0e13;color:#f5f5f7}
 body{margin:0}main{max-width:960px;margin:32px auto;padding:0 24px 32px}
-h1{font-size:clamp(24px,4vw,32px);margin:24px 0 12px}p{color:#b8bac7;line-height:1.6}
-a{color:#b9a7ff}.back{text-decoration:none}button{border:1px solid #55596b;border-radius:6px;background:#222533;color:inherit;font:inherit;padding:10px 16px;cursor:pointer}
-button:focus-visible,a:focus-visible{outline:3px solid #a793ff;outline-offset:3px}button:disabled{opacity:.5;cursor:default}
-.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}#player{height:min(50vh,440px);min-height:240px;margin:20px 0;background:#141722;border-radius:8px;overflow:hidden}
-#player iframe{display:block;width:100%;height:100%;border:0;background:#090b10}#status{color:#d4ccff;min-height:26px}
-.checks{line-height:1.7;padding-left:24px}.checks li{margin:8px 0}.detail{font-size:14px}code{color:#d4ccff;overflow-wrap:anywhere}
+h1{font-size:clamp(24px,4vw,32px);margin:24px 0 12px}h2{font-size:20px;margin:28px 0 12px}p{color:#b8bac7;line-height:1.6}
+a{color:#b9a7ff}.back{text-decoration:none}button,select{border:1px solid #55596b;border-radius:6px;background:#222533;color:inherit;font:inherit;padding:10px 16px;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #a793ff;outline-offset:3px}button:disabled,input:disabled,select:disabled{opacity:.5;cursor:default}
+.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}label{display:flex;align-items:center;gap:8px}input[type=file]{max-width:270px}
+#player{height:min(50vh,440px);min-height:240px;margin:20px 0;background:#141722;border-radius:8px;overflow:hidden;touch-action:none}
+#player iframe{display:block;width:100%;height:100%;border:0;pointer-events:none;background:#090b10}#status{color:#d4ccff;min-height:26px}
+#capture{display:block;max-width:320px;max-height:180px;margin-top:18px}#capture[hidden]{display:none}.detail{font-size:14px}code{color:#d4ccff;overflow-wrap:anywhere}

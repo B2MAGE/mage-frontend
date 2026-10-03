@@ -8,6 +8,7 @@ export function installRendererRuntime(options: {
   allowedParentOrigins: readonly string[]
   loadSample: SampleLoader
   targetWindow?: Window
+  initialConnection?: MessageEvent
 }) {
   const target = options.targetWindow ?? window
   const abort = new AbortController()
@@ -90,5 +91,6 @@ export function installRendererRuntime(options: {
   display(target.parent === target ? 'Open this player from MAGE.' : 'Waiting for MAGE…')
   target.addEventListener('message', connect)
   target.addEventListener('pagehide', dispose)
+  if (options.initialConnection) connect(options.initialConnection)
   return { dispose }
 }

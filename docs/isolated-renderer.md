@@ -1,6 +1,41 @@
-# Isolated renderer (PP-I01)
+# Isolated renderer (PP-I01 / PP-I02)
 
-PP-I01 provides a separately built, hosted player and a developer check that runs a fixed sample. It does **not** enable Advanced mode, accept user source through its message protocol, move production players to iframes, or relax the global custom-rendering gate. The audio/control bridge is PP-I02; routing every custom entry point and release verification is PP-I03.
+PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. The bridge is deployed to the existing CloudFront renderer and `https://mage.peterbucci.com/player-check/`. Neither story enables Advanced mode or changes the public custom-rendering gate. Routing every normal player and verifying the release gate remain PP-I03.
+
+## PP-I02 playback bridge
+
+Open `http://127.0.0.1:5178/scripts/isolated-playback-check.html` with the local renderer on `http://localhost:5181`. Start the player, use **Play test rhythm** or select a local audio file, then switch scenes, pause/resume, seek, toggle simulated beat, choose Original/Selective response, drag, zoom, and capture a frame. The fixture uses the exported `createIsolatedPlayer` boundary. It is not a production custom-code authoring surface.
+
+- Protocol v2 uses a fresh session, monotonic request IDs, and a new generation for each scene. The child chooses v1 fixed-sample or v2 playback once from the first authorized bootstrap. The parent transfers a private MessagePort to the exact iframe window. The sole `targetOrigin='*'` is this payload-free opaque-origin bootstrap; the child checks the exact parent source and allowed origin. Window messages are not accepted as playback replies.
+- Load data is bounded and validated with the shared submission/resource policy in both parent and child. Template source is resolved from the immutable library inside the child. No bearer tokens, cookies, profile objects, file contents, media addresses, or fetch instructions appear in protocol messages. Unknown fields and command types are rejected.
+- Parent Web Audio owns decoding, transport, volume, seek, and analysis. The same session survives scene replacement. A source is at most 64 MiB; URL fetches omit credentials/referrers and reject redirects. The worklet receives parent audio; only numeric levels, up to 16 hits, the legacy FFT64 bin-2 amplitude, and bounded clocks reach the renderer. Real playing audio takes precedence over simulated beats.
+- Inputs are coalesced at roughly 30 Hz, retaining intervening hits. Limits are 90 commands/s, 45 child replies/s, 4 loads/s and 2 captures/s. Resize, pointer and zoom have one pending value each. Diagnostics are fixed codes, displayed as text. There is one current scene load, one capture, and one parent image decode. Stale work cannot complete a newer generation.
+- The engine patch provides external audio and an external visual clock. Authored animation speed and saved time are preserved; interpolation stops after 250 ms without new clock input. Legacy and mapped music response, pointer deformation, left-drag orbit and optional wheel zoom stay inside the renderer. Touch camera gestures and browser Ctrl/Meta-wheel zoom remain outside these controls.
+- Render ceilings come from `getRenderBudget(profile)`, never submitted data. Scene/effect validation runs before loading. This bridge conservatively renders at DPR 1, with full/preview pixel, edge, FPS and raymarch ceilings. Size updates cannot raise those ceilings. Zoom stays within 0.4–2.5 times the authored camera distance.
+- Captures are requested, limited to the shared preview pixel/edge ceiling and 1 MiB, and transferred as PNG/JPEG/WebP bytes. The parent checks the request/generation, MIME signature, encoded dimensions, decoded dimensions and requested size before returning a Blob. URLs, HTML, SVG, unexpected formats and unsolicited captures are rejected. Timeouts/disposal reject pending captures and release frame/port/timer resources; an in-flight browser image decode may finish later and its bitmap is closed.
+- Startup has a parent-observed 15-second timeout; active foreground progress has a 10-second timeout. Completed-frame progress is throttled to twice per second. Intentional pause/background suspension does not produce false progress failures. Failures remove the frame, stop sampling and pause parent audio, with a typed callback for PP-R01 integration. A claimed frame/heartbeat is only a liveness signal, not proof of safe source.
+
+PP-I03 must apply availability checks, revocation, recovery leases and retry rules around this adapter on every normal app entry point. There must be no parent-side custom-source fallback. The local fixture does not enable the public arbitrary-code release gate. This story does not claim that source limits prevent infinite loops, that JavaScript can cancel a GPU hang, or that a receiver can prevent structured-clone allocation before delivery. A hostile child can defeat its own engine limits or lie about progress; the browser sandbox, separate site, parent teardown and later release-gate verification remain necessary.
+
+The package patch includes the `audio-response`, `audio-analysis` and
+`audio-mapping` exports in the engine's `package.json`. Preserve this hunk when
+regenerating the patch: `npx patch-package @notrac/mage --exclude '^$'`.
+The default patch-package exclusion drops package metadata, which can leave a
+working local install but break a fresh deployment. Verify a clean container
+build after changing the patch.
+
+### Local regression checks
+
+```powershell
+npx vitest run src/modules/player/isolation src/isolated-renderer src/modules/player/infrastructure/engineExternalAudio.test.ts src/modules/player/infrastructure/engineClock.test.ts
+npm run renderer:build
+npm run renderer:serve
+npm run renderer:verify
+```
+
+The local server retains a verified build in memory; restart it after rebuilding. Parent and child must both contain protocol v2 before using the music check. The original local v1 sample remains supported; the dedicated live `/player-check/` service now uses v2.
+
+Browser verification on October 3, 2026 used Chromium with the real response-header sandbox and CSP on the local cross-site pair. Verified visible rendering, real parent Web Audio from a generated WAV, music time continuing across a scene switch (0.2 to 0.4 seconds), pause preservation across a switch (0.6 seconds), resume/seek, both response modes, simulated beats, pointer/zoom interaction, a decoded PNG preview, and removal of the iframe on Stop. Scene replacement uses a new canvas after disposing the old engine so delayed WebGL context loss cannot stop the new scene. Production verification is recorded below; the full multi-browser/public-source release checks remain ahead.
 
 ## Hosting boundary
 
@@ -68,10 +103,11 @@ Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. The com
 
 ## Live parent verification page
 
-`npm run player-check:build` builds a separate, fixed-sample parent page into
-`dist-player-check/`. Its module allowlist admits only the test UI, parent-boundary
-check, renderer host and protocol; it cannot import the MAGE engine, account code
-or API clients. The production parent and CloudFront URL are fixed at build time.
+`npm run player-check:build` builds a separate music-check parent page into
+`dist-player-check/`. Its exact module allowlist admits the test UI, parent-boundary
+check, playback controller, protocol, shared scene policy and lightweight audio
+analysis. It cannot import the rendering engine, account code or API clients.
+The production parent and CloudFront URL are fixed at build time.
 The page refuses to start outside `https://mage.peterbucci.com`.
 
 The dedicated `deployment/isolated-renderer/Dockerfile.player-check` serves this
@@ -94,24 +130,65 @@ renderer host or a replacement for normal app players.
 
 The page has external integrity-checked assets, no arbitrary renderer address or
 shader input, no API requests, `no-store` and `noindex` responses, and a CSP which
-permits frames only from the deployed CloudFront origin. Missing files return
-404 rather than the application's SPA fallback. The parent has no response
-sandbox and does not permit `unsafe-eval` or inline styles/scripts.
+permits frames only from the deployed CloudFront origin. Blob scripts/workers
+support the parent AudioWorklet; Blob images display validated frame captures.
+Network requests remain blocked by `connect-src 'none'`. Audio comes only from
+the generated test rhythm or a local file, which is decoded in the parent and
+never uploaded. Missing files return 404 rather than the application's SPA
+fallback. The parent has no response sandbox and does not permit `unsafe-eval`
+or inline styles/scripts. External CSS sizes the iframe.
 
 After deployment, open `https://mage.peterbucci.com/player-check/`: start the
-sample, confirm the rendered image and parent-access check, stop it, then test
-the unavailable player and retry. Successful child startup also requires its
+player, play the test rhythm or choose local music, and switch scenes while the
+music clock continues. Check pause/resume, seek, volume, response modes, pointer
+controls and frame capture. Stop it, then test the unavailable player and retry.
+Successful child startup also requires its
 cookie, local-storage and parent-document access checks to throw `SecurityError`.
-The fixed-sample protocol does not exercise child-initiated network requests or
+The check does not exercise child-initiated network requests or
 self-navigation; do not describe those as browser-tested by this page.
 
-### Live verification recorded October 3, 2026
+### PP-I02 deployment and live verification — October 3, 2026
 
-The page is deployed at **https://mage.peterbucci.com/player-check/** through
+The existing CloudFront distribution `E2M1AJZB7BOSN0` now serves
+`assets/renderer-CutVKi26.js` (17,023,174 bytes) and its matching document.
+The reviewed `pp-i02-transition-20261003` and `pp-i02-final-20261003` change sets
+modified only the file allowlist, two response-header policies and distribution
+cache behaviors, without replacement or new resources. Both reached
+`UPDATE_COMPLETE`. The final exact-manifest HTTP verifier passed; old-script,
+plain-HTTP and direct-S3 requests returned 403. Previous artifacts remain in the
+versioned bucket and the operator's `.local/deployments/pp-i01-production/` backup.
+
+Coolify's existing `mage-player-check` service is pinned to
+`4c0f9e11d54f4e8a1aada362ac3373769329b49c` on `pp-i02-isolated-playback`.
+Deployment `fa8dwklr5yxol2dgbdsqmij4` finished at 18:59:41 UTC. The branch is
+pushed but has not been merged. No normal frontend/backend service was rebuilt.
+
+The live Chromium check rendered the new player, verified its opaque boundary,
+played the generated WAV, preserved music across scene replacement (0.0 to 0.2
+seconds), preserved pause across replacement (17.1 seconds), sought back to
+12.1 seconds and resumed. Response selection, volume and simulated-beat controls
+worked, as did drag orbit and wheel zoom. A returned PNG decoded to 320 × 180
+pixels. Stop removed the frame and released audio; an unavailable renderer timed
+out safely, and retry rendered a fresh scene with working audio and capture.
+There were no unexpected browser errors; the engine's existing duplicate-Three.js
+warning remains. The intentional unavailable-host check produces a rejected frame
+request as expected.
+
+Validation passed 33 focused playback/page tests, five parent-policy tests,
+seven renderer hosting tests, TypeScript, lint, the clean-install Docker build
+and nginx configuration check. The clean install exposed missing audio module
+exports; those are now retained in the engine patch. Live parent checks verified
+the exact CSP, no-store/no-referrer/nosniff headers and missing-file 404. MAGE's
+homepage still serves `/assets/index-CwcHXyJq.js` without the test-page CSP.
+Normal app integration and release-gate verification remain PP-I03.
+
+### PP-I01 live verification recorded October 3, 2026
+
+The original fixed sample was deployed at **https://mage.peterbucci.com/player-check/** through
 Coolify application `mage-player-check` (`u8rnherfuj07qyl0tbc5c8y0`), pinned to
 feature-branch commit `304a8be83ce4c238e8ec228190ad1dd42b5abbe6`. Deployment
 `zt41epxqm8dsmkmeo2kntkyh` finished successfully. The source branch was pushed for
-this deployment but has not been merged into main.
+this deployment; PP-I01 subsequently merged in pull request #214.
 
 Chromium on the real HTTPS parent displayed the torus sample loaded from
 CloudFront. Parent access to the renderer document was blocked; the frame had
@@ -163,7 +240,7 @@ The template creates:
 - Exact-path viewer-request validation, HTTPS-only viewing, an immutable current bundle behavior, an uncached document behavior, and response-header policies that override origin headers. Cookies, authorization and query strings are not forwarded to S3.
 - No `/api` origin, custom error-to-index redirect, app files, account cookies, analytics or request logging configuration.
 
-Deployment sequence:
+Initial deployment sequence (use the existing-release sequence below when replacing a deployed build):
 
 1. Select the approved AWS deployment profile and confirm its identity/account. Use `us-east-1` for this stack and the same explicit profile/region on every command. Validate the generated template, then inspect the `mage-isolated-renderer` stack using `describe-stacks`. The read commands below require an actual approved profile name; the blocked development profile is not a substitute.
 2. Create a CloudFormation **CREATE** change set only after confirming that `mage-isolated-renderer` does not exist. An access-denied or network error is not proof that a stack is absent. If the stack already exists, inspect its status/events and use **UPDATE** for an updateable stack. Reconcile an interrupted or failed operation before creating another change set. Use the exact generated template and a unique change-set name; review the resource changes before execution. This dedicated stack must not replace MAGE's existing application infrastructure.
@@ -184,9 +261,20 @@ aws cloudformation describe-stacks --stack-name mage-isolated-renderer --profile
 
 Inspect the final command's result: only an explicit stack-does-not-exist response permits CREATE; otherwise require a successful status read before deciding how to continue. Resolve access, network and stack-state errors first. These commands intentionally do not create or execute a change set automatically.
 
-Each child release must update the generated edge allowlist/header policies and upload the corresponding HTML/script together. Keep the previous artifact and immutable script for rollback. During propagation, a mismatched script hash should fail closed; there is intentionally no fallback to unrestricted application rendering. Rollback restores the earlier CloudFormation artifact and its matching `index.html`; never loosen CSP to resolve a mismatched deployment.
+Existing-release sequence:
 
-Once CloudFront is ready, verify against the **matching production build**. Replace the illustrative hostname with the stack's `RendererOrigin` output:
+1. Before rebuilding, preserve the complete previous production artifact outside `dist-isolated-renderer-production/`, which the build clears. Keep its `index.html`, immutable bundle, manifest and generated CloudFormation template together. Record the deployed parent commit or image and its routing configuration as well. Retain the old immutable S3 object; do not overwrite its hashed URL or rely on a browser cache for rollback.
+2. Build and validate the new production artifact. Compare both manifests and generated templates. For a bundle-only release, the final template should change only `AllowlistedFiles`, `DocumentHeaders`, `AssetHeaders` and the distribution's exact bundle cache behavior. Investigate other changes before execution; no existing application infrastructure should be replaced.
+3. Prepare a temporary transition template from those two verified artifacts. Allow only `/`, `/index.html` and the two exact old/new hashed script paths. Include both exact script hashes in the document and asset CSP, and an immutable cache behavior for each exact bundle path. Preserve every other security rule, parent origin, resource and cache policy. Do not use wildcards, broader script sources or a fallback document to bridge the releases. Keep this template as private deployment metadata.
+4. Upload the new immutable script with the content type and cache metadata above, then create, review and execute a uniquely named **UPDATE** change set for the transition template. Wait for the stack update and CloudFront propagation; check that the document response permits both exact hashes and that both scripts are accessible with the expected bytes. Leave the old `index.html` in place until this transition is ready. Inspect stack/change-set status after an ambiguous execution result instead of repeating the action.
+5. Upload the new `index.html` last, with `Cache-Control: no-store`. Verify the existing parent against the new renderer before replacing the parent service. PP-I02's child accepts both the original v1 sample and the v2 bridge, so test v1 compatibility as well as v2 playback, music, capture, teardown and retry from the authorized live parent. Keep normal application rollout and its release gate separate from this verification service.
+6. After those checks pass, create and review a second **UPDATE** change set using the new build's unmodified final `cloudformation.json`. It removes the old hash, path and cache behavior from public access while leaving the old S3 object available for rollback. Wait for stack completion and CloudFront convergence before running the final production verifier below. The verifier intentionally requires the exact single-build headers and will reject the temporary two-hash policy.
+
+For rollback, restore the previous parent service first if the newer parent requires v2: the previous v1 parent can use the new dual-protocol child, but a v2-only parent cannot use the old v1 renderer. If the final renderer policy has already removed the old bundle, reapply the reviewed two-hash transition and wait for propagation. Restore the saved old `index.html`, verify it with the old parent, then restore the saved old final CloudFormation template and verify against that matching artifact after convergence. Existing tabs running the newer parent may need a reload. Keep the previous and current immutable bundles until the rollback window closes.
+
+A mismatched document/script policy fails closed; there is no fallback to unrestricted application rendering. Never remove the sandbox or broaden CSP to recover from a mismatched deployment. Upload only runtime HTML and script files; the manifests, audits and templates stay private.
+
+Once the final CloudFront policy has converged, verify against the **matching production build**. Replace the illustrative hostname with the stack's `RendererOrigin` output:
 
 ```powershell
 $env:MAGE_RENDERER_VERIFY_ORIGIN = 'https://d123example.cloudfront.net'

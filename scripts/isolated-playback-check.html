@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAGE isolated music player check</title>
+<style>
+body{margin:0;background:#0c0e13;color:#f5f5f7;font:16px system-ui,sans-serif}main{max-width:1000px;margin:28px auto;padding:0 24px}h1{font-size:28px}p{color:#b8bac7;line-height:1.5}button,select{border:1px solid #55596b;border-radius:6px;background:#222533;color:inherit;font:inherit;padding:9px 14px;cursor:pointer}button:disabled{opacity:.45;cursor:default}.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}#player{height:400px;background:#141722;overflow:hidden;touch-action:none}#status{color:#d4ccff}a{color:#b9a7ff}#capture{max-width:320px}label{display:flex;align-items:center;gap:8px}input[type=file]{max-width:270px}
+</style></head><body><main>
+<h1>Isolated music player check</h1>
+<p>Test music and controls in the separate player. Audio stays in this page; the player receives only sound measurements. Click or drag on the scene to test pointer response.</p>
+<div class="actions"><button id="start">Start player</button><button id="stop" disabled>Stop player</button><button id="switch" disabled>Switch scene</button><button id="pause" disabled>Pause</button><button id="reset" disabled>Reset</button></div>
+<div id="player" aria-label="Isolated music scene"></div>
+<p id="status" role="status">Ready to test.</p><p id="boundary"></p>
+<div class="actions"><button id="test-audio" disabled>Play test rhythm</button><label>Choose music <input id="audio" type="file" accept="audio/*" disabled></label><button id="clear" disabled>Clear music</button></div>
+<div class="actions"><label><input id="simulate" type="checkbox" disabled> Simulate beat</label><label>Response <select id="response" disabled><option value="mapped-v1">Selective</option><option value="legacy">Original</option></select></label><label>Volume <input id="volume" type="range" min="0" max="1" step="0.05" value="0.4" disabled></label><button id="seek" disabled>Back five seconds</button><button id="capture-button" disabled>Capture frame</button></div>
+<p id="audio-status" aria-live="off">No music loaded.</p><img id="capture" alt="Captured isolated scene" hidden>
+<p>This local check exercises PP-I02. Normal app players switch over in PP-I03.</p><a href="/">Back to MAGE</a>
+</main><script type="module" src="./isolated-playback-check.ts"></script></body></html>

@@ -6,6 +6,9 @@ RUN npm ci
 COPY scripts/build-isolated-player-check.mjs ./scripts/
 COPY deployment/isolated-renderer/live-check-page.mjs ./deployment/isolated-renderer/
 COPY src/modules/player/isolation ./src/modules/player/isolation
+COPY src/modules/player/policy ./src/modules/player/policy
+COPY src/modules/player/templates ./src/modules/player/templates
+COPY contracts/scenes ./contracts/scenes
 RUN npm run player-check:build
 
 FROM nginx:1.27-alpine

@@ -1,6 +1,8 @@
 export { MagePlayer } from './MagePlayer'
 export { MagePlayerLoading } from './MagePlayerLoading'
 export { createMagePlayer } from './infrastructure/engineAdapter'
+export { createIsolatedPlayer } from './isolation/isolatedPlayer'
+export type { IsolatedPlayer, IsolatedPlayerOptions } from './isolation/isolatedPlayer'
 export { scenePlaybackIdentity } from './scenePlaybackIdentity'
 export { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 export { listSceneTemplates } from './templates/templateRegistry'

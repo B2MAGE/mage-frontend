@@ -28,9 +28,13 @@ const advanceClock = new Function(
   'state',
   'clock',
   'direction',
+  'externalClock',
+  'updateExternalClock',
   engineSource.slice(clockStart, clockEnd)
     .replaceAll('this.#clock', 'clock')
     .replaceAll('this.#state', 'state')
+    .replaceAll('this.#externalClock', 'externalClock')
+    .replaceAll('this.#_updateExternalClock', 'updateExternalClock')
     .replaceAll('this.#timeIncreasing', 'direction.increasing'),
 ) as (state: ClockState, clock: EngineTimer, direction: ClockDirection) => void
 

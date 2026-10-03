@@ -157,6 +157,20 @@ Changing source or defaults requires a new template version; old saved scenes mu
 their old ID/version resolution. The shared JSON catalog pins source fingerprints for regression
 checks but is not a mechanism for approving submitted source.
 
+## Isolated playback (PP-I02)
+
+`createIsolatedPlayer` composes the parent-owned audio session with a bounded,
+versioned MessagePort bridge. Scene code is resolved and compiled only by the
+separate renderer. It supports scene switching without replacing the audio session,
+play/pause/reset/seek/volume, simulated beats, response mappings in scene settings,
+resize, numeric pointer/orbit/optional wheel zoom, and validated raster capture.
+The local integration page is `/scripts/isolated-playback-check.html`.
+
+This API does not itself authorize saved or custom content. PP-I03 must route the
+normal players through it with the existing availability/recovery/release guards;
+do not bypass those guards or fall back to in-page custom execution. See
+`docs/isolated-renderer.md` for protocol limits, deployment, and browser checks.
+
 ## Tests
 
 Coverage lives in the colocated player specs under `src/modules/player/`.
