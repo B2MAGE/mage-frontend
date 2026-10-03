@@ -7,6 +7,8 @@ import { monitorSceneRendering, type RenderLifecycleEvent, type RenderFailure } 
 import { sceneAvailabilityStore } from '../availability/sceneAvailability'
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { BRAND_SCENE } from '../templates/platformBrandScene'
+import { validateSceneForPlayback } from '../policy/sceneValidation'
+import { boundCaptureSize, getRenderBudget, type RenderBudget, type RenderProfile } from '../policy/renderBudget'
 
 const SCENE_BLOB_KEYS = [
   'audio',
@@ -60,6 +62,7 @@ type MageEngineModule = {
     canvas: HTMLCanvasElement
     log?: boolean
     pixelRatio?: number
+    renderBudget: RenderBudget
     withControls?: {
       active?: boolean
       integrated?: boolean
@@ -314,9 +317,13 @@ async function loadMageEngineModule() {
 
 export async function createMagePlayer(
   canvas: HTMLCanvasElement,
-  options: { log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean; sceneKey?: string | number; platformArtwork?: 'brand' } = {},
+  options: { log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean; sceneKey?: string | number; platformArtwork?: 'brand'; renderProfile?: RenderProfile; initialSceneBlob?: unknown } = {},
 ): Promise<MagePlayerController> {
   if (pageSuspended) throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
+  // All public surfaces supply their initial source before any graphics allocation.
+  // Empty controllers can still be created, but every later load revalidates.
+  if (options.initialSceneBlob !== undefined) validateSceneForPlayback(options.initialSceneBlob)
+  if (options.platformArtwork === 'brand') validateSceneForPlayback(BRAND_SCENE)
   const creationGeneration = pageLifecycleGeneration
   const target = availabilityTarget(options.sceneKey)
   const platformArtwork = options.platformArtwork === 'brand' && options.sceneKey === undefined
@@ -347,6 +354,7 @@ export async function createMagePlayer(
       canvas,
       autoStart: false,
       log: options.log ?? false,
+      renderBudget: getRenderBudget(options.renderProfile),
       ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
       withControls: DEFAULT_ENGINE_CONTROLS,
     })
@@ -639,7 +647,8 @@ export async function createMagePlayer(
       if (captureGeneration !== sceneGeneration) return null
 
       try {
-        const frame = await engine.captureFramePreview(options)
+        const dimensions = boundCaptureSize(options.width ?? canvas.width, options.height ?? canvas.height)
+        const frame = await engine.captureFramePreview({ ...options, ...dimensions })
         assertRenderingAllowed()
         return captureGeneration === sceneGeneration ? frame : null
       } catch (error) {
@@ -702,9 +711,10 @@ export async function createMagePlayer(
       if (!currentSceneBlob) throw new MagePlayerAdapterError('Load a scene before changing its audio response.')
       const nextScene = { ...currentSceneBlob }
       if (mode === undefined) delete nextScene.audioResponse
-      else nextScene.audioResponse = normalizeAudioResponseMode(mode)
+      else nextScene.audioResponse = mode
       if (config === undefined) delete nextScene.audioResponseConfig
-      else nextScene.audioResponseConfig = normalizeAudioResponseConfig(config).config
+      else nextScene.audioResponseConfig = config
+      validateSceneForPlayback(nextScene)
       currentSceneBlob = nextScene
       readSavedAudioResponse(nextScene)
       applyAudioResponse()
@@ -827,7 +837,9 @@ export async function createMagePlayer(
       try {
         // Validate template documents before touching the current engine/audio.
         // Only the resolver can supply executable source for a template.
-        sceneBlob = resolveSceneForPlayback(platformArtwork ? structuredClone(BRAND_SCENE) : submittedScene).engineScene
+        const validated = validateSceneForPlayback(platformArtwork ? BRAND_SCENE : submittedScene)
+        sceneBlob = resolveSceneForPlayback(validated).engineScene
+        validateSceneForPlayback(sceneBlob)
       } catch (error) {
         if (key) sceneRecovery.block(key, 'load')
         throw createSceneRenderError(error)
@@ -904,7 +916,7 @@ export async function createMagePlayer(
       assertAvailability()
       const options = { sceneKey: target === 'custom' ? undefined : target, ...loadOptions }
       if (availabilityTarget(options.sceneKey) !== target || platformArtwork) throw new MagePlayerAdapterError('Create a separate player to load this scene.')
-      const nextScene = resolveSceneForPlayback(submittedScene).engineScene
+      const nextScene = resolveSceneForPlayback(validateSceneForPlayback(submittedScene)).engineScene
       const recoverySource = Object.hasOwn(options, 'recoverySceneBlob') ? options.recoverySceneBlob : submittedScene
       const nextKey = sceneRecoveryKey(recoverySource, options.sceneKey)
       if (!currentSceneBlob || !recoveryLease || !nextKey) throw new MagePlayerAdapterError('Load a valid scene before updating its recovery identity.')

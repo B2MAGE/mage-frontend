@@ -33,6 +33,8 @@ import { sceneAvailabilityStore } from './availability/sceneAvailability'
 import { availabilityTarget } from './availability/availabilityTarget'
 import { useSceneAvailability } from './availability/useSceneAvailability'
 import { SceneAvailabilityPanel } from './availability/SceneAvailabilityPanel'
+import { validateSceneForPlayback } from './policy/sceneValidation'
+import { boundCaptureSize, type RenderProfile } from './policy/renderBudget'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -44,6 +46,7 @@ export type MagePlayerProps = {
   className?: string
   initialPlayback?: MagePlayerPlaybackState
   log?: boolean
+  renderProfile?: RenderProfile
   onAudioResponseCapabilitiesChange?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
   onEngineDiagnosticsChange?: (diagnostics: MageEngineDiagnostics | null) => void
   onCaptureFramePreviewChange?: (
@@ -80,6 +83,11 @@ function blurMouseActivatedControl(control: HTMLButtonElement, clickCount: numbe
 
 /** Keep recovery controls and editor state outside the renderer's lifetime. */
 export function MagePlayer(props: MagePlayerProps) {
+  const validationError = useMemo(() => {
+    if (!props.sceneBlob) return null
+    try { validateSceneForPlayback(props.sceneBlob); return null }
+    catch (error) { return readMagePlayerErrorMessage(error) }
+  }, [props.sceneBlob])
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const [rendererInstance, setRendererInstance] = useState(0)
   const playlist = useMagePlayerPlaylist(props)
@@ -162,6 +170,16 @@ export function MagePlayer(props: MagePlayerProps) {
     />
   }
 
+  if (validationError) {
+    return <section className={buildMagePlayerClassName('mage-player', props.className)} data-state="error">
+      <div className="mage-player__viewport">
+        <div className="mage-player__overlay" role="alert">
+          <div className="mage-player__overlay-copy"><strong>This scene needs changes.</strong><p>{validationError}</p></div>
+        </div>
+      </div>
+    </section>
+  }
+
   return <MagePlayerRenderer key={`${target}:${rendererInstance}`} {...props}
     playlist={playlist}
     onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
@@ -174,6 +192,7 @@ function MagePlayerRenderer({
   className,
   initialPlayback = 'playing',
   log = false,
+  renderProfile = 'full',
   onAudioResponseCapabilitiesChange,
   onEngineDiagnosticsChange,
   onCaptureFramePreviewChange,
@@ -286,7 +305,7 @@ function MagePlayerRenderer({
     animationFrameId = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          nextPlayer = await createMagePlayer(canvas, { log, mouseInteractions: true, mouseWheelZoom: true, ...(sceneKey === undefined ? {} : { sceneKey }) })
+          nextPlayer = await createMagePlayer(canvas, { log, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(sceneKey === undefined ? {} : { sceneKey }) })
 
           if (isDisposed) {
             disposePlayer()
@@ -322,7 +341,7 @@ function MagePlayerRenderer({
       diagnosticsCallbackRef.current?.(null)
       disposePlayer()
     }
-  }, [log, sceneKey])
+  }, [log, sceneKey, renderProfile])
 
   useEffect(() => {
     if (!sceneBlob) {
@@ -525,9 +544,8 @@ function MagePlayerRenderer({
         const scale = 512 / Math.max(sourceWidth, sourceHeight, 1)
 
         const frame = await player.captureFramePreview?.({
-          height: Math.max(1, Math.round(sourceHeight * scale)),
+          ...boundCaptureSize(sourceWidth * scale, sourceHeight * scale),
           type: 'image/png',
-          width: Math.max(1, Math.round(sourceWidth * scale)),
         })
         return !cancelled && playerRef.current === player && latestSceneBlobRef.current === capturedSource
           && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey)) ? frame ?? null : null

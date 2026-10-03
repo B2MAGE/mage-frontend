@@ -49,6 +49,32 @@ vi.mock('@notrac/mage', () => ({
 }))
 
 describe('createMagePlayer', () => {
+  it('rejects invalid initial content before engine creation', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const invalid = { visualizer: { shader: 'sphere(0.5);' }, intent: { fov: 359 } }
+    await expect(createMagePlayer(document.createElement('canvas'), { initialSceneBlob: invalid })).rejects.toThrow(/fov/)
+    expect(engineMocks.initMAGE).not.toHaveBeenCalled()
+  })
+
+  it('selects the host preview budget and rejects an invalid switch before touching the playing scene', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'), { renderProfile: 'preview' })
+    expect(engineMocks.initMAGE).toHaveBeenCalledWith(expect.objectContaining({
+      renderBudget: { maxRenderPixels: 230400, maxLongestEdge: 640, maxDevicePixelRatio: 1.5, maxFramesPerSecond: 30, maxRaymarchIterations: 200 },
+    }))
+    const scene = { visualizer: { shader: 'sphere(0.5);' } }
+    player.loadSceneBlob(scene)
+    engineMocks.loadPreset.mockClear()
+    engineMocks.unloadAudio.mockClear()
+    engineMocks.pause.mockClear()
+    expect(() => player.loadSceneBlob({ ...scene, audioPath: 'https://example.com/untrusted.mp3' })).toThrow(/audioPath/)
+    expect(engineMocks.loadPreset).not.toHaveBeenCalled()
+    expect(engineMocks.unloadAudio).not.toHaveBeenCalled()
+    expect(engineMocks.pause).not.toHaveBeenCalled()
+    expect(scene).toEqual({ visualizer: { shader: 'sphere(0.5);' } })
+    player.dispose()
+  })
+
   beforeEach(() => {
     let audioLoaded = false
     let audioVolume = 1
@@ -137,6 +163,7 @@ describe('createMagePlayer', () => {
     const player = await createMagePlayer(canvas)
 
     expect(engineMocks.initMAGE).toHaveBeenCalledWith({
+      renderBudget: { maxRenderPixels: 2073600, maxLongestEdge: 1920, maxDevicePixelRatio: 1.5, maxFramesPerSecond: 60, maxRaymarchIterations: 200 },
       autoStart: false,
       canvas,
       log: false,
@@ -162,10 +189,10 @@ describe('createMagePlayer', () => {
     player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'transient-v1' })
     player.loadSceneBlob({ visualizer: { shader: 'test' } })
     player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'legacy' })
-    player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'unsupported-version' })
+    expect(() => player.loadSceneBlob({ visualizer: { shader: 'test' }, audioResponse: 'unsupported-version' })).toThrow(/Unsupported value/)
 
     expect(engineMocks.setAudioResponseMode.mock.calls).toEqual([
-      ['transient-v1'], ['legacy'], ['legacy'], ['legacy'],
+      ['transient-v1'], ['legacy'], ['legacy'],
     ])
     expect(engineMocks.setAudioResponseMode.mock.invocationCallOrder[0])
       .toBeGreaterThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
@@ -623,6 +650,7 @@ describe('createMagePlayer', () => {
     const player = await createMagePlayer(canvas, { pixelRatio: 2 })
 
     expect(engineMocks.initMAGE).toHaveBeenCalledWith({
+      renderBudget: { maxRenderPixels: 2073600, maxLongestEdge: 1920, maxDevicePixelRatio: 1.5, maxFramesPerSecond: 60, maxRaymarchIterations: 200 },
       autoStart: false,
       canvas,
       log: false,
@@ -749,11 +777,10 @@ describe('createMagePlayer', () => {
     )
   })
 
-  it('loads configured audio and syncs it to the current scene time', async () => {
+  it('loads parent-owned audio and syncs it to the current scene time', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
-      audioPath: '/audio/crimson-reactor.mp3',
       visualizer: {
         shader: 'test',
       },
@@ -766,7 +793,7 @@ describe('createMagePlayer', () => {
     engineMocks.seek.mockClear()
     engineMocks.getEngineTime.mockReturnValue(2.5)
 
-    await expect(player.loadAudio()).resolves.toMatchObject({
+    await expect(player.loadAudio({ sourcePath: '/audio/crimson-reactor.mp3' })).resolves.toMatchObject({
       hasSource: true,
       isLoaded: true,
       sourcePath: '/audio/crimson-reactor.mp3',
@@ -871,7 +898,6 @@ describe('createMagePlayer', () => {
     const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
-      audioPath: '/audio/crimson-reactor.mp3',
       visualizer: {
         shader: 'test',
       },
@@ -883,7 +909,7 @@ describe('createMagePlayer', () => {
     const player = await createMagePlayer(canvas)
 
     player.loadSceneBlob(sceneBlob)
-    await player.loadAudio()
+    await player.loadAudio({ sourcePath: '/audio/crimson-reactor.mp3' })
 
     const audioState = player.seekAudio(42)
 
@@ -937,7 +963,6 @@ describe('createMagePlayer', () => {
     const { createMagePlayer } = await import('./engineAdapter')
     const canvas = document.createElement('canvas')
     const sceneBlob = {
-      audioPath: '/audio/crimson-reactor.mp3',
       intent: {
         time_multiplier: 1.5,
       },
@@ -949,7 +974,7 @@ describe('createMagePlayer', () => {
     const player = await createMagePlayer(canvas)
 
     player.loadSceneBlob(sceneBlob)
-    await player.loadAudio()
+    await player.loadAudio({ sourcePath: '/audio/crimson-reactor.mp3' })
 
     engineMocks.loadPreset.mockClear()
     engineMocks.pause.mockClear()
@@ -1022,6 +1047,7 @@ describe('createMagePlayer', () => {
     const player = await createMagePlayer(canvas)
 
     expect(engineMocks.initMAGE).toHaveBeenLastCalledWith({
+      renderBudget: { maxRenderPixels: 2073600, maxLongestEdge: 1920, maxDevicePixelRatio: 1.5, maxFramesPerSecond: 60, maxRaymarchIterations: 200 },
       autoStart: false,
       canvas,
       log: false,
@@ -1102,7 +1128,7 @@ describe('createMagePlayer', () => {
     const scene = { visualizer: { shader: 'test' } }
     const player = await createMagePlayer(document.createElement('canvas'))
     player.loadSceneBlob(scene)
-    player.setAudioResponseSettings('mapped-v1', { sensitivity: 2 })
+    player.setAudioResponseSettings('mapped-v1', { version: 1, sensitivity: 2 })
     player.setAudioResponseSettings(undefined)
     expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'legacy', savedConfig: null, effectiveConfig: null })
     player.resetPlayback()

@@ -29,7 +29,7 @@ describe('MagePlayer', () => {
     await waitFor(() => {
       expect(createMagePlayer).toHaveBeenCalledTimes(1)
       expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), {
-        log: false, mouseInteractions: true, mouseWheelZoom: true,
+        log: false, renderProfile: 'full', initialSceneBlob: sceneBlob, mouseInteractions: true, mouseWheelZoom: true,
       })
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
@@ -87,7 +87,8 @@ describe('MagePlayer', () => {
     const mixed = { ...valid, audioResponseConfig: { source: 'injected' } }
     rerender(<MagePlayer sceneBlob={mixed} />)
     expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(mixed)
+    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(valid)
+    expect(controller.dispose).toHaveBeenCalled()
     expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
     rerender(<MagePlayer sceneBlob={{ ...valid }} />)
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
@@ -124,9 +125,8 @@ describe('MagePlayer', () => {
       />,
     )
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Scene data is missing required MAGE fields.',
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('This scene needs changes.')
+    expect(createMagePlayer).not.toHaveBeenCalled()
     expect(controller.dispose).not.toHaveBeenCalled()
 
     const validSceneBlob = buildMagePlayerSceneBlob()
@@ -219,10 +219,24 @@ describe('MagePlayer', () => {
     canvas.height = 512
     await captureFramePreview?.()
     expect(controller.captureFramePreview).toHaveBeenLastCalledWith({
-      height: 512,
+      height: 480,
       type: 'image/png',
-      width: 512,
+      width: 480,
     })
+  })
+
+  it('rejects an oversized saved scene before allocating a renderer and recovers after a valid replacement', async () => {
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const invalid = buildMagePlayerSceneBlob({ visualizer: { shader: 'x'.repeat(65537) } })
+    const { rerender } = render(<MagePlayer sceneBlob={invalid} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/shader/)
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    const valid = buildMagePlayerSceneBlob()
+    rerender(<MagePlayer sceneBlob={valid} renderProfile="preview" />)
+    await waitFor(() => expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement),
+      expect.objectContaining({ renderProfile: 'preview', initialSceneBlob: valid })))
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid)
   })
 
   it('opens a connected playlist even before audio has been selected', async () => {
