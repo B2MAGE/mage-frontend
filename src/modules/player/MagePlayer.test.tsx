@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer } from './MagePlayer'
 import { createMagePlayer } from './infrastructure/engineAdapter'
+import { parseSceneDocument } from './templates/sceneContract'
 import {
   buildMagePlayerController,
   buildMagePlayerSceneBlob,
@@ -75,6 +76,33 @@ describe('MagePlayer', () => {
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(secondSceneBlob)
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
     })
+  })
+
+  it('validates versioned documents again instead of applying the legacy audio shortcut', async () => {
+    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn((value) => { parseSceneDocument(value) }) })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const valid = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+    const { rerender } = render(<MagePlayer sceneBlob={valid} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid))
+    const mixed = { ...valid, audioResponseConfig: { source: 'injected' } }
+    rerender(<MagePlayer sceneBlob={mixed} />)
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(mixed)
+    expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
+    rerender(<MagePlayer sceneBlob={{ ...valid }} />)
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
+  it('does not invoke forbidden template audio getters during render or playback', async () => {
+    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn((value) => { parseSceneDocument(value) }) })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const getter = vi.fn(() => '/forbidden.mp3')
+    const scene = Object.defineProperty({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 },
+      'audioPath', { get: getter, enumerable: true })
+    render(<MagePlayer sceneBlob={scene} />)
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(getter).not.toHaveBeenCalled()
+    expect(controller.loadAudio).not.toHaveBeenCalled()
   })
 
   it('shows a recoverable error state when the scene is invalid', async () => {

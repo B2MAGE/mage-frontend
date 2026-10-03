@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { listSceneTemplates, getTemplateDefinition } from '../templates/templateRegistry'
 
 const engineMocks = vi.hoisted(() => ({
   dispose: vi.fn(),
@@ -143,6 +144,46 @@ describe('createMagePlayer', () => {
     ])
     expect(engineMocks.setAudioResponseMode.mock.invocationCallOrder[0])
       .toBeGreaterThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
+  })
+
+  it('loads every registered template through the owned-source resolver', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    for (const template of listSceneTemplates()) {
+      player.loadSceneBlob({ schemaVersion: 1, kind: 'template', templateId: template.templateId, templateVersion: template.templateVersion })
+      expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(expect.objectContaining({
+        visualizer: { shader: getTemplateDefinition(template.templateId, 1)?.shader, scale: 10, skyboxPreset: 6 },
+      }))
+    }
+    expect(engineMocks.loadPreset).toHaveBeenCalledTimes(16)
+    player.resetPlayback()
+    expect(engineMocks.loadPreset).toHaveBeenCalledTimes(17)
+    expect(engineMocks.loadPreset.mock.lastCall?.[0]).not.toHaveProperty('templateId')
+  })
+
+  it('rejects mixed template/source before compilation or disturbing a loaded scene', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const valid = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+    player.loadSceneBlob(valid)
+    engineMocks.loadPreset.mockClear()
+    engineMocks.unloadAudio.mockClear()
+    for (const invalid of [
+      { ...valid, visualizer: { shader: 'globalThis.injected = true' } },
+      { ...valid, source: 'globalThis.injected = true' },
+      { ...valid, parameters: { scale: 'fetch("https://example.com")' } },
+      { ...valid, settings: { tint: { color: 'red; injected()' } } },
+      { ...valid, audioResponseConfig: { source: 'injected' } },
+      { ...valid, templateVersion: 999 },
+      JSON.parse('{"schemaVersion":1,"kind":"template","templateId":"embedded-scene-0","templateVersion":1,"settings":{"__proto__":{"source":"injected"}}}'),
+    ]) {
+      expect(() => player.loadSceneBlob(invalid)).toThrow()
+    }
+    expect(engineMocks.loadPreset).not.toHaveBeenCalled()
+    expect(engineMocks.unloadAudio).not.toHaveBeenCalled()
+    player.resetPlayback()
+    expect(engineMocks.loadPreset).toHaveBeenCalledTimes(1)
+    expect(engineMocks.loadPreset.mock.lastCall?.[0]).toHaveProperty('visualizer.shader', getTemplateDefinition('embedded-scene-0', 1)?.shader)
   })
 
   it('copies finite live measurements without exposing or changing engine state', async () => {

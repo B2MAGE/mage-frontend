@@ -1,6 +1,7 @@
 import type { MAGEEngineAPI } from '@notrac/mage'
 import { normalizeAudioResponseMode, normalizeAudioResponseConfig, type AudioResponseConfig, type SceneAudioResponseMode } from '@shared/lib'
 import { attachViewerMouseInteractions, type ViewerMouseEngine } from './viewerMouseInteractions'
+import { resolveSceneForPlayback } from '../templates/resolveScene'
 
 const SCENE_BLOB_KEYS = [
   'audio',
@@ -631,7 +632,15 @@ export async function createMagePlayer(
 
       return getAudioState()
     },
-    loadSceneBlob(sceneBlob) {
+    loadSceneBlob(submittedScene) {
+      let sceneBlob: MageSceneBlob
+      try {
+        // Validate template documents before touching the current engine/audio.
+        // Only the resolver can supply executable source for a template.
+        sceneBlob = resolveSceneForPlayback(submittedScene).engineScene
+      } catch (error) {
+        throw createSceneRenderError(error)
+      }
       if (!isMageSceneBlob(sceneBlob)) {
         throw new MagePlayerAdapterError('Scene data is missing required MAGE fields.')
       }

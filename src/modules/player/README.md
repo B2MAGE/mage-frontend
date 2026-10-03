@@ -11,6 +11,9 @@ Exports:
 - `MagePlayer`
 - `MagePlayerProps`
 - `createMagePlayer()`
+- `listSceneTemplates()` (immutable picker metadata, without executable source)
+- `parseSceneDocument()` / `SceneContractError`
+- `SceneDocument`, `TemplateSceneDocument`, `CustomSceneDocument`, `SceneTemplate`
 - `MagePlayerController`
 - `MageSceneBlob`
 - `MagePlayerPlaybackState`
@@ -59,8 +62,16 @@ Optional route-level playlist props:
 - `onSelectedTrackChange?`
 - `onTrackDurationChange?`
 
-The adapter accepts scene blobs that contain at least one engine-recognized root branch such as
-`visualizer`, `controls`, `intent`, `fx`, `state`, `settings`, `audioPath`, or `audio`.
+The adapter accepts versioned template/custom documents described in
+[`contracts/scenes`](../../../contracts/scenes/README.md). Template documents are validated
+before any engine load and resolved from the immutable platform library. The source never
+comes from the submitted document. All 16 existing shader presets have a version 1 entry.
+
+For compatibility, the adapter also accepts legacy scene blobs with an engine-recognized root
+branch such as `visualizer`, `controls`, `intent`, `fx`, `state`, `settings`, `audioPath`, or `audio`.
+Legacy blobs and explicit custom documents remain **untrusted**, even when their source matches
+a template. PP-B01 does not isolate their existing execution path; PP-I01–I03 own that work.
+Documents with any version/kind/template markers cannot fall back to legacy loading when invalid.
 
 ## Runtime Behavior
 
@@ -77,6 +88,7 @@ The adapter accepts scene blobs that contain at least one engine-recognized root
 - `initialPlayback="paused"` freezes the scene until the user presses `Play`
 - `initialPlayback="playing"` keeps the scene running and shows a `Pause` control instead
 - invalid scene data produces a recoverable error overlay instead of crashing the page
+- versioned documents always take the validated scene-load path; the audio-only update shortcut is limited to legacy scenes
 - the engine instance is disposed on unmount
 
 Audio and playlist notes:
@@ -105,6 +117,20 @@ diagnostics, and timestamped events. Use `setAudioResponseSettings()` for author
 `setAudioResponseOverride()` for temporary viewer changes. An override never modifies saved scene data.
 See `docs/audio-response.md` for the full contract and `scenePlaybackIdentity()` for the shared rule
 that distinguishes a configuration update from a scene reload.
+
+## Template authoring handoff
+
+PP-B01 provides the contract, code-free catalog metadata, and playback resolution. The existing
+editor's Shader dropdown still writes legacy custom source. PP-B03 will replace that picker with
+template selection and preserve template ID/version and bounded data during editing and saving.
+Do not run template documents through the legacy editor's `sanitizeSceneData` helpers: those
+helpers add engine fields and would make a template document invalid. Source edits must create
+a custom document, never alter the trusted registry or retain a template classification.
+
+Template shader snapshots and version 1 engine defaults are private under `templates/`.
+Changing source or defaults requires a new template version; old saved scenes must retain
+their old ID/version resolution. The shared JSON catalog pins source fingerprints for regression
+checks but is not a mechanism for approving submitted source.
 
 ## Tests
 
