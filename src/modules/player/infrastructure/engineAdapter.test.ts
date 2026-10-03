@@ -176,7 +176,7 @@ describe('createMagePlayer', () => {
 
     player.loadSceneBlob(sceneBlob)
 
-    expect(engineMocks.loadPreset).toHaveBeenCalledWith(sceneBlob)
+    expect(engineMocks.loadPreset).toHaveBeenCalledWith(expect.objectContaining(sceneBlob))
     expect(engineMocks.setEngineTime).toHaveBeenCalledWith(1 / 60)
     expect(engineMocks.start).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).toHaveBeenCalledTimes(1)
@@ -196,6 +196,48 @@ describe('createMagePlayer', () => {
     ])
     expect(engineMocks.setAudioResponseMode.mock.invocationCallOrder[0])
       .toBeGreaterThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
+  })
+
+  it('resets omitted effects on scene switches and reset without changing authored or recovery data', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const { SCENE_POLICY } = await import('../policy/sceneValidation')
+    const effects: Record<string, boolean> = {}
+    // Model loadPreset's actual patch behavior: missing properties retain the
+    // previous state. This catches accumulated effects, not just payload shape.
+    engineMocks.loadPreset.mockImplementation((scene: { fx?: { bloom?: { enabled?: boolean }; passes?: Record<string, boolean> } }) => {
+      if (scene.fx?.bloom?.enabled !== undefined) effects.bloom = scene.fx.bloom.enabled
+      Object.assign(effects, scene.fx?.passes)
+      return scene
+    })
+    const activeEffects = () => ['bloom', ...SCENE_POLICY.optionalEffectFlags].filter(flag => effects[flag])
+    const first = { visualizer: { shader: 'sphere(0.5);' }, fx: {
+      bloom: { enabled: true, strength: 2 }, passes: { rgbShift: true, dot: true, colorify: true, outputPass: false },
+    } }
+    const next = { visualizer: { shader: 'sphere(0.7);' }, fx: {
+      passes: { afterImage: true, sobel: true, glitch: true, kaleid: true },
+    } }
+    const sparse = { visualizer: { shader: 'sphere(0.9);' } }
+    const originals = structuredClone([first, next, sparse])
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob(first)
+    expect(activeEffects()).toEqual(['bloom', 'rgbShift', 'dot', 'colorify'])
+    expect(effects.outputPass).toBe(false)
+    player.loadSceneBlob(next)
+    expect(activeEffects()).toEqual(['afterImage', 'sobel', 'glitch', 'kaleid'])
+    expect(effects.outputPass).toBe(true)
+    player.loadSceneBlob(sparse)
+    expect(activeEffects()).toEqual([])
+    effects.bloom = true
+    effects.rgbShift = true
+    player.resetPlayback()
+    expect(activeEffects()).toEqual([])
+    expect([first, next, sparse]).toEqual(originals)
+    expect(recoveryMocks.key).toHaveBeenCalledWith(sparse, undefined)
+    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(expect.objectContaining({
+      visualizer: sparse.visualizer,
+      fx: { bloom: { enabled: false }, passes: { ...Object.fromEntries(SCENE_POLICY.optionalEffectFlags.map(flag => [flag, false])), outputPass: true } },
+    }))
+    player.dispose()
   })
 
   it('writes an active marker before scene compilation and clears it only after disposal', async () => {
@@ -496,7 +538,7 @@ describe('createMagePlayer', () => {
     player.loadSceneBlob(preview, { sceneKey: 12, recoverySceneBlob: original })
     expect(recoveryMocks.key).toHaveBeenCalledWith(original, 12)
     expect(recoveryMocks.begin).toHaveBeenCalledExactlyOnceWith(JSON.stringify([original, 12]))
-    expect(engineMocks.loadPreset).toHaveBeenCalledExactlyOnceWith(preview)
+    expect(engineMocks.loadPreset).toHaveBeenCalledExactlyOnceWith(expect.objectContaining(preview))
     const edited = { ...original, audioResponse: 'transient-v1' }
     player.setAudioResponseSettings('transient-v1')
     player.updateRecoveryIdentity?.({ ...preview, audioResponse: 'transient-v1' }, { sceneKey: 12, recoverySceneBlob: edited })
@@ -682,7 +724,7 @@ describe('createMagePlayer', () => {
     expect(engineMocks.setEngineTime).not.toHaveBeenCalled()
     expect(engineMocks.start).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).toHaveBeenCalledTimes(1)
-    expect(engineMocks.loadPreset).toHaveBeenCalledWith(sceneBlob)
+    expect(engineMocks.loadPreset).toHaveBeenCalledWith(expect.objectContaining(sceneBlob))
   })
 
   it('tracks playback state before the first scene load without touching the engine', async () => {
@@ -754,7 +796,7 @@ describe('createMagePlayer', () => {
     expect(engineMocks.start).not.toHaveBeenCalled()
     expect(engineMocks.pause).toHaveBeenCalledTimes(1)
     expect(engineMocks.play).not.toHaveBeenCalled()
-    expect(engineMocks.loadPreset).toHaveBeenCalledWith(sceneBlob)
+    expect(engineMocks.loadPreset).toHaveBeenCalledWith(expect.objectContaining(sceneBlob))
   })
 
   it('surfaces the underlying engine error text when scene loading throws', async () => {
@@ -982,7 +1024,7 @@ describe('createMagePlayer', () => {
 
     expect(player.resetPlayback()).toBe('paused')
     expect(player.getPlaybackState()).toBe('paused')
-    expect(engineMocks.loadPreset).toHaveBeenCalledWith(sceneBlob)
+    expect(engineMocks.loadPreset).toHaveBeenCalledWith(expect.objectContaining(sceneBlob))
     expect(engineMocks.seek).toHaveBeenCalledWith(0)
     expect(engineMocks.start).toHaveBeenCalledTimes(2)
     expect(engineMocks.pause).toHaveBeenCalledTimes(1)
@@ -1112,7 +1154,7 @@ describe('createMagePlayer', () => {
     snapshot.override!.mappings.length = 0
     expect(player.getAudioResponseState()).toMatchObject({ savedConfig: updated, override })
     player.resetPlayback()
-    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith({ ...scene, audioResponse: 'transient-v1', audioResponseConfig: updated })
+    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(expect.objectContaining({ ...scene, audioResponse: 'transient-v1', audioResponseConfig: updated }))
     expect(engineMocks.setAudioResponseConfig).toHaveBeenLastCalledWith(override)
     expect(player.setAudioResponseOverride(null)).toMatchObject({
       savedMode: 'transient-v1', savedConfig: updated, override: null, effectiveMode: 'transient-v1', effectiveConfig: null,
@@ -1132,7 +1174,7 @@ describe('createMagePlayer', () => {
     player.setAudioResponseSettings(undefined)
     expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'legacy', savedConfig: null, effectiveConfig: null })
     player.resetPlayback()
-    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(scene)
+    expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(expect.objectContaining(scene))
   })
 
   it('exposes defensive capability, diagnostic, and cursor-based event snapshots through the adapter', async () => {

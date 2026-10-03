@@ -23,7 +23,7 @@ vi.mock('../recovery/renderRecoveryMonitor', () => ({
 }))
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
-const source = { visualizer: { shader: 'sphere(1);' }, audioPath: '/music.mp3' }
+const source = { visualizer: { shader: 'sphere(1);' } }
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((done) => { resolve = done })
@@ -178,7 +178,7 @@ describe('engine availability boundary with the real polling store', () => {
   it('stops pending audio on invalidation and never resumes after audio finishes late', async () => {
     const player = await create({ sceneKey: 47 })
     player.loadSceneBlob(source)
-    const loading = player.loadAudio().then(() => 'loaded', () => 'cancelled')
+    const loading = player.loadAudio('/music.mp3').then(() => 'loaded', () => 'cancelled')
     const playCalls = engine.play.mock.calls.length
     store.invalidate(47)
     expect(engine.dispose).toHaveBeenCalledTimes(1)

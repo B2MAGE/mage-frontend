@@ -7,7 +7,7 @@ import { monitorSceneRendering, type RenderLifecycleEvent, type RenderFailure } 
 import { sceneAvailabilityStore } from '../availability/sceneAvailability'
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { BRAND_SCENE } from '../templates/platformBrandScene'
-import { validateSceneForPlayback } from '../policy/sceneValidation'
+import { SCENE_POLICY, validateSceneForPlayback } from '../policy/sceneValidation'
 import { boundCaptureSize, getRenderBudget, type RenderBudget, type RenderProfile } from '../policy/renderBudget'
 
 const SCENE_BLOB_KEYS = [
@@ -218,7 +218,24 @@ function createAudioError(message: string, cause?: unknown) {
 }
 
 function loadSceneIntoEngine(engine: MageEngineBridge, sceneBlob: MageSceneBlob) {
-  const loadedScene = engine.loadPreset(sceneBlob)
+  // MAGE loads compact effects as patches. Materialize the policy's disabled
+  // defaults only in this runtime payload, so sparse scenes cannot inherit
+  // effects from the preceding scene and exceed the validated effect count.
+  const fx = isRecord(sceneBlob.fx) ? sceneBlob.fx : {}
+  const bloom = isRecord(fx.bloom) ? fx.bloom : {}
+  const passes = isRecord(fx.passes) ? fx.passes : {}
+  const loadedScene = engine.loadPreset({
+    ...sceneBlob,
+    fx: {
+      ...fx,
+      bloom: { enabled: SCENE_POLICY.defaults.optionalEffects, ...bloom },
+      passes: {
+        ...Object.fromEntries(SCENE_POLICY.optionalEffectFlags.map(flag => [flag, SCENE_POLICY.defaults.optionalEffects])),
+        outputPass: SCENE_POLICY.defaults.outputPass,
+        ...passes,
+      },
+    },
+  })
 
   if (!loadedScene) {
     throw createSceneRenderError()
