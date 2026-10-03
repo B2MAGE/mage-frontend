@@ -1,5 +1,6 @@
 import type { ApiErrorResponse } from '@shared/lib'
 import type { CreateSceneFormErrors } from './types'
+import { templateModelFieldPath } from './templateEditor'
 
 const fieldLabels: Record<string, string> = {
   visualizer: 'Scene', 'visualizer.shader': 'Custom shader', 'visualizer.scale': 'Scene scale',
@@ -8,6 +9,9 @@ const fieldLabels: Record<string, string> = {
   'intent.fov': 'FOV', 'intent.camTilt': 'Camera orientation', 'intent.camOrientationMode': 'Camera orientation mode',
   'intent.camOrientationSpeed': 'Camera orientation speed', 'intent.autoRotateSpeed': 'Orbit speed',
   'intent.time_multiplier': 'Animation speed', 'state.time': 'Starting animation time',
+  'intent.minimizing_factor': 'Input gain', 'intent.power_factor': 'Peak emphasis',
+  'intent.base_speed': 'Resting response', 'intent.easing_speed': 'Smoothing',
+  'intent.pointerDownMultiplier': 'Pointer release hold',
   'state.volume_multiplier': 'Response offset', fx: 'Effects', 'fx.toneMapping.exposure': 'Exposure',
   audioResponse: 'Response mode', audioResponseConfig: 'Music response',
   templateId: 'Template', templateVersion: 'Template version',
@@ -24,7 +28,9 @@ function fieldPath(path: string) {
 }
 
 function fieldLabel(path: string) {
-  const field = fieldPath(path)
+  const authored = fieldPath(path)
+  if (fieldLabels[authored]) return fieldLabels[authored]
+  const field = templateModelFieldPath(authored)
   if (!field) return 'Scene data'
   if (fieldLabels[field]) return fieldLabels[field]
   const parent = Object.keys(fieldLabels).sort((a, b) => b.length - a.length)

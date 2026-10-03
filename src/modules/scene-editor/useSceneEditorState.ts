@@ -24,13 +24,11 @@ import {
 } from './utils'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
-import { normalizeAudioResponseConfig, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
+import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
 import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
 import { parseSceneImport, SceneValidationError, validateSceneDocument, type TemplateSceneDocument } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
-import { changeTemplateSelection, changeTemplateValue, createTemplateScene, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
-
-const TEMPLATE_EDITOR_SECTIONS = EDITOR_SECTIONS.filter(section => section.id !== 'pass-order')
+import { changedTemplateFields, changeTemplateBranch, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 
 /** Apply only the user's changed fields, retaining unsupported repair values. */
 function mergeChangedValues(original: unknown, before: unknown, after: unknown): unknown {
@@ -75,7 +73,8 @@ export function useSceneEditorState({
   // A temporarily invalid template draft must not replace the custom text that
   // Cancel restores when that draft becomes valid again.
   const templateImportPreviousTextRef = useRef<string | null>(null)
-  const [musicResponseDefaults] = useState(() => readMusicResponseDefaults(sceneData))
+  const [musicResponseDefaults, setMusicResponseDefaults] = useState(() => readMusicResponseDefaults(
+    isTemplateEditorDocument(sceneData) ? getTemplateEditorSceneData(sceneData) : sceneData))
   const isTemplate = isTemplateEditorDocument(sceneData)
   const templateDocument = isTemplate ? sceneData : null
   const templateFieldErrors = useMemo(() => {
@@ -89,7 +88,10 @@ export function useSceneEditorState({
     }
     return {} as Record<string, string>
   }, [templateDocument])
-  const editorSections = isTemplate ? TEMPLATE_EDITOR_SECTIONS : EDITOR_SECTIONS
+  const editorSceneData = useMemo(() => templateDocument ? getTemplateEditorSceneData(templateDocument) : sceneData, [templateDocument, sceneData])
+  const editorAudioResponseMode = normalizeAudioResponseMode(editorSceneData.audioResponse)
+  const editorAudioResponseConfig = normalizeAudioResponseConfig(editorSceneData.audioResponseConfig).config
+  const editorSections = EDITOR_SECTIONS
   const { currentSection, currentSectionIndex, handleSectionJump, sectionMenuValue } = useSceneEditorNavigation(editorSections)
   const [errors, setErrors] = useState<CreateSceneFormErrors>({})
   const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false)
@@ -164,13 +166,16 @@ export function useSceneEditorState({
     setErrors,
   })
 
-  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false, changedField?: string) {
+  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false, changedField?: string | string[]) {
     if (!replaceRawDraft && confirmSectionIssueMessage && sceneDataText !== JSON.stringify(sceneData, null, 2)) {
       setErrors(current => ({ ...current, sceneData: confirmSectionIssueMessage ?? undefined,
         form: 'Fix the Scene Data JSON before changing other controls. Your imported draft has been kept.' }))
       return
     }
     const nextText = JSON.stringify(nextSceneData, null, 2)
+    if (replaceRawDraft && !isTemplate && isTemplateEditorDocument(nextSceneData)) {
+      setMusicResponseDefaults(readMusicResponseDefaults(getTemplateEditorSceneData(nextSceneData)))
+    }
     templateImportPreviousTextRef.current = null
     setPendingImport(null)
     setSceneData(nextSceneData)
@@ -178,7 +183,8 @@ export function useSceneEditorState({
     const validation = validateSceneDataText(nextText)
     setErrors(current => ({ ...current, sceneData: validation.error ?? undefined, form: undefined,
       fields: replaceRawDraft ? undefined : changedField && current.fields
-        ? Object.fromEntries(Object.entries(current.fields).filter(([path]) => path !== changedField))
+        ? Object.fromEntries(Object.entries(current.fields).filter(([path]) => !(Array.isArray(changedField) ? changedField : [changedField])
+          .some(field => path === field || path.startsWith(`${field}.`) || path.startsWith(`${field}[`))))
         : current.fields }))
   }
 
@@ -186,25 +192,42 @@ export function useSceneEditorState({
     branch: K,
     recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
   ) {
-    if (isTemplate) return
-    const currentModel = getSceneEditorModel(sceneData)
+    const currentModel = templateDocument ? getTemplateEditorModel(templateDocument) : getSceneEditorModel(sceneData)
     const nextBranch = recipe(currentModel[branch])
+    if (templateDocument) {
+      const next = changeTemplateBranch(templateDocument, branch, nextBranch)
+      applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
     applySceneData({ ...sceneData, [branch]: mergeChangedValues(sceneData[branch], currentModel[branch], nextBranch) })
   }
 
   function handleAudioResponseModeChange(mode: SceneAudioResponseMode, supportedTargets?: readonly AudioResponseTarget[]) {
-    if (isTemplate) return
+    if (templateDocument) {
+      const next = changeTemplateMusicSettings(templateDocument, changeMusicResponseMode(editorSceneData, mode, supportedTargets))
+      applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
     applySceneData(changeMusicResponseMode(sceneData, mode, supportedTargets))
   }
 
   function handleAudioResponseConfigChange(config: AudioResponseConfig) {
-    if (isTemplate) return
+    if (templateDocument) {
+      const next = changeTemplateMusicSettings(templateDocument, { ...editorSceneData, audioResponseConfig: mergeChangedValues(
+        editorSceneData.audioResponseConfig, editorAudioResponseConfig, config) })
+      applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
     applySceneData({ ...sceneData, audioResponseConfig: mergeChangedValues(sceneData.audioResponseConfig,
       normalizeAudioResponseConfig(sceneData.audioResponseConfig).config, config) })
   }
 
   function handleAudioResponseReset() {
-    if (isTemplate) return
+    if (templateDocument) {
+      const next = changeTemplateMusicSettings(templateDocument, restoreMusicResponseDefaults(editorSceneData, musicResponseDefaults))
+      applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
     const next = restoreMusicResponseDefaults(sceneData, musicResponseDefaults)
     const currentModel = getSceneEditorModel(sceneData)
     applySceneData({ ...next,
@@ -213,7 +236,7 @@ export function useSceneEditorState({
     })
   }
 
-  const canResetAudioResponse = !isTemplate && JSON.stringify(readMusicResponseDefaults(sceneData)) !== JSON.stringify(musicResponseDefaults)
+  const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(editorSceneData)) !== JSON.stringify(musicResponseDefaults)
 
   function handleTemplateSelection(templateId: string, replaceCustom = false) {
     const next = changeTemplateSelection(sceneData, templateId, replaceCustom)
@@ -229,6 +252,7 @@ export function useSceneEditorState({
   }
 
   function handleShaderSelection(shaderId: string) {
+    if (isTemplate) return
     const shader = SHADER_SCENES.find((option) => option.id === shaderId)
     if (!shader) return
     updateBranch('visualizer', current => ({
@@ -329,6 +353,8 @@ export function useSceneEditorState({
     currentSection,
     currentSectionIndex,
     description,
+    editorAudioResponseMode,
+    editorAudioResponseConfig,
     editorSections,
     errors,
     filteredSelectableTags,

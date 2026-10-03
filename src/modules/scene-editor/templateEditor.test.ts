@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { listSceneTemplates } from '@modules/player'
-import { createDefaultSceneData, SHADER_SCENES } from './sceneEditor'
-import { changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
+import { createDefaultSceneData, SHADER_SCENES, type SceneEditorModel } from './sceneEditor'
+import { changeTemplateBranch, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { buildEffectiveSceneData, buildSceneSubmissionDocument, prettyPrintEditorSceneData, readEditableSceneData, validateForm } from './utils'
 
 describe('template editor documents', () => {
@@ -78,5 +78,63 @@ describe('template editor documents', () => {
     expect(readEditableSceneData({ schemaVersion: 1, kind: 'custom', scene: source })).toEqual(source)
     expect(isTemplateEditorDocument(source)).toBe(false)
     expect(() => buildSceneSubmissionDocument(source)).toThrow()
+  })
+
+  it('round-trips all prior safe camera, movement, effect, and pass-order settings without copying shader source', () => {
+    let scene = createTemplateScene()
+    const model = getTemplateEditorModel(scene)
+    const edited: SceneEditorModel = {
+      controls: { position0: { x: 1, y: 2, z: 3 }, target0: { x: -1, y: -2, z: -3 }, zoom0: 1.5 },
+      visualizer: { scale: 42, skyboxPreset: 3, shader: 'untrusted()' },
+      intent: { time_multiplier: 2, minimizing_factor: 0.9, power_factor: 2, pointerDownMultiplier: 0.2,
+        base_speed: 0.1, easing_speed: 0.5, camTilt: 0.4, camOrientationMode: 1, camOrientationSpeed: 0.7,
+        autoRotate: false, autoRotateSpeed: 0.8, fov: 115 },
+      state: { currAudio: 0.12, currPointerDown: 0.23, pointerDown: 0.34, size: 0.45, time: 12, volume_multiplier: 0.56 },
+      fx: { bloom: { enabled: true, strength: 0.8, radius: 0.3, threshold: 0.2 },
+        toneMapping: { method: 4, exposure: 2 },
+        passOrder: [model.fx.passOrder[1], model.fx.passOrder[0], ...model.fx.passOrder.slice(2)],
+        passes: { ...model.fx.passes, toon: true, rgbShift: true, colorify: true },
+        params: { afterImage: { damp: 0.8 }, rgbShift: { amount: 0.006, angle: 0.2 },
+          kaleid: { sides: 7, angle: 0.4 }, colorify: { color: '#123abc' } } },
+    }
+    for (const branch of ['controls', 'visualizer', 'intent', 'state', 'fx'] as const) scene = changeTemplateBranch(scene, branch, edited[branch])
+    expect(getTemplateEditorModel(scene)).toEqual({ ...edited, visualizer: { ...edited.visualizer, shader: '' } })
+    expect(scene.settings.camera).toMatchObject({ tilt: 0.4, orientationMode: 1, orientationSpeed: 0.7 })
+    expect(scene.settings.effects?.passes).not.toHaveProperty('colorify')
+    expect(scene.settings.effects?.params).not.toHaveProperty('colorify')
+    expect(scene.settings.effects).not.toHaveProperty('bloom')
+    expect(JSON.stringify(scene)).not.toContain('untrusted()')
+    expect(scene).not.toHaveProperty('scene')
+    const reopened = validateForm('Complete template', prettyPrintEditorSceneData(scene))
+    expect(reopened.errors).toEqual({})
+    expect(reopened.parsedSceneData).toEqual(scene)
+    expect(buildSceneSubmissionDocument(reopened.parsedSceneData!)).toEqual(scene)
+    expect(buildEffectiveSceneData(scene)).toEqual(scene)
+    expect(changeTemplateSelection(scene, 'embedded-scene-4')).toEqual({ ...scene, templateId: 'embedded-scene-4' })
+  })
+
+  it('keeps unedited extensions absent and ignores unsupported branch keys', () => {
+    const original = createTemplateScene()
+    const model = getTemplateEditorModel(original)
+    const next = changeTemplateBranch(original, 'intent', { ...model.intent, camTilt: 0.5, code: 'untrusted()' } as SceneEditorModel['intent'])
+    expect(next.settings.camera.tilt).toBe(0.5)
+    expect(next.settings).not.toHaveProperty('motion')
+    expect(next.settings).not.toHaveProperty('state')
+    expect(next.settings).not.toHaveProperty('effects')
+    expect(JSON.stringify(next)).not.toContain('untrusted')
+    const fx = changeTemplateBranch(original, 'fx', { ...model.fx, passes: { ...model.fx.passes, toon: true }, source: 'untrusted()' } as SceneEditorModel['fx'])
+    expect(fx.settings.effects).toEqual({ passes: { toon: true } })
+  })
+
+  it('retains an invalid extended value while unrelated controls change, then allows direct repair', () => {
+    let scene = createTemplateScene()
+    const model = getTemplateEditorModel(scene)
+    scene = changeTemplateBranch(scene, 'controls', { ...model.controls, zoom0: 0 })
+    expect(getTemplateEditorModel(scene).controls.zoom0).toBe(0)
+    scene = changeTemplateBranch(scene, 'intent', { ...getTemplateEditorModel(scene).intent, time_multiplier: 2 })
+    expect(scene.settings.controls?.zoom0).toBe(0)
+    expect(() => buildSceneSubmissionDocument(scene)).toThrow()
+    scene = changeTemplateBranch(scene, 'controls', { ...getTemplateEditorModel(scene).controls, zoom0: 1 })
+    expect(buildSceneSubmissionDocument(scene)).toEqual(scene)
   })
 })
