@@ -70,7 +70,19 @@ Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. The com
 
 The template is prepared for the selected plan. Deployment and production-browser verification are separate from building it; record the real stack outputs and verification results when those steps succeed. Do not mark PP-I01 deployed based on a local build or template validation alone. AWS credentials must remain in the operator's CLI profile or deployment environment, never in renderer build inputs.
 
-**AWS access check, October 3, 2026:** the local `mage-local` profile authenticated as `mage-local-dev`, but AWS denied `cloudformation:DescribeStacks` and `cloudformation:ValidateTemplate`. No AWS resources were created. Deployment needs an approved deployment role/profile with the required access. Do not automatically expand the development user's permissions; use the account's approved deployment access path.
+**AWS deployment, October 3, 2026:** deployed through the operator's signed-in AWS console session after the local `mage-local-dev` profile was denied CloudFormation access. The development user's permissions were not changed. The reviewed `initial-renderer-hosting` CREATE change set added nine resources without changing existing infrastructure, and stack creation reached `CREATE_COMPLETE`.
+
+| Output | Deployed value |
+| --- | --- |
+| Stack / region | `mage-isolated-renderer` / `us-east-1` |
+| Renderer origin | `https://d2wwpgc7sgvmnm.cloudfront.net` |
+| Distribution ID | `E2M1AJZB7BOSN0` |
+| Bucket | `mage-isolated-renderer-rendererbucket-u6lw6vmevh07` |
+| Allowed parent | `https://mage.peterbucci.com` |
+| Uploaded bundle | `assets/renderer-CLjwoTfj.js` (16,950,333 bytes) |
+| Uploaded entry document | `index.html` (753 bytes) |
+
+Only the two runtime files were uploaded, with the content types and cache metadata specified below. The production HTTP verifier passed against the assigned HTTPS origin, checking response policies, bundle integrity, no credentialed responses, and rejected routes/query strings/methods. Additional live checks confirmed correct MIME types, lengths, caching and HSTS, plus HTTP 403 for unencrypted viewing and direct S3 object access. Direct navigation in Chromium displayed “Open this player from MAGE.” Production-parent embedded sample, isolation and lifecycle checks remain pending; the normal application players are not connected by this deployment.
 
 Build for MAGE's actual parent origin into a separate output folder, so the local HTTP fixture keeps its matching local bundle and headers. Production builds have no default parent and reject loopback/HTTP:
 
@@ -150,16 +162,18 @@ same built artifact. The main application build remains separate and unchanged.
 Validation passed: 75 focused renderer/protocol/host/boundary tests, six hosting
 tests, TypeScript, ESLint, the standalone build and the main application build.
 The existing engine eval and size warnings remain. Local HTTPS and additional
-browser engines have a documented test setup but were not exercised here;
-production CloudFront headers and the deployed browser checks are still
-pending. Do not treat this local record as PP-I03's arbitrary-code release approval.
+browser engines have a documented test setup but were not exercised here.
+Production CloudFront response checks subsequently passed as recorded above;
+production-parent embedded browser checks remain pending. Do not treat this
+local record as PP-I03's arbitrary-code release approval.
 
 The provider-address follow-up passed 34 host tests and seven hosting tests,
 TypeScript, ESLint, and the production renderer build for
 `https://mage.peterbucci.com`. The production bundle and generated template were
 checked against their manifest, and live local HTTP verification still passed
-using the separate local artifact. AWS template validation was attempted but
-denied by the current profile; it is not recorded as a successful service check.
+using the separate local artifact. AWS CLI template validation was denied by the
+development profile; the operator's console session subsequently created and
+executed the reviewed change set successfully.
 
 ### Remaining guarantees and limits
 
@@ -167,6 +181,6 @@ This separates the account-bearing page from shader execution. It is not a guara
 
 Iframe sandbox flags block parent navigation, popups, downloads, forms and same-origin access. They do not completely ban a child from navigating its **own** frame in every browser. The embedding page's strict `frame-src`, child-load monitoring and disposal are additional checks, not a claim of a universal network or resource sandbox. Browser verification must cover self-navigation/redirect attempts, lost child documents, direct navigation, denied requests, cookie/storage access and parent DOM access. Never send auth tokens, private account data or arbitrary fetch URLs into this renderer. PP-I01's protocol accepts only the fixed sample and disposal commands.
 
-The HTTP verifier checks actual response policies, immutable integrity, no cookies, method rejection and route rejection. The Node tests cover exact origins, manifest tampering, local HTTP behavior and generated CloudFront behavior. Browser checks cover the remaining browser-enforced boundaries and successful sample rendering. Production deployment and production-browser verification remain outstanding until the AWS handoff is completed.
+The HTTP verifier checks actual response policies, immutable integrity, no cookies, method rejection and route rejection. The Node tests cover exact origins, manifest tampering, local HTTP behavior and generated CloudFront behavior. Browser checks cover the remaining browser-enforced boundaries and successful sample rendering. Hosting is deployed and its HTTPS responses verified; production-parent embedded browser verification remains outstanding before this story can be closed.
 
 References: [CSP external script hashes and evaluation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src), [CloudFront response headers policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html), [private S3 origins with OAC](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html).
