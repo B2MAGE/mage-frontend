@@ -2,9 +2,39 @@
 
 ## Status — October 3, 2026
 
-Normal player integration is implemented and locally verified on `pp-i03-isolated-player-integration`, ready for review. PP-I02 is merged in #215 and its separate CloudFront renderer and `/player-check/` page were deployed earlier. Those deployments do **not** constitute deployment or release approval for PP-I03. The production custom-rendering release gate stays **off** until the production checks and supported-browser matrix below pass.
+Normal player integration is implemented on `pp-i03-isolated-player-integration`, and the user-authorized production deployment and recorded smoke checks are complete. The story remains **In Progress** and the branch is unmerged. The production custom-rendering release gate stays **off**. This deployment does not approve public arbitrary-source execution: the wider release checks and supported-browser matrix still apply.
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
+
+## Production rollout — October 3, 2026
+
+The frontend runtime commit is `70087e7ecb060b0294b3759cbe26fb269d0dbd0a`, pushed on `pp-i03-isolated-player-integration`. The backend commit is `28c3c84ba290f1fd852537d89978e3ad276e5d20`. The following statuses describe observed operations, not an assumption that every service or verification step has completed.
+
+| Component/check | Observed status |
+| --- | --- |
+| Backend deployment | Coolify deployment `owdhr7fd606duqxzui2fzjr6` completed for the backend commit above. Migrations 18 and 19 succeeded. The existing `qui2u58zdesarnjtr1vfgqfy_postgres-data` volume was preserved. |
+| API routing | Prefix stripping is off, restoring the `/api` path expected by the backend. Public status returned HTTP 200 with custom rendering disabled. Unauthenticated admin and repair requests returned HTTP 401. These denials do not establish authenticated operator/owner success. |
+| Existing scenes | All 16 existing scene rows remain subject to the legacy-upgrade requirement. Their stored data was preserved; deployment did not relabel or automatically upgrade them. |
+| Renderer deployment | `assets/renderer-Ci9Tz163.js` and its matching entry document are live on the existing CloudFront renderer. Both the exact two-hash transition and subsequent final single-hash stack update reached `UPDATE_COMPLETE`. The final helper and official `npm run renderer:verify:production` both passed; the latter exited 0 with `MAGE_RENDERER_VERIFY_ORIGIN=https://d2wwpgc7sgvmnm.cloudfront.net`, checking exact headers, document/SRI, immutable script, forbidden paths and POST rejection. |
+| Old parent compatibility | The deployed PP-I02 check at commit `4c0f9e11d54f4e8a1aada362ac3373769329b49c` worked with the new child: rendered scene and isolation checks passed, generated audio reached 15.4 seconds, and scene switching, capture and Stop worked. Its unavailable-player check failed safely, removed the iframe and offered Retry. |
+| New verification parent | Coolify deployment `ow1y3tgnv8v9x7fkxx3pv6cv` finished for runtime commit `70087e7`. The live `check-BohxKod2.js` asset passed SRI verification. Start, generated audio, Original response, scene switching and capture passed against the new child. |
+| Initial normal frontend deployment | Coolify deployment `i6bqctj14mfkf3qdd8k0qzgf` finished with `index-BFvbeYDA`. The real editor rendered Ripple Rings in the CloudFront iframe with only `allow-scripts`, played a 90-second WAV to 20.38 seconds and displayed Selective capability controls. An inherited build setting produced `/api/api` requests and HTTP 404 for editor tags; this initial deployment was not fully functional. |
+| Corrected normal frontend | Production `VITE_API_BASE_URL` was corrected to `/api`. Coolify deployment `hqsa7gj16560y4v2t5i9201v` finished for the same runtime commit. At 21:01:08 UTC, the public page served `index-BcVPG3Jh.js` with the exact `/api` base; `/api/tags` returned HTTP 200, and the expected frame CSP and `nosniff` headers were present. |
+| Corrected live editor | After reload, editor tags loaded without the prior 404 and Capture Thumbnail succeeded. The parent contained zero canvases; the player used the fixed CloudFront `/index.html` iframe with `credentialless` enabled and exactly `sandbox="allow-scripts"`. On the final corrected bundle, music continued from 17.68 to 18.20 seconds through Original → Selective, then reached 28 seconds after selecting Bass, without failure. Evidence is saved locally at `.local/deployment-evidence/pp-i03-live-editor-music.jpg`. |
+| Live global pause/resume | Pause all removed the iframe. Turning it off restored a new iframe and music was observed at 9.08 seconds. This result uses the observed final UI/player state: the automation acknowledgement timed out after the temporary control disappeared. |
+| Corrected live Home | Featured Phonk101 metadata, cards and the Ambient tag loaded without an API load error. Existing legacy scene source remained withheld under the expected upgrade requirement; displaying their metadata is not a claim that those old scenes played. |
+| Public custom release | Disabled. The wider production-equivalent adversarial/browser matrix and release approval have not been completed. |
+
+Before the backend cutover, database dumps were saved on the host at:
+
+- `/data/coolify/backups/mage-pp-i03-20261003-preflight/database.dump`
+- `/data/coolify/backups/mage-pp-i03-20261003-cutover/database.dump`
+
+Both recorded dumps are 47,958 bytes with mode `0600`. The cutover dump was taken after stopping the old writer; its SHA-256 is `ac71f5ea93ad7956acbe430f92e4c368dd735ea633f8b3c5f10d0de7e4931fa5`. A preserved dump and hash are backup evidence, not a claim that a restore drill has been performed. Keep these files private and retain the live database volume.
+
+The new renderer is 17,024,678 bytes, with SHA-256 `2b42ae7a8828305aec00e126b37a6595ef7f866528f71bac3363eaf1b5acec3d` and integrity `sha384-u9Efhm1bynfPHq4SzLhmWzYRHJpxR7qOhLPdN+HMJ0Dmk2jqTx0sH9SkZu7pEwgv`. Its allowed parent remains exactly `https://mage.peterbucci.com`. The temporary transition permitted only `/`, `/index.html`, the previous `assets/renderer-CutVKi26.js` and the new exact bundle path, with both exact script hashes. The final policy serves only the new bundle path/hash alongside the entry document. Artifact/transition verification and all seven hosting regression tests passed before upload; the four changed resources were the file allowlist, two response-header policies and distribution cache behaviors.
+
+The previous complete production renderer artifact is preserved in `.local/deployments/pp-i02-before-i03/dist-isolated-renderer-production/`, with all five files hash-verified before the rebuild. The transition template and review record are in `.local/deployments/pp-i03-transition/`; the new final template is `dist-isolated-renderer-production/cloudformation.json`. Keep both generations through the rollback window. Do not downgrade the child before restoring a compatible parent.
 
 ## Execution boundary
 
@@ -39,7 +69,7 @@ These browser results are from **Chromium 154 on Windows**, using `http://127.0.
 | Shared frontend/backend contracts | Matched | Scene fixtures, limits, schema and template catalog match after normalizing line endings. Source classification and resource policy must stay consistent across deployments. |
 | Production frontend build and clean Docker build | Passed locally | Includes TypeScript, clean dependency patch application and nginx configuration validation. The local container returned HTTP 200 with the exact CloudFront `/index.html` frame policy and `nosniff`; it was removed after verification. This is local artifact validation, not a deployed-site check. |
 | Full frontend regression suite | 1,742 passed in 130 files | Re-run after the successful-retry history fix; TypeScript and lint also passed. |
-| PP-I03 production HTTPS and additional browser engines | Not yet verified | Keep public custom execution disabled. Earlier PP-I02 live checks do not cover this new parent/child combination. |
+| PP-I03 production HTTPS and additional browser engines | Deployment smoke checks passed; wider release matrix incomplete | Old/new live check parents, corrected normal editor/Home and both final production verifiers passed the recorded checks. The wider surface/adversarial/browser matrix remains pending. Keep public custom execution disabled. |
 
 The security fixture is `/scripts/isolated-security-check.html`, available only on the exact local development origin. Run **Check browser boundaries**, **Check failure recovery**, then the separately opted-in **Check a bounded CPU stall**. **Stop checks** removes its player. It does not enable backend custom rendering or offer arbitrary source input.
 
