@@ -54,6 +54,7 @@ describe('MagePlayer simulated beat preview', () => {
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const firstScene = buildMagePlayerSceneBlob()
     const secondScene = buildMagePlayerSceneBlob({ visualizer: { skyboxPreset: 2 } })
+    const originalSecondScene = structuredClone(secondScene)
     const { rerender } = render(<MagePlayer sceneBlob={firstScene} simulatedBeat={{ enabled: true, bpm: 150 }} />)
     await waitFor(() => expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(true, 24, 1.25))
     vi.mocked(controller.setSyntheticPreview).mockClear()
@@ -61,7 +62,8 @@ describe('MagePlayer simulated beat preview', () => {
     rerender(<MagePlayer sceneBlob={secondScene} simulatedBeat={{ enabled: true, bpm: 150 }} />)
     await waitFor(() => expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(true, 24, 1.25))
     expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(secondScene)
-    expect(secondScene).toEqual({ visualizer: { skyboxPreset: 2 } })
+    expect(secondScene).toEqual(originalSecondScene)
+    expect(secondScene).not.toHaveProperty('simulatedBeat')
     expect(createMagePlayer).toHaveBeenCalledTimes(1)
   })
 

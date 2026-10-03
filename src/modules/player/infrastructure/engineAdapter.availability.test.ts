@@ -178,7 +178,8 @@ describe('engine availability boundary with the real polling store', () => {
   it('stops pending audio on invalidation and never resumes after audio finishes late', async () => {
     const player = await create({ sceneKey: 47 })
     player.loadSceneBlob(source)
-    const loading = player.loadAudio('/music.mp3').then(() => 'loaded', () => 'cancelled')
+    const loading = player.loadAudio({ sourcePath: '/music.mp3' }).then(() => 'loaded', () => 'cancelled')
+    expect(engine.loadAudio).toHaveBeenCalledWith('/music.mp3')
     const playCalls = engine.play.mock.calls.length
     store.invalidate(47)
     expect(engine.dispose).toHaveBeenCalledTimes(1)
