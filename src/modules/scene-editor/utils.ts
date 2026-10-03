@@ -179,12 +179,12 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
   })
 }
 
-/** The current editor works on custom engine fields; templates need the PP-B03 editor. */
+/** Preserve template transport; unwrap custom data without normalizing owner repair values. */
 export function readEditableSceneData(sceneData: SceneData): SceneData {
   const document = parseSceneDocument(hasSceneDocumentMarkers(sceneData)
     ? sceneData : { schemaVersion: 1, kind: 'custom', scene: sceneData })
   if (document.kind === 'template') {
-    throw new SceneContractError('Template scenes are read-only here until template editing is available.')
+    return document
   }
   if (hasSceneDocumentMarkers(document.scene)) {
     throw new SceneContractError('Custom scene data must contain scene settings, not another scene document.')
@@ -197,9 +197,10 @@ export function buildSceneSubmissionDocument(sceneData: SceneData): SceneDocumen
   return validateSceneForPlayback(sceneData)
 }
 
-export function buildEffectiveSceneData(sceneData: SceneData) {
+export function buildEffectiveSceneData(sceneData: SceneData): SceneData {
   // Validate the original first: defaults must not hide malformed imported data.
   const document = validateSceneForPlayback(sceneData)
+  if (document.kind === 'template') return document
   return sanitizeSceneData(readEditableSceneData(document))
 }
 
