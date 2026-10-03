@@ -390,7 +390,7 @@ describe('engine availability boundary with the real polling store', () => {
     expect(engine.initMAGE).toHaveBeenCalledOnce()
   })
 
-  it('holds pending audio decoding while hidden and completes it only after the visible-page recheck', async () => {
+  it.each(['timers running', 'timers suspended'] as const)('holds pending hidden audio with %s until the visible-page recheck', async timerState => {
     const player = await create({ sceneKey: 47, initialSceneBlob: template })
     player.loadSceneBlob(template)
     const completed = vi.fn()
@@ -400,7 +400,8 @@ describe('engine availability boundary with the real polling store', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     expect(store.getSnapshot('template:47').code).toBe('CHECKING')
     engine.isAudioLoaded.mockReturnValue(true)
-    await vi.advanceTimersByTimeAsync(6000)
+    if (timerState === 'timers suspended') vi.setSystemTime(Date.now() + 60000)
+    else await vi.advanceTimersByTimeAsync(6000)
     expect(completed).not.toHaveBeenCalled()
     expect(engine.play).toHaveBeenCalledTimes(playing)
     expect(engine.dispose).not.toHaveBeenCalled()
