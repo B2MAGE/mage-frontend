@@ -21,7 +21,7 @@ const crossLayerRelativeImportRegex = `^(?:\\.\\.\\/)+(?:${sourceBoundaryRoots.j
 const deepModuleImportRegex = '^@modules\\/[^/]+\\/.+$'
 
 export default defineConfig([
-  globalIgnores(['dist', '.local/**']),
+  globalIgnores(['dist', 'dist-isolated-renderer', '.local/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -54,4 +54,7 @@ export default defineConfig([
       ],
     },
   },
+  // This separately bundled child cannot use the app's module barrel: that would
+  // pull authentication and parent-player code across the renderer boundary.
+  { files: ['src/isolated-renderer/**/*.ts'], rules: { 'no-restricted-imports': 'off' } },
 ])
