@@ -1,4 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react'
+import { useSceneEditorFieldErrors } from './sceneEditorFieldErrors'
 
 export function FieldGroupLabel({
   description,
@@ -42,19 +43,25 @@ export function CollapsibleEditorGroup({
   onToggle: () => void
   showLabel?: string
 }>) {
+  const errors = useSceneEditorFieldErrors()
+  const errorControlIds: Record<string, string[]> = {
+    'camera-advanced-options': ['camera-orientation-mode', 'camera-orientation-speed'],
+    'animation-advanced-options': ['state-time'],
+  }
+  const showContent = isOpen || errorControlIds[id]?.some(controlId => Boolean(errors[controlId]))
   return (
     <section className="scene-editor-collapsible">
       <button
         aria-controls={id}
-        aria-expanded={isOpen}
+        aria-expanded={Boolean(showContent)}
         className="scene-editor-collapsible__toggle"
         onClick={onToggle}
         type="button"
       >
-        {isOpen ? hideLabel ?? 'Hide Advanced' : showLabel ?? 'Show Advanced'}
+        {showContent ? hideLabel ?? 'Hide Advanced' : showLabel ?? 'Show Advanced'}
       </button>
 
-      {isOpen ? (
+      {showContent ? (
         <div className="scene-editor-collapsible__content" id={id}>
           {children}
         </div>

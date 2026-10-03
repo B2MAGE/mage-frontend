@@ -3,7 +3,7 @@ import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
 import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
-import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseTarget } from "@shared/lib";
+import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
   NumberField,
@@ -14,7 +14,6 @@ import {
 } from "./ui/SceneEditorControls";
 import {
   PASS_LABELS,
-  getSceneEditorModel,
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
@@ -32,7 +31,9 @@ import {
   FieldGroupLabel,
 } from "./ui/SceneEditorLayout";
 import { SceneEditorStepper } from "./ui/SceneEditorStepper";
-import { TemplateSceneControls, TemplateSceneSummary } from "./ui/TemplateSceneControls";
+import { TemplateSceneControls } from "./ui/TemplateSceneControls";
+import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEditorFieldValidation";
+import { templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
@@ -47,6 +48,7 @@ import {
 } from "./utils";
 
 function formatFixed(value: number, fractionDigits = 2) {
+  if (fractionDigits === 0) return value.toFixed(0);
   return value.toFixed(fractionDigits).replace(/0+$/, "").replace(/\.$/, "");
 }
 
@@ -143,6 +145,8 @@ export function SceneEditorShell({
     isTemplate,
     templateDocument,
     templateFieldErrors,
+    editorAudioResponseMode,
+    editorAudioResponseConfig,
     handleTemplateSelection,
     updateTemplateValue,
     editorSections,
@@ -168,16 +172,11 @@ export function SceneEditorShell({
   }
   useEffect(() => {
     if (!isTemplate || !errors.fields) return;
-    const path = Object.keys(errors.fields).map(key => key.replace(/^sceneData\./, '').replace(/^scene\./, '')).find(key =>
-      key === 'templateId' || key.startsWith('parameters.') || key.startsWith('settings.'));
-    if (!path) return;
-    const section = path.startsWith('settings.camera.') ? 'camera' : path === 'parameters.speed' ? 'motion'
-      : path.startsWith('settings.bloom.') || path.startsWith('settings.tint.') ? 'effects' : 'scene';
-    handleSectionJump(section);
+    const location = Object.keys(errors.fields).map(templateControlLocation).find(value => value !== null);
+    if (!location) return;
+    handleSectionJump(location.section);
     const frame = requestAnimationFrame(() => {
-      const inputId = `template-${path.replaceAll('.', '-')}`;
-      const input = document.getElementById(`${inputId}-number`) ?? document.getElementById(inputId)
-        ?? Array.from(document.querySelectorAll<HTMLElement>('[data-template-field]')).find(field => field.dataset.templateField === path)?.querySelector<HTMLElement>('input, select');
+      const input = document.getElementById(`${location.id}-number`) ?? document.getElementById(location.id);
       input?.focus();
     });
     return () => cancelAnimationFrame(frame);
@@ -202,13 +201,15 @@ export function SceneEditorShell({
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
-  const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
-  const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
-  const audioResponseConfig = normalizeAudioResponseConfig(sceneData.audioResponseConfig).config;
+  const usesMappedAudio = editorAudioResponseMode === "mapped-v1";
+  const usesModernAudio = editorAudioResponseMode === "transient-v1" || usesMappedAudio;
+  const audioResponseConfig = editorAudioResponseConfig;
   // Keep controls steady through response edits, but never display the prior
   // shader's movement list while a different shader is compiling.
   const supportedAudioTargets = !isTemplate ? audioResponseConfig.mappings.map(mapping => mapping.target) : audioResponseCapabilities
-    && getSceneEditorModel(audioResponseCapabilities.sceneBlob).visualizer.shader === sceneModel.visualizer.shader
+    && audioResponseCapabilities.sceneBlob.kind === 'template'
+    && audioResponseCapabilities.sceneBlob.templateId === templateDocument?.templateId
+    && audioResponseCapabilities.sceneBlob.templateVersion === templateDocument?.templateVersion
     ? audioResponseCapabilities.capabilities.supportedTargets : null;
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
@@ -578,6 +579,7 @@ export function SceneEditorShell({
             </div>
           </aside>
 
+          <SceneEditorFieldErrorsProvider fields={isTemplate ? { ...templateFieldErrors, ...errors.fields } : {}}>
           <div className="scene-editor-main" ref={editorScrollRef}>
             {errors.form ? (
               <div className="form-alert" id={formErrorId} role="alert">
@@ -704,7 +706,7 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
 
-            {sectionMenuValue === "camera" && !isTemplate ? (
+            {sectionMenuValue === "camera" ? (
               <SceneSection
                 description="Set the starting view, framing, and lens settings for the scene."
                 title="Camera"
@@ -819,7 +821,7 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
 
-            {sectionMenuValue === "motion" && !isTemplate ? (
+            {sectionMenuValue === "motion" ? (
               <SceneSection description="Set the animation, then choose how it responds to music." title="Motion">
                 <div className="scene-editor-stack">
                   <section className="scene-effects-category" aria-labelledby="animation-title">
@@ -846,7 +848,8 @@ export function SceneEditorShell({
                     </CollapsibleEditorGroup>
                   </section>
                   <MusicResponseControls
-                    mode={normalizeAudioResponseMode(sceneData.audioResponse)}
+                    mode={editorAudioResponseMode}
+                    idPrefix="music-response"
                     config={audioResponseConfig}
                     supportedTargets={supportedAudioTargets}
                     onModeChange={nextMode => handleAudioResponseModeChange(nextMode, supportedAudioTargets ?? undefined)}
@@ -871,7 +874,7 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
 
-            {sectionMenuValue === "effects" && !isTemplate ? (
+            {sectionMenuValue === "effects" ? (
               <SceneSection
                 description="Add glow, color treatment, distortion, and other finishing effects."
                 title="Effects"
@@ -1146,7 +1149,7 @@ export function SceneEditorShell({
                         }
                         title="Colorify"
                       >
-                        <div className="scene-field">
+                        <FieldValidation id="colorify-color"><div className="scene-field">
                           <div className="scene-field__label-row">
                             <label
                               className="scene-field__label"
@@ -1162,6 +1165,8 @@ export function SceneEditorShell({
                             <input
                               className="scene-color-field__picker"
                               id="colorify-color"
+                              aria-invalid={Boolean(templateFieldErrors['settings.tint.color'] || errors.fields?.['settings.tint.color'])}
+                              aria-describedby={templateFieldErrors['settings.tint.color'] || errors.fields?.['settings.tint.color'] ? 'colorify-color-error' : undefined}
                               onChange={(event) =>
                                 updateBranch("fx", (currentFx) => ({
                                   ...currentFx,
@@ -1181,7 +1186,7 @@ export function SceneEditorShell({
                               {sceneModel.fx.params.colorify.color.toUpperCase()}
                             </span>
                           </div>
-                        </div>
+                        </div></FieldValidation>
                       </EffectCard>
 
                       {additionalPassesByCategory.color.map(
@@ -1267,12 +1272,12 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
 
-            {sectionMenuValue === "pass-order" && !isTemplate ? (
+            {sectionMenuValue === "pass-order" ? (
               <SceneSection
                 description="Move passes up or down to change how the final image is layered. Output always stays last."
                 title="Pass Order"
               >
-                <ol className="scene-pass-order">
+                <FieldValidation id="scene-pass-order"><ol className="scene-pass-order" id="scene-pass-order" tabIndex={-1}>
                   {visiblePassOrder.map((passId, index) => {
                     const isOutputPass = passId === "outputPass";
 
@@ -1318,7 +1323,7 @@ export function SceneEditorShell({
                       </li>
                     );
                   })}
-                </ol>
+                </ol></FieldValidation>
               </SceneSection>
             ) : null}
 
@@ -1367,10 +1372,10 @@ export function SceneEditorShell({
                       />
                     </ConfirmSummarySection>
 
-                    {isTemplate && templateDocument ? <TemplateSceneSummary document={templateDocument} /> : <><ConfirmSummarySection title="Visual Setup">
+                    <ConfirmSummarySection title="Visual Setup">
                       <ConfirmSummaryItem
-                        label="Shader"
-                        value={selectedShaderScene?.label ?? "Custom Shader"}
+                        label={isTemplate ? "Template" : "Shader"}
+                        value={isTemplate ? listSceneTemplates().find(template => template.templateId === templateDocument?.templateId)?.label ?? "Template" : selectedShaderScene?.label ?? "Custom Shader"}
                       />
                       <ConfirmSummaryItem
                         label="Skybox"
@@ -1469,7 +1474,7 @@ export function SceneEditorShell({
                           />
                         }
                       />
-                    </ConfirmSummarySection></>}
+                    </ConfirmSummarySection>
                   </div>
 
                   <CollapsibleEditorGroup
@@ -1497,6 +1502,8 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
           </div>
+
+          </SceneEditorFieldErrorsProvider>
 
           <aside className={`scene-editor-preview${isPreviewCollapsed ? " is-collapsed" : ""}`}>
             <section className="surface surface--soft scene-editor-preview__card">

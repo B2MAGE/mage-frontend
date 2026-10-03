@@ -106,7 +106,9 @@ export function changeTemplateValue(document: TemplateSceneDocument, path: Templ
 
 /** A display model only; never resolve or serialize a template's platform source. */
 export function getTemplateEditorModel(document: TemplateSceneDocument) {
-  const model = getSceneEditorModel({})
+  // The engine appends omitted passes and pins Output last. Reflect that in
+  // the editor without expanding the authored array until the user reorders it.
+  const model = getSceneEditorModel({ fx: { passOrder: document.settings.effects?.passOrder } })
   const { settings } = document
   const effects = settings.effects
   return {
@@ -121,7 +123,7 @@ export function getTemplateEditorModel(document: TemplateSceneDocument) {
       camOrientationSpeed: settings.camera.orientationSpeed ?? model.intent.camOrientationSpeed },
     state: { ...model.state, ...settings.state },
     fx: { ...model.fx, bloom: { ...document.settings.bloom },
-      passOrder: effects?.passOrder ? [...effects.passOrder] as SceneEditorModel['fx']['passOrder'] : model.fx.passOrder,
+      passOrder: model.fx.passOrder,
       toneMapping: { ...model.fx.toneMapping, ...effects?.toneMapping },
       passes: { ...model.fx.passes, ...effects?.passes, colorify: document.settings.tint.enabled },
       params: { afterImage: { ...model.fx.params.afterImage, ...effects?.params?.afterImage },

@@ -575,3 +575,7 @@ html[data-theme] .scene-editor-loading .scene-editor-main {
 html[data-theme] .scene-editor-page .scene-editor-layout,
 html[data-theme] .scene-editor-page .scene-editor-preview,
 html[data-theme] .scene-editor-page .scene-editor-preview__card { overflow: clip; }
+
+/* Validation follows the existing field layout without adding a visual container. */
+.scene-editor-page .scene-field-validation { min-width: 0; }
+.scene-editor-page .scene-editor-section[data-section="Scene"] .scene-field-validation:has(> .scene-field--slider) { grid-column: 1 / -1; }

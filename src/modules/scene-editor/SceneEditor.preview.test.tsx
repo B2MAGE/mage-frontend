@@ -150,8 +150,8 @@ describe('scene editor presets and beat preview', () => {
     expect(previewScene()).not.toHaveProperty('mageTemplate')
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expectRetiredControlsAbsent()
-    expect(screen.getByRole('slider', { name: 'Animation speed' })).toBeEnabled()
-    expect(screen.queryByRole('combobox', { name: 'Response mode' })).not.toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Animation speed' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'Response mode' })).toBeEnabled()
   })
 
   it.each(['mage-pulse', 'classic-facebook'] as const)('retains temporary custom beat settings across editor sections without playing source in %s', async (theme) => {
@@ -253,9 +253,9 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption('Ripple Rings').id)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed numeric value' }), { target: { value: '0.75' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed' }), { target: { value: '0.75' } })
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
-    expect(screen.getByText('6 \u00b7 Confirm')).toBeInTheDocument()
+    expect(screen.getByText('7 \u00b7 Confirm')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     await waitFor(() => expect(created).toBeDefined())
     const expected = createTemplateScene(shaderOption('Ripple Rings').id)

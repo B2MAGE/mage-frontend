@@ -88,7 +88,7 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByRole('navigation', { name: /section navigation/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^details$/i })).toHaveAttribute('aria-current', 'step')
     expect(screen.getByRole('button', { name: /^scene$/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^pass order$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^pass order$/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^advanced$/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^confirm$/i })).toBeInTheDocument()
     expect(screen.queryByLabelText(/jump to section/i)).not.toBeInTheDocument()
@@ -382,7 +382,7 @@ describe('CreateScenePage workflow', () => {
 })
 
 describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (themeId) => {
-  it('keeps draft values across all six basic steps and offers publishing only on Confirm', async () => {
+  it('keeps draft values across all seven basic steps and offers publishing only on Confirm', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const user = userEvent.setup()
@@ -407,8 +407,8 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
     expect(screen.queryByText('No thumbnail captured')).not.toBeInTheDocument()
 
     const navigation = within(screen.getByRole('navigation', { name: 'Section navigation' }))
-    expect(navigation.getAllByRole('button')).toHaveLength(6)
-    for (const section of ['Scene', 'Camera', 'Motion', 'Effects', 'Confirm']) {
+    expect(navigation.getAllByRole('button')).toHaveLength(7)
+    for (const section of ['Scene', 'Camera', 'Motion', 'Effects', 'Pass Order', 'Confirm']) {
       await user.click(navigation.getByRole('button', { name: section }))
       expect(navigation.getByRole('button', { name: section })).toHaveAttribute('aria-current', 'step')
     }

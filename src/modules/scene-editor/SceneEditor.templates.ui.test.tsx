@@ -10,7 +10,15 @@ import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePa
 const renderedPlayer = vi.fn()
 vi.mock('@modules/player', async original => {
   const actual = await original<typeof import('@modules/player')>()
-  return { ...actual, MagePlayer: (props: { sceneBlob: unknown; renderProfile?: string }) => {
+  const React = await import('react')
+  return { ...actual, MagePlayer: (props: import('@modules/player').MagePlayerProps) => {
+    const { sceneBlob, onAudioResponseCapabilitiesChange } = props
+    React.useEffect(() => {
+      onAudioResponseCapabilitiesChange?.(sceneBlob ? {
+        sceneBlob,
+        capabilities: { mode: 'mapped-v1', signals: ['bass-hit'], targets: ['size'], supportedTargets: ['size'], unsupportedTargets: [], warnings: [] },
+      } : null)
+    }, [sceneBlob, onAudioResponseCapabilitiesChange])
     renderedPlayer(props)
     return <div data-testid="template-preview" data-scene={JSON.stringify(props.sceneBlob)} />
   } }
@@ -46,7 +54,7 @@ describe('Basic template editor controls', () => {
     renderCreateScenePage(theme)
     await screen.findByLabelText(/scene name/i)
     expect(screen.queryByRole('group', { name: 'Creation mode' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Pass Order' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     const mode = within(screen.getByRole('group', { name: 'Creation mode' }))
     expect(mode.getByRole('button', { name: 'Basic' })).toHaveAttribute('aria-pressed', 'true')
@@ -61,10 +69,10 @@ describe('Basic template editor controls', () => {
     expect(JSON.stringify(previewDocument())).not.toContain('shader')
     expect(renderedPlayer.mock.lastCall?.[0].renderProfile).toBe('preview')
     expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveAttribute('min', '1')
-    expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveAttribute('max', '30')
+    expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveAttribute('max', '200')
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expect(screen.queryByRole('group', { name: 'Creation mode' })).not.toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'Animation speed numeric value' })).toHaveAttribute('max', '3')
+    expect(screen.getByRole('spinbutton', { name: 'Animation speed' })).toHaveAttribute('max', '10')
   })
 
   it('reveals bounded orbit and effect settings using the existing toggles', async () => {
@@ -78,22 +86,22 @@ describe('Basic template editor controls', () => {
     expect(screen.queryByRole('spinbutton', { name: 'Orbit speed numeric value' })).not.toBeInTheDocument()
     orbit.focus()
     await user.keyboard(' ')
-    expect(screen.getByRole('spinbutton', { name: 'Orbit speed numeric value' })).toHaveAttribute('max', '2')
-    expect(screen.getByRole('spinbutton', { name: 'FOV numeric value' })).toHaveAttribute('min', '20')
-    expect(screen.getByRole('spinbutton', { name: 'FOV numeric value' })).toHaveAttribute('max', '100')
+    expect(screen.getByRole('spinbutton', { name: 'Orbit speed numeric value' })).toHaveAttribute('max', '50')
+    expect(screen.getByRole('spinbutton', { name: 'FOV numeric value' })).toHaveAttribute('min', '1')
+    expect(screen.getByRole('spinbutton', { name: 'FOV numeric value' })).toHaveAttribute('max', '179')
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     const bloom = screen.getByRole('checkbox', { name: 'Bloom' })
     if ((bloom as HTMLInputElement).checked) await user.click(bloom)
     expect(screen.queryByRole('spinbutton', { name: 'Strength numeric value' })).not.toBeInTheDocument()
     await user.click(bloom)
-    expect(screen.getByRole('spinbutton', { name: 'Strength numeric value' })).toHaveAttribute('max', '3')
-    expect(screen.getByRole('spinbutton', { name: 'Radius numeric value' })).toHaveAttribute('max', '1')
-    expect(screen.getByRole('spinbutton', { name: 'Threshold numeric value' })).toHaveAttribute('max', '1')
-    const tint = screen.getByRole('checkbox', { name: 'Tint' })
+    expect(screen.getByRole('spinbutton', { name: 'Strength numeric value' })).toHaveAttribute('max', '10')
+    expect(screen.getByRole('spinbutton', { name: 'Radius numeric value' })).toHaveAttribute('max', '10')
+    expect(screen.getByRole('spinbutton', { name: 'Threshold numeric value' })).toHaveAttribute('max', '10')
+    const tint = screen.getByRole('checkbox', { name: 'Colorify' })
     if ((tint as HTMLInputElement).checked) await user.click(tint)
-    expect(screen.queryByLabelText('Tint color')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Color')).not.toBeInTheDocument()
     await user.click(tint)
-    fireEvent.change(screen.getByLabelText('Tint color'), { target: { value: '#112233' } })
+    fireEvent.change(screen.getByLabelText('Color'), { target: { value: '#112233' } })
     expect(previewDocument().settings.tint).toEqual({ enabled: true, color: '#112233' })
   })
 
@@ -116,10 +124,83 @@ describe('Basic template editor controls', () => {
     expect(previewDocument().settings.camera.fov).toBe(90)
   })
 
+  it('keeps the full camera, music, effects and pass order controls in Basic without adding shader source', async () => {
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Camera' }))
+    fireEvent.change(screen.getByLabelText('Camera Position X'), { target: { value: '12' } })
+    fireEvent.change(screen.getByLabelText('FOV numeric value'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText('Camera Target Y'), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText('Zoom', { exact: true }), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Camera Orientation numeric value'), { target: { value: '90' } })
+    await user.click(screen.getByRole('button', { name: 'Show advanced camera controls' }))
+    fireEvent.change(screen.getByLabelText('Camera Orientation Mode'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Camera Orientation Speed'), { target: { value: '0.8' } })
+    expect(previewDocument().settings).toMatchObject({
+      controls: { position0: { x: 12 }, target0: { y: 4 }, zoom0: 2 },
+      camera: { fov: 100, tilt: Math.PI / 2, orientationMode: 2, orientationSpeed: 0.8 },
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Motion' }))
+    fireEvent.change(screen.getByLabelText('Animation speed', { exact: true }), { target: { value: '1.5' } })
+    await user.click(screen.getByRole('button', { name: 'Show advanced animation controls' }))
+    fireEvent.change(screen.getByLabelText('Starting animation time'), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText('Input gain numeric value'), { target: { value: '0.7' } })
+    await user.click(screen.getByRole('button', { name: 'Show advanced music controls' }))
+    fireEvent.change(screen.getByLabelText('Response offset'), { target: { value: '0.4' } })
+    await user.selectOptions(screen.getByLabelText('Response mode'), 'mapped-v1')
+    await user.selectOptions(screen.getByLabelText('Frequency focus'), 'bass')
+    fireEvent.change(screen.getByLabelText('Amount numeric value'), { target: { value: '0.17' } })
+    fireEvent.change(screen.getByLabelText('Hit sensitivity numeric value'), { target: { value: '1.2' } })
+    await user.selectOptions(screen.getByLabelText('Response style'), 'flowing')
+    expect(previewDocument()).toMatchObject({ parameters: { speed: 1.5 }, settings: {
+      motion: { minimizing_factor: 0.7 }, state: { time: 8, volume_multiplier: 0.4 }, audioResponse: 'mapped-v1',
+      audioResponseConfig: { sensitivity: 1.2, mappings: [{ target: 'size', source: 'bass-hit', amount: 0.17, attack: 0.2, release: 1 }] },
+    } })
+    const beforeSimulation = previewDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Simulate beat' }))
+    expect(previewDocument()).toEqual(beforeSimulation)
+
+    await user.click(screen.getByRole('button', { name: 'Effects' }))
+    for (const title of ['Bloom', 'RGB Shift', 'Afterimage', 'Colorify', 'Kaleidoscope', 'Glitch', 'Dot Screen', 'Technicolor', 'Luminosity', 'Bleach Bypass', 'Toon', 'Sobel', 'Halftone', 'Gamma Correction']) {
+      expect(screen.getByRole('checkbox', { name: title })).toBeInTheDocument()
+    }
+    if (!(screen.getByRole('checkbox', { name: 'Bloom' }) as HTMLInputElement).checked) await user.click(screen.getByRole('checkbox', { name: 'Bloom' }))
+    fireEvent.change(screen.getByLabelText('Radius numeric value'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Exposure numeric value'), { target: { value: '1.7' } })
+    await user.click(screen.getByRole('checkbox', { name: 'RGB Shift' }))
+    fireEvent.change(screen.getByLabelText('Shift Amount numeric value'), { target: { value: '0.02' } })
+    await user.click(screen.getByRole('checkbox', { name: 'Afterimage' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Colorify' }))
+    expect(screen.getByRole('checkbox', { name: 'Glitch' })).toBeDisabled()
+    expect(previewDocument().settings).toMatchObject({ bloom: { radius: 2 }, tint: { enabled: true }, effects: {
+      toneMapping: { exposure: 1.7 }, passes: { rgbShift: true, afterImage: true }, params: { rgbShift: { amount: 0.02 } },
+    } })
+
+    await user.click(screen.getByRole('button', { name: 'Pass Order' }))
+    await user.click(screen.getByRole('button', { name: 'Move RGB Shift up' }))
+    expect(previewDocument().settings.effects.passOrder).toContain('RGBShift')
+    expect(screen.getByRole('button', { name: 'Move Output up' })).toBeDisabled()
+    const draft = previewDocument()
+    expect(draft.kind).toBe('template')
+    expect(JSON.stringify(draft)).not.toContain('"shader"')
+    const raw = await openRawJson(user)
+    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(draft)
+    expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
+    expect(draft.parameters.scale).toBe(10)
+    expect(screen.getByText('Scale', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^10$/)
+    expect(screen.getByText('FOV', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^100$/)
+  })
+
   it.each([
     ['settings.camera.autoRotate', 'checkbox', 'Automatic orbit'],
     ['settings.bloom.enabled', 'checkbox', 'Bloom'],
     ['settings.camera.orbitSpeed', 'spinbutton', 'Orbit speed numeric value'],
+    ['settings.camera.orientationSpeed', 'spinbutton', 'Camera Orientation Speed'],
+    ['settings.controls.position0.x', 'spinbutton', 'Camera Position X'],
+    ['settings.effects.params.rgbShift.amount', 'spinbutton', 'Shift Amount numeric value'],
   ])('shows and focuses a server error for %s, including settings hidden by a toggle', async (path, role, label) => {
     const saved = createTemplateScene()
     saved.settings.camera.autoRotate = false
@@ -168,7 +249,7 @@ describe('custom repair and explicit template replacement', () => {
     await user.click(screen.getByRole('button', { name: 'Basic' }))
     await user.click(screen.getByRole('button', { name: 'Replace custom scene' }))
     expect(screen.getByRole('combobox', { name: 'Template' })).toHaveValue('reaction-rings-v1')
-    expect(screen.queryByRole('button', { name: 'Pass Order' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
     expect(previewDocument()).toEqual(createTemplateScene('reaction-rings-v1'))
     await user.click(screen.getByRole('button', { name: 'Details' }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Aurora Drift')

@@ -126,6 +126,30 @@ describe('template editor documents', () => {
     expect(fx.settings.effects).toEqual({ passes: { toon: true } })
   })
 
+  it('shows omitted passes from imported partial order without rewriting it on unrelated edits', () => {
+    const imported = { ...createTemplateScene(), settings: { ...createTemplateScene().settings,
+      effects: { passOrder: ['RGBShift', 'outputPass'] } } }
+    const scene = readEditableSceneData(imported)
+    expect(isTemplateEditorDocument(scene)).toBe(true)
+    if (!isTemplateEditorDocument(scene)) throw new Error('Expected a template')
+    const model = getTemplateEditorModel(scene)
+    expect(model.fx.passOrder).toHaveLength(16)
+    expect(model.fx.passOrder[0]).toBe('RGBShift')
+    expect(model.fx.passOrder.at(-1)).toBe('outputPass')
+    const changedEffect = changeTemplateBranch(scene, 'fx', {
+      ...model.fx, passes: { ...model.fx.passes, toon: true },
+    })
+    expect(changedEffect.settings.effects?.passOrder).toEqual(['RGBShift', 'outputPass'])
+    expect(buildSceneSubmissionDocument(changedEffect)).toEqual(changedEffect)
+    const reordered = changeTemplateBranch(changedEffect, 'fx', {
+      ...getTemplateEditorModel(changedEffect).fx,
+      passOrder: [model.fx.passOrder[1], model.fx.passOrder[0], ...model.fx.passOrder.slice(2)],
+    })
+    expect(reordered.settings.effects?.passOrder).toHaveLength(16)
+    expect(reordered.settings.effects?.passOrder?.slice(0, 2)).toEqual(['glitchPass', 'RGBShift'])
+    expect(scene.settings.effects?.passOrder).toEqual(['RGBShift', 'outputPass'])
+  })
+
   it('retains an invalid extended value while unrelated controls change, then allows direct repair', () => {
     let scene = createTemplateScene()
     const model = getTemplateEditorModel(scene)
