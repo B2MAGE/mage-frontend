@@ -40,5 +40,5 @@ export type {
 export { SceneAvailabilityAdminControls } from './availability/admin/SceneAvailabilityAdminControls'
 export { BRAND_SCENE } from './templates/platformBrandScene'
 export { useSceneAvailability } from './availability/useSceneAvailability'
-export { availabilityTarget } from './availability/availabilityTarget'
+export { availabilityTarget, availabilityStatusTarget } from './availability/availabilityTarget'
 export { sceneAvailabilityStore } from './availability/sceneAvailability'
