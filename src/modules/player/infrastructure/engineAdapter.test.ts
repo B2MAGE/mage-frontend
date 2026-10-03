@@ -28,6 +28,21 @@ const engineMocks = vi.hoisted(() => ({
   unloadAudio: vi.fn(),
 }))
 
+const recoveryMocks = vi.hoisted(() => ({
+  begin: vi.fn(),
+  key: vi.fn(),
+  dispose: vi.fn(),
+  fail: vi.fn(),
+  getBlock: vi.fn(),
+  isSafeMode: vi.fn(),
+  block: vi.fn(),
+}))
+
+vi.mock('../recovery/sceneRecovery', () => ({
+  sceneRecoveryKey: recoveryMocks.key,
+  sceneRecovery: { begin: recoveryMocks.begin, getBlock: recoveryMocks.getBlock, isSafeMode: recoveryMocks.isSafeMode, block: recoveryMocks.block },
+}))
+
 vi.mock('@notrac/mage', () => ({
   initMAGE: engineMocks.initMAGE,
 }))
@@ -40,6 +55,10 @@ describe('createMagePlayer', () => {
 
     vi.resetModules()
     vi.clearAllMocks()
+    recoveryMocks.begin.mockImplementation(() => ({ dispose: recoveryMocks.dispose, fail: recoveryMocks.fail }))
+    recoveryMocks.key.mockReturnValue('scene-content-key')
+    recoveryMocks.getBlock.mockReturnValue(null)
+    recoveryMocks.isSafeMode.mockReturnValue(false)
     document.body.innerHTML = ''
 
     engineMocks.initMAGE.mockReturnValue({
@@ -144,6 +163,231 @@ describe('createMagePlayer', () => {
     ])
     expect(engineMocks.setAudioResponseMode.mock.invocationCallOrder[0])
       .toBeGreaterThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
+  })
+
+  it('writes an active marker before scene compilation and clears it only after disposal', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const scene = { visualizer: { shader: 'test' } }
+    player.loadSceneBlob(scene, { sceneKey: 42 })
+    expect(recoveryMocks.key).toHaveBeenCalledWith(scene, 42)
+    expect(recoveryMocks.begin.mock.invocationCallOrder[0]).toBeLessThan(engineMocks.loadPreset.mock.invocationCallOrder[0])
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+    player.dispose()
+    player.dispose()
+    expect(engineMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(recoveryMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(recoveryMocks.dispose.mock.invocationCallOrder[0]).toBeGreaterThan(engineMocks.dispose.mock.invocationCallOrder[0])
+  })
+
+  it('blocks quarantined/safe-mode attempts before compilation, even through direct adapter calls', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    recoveryMocks.begin.mockReturnValue(null)
+    expect(() => player.loadSceneBlob({ visualizer: { shader: 'test' } })).toThrow(/Automatic rendering is paused/)
+    expect(engineMocks.loadPreset).not.toHaveBeenCalled()
+    expect(engineMocks.unloadAudio).not.toHaveBeenCalled()
+    player.dispose()
+  })
+
+  it('never obtains a retry lease for a document that fails ordinary validation', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    expect(() => player.loadSceneBlob({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1, visualizer: { shader: 'bad override' } })).toThrow()
+    expect(recoveryMocks.begin).not.toHaveBeenCalled()
+    expect(recoveryMocks.block).toHaveBeenCalledExactlyOnceWith('scene-content-key', 'load')
+    expect(engineMocks.loadPreset).not.toHaveBeenCalled()
+    player.dispose()
+  })
+
+  it('quarantines compile failures and keeps failed controllers from loading again', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    engineMocks.loadPreset.mockImplementationOnce(() => { throw new Error('compile failed') })
+    expect(() => player.loadSceneBlob({ visualizer: { shader: 'bad' } })).toThrow(/compile failed/)
+    expect(recoveryMocks.fail).toHaveBeenCalledExactlyOnceWith('load')
+    expect(engineMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(() => player.loadSceneBlob({ visualizer: { shader: 'test' } })).toThrow(/stopped/)
+    expect(engineMocks.loadPreset).toHaveBeenCalledTimes(1)
+    player.dispose()
+  })
+
+  it('stops and remembers WebGL context loss, but ignores context loss during clean disposal', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const canvas = document.createElement('canvas')
+    const player = await createMagePlayer(canvas)
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    canvas.dispatchEvent(new Event('webglcontextlost'))
+    expect(recoveryMocks.fail).toHaveBeenCalledExactlyOnceWith('context-lost')
+    player.dispose()
+    recoveryMocks.fail.mockClear()
+    const other = await createMagePlayer(canvas)
+    other.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.dispose.mockImplementationOnce(() => canvas.dispatchEvent(new Event('webglcontextlost')))
+    other.dispose()
+    expect(recoveryMocks.fail).not.toHaveBeenCalled()
+  })
+
+  it('records deliberate Stop while ordinary pause preserves a resumable active session', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    player.setPlaybackState('paused')
+    expect(recoveryMocks.fail).not.toHaveBeenCalled()
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+    player.stopRendering?.()
+    expect(recoveryMocks.fail).toHaveBeenCalledExactlyOnceWith('stopped')
+    expect(engineMocks.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the unfinished marker if engine disposal throws', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.dispose.mockImplementationOnce(() => { throw new Error('cleanup failed') })
+    expect(() => player.dispose()).toThrow('cleanup failed')
+    player.dispose()
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+  })
+
+  it('cannot recompile through Reset after another surface blocks the scene or enables safe mode', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.loadPreset.mockClear()
+    recoveryMocks.getBlock.mockReturnValue({ reason: 'runtime', at: Date.now() })
+    expect(() => player.resetPlayback()).toThrow(/paused for this scene/)
+    recoveryMocks.getBlock.mockReturnValue(null)
+    recoveryMocks.isSafeMode.mockReturnValue(true)
+    expect(() => player.resetPlayback()).toThrow(/paused for this scene/)
+    expect(engineMocks.loadPreset).not.toHaveBeenCalled()
+    player.dispose()
+  })
+
+  it('cannot resume a direct controller after quarantine or safe mode, while still allowing pause', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    player.setPlaybackState('paused')
+    engineMocks.start.mockClear()
+    engineMocks.play.mockClear()
+    recoveryMocks.getBlock.mockReturnValue({ reason: 'runtime', at: Date.now() })
+    expect(() => player.setPlaybackState('playing')).toThrow(/paused for this scene/)
+    expect(player.getPlaybackState()).toBe('paused')
+    expect(player.setPlaybackState('paused')).toBe('paused')
+    recoveryMocks.getBlock.mockReturnValue(null)
+    recoveryMocks.isSafeMode.mockReturnValue(true)
+    expect(() => player.setPlaybackState('playing')).toThrow(/paused for this scene/)
+    expect(player.setPlaybackState('paused')).toBe('paused')
+    expect(engineMocks.start).not.toHaveBeenCalled()
+    expect(engineMocks.play).not.toHaveBeenCalled()
+    player.dispose()
+  })
+
+  it('does not capture a new rendered frame while the scene is blocked', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const capture = vi.fn(async () => 'data:image/png;base64,test')
+    engineMocks.initMAGE.mock.results[0].value.captureFramePreview = capture
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    recoveryMocks.getBlock.mockReturnValue({ reason: 'runtime', at: Date.now() })
+    await expect(player.captureFramePreview?.()).rejects.toThrow(/paused for this scene/)
+    expect(capture).not.toHaveBeenCalled()
+    player.dispose()
+  })
+
+  it('does not resume rendering when safe mode is enabled during an asynchronous audio load', async () => {
+    vi.useFakeTimers()
+    try {
+      const { createMagePlayer } = await import('./engineAdapter')
+      const player = await createMagePlayer(document.createElement('canvas'))
+      player.loadSceneBlob({ visualizer: { shader: 'test' } })
+      let loaded = false
+      engineMocks.isAudioLoaded.mockImplementation(() => loaded)
+      engineMocks.loadAudio.mockImplementationOnce(() => {})
+      const pending = player.loadAudio({ sourcePath: 'slow.mp3' })
+      const rejected = expect(pending).rejects.toThrow(/paused for this scene/)
+      recoveryMocks.isSafeMode.mockReturnValue(true)
+      engineMocks.play.mockClear()
+      engineMocks.seek.mockClear()
+      loaded = true
+      await vi.advanceTimersByTimeAsync(50)
+      await rejected
+      expect(engineMocks.play).not.toHaveBeenCalled()
+      expect(engineMocks.seek).not.toHaveBeenCalled()
+      expect(recoveryMocks.fail).not.toHaveBeenCalled()
+      player.dispose()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('transfers recovery identity after live response edits without restarting or recompiling', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    recoveryMocks.key.mockImplementation((scene: unknown, id?: string | number) => JSON.stringify([scene, id]))
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const scene = { visualizer: { shader: 'test' }, audioResponse: 'legacy' }
+    const updated = { ...scene, audioResponse: 'transient-v1' }
+    player.loadSceneBlob(scene, { sceneKey: 12 })
+    player.setAudioResponseSettings('transient-v1')
+    for (const method of [engineMocks.loadPreset, engineMocks.pause, engineMocks.play, engineMocks.unloadAudio, engineMocks.loadAudio]) method.mockClear()
+    player.updateRecoveryIdentity?.(updated, { sceneKey: 12 })
+    expect(recoveryMocks.begin).toHaveBeenLastCalledWith(JSON.stringify([updated, 12]))
+    expect(recoveryMocks.dispose).toHaveBeenCalledTimes(1)
+    for (const method of [engineMocks.loadPreset, engineMocks.pause, engineMocks.play, engineMocks.unloadAudio, engineMocks.loadAudio]) expect(method).not.toHaveBeenCalled()
+    expect(() => player.updateRecoveryIdentity?.({ ...updated, visualizer: { shader: 'changed' } }, { sceneKey: 12 })).toThrow(/complete scene load/)
+    player.dispose()
+  })
+
+  it('tracks the original editor document while validating and rendering only the actual preview payload', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    recoveryMocks.key.mockImplementation((scene: unknown, id?: string | number) => JSON.stringify([scene, id]))
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const original = { visualizer: { shader: 'original source never rendered' } }
+    const preview = { visualizer: { shader: 'test', scale: 10 }, audioResponse: 'legacy' }
+    player.loadSceneBlob(preview, { sceneKey: 12, recoverySceneBlob: original })
+    expect(recoveryMocks.key).toHaveBeenCalledWith(original, 12)
+    expect(recoveryMocks.begin).toHaveBeenCalledExactlyOnceWith(JSON.stringify([original, 12]))
+    expect(engineMocks.loadPreset).toHaveBeenCalledExactlyOnceWith(preview)
+    const edited = { ...original, audioResponse: 'transient-v1' }
+    player.setAudioResponseSettings('transient-v1')
+    player.updateRecoveryIdentity?.({ ...preview, audioResponse: 'transient-v1' }, { sceneKey: 12, recoverySceneBlob: edited })
+    expect(recoveryMocks.begin).toHaveBeenLastCalledWith(JSON.stringify([edited, 12]))
+    expect(engineMocks.loadPreset).toHaveBeenCalledTimes(1)
+    expect(() => player.loadSceneBlob({ schemaVersion: 1, kind: 'template', templateId: 'unknown', templateVersion: 1 }, { recoverySceneBlob: original })).toThrow()
+    expect(engineMocks.loadPreset).toHaveBeenCalledTimes(1)
+    player.dispose()
+  })
+
+  it('stops a live response update if its new revision was already blocked', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    recoveryMocks.key.mockImplementation((scene: unknown, id?: string | number) => JSON.stringify([scene, id]))
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const scene = { visualizer: { shader: 'test' } }
+    player.loadSceneBlob(scene)
+    player.setAudioResponseSettings('transient-v1')
+    recoveryMocks.begin.mockReturnValueOnce(null)
+    expect(() => player.updateRecoveryIdentity?.({ ...scene, audioResponse: 'transient-v1' })).toThrow(/paused for this scene/)
+    expect(engineMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(() => player.setPlaybackState('playing')).toThrow(/stopped/)
+    player.dispose()
+  })
+
+  it('records runtime failure only from the active renderer lifecycle, not audio loading errors', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    const bridge = engineMocks.initMAGE.mock.results[0].value
+    let notify: ((event: { type: 'frame' | 'error' }) => void) | null = null
+    const unsubscribe = vi.fn()
+    bridge.subscribeRenderLifecycle = (listener: typeof notify) => { notify = listener; return unsubscribe }
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.loadAudio.mockImplementationOnce(() => { throw new Error('network unavailable') })
+    await expect(player.loadAudio({ sourcePath: 'track.mp3' })).rejects.toThrow(/Audio could not be loaded/)
+    expect(recoveryMocks.fail).not.toHaveBeenCalled()
+    expect(notify).not.toBeNull()
+    ;(notify as unknown as (event: { type: 'error' }) => void)({ type: 'error' })
+    expect(recoveryMocks.fail).toHaveBeenCalledExactlyOnceWith('runtime')
+    expect(engineMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    player.dispose()
   })
 
   it('loads every registered template through the owned-source resolver', async () => {
