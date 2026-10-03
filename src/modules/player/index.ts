@@ -33,3 +33,8 @@ export type {
   MagePlayerPlaybackState,
   MageSceneBlob,
 } from './infrastructure/engineAdapter'
+
+export { SceneAvailabilityAdminControls } from './availability/admin/SceneAvailabilityAdminControls'
+export { BRAND_SCENE } from './templates/platformBrandScene'
+export { useSceneAvailability } from './availability/useSceneAvailability'
+export { sceneAvailabilityStore } from './availability/sceneAvailability'

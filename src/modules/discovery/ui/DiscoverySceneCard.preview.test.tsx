@@ -12,6 +12,23 @@ const engineMocks = vi.hoisted(() => ({
   createMagePlayer: vi.fn(),
 }))
 
+const availabilityMocks = vi.hoisted(() => ({ snapshot: { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 }, listeners: new Set<() => void>() }))
+vi.mock('@modules/player/availability/sceneAvailability', () => ({
+  sceneAvailabilityStore: {
+    getSnapshot: () => availabilityMocks.snapshot,
+    isAllowed: () => availabilityMocks.snapshot.allowed,
+    subscribe: (_target: unknown, listener: () => void) => {
+      availabilityMocks.listeners.add(listener)
+      return () => availabilityMocks.listeners.delete(listener)
+    },
+  },
+}))
+
+function blockAvailability() {
+  availabilityMocks.snapshot = { allowed: false, code: 'SCENE_DISABLED', message: 'Unavailable', checkedAt: 2 }
+  availabilityMocks.listeners.forEach((listener) => listener())
+}
+
 const recoveryMocks = vi.hoisted(() => ({
   safeMode: false,
   version: 0,
@@ -143,6 +160,7 @@ async function finishActivation() {
 describe('DiscoverySceneCard animated preview', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    availabilityMocks.snapshot = { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 }
     reducedMotion = false
     finePointer = true
     recoveryMocks.safeMode = false
@@ -168,6 +186,51 @@ describe('DiscoverySceneCard animated preview', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('never creates a preview for missing source or denied server availability', async () => {
+    const view = renderCard({ ...scene, sceneData: null })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    view.rerender(<MemoryRouter><DiscoverySceneCard scene={scene} /></MemoryRouter>)
+    await act(async () => blockAvailability())
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    expect(screen.getByText('Playback unavailable')).toBeInTheDocument()
+  })
+
+  it('cancels a pending hover when server availability is revoked', async () => {
+    renderCard()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); blockAvailability() })
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+  })
+
+  it('disposes an active preview immediately when availability is revoked', async () => {
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    renderCard()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), { sceneKey: scene.sceneId })
+    await act(async () => blockAvailability())
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('discards an asynchronously created controller if permission changes before source loading', async () => {
+    const pending = deferred<MagePlayerController>()
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockReturnValue(pending.promise)
+    renderCard()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    await act(async () => blockAvailability())
+    await act(async () => pending.resolve(controller))
+    expect(controller.loadSceneBlob).not.toHaveBeenCalled()
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
 
   it('waits 300ms, preserves the poster, and crossfades a decorative synthetic preview', async () => {

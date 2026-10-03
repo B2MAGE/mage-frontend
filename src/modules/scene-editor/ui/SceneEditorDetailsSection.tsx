@@ -12,6 +12,7 @@ type SceneEditorDetailsSectionProps = {
   errors: CreateSceneFormErrors
   filteredSelectableTags: TagResponse[]
   isCapturingThumbnail: boolean
+  isThumbnailCaptureAvailable: boolean
   isCreatingTag: boolean
   isExactMatchedTagSelected: boolean
   isSubmitting: boolean
@@ -103,12 +104,13 @@ function SceneDescriptionField({
 function ThumbnailField({
   errors,
   isCapturingThumbnail,
+  isThumbnailCaptureAvailable,
   isSubmitting,
   thumbnailPreviewUrl,
   onThumbnailCaptureRequest,
 }: Pick<
   SceneEditorDetailsSectionProps,
-  'errors' | 'isCapturingThumbnail' | 'isSubmitting' | 'thumbnailPreviewUrl' | 'onThumbnailCaptureRequest'
+  'errors' | 'isCapturingThumbnail' | 'isThumbnailCaptureAvailable' | 'isSubmitting' | 'thumbnailPreviewUrl' | 'onThumbnailCaptureRequest'
 >) {
     return (
       <div className="field-group">
@@ -127,7 +129,7 @@ function ThumbnailField({
             <button
               aria-busy={isCapturingThumbnail}
               className="scene-secondary-button"
-              disabled={isSubmitting || isCapturingThumbnail}
+              disabled={isSubmitting || isCapturingThumbnail || !isThumbnailCaptureAvailable}
               onClick={onThumbnailCaptureRequest}
               type="button"
             >
@@ -135,6 +137,7 @@ function ThumbnailField({
                 {thumbnailPreviewUrl ? 'Capture Again' : 'Capture Thumbnail'}
               </PendingButtonLabel>
             </button>
+            {!isThumbnailCaptureAvailable ? <p>Capture is unavailable while scene playback is paused.</p> : null}
           </div>
         </div>
         {errors.thumbnail ? <p className="field-error" role="alert">{errors.thumbnail}</p> : null}
@@ -372,6 +375,7 @@ export function SceneEditorDetailsSection(props: SceneEditorDetailsSectionProps)
         <ThumbnailField
           errors={props.errors}
           isCapturingThumbnail={props.isCapturingThumbnail}
+          isThumbnailCaptureAvailable={props.isThumbnailCaptureAvailable}
           isSubmitting={props.isSubmitting}
           thumbnailPreviewUrl={props.thumbnailPreviewUrl}
           onThumbnailCaptureRequest={props.onThumbnailCaptureRequest}

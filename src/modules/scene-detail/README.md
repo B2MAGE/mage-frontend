@@ -59,6 +59,9 @@ User-facing behavior:
 - validates the `:id` route param and shows a dedicated invalid-id state when it cannot be parsed
 - shows explicit restoring, loading, not-found, auth-required, and unavailable states
 - embeds the shared `MagePlayer` with route-owned playlist state
+- preserves scene metadata and thumbnails when an explicit availability status withholds scene source; the player handles fresh availability checks and the compact playback notice
+- refreshes withheld source through `onAvailabilityRestored`, ignoring stale responses after navigation or authentication changes
+- mounts operator controls below the description; the player module checks authorization and owns the management interface
 - resets description expansion and recommendation filter state when the scene changes
 - shows the fetched creator name without fabricated subscriber counts; owners can edit their scene
 - renders engagement counts and current-user vote/save state from the scene detail response

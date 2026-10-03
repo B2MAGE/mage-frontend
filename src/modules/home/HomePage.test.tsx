@@ -12,7 +12,10 @@ let authState = { isAuthenticated:false, isRestoringSession:false, authenticated
 vi.mock('@auth',()=>({useAuth:()=>authState}))
 vi.mock('@shared/lib',async original=>({ ...await original<typeof import('@shared/lib')>(), fetchScenes:vi.fn(), fetchTags:vi.fn() }))
 vi.mock('../scene-detail/loaders',()=>({fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
-vi.mock('@modules/player',async original=>({ ...await original<typeof import('@modules/player')>(), MagePlayer:()=> <div>Live featured player</div>}))
+vi.mock('@modules/player',async original=>({ ...await original<typeof import('@modules/player')>(), MagePlayer:({sceneBlob,posterUrl,onAvailabilityRestored}:{sceneBlob:unknown;posterUrl?:string|null;onAvailabilityRestored?:()=>Promise<void>})=> <div>
+ {sceneBlob ? 'Live featured player' : <><span>Playback temporarily unavailable</span>{posterUrl && <img src={posterUrl} alt="Featured scene poster"/>}</>}
+ <button type="button" onClick={()=>void onAvailabilityRestored?.()}>Restore verified playback</button>
+</div>}))
 vi.mock('@modules/scene-artwork',()=>({
  BrandScene:({reactToBeat,className}:{reactToBeat?:boolean;className?:string})=> <div data-testid="welcome-brand-scene" className={className} data-react-to-beat={String(reactToBeat)} />,
 }))
@@ -48,6 +51,48 @@ describe('Homepage mockup behavior',()=>{
   expect(container.querySelector('.home-filter-loading__placeholder')).toBeInTheDocument()
   expect(container.querySelectorAll('.scene-card--loading')).toHaveLength(8)
   expect(container.querySelector('.tag-pill--skeleton')).not.toBeInTheDocument()
+ })
+ it.each(['mage-pulse','classic-facebook'] as const)('keeps disabled featured scene metadata and thumbnail in %s',async themeId=>{
+  vi.mocked(fetchSceneDetail).mockResolvedValue({...scene,id:1,tags:['Ambient'],sceneData:null,thumbnailRef:'/neon.png',availability:{sceneId:1,available:false,code:'CUSTOM_RENDERING_DISABLED',message:'Scene playback is temporarily disabled.'}})
+  show(themeId)
+  const featuredSection=screen.getByRole('region',{name:'Featured Scenes'})
+  expect(await within(featuredSection).findByText('Playback temporarily unavailable')).toBeInTheDocument()
+  expect(within(featuredSection).getByRole('heading',{name:'Neon Bloom'})).toBeInTheDocument()
+  expect(within(featuredSection).getByText('A reactive scene.')).toBeInTheDocument()
+  expect(within(featuredSection).getByRole('link',{name:/Ari Rivera@aririvera/})).toBeInTheDocument()
+  expect(within(featuredSection).getByRole('img',{name:'Featured scene poster'})).toHaveAttribute('src','/neon.png')
+  expect(within(featuredSection).getByRole('link',{name:/Open scene/})).toHaveAttribute('href','/scenes/1')
+  expect(within(featuredSection).queryByRole('alert')).not.toBeInTheDocument()
+  expect(within(featuredSection).queryByRole('button',{name:'Try again'})).not.toBeInTheDocument()
+ })
+ it('refreshes a restored featured source without replacing scene details with a loading screen',async()=>{
+  vi.mocked(fetchSceneDetail).mockResolvedValueOnce({...scene,id:1,tags:['Ambient'],sceneData:null,availability:{sceneId:1,available:false,code:'SCENE_DISABLED',message:'Scene playback is unavailable.'}})
+  let resolveRefresh!: (value: Awaited<ReturnType<typeof fetchSceneDetail>>) => void
+  vi.mocked(fetchSceneDetail).mockImplementationOnce(()=>new Promise(resolve=>{resolveRefresh=resolve}))
+  show()
+  await screen.findByText('Playback temporarily unavailable')
+  fireEvent.click(screen.getByRole('button',{name:'Restore verified playback'}))
+  expect(screen.getByRole('heading',{name:'Neon Bloom',level:2})).toBeInTheDocument()
+  expect(screen.queryByText('Loading featured scene')).not.toBeInTheDocument()
+  await act(async()=>resolveRefresh({...scene,id:1,tags:['Ambient'],sceneData:{visualizer:{shader:'repaired'}}}))
+  expect(await screen.findByText('Live featured player')).toBeInTheDocument()
+  expect(fetchSceneDetail).toHaveBeenCalledTimes(2)
+ })
+ it('ignores a restore response from the previous authentication session',async()=>{
+  vi.mocked(fetchSceneDetail).mockResolvedValueOnce({...scene,id:1,tags:['Ambient'],sceneData:null})
+  const view=show()
+  await screen.findByText('Playback temporarily unavailable')
+  let resolveRefresh!: (value: Awaited<ReturnType<typeof fetchSceneDetail>>) => void
+  vi.mocked(fetchSceneDetail).mockImplementationOnce(()=>new Promise(resolve=>{resolveRefresh=resolve}))
+  fireEvent.click(screen.getByRole('button',{name:'Restore verified playback'}))
+  authState={isAuthenticated:true,isRestoringSession:false,authenticatedFetch:vi.fn()}
+  vi.mocked(fetchSceneDetail).mockResolvedValueOnce({...scene,id:1,name:'Current session scene',tags:['Ambient'],sceneData:null})
+  view.rerender(<MemoryRouter><ThemeProvider><HomePage/></ThemeProvider></MemoryRouter>)
+  await screen.findByRole('heading',{name:'Current session scene',level:2})
+  await act(async()=>resolveRefresh({...scene,id:1,name:'Stale session scene',tags:['Ambient'],sceneData:{visualizer:{shader:'old'}}}))
+  expect(screen.getByRole('heading',{name:'Current session scene',level:2})).toBeInTheDocument()
+  expect(screen.queryByRole('heading',{name:'Stale session scene'})).not.toBeInTheDocument()
+  expect(screen.queryByText('Live featured player')).not.toBeInTheDocument()
  })
  it('shows the welcome panel to guests and links featured browsing to scenes',async()=>{
   show()

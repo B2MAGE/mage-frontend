@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import './sceneDetail.css'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { MagePlayer } from '@modules/player'
+import { MagePlayer, SceneAvailabilityAdminControls } from '@modules/player'
 import { EngagementButton, PendingButtonLabel, UserAvatar } from '@shared/ui'
 import {
   clearSceneCommentVote,
@@ -122,6 +122,7 @@ export function SceneDetailPage() {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const recordedViewSceneIds = useRef<Set<number>>(new Set())
   const shareInFlightRef = useRef(false)
+  const sceneLoadGeneration = useRef(0)
   const sceneId = readSceneId(id)
   const loadedSceneId = scene?.id ?? null
   const recommendationOwnerUserId = scene?.ownerUserId ?? null
@@ -146,6 +147,7 @@ export function SceneDetailPage() {
   } = useScenePlaylistState(scene?.sceneData, scene?.id)
 
   useEffect(() => {
+    sceneLoadGeneration.current += 1
     if (sceneId === null || isRestoringSession) {
       return
     }
@@ -183,8 +185,17 @@ export function SceneDetailPage() {
 
     return () => {
       isCurrent = false
+      sceneLoadGeneration.current += 1
     }
   }, [authenticatedFetch, isAuthenticated, isRestoringSession, sceneId])
+
+  const reloadSceneSource = useCallback(async () => {
+    if (loadedSceneId === null) return
+    const generation = sceneLoadGeneration.current
+    const nextScene = await fetchSceneDetail(authenticatedFetch, isAuthenticated, loadedSceneId)
+    if (generation !== sceneLoadGeneration.current) return
+    setScene(current => current?.id === loadedSceneId ? nextScene : current)
+  }, [authenticatedFetch, isAuthenticated, loadedSceneId])
 
   useEffect(() => {
     setIsDescriptionExpanded(false)
@@ -587,6 +598,7 @@ export function SceneDetailPage() {
                 ariaLabel={`${scene.name} live render`}
                 className="scene-detail-player"
                 initialPlayback="playing"
+                onAvailabilityRestored={reloadSceneSource}
                 onPlaylistChange={handlePlaylistChange}
                 onRequestPlaylistOpen={() => {
                   setIsPlaylistOpen(true)
@@ -695,6 +707,8 @@ export function SceneDetailPage() {
               setIsDescriptionExpanded((currentValue) => !currentValue)
             }}
           />
+
+          <SceneAvailabilityAdminControls sceneId={scene.id} />
 
           <SceneCommentsPanel
             actionError={commentActionError}

@@ -6,9 +6,11 @@ export {
   normalizeSceneListEngagement,
   normalizeSceneList,
   normalizeSceneListItem,
+  normalizeSceneAvailability,
 } from './api'
 export type {
   FetchTagsOptions,
+  SceneAvailability,
   SceneEngagementVoteState,
   SceneListEngagement,
   SceneListResponse,

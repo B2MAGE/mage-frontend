@@ -422,3 +422,9 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
   })
 
 })
+
+// These editor workflows exercise fields/submission with explicit playback permission.
+vi.mock('@modules/player/availability/sceneAvailability', async () => {
+  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
+  return { sceneAvailabilityStore: allowedSceneAvailability }
+})

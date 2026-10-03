@@ -28,6 +28,13 @@ export function buildApiUrl(path: string) {
   return `${normalizedBaseUrl}${apiPath}`
 }
 
+export type SceneAvailability = {
+  sceneId: number
+  available: boolean
+  code: string
+  message: string
+}
+
 export type SceneListResponse = {
   sceneId: number
   ownerUserId: number
@@ -37,7 +44,8 @@ export type SceneListResponse = {
   creatorAvatarGradientEnd?: string | null
   name: string
   description?: string | null
-  sceneData: Record<string, unknown>
+  sceneData: Record<string, unknown> | null
+  availability?: SceneAvailability | null
   thumbnailRef: string | null
   createdAt: string
   engagement: SceneListEngagement
@@ -66,6 +74,20 @@ export type FetchTagsOptions = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function normalizeSceneAvailability(value: unknown, sceneId: number): SceneAvailability | null {
+  if (
+    !isRecord(value) || value.sceneId !== sceneId ||
+    typeof value.available !== 'boolean' || typeof value.code !== 'string'
+  ) {
+    return null
+  }
+
+  const available = value.available === true && value.code === 'AVAILABLE'
+  if (typeof value.message !== 'string' && !(available && value.message === null)) return null
+
+  return { sceneId, available: value.available, code: value.code, message: available ? '' : value.message as string }
 }
 
 function normalizeCount(value: unknown) {
@@ -117,6 +139,8 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
     return null
   }
 
+  const availability = normalizeSceneAvailability(item.availability, item.sceneId)
+
   return {
     sceneId: item.sceneId,
     ownerUserId: item.ownerUserId,
@@ -136,7 +160,8 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
       typeof item.description === 'string' && item.description.trim()
         ? item.description.trim()
         : null,
-    sceneData: isRecord(item.sceneData) ? item.sceneData : {},
+    sceneData: availability?.available === false || !isRecord(item.sceneData) ? null : item.sceneData,
+    availability,
     thumbnailRef:
       typeof item.thumbnailRef === 'string' && item.thumbnailRef.trim()
         ? item.thumbnailRef

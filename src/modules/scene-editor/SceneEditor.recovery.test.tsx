@@ -79,3 +79,9 @@ describe('scene editor recovery', () => {
     expect(screen.getByLabelText('Custom Shader', { exact: true })).toHaveValue(raw.visualizer.shader)
   })
 })
+
+// This suite tests existing playback behavior with server permission already granted.
+vi.mock('@modules/player/availability/sceneAvailability', async () => {
+  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
+  return { sceneAvailabilityStore: allowedSceneAvailability }
+})

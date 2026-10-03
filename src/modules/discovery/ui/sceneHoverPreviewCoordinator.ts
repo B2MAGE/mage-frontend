@@ -2,6 +2,7 @@ import {
   createMagePlayer,
   sceneRecovery,
   sceneRecoveryKey,
+  sceneAvailabilityStore,
   type MagePlayerController,
   type MageSceneBlob,
 } from '@modules/player'
@@ -38,6 +39,7 @@ class SceneHoverPreviewCoordinator {
   private pageSuspended = false
   private readonly fadingCanvases = new Map<HTMLCanvasElement, number>()
   private readonly registrations = new Map<PreviewRegistrationId, SceneHoverPreviewRegistration>()
+  private readonly availabilitySubscriptions = new Map<PreviewRegistrationId, () => void>()
 
   constructor() {
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
@@ -47,12 +49,16 @@ class SceneHoverPreviewCoordinator {
   }
 
   register(id: PreviewRegistrationId, registration: SceneHoverPreviewRegistration) {
+    this.availabilitySubscriptions.get(id)?.()
     this.registrations.set(id, registration)
+    this.availabilitySubscriptions.set(id, sceneAvailabilityStore.subscribe(registration.sceneId, this.handleRecoveryChange))
   }
 
   unregister(id: PreviewRegistrationId) {
     this.registrations.delete(id)
     this.cancel(id)
+    this.availabilitySubscriptions.get(id)?.()
+    this.availabilitySubscriptions.delete(id)
     if (this.registrations.size === 0) {
       this.cancelPendingActivation()
       this.stopActivePreview()
@@ -82,7 +88,7 @@ class SceneHoverPreviewCoordinator {
 
   private canPreview(id: PreviewRegistrationId) {
     const registration = this.registrations.get(id)
-    if (!registration || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
+    if (!registration || !sceneAvailabilityStore.isAllowed(registration.sceneId) || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
     const key = sceneRecoveryKey(registration.sceneBlob, registration.sceneId)
     return !!key && !sceneRecovery.getAutomaticBlock(key)
   }
@@ -139,7 +145,7 @@ class SceneHoverPreviewCoordinator {
     registration.target.append(canvas)
 
     try {
-      const controller = await createMagePlayer(canvas)
+      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId })
       if (this.active !== activation || !this.canPreview(id)) {
         controller.dispose()
         if (this.active === activation) this.stopActivePreview(false)
@@ -148,13 +154,19 @@ class SceneHoverPreviewCoordinator {
 
       activation.controller = controller
       controller.loadSceneBlob(registration.sceneBlob, { sceneKey: registration.sceneId })
-      if (this.active !== activation) return
+      if (this.active !== activation || !this.canPreview(id)) {
+        if (this.active === activation) this.stopActivePreview(false)
+        return
+      }
       controller.setSyntheticPreview(true, registration.seed)
       controller.setPlaybackState('playing')
 
       for (let frame = 0; frame < PREVIEW_FRAME_COUNT; frame += 1) {
         await nextAnimationFrame()
-        if (this.active !== activation) return
+        if (this.active !== activation || !this.canPreview(id)) {
+          if (this.active === activation) this.stopActivePreview(false)
+          return
+        }
       }
       canvas.classList.add('is-visible')
     } catch {

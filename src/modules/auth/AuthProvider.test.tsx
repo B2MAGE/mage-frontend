@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -35,6 +35,7 @@ const restoredUser: AuthenticatedUser = {
 function AuthHarness() {
   const {
     authenticatedFetch,
+    completeLoginSession,
     isAuthenticated,
     isRestoringSession,
     logout,
@@ -55,6 +56,7 @@ function AuthHarness() {
       <button type="button" onClick={logout}>
         Log out
       </button>
+      <button type="button" onClick={() => completeLoginSession({ accessToken: 'new-account-token', user: { ...storedUser, userId: 99, email: 'new-account@example.com' } })}>Switch account</button>
       <button
         type="button"
         onClick={() => {
@@ -122,6 +124,31 @@ function renderAuthHarness(options?: { strictMode?: boolean }) {
 }
 
 describe('AuthProvider', () => {
+  it('does not sign out a new account when an old request later returns 401', async () => {
+    storeSession()
+    let resolveOld!: (response: Response) => void
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse(restoredUser))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveOld = resolve }))
+    renderAuthHarness()
+    await screen.findByText('restored-user@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Request protected data' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Switch account' }))
+    await act(async () => resolveOld(jsonResponse({}, 401)))
+    expect(screen.getByTestId('auth-user-email')).toHaveTextContent('new-account@example.com')
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('authenticated')
+    expect(JSON.parse(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)!)).toMatchObject({ accessToken: 'new-account-token' })
+  })
+
+  it.each([200, 401])('ignores old bootstrap status %s after an account switch', async (status) => {
+    storeSession()
+    let resolveOld!: (response: Response) => void
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveOld = resolve }))
+    renderAuthHarness()
+    await userEvent.click(screen.getByRole('button', { name: 'Switch account' }))
+    await act(async () => resolveOld(jsonResponse(restoredUser, status)))
+    expect(screen.getByTestId('auth-user-email')).toHaveTextContent('new-account@example.com')
+    expect(JSON.parse(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)!)).toMatchObject({ accessToken: 'new-account-token' })
+  })
   it('calls GET /users/me during app bootstrap and restores the authenticated user', async () => {
     storeSession()
 

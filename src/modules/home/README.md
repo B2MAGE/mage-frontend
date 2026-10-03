@@ -21,6 +21,14 @@ Exports:
 2. Authenticated homepage behavior may hand off into discovery, but that orchestration still belongs to this module.
 3. Guest hero copy and preview-player embedding should stay here instead of being pushed into `app/`.
 
+## Scene availability
+
+Disabled featured scenes keep their title, creator, thumbnail, description, tags,
+and engagement controls. The shared player owns playback availability messaging
+and live status checks. Its `onAvailabilityRestored` callback refreshes withheld
+scene source without replacing the feature with a page-loading state; responses
+from an earlier session or feature load are ignored.
+
 ## Pulse recent-scene filters
 
 - Load `GET /api/tags?attachedOnly=true` once per visit, separately from scene requests.

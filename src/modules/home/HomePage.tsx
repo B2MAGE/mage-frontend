@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { fetchScenes, fetchTags, formatMetricLabel, formatRelativeTime, type SceneListResponse, type TagResponse } from '@shared/lib'
@@ -70,6 +70,7 @@ export function HomePage() {
   const [retry, setRetry] = useState(0)
   const [pendingEngagementAction, setPendingEngagementAction] = useState<'up' | 'down' | 'save' | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const featuredLoadGeneration = useRef(0)
   // Rank once for this visit, independently of filtered scene results or retries.
   useEffect(() => {
     let cancelled = false
@@ -108,6 +109,7 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false
+    featuredLoadGeneration.current += 1
     setFeaturedLoading(true)
     setFeaturedError(false)
     const configured = Number(import.meta.env.VITE_HOME_FEATURED_SCENE_ID)
@@ -128,8 +130,17 @@ export function HomePage() {
       .catch(() => {
         if (!cancelled) { setFeaturedError(true); setFeaturedLoading(false) }
       })
-    return () => { cancelled = true }
+    return () => { cancelled = true; featuredLoadGeneration.current += 1 }
   }, [retry, isAuthenticated, authenticatedFetch])
+
+  const featuredSceneId = featured?.id
+  const reloadFeaturedSource = useCallback(async () => {
+    if (featuredSceneId === undefined) return
+    const generation = featuredLoadGeneration.current
+    const nextScene = await fetchSceneDetail(authenticatedFetch, isAuthenticated, featuredSceneId)
+    if (generation !== featuredLoadGeneration.current) return
+    setFeatured(current => current?.id === featuredSceneId ? nextScene : current)
+  }, [authenticatedFetch, featuredSceneId, isAuthenticated])
 
   async function engage(action: 'up' | 'down' | 'save') {
     if (!isAuthenticated) { navigate('/login'); return }
@@ -199,7 +210,7 @@ export function HomePage() {
           action={<Link className="scene-collection-state__button" to="/scenes">Explore scenes</Link>}
         />}
         {featured && !featuredError && <article className="featured-scene">
-          <div className="featured-player"><MagePlayer ariaLabel={`Featured scene: ${featured.name}`} sceneBlob={featured.sceneData} sceneKey={featured.id} posterUrl={featured.thumbnailRef} initialPlayback="playing" /></div>
+          <div className="featured-player"><MagePlayer ariaLabel={`Featured scene: ${featured.name}`} sceneBlob={featured.sceneData} sceneKey={featured.id} posterUrl={featured.thumbnailRef} initialPlayback="playing" onAvailabilityRestored={reloadFeaturedSource} /></div>
           <div className="featured-info">
             <div className="creator-row">
               {featured.creatorHandle ? (

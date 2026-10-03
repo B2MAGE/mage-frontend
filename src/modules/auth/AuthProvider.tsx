@@ -1,4 +1,4 @@
-import { useEffect, useState, type PropsWithChildren } from 'react'
+import { useEffect, useRef, useState, type PropsWithChildren } from 'react'
 import { AuthContext } from './authContext'
 import { authenticatedRequest, fetchAuthenticatedUser } from './client'
 import { clearStoredSession, persistSession, readStoredSession } from './storage'
@@ -7,13 +7,16 @@ import type { AuthContextValue, AuthenticatedUser, StoredAuthSession } from './t
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<StoredAuthSession | null>(null)
   const [isRestoringSession, setIsRestoringSession] = useState(true)
+  const currentToken = useRef<string | null>(null)
 
   function clearSession() {
+    currentToken.current = null
     clearStoredSession()
     setSession(null)
   }
 
   function completeLoginSession(nextSession: StoredAuthSession) {
+    currentToken.current = nextSession.accessToken
     persistSession(nextSession)
     setSession(nextSession)
   }
@@ -41,7 +44,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     const response = await authenticatedRequest(session.accessToken, input, init)
 
-    if (response.status === 401) {
+    if (response.status === 401 && currentToken.current === session.accessToken) {
       clearSession()
     }
 
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     const bootstrappedSession = storedSession
+    currentToken.current = bootstrappedSession.accessToken
 
     setSession(bootstrappedSession)
 
@@ -66,7 +70,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const response = await fetchAuthenticatedUser(bootstrappedSession.accessToken)
 
-        if (!isCurrent) {
+        if (!isCurrent || currentToken.current !== bootstrappedSession.accessToken) {
           return
         }
 
@@ -80,6 +84,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         const restoredUser = (await response.json()) as AuthenticatedUser
+        if (!isCurrent || currentToken.current !== bootstrappedSession.accessToken) return
         const restoredSession = {
           accessToken: bootstrappedSession.accessToken,
           user: restoredUser,

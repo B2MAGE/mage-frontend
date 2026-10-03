@@ -171,3 +171,9 @@ describe('player audio-response capabilities bridge', () => {
     expect(publications.mock.calls.filter(([snapshot]) => snapshot !== null)).toHaveLength(1)
   })
 })
+
+// This suite tests existing playback behavior with server permission already granted.
+vi.mock('@modules/player/availability/sceneAvailability', async () => {
+  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
+  return { sceneAvailabilityStore: allowedSceneAvailability }
+})
