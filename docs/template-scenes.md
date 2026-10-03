@@ -23,8 +23,8 @@ to contain `-v1`. Unsupported IDs or versions fail; they never select the latest
 
 [`contracts/scenes/README.md`](../contracts/scenes/README.md) documents allowed values, defaults,
 the JSON Schema, fixtures, and Java backend handoff. Tests run those same fixtures against
-both the frontend parser and an independent JSON Schema validator. The backend will adopt
-them in PP-V01/PP-B02; this frontend story does not change the Java service.
+both the frontend parser and an independent JSON Schema validator. PP-V01/PP-B02 enforce
+the same contract on the backend; PP-V02 applies its resource limits before playback and save.
 
 `parseSceneDocument` validates and copies data; `listSceneTemplates` returns code-free metadata.
 The shared player resolves a template ID/version to bundled source only after validation.
@@ -43,13 +43,50 @@ and the resolver creates fresh nested engine data for each load.
 ## Compatibility and remaining stories
 
 Old source-bearing documents and explicit `kind: "custom"` documents remain custom/untrusted.
-A preset name or an exact source match does not establish trust. Existing custom playback is
-preserved here; renderer isolation, API enforcement, and resource budgets are separate PP stories.
+A preset name or an exact source match does not establish trust. Custom playback stays disabled
+until the isolated renderer and release checks are complete.
 
-The Create Scene page still uses the existing Shader picker and legacy editing model.
-PP-B03 will connect template selection to the editor, replace that picker for basic creation,
-and ensure supported edits remain data-only. Editing shader source will switch to custom
-authoring; it will not modify or masquerade as a platform template.
+## Template editing (PP-B03)
+
+Create Scene starts with the Prism Core template. The existing Scene section now selects from
+all 16 immutable templates; Basic exposes scale, animation speed, skybox, field of view, automatic
+orbit, bloom, and tint within the versioned contract's ranges. Unsupported custom controls and
+Pass Order are not shown in Basic. Existing section, dropdown, and effect-toggle styling is reused.
+
+The template document is the editing, preview, save, and export authority. The editor derives a
+display model without resolving shader source; only the player resolves validated catalog IDs.
+Choosing a different template preserves supported settings. A successful create/update followed
+by reopening retains kind, schema version, template version, ID, and parameters. Server field
+errors identify the relevant control and preserve the draft.
+
+Existing custom scenes open for repair, with their source and settings intact. They never mount
+an in-page editor renderer. Advanced authoring remains explicitly unavailable until PP-I03; there
+is no fallback when isolation is absent. Custom source matching a preset remains custom. A switch
+from custom content to a template, including a template pasted into JSON, requires confirmation;
+Cancel keeps the custom content. Unsupported versions remain owner-exportable without execution.
+
+Imports are validated before preview. Invalid JSON stays intact and cannot silently replace the
+last valid document. Template preview uses the smaller PP-V02 profile and works while the custom
+switch is off. Saved templates still require fresh per-scene permission; an operator disable,
+unverified status, or local recovery block takes precedence. A replacement template on an existing
+custom scene may need saving before that saved ID becomes eligible for preview. Existing thumbnails
+are retained on updates unless deliberately replaced.
+
+Use the same PP-B02 backend and the existing database. There is no migration, reseeding, new template
+database, or change to the custom-rendering release switch in this story.
+
+The local October 3, 2026 browser check created a Ripple Rings template, reopened it, changed its
+field of view, saved it again, and verified the value on a second reopen. Desktop, a 390px mobile
+viewport, and both supported themes were checked. Custom JSON imported without mounting a canvas;
+Cancel restored its source after both selector and raw-template replacement prompts.
+
+Saved-player audio selection remains attached to the viewing session. Returning from a file picker
+suspends the existing renderer during its fresh permission check, then resumes the same scene and
+track position on approval. A denied or failed check still disposes it. The real-engine continuity
+fixture passed both in-place resumption and confirmed-denial context disposal; see
+[`scene-availability.md`](scene-availability.md) for the diagnostic page and permission rules.
+The final regression run passed 1,438 tests in 111 files, plus lint, TypeScript, and the production
+build. The build still reports the existing upstream engine `eval` and large-bundle warnings.
 
 Changes to a released template's source or engine defaults require a new template version.
 Keep the old snapshot and catalog entry so saved scenes resolve consistently. Updating the

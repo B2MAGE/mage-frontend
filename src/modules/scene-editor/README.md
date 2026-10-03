@@ -48,9 +48,9 @@ Access:
 
 Editor structure:
 
-- sections: `Details`, `Scene`, `Camera`, `Motion`, `Effects`, `Pass Order`, and `Confirm`
+- Basic sections: `Details`, `Scene`, `Camera`, `Motion`, `Effects`, and `Confirm`; custom repair also includes `Pass Order`
 - advanced controls stay inside the `Camera` and `Motion` sections instead of becoming top-level routes or pages
-- the editor writes into a scene object built around `visualizer`, `controls`, `intent`, `fx`, and `state`
+- new scenes use versioned template documents; the custom repair editor retains its existing engine fields
 
 Request flow:
 
@@ -82,25 +82,23 @@ Coverage lives in the colocated scene-editor specs under `src/modules/scene-edit
 
 ## Versioned transport compatibility (PP-B02)
 
-The existing editor continues to expose its current controls and raw engine JSON.
-Every POST/PUT now wraps those values in `{ schemaVersion: 1, kind: "custom", scene }`.
+The custom repair editor exposes its existing controls and raw engine JSON.
+Custom POST/PUT requests wrap those values in `{ schemaVersion: 1, kind: "custom", scene }`.
 Choosing a familiar preset shader does not convert it into a trusted template.
 Saved custom documents are validated before unwrapping into controls and wrapped
 exactly once on save. Their original envelope shape remains part of local failure
 identity, so switching from Watch to Edit cannot clear a remembered failure.
 
 Malformed document markers and unsupported versions never fall back to raw custom
-source. Valid template transport is preserved by the submission helper, but this
-editor does not expose template parameter authoring yet. Owner editing of a saved
-template shows a read-only View/Download state until PP-B03. Unsupported stored
-formats are likewise exportable by their owner without opening a preview.
+source. Template documents retain their envelope through editing, preview, submission,
+and JSON export. Unsupported stored formats are exportable by their owner without opening a preview.
 
 Legacy scenes remain editable through the owner repair endpoint under the saved
 scene ID. The server's `SCENE_UPGRADE_REQUIRED` status blocks automatic playback;
 an explicit successful save upgrades transport, without clearing an operator
 disable or enabling the global rendering switch. `sceneMode` is returned metadata,
-never a client-selected permission. PP-B03 owns the template-first authoring UI;
-PP-V02 adds client resource policy and detailed field validation.
+never a client-selected permission. PP-B03 provides the template-first authoring UI;
+PP-V02 supplies client resource policy and detailed field validation.
 
 Deploy this frontend together with the PP-B02 API. The earlier API rejects the
 new envelope, while the strict API rejects writes from older cached frontend
@@ -135,4 +133,21 @@ HTTP 413 remains actionable even if the response body is not JSON.
 
 Editor players request the bounded `preview` render profile. These checks do not
 make custom source trusted or enable the global custom-rendering release gate.
-Template documents remain read-only here until PP-B03.
+Custom repair does not mount a player. Valid template drafts preview with platform-owned
+source, while saved templates also retain per-scene availability and recovery checks.
+
+## Basic templates and custom repair (PP-B03)
+
+The default scene is the version-1 Prism Core template. `templateEditor.ts` owns supported
+field updates and the display model; it never resolves source. `TemplateSceneControls`
+reuses the existing sections and controls for the contract's scale, speed, skybox, camera,
+bloom, and tint fields. Basic hides unsupported settings and Pass Order.
+
+Template selection preserves supported settings. Replacing custom content with a template
+requires explicit confirmation, including JSON imports. Cancel preserves the source. Valid
+custom imports remain custom repair documents, never trusted templates. Advanced authoring
+stays disabled until isolation is released; no custom editor renderer is created in this story.
+
+Server errors retain a field map so the editor can open and focus the affected template control.
+Drafts survive validation/API failures. See [template scenes](../../../docs/template-scenes.md)
+for the contract, lifecycle, rollout, and verification boundaries.
