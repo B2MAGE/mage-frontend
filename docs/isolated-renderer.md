@@ -4,11 +4,13 @@ PP-I01 provides a separately built, hosted player and a developer check that run
 
 ## Hosting boundary
 
-The renderer must use a different **registrable domain** from MAGE in production. For example, an app at `https://app.example.com` needs a renderer on another site such as `https://player.example-renderer.net`; `https://renderer.example.com` is not sufficient. Domains in this document are illustrative, not provisioned resources.
+This implementation requires the renderer to use a different **registrable domain** from MAGE in production. MAGE is hosted at `https://mage.peterbucci.com`; the renderer will use the HTTPS hostname assigned by CloudFront, such as `https://d123example.cloudfront.net`. That example hostname is illustrative, not a provisioned resource. A sibling such as `https://player.peterbucci.com` does not meet this story's chosen separate-site boundary. The iframe sandbox remains the core access restriction; the separate site adds browser isolation where supported.
+
+The selected hosting plan needs no additional domain purchase, Route 53 zone, DNS changes or custom ACM certificate. CloudFront supplies the hostname and certificate. MAGE's existing Coolify/frontend/backend deployment stays in place; CloudFront and its private S3 bucket host only the separate renderer files.
 
 Only `src/isolated-renderer/main.ts`, its child implementation, the small shared protocol, fixed render-budget policy and the engine are bundled. The build rejects other workspace modules and emits one classic IIFE with all engine assets embedded. It does not load the app's Vite configuration, public directory or environment files. No API client, account session, auth code, telemetry or service worker is included. The allowed parent origins are an explicit build input, not a URL parameter or message field.
 
-`dist-isolated-renderer/hosting-manifest.json` is the source of the local server's response headers and the production CloudFormation policies:
+Each build's `hosting-manifest.json` is the source of its response headers and generated CloudFormation policies. Local output lives in `dist-isolated-renderer/`; `renderer:build:production` uses `dist-isolated-renderer-production/` so the two do not overwrite each other:
 
 - Response-header `sandbox allow-scripts` creates an opaque origin even when somebody navigates directly to the renderer. The parent iframe also uses only `allow-scripts`.
 - CSP defaults to no resources. It allows the exact immutable script hash with SRI and a fixed stylesheet hash. There is no broad `self`, remote script, inline-script or worker allowance. Only the renderer permits `unsafe-eval`, which the existing Shader Park compiler requires.
@@ -64,18 +66,21 @@ npx vite --config deployment/isolated-renderer/local-https.vite.config.mjs
 
 Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. The companion configuration changes only the local HTTPS server and developer fixture's frame policy. For command-line verification, set `MAGE_RENDERER_VERIFY_ORIGIN=https://localhost:5181` and supply the local CA to Node via `NODE_EXTRA_CA_CERTS` if it is not already trusted; never disable TLS verification. Clear these session environment variables before returning to the default HTTP workflow.
 
-## AWS handoff — not deployed yet
+## AWS deployment — provider-issued CloudFront address
 
-This implementation prepares deployment artifacts; it does not create or change AWS resources. The generated CloudFormation configuration has local structural tests, but has **not** been validated by the AWS service or deployed. The next external step is to choose a dedicated renderer domain on another registrable site, then supply its validated **ACM certificate in `us-east-1`** and configure DNS. The owner also needs to approve the new CloudFront distribution and private S3 bucket in the intended AWS account.
+The template is prepared for the selected plan. Deployment and production-browser verification are separate from building it; record the real stack outputs and verification results when those steps succeed. Do not mark PP-I01 deployed based on a local build or template validation alone. AWS credentials must remain in the operator's CLI profile or deployment environment, never in renderer build inputs.
 
-Build for the actual parent origin (production builds have no default and reject loopback/HTTP):
+**AWS access check, October 3, 2026:** the local `mage-local` profile authenticated as `mage-local-dev`, but AWS denied `cloudformation:DescribeStacks` and `cloudformation:ValidateTemplate`. No AWS resources were created. Deployment needs an approved deployment role/profile with the required access. Do not automatically expand the development user's permissions; use the account's approved deployment access path.
+
+Build for MAGE's actual parent origin into a separate output folder, so the local HTTP fixture keeps its matching local bundle and headers. Production builds have no default parent and reject loopback/HTTP:
 
 ```powershell
-$env:MAGE_RENDERER_PARENT_ORIGINS = 'https://app.example.com'
-npm run renderer:build -- --production
+$env:MAGE_RENDERER_PARENT_ORIGINS = 'https://mage.peterbucci.com'
+npm run renderer:build:production
+Remove-Item Env:MAGE_RENDERER_PARENT_ORIGINS
 ```
 
-This generates `dist-isolated-renderer/cloudformation.json` using the **same** immutable script hash and security headers as the local build. The deployment has two parameters: `RendererDomainName` and `CertificateArn`. Review a CloudFormation change set before creating the stack. No AWS credentials belong in any renderer build input.
+This generates `dist-isolated-renderer-production/cloudformation.json` using the **same build's** immutable script hash and security headers. There are no domain or certificate parameters: `CloudFrontDefaultCertificate: true` uses the assigned `*.cloudfront.net` address. HTTPS-only viewing is enforced. CloudFront controls the default certificate's viewer TLS policy; this route does not configure a custom minimum-TLS policy. See [CloudFront distribution settings](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/DownloadDistValuesGeneral.html) for that distinction.
 
 The template creates:
 
@@ -84,11 +89,46 @@ The template creates:
 - Exact-path viewer-request validation, HTTPS-only viewing, an immutable current bundle behavior, an uncached document behavior, and response-header policies that override origin headers. Cookies, authorization and query strings are not forwarded to S3.
 - No `/api` origin, custom error-to-index redirect, app files, account cookies, analytics or request logging configuration.
 
-After reviewing and applying the stack, upload **only** `index.html` and the exact `assets/renderer-<hash>.js` named by the manifest. Set HTML content type to `text/html; charset=utf-8` with `Cache-Control: no-store`, and the script to `text/javascript; charset=utf-8` with `Cache-Control: public, max-age=31536000, immutable`. Do not upload the whole build folder: the manifest, module audit and CloudFormation template are deployment metadata, not public resources. Add the renderer DNS record pointing to the distribution's reported domain. The stack outputs bucket name, distribution ID and renderer origin.
+Deployment sequence:
+
+1. Select the approved AWS deployment profile and confirm its identity/account. Use `us-east-1` for this stack and the same explicit profile/region on every command. Validate the generated template, then inspect the `mage-isolated-renderer` stack using `describe-stacks`. The read commands below require an actual approved profile name; the blocked development profile is not a substitute.
+2. Create a CloudFormation **CREATE** change set only after confirming that `mage-isolated-renderer` does not exist. An access-denied or network error is not proof that a stack is absent. If the stack already exists, inspect its status/events and use **UPDATE** for an updateable stack. Reconcile an interrupted or failed operation before creating another change set. Use the exact generated template and a unique change-set name; review the resource changes before execution. This dedicated stack must not replace MAGE's existing application infrastructure.
+3. Execute the reviewed change set once, wait for successful stack creation/update and read its outputs: `BucketName`, `DistributionId`, `DistributionDomainName` and `RendererOrigin`. If an execution request times out or returns an ambiguous result, inspect the change-set execution status and stack events before proceeding; do not blindly execute or recreate it.
+4. Upload **only two files**: first the exact `assets/renderer-<hash>.js` named by the build manifest, then `index.html`. Set the script content type to `text/javascript; charset=utf-8` and `Cache-Control: public, max-age=31536000, immutable`; set HTML to `text/html; charset=utf-8` and `Cache-Control: no-store`. Do not upload the whole output folder: the manifest, module audit and CloudFormation template are private deployment metadata. Do not make S3 objects public; CloudFront reads them through origin access control.
+5. Wait for CloudFront propagation and verify the actual HTTPS responses and browser behavior as described below. Use the `RendererOrigin` output directly; there is no DNS record or ACM validation to perform.
+
+Initial read/validation commands, after replacing the profile placeholder:
+
+```powershell
+$rendererDeployProfile = 'your-approved-deployment-profile'
+aws sts get-caller-identity --profile $rendererDeployProfile --region us-east-1
+if ($LASTEXITCODE -ne 0) { throw 'Resolve AWS identity access before continuing.' }
+aws cloudformation validate-template --template-body file://dist-isolated-renderer-production/cloudformation.json --profile $rendererDeployProfile --region us-east-1
+if ($LASTEXITCODE -ne 0) { throw 'Resolve template validation before continuing.' }
+aws cloudformation describe-stacks --stack-name mage-isolated-renderer --profile $rendererDeployProfile --region us-east-1
+```
+
+Inspect the final command's result: only an explicit stack-does-not-exist response permits CREATE; otherwise require a successful status read before deciding how to continue. Resolve access, network and stack-state errors first. These commands intentionally do not create or execute a change set automatically.
 
 Each child release must update the generated edge allowlist/header policies and upload the corresponding HTML/script together. Keep the previous artifact and immutable script for rollback. During propagation, a mismatched script hash should fail closed; there is intentionally no fallback to unrestricted application rendering. Rollback restores the earlier CloudFormation artifact and its matching `index.html`; never loosen CSP to resolve a mismatched deployment.
 
-Once DNS and CloudFront are ready, set `MAGE_RENDERER_VERIFY_ORIGIN` to the new HTTPS origin and run `renderer:verify` against the **matching production build**. Also run the browser isolation checks from the actual deployed parent: headers alone do not prove iframe behavior or successful WebGL. The main custom-rendering release gate stays off until the PP-I02/PP-I03 integration and release checks pass.
+Once CloudFront is ready, verify against the **matching production build**. Replace the illustrative hostname with the stack's `RendererOrigin` output:
+
+```powershell
+$env:MAGE_RENDERER_VERIFY_ORIGIN = 'https://d123example.cloudfront.net'
+npm run renderer:verify:production
+Remove-Item Env:MAGE_RENDERER_VERIFY_ORIGIN
+```
+
+Also run the browser isolation checks from the actual deployed parent: headers alone do not prove iframe behavior or successful WebGL. The production parent allowlist contains only `https://mage.peterbucci.com`; do not add localhost or wildcards to the production artifact just to make a local check connect. The main custom-rendering release gate stays off until the PP-I02/PP-I03 integration and release checks pass. This hosting change does not connect the normal app players to the renderer.
+
+### Traffic and costs
+
+Rendering happens in the visitor's browser. Hosting charges come from CloudFront data transfer, requests and the request-validation function, plus S3 storage and requests. S3 versioning also retains prior file versions for rollback. No renderer compute instance, domain registration, Route 53 zone or custom certificate is needed for this plan.
+
+The measured local bundle is about 16.95 MB, excluding any transfer compression. At that size, a conservative decimal 1 TB budget corresponds to roughly 59,000 complete downloads; budgeting around 50,000 leaves room for other requests and estimation differences. The bundle is shared across scenes and has an immutable URL, allowing browser caching when supported. Builds, cache eviction and browser cache partitioning affect actual repeat downloads.
+
+The pay-as-you-go 1 TB allowance discussed for this plan is **account-wide**, not reserved for this distribution and not a hard spending cap. It does not stop delivery at 1 TB. Verify the account's plan and current [CloudFront pricing](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/) and [S3 pricing](https://aws.amazon.com/s3/pricing/); monitor billed usage and set billing notifications appropriate to the account. This deployment template does not create a budget, spending cutoff or usage monitor.
 
 ## Limits and required browser checks
 
@@ -111,8 +151,15 @@ Validation passed: 75 focused renderer/protocol/host/boundary tests, six hosting
 tests, TypeScript, ESLint, the standalone build and the main application build.
 The existing engine eval and size warnings remain. Local HTTPS and additional
 browser engines have a documented test setup but were not exercised here;
-production DNS, CloudFront headers and the deployed browser checks are still
+production CloudFront headers and the deployed browser checks are still
 pending. Do not treat this local record as PP-I03's arbitrary-code release approval.
+
+The provider-address follow-up passed 34 host tests and seven hosting tests,
+TypeScript, ESLint, and the production renderer build for
+`https://mage.peterbucci.com`. The production bundle and generated template were
+checked against their manifest, and live local HTTP verification still passed
+using the separate local artifact. AWS template validation was attempted but
+denied by the current profile; it is not recorded as a successful service check.
 
 ### Remaining guarantees and limits
 

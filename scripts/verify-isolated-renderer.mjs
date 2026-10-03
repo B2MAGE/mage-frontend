@@ -5,10 +5,14 @@ import { loadRendererBuild } from './serve-isolated-renderer.mjs'
 import { assertNonCredentialedResponse, integrityOf } from '../deployment/isolated-renderer/hosting-policy.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const { manifest } = await loadRendererBuild(resolve(root, 'dist-isolated-renderer'))
+const production = process.argv.includes('--production')
+const { manifest } = await loadRendererBuild(resolve(root, production ? 'dist-isolated-renderer-production' : 'dist-isolated-renderer'))
+assert.equal(manifest.production, production, 'Verification mode must match the renderer build.')
+if (production) assert(process.env.MAGE_RENDERER_VERIFY_ORIGIN, 'Set the deployed renderer origin before production verification.')
 const base = new URL(process.env.MAGE_RENDERER_VERIFY_ORIGIN ?? 'http://localhost:5181')
 assert.equal(base.origin, base.href.slice(0, -1), 'Verification target must be an origin, not a path or query.')
 assert(['http:', 'https:'].includes(base.protocol))
+if (production) assert.equal(base.protocol, 'https:', 'Production verification requires HTTPS.')
 const checkHeaders = (response) => {
   for (const [name, value] of Object.entries(manifest.headers)) assert.equal(response.headers.get(name), value, `${name} differs from the built hosting policy`)
   assertNonCredentialedResponse(response.headers)

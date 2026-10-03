@@ -14,8 +14,11 @@
     "preview": "vite preview",
     "prerenderer:build": "patch-package --error-on-fail",
     "renderer:build": "tsc -b && node scripts/build-isolated-renderer.mjs",
+    "prerenderer:build:production": "patch-package --error-on-fail",
+    "renderer:build:production": "tsc -b && node scripts/build-isolated-renderer.mjs --production",
     "renderer:serve": "node scripts/serve-isolated-renderer.mjs",
     "renderer:verify": "node scripts/verify-isolated-renderer.mjs",
+    "renderer:verify:production": "node scripts/verify-isolated-renderer.mjs --production",
     "renderer:test": "node --test deployment/isolated-renderer/hosting.test.mjs"
   },
   "dependencies": {

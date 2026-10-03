@@ -6,8 +6,9 @@ import { createHostingManifest, parseParentOrigins, renderDocument } from '../de
 import { createCloudFormationTemplate } from '../deployment/isolated-renderer/cloudformation-template.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
-const outDir = resolve(root, 'dist-isolated-renderer')
 const production = process.argv.includes('--production')
+// Publishing must not replace the artifact used by the running local preview.
+const outDir = resolve(root, production ? 'dist-isolated-renderer-production' : 'dist-isolated-renderer')
 const parentOrigins = parseParentOrigins(process.env.MAGE_RENDERER_PARENT_ORIGINS, production)
 const sourcePrefix = `${root.replaceAll('\\', '/')}/src/`
 const rootPrefix = `${root.replaceAll('\\', '/')}/`
