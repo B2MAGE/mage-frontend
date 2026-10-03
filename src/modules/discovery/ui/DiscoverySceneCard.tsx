@@ -28,8 +28,9 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
     onFocus,
     onPointerEnter,
     onPointerLeave,
+    recoveryPaused,
     thumbnailRef,
-  } = useSceneHoverPreview({ sceneBlob: scene.sceneData, seed: scene.sceneId })
+  } = useSceneHoverPreview({ sceneBlob: scene.sceneData, sceneId: scene.sceneId, seed: scene.sceneId })
 
   return (
     <div
@@ -50,7 +51,9 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           ) : (
             <div className="scene-card__thumbnail-placeholder" aria-hidden="true" />
           )}
-          <span className="scene-card__play" aria-hidden="true"><AppIcon name="play" size={16} /></span>
+          {recoveryPaused ? (
+            <span className="scene-card__preview-paused">Preview paused. Open scene to retry.</span>
+          ) : <span className="scene-card__play" aria-hidden="true"><AppIcon name="play" size={16} /></span>}
         </div>
         <div className="scene-card__body">
           <UserAvatar className="scene-card__avatar" initials={creatorInitials} gradientStart={scene.creatorAvatarGradientStart} gradientEnd={scene.creatorAvatarGradientEnd} />

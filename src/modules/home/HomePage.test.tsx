@@ -12,7 +12,7 @@ let authState = { isAuthenticated:false, isRestoringSession:false, authenticated
 vi.mock('@auth',()=>({useAuth:()=>authState}))
 vi.mock('@shared/lib',async original=>({ ...await original<typeof import('@shared/lib')>(), fetchScenes:vi.fn(), fetchTags:vi.fn() }))
 vi.mock('../scene-detail/loaders',()=>({fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
-vi.mock('@modules/player',()=>({MagePlayer:()=> <div>Live featured player</div>}))
+vi.mock('@modules/player',async original=>({ ...await original<typeof import('@modules/player')>(), MagePlayer:()=> <div>Live featured player</div>}))
 vi.mock('@modules/scene-artwork',()=>({
  BrandScene:({reactToBeat,className}:{reactToBeat?:boolean;className?:string})=> <div data-testid="welcome-brand-scene" className={className} data-react-to-beat={String(reactToBeat)} />,
 }))

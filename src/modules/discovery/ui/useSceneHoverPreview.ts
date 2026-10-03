@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, type FocusEvent, type PointerEvent } from 'react'
-import type { MageSceneBlob } from '@modules/player'
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, type FocusEvent, type PointerEvent } from 'react'
+import { sceneRecovery, sceneRecoveryKey, type MageSceneBlob } from '@modules/player'
 import { useAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
 import {
   createSceneHoverPreviewRegistrationId,
@@ -8,6 +8,7 @@ import {
 
 type UseSceneHoverPreviewOptions = {
   sceneBlob: MageSceneBlob
+  sceneId: number
   seed: number
 }
 
@@ -23,8 +24,11 @@ function pointerPreviewIsAllowed() {
   return mediaQueryMatches('(hover: hover) and (pointer: fine)', true)
 }
 
-export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOptions) {
+export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHoverPreviewOptions) {
   const preferenceEnabled = useAnimatedSceneThumbnailsEnabled()
+  useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
+  const recoveryKey = useMemo(() => sceneRecoveryKey(sceneBlob, sceneId), [sceneBlob, sceneId])
+  const recoveryPaused = !recoveryKey || sceneRecovery.isSafeMode() || !!sceneRecovery.getAutomaticBlock(recoveryKey)
   const registrationIdRef = useRef(createSceneHoverPreviewRegistrationId())
   const thumbnailRef = useRef<HTMLDivElement | null>(null)
   const pointerInsideRef = useRef(false)
@@ -33,6 +37,13 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
 
   const syncPreview = useCallback(() => {
     const id = registrationIdRef.current
+    if (recoveryPaused) {
+      // Clearing a block in another player must not restart a focused preview.
+      pointerInsideRef.current = false
+      focusedRef.current = false
+      sceneHoverPreviewCoordinator.cancel(id)
+      return
+    }
     const shouldPreview =
       preferenceEnabled &&
       motionIsAllowed() &&
@@ -44,7 +55,7 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
     } else {
       sceneHoverPreviewCoordinator.cancel(id)
     }
-  }, [preferenceEnabled])
+  }, [preferenceEnabled, recoveryPaused])
 
   useEffect(() => {
     const target = thumbnailRef.current
@@ -53,7 +64,7 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
     }
 
     const id = registrationIdRef.current
-    sceneHoverPreviewCoordinator.register(id, { sceneBlob, seed, target })
+    sceneHoverPreviewCoordinator.register(id, { sceneBlob, sceneId, seed, target })
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     const finePointer = window.matchMedia?.('(hover: hover) and (pointer: fine)')
@@ -80,7 +91,7 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       sceneHoverPreviewCoordinator.unregister(id)
     }
-  }, [sceneBlob, seed, syncPreview])
+  }, [sceneBlob, sceneId, seed, syncPreview])
 
   useEffect(() => {
     syncPreview()
@@ -119,6 +130,7 @@ export function useSceneHoverPreview({ sceneBlob, seed }: UseSceneHoverPreviewOp
     onFocus,
     onPointerEnter,
     onPointerLeave,
+    recoveryPaused,
     thumbnailRef,
   }
 }

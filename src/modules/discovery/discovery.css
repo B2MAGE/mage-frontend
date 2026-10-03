@@ -32,6 +32,7 @@ html[data-theme] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbn
 html[data-theme] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail-img {display:block;width:100%;height:100%;object-fit:cover;transform:none;}
 .scene-card__preview-canvas {position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity 180ms ease;}
 .scene-card__preview-canvas.is-visible {opacity:1;}
+.scene-card__preview-paused {position:absolute;inset:auto 10px 10px;z-index:2;padding:7px 10px;border-radius:6px;background:#0a0b0ee6;color:#eee;font-size:11px;line-height:1.4;pointer-events:none;}
 html[data-theme] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__thumbnail-placeholder {width:100%;height:100%;background:radial-gradient(ellipse at center,#3a3159, #182136 60%);}
 html[data-theme] :is(.scenes-page,.pulse-home,.profile-page) .scene-card__play {position:absolute;right:14px;bottom:14px;z-index:2;width:38px;height:38px;display:grid;place-items:center;opacity:0;border:1px solid #ffffff33;border-radius:50%;background:#0a0b0eb8;font-size:12px;}
 html[data-theme] :is(.scenes-page,.pulse-home,.profile-page) .scene-card-link:hover .scene-card__play {opacity:1;}

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { createMagePlayer, MagePlayerLoading, type MagePlayerController } from '@modules/player'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createMagePlayer, MagePlayerLoading, sceneRecovery, sceneRecoveryKey, type MagePlayerController } from '@modules/player'
 import { useAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
 import { BRAND_SCENE } from './brandScenePreset'
 import './brandScene.css'
@@ -8,6 +8,11 @@ type SceneStatus = 'loading' | 'ready' | 'error'
 
 // Keep the thumbnail preview rhythm, at half tempo (66 BPM for seed 73).
 const BRAND_BEAT_TEMPO_SCALE = 0.5
+const BRAND_RECOVERY_KEY = sceneRecoveryKey(BRAND_SCENE)
+
+function recoveryIsPaused() {
+  return !BRAND_RECOVERY_KEY || sceneRecovery.isSafeMode() || !!sceneRecovery.getAutomaticBlock(BRAND_RECOVERY_KEY)
+}
 
 type BrandSceneProps = {
   className?: string
@@ -17,6 +22,8 @@ type BrandSceneProps = {
 export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const animationEnabled = useAnimatedSceneThumbnailsEnabled()
+  useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
+  const recoveryPaused = recoveryIsPaused()
   const [renderState, setRenderState] = useState<{ animationEnabled: boolean; reactToBeat: boolean; status: SceneStatus }>({
     animationEnabled,
     reactToBeat,
@@ -24,13 +31,13 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
   })
   // A preference change replaces the canvas; show its loader immediately,
   // including before IntersectionObserver reports that the new canvas is visible.
-  const status = renderState.animationEnabled === animationEnabled && renderState.reactToBeat === reactToBeat
+  const status = recoveryPaused ? 'paused' : renderState.animationEnabled === animationEnabled && renderState.reactToBeat === reactToBeat
     ? renderState.status
     : 'loading'
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container || recoveryPaused) return
 
     // Disposing MAGE loses its WebGL context, so every initialization needs a
     // fresh canvas (including preference changes and StrictMode remounts).
@@ -53,13 +60,17 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
     }
 
     function isVisible() {
-      return !disposed && !failed && visible && document.visibilityState !== 'hidden'
+      return !disposed && !failed && !recoveryIsPaused() && visible && document.visibilityState !== 'hidden'
     }
 
     function releaseController() {
       const previous = controller
       controller = null
-      previous?.dispose()
+      try {
+        previous?.dispose()
+      } catch {
+        // Failed cleanup keeps its interrupted marker without breaking the page.
+      }
     }
 
     function fail() {
@@ -68,6 +79,14 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
       delete canvas.dataset.ready
       setStatus('error')
       releaseController()
+    }
+
+    function handleContextLost() {
+      if (disposed || failed) return
+      // This listener predates the adapter's monitor. Remember the failure
+      // before disposal removes that monitor's context-loss listener.
+      if (BRAND_RECOVERY_KEY) sceneRecovery.block(BRAND_RECOVERY_KEY, 'context-lost')
+      fail()
     }
 
     function updatePlayback() {
@@ -93,7 +112,7 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
         // Supersample the decorative artwork only; other players keep their normal
         // device pixel ratio and GPU cost.
         const created = await createMagePlayer(canvas, { pixelRatio: 2, mouseInteractions: true })
-        if (disposed || failed) {
+        if (disposed || failed || recoveryIsPaused()) {
           created.dispose()
           return
         }
@@ -128,7 +147,7 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
     observer?.observe(container)
     motionPreference?.addEventListener?.('change', sync)
     document.addEventListener('visibilitychange', sync)
-    canvas.addEventListener('webglcontextlost', fail)
+    canvas.addEventListener('webglcontextlost', handleContextLost)
     sync()
 
     return () => {
@@ -136,11 +155,11 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
       observer?.disconnect()
       motionPreference?.removeEventListener?.('change', sync)
       document.removeEventListener('visibilitychange', sync)
-      canvas.removeEventListener('webglcontextlost', fail)
+      canvas.removeEventListener('webglcontextlost', handleContextLost)
       releaseController()
       canvas.remove()
     }
-  }, [animationEnabled, reactToBeat])
+  }, [animationEnabled, reactToBeat, recoveryPaused])
 
   return (
     <div
@@ -149,6 +168,7 @@ export function BrandScene({ className, reactToBeat = true }: BrandSceneProps) {
       role="group"
       aria-label="A MAGE scene of gently moving violet and teal rings"
       aria-busy={status === 'loading'}
+      data-preview-paused={recoveryPaused || undefined}
     >
       {status === 'loading' ? <MagePlayerLoading /> : status === 'error' ? (
         <div className="mage-player__overlay" role="alert" aria-live="polite">

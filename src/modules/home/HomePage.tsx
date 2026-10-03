@@ -199,7 +199,7 @@ export function HomePage() {
           action={<Link className="scene-collection-state__button" to="/scenes">Explore scenes</Link>}
         />}
         {featured && !featuredError && <article className="featured-scene">
-          <div className="featured-player"><MagePlayer ariaLabel={`Featured scene: ${featured.name}`} sceneBlob={featured.sceneData} sceneKey={featured.id} initialPlayback="playing" /></div>
+          <div className="featured-player"><MagePlayer ariaLabel={`Featured scene: ${featured.name}`} sceneBlob={featured.sceneData} sceneKey={featured.id} posterUrl={featured.thumbnailRef} initialPlayback="playing" /></div>
           <div className="featured-info">
             <div className="creator-row">
               {featured.creatorHandle ? (

@@ -11,6 +11,7 @@ Exports:
 - `MagePlayer`
 - `MagePlayerProps`
 - `createMagePlayer()`
+- `sceneRecovery` / `sceneRecoveryKey()` (shared recovery guard for all render surfaces)
 - `listSceneTemplates()` (immutable picker metadata, without executable source)
 - `parseSceneDocument()` / `SceneContractError`
 - `SceneDocument`, `TemplateSceneDocument`, `CustomSceneDocument`, `SceneTemplate`
@@ -46,6 +47,8 @@ Exports:
 
 - `sceneBlob`
 - `sceneKey?` (stable scene identity; pass a route scene ID when available)
+- `recoverySceneBlob?` (original document before host-added preview defaults; identity only)
+- `posterUrl?` (static thumbnail shown while recovery blocks playback)
 - `ariaLabel?`
 - `className?`
 - `initialPlayback?`
@@ -90,6 +93,11 @@ Documents with any version/kind/template markers cannot fall back to legacy load
 - invalid scene data produces a recoverable error overlay instead of crashing the page
 - versioned documents always take the validated scene-load path; the audio-only update shortcut is limited to legacy scenes
 - the engine instance is disposed on unmount
+- failed or interrupted revisions stay static until deliberate retry; safe mode disables automatic rendering across the site
+- Stop and recovery controls remain outside the renderer; editor and playlist state survives replacing it
+
+See [`docs/scene-recovery.md`](../../../docs/scene-recovery.md) for marker lifetime,
+cross-tab behavior, failure signals, storage bounds, and execution-isolation limits.
 
 Audio and playlist notes:
 

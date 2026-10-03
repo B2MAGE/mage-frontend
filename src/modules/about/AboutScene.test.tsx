@@ -5,6 +5,39 @@ import { setAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
 import { BrandScene, BRAND_SCENE } from '@modules/scene-artwork'
 import { AboutScene } from './AboutScene'
 import { buildAudioResponseController } from '@shared/test/audioResponseController'
+import { sceneRecoveryKey } from '@modules/player'
+
+const recoveryMocks = vi.hoisted(() => ({
+  safeMode: false,
+  version: 0,
+  blocks: new Set<string>(),
+  retryGrants: new Set<string>(),
+  listeners: new Set<() => void>(),
+}))
+
+vi.mock('@modules/player/recovery/sceneRecovery', () => ({
+  sceneRecoveryKey: (blob: unknown, id?: string | number) => `${id ?? 'draft'}:${JSON.stringify(blob)}`,
+  sceneRecovery: {
+    subscribe: (listener: () => void) => {
+      recoveryMocks.listeners.add(listener)
+      return () => recoveryMocks.listeners.delete(listener)
+    },
+    getSnapshot: () => recoveryMocks.version,
+    isSafeMode: () => recoveryMocks.safeMode,
+    getBlock: (key: string) => !recoveryMocks.retryGrants.has(key) && recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
+    getAutomaticBlock: (key: string) => recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
+    block: (key: string) => {
+      recoveryMocks.blocks.add(key)
+      recoveryMocks.version += 1
+      recoveryMocks.listeners.forEach((listener) => listener())
+    },
+  },
+}))
+
+function publishRecoveryChange() {
+  recoveryMocks.version += 1
+  recoveryMocks.listeners.forEach((listener) => listener())
+}
 
 vi.mock('@modules/player', async (importOriginal) => ({
   ...await importOriginal<typeof import('@modules/player')>(),
@@ -81,6 +114,10 @@ function expectReady() {
 describe('AboutScene', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    recoveryMocks.safeMode = false
+    recoveryMocks.blocks.clear()
+    recoveryMocks.retryGrants.clear()
+    recoveryMocks.version += 1
     setAnimatedSceneThumbnailsEnabled(true)
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
     motionPreference = {
@@ -391,7 +428,7 @@ describe('AboutScene', () => {
     expect(createMagePlayer).toHaveBeenCalledTimes(1)
   })
 
-  it('shows an error and releases the renderer if WebGL loses its context', async () => {
+  it('quarantines the artwork and releases the renderer if WebGL loses its context', async () => {
     const controller = buildController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     render(<AboutScene />)
@@ -399,8 +436,9 @@ describe('AboutScene', () => {
     expectReady()
     await act(async () => { canvas().dispatchEvent(new Event('webglcontextlost')) })
 
-    expect(canvas()).not.toHaveAttribute('data-ready')
-    expect(screen.getByRole('alert')).toHaveTextContent('Unable to render this scene.')
+    expect(canvas()).toBeNull()
+    expect(illustration()).toHaveAttribute('data-preview-paused', 'true')
+    expect(recoveryMocks.blocks.has(sceneRecoveryKey(BRAND_SCENE)!)).toBe(true)
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
 
@@ -414,9 +452,57 @@ describe('AboutScene', () => {
     await act(async () => { canvas().dispatchEvent(new Event('webglcontextlost')) })
     await act(async () => { frame.resolve(renderedFrame) })
 
-    expect(canvas()).not.toHaveAttribute('data-ready')
-    expect(screen.getByRole('alert')).toHaveTextContent('Unable to render this scene.')
+    expect(canvas()).toBeNull()
+    expect(illustration()).toHaveAttribute('data-preview-paused', 'true')
     expect(controller.setPlaybackState).not.toHaveBeenCalledWith('playing')
     expect(controller.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['safe mode', 'blocked artwork', 'retry grant'] as const)('keeps decorative artwork static without creating an engine for %s', (reason) => {
+    if (reason === 'safe mode') recoveryMocks.safeMode = true
+    else recoveryMocks.blocks.add(sceneRecoveryKey(BRAND_SCENE)!)
+    if (reason === 'retry grant') recoveryMocks.retryGrants.add(sceneRecoveryKey(BRAND_SCENE)!)
+    render(<BrandScene />)
+
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(canvas()).toBeNull()
+    expect(illustration()).toHaveAttribute('data-preview-paused', 'true')
+    expect(illustration()).toHaveAttribute('aria-busy', 'false')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    if (reason === 'retry grant') expect(recoveryMocks.retryGrants.has(sceneRecoveryKey(BRAND_SCENE)!)).toBe(true)
+  })
+
+  it('releases live artwork when safe mode starts without remounting on unrelated recovery updates', async () => {
+    const controller = buildController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    render(<BrandScene />)
+    await setIntersecting(true)
+    expectReady()
+    await act(async () => {
+      recoveryMocks.safeMode = true
+      publishRecoveryChange()
+    })
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
+    expect(canvas()).toBeNull()
+    await act(async () => { publishRecoveryChange() })
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+  })
+
+  it('disposes artwork that finishes initialization after safe mode starts without loading source', async () => {
+    const creation = deferred<MagePlayerController>()
+    const controller = buildController()
+    vi.mocked(createMagePlayer).mockReturnValue(creation.promise)
+    render(<BrandScene />)
+    await setIntersecting(true)
+    await act(async () => {
+      recoveryMocks.safeMode = true
+      publishRecoveryChange()
+      creation.resolve(controller)
+    })
+
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
+    expect(controller.loadSceneBlob).not.toHaveBeenCalled()
+    expect(controller.captureFramePreview).not.toHaveBeenCalled()
+    expect(canvas()).toBeNull()
   })
 })

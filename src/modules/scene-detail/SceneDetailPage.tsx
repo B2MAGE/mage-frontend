@@ -596,6 +596,7 @@ export function SceneDetailPage() {
                 playlistTracks={playlistTracks}
                 repeatEnabled={isRepeatEnabled}
                 sceneBlob={scene.sceneData}
+                posterUrl={scene.thumbnailRef}
                 sceneKey={scene.id}
                 selectedTrackId={selectedTrackId}
                 shuffleEnabled={isShuffleEnabled}

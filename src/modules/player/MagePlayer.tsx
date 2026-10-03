@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { MagePlayerLoading } from './MagePlayerLoading'
 import {
   createMagePlayer,
@@ -26,6 +26,8 @@ import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { normalizeAudioResponseMode } from '@shared/lib'
 import { hasSceneDocumentMarkers } from './templates/sceneContract'
+import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
+import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -47,8 +49,11 @@ export type MagePlayerProps = {
   onSelectedTrackChange?: (trackId: string | null) => void
   onTrackDurationChange?: (trackId: string, duration: number) => void
   playlistTracks?: MagePlayerPlaylistTrack[]
+  posterUrl?: string | null
   repeatEnabled?: boolean
   sceneBlob: MageSceneBlob | null | undefined
+  /** Original document before editor defaults, for consistent recovery across routes. */
+  recoverySceneBlob?: MageSceneBlob
   sceneKey?: MageSceneKey
   selectedTrackId?: string | null
   shuffleEnabled?: boolean
@@ -67,7 +72,33 @@ function blurMouseActivatedControl(control: HTMLButtonElement, clickCount: numbe
   })
 }
 
-export function MagePlayer({
+/** Keep recovery controls and editor state outside the renderer's lifetime. */
+export function MagePlayer(props: MagePlayerProps) {
+  useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
+  const playlist = useMagePlayerPlaylist(props)
+  const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
+  const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
+  const safeMode = sceneRecovery.isSafeMode()
+
+  if (props.sceneBlob && (block || safeMode)) {
+    return <SceneRecoveryPanel
+      className={props.className}
+      posterUrl={props.posterUrl}
+      block={block}
+      safeMode={safeMode}
+      onRetry={() => { if (recoveryKey) sceneRecovery.retry(recoveryKey) }}
+      onSafeModeChange={sceneRecovery.setSafeMode}
+    />
+  }
+
+  return <MagePlayerRenderer {...props}
+    playlist={playlist}
+    onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
+    onSafeMode={() => sceneRecovery.setSafeMode(true)}
+  />
+}
+
+function MagePlayerRenderer({
   ariaLabel = 'MAGE scene preview',
   className,
   initialPlayback = 'playing',
@@ -75,18 +106,17 @@ export function MagePlayer({
   onAudioResponseCapabilitiesChange,
   onEngineDiagnosticsChange,
   onCaptureFramePreviewChange,
-  onPlaylistChange,
   onRequestPlaylistOpen,
-  onSelectedTrackChange,
-  onTrackDurationChange,
-  playlistTracks,
   repeatEnabled = false,
   sceneBlob,
+  recoverySceneBlob,
   sceneKey,
-  selectedTrackId,
   shuffleEnabled = false,
   simulatedBeat,
-}: MagePlayerProps) {
+  onStopRendering,
+  onSafeMode,
+  playlist,
+}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; playlist: ReturnType<typeof useMagePlayerPlaylist> }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const audioInputRef = useRef<HTMLInputElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
@@ -108,15 +138,7 @@ export function MagePlayer({
     currentTrack,
     currentTrackIndex,
     tracks,
-  } = useMagePlayerPlaylist({
-    onPlaylistChange,
-    onSelectedTrackChange,
-    onTrackDurationChange,
-    playlistTracks,
-    sceneBlob,
-    sceneKey,
-    selectedTrackId,
-  })
+  } = playlist
 
   const [loadedSceneIdentity, setLoadedSceneIdentity] = useState<string | null>(null)
   const [loadedPlayerVersion, setLoadedPlayerVersion] = useState<number | null>(null)
@@ -183,6 +205,12 @@ export function MagePlayer({
     let nextPlayer: MagePlayerController | null = null
     let isDisposed = false
     let animationFrameId = 0
+    const disposePlayer = () => {
+      try { nextPlayer?.dispose() } catch {
+        // The adapter retains its marker when cleanup fails. Recovery controls
+        // and unsaved editor state must survive that failure too.
+      }
+    }
 
     animationFrameId = window.requestAnimationFrame(() => {
       void (async () => {
@@ -190,7 +218,7 @@ export function MagePlayer({
           nextPlayer = await createMagePlayer(canvas, { log, mouseInteractions: true, mouseWheelZoom: true })
 
           if (isDisposed) {
-            nextPlayer.dispose()
+            disposePlayer()
             return
           }
 
@@ -199,7 +227,7 @@ export function MagePlayer({
           setAudioState(nextPlayer.getAudioState())
           setPlayerVersion((currentVersion) => currentVersion + 1)
         } catch (error) {
-          nextPlayer?.dispose()
+          disposePlayer()
 
           if (!isDisposed) {
             const currentSceneBlob = latestSceneBlobRef.current
@@ -221,7 +249,7 @@ export function MagePlayer({
       playerRef.current = null
       capabilitiesCallbackRef.current?.(null)
       diagnosticsCallbackRef.current?.(null)
-      nextPlayer?.dispose()
+      disposePlayer()
     }
   }, [log])
 
@@ -247,12 +275,15 @@ export function MagePlayer({
         && appliedSceneRef.current?.player === player
         && appliedSceneRef.current.identity === playbackIdentity
       if (isResponseUpdate) {
-        player.setAudioResponseSettings(
-          Object.hasOwn(sceneBlob, 'audioResponse') ? normalizeAudioResponseMode(sceneBlob.audioResponse) : undefined,
-          sceneBlob.audioResponseConfig,
-        )
-      } else {
-        player.loadSceneBlob(sceneBlob)
+          player.setAudioResponseSettings(
+            Object.hasOwn(sceneBlob, 'audioResponse') ? normalizeAudioResponseMode(sceneBlob.audioResponse) : undefined,
+            sceneBlob.audioResponseConfig,
+          )
+          player.updateRecoveryIdentity?.(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
+        } else {
+          if (recoverySceneBlob !== undefined) player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
+          else if (sceneKey === undefined) player.loadSceneBlob(sceneBlob)
+          else player.loadSceneBlob(sceneBlob, { sceneKey })
         loadedTrackIdRef.current = null
         completedTrackIdRef.current = null
       }
@@ -305,7 +336,7 @@ export function MagePlayer({
     return () => {
       isCancelled = true
     }
-  }, [playbackIdentity, playerVersion, sceneBlob])
+    }, [playbackIdentity, playerVersion, recoverySceneBlob, sceneBlob, sceneKey])
 
   const status: MagePlayerStatus =
     !sceneBlob
@@ -760,6 +791,10 @@ export function MagePlayer({
     <section className={buildMagePlayerClassName('mage-player', className)} data-state={status}>
       <div className="mage-player__viewport" aria-busy={status === 'loading'}>
         <canvas aria-label={ariaLabel} className="mage-player__canvas" ref={canvasRef} />
+        {sceneBlob ? <div className="mage-player__recovery-tools" aria-label="Rendering recovery">
+          {onStopRendering ? <button type="button" onClick={onStopRendering}>Stop rendering</button> : null}
+          <button type="button" onClick={onSafeMode}>Safe mode</button>
+        </div> : null}
         <input
           accept="audio/*"
           className="mage-player__audio-input"
