@@ -124,7 +124,7 @@ describe('Basic template editor controls', () => {
     expect(previewDocument().settings.camera.fov).toBe(90)
   })
 
-  it('keeps the full camera, music, effects and pass order controls in Basic without adding shader source', async () => {
+  it('edits the full Basic camera settings and preserves integer summary values without adding source', async () => {
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage()
@@ -142,7 +142,22 @@ describe('Basic template editor controls', () => {
       controls: { position0: { x: 12 }, target0: { y: 4 }, zoom0: 2 },
       camera: { fov: 100, tilt: Math.PI / 2, orientationMode: 2, orientationSpeed: 0.8 },
     })
+    const draft = previewDocument()
+    expect(draft.kind).toBe('template')
+    expect(JSON.stringify(draft)).not.toContain('"shader"')
+    const raw = await openRawJson(user)
+    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(draft)
+    expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
+    expect(draft.parameters.scale).toBe(10)
+    expect(screen.getByText('Scale', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^10$/)
+    expect(screen.getByText('FOV', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^100$/)
+  })
 
+  it('edits both Basic music response versions while keeping simulated beats out of the saved template', async () => {
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     fireEvent.change(screen.getByLabelText('Animation speed', { exact: true }), { target: { value: '1.5' } })
     await user.click(screen.getByRole('button', { name: 'Show advanced animation controls' }))
@@ -162,11 +177,19 @@ describe('Basic template editor controls', () => {
     const beforeSimulation = previewDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Simulate beat' }))
     expect(previewDocument()).toEqual(beforeSimulation)
+    expect(beforeSimulation.kind).toBe('template')
+    expect(JSON.stringify(beforeSimulation)).not.toContain('"shader"')
+  })
 
+  it('retains all Basic effects and pass ordering with the shared four-effect budget', async () => {
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Effects' }))
-    for (const title of ['Bloom', 'RGB Shift', 'Afterimage', 'Colorify', 'Kaleidoscope', 'Glitch', 'Dot Screen', 'Technicolor', 'Luminosity', 'Bleach Bypass', 'Toon', 'Sobel', 'Halftone', 'Gamma Correction']) {
-      expect(screen.getByRole('checkbox', { name: title })).toBeInTheDocument()
-    }
+    expect(screen.getAllByRole('checkbox').map(control => control.getAttribute('aria-label'))).toEqual(expect.arrayContaining([
+      'Bloom', 'RGB Shift', 'Afterimage', 'Colorify', 'Kaleidoscope', 'Glitch', 'Dot Screen', 'Technicolor', 'Luminosity', 'Bleach Bypass', 'Toon', 'Sobel', 'Halftone', 'Gamma Correction',
+    ]))
     if (!(screen.getByRole('checkbox', { name: 'Bloom' }) as HTMLInputElement).checked) await user.click(screen.getByRole('checkbox', { name: 'Bloom' }))
     fireEvent.change(screen.getByLabelText('Radius numeric value'), { target: { value: '2' } })
     fireEvent.change(screen.getByLabelText('Exposure numeric value'), { target: { value: '1.7' } })
@@ -189,9 +212,6 @@ describe('Basic template editor controls', () => {
     const raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(draft)
     expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
-    expect(draft.parameters.scale).toBe(10)
-    expect(screen.getByText('Scale', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^10$/)
-    expect(screen.getByText('FOV', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^100$/)
   })
 
   it.each([

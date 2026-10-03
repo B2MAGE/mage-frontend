@@ -139,9 +139,11 @@ source, while saved templates also retain per-scene availability and recovery ch
 ## Basic templates and custom repair (PP-B03)
 
 The default scene is the version-1 Prism Core template. `templateEditor.ts` owns supported
-field updates and the display model; it never resolves source. `TemplateSceneControls`
-reuses the existing sections and controls for the contract's scale, speed, skybox, camera,
-bloom, and tint fields. Basic hides unsupported settings and Pass Order.
+field updates and the display model; it never resolves source. Basic reuses the full camera,
+motion, music-response, effects, and Pass Order controls. The Scene section offers the template
+library in place of shader source selection/editing. Safe field updates map back to the template
+document, so changing effects or motion never converts it into custom source. The additive
+settings contract keeps the original template defaults and requires the matching backend update.
 
 Template selection preserves supported settings. Replacing custom content with a template
 requires explicit confirmation, including JSON imports. Cancel preserves the source. Valid
