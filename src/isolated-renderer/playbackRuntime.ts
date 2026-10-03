@@ -1,0 +1,143 @@
+import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_COMMANDS,
+  type PlaybackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
+import type { PlaybackEngine, PlaybackLoader } from './playbackEngine'
+
+export function installPlaybackRuntime(options: {
+  canvas: HTMLCanvasElement; statusElement: HTMLElement; allowedParentOrigins: readonly string[]
+  loadScene: PlaybackLoader; targetWindow?: Window; initialConnection?: MessageEvent
+}) {
+  const target = options.targetWindow ?? window
+  let activeCanvas = options.canvas
+  let port: MessagePort | null = null
+  let session = '', generation = 0, lastRequest = 0, frames = 0, lastProgress = -Infinity
+  let closed = false, loadAbort: AbortController | null = null, engine: PlaybackEngine | null = null
+  let capturePending = false
+  let cancelCaptureTimeout: (() => void) | null = null
+  let pendingResize: PlaybackPayloads['resize'] | null = null
+  let pendingInput: PlaybackPayloads['input'] | null = null
+  let pendingSynthetic: PlaybackPayloads['synthetic'] | null = null
+  let playing = true
+  let zoom = 1
+  const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
+  const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
+  const display = (text: string) => { options.statusElement.textContent = text; options.statusElement.hidden = false }
+  function send<T extends PlaybackType>(type: T, request: number, payload: PlaybackPayloads[T], transfer: Transferable[] = []) {
+    if (!closed) port?.postMessage(playbackMessage(type, session, generation, request, payload), transfer)
+  }
+  function dispose() {
+    if (closed) return
+    closed = true
+    cancelCaptureTimeout?.(); cancelCaptureTimeout = null
+    target.removeEventListener('message', connect)
+    target.removeEventListener('pagehide', dispose)
+    loadAbort?.abort(); loadAbort = null
+    try { engine?.dispose() } catch { /* Continue closing the private channel. */ }
+    engine = null; pendingInput = pendingResize = pendingSynthetic = null
+    port?.close(); port = null
+    display('Renderer stopped.')
+  }
+  function fail(code: 'render' | 'protocol', request = lastRequest) {
+    if (closed) return
+    try { send('error', request, { code }) } catch { /* Parent may already have removed the frame. */ }
+    dispose()
+    display('This scene could not be displayed.')
+  }
+  async function load(message: PlaybackMessage<'load'>) {
+    loadAbort?.abort()
+    cancelCaptureTimeout?.(); cancelCaptureTimeout = null
+    try { engine?.dispose() } catch { /* Abort already retired the previous generation. */ }
+    engine = null
+    // Disposing a WebGL renderer can dispatch contextlost asynchronously. A new
+    // generation must own a new canvas so that notification cannot stop it.
+    if (generation !== 0) {
+      const replacement = activeCanvas.cloneNode(false) as HTMLCanvasElement
+      activeCanvas.replaceWith(replacement)
+      activeCanvas = replacement
+    }
+    generation = message.generation
+    pendingInput = pendingResize = pendingSynthetic = null
+    playing = true; zoom = 1; frames = 0; lastProgress = -Infinity
+    const abort = new AbortController()
+    loadAbort = abort
+    const active = () => !closed && loadAbort === abort && !abort.signal.aborted
+    display('Loading scene…')
+    try {
+      const loadedEngine = await options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
+        onError: () => { if (active()) fail('render', message.requestId) },
+        onFrame: () => {
+          if (!active()) return
+          frames++
+          const now = performance.now()
+          if (now - lastProgress >= 500) { lastProgress = now; send('progress', 0, { frames }) }
+        },
+      })
+      if (!active()) { loadedEngine.dispose(); return }
+      engine = loadedEngine
+      if (pendingResize) engine.resize(pendingResize)
+      if (pendingInput) engine.input(pendingInput)
+      if (pendingSynthetic) engine.synthetic(pendingSynthetic)
+      engine.zoom(zoom)
+      engine.playback(playing)
+      options.statusElement.hidden = true
+      send('loaded', message.requestId, null)
+    } catch { if (active()) fail('render', message.requestId) }
+  }
+  async function capture(message: PlaybackMessage<'capture'>) {
+    const source = engine, token = loadAbort
+    if (!source || capturePending) { send('error', message.requestId, { code: 'capture' }); return }
+    capturePending = true
+    const active = () => !closed && engine === source && loadAbort === token && !token?.signal.aborted
+    const timeout = setTimeout(() => { if (active()) fail('render', message.requestId) }, BRIDGE_LIMITS.captureTimeoutMs)
+    const cancel = () => clearTimeout(timeout)
+    cancelCaptureTimeout = cancel
+    try {
+      const result = await source.capture(message.payload)
+      if (active()) send('captured', message.requestId, result, [result.bytes])
+    } catch { if (active()) send('error', message.requestId, { code: 'capture' }) }
+    finally { cancel(); if (cancelCaptureTimeout === cancel) cancelCaptureTimeout = null; capturePending = false }
+  }
+  function onCommand(event: MessageEvent) {
+    if (closed) return
+    if (!withinRate()) return fail('protocol')
+    if (!isPlaybackMessage(event.data, PLAYBACK_COMMANDS)) return fail('protocol')
+    const message = event.data
+    if (message.session !== session || message.requestId <= lastRequest) return
+    if (message.type === 'load') {
+      if (message.generation <= generation) return
+      if (!withinLoadRate()) return fail('protocol', message.requestId)
+      lastRequest = message.requestId
+      void load(message)
+      return
+    }
+    if (message.generation !== generation) return
+    lastRequest = message.requestId
+    try {
+      switch (message.type) {
+        case 'dispose': dispose(); break
+        case 'resize': pendingResize = message.payload; engine?.resize(message.payload); break
+        case 'input': pendingInput = message.payload; engine?.input(message.payload); break
+        case 'synthetic': pendingSynthetic = message.payload; engine?.synthetic(message.payload); break
+        case 'playback': playing = message.payload.playing; engine?.playback(playing); break
+        case 'zoom': zoom = message.payload.factor; engine?.zoom(zoom); break
+        case 'capture':
+          if (!withinCaptureRate()) return fail('protocol', message.requestId)
+          void capture(message); break
+      }
+    } catch { fail('render', message.requestId) }
+  }
+  function connect(event: MessageEvent) {
+    if (closed || port || target.parent === target || event.source !== target.parent
+      || !options.allowedParentOrigins.includes(event.origin) || event.ports.length !== 1
+      || !isPlaybackMessage(event.data, ['connect'])) return
+    session = event.data.session; port = event.ports[0]
+    target.removeEventListener('message', connect)
+    port.onmessage = onCommand; port.onmessageerror = () => fail('protocol'); port.start()
+    display('Ready for MAGE.')
+    send('ready', 0, null)
+  }
+  display(target.parent === target ? 'Open this player from MAGE.' : 'Waiting for MAGE…')
+  target.addEventListener('message', connect)
+  target.addEventListener('pagehide', dispose)
+  if (options.initialConnection) connect(options.initialConnection)
+  return { dispose }
+}

@@ -14,7 +14,16 @@ const sourcePrefix = `${root.replaceAll('\\', '/')}/src/`
 const rootPrefix = `${root.replaceAll('\\', '/')}/`
 const allowedSharedFiles = new Set([
   `${sourcePrefix}modules/player/isolation/protocol.ts`,
+  `${sourcePrefix}modules/player/isolation/playbackProtocol.ts`,
+  `${sourcePrefix}modules/player/isolation/capture.ts`,
+  `${sourcePrefix}modules/player/infrastructure/viewerPointerDeformation.ts`,
   `${sourcePrefix}modules/player/policy/renderBudget.ts`,
+  `${sourcePrefix}modules/player/policy/sceneValidation.ts`,
+  `${sourcePrefix}modules/player/templates/resolveScene.ts`,
+  `${sourcePrefix}modules/player/templates/sceneContract.ts`,
+  `${sourcePrefix}modules/player/templates/templateSettings.ts`,
+  `${sourcePrefix}modules/player/templates/templateRegistry.ts`,
+  `${sourcePrefix}modules/player/templates/versions/v1/definitions.ts`,
   `${rootPrefix}contracts/scenes/scene-limits.v1.json`,
 ])
 let bundledModules = []
