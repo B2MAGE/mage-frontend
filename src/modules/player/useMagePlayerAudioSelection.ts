@@ -3,6 +3,7 @@ import { createPlaylistTrackId, readAudioFileDuration, readMagePlayerErrorMessag
 import type { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 
 type Selection = { cancelled: boolean; sourcePaths: string[] }
+type PickerRequest = { cancelled: boolean; sceneIdentity: string | null }
 type Args = {
   inputRef: RefObject<HTMLInputElement | null>
   playlist: ReturnType<typeof useMagePlayerPlaylist>
@@ -14,12 +15,16 @@ type Args = {
 export function useMagePlayerAudioSelection({ inputRef, playlist, sceneIdentity, onRequestPlaylistOpen }: Args) {
   const latest = useRef({ playlist, onRequestPlaylistOpen })
   const pending = useRef(new Set<Selection>())
+  const pickerRequest = useRef<PickerRequest | null>(null)
   const [state, setState] = useState({ sceneIdentity, adding: false, error: null as string | null })
 
   useEffect(() => { latest.current = { playlist, onRequestPlaylistOpen } }, [playlist, onRequestPlaylistOpen])
   useEffect(() => {
     const selections = pending.current
     return () => {
+      // A native dialog may return after this mounted player changes scenes.
+      // Keep its cancellation even if the user navigates back before it closes.
+      if (pickerRequest.current?.sceneIdentity === sceneIdentity) pickerRequest.current.cancelled = true
       for (const selection of selections) {
         selection.cancelled = true
         selection.sourcePaths.forEach(source => URL.revokeObjectURL(source))
@@ -31,6 +36,7 @@ export function useMagePlayerAudioSelection({ inputRef, playlist, sceneIdentity,
   function open() {
     const input = inputRef.current
     if (!input) return
+    pickerRequest.current = { cancelled: false, sceneIdentity }
     setState({ sceneIdentity, adding: false, error: null })
     input.value = ''
     input.click()
@@ -38,6 +44,12 @@ export function useMagePlayerAudioSelection({ inputRef, playlist, sceneIdentity,
 
   async function select(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget
+    const request = pickerRequest.current
+    pickerRequest.current = null
+    if (request && (request.cancelled || request.sceneIdentity !== sceneIdentity)) {
+      input.value = ''
+      return
+    }
     const files = Array.from(input.files ?? [])
     if (!files.length) return
     const selection: Selection = { cancelled: false, sourcePaths: [] }
