@@ -125,4 +125,31 @@ describe('template editor state and preview', () => {
     act(() => result.current.handleTemplateSelection('embedded-scene-0'))
     expect(result.current.sceneData).toEqual(custom.scene)
   })
+
+  it('restores exact custom text after an imported template passes through invalid edits', async () => {
+    const source = { visualizer: { shader: 'sphere(0.7)' } }
+    const { result } = await state({ sceneData: source })
+    const original = '{ "schemaVersion": 1, "kind": "custom", "scene": { "visualizer": { "shader": "sphere(0.7)" } } }'
+    act(() => result.current.handleRawSceneDataChange(original))
+    const imported = JSON.stringify(createTemplateScene('embedded-scene-2'))
+    act(() => result.current.handleRawSceneDataChange(imported))
+    act(() => result.current.handleRawSceneDataChange(imported.slice(0, -1)))
+    expect(result.current.pendingTemplateImport).toBeNull()
+    expect(result.current.sceneData).toEqual(source)
+    act(() => result.current.confirmTemplateImport())
+    expect(result.current.isTemplate).toBe(false)
+    act(() => result.current.handleRawSceneDataChange(imported))
+    act(() => result.current.cancelTemplateImport())
+    expect(result.current.sceneDataText).toBe(original)
+    expect(result.current.sceneData).toEqual(source)
+
+    // A later explicit custom import establishes its own cancellation baseline.
+    act(() => result.current.handleRawSceneDataChange(imported))
+    const replacement = '{ "visualizer": { "shader": "sphere(0.9)" } }'
+    act(() => result.current.handleRawSceneDataChange(replacement))
+    act(() => result.current.handleRawSceneDataChange(imported))
+    act(() => result.current.cancelTemplateImport())
+    expect(result.current.sceneDataText).toBe(replacement)
+    expect(result.current.sceneData).toEqual(JSON.parse(replacement))
+  })
 })

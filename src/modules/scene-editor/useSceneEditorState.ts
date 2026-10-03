@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import {
   getSceneEditorModel,
@@ -72,6 +72,9 @@ export function useSceneEditorState({
     prettyPrintEditorSceneData(initialState?.sceneData ?? createTemplateScene()),
   )
   const [pendingImport, setPendingImport] = useState<{ document: TemplateSceneDocument; previousText: string } | null>(null)
+  // A temporarily invalid template draft must not replace the custom text that
+  // Cancel restores when that draft becomes valid again.
+  const templateImportPreviousTextRef = useRef<string | null>(null)
   const [musicResponseDefaults] = useState(() => readMusicResponseDefaults(sceneData))
   const isTemplate = isTemplateEditorDocument(sceneData)
   const templateDocument = isTemplate ? sceneData : null
@@ -168,6 +171,7 @@ export function useSceneEditorState({
       return
     }
     const nextText = JSON.stringify(nextSceneData, null, 2)
+    templateImportPreviousTextRef.current = null
     setPendingImport(null)
     setSceneData(nextSceneData)
     setSceneDataText(nextText)
@@ -260,8 +264,10 @@ export function useSceneEditorState({
     try {
       const document = parseSceneImport(nextValue)
       if (!isTemplate && document.kind === 'template') {
-        setPendingImport({ document, previousText: pendingImport?.previousText ?? sceneDataText })
+        templateImportPreviousTextRef.current ??= sceneDataText
+        setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
       } else {
+        templateImportPreviousTextRef.current = null
         setSceneData(readEditableSceneData(document))
       }
     } catch (error) {
@@ -273,7 +279,8 @@ export function useSceneEditorState({
     try {
       const document = parseSceneImport(sceneDataText)
       if (!isTemplate && document.kind === 'template') {
-        setPendingImport({ document, previousText: pendingImport?.previousText ?? prettyPrintEditorSceneData(sceneData) })
+        templateImportPreviousTextRef.current ??= prettyPrintEditorSceneData(sceneData)
+        setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
       } else {
         applySceneData(readEditableSceneData(document), true)
       }
@@ -295,6 +302,7 @@ export function useSceneEditorState({
   function cancelTemplateImport() {
     if (!pendingImport) return
     setSceneDataText(pendingImport.previousText)
+    templateImportPreviousTextRef.current = null
     setPendingImport(null)
     clearErrors('sceneData', 'form')
   }

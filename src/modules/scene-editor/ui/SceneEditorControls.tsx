@@ -6,6 +6,7 @@ import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
 type SectionProps = PropsWithChildren<{
   className?: string
   description: string
+  stepNumber?: number
   title: string
 }>
 
@@ -100,7 +101,7 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
 }
 
-export function SceneSection({ children, className, description, title }: SectionProps) {
+export function SceneSection({ children, className, description, stepNumber, title }: SectionProps) {
   const headings: Record<string, { number: number; title: string }> = {
     Details: { number: 1, title: 'Start with the basics.' },
     Scene: { number: 2, title: 'Choose the visual foundation.' },
@@ -115,7 +116,7 @@ export function SceneSection({ children, className, description, title }: Sectio
   return (
     <section className={joinClassNames('scene-editor-section', className)} data-section={title}>
       <div className="scene-editor-section__header">
-        {heading ? <span className="scene-editor-section__eyebrow">{heading.number} · {title}</span> : null}
+        {heading ? <span className="scene-editor-section__eyebrow">{stepNumber ?? heading.number} · {title}</span> : null}
         <h2>{heading?.title ?? title}</h2>
         <p>{description}</p>
       </div>

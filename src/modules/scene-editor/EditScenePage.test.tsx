@@ -1,9 +1,10 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel } from './sceneEditor'
+import { createTemplateScene } from './templateEditor'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -86,8 +87,7 @@ describe('EditScenePage workflow', () => {
       const user = userEvent.setup()
       renderEditScenePage()
       await screen.findByRole('heading', { name: /edit your scene/i })
-      const previewScene = () => screen.getByTestId('mage-player').getAttribute('data-scene')
-      const originalPreview = previewScene()
+      expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Camera' }))
       expect(screen.getByLabelText('Automatic orbit')).not.toBeChecked()
@@ -95,25 +95,30 @@ describe('EditScenePage workflow', () => {
       await user.click(screen.getByRole('button', { name: 'Show advanced camera controls' }))
       expect(screen.getByLabelText('Camera Orientation Mode')).toHaveValue(1)
       expect(screen.getByLabelText('Camera Orientation Speed')).toHaveValue(0.7)
-      expect(previewScene()).toBe(originalPreview)
+      expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Hide advanced camera controls' }))
-      expect(previewScene()).toBe(originalPreview)
+      expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+      fireEvent.change(screen.getByLabelText('Camera Orientation'), { target: { value: '90' } })
 
       await user.click(screen.getByRole('button', { name: 'Motion' }))
       await user.click(screen.getByRole('button', { name: 'Show advanced animation controls' }))
       expect(screen.getByLabelText('Starting animation time')).toHaveValue(12)
-      expect(previewScene()).toBe(originalPreview)
+      expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Hide advanced animation controls' }))
-      expect(previewScene()).toBe(originalPreview)
+      expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
       expect(screen.queryByLabelText('Starting animation time')).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Confirm' }))
+      await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+      const document = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)
+      expect(document.intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
+      expect(document.state).toEqual(sceneData.state)
       await user.click(screen.getByRole('button', { name: /update scene/i }))
       await waitFor(() => expect(submitted).toMatchObject({
         sceneData: {
           schemaVersion: 1, kind: 'custom', scene: {
             audioResponse,
-            intent: { camOrientationMode: 1, camOrientationSpeed: 0.7, autoRotate: false },
+            intent: { camOrientationMode: 1, camOrientationSpeed: 0.7, autoRotate: false, camTilt: Math.PI / 2 },
             state: sceneData.state,
           },
         },
@@ -122,13 +127,13 @@ describe('EditScenePage workflow', () => {
     },
   )
 
-  it('loads the saved scene and preserves its audio response while updating details, tags, and thumbnail', async () => {
+  it.each(['custom', 'template'] as const)('updates saved %s details and tags, capturing a new thumbnail only for templates', async kind => {
     storeSceneEditorSession()
     mockCaptureFramePreview.mockResolvedValue('data:image/png;base64,dXBkYXRlZA==')
 
     const scene = buildSceneEditorApiScene({
       tags: ['ambient'],
-      sceneData: {
+      sceneData: kind === 'template' ? createTemplateScene() : {
         ...buildSceneEditorApiScene().sceneData,
         audioResponse: 'transient-v1',
       },
@@ -206,7 +211,8 @@ describe('EditScenePage workflow', () => {
       'src',
       'thumbnails/scene-12.png',
     )
-    expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
+    if (kind === 'template') expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
+    else expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /create scene/i })).not.toBeInTheDocument()
     expect(await screen.findByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
 
@@ -215,7 +221,8 @@ describe('EditScenePage workflow', () => {
     await user.clear(screen.getByLabelText(/description/i))
     await user.type(screen.getByLabelText(/description/i), ' Updated from My Scenes. ')
     await selectExistingTag(user, 'focus-friendly')
-    await user.click(screen.getByRole('button', { name: /capture again/i }))
+    if (kind === 'template') await user.click(screen.getByRole('button', { name: /capture again/i }))
+    else expect(screen.getByRole('button', { name: /capture again/i })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /update scene/i }))
 
@@ -223,7 +230,7 @@ describe('EditScenePage workflow', () => {
       expect(updateSceneBody).toMatchObject({
         description: 'Updated from My Scenes.',
         name: 'Updated Scene',
-        sceneData: {
+        sceneData: kind === 'template' ? createTemplateScene() : {
           schemaVersion: 1, kind: 'custom', scene: {
             audioResponse: 'transient-v1',
             visualizer: { shader: 'nebula' },
@@ -231,16 +238,13 @@ describe('EditScenePage workflow', () => {
         },
       }),
     )
-    await waitFor(() =>
-      expect(finalizeThumbnailBody).toEqual({
-        objectKey: 'scenes/12/thumbnails/replacement.png',
-      }),
-    )
+    if (kind === 'template') await waitFor(() => expect(finalizeThumbnailBody).toEqual({ objectKey: 'scenes/12/thumbnails/replacement.png' }))
+    else expect(finalizeThumbnailBody).toBeNull()
     expect(replaceTagsBody).toEqual({
       tagIds: [1, 2],
     })
-    expect(replacementUploadRequested).toBe(true)
-    expect(mockCaptureFramePreview).toHaveBeenCalledTimes(1)
+    expect(replacementUploadRequested).toBe(kind === 'template')
+    expect(mockCaptureFramePreview).toHaveBeenCalledTimes(kind === 'template' ? 1 : 0)
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
