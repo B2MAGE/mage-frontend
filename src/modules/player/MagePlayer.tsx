@@ -93,7 +93,11 @@ export function MagePlayer(props: MagePlayerProps) {
       posterUrl={props.posterUrl}
       block={block}
       safeMode={safeMode}
-      onRetry={() => { if (recoveryKey) sceneRecovery.retry(recoveryKey) }}
+      onRetry={() => {
+        if (!recoveryKey) return
+        if (block?.reason === 'stopped') sceneRecovery.resumeStoppedScene(recoveryKey, block.at)
+        else sceneRecovery.retry(recoveryKey)
+      }}
       onSafeModeChange={sceneRecovery.setSafeMode}
     />
   }

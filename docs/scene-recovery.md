@@ -13,12 +13,16 @@ no backend change or server-side crash classification.
   and a **Pause all scenes** toggle. These controls are also available in the bottom
   bar while loading, with no permanent buttons covering the scene.
 - **Stop this scene** disposes the active player and blocks automatic rendering of
-  that revision. **Resume scene** deliberately tries it again.
+  that revision. **Resume scene** clears an intentional stop, so future visits,
+  previews, and other tabs can play that revision again. It only clears the exact
+  stop shown by the button; a newer stop or failure stays blocked.
 - **Retry scene** permits another attempt in the current tab. It does not approve
   the scene, change validation, or disable any other playback restrictions.
   Other tabs remain blocked. The permission lasts for one rendering attempt; after
   leaving the scene, another visit requires a fresh retry until the record expires
   or is explicitly cleared. A corrected revision has its own identity.
+  Stopping an accepted retry retains its original failure history and requires
+  **Retry scene** again; it cannot turn a failure into a clearable manual stop.
 - One **Playback paused** panel explains whether playback was stopped, interrupted,
   or failed. **Pause all scenes** turns off automatic rendering across this site's
   tabs. Browsing and editing remain available; turning it off does not erase failed
@@ -106,6 +110,7 @@ preservation. Patched-engine tests exercise real lifecycle notifications, and th
 patch is checked against a pristine MAGE 1.0.3 package.
 
 For a harmless manual check, stop a valid scene, reload, and verify it stays static.
-Resume explicitly, enable Pause all scenes, browse to another scene, then turn it off.
+Resume explicitly, navigate away and return, and verify the manual pause is gone.
+Enable Pause all scenes, browse to another scene, then turn it off.
 For editor recovery, make unsaved changes, stop the preview, and confirm the fields
 remain intact. Do not use an infinite loop to test a renderer on the browser thread.

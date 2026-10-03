@@ -382,6 +382,62 @@ describe('recovery leases and local history', () => {
     expect(recovery.getBlock(key)?.reason).toBe('context-lost')
     expect(recovery.begin(key)).toBeNull()
   })
+
+  it('manual Resume clears that stop across tabs, clean revisits, and a fresh store', () => {
+    const local = memoryStorage()
+    const first = store({ localStorage: local }); const second = store({ localStorage: local })
+    first.block(key, 'stopped')
+    const pausedAt = first.getBlock(key)!.at
+    expect(first.resumeStoppedScene(key, pausedAt)).toBe(true)
+    expect(first.getAutomaticBlock(key)).toBeNull()
+    expect(second.getBlock(key)).toBeNull()
+    const resumed = first.begin(key)!
+    resumed.dispose()
+    expect(first.begin(key)).not.toBeNull()
+    expect(store({ localStorage: local }).getBlock(key)).toBeNull()
+  })
+
+  it.each(['runtime', 'interrupted', 'stopped'] as const)('a stale Resume cannot clear a newer %s record', (reason) => {
+    const local = memoryStorage()
+    const first = store({ localStorage: local }); const second = store({ localStorage: local })
+    first.block(key, 'stopped')
+    const previousAt = first.getBlock(key)!.at
+    second.block(key, reason)
+    expect(first.resumeStoppedScene(key, previousAt)).toBe(false)
+    expect(first.getBlock(key)?.reason).toBe(reason)
+    expect(first.begin(key)).toBeNull()
+  })
+
+  it('manual Resume respects global pause and preserves unrelated failure history', () => {
+    const recovery = store()
+    const other = revision(901)
+    recovery.block(key, 'stopped')
+    recovery.block(other, 'runtime')
+    const pausedAt = recovery.getBlock(key)!.at
+    recovery.setSafeMode(true)
+    expect(recovery.resumeStoppedScene(key, pausedAt)).toBe(false)
+    expect(recovery.getBlock(key)?.reason).toBe('stopped')
+    recovery.setSafeMode(false)
+    expect(recovery.resumeStoppedScene(key, pausedAt)).toBe(true)
+    expect(recovery.getBlock(other)?.reason).toBe('runtime')
+    expect(recovery.begin(other)).toBeNull()
+  })
+
+  it.each(['load', 'runtime', 'interrupted'] as const)('manually stopping a %s retry retains its actual recovery requirement', (reason) => {
+    const recovery = store()
+    recovery.block(key, reason)
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.block(key, 'stopped')
+    attempt.dispose()
+    const retained = recovery.getBlock(key)!
+    expect(retained.reason).toBe(reason)
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe(reason)
+    expect(recovery.resumeStoppedScene(key, retained.at)).toBe(false)
+    expect(recovery.begin(key)).toBeNull()
+    recovery.retry(key)
+    expect(recovery.begin(key)).not.toBeNull()
+  })
 })
 
 describe('tab ownership', () => {

@@ -362,6 +362,11 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
   const block = (key: string, reason: RecoveryReason) => {
     if (destroyed || !keyPattern.test(key) || !reasons.has(reason)) return
     refreshHistory()
+    const previousBlock = readBlock(key)
+    // Pausing a deliberate retry is not evidence that its earlier failure was
+    // repaired. Keep that quarantine so manual Resume cannot later erase it.
+    const nextReason = reason === 'stopped' && previousBlock && previousBlock.reason !== 'stopped'
+      ? previousBlock.reason : reason
     pending.delete(key)
     carried.delete(key)
     interruptionsWritten.delete(key)
@@ -371,7 +376,7 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
     localRetryBlocks.delete(key)
     // Distinguish two explicit failures even if separate tabs report them in
     // the same millisecond, so an older retry cannot mask the new failure.
-    blocks.set(key, { reason, at: Math.max(now(), (blocks.get(key)?.at ?? -Infinity) + 1) })
+    blocks.set(key, { reason: nextReason, at: Math.max(now(), (previousBlock?.at ?? -Infinity) + 1) })
     saveHistory()
     saveActive()
     emit()
@@ -395,6 +400,19 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
     entry?.tokens.delete(token)
     if (entry && entry.tokens.size === 0) leases.delete(key)
     saveActive()
+  }
+  const clearBlock = (key: string) => {
+    blocks.delete(key)
+    pending.delete(key)
+    carried.delete(key)
+    interruptionsWritten.delete(key)
+    retryGrants.delete(key)
+    activeRetries.delete(key)
+    suspendedRetryGrants.delete(key)
+    localRetryBlocks.delete(key)
+    saveHistory()
+    saveActive()
+    emit()
   }
 
   return {
@@ -482,21 +500,21 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       suspendedRetryGrants.delete(key)
       emit()
     },
+    resumeStoppedScene(key: string, expectedStoppedAt: number) {
+      if (destroyed || !keyPattern.test(key)) return false
+      refreshHistory()
+      const latest = readBlock(key)
+      if (safeMode || latest?.reason !== 'stopped' || latest.at !== expectedStoppedAt) return false
+      // Resume reverses a manual pause across this browser. A crash/interruption
+      // still needs its separate one-attempt Retry and can never be cleared here.
+      clearBlock(key)
+      return true
+    },
     /** Explicit history reset, not a playback permission. Used by tests/admin tools. */
     clear(key: string) {
       if (destroyed) return
       refreshHistory()
-      blocks.delete(key)
-      pending.delete(key)
-      carried.delete(key)
-      interruptionsWritten.delete(key)
-      retryGrants.delete(key)
-      activeRetries.delete(key)
-      suspendedRetryGrants.delete(key)
-      localRetryBlocks.delete(key)
-      saveHistory()
-      saveActive()
-      emit()
+      clearBlock(key)
     },
     /** Release infrastructure only. Kept markers model a document that no longer runs. */
     destroy() {
