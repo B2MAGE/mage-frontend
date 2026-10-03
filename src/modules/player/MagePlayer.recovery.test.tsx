@@ -14,9 +14,21 @@ function identity(scene: unknown, id?: number) {
   return key
 }
 
+function controllerWithLease(key: string) {
+  let lease: ReturnType<typeof sceneRecovery.begin> = null
+  return buildMagePlayerController({
+    loadSceneBlob: vi.fn(() => {
+      lease = sceneRecovery.begin(key)
+      if (!lease) throw new Error('Scene is still blocked')
+    }),
+    dispose: vi.fn(() => lease?.dispose()),
+  })
+}
+
 describe('MagePlayer recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(createMagePlayer).mockReset()
     sceneRecovery.setSafeMode(false)
     for (const key of keys) sceneRecovery.clear(key)
   })
@@ -81,6 +93,60 @@ describe('MagePlayer recovery', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
     expect(screen.getByRole('button', { name: 'Retry scene' })).toBeInTheDocument()
     expect(createMagePlayer).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([undefined, 'stopped', 'runtime'] as const)('resumes an already playing scene after global pause, including a previous %s record', async (previous) => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 807)
+    if (previous) sceneRecovery.block(key, previous)
+    const first = controllerWithLease(key)
+    const resumed = controllerWithLease(key)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(resumed)
+    render(<MagePlayer sceneBlob={scene} sceneKey={807} />)
+    if (previous) fireEvent.click(screen.getByRole('button', { name: previous === 'stopped' ? 'Resume scene' : 'Retry scene' }))
+    await waitFor(() => expect(first.loadSceneBlob).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: 'Playback options' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+    expect(first.dispose).toHaveBeenCalledOnce()
+    expect(screen.getByRole('checkbox', { name: 'Pause all scenes' })).toBeChecked()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalled())
+    expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
+    expect(sceneRecovery.getBlock(key)).toBeNull()
+  })
+
+  it('ends the paused continuation when leaving the scene', async () => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 808)
+    sceneRecovery.block(key, 'stopped')
+    const first = controllerWithLease(key)
+    vi.mocked(createMagePlayer).mockResolvedValue(first)
+    const view = render(<MagePlayer sceneBlob={scene} sceneKey={808} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
+    await waitFor(() => expect(first.loadSceneBlob).toHaveBeenCalled())
+    act(() => sceneRecovery.setSafeMode(true))
+    expect(first.dispose).toHaveBeenCalledOnce()
+    view.unmount()
+    act(() => sceneRecovery.setSafeMode(false))
+    render(<MagePlayer sceneBlob={scene} sceneKey={808} />)
+    expect(screen.getByRole('button', { name: 'Resume scene' })).toBeInTheDocument()
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+  })
+
+  it('does not resume if a newer failure arrives while an accepted retry is globally paused', async () => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 809)
+    sceneRecovery.block(key, 'stopped')
+    const first = controllerWithLease(key)
+    vi.mocked(createMagePlayer).mockResolvedValue(first)
+    render(<MagePlayer sceneBlob={scene} sceneKey={809} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
+    await waitFor(() => expect(first.loadSceneBlob).toHaveBeenCalled())
+    act(() => sceneRecovery.setSafeMode(true))
+    act(() => sceneRecovery.block(key, 'runtime'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeInTheDocument()
+    expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 
   it('allows a revised scene without clearing the failed version or repeating its load', async () => {

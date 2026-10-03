@@ -81,6 +81,12 @@ export function MagePlayer(props: MagePlayerProps) {
   const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
 
+  // A global pause replaces the renderer, but keeps this viewing session open.
+  // Navigating away or editing the revision ends any retained retry permission.
+  useEffect(() => {
+    if (recoveryKey) return sceneRecovery.retainPlaybackSession(recoveryKey)
+  }, [recoveryKey])
+
   if (props.sceneBlob && (block || safeMode)) {
     return <SceneRecoveryPanel
       className={props.className}

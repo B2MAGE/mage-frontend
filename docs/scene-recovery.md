@@ -24,6 +24,11 @@ no backend change or server-side crash classification.
   tabs. Browsing and editing remain available; turning it off does not erase failed
   scenes. Resume stays disabled while all scenes are paused. Internally this setting
   retains the existing safe-mode flag and persistence behavior.
+- Turning **Pause all scenes** off resumes scenes that were already playing in the
+  current view, including an accepted retry. Clean global-pause disposal retains
+  that permission until resume; leaving the view, changing the revision, or a new
+  failure cancels it. Previously blocked scenes remain blocked, and other tabs do
+  not receive this continuation permission.
 - Editor fields and locally selected audio tracks survive replacing a failed
   player. This is not draft autosave: a browser crash or page reload can still
   discard unsaved editor changes and local file selections.

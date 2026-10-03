@@ -164,6 +164,8 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
   const interruptionsWritten = new Map<string, number>()
   const retryGrants = new Map<string, RecoveryBlock>()
   const activeRetries = new Map<string, { token: symbol; block: RecoveryBlock }>()
+  const playbackSessions = new Map<string, Set<symbol>>()
+  const suspendedRetryGrants = new Set<string>()
   // A retry during an ownership probe stays local: the copied marker could still
   // belong to another live document, which must not be quarantined by this tab.
   const localRetryBlocks = new Map<string, RecoveryBlock>()
@@ -213,7 +215,10 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       return latest?.at === permitted.at && latest.reason === permitted.reason
     }
     for (const [key, permitted] of retryGrants) {
-      if (!stillMatches(key, permitted)) retryGrants.delete(key)
+      if (!stillMatches(key, permitted)) {
+        retryGrants.delete(key)
+        suspendedRetryGrants.delete(key)
+      }
     }
     for (const [key, attempt] of activeRetries) {
       if (!stillMatches(key, attempt.block)) activeRetries.delete(key)
@@ -362,6 +367,7 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
     interruptionsWritten.delete(key)
     retryGrants.delete(key)
     activeRetries.delete(key)
+    suspendedRetryGrants.delete(key)
     localRetryBlocks.delete(key)
     // Distinguish two explicit failures even if separate tabs report them in
     // the same millisecond, so an older retry cannot mask the new failure.
@@ -372,7 +378,19 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
   }
   const finishLease = (key: string, token: symbol) => {
     if (destroyed) return
-    if (activeRetries.get(key)?.token === token) activeRetries.delete(key)
+    // A newer failure (including one from another tab) always takes precedence
+    // over the permission that was used for this playback attempt.
+    refreshHistory()
+    const attempt = activeRetries.get(key)
+    if (attempt?.token === token) {
+      activeRetries.delete(key)
+      if (safeMode && playbackSessions.get(key)?.size && !retryGrants.has(key)) {
+        // Global pause replaces the renderer while its outer player remains.
+        // Keep only that already accepted attempt eligible for continuation.
+        retryGrants.set(key, attempt.block)
+        suspendedRetryGrants.add(key)
+      }
+    }
     const entry = leases.get(key)
     entry?.tokens.delete(token)
     if (entry && entry.tokens.size === 0) leases.delete(key)
@@ -385,6 +403,24 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
     getBlock,
     getAutomaticBlock,
     block,
+    retainPlaybackSession(key: string) {
+      if (destroyed || !keyPattern.test(key)) return () => undefined
+      const scope = Symbol()
+      const sessions = playbackSessions.get(key) ?? new Set<symbol>()
+      sessions.add(scope)
+      playbackSessions.set(key, sessions)
+      let released = false
+      return () => {
+        if (released) return
+        released = true
+        sessions.delete(scope)
+        if (sessions.size) return
+        playbackSessions.delete(key)
+        // A later explicit Retry is independent of this suspended continuation.
+        // retry() removes its suspended tag so releasing a scope cannot revoke it.
+        if (suspendedRetryGrants.delete(key)) retryGrants.delete(key)
+      }
+    },
     isPersistent: () => persistenceAvailable,
     isSafeMode() { refreshHistory(); return safeMode },
     setSafeMode(enabled: boolean) {
@@ -407,6 +443,7 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       const token = Symbol()
       if (previousBlock) {
         retryGrants.delete(key)
+        suspendedRetryGrants.delete(key)
         activeRetries.set(key, { token, block: previousBlock })
         if (pending.has(key)) {
           localRetryBlocks.set(key, previousBlock)
@@ -442,6 +479,7 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       // One document-local attempt. Shared quarantine stays intact, so another
       // blocked tab cannot start rendering merely because this tab chose Retry.
       retryGrants.set(key, previousBlock)
+      suspendedRetryGrants.delete(key)
       emit()
     },
     /** Explicit history reset, not a playback permission. Used by tests/admin tools. */
@@ -454,6 +492,7 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       interruptionsWritten.delete(key)
       retryGrants.delete(key)
       activeRetries.delete(key)
+      suspendedRetryGrants.delete(key)
       localRetryBlocks.delete(key)
       saveHistory()
       saveActive()

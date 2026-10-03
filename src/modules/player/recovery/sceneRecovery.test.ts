@@ -280,6 +280,108 @@ describe('recovery leases and local history', () => {
     recovery.clear(key)
     expect(recovery.getBlock(key)).toBeNull()
   })
+
+  it.each(['stopped', 'runtime'] as const)('continues an accepted %s retry after a global pause in the same player', (reason) => {
+    const recovery = store()
+    const release = recovery.retainPlaybackSession(key)
+    recovery.block(key, reason)
+    recovery.retry(key)
+    const firstAttempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    firstAttempt.dispose()
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe(reason)
+    expect(recovery.getBlock(key)).toBeNull()
+    expect(recovery.begin(key)).toBeNull() // Global pause still prevents source execution.
+    recovery.setSafeMode(false)
+    const continuation = recovery.begin(key)!
+    expect(continuation).not.toBeNull()
+    expect(recovery.begin(key)).toBeNull()
+    continuation.dispose()
+    expect(recovery.getBlock(key)?.reason).toBe(reason) // Ordinary clean exit ends the attempt.
+    release()
+  })
+
+  it('does not turn a global pause toggle into permission for an already blocked nonplaying scene', () => {
+    const recovery = store()
+    recovery.retainPlaybackSession(key)
+    recovery.block(key, 'runtime')
+    recovery.setSafeMode(true)
+    recovery.setSafeMode(false)
+    expect(recovery.getBlock(key)?.reason).toBe('runtime')
+    expect(recovery.begin(key)).toBeNull()
+  })
+
+  it.each(['outer-first', 'renderer-first'] as const)('drops suspended continuation on navigation with %s cleanup', (order) => {
+    const recovery = store()
+    const release = recovery.retainPlaybackSession(key)
+    recovery.block(key, 'stopped')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    if (order === 'outer-first') { release(); attempt.dispose() }
+    else { attempt.dispose(); release() }
+    release() // Cleanup is idempotent.
+    recovery.setSafeMode(false)
+    expect(recovery.getBlock(key)?.reason).toBe('stopped')
+    expect(recovery.begin(key)).toBeNull()
+  })
+
+  it('counts overlapping outer scopes and never revokes a newer explicit retry when the last one leaves', () => {
+    const recovery = store()
+    const first = recovery.retainPlaybackSession(key)
+    const second = recovery.retainPlaybackSession(key)
+    recovery.block(key, 'runtime')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    attempt.dispose()
+    first()
+    expect(recovery.getBlock(key)).toBeNull()
+    recovery.retry(key) // A fresh explicit action is independent of either outer scope.
+    second()
+    recovery.setSafeMode(false)
+    expect(recovery.begin(key)).not.toBeNull()
+  })
+
+  it('new cross-tab failures revoke suspended continuation without unblocking any other tab', () => {
+    const local = memoryStorage()
+    const first = store({ localStorage: local }); const second = store({ localStorage: local })
+    first.retainPlaybackSession(key)
+    first.block(key, 'runtime')
+    first.retry(key)
+    const attempt = first.begin(key)!
+    first.setSafeMode(true)
+    attempt.dispose()
+    expect(second.getBlock(key)?.reason).toBe('runtime')
+    second.block(key, 'context-lost')
+    first.setSafeMode(false)
+    expect(first.getBlock(key)?.reason).toBe('context-lost')
+    expect(first.begin(key)).toBeNull()
+    expect(second.begin(key)).toBeNull()
+  })
+
+  it('does not retain a permission after a failure, an expired block, or explicit clearing', () => {
+    const recovery = store()
+    recovery.retainPlaybackSession(key)
+    recovery.block(key, 'stopped')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    attempt.fail('runtime')
+    expect(recovery.getBlock(key)?.reason).toBe('runtime')
+    recovery.setSafeMode(false)
+    recovery.retry(key)
+    const second = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    second.dispose()
+    vi.advanceTimersByTime(RECOVERY_EXPIRY_MS + 2)
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+    recovery.clear(key)
+    recovery.block(key, 'context-lost')
+    recovery.setSafeMode(false)
+    expect(recovery.getBlock(key)?.reason).toBe('context-lost')
+    expect(recovery.begin(key)).toBeNull()
+  })
 })
 
 describe('tab ownership', () => {
