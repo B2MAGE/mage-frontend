@@ -1,4 +1,4 @@
-# Scene availability (PP-R03)
+# Scene availability (PP-R03 and PP-R04)
 
 Public availability is a playback permission, separate from local crash history and Pause all scenes. Local Retry, owner repair source, template labels, and cached documents cannot override it.
 
@@ -47,3 +47,13 @@ The integration closeout also passed **790 focused frontend tests in 32 files**,
 The PP-I02/PP-I03 bridge now enforces freshness, revocation, source identity, recovery and capture guards around the isolated renderer. Integration verification is complete; the former dependency on connecting normal players is resolved. Submitted source has no parent-renderer fallback.
 
 Completing this integration does not approve public arbitrary-source execution. Keep the production release approval and global custom-rendering control off until the documented production-equivalent release matrix is approved. Chromium 154 on Windows is the recorded browser; untested browser/platform behavior and authenticated production walkthroughs are not implied by local results. Polling bounds depend on parent scheduling, and iframe isolation is not a universal CPU/GPU timeout guarantee.
+
+## Unavailable scene presentation (PP-R04)
+
+Home and scene detail retain a disabled scene's available artwork, title, creator, description and navigation. The player uses a compact message over the thumbnail, or the same message on its normal background when no thumbnail exists. Public copy comes from the shared availability store, never from an operator reason or a raw server error. Global custom-rendering denial says “Scene playback is temporarily disabled.” Individual denial says “This scene is currently unavailable.” Neither offers a playback retry.
+
+A failed permission check offers **Check again**, while a temporary scene-loading failure offers **Try again**. These repeat the original permission or data request and cannot bypass a denial. Missing scenes, invalid data and sign-in requirements have separate messages and suitable navigation. Retrying discovery does not reload the featured player. A late retry response cannot replace the scene opened afterward. Local rendering failures remain under crash recovery; owner repair remains non-playing until independently authorized.
+
+The October 3, 2026 local verification passed 222 focused tests across Home, detail, availability and owner repair/capture, plus TypeScript, lint and the production build. The new 14-case route integration suite uses the real loaders, shared player, availability/recovery store and isolated controller, replacing only the final frame transport. It covers source withholding, missing thumbnails, global/individual denial, re-enable with fresh source, live revocation, failed checks, failed detail loads and malformed scene data. It asserts no parent engine fallback or private operator text.
+
+Chromium 154/Windows visual review covered the real unavailable detail page in both MAGE Pulse and Classic Blue at desktop and 390-pixel mobile widths. Missing-scene navigation was also checked with the keyboard and a visible focus outline. Local screenshots are under `.local/deployment-evidence/pp-r04-*.jpg`. The original dark theme and viewport were restored; dedicated local verification scene 27 was deleted after testing, with other scenes preserved and operator access still absent. These are local review results, not a production deployment of PP-R04.
