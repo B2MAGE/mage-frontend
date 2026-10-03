@@ -25,6 +25,7 @@ import {
 import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { normalizeAudioResponseMode } from '@shared/lib'
+import { hasSceneDocumentMarkers } from './templates/sceneContract'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -242,6 +243,7 @@ export function MagePlayer({
 
     try {
       const isResponseUpdate = playbackIdentity !== null
+        && !hasSceneDocumentMarkers(sceneBlob)
         && appliedSceneRef.current?.player === player
         && appliedSceneRef.current.identity === playbackIdentity
       if (isResponseUpdate) {

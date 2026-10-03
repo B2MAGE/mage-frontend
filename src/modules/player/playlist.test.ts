@@ -1,9 +1,34 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   mergePlaylistTrackCollections,
+  buildScenePlaylistTrack,
   shufflePlaylistTracks,
   type MagePlayerPlaylistTrack,
 } from './playlist'
+
+describe('versioned scene playlist tracks', () => {
+  const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+
+  it('does not discover audio from valid or mixed template documents', () => {
+    expect(buildScenePlaylistTrack(template)).toBeNull()
+    expect(buildScenePlaylistTrack({ ...template, audioPath: 'https://example.com/forbidden.mp3' })).toBeNull()
+    expect(buildScenePlaylistTrack({ ...template, settings: { audio: { url: '/forbidden.mp3' } } })).toBeNull()
+  })
+
+  it('rejects audio getters before reading them', () => {
+    const getter = vi.fn(() => '/forbidden.mp3')
+    const scene = Object.defineProperty({ ...template }, 'audioPath', { get: getter, enumerable: true })
+    expect(buildScenePlaylistTrack(scene)).toBeNull()
+    expect(getter).not.toHaveBeenCalled()
+  })
+
+  it('preserves saved audio in the explicit custom envelope', () => {
+    const source = { visualizer: { shader: 'custom' }, audioPath: '/music/saved.mp3' }
+    expect(buildScenePlaylistTrack({ schemaVersion: 1, kind: 'custom', scene: source }))
+      .toEqual(buildScenePlaylistTrack(source))
+    expect(buildScenePlaylistTrack({ schemaVersion: 2, kind: 'custom', scene: source })).toBeNull()
+  })
+})
 
 function createTrack(id: string): MagePlayerPlaylistTrack {
   return {

@@ -1,0 +1,117 @@
+{
+  "catalogVersion": 1,
+  "templates": [
+    {
+      "templateId": "embedded-scene-0",
+      "templateVersion": 1,
+      "label": "Prism Core",
+      "description": "Bundled engine scene with layered box frames and a reflective core sphere.",
+      "sourceSha256": "5d0668aad5be120267d59dbbc1ae8bd113a8667d9d4a7cffab2e59ed0fa033bf"
+    },
+    {
+      "templateId": "embedded-scene-1",
+      "templateVersion": 1,
+      "label": "Steel Lattice",
+      "description": "Bundled engine scene built from stacked grids and box frames.",
+      "sourceSha256": "40b627b46b9f7ca99701e2b0b3746b43da6d354a0ceb57e5a8551032210c878b"
+    },
+    {
+      "templateId": "embedded-scene-2",
+      "templateVersion": 1,
+      "label": "Aqua Static",
+      "description": "Bundled engine scene with noisy box frames and layered grid distortion.",
+      "sourceSha256": "18794488f917e29ef4d237f955752740287f4057cc5c4780759e03a1dbd81c17"
+    },
+    {
+      "templateId": "embedded-scene-3",
+      "templateVersion": 1,
+      "label": "Verdant Frames",
+      "description": "Bundled engine scene with twin box frames and green edge-lit motion.",
+      "sourceSha256": "2979eaee864b621c4b462cf9a4a4cd0dee50316eadfd5789aa9478a29d982423"
+    },
+    {
+      "templateId": "embedded-scene-4",
+      "templateVersion": 1,
+      "label": "Crimson Reactor",
+      "description": "Bundled engine scene with framed cylinders, a noisy core sphere, and a grid floor.",
+      "sourceSha256": "00aa24d383ddb47964e677bc2d6e0b1a98beb0e8bca91e83b277b22aa46451cb"
+    },
+    {
+      "templateId": "embedded-scene-5",
+      "templateVersion": 1,
+      "label": "Alloy Capsule",
+      "description": "Bundled engine scene combining a metallic cylinder shell with a central sphere.",
+      "sourceSha256": "9dd071092dd7ba0604dbadd2ea4108aab6e32fd4a210df3fe43ab4f1d58aa775"
+    },
+    {
+      "templateId": "embedded-scene-6",
+      "templateVersion": 1,
+      "label": "Redline Core",
+      "description": "Bundled engine scene with a dominant sphere, cylinder, and dense grid accent.",
+      "sourceSha256": "b06e2e9599075671437335fb13397f025837d92a0e2bbe6d3c84ceb5dd1961f8"
+    },
+    {
+      "templateId": "embedded-scene-7",
+      "templateVersion": 1,
+      "label": "Violet Matrix",
+      "description": "Bundled engine scene with layered grids and a saturated violet sphere.",
+      "sourceSha256": "bc03de2e801043c870e335ac107beed558c92151a61bc8d18ed8edf0a32ba4bd"
+    },
+    {
+      "templateId": "embedded-scene-8",
+      "templateVersion": 1,
+      "label": "Mint Halo",
+      "description": "Bundled engine scene with a torus frame, noisy grids, and a bright center sphere.",
+      "sourceSha256": "d80290ef69facee4cf08cf2e3428526649b597e3f6861a26ac58c56e591e535d"
+    },
+    {
+      "templateId": "embedded-scene-9",
+      "templateVersion": 1,
+      "label": "Ember Grid",
+      "description": "Bundled engine scene with orange framing and a tight supporting grid.",
+      "sourceSha256": "8c3033e118542c4549a8f724955bb9a8869ee23e58e676b41a64be1b3bbe92f6"
+    },
+    {
+      "templateId": "embedded-scene-10",
+      "templateVersion": 1,
+      "label": "Emerald Ring",
+      "description": "Bundled engine scene with a torus and box frame at maximum scale.",
+      "sourceSha256": "48ab51903dcd6eb89d342c7017032cc8bdc27670dc6cf23de4f7a3a347b97cf8"
+    },
+    {
+      "templateId": "embedded-scene-11",
+      "templateVersion": 1,
+      "label": "Spectrum Relay",
+      "description": "Bundled engine scene with color-from-ray direction and sparse mixed primitives.",
+      "sourceSha256": "c452251e0928e3fb966bb7158b7b2a3e076cd88454a85aeb095b487570681fc1"
+    },
+    {
+      "templateId": "embedded-scene-12",
+      "templateVersion": 1,
+      "label": "Chroma Storm",
+      "description": "Bundled engine scene with heavy noise expansion, mixed primitives, and rainbow ray coloring.",
+      "sourceSha256": "06156e6d902678ef42505deb5762de6e19722f7da83fdb3a441669a12e6109e8"
+    },
+    {
+      "templateId": "embedded-scene-13",
+      "templateVersion": 1,
+      "label": "Rose Circuit",
+      "description": "Bundled engine scene with twin metallic rings, a cylinder, and shifting rose-colored highlights.",
+      "sourceSha256": "2ce68933b3aa9a36b56a1222bc6e9d4c5d39dcf0ace4387565ed052cff5ab85a"
+    },
+    {
+      "templateId": "reaction-rings-v1",
+      "templateVersion": 1,
+      "label": "Ripple Rings",
+      "description": "Three luminous rings breathe gently and ripple independently with sound.",
+      "sourceSha256": "66bfd1b6d7eda9e051b79c01389e5fe2a16efc123837cd6f1535cf5f19a37bf8"
+    },
+    {
+      "templateId": "reaction-lantern-v1",
+      "templateVersion": 1,
+      "label": "Tidal Lantern",
+      "description": "An iridescent bell and flowing strands ripple with the music.",
+      "sourceSha256": "644c07142d501f37ecfdfabb6064b22816f785ac5dbbc880d075bcadfcfd0bd6"
+    }
+  ]
+}

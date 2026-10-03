@@ -1,4 +1,5 @@
 import type { MageSceneBlob } from './infrastructure/engineAdapter'
+import { hasSceneDocumentMarkers, parseSceneDocument } from './templates/sceneContract'
 
 export type MagePlayerPlaylistTrack = {
   album?: string
@@ -23,6 +24,18 @@ function readTrimmedMetadataValue(value: string | undefined) {
 function readAudioSource(sceneBlob: MageSceneBlob | null | undefined) {
   if (!sceneBlob) {
     return null
+  }
+
+  // Playlist discovery runs before the engine effect. Validate envelopes here
+  // too, so forbidden template audio fields cannot be read or loaded early.
+  if (hasSceneDocumentMarkers(sceneBlob)) {
+    try {
+      const document = parseSceneDocument(sceneBlob)
+      if (document.kind === 'template') return null
+      sceneBlob = document.scene
+    } catch {
+      return null
+    }
   }
 
   const audioPath = sceneBlob.audioPath
