@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, type FocusEvent, type PointerEvent } from 'react'
-import { sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MageSceneBlob } from '@modules/player'
+import { availabilityStatusTarget, availabilityTarget, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MageSceneBlob } from '@modules/player'
 import { useAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
 import {
   createSceneHoverPreviewRegistrationId,
@@ -26,7 +26,9 @@ function pointerPreviewIsAllowed() {
 
 export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHoverPreviewOptions) {
   const preferenceEnabled = useAnimatedSceneThumbnailsEnabled()
-  const availability = useSceneAvailability(sceneId)
+  // Missing source needs only a badge/status query; it never registers a preview.
+  const target = useMemo(() => sceneBlob ? availabilityTarget(sceneId, sceneBlob) : availabilityStatusTarget(sceneId), [sceneId, sceneBlob])
+  const availability = useSceneAvailability(target)
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const recoveryKey = useMemo(() => sceneRecoveryKey(sceneBlob, sceneId), [sceneBlob, sceneId])
   const recoveryPaused = !recoveryKey || sceneRecovery.isSafeMode() || !!sceneRecovery.getAutomaticBlock(recoveryKey)
@@ -134,6 +136,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
     onPointerEnter,
     onPointerLeave,
     recoveryPaused,
+    availabilityChecking: availability.code === 'CHECKING',
     availabilityPaused: !availability.allowed,
     thumbnailRef,
   }

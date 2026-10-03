@@ -3,6 +3,7 @@ import { AppIcon } from '@shared/ui'
 import type { EditorSectionConfig, EditorSectionId } from '../types'
 
 type SceneEditorStepperProps = {
+  sections?: readonly EditorSectionConfig[]
   currentSection: EditorSectionConfig
   currentSectionIndex: number
   sectionIssuesById: Partial<Record<EditorSectionId, string | null>>
@@ -10,6 +11,7 @@ type SceneEditorStepperProps = {
 }
 
 export function SceneEditorStepper({
+  sections = EDITOR_SECTIONS,
   currentSection,
   currentSectionIndex,
   sectionIssuesById,
@@ -18,7 +20,7 @@ export function SceneEditorStepper({
   return (
     <nav aria-label="Section navigation" className="scene-editor-stepper">
       <ol className="scene-editor-stepper__list">
-        {EDITOR_SECTIONS.map((section, index) => {
+        {sections.map((section, index) => {
           const isActive = section.id === currentSection.id
           const isPrevious = index < currentSectionIndex
           const issueMessage = sectionIssuesById[section.id]

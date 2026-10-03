@@ -49,7 +49,7 @@ independent of physical buffer resolution.
 
 Runtime fitting is separate from document validation: it does not rewrite saved settings or make an
 invalid scene acceptable to the server. Templates retain their immutable source and version. The
-legacy Shader picker still writes custom documents until PP-B03 adds template authoring.
+Basic template picker writes only template documents; the custom repair editor keeps custom documents.
 
 ## Verification
 

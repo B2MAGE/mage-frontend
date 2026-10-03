@@ -29,6 +29,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
     onPointerEnter,
     onPointerLeave,
     recoveryPaused,
+    availabilityChecking,
     availabilityPaused,
     thumbnailRef,
   } = useSceneHoverPreview({ sceneBlob: scene.sceneData, sceneId: scene.sceneId, seed: scene.sceneId })
@@ -52,7 +53,9 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           ) : (
             <div className="scene-card__thumbnail-placeholder" aria-hidden="true" />
           )}
-          {availabilityPaused ? (
+          {availabilityChecking ? (
+            <span className="scene-card__preview-paused">Checking playback…</span>
+          ) : availabilityPaused ? (
             <span className="scene-card__preview-paused">Playback unavailable</span>
           ) : !scene.sceneData ? (
             <span className="scene-card__preview-paused">Open scene to play</span>

@@ -76,6 +76,61 @@ describe('shared live scene availability', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('lets validated draft templates preview locally while retaining offline/page lifecycle stops', async () => {
+    fetchMock.mockRejectedValue(new Error('Unavailable backend'))
+    store.subscribe('draft-template', vi.fn())
+    expect((await store.check('draft-template')).allowed).toBe(true)
+    expect(fetchMock).not.toHaveBeenCalled()
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    window.dispatchEvent(new Event('offline'))
+    expect(store.isAllowed('draft-template')).toBe(false)
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    window.dispatchEvent(new Event('online'))
+    expect(store.isAllowed('draft-template')).toBe(true)
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+    expect(store.isAllowed('draft-template')).toBe(false)
+  })
+
+  it('requires fresh per-scene verification for saved templates without the custom switch', async () => {
+    fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status') ? global(false) : [scene(47)]))
+    expect(store.isAllowed('template:47')).toBe(false)
+    store.subscribe('template:47', vi.fn())
+    expect((await store.check('template:47')).allowed).toBe(true)
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/api/scene-availability?ids=47'])
+    expect((await store.check(47)).allowed).toBe(false)
+    expect(store.isAllowed('template:47')).toBe(true)
+    vi.setSystemTime(Date.now() + AVAILABILITY_MAX_AGE_MS)
+    expect(store.isAllowed('template:47')).toBe(false)
+  })
+
+  it.each(['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'SCENE_UPGRADE_REQUIRED', 'CUSTOM_RENDERING_DISABLED'])('respects saved template denial %s without upgrading draft replacements', async code => {
+    fetchMock.mockResolvedValue(json([scene(47, code)]))
+    expect(await store.check('template:47')).toMatchObject({ allowed: false, code })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('revokes saved template permission immediately on focus and failed status checks', async () => {
+    store.subscribe('template:47', vi.fn())
+    await store.check('template:47')
+    fetchMock.mockRejectedValue(new Error('Network lost'))
+    window.dispatchEvent(new Event('focus'))
+    expect(store.isAllowed('template:47')).toBe(false)
+    expect(await store.check('template:47')).toMatchObject({ allowed: false, code: 'STATUS_UNAVAILABLE' })
+  })
+
+  it('shares one saved-ID query across template, custom, and metadata-only targets', async () => {
+    const result = await Promise.all([store.check('template:47'), store.check(47), store.check('status:47')])
+    expect(result.every(status => status.allowed)).toBe(true)
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/api/rendering-status', '/api/scene-availability?ids=47'])
+  })
+
+  it('uses per-ID status to restore omitted source without granting custom rendering permission', async () => {
+    fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status') ? global(false) : [scene(47)]))
+    expect((await store.check('status:47')).allowed).toBe(true)
+    expect(store.isAllowed(47)).toBe(false)
+    expect((await store.check(47)).allowed).toBe(false)
+  })
+
   it('keeps legacy scenes unavailable until the server verifies an explicit upgrade', async () => {
     fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status')
       ? global() : [scene(23, 'SCENE_UPGRADE_REQUIRED')]))
@@ -185,6 +240,30 @@ describe('shared live scene availability', () => {
     vi.setSystemTime(Date.now() + AVAILABILITY_MAX_AGE_MS)
     expect(store.isAllowed(2)).toBe(false)
     expect(store.getSnapshot(2).code).toBe('STATUS_UNAVAILABLE')
+  })
+
+  it('keeps a hidden saved template non-executable until fresh approval, but treats offline as failure', async () => {
+    store.subscribe('template:2', vi.fn())
+    await store.check('template:2')
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(store.getSnapshot('template:2').code).toBe('CHECKING')
+    await vi.advanceTimersByTimeAsync(AVAILABILITY_MAX_AGE_MS * 2)
+    expect(store.getSnapshot('template:2')).toMatchObject({ code: 'CHECKING', allowed: false })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    const next = deferred<Response>()
+    fetchMock.mockReturnValue(next.promise)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(store.isAllowed('template:2')).toBe(false)
+    const checked = store.check('template:2')
+    next.resolve(json([scene(2)]))
+    expect((await checked).allowed).toBe(true)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    window.dispatchEvent(new Event('offline'))
+    expect(store.getSnapshot('template:2').code).toBe('STATUS_UNAVAILABLE')
   })
 
   it('starts the freshness window when the request starts, not when a delayed response arrives', async () => {

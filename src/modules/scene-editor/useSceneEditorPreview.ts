@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { getSceneEditorModel, TONE_MAPPING_OPTIONS, type SceneData } from './sceneEditor'
 import { buildEffectiveSceneData, buildShaderOptions, buildToneMappingOptions } from './utils'
 import { describeSceneValidationError } from './sceneValidation'
+import { getTemplateEditorModel, isTemplateEditorDocument } from './templateEditor'
 
 type UseSceneEditorPreviewArgs = {
   sceneData: SceneData
@@ -10,7 +11,8 @@ type UseSceneEditorPreviewArgs = {
 export function useSceneEditorPreview({
   sceneData,
 }: UseSceneEditorPreviewArgs) {
-  const sceneModel = useMemo(() => getSceneEditorModel(sceneData), [sceneData])
+  const sceneModel = useMemo(() => isTemplateEditorDocument(sceneData)
+    ? getTemplateEditorModel(sceneData) : getSceneEditorModel(sceneData), [sceneData])
   const validation = useMemo(() => {
     try { return { source: buildEffectiveSceneData(sceneData), error: null } }
     catch (error) { return { source: null, error: describeSceneValidationError(error) } }

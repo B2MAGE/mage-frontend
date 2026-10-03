@@ -6,23 +6,33 @@ import type { MagePlayerController, MagePlayerPlaybackState } from '@modules/pla
 import type { DiscoveryScene } from '../types'
 import { DiscoverySceneCard } from './DiscoverySceneCard'
 import { buildAudioResponseController } from '@shared/test/audioResponseController'
-import { sceneRecoveryKey } from '@modules/player'
+import { parseSceneDocument, sceneRecoveryKey } from '@modules/player'
 
 const engineMocks = vi.hoisted(() => ({
   createMagePlayer: vi.fn(),
 }))
 
-const availabilityMocks = vi.hoisted(() => ({ snapshot: { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 }, listeners: new Set<() => void>() }))
-vi.mock('@modules/player/availability/sceneAvailability', () => ({
-  sceneAvailabilityStore: {
-    getSnapshot: () => availabilityMocks.snapshot,
-    isAllowed: () => availabilityMocks.snapshot.allowed,
-    subscribe: (_target: unknown, listener: () => void) => {
+const availabilityMocks = vi.hoisted(() => ({
+  snapshot: { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 },
+  customRenderingDisabled: false,
+  customDisabled: { allowed: false, code: 'CUSTOM_RENDERING_DISABLED', message: 'Custom playback disabled', checkedAt: 1 },
+  subscriptions: [] as unknown[],
+  checks: [] as unknown[],
+  listeners: new Set<() => void>(),
+}))
+vi.mock('@modules/player/availability/sceneAvailability', () => {
+  const getSnapshot = (target: unknown) => availabilityMocks.customRenderingDisabled && (typeof target === 'number' || target === 'custom')
+    ? availabilityMocks.customDisabled : availabilityMocks.snapshot
+  return { sceneAvailabilityStore: {
+    getSnapshot,
+    isAllowed: (target: unknown) => { availabilityMocks.checks.push(target); return getSnapshot(target).allowed },
+    subscribe: (target: unknown, listener: () => void) => {
+      availabilityMocks.subscriptions.push(target)
       availabilityMocks.listeners.add(listener)
       return () => availabilityMocks.listeners.delete(listener)
     },
-  },
-}))
+  } }
+})
 
 function blockAvailability() {
   availabilityMocks.snapshot = { allowed: false, code: 'SCENE_DISABLED', message: 'Unavailable', checkedAt: 2 }
@@ -90,6 +100,10 @@ const scene: DiscoveryScene = {
     currentUserSaved: false,
   },
 }
+
+const templateScene: DiscoveryScene = { ...scene, sceneData: parseSceneDocument({
+  schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1,
+}) }
 
 const emptyAudioState = {
   currentTime: 0,
@@ -161,6 +175,9 @@ describe('DiscoverySceneCard animated preview', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     availabilityMocks.snapshot = { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 }
+    availabilityMocks.customRenderingDisabled = false
+    availabilityMocks.subscriptions.length = 0
+    availabilityMocks.checks.length = 0
     reducedMotion = false
     finePointer = true
     recoveryMocks.safeMode = false
@@ -186,6 +203,87 @@ describe('DiscoverySceneCard animated preview', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('checks and previews validated templates independently of the custom-rendering switch', async () => {
+    availabilityMocks.customRenderingDisabled = true
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    renderCard(templateScene)
+    expect(screen.queryByText('Playback unavailable')).not.toBeInTheDocument()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(availabilityMocks.subscriptions.length).toBeGreaterThanOrEqual(2)
+    expect(new Set(availabilityMocks.subscriptions)).toEqual(new Set(['template:17']))
+    expect(new Set(availabilityMocks.checks)).toEqual(new Set(['template:17']))
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(templateScene.sceneData, { sceneKey: 17 })
+    expect(controller.setPlaybackState).toHaveBeenCalledWith('playing')
+    await act(async () => blockAvailability())
+    expect(screen.getByText('Playback unavailable')).toBeInTheDocument()
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['custom source', scene.sceneData],
+    ['a template label alone', { ...scene.sceneData, kind: 'template' }],
+    ['a template containing injected source', { ...templateScene.sceneData, visualizer: { shader: 'injected' } }],
+  ])('keeps %s behind the custom-rendering switch', async (_label, sceneData) => {
+    availabilityMocks.customRenderingDisabled = true
+    renderCard({ ...scene, sceneData })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(screen.getByText('Playback unavailable')).toBeInTheDocument()
+    expect(new Set(availabilityMocks.subscriptions)).toEqual(new Set([17]))
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+  })
+
+  it('uses a metadata-only check for omitted source without authorizing a hover preview', async () => {
+    availabilityMocks.customRenderingDisabled = true
+    renderCard({ ...templateScene, sceneData: null })
+    expect(screen.getByText('Open scene to play')).toBeInTheDocument()
+    expect(screen.queryByText('Playback unavailable')).not.toBeInTheDocument()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(new Set(availabilityMocks.subscriptions)).toEqual(new Set(['status:17']))
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    await act(async () => blockAvailability())
+    expect(screen.getByText('Playback unavailable')).toBeInTheDocument()
+  })
+
+  it('shows a pending check without declaring a saved template unavailable', async () => {
+    availabilityMocks.customRenderingDisabled = true
+    availabilityMocks.snapshot = { allowed: false, code: 'CHECKING', message: 'Checking', checkedAt: 1 }
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    renderCard(templateScene)
+    expect(screen.getByText('Checking playback…')).toBeInTheDocument()
+    expect(screen.queryByText('Playback unavailable')).not.toBeInTheDocument()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    await act(async () => {
+      availabilityMocks.snapshot = { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 2 }
+      availabilityMocks.listeners.forEach(listener => listener())
+    })
+    await finishActivation()
+    expect(screen.queryByText('Checking playback…')).not.toBeInTheDocument()
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(templateScene.sceneData, { sceneKey: 17 })
+  })
+
+  it('rechecks the execution target when a template card changes to custom source at the same saved ID', async () => {
+    availabilityMocks.customRenderingDisabled = true
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    const view = renderCard(templateScene)
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    view.rerender(<MemoryRouter><DiscoverySceneCard scene={scene} /></MemoryRouter>)
+    await finishActivation()
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Playback unavailable')).toBeInTheDocument()
+    expect(availabilityMocks.subscriptions).toContain(17)
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(controller.loadSceneBlob).not.toHaveBeenCalledWith(scene.sceneData, expect.anything())
   })
 
   it('never creates a preview for missing source or denied server availability', async () => {

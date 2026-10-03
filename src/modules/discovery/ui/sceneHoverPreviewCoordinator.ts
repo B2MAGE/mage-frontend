@@ -1,4 +1,5 @@
 import {
+  availabilityTarget,
   createMagePlayer,
   sceneRecovery,
   sceneRecoveryKey,
@@ -20,6 +21,7 @@ export type SceneHoverPreviewRegistration = {
 }
 
 type PreviewRegistrationId = symbol
+type RegisteredPreview = SceneHoverPreviewRegistration & { availabilityTarget: ReturnType<typeof availabilityTarget> }
 type ActivePreview = {
   id: PreviewRegistrationId
   canvas: HTMLCanvasElement
@@ -38,7 +40,7 @@ class SceneHoverPreviewCoordinator {
   private pendingTimer: number | null = null
   private pageSuspended = false
   private readonly fadingCanvases = new Map<HTMLCanvasElement, number>()
-  private readonly registrations = new Map<PreviewRegistrationId, SceneHoverPreviewRegistration>()
+  private readonly registrations = new Map<PreviewRegistrationId, RegisteredPreview>()
   private readonly availabilitySubscriptions = new Map<PreviewRegistrationId, () => void>()
 
   constructor() {
@@ -50,8 +52,9 @@ class SceneHoverPreviewCoordinator {
 
   register(id: PreviewRegistrationId, registration: SceneHoverPreviewRegistration) {
     this.availabilitySubscriptions.get(id)?.()
-    this.registrations.set(id, registration)
-    this.availabilitySubscriptions.set(id, sceneAvailabilityStore.subscribe(registration.sceneId, this.handleRecoveryChange))
+    const target = availabilityTarget(registration.sceneId, registration.sceneBlob)
+    this.registrations.set(id, { ...registration, availabilityTarget: target })
+    this.availabilitySubscriptions.set(id, sceneAvailabilityStore.subscribe(target, this.handleRecoveryChange))
   }
 
   unregister(id: PreviewRegistrationId) {
@@ -88,7 +91,7 @@ class SceneHoverPreviewCoordinator {
 
   private canPreview(id: PreviewRegistrationId) {
     const registration = this.registrations.get(id)
-    if (!registration || !sceneAvailabilityStore.isAllowed(registration.sceneId) || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
+    if (!registration || !sceneAvailabilityStore.isAllowed(registration.availabilityTarget) || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
     const key = sceneRecoveryKey(registration.sceneBlob, registration.sceneId)
     return !!key && !sceneRecovery.getAutomaticBlock(key)
   }

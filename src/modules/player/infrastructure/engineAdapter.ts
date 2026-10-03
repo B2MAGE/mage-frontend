@@ -342,16 +342,21 @@ export async function createMagePlayer(
   if (options.initialSceneBlob !== undefined) validateSceneForPlayback(options.initialSceneBlob)
   if (options.platformArtwork === 'brand') validateSceneForPlayback(BRAND_SCENE)
   const creationGeneration = pageLifecycleGeneration
-  const target = availabilityTarget(options.sceneKey)
+  const target = availabilityTarget(options.sceneKey, options.initialSceneBlob)
+  const creationSceneKey = options.sceneKey
   const platformArtwork = options.platformArtwork === 'brand' && options.sceneKey === undefined
   let availabilityArmed = false
   let permissionRevoked = false
+  let availabilitySuspended = false
+  let availabilitySuspendedAt: number | null = null
+  let availabilitySuspendedMs = 0
   let stopForAvailability = () => {}
+  let updateAvailability = () => {
+    const status = sceneAvailabilityStore.getSnapshot(target)
+    if (!status.allowed && status.code !== 'CHECKING') permissionRevoked = true
+  }
   const releaseAvailability = platformArtwork ? () => {} : sceneAvailabilityStore.subscribe(target, () => {
-    if (availabilityArmed && !sceneAvailabilityStore.isAllowed(target)) {
-      permissionRevoked = true
-      stopForAvailability()
-    }
+    if (availabilityArmed) updateAvailability()
   })
   function assertAvailability() {
     if (!platformArtwork && (permissionRevoked || !sceneAvailabilityStore.isAllowed(target))) {
@@ -416,6 +421,44 @@ export async function createMagePlayer(
     if (currentRecoveryKey) sceneRecovery.revokeRetry(currentRecoveryKey)
     detachPageLifecycle()
     try { clearLeaseAfterDisposal() } catch { rememberFailedDisposal() }
+  }
+
+  updateAvailability = () => {
+    if (disposed) return
+    const status = sceneAvailabilityStore.getSnapshot(target)
+    if (!status.allowed) {
+      if (status.code !== 'CHECKING') {
+        permissionRevoked = true
+        stopForAvailability()
+        return
+      }
+      if (availabilitySuspended) return
+      availabilitySuspended = true
+      availabilitySuspendedAt = Date.now()
+      // Revalidation withdraws every in-flight capture, even if permission is
+      // restored before it finishes. Keep decoded audio and the scene clock.
+      sceneGeneration += 1
+      pauseTrackedAudioTime()
+      renderMonitor?.setPaused(true)
+      try { engine.pause() } catch {
+        permissionRevoked = true
+        stopForAvailability()
+      }
+      return
+    }
+    if (!availabilitySuspended) return
+    availabilitySuspended = false
+    availabilitySuspendedMs += Math.max(0, Date.now() - (availabilitySuspendedAt ?? Date.now()))
+    availabilitySuspendedAt = null
+    if (!hasLoadedScene || playbackState === 'paused' || sceneRecovery.isSafeMode()
+      || (currentRecoveryKey && sceneRecovery.getBlock(currentRecoveryKey))) return
+    try {
+      // start/play resume existing resources; never reload, reset, or seek.
+      if (hasAttachedAudio) engine.play()
+      else engine.start()
+      renderMonitor?.setPaused(false)
+      if (hasAttachedAudio) resumeTrackedAudioTime()
+    } catch { failRendering('runtime') }
   }
 
   function detachPageLifecycle() {
@@ -771,7 +814,8 @@ export async function createMagePlayer(
         if (loadGeneration !== audioLoadGeneration) {
           throw createAudioError('Audio loading was superseded by a newer player action.')
         }
-        assertRenderingAllowed()
+        assertUsable()
+        if (!availabilitySuspended) assertRenderingAllowed()
       }
 
       if (typeof engine.unloadAudio === 'function') {
@@ -788,6 +832,7 @@ export async function createMagePlayer(
 
       await new Promise<void>((resolve, reject) => {
         const startedAt = Date.now()
+        const earlierSuspensionMs = availabilitySuspendedMs
 
         function poll() {
           try {
@@ -796,12 +841,19 @@ export async function createMagePlayer(
             reject(error)
             return
           }
+          // Decoding only fills a buffer. It must not finish into seek/play
+          // while permission is pending, nor time out during a file dialog.
+          if (availabilitySuspended) {
+            window.setTimeout(poll, 50)
+            return
+          }
           if (typeof engine.isAudioLoaded === 'function' && engine.isAudioLoaded()) {
             resolve()
             return
           }
 
-          if (Date.now() - startedAt >= 5000) {
+          // Count active wait time, even when hidden-tab timers were throttled.
+          if (Date.now() - startedAt - (availabilitySuspendedMs - earlierSuspensionMs) >= 5000) {
             reject(createAudioError('Audio could not be loaded from the configured source.'))
             return
           }
@@ -812,7 +864,7 @@ export async function createMagePlayer(
         poll()
       })
       assertCurrentAudioLoad()
-      if (playbackState === 'playing') assertRenderingAllowed()
+      assertRenderingAllowed()
 
       const audioTime =
         typeof engine.getEngineTime === 'function'
@@ -843,8 +895,8 @@ export async function createMagePlayer(
     loadSceneBlob(submittedScene, loadOptions = {}) {
       assertUsable()
       assertAvailability()
-      const options = { sceneKey: target === 'custom' ? undefined : target, ...loadOptions }
-      if (availabilityTarget(options.sceneKey) !== target
+      const options = { sceneKey: creationSceneKey, ...loadOptions }
+      if (availabilityTarget(options.sceneKey, submittedScene) !== target
         || (platformArtwork && (submittedScene !== BRAND_SCENE || options.sceneKey !== undefined))) {
         throw new MagePlayerAdapterError('Create a separate player to load this scene.')
       }
@@ -931,8 +983,8 @@ export async function createMagePlayer(
     updateRecoveryIdentity(submittedScene, loadOptions = {}) {
       assertUsable()
       assertAvailability()
-      const options = { sceneKey: target === 'custom' ? undefined : target, ...loadOptions }
-      if (availabilityTarget(options.sceneKey) !== target || platformArtwork) throw new MagePlayerAdapterError('Create a separate player to load this scene.')
+      const options = { sceneKey: creationSceneKey, ...loadOptions }
+      if (availabilityTarget(options.sceneKey, submittedScene) !== target || platformArtwork) throw new MagePlayerAdapterError('Create a separate player to load this scene.')
       const nextScene = resolveSceneForPlayback(validateSceneForPlayback(submittedScene)).engineScene
       const recoverySource = Object.hasOwn(options, 'recoverySceneBlob') ? options.recoverySceneBlob : submittedScene
       const nextKey = sceneRecoveryKey(recoverySource, options.sceneKey)

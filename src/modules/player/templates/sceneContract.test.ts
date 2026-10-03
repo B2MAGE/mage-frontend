@@ -15,7 +15,21 @@ const base = {
   templateId: 'embedded-scene-0',
   templateVersion: 1,
 }
-const validate = new Ajv2020({ allErrors: true, strict: true, allowUnionTypes: true }).compile(schema)
+function contractValidator(useDefaults = false) {
+  return new Ajv2020({ allErrors: true, strict: true, allowUnionTypes: true, useDefaults })
+    .addKeyword({ keyword: 'x-uniqueBy', type: 'array', schemaType: 'string',
+      validate: (key: string, data: unknown[]) => new Set(data.map(item =>
+        item && typeof item === 'object' ? (item as Record<string, unknown>)[key] : undefined)).size === data.length })
+    .addKeyword({ keyword: 'x-maxOptionalEffects', type: 'object', schemaType: 'number',
+      validate: (maximum: number, data: Record<string, unknown>) => {
+        const bloom = data.bloom as { enabled?: unknown } | undefined
+        const tint = data.tint as { enabled?: unknown } | undefined
+        const effects = data.effects as { passes?: Record<string, unknown> } | undefined
+        return Number(bloom?.enabled === true) + Number(tint?.enabled === true)
+          + Object.entries(effects?.passes ?? {}).filter(([key, value]) => key !== 'outputPass' && value === true).length <= maximum
+      } })
+}
+const validate = contractValidator().compile(schema)
 
 describe('shared scene contract fixtures', () => {
   it.each(fixtureSet.cases)('$name', (fixture) => {
@@ -41,7 +55,7 @@ describe('shared scene contract fixtures', () => {
   })
 
   it('materializes exactly the defaults published for other contract consumers', () => {
-    const materializeDefaults = new Ajv2020({ useDefaults: true, strict: true }).compile(schema.$defs.template)
+    const materializeDefaults = contractValidator(true).compile(schema.$defs.template)
     for (const fixture of fixtureSet.cases) {
       if (!fixture.valid || fixture.document.kind !== 'template') continue
       const withSchemaDefaults = JSON.parse(JSON.stringify(fixture.document))

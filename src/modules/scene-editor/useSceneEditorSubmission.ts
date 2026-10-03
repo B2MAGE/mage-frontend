@@ -154,6 +154,11 @@ export function useSceneEditorSubmission({
         return
       }
 
+      if (parsedSceneData?.kind === 'template' && sceneData.kind !== 'template') {
+        setErrors({ form: 'Confirm replacing the custom scene with this template, or cancel to keep your custom source.' })
+        return
+      }
+
       let requestBody: string
       try {
         requestBody = serializeSceneRequest({ name: trimmedName, description: trimmedDescription || null,
@@ -255,6 +260,11 @@ export function useSceneEditorSubmission({
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
+      return
+    }
+
+    if (parsedSceneData?.kind === 'template' && sceneData.kind !== 'template') {
+      setErrors({ form: 'Confirm replacing the custom scene with this template, or cancel to keep your custom source.' })
       return
     }
 

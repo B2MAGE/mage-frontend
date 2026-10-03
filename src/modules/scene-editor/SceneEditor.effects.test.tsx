@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
@@ -17,7 +17,6 @@ import { describePassState, getVisiblePassOrder, moveVisiblePass } from './utils
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
-  renderCreateScenePage,
   renderEditScenePage,
   storeSceneEditorSession,
 } from './test-fixtures'
@@ -71,8 +70,16 @@ function passRow(label: string) {
   return within(row)
 }
 
-function previewScene() {
-  return JSON.parse(screen.getByTestId('effect-preview').getAttribute('data-scene') ?? '{}') as SceneData
+function draftScene() {
+  expect(screen.queryByTestId('effect-preview')).not.toBeInTheDocument()
+  const currentSection = document.querySelector('[aria-current="step"]')?.getAttribute('aria-label') ?? 'Details'
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+  const open = screen.queryByRole('button', { name: 'Show Raw JSON' })
+  if (open) fireEvent.click(open)
+  const source = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value) as SceneData
+  if (open) fireEvent.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
+  fireEvent.click(screen.getByRole('button', { name: currentSection }))
+  return source
 }
 
 describe('editor effect persistence', () => {
@@ -127,11 +134,13 @@ describe('editor effect persistence', () => {
 })
 
 describe('editor Toon and Bleach Bypass controls', () => {
-  it('updates the live preview, pass status, and confirmation when either card changes', async () => {
+  it('updates custom source, pass status, and confirmation without playback when either card changes', async () => {
     storeSceneEditorSession()
-    mockCreateScenePageFetch()
+    mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
+      ? jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] })) : undefined)
     const user = userEvent.setup()
-    renderCreateScenePage('mage-pulse')
+    renderEditScenePage(undefined, 'mage-pulse')
+    await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     expect(effectToggle('Toon')).not.toBeChecked()
     expect(effectToggle('Bleach Bypass')).not.toBeChecked()
@@ -139,7 +148,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
 
     await user.click(effectToggle('Toon'))
     await user.click(effectToggle('Bleach Bypass'))
-    await waitFor(() => expect(getSceneEditorModel(previewScene()).fx.passes).toMatchObject({ toon: true, bleachBypass: true }))
+    expect(getSceneEditorModel(draftScene()).fx.passes).toMatchObject({ toon: true, bleachBypass: true })
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
     expect(passRow('Toon').getByText('Enabled')).toBeInTheDocument()
     expect(passRow('Bleach Bypass').getByText('Enabled')).toBeInTheDocument()
@@ -147,7 +156,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     await user.click(effectToggle('Toon'))
-    await waitFor(() => expect(getSceneEditorModel(previewScene()).fx.passes).toMatchObject({ toon: false, bleachBypass: true }))
+    expect(getSceneEditorModel(draftScene()).fx.passes).toMatchObject({ toon: false, bleachBypass: true })
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
     expect(passRow('Toon').getByText('Disabled')).toBeInTheDocument()
     expect(passRow('Bleach Bypass').getByText('Enabled')).toBeInTheDocument()
@@ -157,23 +166,26 @@ describe('editor Toon and Bleach Bypass controls', () => {
     expect(screen.queryByText('Copy Shader', { exact: true })).not.toBeInTheDocument()
   })
 
-  it('includes both enabled flags in the create request', async () => {
+  it('includes both enabled flags in the custom repair update request', async () => {
     storeSceneEditorSession()
     let created: unknown
     mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes') && init?.method === 'POST') {
+      if (input === buildApiUrl('/scenes/12') && init?.method === 'PUT') {
         created = JSON.parse(String(init.body))
-        return jsonResponse({ sceneId: 18 }, 201)
+        return jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] }))
       }
+      if (input === buildApiUrl('/scenes/12')) return jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] }))
+      if (input === buildApiUrl('/scenes/12/tags')) return jsonResponse([])
     })
     const user = userEvent.setup()
-    renderCreateScenePage('mage-pulse')
-    await user.type(screen.getByLabelText(/scene name/i), 'Ink and Silver')
+    renderEditScenePage(undefined, 'mage-pulse')
+    await screen.findByLabelText(/scene name/i)
+    fireEvent.change(screen.getByLabelText(/scene name/i), { target: { value: 'Ink and Silver' } })
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     await user.click(effectToggle('Toon'))
     await user.click(effectToggle('Bleach Bypass'))
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
-    await user.click(screen.getByRole('button', { name: /^create scene$/i }))
+    await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(created).toMatchObject({
       name: 'Ink and Silver',
       sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: { passes: { toon: true, bleachBypass: true } } } },
@@ -204,7 +216,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
     expect(screen.queryByText('Copy Shader', { exact: true })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Move Toon up' }))
-    const preview = getSceneEditorModel(previewScene())
+    const preview = getSceneEditorModel(draftScene())
     expect(preview.fx.passOrder.slice(0, 4)).toEqual(['toonShader', 'copyShader', 'bloom', 'bleachBypassShader'])
     expect(preview.fx.passOrder.at(-1)).toBe('outputPass')
     expect(screen.getByRole('button', { name: 'Move Toon up' })).toBeDisabled()

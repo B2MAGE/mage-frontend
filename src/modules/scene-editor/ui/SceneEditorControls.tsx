@@ -2,10 +2,13 @@ import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
 import type { Vector3Value } from '../sceneEditor'
 import { joinClassNames } from '@shared/lib'
 import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
+import { FieldValidation } from './SceneEditorFieldValidation'
+import { useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 
 type SectionProps = PropsWithChildren<{
   className?: string
   description: string
+  stepNumber?: number
   title: string
 }>
 
@@ -100,7 +103,7 @@ function formatSliderValue(value: number, formatValue?: (value: number) => strin
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
 }
 
-export function SceneSection({ children, className, description, title }: SectionProps) {
+export function SceneSection({ children, className, description, stepNumber, title }: SectionProps) {
   const headings: Record<string, { number: number; title: string }> = {
     Details: { number: 1, title: 'Start with the basics.' },
     Scene: { number: 2, title: 'Choose the visual foundation.' },
@@ -115,7 +118,7 @@ export function SceneSection({ children, className, description, title }: Sectio
   return (
     <section className={joinClassNames('scene-editor-section', className)} data-section={title}>
       <div className="scene-editor-section__header">
-        {heading ? <span className="scene-editor-section__eyebrow">{heading.number} · {title}</span> : null}
+        {heading ? <span className="scene-editor-section__eyebrow">{stepNumber ?? heading.number} · {title}</span> : null}
         <h2>{heading?.title ?? title}</h2>
         <p>{description}</p>
       </div>
@@ -133,9 +136,12 @@ export function SelectField({
   options,
   value,
 }: SelectFieldProps) {
+  const { attributes } = useSceneEditorFieldIssue(id)
   return (
+    <FieldValidation id={id}>
     <EditorFieldShell description={description} fieldClassName={fieldClassName} htmlFor={id} label={label}>
       <select
+        {...attributes}
         className="mage-select"
         id={id}
         value={value}
@@ -148,6 +154,7 @@ export function SelectField({
         ))}
       </select>
     </EditorFieldShell>
+    </FieldValidation>
   )
 }
 
@@ -162,9 +169,12 @@ export function NumberField({
   step = 0.01,
   value,
 }: NumberFieldProps) {
+  const { attributes } = useSceneEditorFieldIssue(id)
   return (
+    <FieldValidation id={id}>
     <EditorFieldShell description={description} htmlFor={id} label={label}>
       <input
+        {...attributes}
         className="scene-number-input"
         id={id}
         max={max}
@@ -176,6 +186,7 @@ export function NumberField({
         value={Number.isFinite(value) ? value : ''}
       />
     </EditorFieldShell>
+    </FieldValidation>
   )
 }
 
@@ -186,14 +197,16 @@ export function SliderField({
   label,
   max,
   min,
-  numericLabel = 'Numeric value',
+  numericLabel,
   numericStep,
   onChange,
   rangeScale,
   step = 0.01,
   value,
 }: SliderFieldProps) {
+  const { attributes } = useSceneEditorFieldIssue(id)
   return (
+    <FieldValidation id={id}>
     <SliderFieldShell
       description={description}
       htmlFor={id}
@@ -201,6 +214,7 @@ export function SliderField({
       valueLabel={formatSliderValue(value, formatValue)}
     >
       <input
+        {...attributes}
         aria-valuetext={rangeScale ? String(value) : undefined}
         className="scene-slider__range"
         id={id}
@@ -212,7 +226,9 @@ export function SliderField({
         value={rangeScale ? rangeScale.toRange(value) : value}
       />
       <input
-        aria-label={numericLabel}
+        {...attributes}
+        id={`${id}-number`}
+        aria-label={numericLabel ?? `${label} numeric value`}
         className="scene-slider__number"
         max={max}
         min={min}
@@ -228,6 +244,7 @@ export function SliderField({
         value={Number.isFinite(value) ? value : ''}
       />
     </SliderFieldShell>
+    </FieldValidation>
   )
 }
 
@@ -241,7 +258,9 @@ export function ToggleField({
   label,
   onChange,
 }: ToggleFieldProps) {
+  const { attributes } = useSceneEditorFieldIssue(id)
   return (
+    <FieldValidation id={id}>
     <div className={joinClassNames('scene-toggle-field', compact && 'scene-toggle-field--compact')}>
       <div className={joinClassNames('scene-toggle', compact && 'scene-toggle--compact')}>
         <div className="scene-toggle__top">
@@ -255,6 +274,7 @@ export function ToggleField({
           </div>
           <span className="scene-toggle__control">
             <input
+              {...attributes}
               aria-label={ariaLabel}
               checked={checked}
               disabled={disabled}
@@ -270,6 +290,7 @@ export function ToggleField({
         </div>
       </div>
     </div>
+    </FieldValidation>
   )
 }
 
@@ -283,6 +304,7 @@ export function Vector3Field({
   step = 0.1,
   value,
 }: Vector3FieldProps) {
+  const issues = useSceneEditorFieldErrors()
   function handleAxisChange(axis: keyof Vector3Value, nextValue: number) {
     onChange({
       ...value,
@@ -294,9 +316,13 @@ export function Vector3Field({
     <EditorFieldShell description={description} htmlFor={id} label={label}>
       <div className="scene-vector-field" id={id}>
         {(['x', 'y', 'z'] as Array<keyof Vector3Value>).map((axis) => (
-          <label className="scene-vector-field__axis" key={axis}>
+          <FieldValidation id={`${id}-${axis}`} key={axis}>
+          <label className="scene-vector-field__axis">
             <span>{axis.toUpperCase()}</span>
             <input
+              id={`${id}-${axis}`}
+              aria-invalid={Boolean(issues[`${id}-${axis}`])}
+              aria-describedby={issues[`${id}-${axis}`] ? `${id}-${axis}-error` : undefined}
               className="scene-number-input"
               min={min}
               max={max}
@@ -307,6 +333,7 @@ export function Vector3Field({
               value={Number.isFinite(value[axis]) ? value[axis] : ''}
             />
           </label>
+          </FieldValidation>
         ))}
       </div>
     </EditorFieldShell>
@@ -323,9 +350,16 @@ export function EffectCard({
   title,
   toggleLabel,
 }: EffectCardProps) {
+  const issues = useSceneEditorFieldErrors()
   const isEnabled = enabled ?? true
   const hasContent = children !== undefined && children !== null
   const toggleId = `${title.toLowerCase().replace(/\s+/g, '-')}-toggle`
+  const childIds: Record<string, string[]> = {
+    'Automatic orbit': ['rotation-speed'], Bloom: ['bloom-strength', 'bloom-radius', 'bloom-threshold'],
+    'Output Pass': ['tone-mapping-method', 'tone-mapping-exposure'], 'RGB Shift': ['rgb-shift-amount', 'rgb-shift-angle'],
+    Afterimage: ['trail-fade'], Colorify: ['colorify-color'], Kaleidoscope: ['kaleid-sides', 'kaleid-angle'],
+  }
+  const hasHiddenError = childIds[title]?.some(id => Boolean(issues[id]))
 
   return (
     <section className={joinClassNames('effect-card-group', !isEnabled && 'is-disabled')}>
@@ -337,7 +371,7 @@ export function EffectCard({
           </div>
           {onToggle ? (
             <ToggleField
-              ariaLabel={toggleLabel}
+              ariaLabel={toggleLabel ?? title}
               checked={isEnabled}
               disabled={toggleDisabled}
               compact
@@ -348,7 +382,7 @@ export function EffectCard({
           ) : null}
         </div>
       </SurfaceCard>
-      {isEnabled && (hasContent || footer) ? (
+      {(isEnabled || hasHiddenError) && (hasContent || footer) ? (
         <div className="effect-card__details">
           {hasContent ? <div className="effect-card__content">{children}</div> : null}
           {footer ? <div className="effect-card__footer">{footer}</div> : null}

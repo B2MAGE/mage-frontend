@@ -41,11 +41,13 @@ describe('versioned scene transport compatibility', () => {
       .toMatchObject({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: SHADER_SCENES[0].shader } } })
   })
 
-  it('preserves valid template transport while keeping template documents out of raw shader controls', () => {
+  it('preserves editable template transport without resolving source into controls, exports, or previews', () => {
     expect(buildSceneSubmissionDocument(template)).toEqual(parseSceneDocument(template))
     expect(buildSceneSubmissionDocument(template)).not.toHaveProperty('scene')
-    expect(() => readEditableSceneData(template)).toThrow('Template scenes are read-only')
-    expect(validateForm('Template', JSON.stringify(template)).errors.sceneData).toContain('Template scenes are read-only')
+    expect(readEditableSceneData(template)).toEqual(parseSceneDocument(template))
+    expect(validateForm('Template', JSON.stringify(template))).toEqual({ errors: {}, parsedSceneData: parseSceneDocument(template) })
+    expect(buildEffectiveSceneData(template)).toEqual(parseSceneDocument(template))
+    expect(JSON.parse(prettyPrintEditorSceneData(template))).toEqual(parseSceneDocument(template))
   })
 
   it.each([

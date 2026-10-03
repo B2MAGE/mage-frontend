@@ -1,3 +1,5 @@
+import { parseTemplateSettingsExtensions, TEMPLATE_EXTENSION_KEYS, templateOptionalEffectCount, type TemplateSettingsExtensions } from './templateSettings'
+
 /** The transport contract is also checked in under contracts/scenes for the Java API. */
 export const TEMPLATE_IDS = [
   'embedded-scene-0', 'embedded-scene-1', 'embedded-scene-2', 'embedded-scene-3',
@@ -16,9 +18,9 @@ export type TemplateSceneDocument = {
   templateId: TemplateId
   templateVersion: 1
   parameters: { scale: number; speed: number }
-  settings: {
+  settings: TemplateSettingsExtensions & {
     skybox: number
-    camera: { fov: number; autoRotate: boolean; orbitSpeed: number }
+    camera: { fov: number; autoRotate: boolean; orbitSpeed: number; tilt?: number; orientationMode?: number; orientationSpeed?: number }
     bloom: { enabled: boolean; strength: number; radius: number; threshold: number }
     tint: { enabled: boolean; color: string }
   }
@@ -138,8 +140,8 @@ export function parseSceneDocument(value: unknown): SceneDocument {
   }
   if (template.templateVersion !== 1) return fail('scene.templateVersion', 'unsupported or missing template version')
   const parameters = optionalObject(template.parameters, 'scene.parameters', ['scale', 'speed'])
-  const settings = optionalObject(template.settings, 'scene.settings', ['skybox', 'camera', 'bloom', 'tint'])
-  const camera = optionalObject(settings.camera, 'scene.settings.camera', ['fov', 'autoRotate', 'orbitSpeed'])
+  const settings = optionalObject(template.settings, 'scene.settings', ['skybox', 'camera', 'bloom', 'tint', ...TEMPLATE_EXTENSION_KEYS])
+  const camera = optionalObject(settings.camera, 'scene.settings.camera', ['fov', 'autoRotate', 'orbitSpeed', 'tilt', 'orientationMode', 'orientationSpeed'])
   const bloom = optionalObject(settings.bloom, 'scene.settings.bloom', ['enabled', 'strength', 'radius', 'threshold'])
   const tint = optionalObject(settings.tint, 'scene.settings.tint', ['enabled', 'color'])
   const skybox = number(settings.skybox, 'scene.settings.skybox', 6, 1, 10)
@@ -148,29 +150,38 @@ export function parseSceneDocument(value: unknown): SceneDocument {
   if (typeof color !== 'string' || color.length !== 7 || !/^#[0-9a-fA-F]{6}$/.test(color)) {
     return fail('scene.settings.tint.color', 'expected a #RRGGBB color')
   }
-  return {
+  const orientationMode = camera.orientationMode === undefined ? undefined
+    : number(camera.orientationMode, 'scene.settings.camera.orientationMode', 0, 0, 2)
+  if (orientationMode !== undefined && !Number.isInteger(orientationMode)) fail('scene.settings.camera.orientationMode', 'expected an integer')
+  const document: TemplateSceneDocument = {
     schemaVersion: 1,
     kind: 'template',
     templateId: template.templateId as TemplateId,
     templateVersion: 1,
     parameters: {
-      scale: number(parameters.scale, 'scene.parameters.scale', 10, 1, 30),
-      speed: number(parameters.speed, 'scene.parameters.speed', 1, 0, 3),
+      scale: number(parameters.scale, 'scene.parameters.scale', 10, 1, 200),
+      speed: number(parameters.speed, 'scene.parameters.speed', 1, 0, 10),
     },
     settings: {
+      ...parseTemplateSettingsExtensions(settings, fail),
       skybox,
       camera: {
-        fov: number(camera.fov, 'scene.settings.camera.fov', 75, 20, 100),
+        fov: number(camera.fov, 'scene.settings.camera.fov', 75, 1, 179),
         autoRotate: boolean(camera.autoRotate, 'scene.settings.camera.autoRotate', true),
-        orbitSpeed: number(camera.orbitSpeed, 'scene.settings.camera.orbitSpeed', 0.2, 0, 2),
+        orbitSpeed: number(camera.orbitSpeed, 'scene.settings.camera.orbitSpeed', 0.2, -50, 50),
+        ...(camera.tilt === undefined ? {} : { tilt: number(camera.tilt, 'scene.settings.camera.tilt', 0, -2 * Math.PI, 2 * Math.PI) }),
+        ...(orientationMode === undefined ? {} : { orientationMode }),
+        ...(camera.orientationSpeed === undefined ? {} : { orientationSpeed: number(camera.orientationSpeed, 'scene.settings.camera.orientationSpeed', 1, 0, 10) }),
       },
       bloom: {
         enabled: boolean(bloom.enabled, 'scene.settings.bloom.enabled', false),
-        strength: number(bloom.strength, 'scene.settings.bloom.strength', 1, 0, 3),
-        radius: number(bloom.radius, 'scene.settings.bloom.radius', 0.2, 0, 1),
-        threshold: number(bloom.threshold, 'scene.settings.bloom.threshold', 0.1, 0, 1),
+        strength: number(bloom.strength, 'scene.settings.bloom.strength', 1, 0, 10),
+        radius: number(bloom.radius, 'scene.settings.bloom.radius', 0.2, -10, 10),
+        threshold: number(bloom.threshold, 'scene.settings.bloom.threshold', 0.1, 0, 10),
       },
       tint: { enabled: boolean(tint.enabled, 'scene.settings.tint.enabled', false), color },
     },
   }
+  if (templateOptionalEffectCount(document.settings) > 4) fail('scene.settings.effects', 'enable at most 4 optional effects, including bloom and tint')
+  return document
 }

@@ -10,6 +10,7 @@ import { NumberField, SelectField, SliderField } from './SceneEditorControls'
 import { CollapsibleEditorGroup } from './SceneEditorLayout'
 import { formatMusicResponseAmount, musicResponseAmountScale } from './musicResponseAmountScale'
 import './music-response-controls.css'
+import { useSceneEditorFieldErrors } from './sceneEditorFieldErrors'
 
 export type ClassicMusicResponseSettings = {
   inputGain: number
@@ -22,6 +23,7 @@ export type ClassicMusicResponseSettings = {
 export type MusicResponseTimingDrafts = Partial<Record<AudioResponseTarget, { attack: number; release: number }>>
 
 export type MusicResponseControlsProps = {
+  idPrefix?: string
   mode: SceneAudioResponseMode
   config: AudioResponseConfig
   supportedTargets: AudioResponseTarget[] | null
@@ -57,15 +59,21 @@ function clamp(value: number, min: number, max: number) {
 export function MusicResponseControls({
   mode, config, supportedTargets, onModeChange, onConfigChange, onReset, canReset,
   classicSettings, onClassicSettingChange,
-  customTimingDrafts, onCustomTimingDraftsChange, previewTools,
+  customTimingDrafts, onCustomTimingDraftsChange, previewTools, idPrefix,
 }: MusicResponseControlsProps) {
-  const id = useId()
+  const generatedId = useId()
+  const id = idPrefix ?? generatedId
+  const errors = useSceneEditorFieldErrors()
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
   const [preferredTarget, setPreferredTarget] = useState<AudioResponseTarget>('size')
   const [internalCustomTiming, setInternalCustomTiming] = useState<MusicResponseTimingDrafts>({})
+  const invalidMappingPath = Object.values(errors).find(issue => issue.path.startsWith('settings.audioResponseConfig.mappings'))?.path
+  const invalidMappingIndex = invalidMappingPath?.match(/mappings(?:\[(\d+)\]|\.(\d+))/)
+  const invalidTarget = invalidMappingIndex ? config.mappings[Number(invalidMappingIndex[1] ?? invalidMappingIndex[2])]?.target : undefined
   const customTimings = customTimingDrafts ?? internalCustomTiming
   const targets = [...new Set(supportedTargets ?? [])]
-  const target = targets.includes(preferredTarget) ? preferredTarget : targets[0]
+  const requestedTarget = invalidTarget ?? preferredTarget
+  const target = targets.includes(requestedTarget) ? requestedTarget : targets[0]
   const savedMapping = config.mappings.find((mapping) => mapping.target === target)
   const mapping: AudioResponseMapping | null = target ? savedMapping ?? {
     target, source: DEFAULT_SOURCES[target], amount: 0, ...RESPONSE_PRESETS.balanced,
@@ -163,7 +171,7 @@ export function MusicResponseControls({
             />
           </div>
           <CollapsibleEditorGroup
-            id={`${id}-advanced`} isOpen={isAdvancedOpen}
+            id={`${id}-advanced`} isOpen={isAdvancedOpen || Boolean(errors[`${id}-offset`])}
             showLabel="Show advanced music controls" hideLabel="Hide advanced music controls"
             onToggle={() => setIsAdvancedOpen((open) => !open)}
           >
@@ -219,7 +227,7 @@ export function MusicResponseControls({
                 rangeScale={musicResponseAmountScale} formatValue={formatMusicResponseAmount}
                 onChange={(value) => updateMapping({ amount: clamp(value, 0, 4) })}
               />
-              {follow === 'hit' ? <SliderField
+              {follow === 'hit' || errors[`${id}-sensitivity`] ? <SliderField
                 id={`${id}-sensitivity`} label="Hit sensitivity" numericLabel="Hit sensitivity numeric value"
                 description="How easily sharp hits trigger a response. Shared by all movements following Sharp hits; does not affect Sustained sound, music volume, or movement strength."
                 min={0.1} max={4} step={0.01} value={config.sensitivity}
@@ -238,7 +246,7 @@ export function MusicResponseControls({
                 ]}
                 onChange={changeResponse}
               />
-              {responsePreset === 'custom' ? <div className="music-response-controls__grid music-response-controls__timing">
+              {responsePreset === 'custom' || errors[`${id}-attack`] || errors[`${id}-release`] ? <div className="music-response-controls__grid music-response-controls__timing">
                 <SliderField
                   id={`${id}-attack`} label="Rise time" numericLabel="Rise time numeric value (seconds)"
                   description="How long the response takes to rise, in seconds."

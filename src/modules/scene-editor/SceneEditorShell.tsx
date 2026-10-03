@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
-import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseTarget } from "@shared/lib";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
   NumberField,
@@ -14,7 +14,6 @@ import {
 } from "./ui/SceneEditorControls";
 import {
   PASS_LABELS,
-  getSceneEditorModel,
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
@@ -32,6 +31,9 @@ import {
   FieldGroupLabel,
 } from "./ui/SceneEditorLayout";
 import { SceneEditorStepper } from "./ui/SceneEditorStepper";
+import { TemplateSceneControls } from "./ui/TemplateSceneControls";
+import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEditorFieldValidation";
+import { templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
@@ -46,6 +48,7 @@ import {
 } from "./utils";
 
 function formatFixed(value: number, fractionDigits = 2) {
+  if (fractionDigits === 0) return value.toFixed(0);
   return value.toFixed(fractionDigits).replace(/0+$/, "").replace(/\.$/, "");
 }
 
@@ -67,14 +70,17 @@ export function SceneEditorShell({
   onComplete,
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
-  const availabilityTarget = mode.type === 'edit' ? mode.sceneId : 'custom';
-  const availability = useSceneAvailability(availabilityTarget);
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   const [isBeatSimulated, setIsBeatSimulated] = useState(false);
   const [previewBpm, setPreviewBpm] = useState(120);
   const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
   const [customTimingDrafts, setCustomTimingDrafts] = useState<Partial<Record<AudioResponseTarget, { attack: number; release: number }>>>({});
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
+  const [replacementTemplateId, setReplacementTemplateId] = useState(() => listSceneTemplates()[0].templateId);
+  const [isReplacementPending, setIsReplacementPending] = useState(false);
+  const replacementTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const replacementCancelRef = useRef<HTMLButtonElement | null>(null);
+  const importCancelRef = useRef<HTMLButtonElement | null>(null);
   const {
     canResetAudioResponse,
     availableTags,
@@ -136,11 +142,45 @@ export function SceneEditorShell({
     titleId,
     toggleTagSelection,
     updateBranch,
+    isTemplate,
+    templateDocument,
+    templateFieldErrors,
+    editorAudioResponseMode,
+    editorAudioResponseConfig,
+    handleTemplateSelection,
+    updateTemplateValue,
+    editorSections,
+    pendingTemplateImport,
+    confirmTemplateImport,
+    cancelTemplateImport,
   } = useSceneEditorState({
     authenticatedFetch,
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
   });
+  const availabilityTarget = useMemo(() => getSceneAvailabilityTarget(mode.type === 'edit' ? mode.sceneId : undefined, sceneData), [mode, sceneData]);
+  const availability = useSceneAvailability(availabilityTarget);
+  useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
+  useEffect(() => { if (pendingTemplateImport) importCancelRef.current?.focus(); }, [pendingTemplateImport]);
+  function cancelImportedTemplate() {
+    cancelTemplateImport();
+    requestAnimationFrame(() => document.getElementById('sceneData')?.focus());
+  }
+  function cancelTemplateReplacement() {
+    setIsReplacementPending(false);
+    requestAnimationFrame(() => replacementTriggerRef.current?.focus());
+  }
+  useEffect(() => {
+    if (!isTemplate || !errors.fields) return;
+    const location = Object.keys(errors.fields).map(templateControlLocation).find(value => value !== null);
+    if (!location) return;
+    handleSectionJump(location.section);
+    const frame = requestAnimationFrame(() => {
+      const input = document.getElementById(`${location.id}-number`) ?? document.getElementById(location.id);
+      input?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [errors.fields, handleSectionJump, isTemplate]);
   useEffect(() => {
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
   }, [sectionMenuValue]);
@@ -154,23 +194,22 @@ export function SceneEditorShell({
     shaderSelection,
     toneMappingSelection,
   } = useSceneEditorPreview({ sceneData });
-  // Match Watch's original custom-document identity before editor defaults are
-  // applied. The envelope carries identity only, never playback permission.
-  const recoverySceneData = useMemo(() => initialState?.sceneData?.kind === 'custom'
-    ? { schemaVersion: 1, kind: 'custom', scene: previewOriginalSceneData } : previewOriginalSceneData,
-  [initialState?.sceneData?.kind, previewOriginalSceneData]);
+  const recoverySceneData = previewOriginalSceneData;
+  const canPreviewTemplate = isTemplate && previewSceneData?.kind === 'template';
   const sceneDraftError = sectionIssuesById.confirm ?? previewError;
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
-  const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
-  const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
-  const audioResponseConfig = normalizeAudioResponseConfig(sceneData.audioResponseConfig).config;
+  const usesMappedAudio = editorAudioResponseMode === "mapped-v1";
+  const usesModernAudio = editorAudioResponseMode === "transient-v1" || usesMappedAudio;
+  const audioResponseConfig = editorAudioResponseConfig;
   // Keep controls steady through response edits, but never display the prior
   // shader's movement list while a different shader is compiling.
-  const supportedAudioTargets = audioResponseCapabilities
-    && getSceneEditorModel(audioResponseCapabilities.sceneBlob).visualizer.shader === sceneModel.visualizer.shader
+  const supportedAudioTargets = !isTemplate ? audioResponseConfig.mappings.map(mapping => mapping.target) : audioResponseCapabilities
+    && audioResponseCapabilities.sceneBlob.kind === 'template'
+    && audioResponseCapabilities.sceneBlob.templateId === templateDocument?.templateId
+    && audioResponseCapabilities.sceneBlob.templateVersion === templateDocument?.templateVersion
     ? audioResponseCapabilities.capabilities.supportedTargets : null;
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
@@ -201,6 +240,7 @@ export function SceneEditorShell({
   }, [availabilityTarget]);
 
   async function captureThumbnailFromPreview() {
+    if (!canPreviewTemplate) throw new Error("Custom scene preview is not available yet. Choose a basic template to capture a new thumbnail.");
     if (sceneDraftError) throw new Error("Fix the scene settings before capturing a thumbnail.");
     const generation = thumbnailCaptureGenerationRef.current;
     if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
@@ -356,8 +396,8 @@ export function SceneEditorShell({
               label="Scene Data JSON"
             />
             <p className="field-hint">
-              Raw scene data stays available here. While the JSON is invalid,
-              the preview keeps the last valid scene state.
+              {isTemplate ? 'Raw scene data stays available here. While the JSON is invalid, the preview keeps the last valid template.'
+                : 'Your custom code and settings stay available here for editing or download. Custom scene preview is not available yet.'}
             </p>
           </div>
           <button
@@ -389,6 +429,17 @@ export function SceneEditorShell({
           rows={16}
           value={sceneDataText}
         />
+        {pendingTemplateImport ? <div role="alertdialog" aria-modal="false" aria-labelledby="import-template-title"
+          aria-describedby="import-template-description" onKeyDown={event => {
+            if (event.key === 'Escape') { event.preventDefault(); cancelImportedTemplate(); }
+          }}>
+          <h3 id="import-template-title">Replace your custom scene?</h3>
+          <p className="field-hint" id="import-template-description">The imported template replaces your custom code and settings. Your name, description, and tags stay. Cancel to keep your custom draft.</p>
+          <div className="scene-inline-actions">
+            <button className="scene-secondary-button" type="button" onClick={confirmTemplateImport}>Replace custom scene</button>
+            <button className="scene-secondary-button" type="button" ref={importCancelRef} onClick={cancelImportedTemplate}>Cancel</button>
+          </div>
+        </div> : null}
         {errors.sceneData ? (
           <p className="field-error" id="sceneData-error" role="alert">
             {errors.sceneData}
@@ -456,6 +507,37 @@ export function SceneEditorShell({
     thumbnailFile,
   });
 
+  const creationMode = (
+    <section className="scene-creation-mode" aria-labelledby="scene-creation-mode-title">
+      <h3 className="scene-effects-category__title" id="scene-creation-mode-title">Creation mode</h3>
+      <div className="scene-creation-mode__options" role="group" aria-labelledby="scene-creation-mode-title">
+        <button className="scene-secondary-button" type="button" aria-pressed={isTemplate} ref={replacementTriggerRef}
+          onClick={() => { if (!isTemplate) setIsReplacementPending(true); }}>Basic</button>
+        <button className="scene-secondary-button" type="button" aria-pressed={!isTemplate} disabled
+          aria-describedby="advanced-creation-hint">Advanced</button>
+      </div>
+      <p className="field-hint" id="advanced-creation-hint">{isTemplate ? 'Advanced creation is not available yet.'
+        : 'Your custom scene is open for repair. Custom previews are not available yet.'}</p>
+      {!isTemplate && isReplacementPending ? (
+        <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
+          onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
+          <h3 id="replace-custom-title">Replace this custom scene?</h3>
+          <p className="field-hint" id="replace-custom-description">This replaces your custom code and settings with the selected template. Your name, description, and tags stay. Cancel to keep your current draft.</p>
+          <SelectField id="replacement-template" label="Start from a template" value={replacementTemplateId}
+            options={listSceneTemplates().map(template => ({ value: template.templateId, label: template.label }))}
+            onChange={setReplacementTemplateId} />
+          <div className="auth-actions">
+            <button className="scene-secondary-button" type="button" onClick={() => {
+              handleTemplateSelection(replacementTemplateId, true);
+              setIsReplacementPending(false);
+            }}>Replace custom scene</button>
+            <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
+          </div>
+        </section>
+      ) : null}
+    </section>
+  );
+
   return (
     <AuthPage
       className="auth-page--wide scene-editor-page"
@@ -486,6 +568,7 @@ export function SceneEditorShell({
               <div className="scene-editor-toolbar__controls">
                 <div className="scene-editor-toolbar__control-group scene-editor-toolbar__control-group--navigation">
                   <SceneEditorStepper
+                    sections={editorSections}
                     currentSection={currentSection}
                     currentSectionIndex={currentSectionIndex}
                     sectionIssuesById={sectionIssuesById}
@@ -496,12 +579,16 @@ export function SceneEditorShell({
             </div>
           </aside>
 
+          <SceneEditorFieldErrorsProvider fields={isTemplate ? { ...templateFieldErrors, ...errors.fields } : {}}>
           <div className="scene-editor-main" ref={editorScrollRef}>
             {errors.form ? (
               <div className="form-alert" id={formErrorId} role="alert">
                 {errors.form}
               </div>
             ) : null}
+
+            {isTemplate && templateDocument ? <TemplateSceneControls section={sectionMenuValue} document={templateDocument}
+              creationMode={creationMode} fields={{ ...templateFieldErrors, ...errors.fields }} onTemplateChange={handleTemplateSelection} onChange={updateTemplateValue} /> : null}
 
             {sectionMenuValue === "details" ? (
               <SceneEditorDetailsSection
@@ -528,7 +615,7 @@ export function SceneEditorShell({
                 tagsError={tagsError}
                 tagsLoading={tagsLoading}
                 thumbnailPreviewUrl={thumbnailPreviewUrl}
-                isThumbnailCaptureAvailable={availability.allowed && !sceneDraftError}
+                isThumbnailCaptureAvailable={canPreviewTemplate && availability.allowed && !sceneDraftError}
                 onCreateTag={handleCreateTag}
                 onDescriptionChange={handleDescriptionChange}
                 onNameChange={handleNameChange}
@@ -543,11 +630,12 @@ export function SceneEditorShell({
               />
             ) : null}
 
-            {sectionMenuValue === "scene" ? (
+            {sectionMenuValue === "scene" && !isTemplate ? (
               <SceneSection
                 description="Choose a bundled shader, environment, and overall scale. Editing the source makes this a custom shader."
                 title="Scene"
               >
+                {creationMode}
                 <div className="scene-editor-grid">
                   <SelectField
                     description={
@@ -760,7 +848,8 @@ export function SceneEditorShell({
                     </CollapsibleEditorGroup>
                   </section>
                   <MusicResponseControls
-                    mode={normalizeAudioResponseMode(sceneData.audioResponse)}
+                    mode={editorAudioResponseMode}
+                    idPrefix="music-response"
                     config={audioResponseConfig}
                     supportedTargets={supportedAudioTargets}
                     onModeChange={nextMode => handleAudioResponseModeChange(nextMode, supportedAudioTargets ?? undefined)}
@@ -1060,7 +1149,7 @@ export function SceneEditorShell({
                         }
                         title="Colorify"
                       >
-                        <div className="scene-field">
+                        <FieldValidation id="colorify-color"><div className="scene-field">
                           <div className="scene-field__label-row">
                             <label
                               className="scene-field__label"
@@ -1076,6 +1165,8 @@ export function SceneEditorShell({
                             <input
                               className="scene-color-field__picker"
                               id="colorify-color"
+                              aria-invalid={Boolean(templateFieldErrors['settings.tint.color'] || errors.fields?.['settings.tint.color'])}
+                              aria-describedby={templateFieldErrors['settings.tint.color'] || errors.fields?.['settings.tint.color'] ? 'colorify-color-error' : undefined}
                               onChange={(event) =>
                                 updateBranch("fx", (currentFx) => ({
                                   ...currentFx,
@@ -1095,7 +1186,7 @@ export function SceneEditorShell({
                               {sceneModel.fx.params.colorify.color.toUpperCase()}
                             </span>
                           </div>
-                        </div>
+                        </div></FieldValidation>
                       </EffectCard>
 
                       {additionalPassesByCategory.color.map(
@@ -1186,7 +1277,7 @@ export function SceneEditorShell({
                 description="Move passes up or down to change how the final image is layered. Output always stays last."
                 title="Pass Order"
               >
-                <ol className="scene-pass-order">
+                <FieldValidation id="scene-pass-order"><ol className="scene-pass-order" id="scene-pass-order" tabIndex={-1}>
                   {visiblePassOrder.map((passId, index) => {
                     const isOutputPass = passId === "outputPass";
 
@@ -1232,7 +1323,7 @@ export function SceneEditorShell({
                       </li>
                     );
                   })}
-                </ol>
+                </ol></FieldValidation>
               </SceneSection>
             ) : null}
 
@@ -1245,6 +1336,7 @@ export function SceneEditorShell({
                     : "Review every saved value, then create the scene. You can still jump back to any section."
                 }
                 title="Confirm"
+                stepNumber={currentSectionIndex + 1}
               >
                 <div className="scene-editor-stack">
                   <div className="scene-confirm-summary">
@@ -1282,8 +1374,8 @@ export function SceneEditorShell({
 
                     <ConfirmSummarySection title="Visual Setup">
                       <ConfirmSummaryItem
-                        label="Shader"
-                        value={selectedShaderScene?.label ?? "Custom Shader"}
+                        label={isTemplate ? "Template" : "Shader"}
+                        value={isTemplate ? listSceneTemplates().find(template => template.templateId === templateDocument?.templateId)?.label ?? "Template" : selectedShaderScene?.label ?? "Custom Shader"}
                       />
                       <ConfirmSummaryItem
                         label="Skybox"
@@ -1411,6 +1503,8 @@ export function SceneEditorShell({
             ) : null}
           </div>
 
+          </SceneEditorFieldErrorsProvider>
+
           <aside className={`scene-editor-preview${isPreviewCollapsed ? " is-collapsed" : ""}`}>
             <section className="surface surface--soft scene-editor-preview__card">
               <div className="scene-editor-preview__header">
@@ -1430,8 +1524,9 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
-              {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {previewSceneData ? 'The preview shows your last valid settings.' : 'Fix these settings before previewing.'}</p> : null}
-              {previewSceneData ? <MagePlayer
+              {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {canPreviewTemplate ? 'The preview shows your last valid settings.' : 'Fix these settings before continuing.'}</p> : null}
+              {!isTemplate ? <p className="field-hint" role="status">Custom scene preview is not available yet. Your code and settings are kept for editing or download.</p> : null}
+              {canPreviewTemplate ? <MagePlayer
                 renderProfile="preview"
                 className="scene-editor-preview__player"
                 initialPlayback="playing"

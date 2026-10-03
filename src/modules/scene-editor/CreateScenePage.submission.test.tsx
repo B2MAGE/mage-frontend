@@ -60,7 +60,7 @@ afterEach(() => {
 })
 
 describe('CreateScenePage submission', () => {
-  it('submits the structured scene data and converts degree controls back to radians', async () => {
+  it('submits a source-free template document with the edited camera setting', async () => {
     storeSceneEditorSession()
 
     let submittedBody: Record<string, unknown> | null = null
@@ -85,7 +85,7 @@ describe('CreateScenePage submission', () => {
     await user.type(screen.getByLabelText(/description/i), 'Soft teal bloom with low-end drift.')
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
     expect(screen.getByRole('heading', { name: /^frame the scene\.$/i })).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/camera orientation/i), {
+    fireEvent.change(screen.getByLabelText('FOV numeric value'), {
       target: { value: '90' },
     })
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
@@ -98,18 +98,15 @@ describe('CreateScenePage submission', () => {
     }
 
     const responseBody: { name: string; sceneData: Record<string, unknown> } = submittedBody
-    expect(responseBody.sceneData).toMatchObject({ schemaVersion: 1, kind: 'custom' })
-    const sceneData = responseBody.sceneData.scene as Record<string, unknown>
-    const intent = sceneData.intent as Record<string, number>
-    const fx = sceneData.fx as Record<string, unknown>
-    const passOrder = fx.passOrder as string[]
+    expect(responseBody.sceneData).toMatchObject({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1,
+      settings: { camera: { fov: 90 } } })
+    expect(responseBody.sceneData).not.toHaveProperty('scene')
+    expect(JSON.stringify(responseBody.sceneData)).not.toContain('shader')
 
     expect(responseBody).toMatchObject({
       description: 'Soft teal bloom with low-end drift.',
       name: 'Aurora Drift',
     })
-    expect(intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
-    expect(passOrder.at(-1)).toBe('outputPass')
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 

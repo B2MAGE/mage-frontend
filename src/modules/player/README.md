@@ -140,9 +140,10 @@ that distinguishes a configuration update from a scene reload.
 
 ## Template authoring handoff
 
-PP-B01 provides the contract, code-free catalog metadata, and playback resolution. The existing
-editor's Shader dropdown still writes legacy custom source. PP-B03 will replace that picker with
-template selection and preserve template ID/version and bounded data during editing and saving.
+PP-B01 provides the contract, code-free catalog metadata, and playback resolution. PP-B03 connects
+the existing editor to template selection and preserves template ID/version and bounded data
+during editing and saving. New scenes default to a template; existing custom scenes remain custom
+and open for repair without mounting a renderer until isolation is available.
 Do not run template documents through the legacy editor's `sanitizeSceneData` helpers: those
 helpers add engine fields and would make a template document invalid. Source edits must create
 a custom document, never alter the trusted registry or retain a template classification.

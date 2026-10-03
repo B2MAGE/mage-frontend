@@ -1,5 +1,6 @@
 import type { ApiErrorResponse } from '@shared/lib'
 import type { CreateSceneFormErrors } from './types'
+import { templateModelFieldPath } from './templateEditor'
 
 const fieldLabels: Record<string, string> = {
   visualizer: 'Scene', 'visualizer.shader': 'Custom shader', 'visualizer.scale': 'Scene scale',
@@ -8,12 +9,28 @@ const fieldLabels: Record<string, string> = {
   'intent.fov': 'FOV', 'intent.camTilt': 'Camera orientation', 'intent.camOrientationMode': 'Camera orientation mode',
   'intent.camOrientationSpeed': 'Camera orientation speed', 'intent.autoRotateSpeed': 'Orbit speed',
   'intent.time_multiplier': 'Animation speed', 'state.time': 'Starting animation time',
+  'intent.minimizing_factor': 'Input gain', 'intent.power_factor': 'Peak emphasis',
+  'intent.base_speed': 'Resting response', 'intent.easing_speed': 'Smoothing',
+  'intent.pointerDownMultiplier': 'Pointer release hold',
   'state.volume_multiplier': 'Response offset', fx: 'Effects', 'fx.toneMapping.exposure': 'Exposure',
   audioResponse: 'Response mode', audioResponseConfig: 'Music response',
+  templateId: 'Template', templateVersion: 'Template version',
+  'parameters.scale': 'Scale', 'parameters.speed': 'Animation speed',
+  'settings.skybox': 'Skybox', 'settings.camera.fov': 'FOV',
+  'settings.camera.autoRotate': 'Automatic orbit', 'settings.camera.orbitSpeed': 'Orbit speed',
+  'settings.bloom.enabled': 'Bloom', 'settings.bloom.strength': 'Bloom strength',
+  'settings.bloom.radius': 'Bloom radius', 'settings.bloom.threshold': 'Bloom threshold',
+  'settings.tint.enabled': 'Tint', 'settings.tint.color': 'Tint color',
+}
+
+function fieldPath(path: string) {
+  return path.replace(/^sceneData(?:\.scene)?\.?/, '').replace(/^scene(?:\.scene)?\.?/, '')
 }
 
 function fieldLabel(path: string) {
-  const field = path.replace(/^sceneData(?:\.scene)?\.?/, '').replace(/^scene(?:\.scene)?\.?/, '')
+  const authored = fieldPath(path)
+  if (fieldLabels[authored]) return fieldLabels[authored]
+  const field = templateModelFieldPath(authored)
   if (!field) return 'Scene data'
   if (fieldLabels[field]) return fieldLabels[field]
   const parent = Object.keys(fieldLabels).sort((a, b) => b.length - a.length)
@@ -40,10 +57,14 @@ export function sceneSubmissionErrors(status: number, error: ApiErrorResponse | 
   }
   const details = error?.details ?? {}
   const sceneData = describeSceneValidation(details, '') || undefined
+  const fields = Object.fromEntries(Object.entries(details)
+    .filter(([path]) => /^(sceneData|scene)(\.|\[|$)/.test(path))
+    .map(([path, message]) => [fieldPath(path), message]))
   return {
     description: details.description,
     name: details.name,
     sceneData,
+    ...(Object.keys(fields).length ? { fields } : {}),
     form: sceneData ? 'Some scene settings need attention. Your changes are still here.'
       : error?.message ?? 'Unable to save this scene. Your changes are still here; please try again.',
   }

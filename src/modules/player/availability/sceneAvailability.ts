@@ -1,6 +1,6 @@
 import { buildApiUrl } from '@shared/lib/api'
 
-export type SceneAvailabilityTarget = number | 'custom'
+export type SceneAvailabilityTarget = number | 'custom' | 'draft-template' | `template:${number}` | `status:${number}`
 export type SceneAvailabilityCode =
   | 'CHECKING'
   | 'AVAILABLE'
@@ -37,9 +37,16 @@ const snapshot = (code: SceneAvailabilityCode, checkedAt: number | null = null):
 })
 const checking = snapshot('CHECKING')
 const unavailable = snapshot('STATUS_UNAVAILABLE')
+const localTemplate = snapshot('AVAILABLE')
+
+function sceneId(target: SceneAvailabilityTarget): number | null {
+  const id = typeof target === 'number' ? target
+    : /^(template|status):[1-9]\d*$/.test(target) ? Number(target.slice(target.indexOf(':') + 1)) : NaN
+  return Number.isSafeInteger(id) && id > 0 ? id : null
+}
 
 function isTarget(target: SceneAvailabilityTarget) {
-  return target === 'custom' || (Number.isSafeInteger(target) && target > 0)
+  return target === 'custom' || target === 'draft-template' || sceneId(target) !== null
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -69,7 +76,7 @@ function sceneCodes(value: unknown, ids: number[]) {
   return result
 }
 
-/** Live permissions are intentionally memory-only and never inferred from scene metadata. */
+/** Live permissions are memory-only. Template targets require full host-side validation. */
 export function createSceneAvailabilityStore() {
   const listeners = new Map<SceneAvailabilityTarget, Set<() => void>>()
   const scenes = new Map<number, SceneAvailabilitySnapshot>()
@@ -91,12 +98,20 @@ export function createSceneAvailabilityStore() {
 
   function getSnapshot(target: SceneAvailabilityTarget): SceneAvailabilitySnapshot {
     let result: SceneAvailabilitySnapshot
-    if (!isTarget(target) || !reachable()) result = unavailable
+    if (!isTarget(target) || disposed || pageHidden || navigator.onLine === false) result = unavailable
+    // Hidden pages cannot execute, but can retain their paused resources until a
+    // fresh visible-page check. Offline/navigation failures still revoke them.
+    else if (document.visibilityState === 'hidden') result = checking
+    else if (target === 'draft-template') result = localTemplate
+    else if (typeof target === 'string' && (target.startsWith('template:') || target.startsWith('status:'))) {
+      const scene = scenes.get(sceneId(target)!)
+      result = !scene ? checking : !fresh(scene) ? unavailable : scene
+    }
     else if (global.code === 'CHECKING') result = checking
     else if (!fresh(global)) result = unavailable
     else if (!global.allowed || target === 'custom') result = global
     else {
-      const scene = scenes.get(target)
+      const scene = scenes.get(sceneId(target)!)
       if (!scene) result = checking
       else if (!fresh(scene)) result = unavailable
       else result = snapshot(scene.code, Math.min(scene.checkedAt!, global.checkedAt!))
@@ -133,7 +148,8 @@ export function createSceneAvailabilityStore() {
     const abort = new AbortController()
     controller = abort
     activeTargets = targets
-    const ids = [...targets].filter((target): target is number => typeof target === 'number')
+    const ids = [...new Set([...targets].map(sceneId).filter((id): id is number => id !== null))]
+    const requiresGlobal = [...targets].some(target => target === 'custom' || typeof target === 'number')
     const batches: number[][] = []
     for (let offset = 0; offset < ids.length; offset += AVAILABILITY_BATCH_SIZE) batches.push(ids.slice(offset, offset + AVAILABILITY_BATCH_SIZE))
     let timeout: ReturnType<typeof setTimeout> | undefined
@@ -156,7 +172,7 @@ export function createSceneAvailabilityStore() {
           }
         }
         const [nextGlobal] = await Promise.all([
-          fetchJson('/rendering-status', abort.signal).then(globalCode),
+          requiresGlobal ? fetchJson('/rendering-status', abort.signal).then(globalCode) : Promise.resolve(null),
           ...Array.from({ length: Math.min(2, batches.length) }, worker),
         ])
         return { nextGlobal, nextScenes }
@@ -164,12 +180,12 @@ export function createSceneAvailabilityStore() {
       const { nextGlobal, nextScenes } = await Promise.race([load(), deadline])
       if (version !== generation || abort.signal.aborted || !reachable()) return
       // Use request start time, not completion time, so a slow response cannot extend a stale permission.
-      global = snapshot(nextGlobal, startedAt)
+      if (nextGlobal !== null) global = snapshot(nextGlobal, startedAt)
       for (const [id, code] of nextScenes) scenes.set(id, snapshot(code, startedAt))
       emit()
     } catch {
       if (version !== generation) return
-      global = snapshot('STATUS_UNAVAILABLE', Date.now())
+      if (requiresGlobal) global = snapshot('STATUS_UNAVAILABLE', Date.now())
       for (const id of ids) scenes.set(id, unavailable)
       emit()
     } finally {
@@ -183,7 +199,7 @@ export function createSceneAvailabilityStore() {
 
   function queue(targets: Iterable<SceneAvailabilityTarget>): Promise<void> {
     if (!reachable()) return Promise.resolve()
-    for (const target of targets) if (isTarget(target) && !activeTargets.has(target)) pending.add(target)
+    for (const target of targets) if (target !== 'draft-template' && isTarget(target) && !activeTargets.has(target)) pending.add(target)
     if (!work) {
       work = Promise.resolve().then(async () => {
         while (pending.size && reachable()) {
@@ -213,7 +229,7 @@ export function createSceneAvailabilityStore() {
   }
 
   function invalidate(target?: number) {
-    // Global authorization is part of every permission, so revoke atomically even for one scene.
+    // Revoke every live saved/custom permission atomically on an operator change.
     revoke()
     if (target !== undefined && isTarget(target)) pending.add(target)
     void refresh()
@@ -283,6 +299,7 @@ export function createSceneAvailabilityStore() {
 
   async function check(target: SceneAvailabilityTarget) {
     if (disposed || !isTarget(target) || !reachable()) return unavailable
+    if (target === 'draft-template') return getSnapshot(target)
     const unsubscribe = subscribe(target, () => {})
     try {
       await queue([target])

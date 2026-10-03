@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SceneEditorShell } from './SceneEditorShell'
+import { createDefaultSceneData } from './sceneEditor'
+import { createTemplateScene } from './templateEditor'
 
 const permission = vi.hoisted(() => ({
   snapshot: { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 },
@@ -45,7 +47,7 @@ describe('editor thumbnail availability', () => {
 
   it('disables draft capture while custom rendering is unavailable but keeps fields editable', async () => {
     setAllowed(false)
-    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} />)
+    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} initialState={{ sceneData: createDefaultSceneData() }} />)
     expect(screen.getByRole('button', { name: 'Capture Thumbnail' })).toBeDisabled()
     expect(screen.getByText('Capture is unavailable while scene playback is paused.')).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText(/scene name/i), 'Repair draft')
@@ -58,7 +60,7 @@ describe('editor thumbnail availability', () => {
     setAllowed(false)
     const fetcher = vi.fn(async () => new Response('{}'))
     const complete = vi.fn()
-    render(<SceneEditorShell authenticatedFetch={fetcher} onComplete={complete} mode={{ type: 'edit', sceneId: 23 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png' }} />)
+    render(<SceneEditorShell authenticatedFetch={fetcher} onComplete={complete} mode={{ type: 'edit', sceneId: 23 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: createDefaultSceneData() }} />)
     expect(screen.getByRole('button', { name: 'Capture Again' })).toBeDisabled()
     expect(permission.targets).toHaveBeenCalledWith(23)
     expect(screen.getByAltText('Captured thumbnail preview')).toHaveAttribute('src', '/saved.png')
@@ -72,7 +74,8 @@ describe('editor thumbnail availability', () => {
   it('cancels pending capture and discards its result even if playback is re-enabled', async () => {
     let finish!: (value: string) => void
     permission.capture.mockImplementationOnce(() => new Promise<string>((resolve) => { finish = resolve }))
-    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} mode={{ type: 'edit', sceneId: 23 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png' }} />)
+    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} mode={{ type: 'edit', sceneId: 23 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: createTemplateScene() }} />)
+    expect(permission.targets).toHaveBeenCalledWith('template:23')
     fireEvent.click(screen.getByRole('button', { name: 'Capture Again' }))
     expect(screen.getByRole('button', { name: 'Capturing...' })).toBeDisabled()
     await act(async () => setAllowed(false))
