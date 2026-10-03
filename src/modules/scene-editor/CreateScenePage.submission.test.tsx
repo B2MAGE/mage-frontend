@@ -98,7 +98,8 @@ describe('CreateScenePage submission', () => {
     }
 
     const responseBody: { name: string; sceneData: Record<string, unknown> } = submittedBody
-    const sceneData = responseBody.sceneData
+    expect(responseBody.sceneData).toMatchObject({ schemaVersion: 1, kind: 'custom' })
+    const sceneData = responseBody.sceneData.scene as Record<string, unknown>
     const intent = sceneData.intent as Record<string, number>
     const fx = sceneData.fx as Record<string, unknown>
     const passOrder = fx.passOrder as string[]

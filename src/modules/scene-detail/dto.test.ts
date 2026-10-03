@@ -15,7 +15,7 @@ describe('scene detail availability normalization', () => {
       id: 23, ownerUserId: 8, creatorDisplayName: 'Scene Artist', creatorHandle: 'artist',
       name: 'Signal Bloom', description: 'Soft movement.', sceneData: null,
       createdAt: scene.createdAt, thumbnailRef: '/signal.png', tags: ['ambient'],
-      engagement: scene.engagement, availability,
+      engagement: scene.engagement, availability, sceneMode: null,
     })
   })
 

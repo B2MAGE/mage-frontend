@@ -1,4 +1,4 @@
-import { normalizeSceneAvailability, normalizeSceneListEngagement } from '@shared/lib'
+import { normalizeSceneAvailability, normalizeSceneListEngagement, normalizeSceneMode } from '@shared/lib'
 import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 import type { SceneComment, SceneDetail, SceneEngagementSummary, SceneVoteState } from './types'
 
@@ -13,6 +13,7 @@ type SceneDetailResponse = {
   description?: string | null
   sceneData?: unknown
   availability?: unknown
+  sceneMode?: unknown
   thumbnailRef?: string | null
   createdAt?: string
   tags?: unknown
@@ -219,6 +220,7 @@ export function normalizeSceneDetail(payload: unknown): SceneDetail | null {
         : null,
     sceneData: availability?.available === false ? null : sceneData,
     availability,
+    sceneMode: normalizeSceneMode(resolvedPayload.sceneMode),
     thumbnailRef:
       typeof resolvedPayload.thumbnailRef === 'string' && resolvedPayload.thumbnailRef.trim()
         ? resolvedPayload.thumbnailRef

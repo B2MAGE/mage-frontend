@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
@@ -152,6 +152,11 @@ export function SceneEditorShell({
     shaderSelection,
     toneMappingSelection,
   } = useSceneEditorPreview({ sceneData });
+  // Match Watch's original custom-document identity before editor defaults are
+  // applied. The envelope carries identity only, never playback permission.
+  const recoverySceneData = useMemo(() => initialState?.sceneData?.kind === 'custom'
+    ? { schemaVersion: 1, kind: 'custom', scene: sceneData } : sceneData,
+  [initialState?.sceneData?.kind, sceneData]);
   const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
   const usesMappedAudio = sceneData.audioResponse === "mapped-v1";
   const usesModernAudio = sceneData.audioResponse === "transient-v1" || usesMappedAudio;
@@ -1397,7 +1402,7 @@ export function SceneEditorShell({
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
-                recoverySceneBlob={sceneData}
+                recoverySceneBlob={recoverySceneData}
                 posterUrl={thumbnailPreviewUrl}
                 onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
                 sceneKey={mode.type === 'edit' ? mode.sceneId : undefined}

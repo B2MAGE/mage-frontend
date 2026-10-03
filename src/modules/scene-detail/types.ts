@@ -1,5 +1,5 @@
 import type { MageSceneBlob } from '@modules/player'
-import type { SceneAvailability } from '@shared/lib'
+import type { SceneAvailability, SceneMode } from '@shared/lib'
 
 export type AuthenticatedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
@@ -14,6 +14,7 @@ export type SceneDetail = {
   description: string | null
   sceneData: MageSceneBlob | null
   availability?: SceneAvailability | null
+  sceneMode?: SceneMode | null
   thumbnailRef: string | null
   createdAt: string | null
   tags: string[]

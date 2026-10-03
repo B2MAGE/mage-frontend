@@ -178,7 +178,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     await waitFor(() => expect(created).toMatchObject({
       name: 'Ink and Silver',
-      sceneData: { fx: { passes: { toon: true, bleachBypass: true } } },
+      sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: { passes: { toon: true, bleachBypass: true } } } },
     }))
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
@@ -214,10 +214,10 @@ describe('editor Toon and Bleach Bypass controls', () => {
     expect(screen.getByRole('button', { name: 'Move Output down' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
-    await waitFor(() => expect(updated).toMatchObject({ sceneData: { fx: {
+    await waitFor(() => expect(updated).toMatchObject({ sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: {
       passes: { toon: false, bleachBypass: true, copyShader: true, futureEffect: true },
       futureSettings: { amount: 0.25 },
-    } } }))
+    } } } }))
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 })

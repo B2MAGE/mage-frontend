@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl, normalizeAudioResponseConfig } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel, SHADER_SCENES, type SceneData } from './sceneEditor'
-import { buildEffectiveSceneData } from './utils'
+import { buildEffectiveSceneData, readEditableSceneData } from './utils'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -119,12 +119,12 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.queryByText('Peak emphasis')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toBeDefined())
-    expect(updated?.sceneData.audioResponse).toBe('transient-v1')
-    expect(getSceneEditorModel(updated!.sceneData).intent).toMatchObject({
+    expect(readEditableSceneData(updated!.sceneData).audioResponse).toBe('transient-v1')
+    expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).intent).toMatchObject({
       minimizing_factor: 1.3, power_factor: 3.4, base_speed: 0.13, easing_speed: 0.44,
       time_multiplier: 0.6, pointerDownMultiplier: getSceneEditorModel(defaults).intent.pointerDownMultiplier,
     })
-    expect(getSceneEditorModel(updated!.sceneData).state.volume_multiplier).toBe(0.27)
+    expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).state.volume_multiplier).toBe(0.27)
   })
 
   it.each(['Rose Circuit', 'Ripple Rings', 'Tidal Lantern'])('keeps %s as an ordinary preset without pulse or deformation controls', async (label) => {
@@ -249,9 +249,10 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     await waitFor(() => expect(created).toBeDefined())
-    expect(getSceneEditorModel(created!.sceneData).visualizer.shader).toBe(shaderOption('Ripple Rings').shader)
-    expect(created?.sceneData).not.toHaveProperty('reactions')
-    expect(created?.sceneData).not.toHaveProperty('mageTemplate')
+    expect(created?.sceneData).toMatchObject({ schemaVersion: 1, kind: 'custom' })
+    expect(getSceneEditorModel(readEditableSceneData(created!.sceneData)).visualizer.shader).toBe(shaderOption('Ripple Rings').shader)
+    expect(readEditableSceneData(created!.sceneData)).not.toHaveProperty('reactions')
+    expect(readEditableSceneData(created!.sceneData)).not.toHaveProperty('mageTemplate')
     expect(JSON.stringify(created)).not.toMatch(/simulatedBeat|previewBpm|isBeatSimulated/)
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
@@ -291,11 +292,11 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toBeDefined())
-    expect(getSceneEditorModel(updated!.sceneData).visualizer.shader).toBe(source)
-    expect(updated?.sceneData).not.toHaveProperty('reactions')
-    expect(updated?.sceneData).not.toHaveProperty('mageTemplate')
-    expect(updated?.sceneData.otherExtension).toEqual({ preserve: true })
-    expect(updated?.sceneData.visualizer).toMatchObject({ customVisualizerSetting: true })
+    expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).visualizer.shader).toBe(source)
+    expect(readEditableSceneData(updated!.sceneData)).not.toHaveProperty('reactions')
+    expect(readEditableSceneData(updated!.sceneData)).not.toHaveProperty('mageTemplate')
+    expect(readEditableSceneData(updated!.sceneData).otherExtension).toEqual({ preserve: true })
+    expect(readEditableSceneData(updated!.sceneData).visualizer).toMatchObject({ customVisualizerSetting: true })
     expect(saved.visualizer.shader).toBe(source)
     expect(saved).toHaveProperty('reactions')
     expect(saved).toHaveProperty('mageTemplate')
@@ -350,7 +351,7 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     await screen.findByText('My Scenes')
-    expect(writes[0].sceneData).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: config })
+    expect(writes[0].sceneData).toMatchObject({ schemaVersion: 1, kind: 'custom', scene: { audioResponse: 'mapped-v1', audioResponseConfig: config } })
     create.unmount()
 
     const edit = renderEditScenePage(undefined, 'mage-pulse')
@@ -372,9 +373,9 @@ describe('scene editor presets and beat preview', () => {
     })
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await screen.findByText('My Scenes')
-    expect(writes[1].sceneData).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: updatedConfig })
-    expect(getSceneEditorModel(writes[1].sceneData).visualizer.shader).toBe(shaderOption('Tidal Lantern').shader)
-    expect(getSceneEditorModel(writes[1].sceneData).intent.time_multiplier).toBe(0.75)
+    expect(writes[1].sceneData).toMatchObject({ schemaVersion: 1, kind: 'custom', scene: { audioResponse: 'mapped-v1', audioResponseConfig: updatedConfig } })
+    expect(getSceneEditorModel(readEditableSceneData(writes[1].sceneData)).visualizer.shader).toBe(shaderOption('Tidal Lantern').shader)
+    expect(getSceneEditorModel(readEditableSceneData(writes[1].sceneData)).intent.time_multiplier).toBe(0.75)
     edit.unmount()
 
     renderEditScenePage(undefined, 'mage-pulse')

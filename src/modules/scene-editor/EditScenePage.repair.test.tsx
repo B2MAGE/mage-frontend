@@ -65,6 +65,50 @@ describe('owner repair loading', () => {
     expect(mocks.fetch).toHaveBeenCalledTimes(1)
   })
 
+  it('retains a custom envelope for recovery identity while providing it to the compatible editor', async () => {
+    const custom = { schemaVersion: 1, kind: 'custom', scene: source }
+    mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
+      ? { ...repair, sceneData: custom } : { ...metadata, sceneMode: 'custom-v1' })))
+    render(page())
+    expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(custom))
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-scene-id', '23')
+  })
+
+  it('keeps legacy repair source editable under its saved ID without treating repair access as playback approval', async () => {
+    const legacy = { ...availability, code: 'SCENE_UPGRADE_REQUIRED', message: 'Upgrade required' }
+    mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
+      ? { ...repair, availability: legacy } : { ...metadata, availability: legacy, sceneMode: 'legacy-custom' })))
+    render(page())
+    expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(source))
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-scene-id', '23')
+  })
+
+  it('keeps template scenes read-only and allows downloading the validated document', async () => {
+    const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+    mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
+      ? { ...repair, sceneData: template } : { ...metadata, sceneMode: 'template-v1' })))
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:template-export')
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL')
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    render(page())
+    expect(await screen.findByRole('heading', { name: 'This template scene is read-only' })).toBeInTheDocument()
+    expect(mocks.editor).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'View scene' })).toHaveAttribute('href', '/scenes/23')
+    fireEvent.click(screen.getByRole('button', { name: 'Download scene JSON' }))
+    expect(createUrl).toHaveBeenCalledWith(expect.any(Blob))
+    expect(click.mock.instances[0]).toHaveAttribute('download', 'scene-23.json')
+    expect(revokeUrl).toHaveBeenCalledWith('blob:template-export')
+  })
+
+  it('rejects malformed document markers before creating an editor or preview', async () => {
+    mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
+      ? { ...repair, sceneData: { schemaVersion: 99, kind: 'custom', scene: source } } : metadata)))
+    render(page())
+    expect(await screen.findByRole('heading', { name: 'This scene’s format is not supported' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download scene JSON' })).toBeInTheDocument()
+    expect(mocks.editor).not.toHaveBeenCalled()
+  })
+
   it('accepts owner repair when the scene is re-enabled between metadata and repair requests', async () => {
     mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
       ? { ...repair, availability: { sceneId: 23, available: true, code: 'AVAILABLE', message: null } }

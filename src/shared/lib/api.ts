@@ -35,6 +35,12 @@ export type SceneAvailability = {
   message: string
 }
 
+export type SceneMode = 'legacy-custom' | 'custom-v1' | 'template-v1'
+
+export function normalizeSceneMode(value: unknown): SceneMode | null {
+  return value === 'legacy-custom' || value === 'custom-v1' || value === 'template-v1' ? value : null
+}
+
 export type SceneListResponse = {
   sceneId: number
   ownerUserId: number
@@ -46,6 +52,7 @@ export type SceneListResponse = {
   description?: string | null
   sceneData: Record<string, unknown> | null
   availability?: SceneAvailability | null
+  sceneMode?: SceneMode | null
   thumbnailRef: string | null
   createdAt: string
   engagement: SceneListEngagement
@@ -87,7 +94,9 @@ export function normalizeSceneAvailability(value: unknown, sceneId: number): Sce
   const available = value.available === true && value.code === 'AVAILABLE'
   if (typeof value.message !== 'string' && !(available && value.message === null)) return null
 
-  return { sceneId, available: value.available, code: value.code, message: available ? '' : value.message as string }
+  const message = value.code === 'SCENE_UPGRADE_REQUIRED'
+    ? 'This scene needs an update from its creator before it can play.' : value.message as string
+  return { sceneId, available: value.available, code: value.code, message: available ? '' : message }
 }
 
 function normalizeCount(value: unknown) {
@@ -162,6 +171,7 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
         : null,
     sceneData: availability?.available === false || !isRecord(item.sceneData) ? null : item.sceneData,
     availability,
+    sceneMode: normalizeSceneMode(item.sceneMode),
     thumbnailRef:
       typeof item.thumbnailRef === 'string' && item.thumbnailRef.trim()
         ? item.thumbnailRef
