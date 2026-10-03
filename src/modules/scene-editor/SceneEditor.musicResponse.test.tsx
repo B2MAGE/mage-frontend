@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl, normalizeAudioResponseConfig } from '@shared/lib'
+import { readEditableSceneData } from './utils'
 import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel, type SceneData } from './sceneEditor'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
@@ -114,12 +115,12 @@ describe('creator music response workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(submitted).toBeDefined())
-    expect(submitted).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: {
+    expect(submitted).toMatchObject({ schemaVersion: 1, kind: 'custom', scene: { audioResponse: 'mapped-v1', audioResponseConfig: {
       sensitivity: 1.2, mappings: [
         { target: 'size', source: 'mid-hit', amount, attack: 0.13, release: 0.73 },
         startingConfig.mappings[1],
       ],
-    } })
+    } } })
     first.unmount()
     renderEditScenePage(undefined, 'mage-pulse')
     await screen.findByLabelText(/scene name/i)
@@ -135,7 +136,7 @@ describe('creator music response workflow', () => {
     await user.click(screen.getByRole('button', { name: 'Reset music settings' }))
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
     expect(preview().audioResponse).toBe('mapped-v1')
-    expect(preview().audioResponseConfig).toEqual(stored.audioResponseConfig)
+    expect(preview().audioResponseConfig).toEqual(readEditableSceneData(stored).audioResponseConfig)
   })
 
   it('preserves a saved beat response until a deliberate version switch and restores it on reset', async () => {

@@ -76,6 +76,16 @@ describe('shared live scene availability', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps legacy scenes unavailable until the server verifies an explicit upgrade', async () => {
+    fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status')
+      ? global() : [scene(23, 'SCENE_UPGRADE_REQUIRED')]))
+    expect(await store.check(23)).toMatchObject({ allowed: false, code: 'SCENE_UPGRADE_REQUIRED',
+      message: 'This scene needs an update from its creator before it can play.' })
+    expect(store.isAllowed(23)).toBe(false)
+    fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status') ? global() : [scene(23)]))
+    expect((await store.check(23)).allowed).toBe(true)
+  })
+
   it('stops active scenes when a poll sees a per-scene disable and can re-enable after a fresh poll', async () => {
     const listener = vi.fn()
     store.subscribe(9, listener)

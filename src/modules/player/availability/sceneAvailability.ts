@@ -6,6 +6,7 @@ export type SceneAvailabilityCode =
   | 'AVAILABLE'
   | 'SCENE_DISABLED'
   | 'SCENE_NOT_FOUND'
+  | 'SCENE_UPGRADE_REQUIRED'
   | 'CUSTOM_RENDERING_DISABLED'
   | 'STATUS_UNAVAILABLE'
 
@@ -26,6 +27,7 @@ const messages: Record<SceneAvailabilityCode, string> = {
   AVAILABLE: '',
   SCENE_DISABLED: 'This scene is temporarily unavailable.',
   SCENE_NOT_FOUND: 'This scene is no longer available.',
+  SCENE_UPGRADE_REQUIRED: 'This scene needs an update from its creator before it can play.',
   CUSTOM_RENDERING_DISABLED: 'Scene playback is temporarily disabled.',
   STATUS_UNAVAILABLE: 'Playback is paused until scene availability can be checked.',
 }
@@ -60,7 +62,7 @@ function sceneCodes(value: unknown, ids: number[]) {
       throw new Error('Invalid availability response')
     }
     if (item.available === true && item.code === 'AVAILABLE') result.set(item.sceneId, 'AVAILABLE')
-    else if (item.available === false && ['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'CUSTOM_RENDERING_DISABLED'].includes(String(item.code))) {
+    else if (item.available === false && ['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'SCENE_UPGRADE_REQUIRED', 'CUSTOM_RENDERING_DISABLED'].includes(String(item.code))) {
       result.set(item.sceneId, item.code as SceneAvailabilityCode)
     } else throw new Error('Invalid availability response')
   }

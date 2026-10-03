@@ -20,6 +20,7 @@ import {
   buildEffectiveSceneData,
   moveVisiblePass,
   prettyPrintEditorSceneData,
+  readEditableSceneData,
   validateSceneDataText,
   validateSceneName,
   validateThumbnailFile,
@@ -54,12 +55,12 @@ export function useSceneEditorState({
   )
   const [playlistValue, setPlaylistValue] = useState('')
   const [sceneData, setSceneData] = useState<SceneData>(
-    () => initialState?.sceneData ?? initialSceneData,
+    () => readEditableSceneData(initialState?.sceneData ?? initialSceneData),
   )
   const [sceneDataText, setSceneDataText] = useState(() =>
     prettyPrintEditorSceneData(initialState?.sceneData ?? initialSceneData),
   )
-  const [musicResponseDefaults] = useState(() => readMusicResponseDefaults(initialState?.sceneData ?? initialSceneData))
+  const [musicResponseDefaults] = useState(() => readMusicResponseDefaults(readEditableSceneData(initialState?.sceneData ?? initialSceneData)))
   const [errors, setErrors] = useState<CreateSceneFormErrors>({})
   const [isCameraAdvancedEnabled, setIsCameraAdvancedEnabled] = useState(false)
   const [isMotionAdvancedEnabled, setIsMotionAdvancedEnabled] = useState(false)

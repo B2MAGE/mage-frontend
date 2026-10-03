@@ -111,9 +111,11 @@ describe('EditScenePage workflow', () => {
       await user.click(screen.getByRole('button', { name: /update scene/i }))
       await waitFor(() => expect(submitted).toMatchObject({
         sceneData: {
-          audioResponse,
-          intent: { camOrientationMode: 1, camOrientationSpeed: 0.7, autoRotate: false },
-          state: sceneData.state,
+          schemaVersion: 1, kind: 'custom', scene: {
+            audioResponse,
+            intent: { camOrientationMode: 1, camOrientationSpeed: 0.7, autoRotate: false },
+            state: sceneData.state,
+          },
         },
       }))
       expect(await screen.findByText('My Scenes')).toBeInTheDocument()
@@ -222,9 +224,9 @@ describe('EditScenePage workflow', () => {
         description: 'Updated from My Scenes.',
         name: 'Updated Scene',
         sceneData: {
-          audioResponse: 'transient-v1',
-          visualizer: {
-            shader: 'nebula',
+          schemaVersion: 1, kind: 'custom', scene: {
+            audioResponse: 'transient-v1',
+            visualizer: { shader: 'nebula' },
           },
         },
       }),

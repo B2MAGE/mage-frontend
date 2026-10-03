@@ -9,7 +9,7 @@ import type {
   SceneEditorStateSnapshot,
   TagAttachmentFailure,
 } from './types'
-import { buildEffectiveSceneData, parseCreatedSceneId, validateForm } from './utils'
+import { buildSceneSubmissionDocument, parseCreatedSceneId, validateForm } from './utils'
 
 type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   authenticatedFetch: AuthenticatedFetch
@@ -147,7 +147,7 @@ export function useSceneEditorSubmission({
         return
       }
 
-      const sanitizedSceneData = buildEffectiveSceneData(parsedSceneData ?? sceneData)
+      const sanitizedSceneData = buildSceneSubmissionDocument(parsedSceneData ?? sceneData)
 
       setIsSubmitting(true)
       setErrors({})
@@ -272,7 +272,7 @@ export function useSceneEditorSubmission({
       }
     }
 
-    const sanitizedSceneData = buildEffectiveSceneData(parsedSceneData ?? sceneData)
+    const sanitizedSceneData = buildSceneSubmissionDocument(parsedSceneData ?? sceneData)
 
     setIsSubmitting(true)
     setErrors({})

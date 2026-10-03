@@ -1,4 +1,5 @@
 import { fetchAvailableTags, type TagResponse } from '@shared/lib'
+import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type SceneDocument } from '@modules/player'
 import {
   getSceneEditorModel,
   parseSceneDataJson,
@@ -114,7 +115,7 @@ export function validateSceneDataText(sceneDataText: string) {
   try {
     return {
       error: null,
-      parsedSceneData: sanitizeSceneData(parseSceneDataJson(sceneDataText)),
+      parsedSceneData: buildEffectiveSceneData(parseSceneDataJson(sceneDataText)),
     }
   } catch (error) {
     return {
@@ -182,8 +183,30 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
   })
 }
 
+/** The current editor works on custom engine fields; templates need the PP-B03 editor. */
+export function readEditableSceneData(sceneData: SceneData): SceneData {
+  const document = parseSceneDocument(hasSceneDocumentMarkers(sceneData)
+    ? sceneData : { schemaVersion: 1, kind: 'custom', scene: sceneData })
+  if (document.kind === 'template') {
+    throw new SceneContractError('Template scenes are read-only here until template editing is available.')
+  }
+  if (hasSceneDocumentMarkers(document.scene)) {
+    throw new SceneContractError('Custom scene data must contain scene settings, not another scene document.')
+  }
+  return document.scene
+}
+
+/** Every new API write declares its format, without guessing trust from a preset shader. */
+export function buildSceneSubmissionDocument(sceneData: SceneData): SceneDocument {
+  if (hasSceneDocumentMarkers(sceneData)) {
+    const document = parseSceneDocument(sceneData)
+    if (document.kind === 'template') return document
+  }
+  return parseSceneDocument({ schemaVersion: 1, kind: 'custom', scene: buildEffectiveSceneData(sceneData) })
+}
+
 export function buildEffectiveSceneData(sceneData: SceneData) {
-  const nextSceneData = { ...sanitizeSceneData(sceneData) }
+  const nextSceneData = { ...sanitizeSceneData(readEditableSceneData(sceneData)) }
   // Retired controls no longer own the authored shader. Preserve every saved
   // setting independently of which editor disclosures are currently open.
   delete nextSceneData.reactions
@@ -230,5 +253,5 @@ export function describePassState(
 }
 
 export function prettyPrintEditorSceneData(sceneData: SceneData) {
-  return prettyPrintSceneData(sceneData)
+  return prettyPrintSceneData(readEditableSceneData(sceneData))
 }

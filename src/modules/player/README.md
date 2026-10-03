@@ -17,7 +17,7 @@ Exports:
 - `sceneAvailabilityStore` / `useSceneAvailability()` (fresh server permission, independent of local recovery)
 - `SceneAvailabilityAdminControls` (server-authorized operator controls)
 - `listSceneTemplates()` (immutable picker metadata, without executable source)
-- `parseSceneDocument()` / `SceneContractError`
+- `parseSceneDocument()` / `hasSceneDocumentMarkers()` / `SceneContractError` (strict document validation; marker-bearing input must never fall back to raw scene data)
 - `SceneDocument`, `TemplateSceneDocument`, `CustomSceneDocument`, `SceneTemplate`
 - `MagePlayerController`
 - `MageSceneBlob`

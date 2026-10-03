@@ -79,3 +79,33 @@ Current limitations:
 ## Tests
 
 Coverage lives in the colocated scene-editor specs under `src/modules/scene-editor/`.
+
+## Versioned transport compatibility (PP-B02)
+
+The existing editor continues to expose its current controls and raw engine JSON.
+Every POST/PUT now wraps those values in `{ schemaVersion: 1, kind: "custom", scene }`.
+Choosing a familiar preset shader does not convert it into a trusted template.
+Saved custom documents are validated before unwrapping into controls and wrapped
+exactly once on save. Their original envelope shape remains part of local failure
+identity, so switching from Watch to Edit cannot clear a remembered failure.
+
+Malformed document markers and unsupported versions never fall back to raw custom
+source. Valid template transport is preserved by the submission helper, but this
+editor does not expose template parameter authoring yet. Owner editing of a saved
+template shows a read-only View/Download state until PP-B03. Unsupported stored
+formats are likewise exportable by their owner without opening a preview.
+
+Legacy scenes remain editable through the owner repair endpoint under the saved
+scene ID. The server's `SCENE_UPGRADE_REQUIRED` status blocks automatic playback;
+an explicit successful save upgrades transport, without clearing an operator
+disable or enabling the global rendering switch. `sceneMode` is returned metadata,
+never a client-selected permission. PP-B03 owns the template-first authoring UI;
+PP-V02 adds full client resource policy and detailed field validation.
+
+Deploy this frontend together with the PP-B02 API. The earlier API rejects the
+new envelope, while the strict API rejects writes from older cached frontend
+tabs. Coordinate the cutover during a short authoring pause and ask users with
+old tabs to refresh before saving. Keep the custom-rendering release gate off.
+Rolling back only the frontend is not a compatible write path; retain a client
+that understands saved versioned documents, and never rewrite stored scenes to
+make an old client work.

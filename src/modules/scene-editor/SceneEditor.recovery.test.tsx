@@ -62,15 +62,16 @@ describe('scene editor recovery', () => {
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('My unfinished scene')
   })
 
-  it('does not reload a failed saved scene when the editor adds default fields', async () => {
+  it.each(['legacy', 'custom'] as const)('does not reload a failed saved %s scene when the editor adds default fields', async (mode) => {
     vi.mocked(createMagePlayer).mockClear()
     storeSceneEditorSession()
     const raw = { visualizer: { shader: 'sphere(0.7)' } }
-    const key = sceneRecoveryKey(raw, 12)!
+    const document = mode === 'custom' ? { schemaVersion: 1, kind: 'custom', scene: raw } : raw
+    const key = sceneRecoveryKey(document, 12)!
     blockedKeys.add(key)
     sceneRecovery.block(key, 'load')
     mockCreateScenePageFetch((input) => input === buildApiUrl('/scenes/12')
-      ? jsonResponse(buildSceneEditorApiScene({ sceneData: raw, tags: [] })) : undefined)
+      ? jsonResponse(buildSceneEditorApiScene({ sceneData: document, tags: [] })) : undefined)
     renderEditScenePage(undefined, 'mage-pulse')
     await screen.findByRole('button', { name: 'Retry scene' })
     expect(createMagePlayer).not.toHaveBeenCalled()

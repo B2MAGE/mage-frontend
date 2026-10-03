@@ -91,6 +91,16 @@ describe('scene availability', () => {
     expect(normalizeSceneAvailability({ sceneId: 1, available: true, code: 'AVAILABLE', message: 'Unused message' }, 1)?.message).toBe('')
     expect(normalizeSceneAvailability({ ...availability, message: null }, 1)).toBeNull()
   })
+
+  it('retains server mode metadata without deriving trust from scene source or displaying server notes', () => {
+    expect(normalizeSceneListItem({ ...scene, sceneMode: 'legacy-custom', sceneData: null,
+      availability: { ...availability, code: 'SCENE_UPGRADE_REQUIRED', message: 'Internal migration detail' } }))
+      .toMatchObject({ sceneMode: 'legacy-custom', sceneData: null, availability: {
+        available: false, code: 'SCENE_UPGRADE_REQUIRED', message: 'This scene needs an update from its creator before it can play.',
+      } })
+    expect(normalizeSceneListItem({ ...scene, sceneMode: 'operator-approved' })?.sceneMode).toBeNull()
+    expect(normalizeSceneListItem({ ...scene, sceneData: { kind: 'template' } })?.sceneMode).toBeNull()
+  })
 })
 
 describe('fetchTags', () => {
