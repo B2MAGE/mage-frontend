@@ -506,6 +506,37 @@ export function SceneEditorShell({
     thumbnailFile,
   });
 
+  const creationMode = (
+    <section className="scene-creation-mode" aria-labelledby="scene-creation-mode-title">
+      <h3 className="scene-effects-category__title" id="scene-creation-mode-title">Creation mode</h3>
+      <div className="scene-creation-mode__options" role="group" aria-labelledby="scene-creation-mode-title">
+        <button className="scene-secondary-button" type="button" aria-pressed={isTemplate} ref={replacementTriggerRef}
+          onClick={() => { if (!isTemplate) setIsReplacementPending(true); }}>Basic</button>
+        <button className="scene-secondary-button" type="button" aria-pressed={!isTemplate} disabled
+          aria-describedby="advanced-creation-hint">Advanced</button>
+      </div>
+      <p className="field-hint" id="advanced-creation-hint">{isTemplate ? 'Advanced creation is not available yet.'
+        : 'Your custom scene is open for repair. Custom previews are not available yet.'}</p>
+      {!isTemplate && isReplacementPending ? (
+        <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
+          onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
+          <h3 id="replace-custom-title">Replace this custom scene?</h3>
+          <p className="field-hint" id="replace-custom-description">This replaces your custom code and settings with the selected template. Your name, description, and tags stay. Cancel to keep your current draft.</p>
+          <SelectField id="replacement-template" label="Start from a template" value={replacementTemplateId}
+            options={listSceneTemplates().map(template => ({ value: template.templateId, label: template.label }))}
+            onChange={setReplacementTemplateId} />
+          <div className="auth-actions">
+            <button className="scene-secondary-button" type="button" onClick={() => {
+              handleTemplateSelection(replacementTemplateId, true);
+              setIsReplacementPending(false);
+            }}>Replace custom scene</button>
+            <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
+          </div>
+        </section>
+      ) : null}
+    </section>
+  );
+
   return (
     <AuthPage
       className="auth-page--wide scene-editor-page"
@@ -548,32 +579,6 @@ export function SceneEditorShell({
           </aside>
 
           <div className="scene-editor-main" ref={editorScrollRef}>
-            <section className="scene-effects-category" aria-labelledby="scene-creation-mode">
-              <h3 className="scene-effects-category__title" id="scene-creation-mode">{isTemplate ? 'Basic template' : 'Custom scene repair'}</h3>
-              <button className="scene-secondary-button" type="button" disabled aria-describedby="advanced-creation-hint">Advanced creation</button>
-              <p className="field-hint" id="advanced-creation-hint">Advanced creation is not available yet.</p>
-              {!isTemplate ? <>
-                <p className="field-hint">You can edit or download your saved scene data. Custom previews are not available yet.</p>
-                <SelectField id="replacement-template" label="Start from a template" value={replacementTemplateId}
-                  options={listSceneTemplates().map(template => ({ value: template.templateId, label: template.label }))}
-                  onChange={setReplacementTemplateId} />
-                {!isReplacementPending ? <button className="scene-secondary-button" type="button" ref={replacementTriggerRef}
-                  onClick={() => setIsReplacementPending(true)}>Switch to basic</button> :
-                  <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
-                    onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
-                    <h3 id="replace-custom-title">Replace this custom scene?</h3>
-                    <p className="field-hint" id="replace-custom-description">This replaces your custom code and settings with {listSceneTemplates().find(template => template.templateId === replacementTemplateId)?.label}. Your name, description, and tags stay. Cancel to keep your current draft.</p>
-                    <div className="auth-actions">
-                      <button className="scene-secondary-button" type="button" onClick={() => {
-                        handleTemplateSelection(replacementTemplateId, true);
-                        setIsReplacementPending(false);
-                        handleSectionJump('scene');
-                      }}>Replace custom scene</button>
-                      <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
-                    </div>
-                  </section>}
-              </> : null}
-            </section>
             {errors.form ? (
               <div className="form-alert" id={formErrorId} role="alert">
                 {errors.form}
@@ -581,7 +586,7 @@ export function SceneEditorShell({
             ) : null}
 
             {isTemplate && templateDocument ? <TemplateSceneControls section={sectionMenuValue} document={templateDocument}
-              fields={{ ...templateFieldErrors, ...errors.fields }} onTemplateChange={handleTemplateSelection} onChange={updateTemplateValue} /> : null}
+              creationMode={creationMode} fields={{ ...templateFieldErrors, ...errors.fields }} onTemplateChange={handleTemplateSelection} onChange={updateTemplateValue} /> : null}
 
             {sectionMenuValue === "details" ? (
               <SceneEditorDetailsSection
@@ -628,6 +633,7 @@ export function SceneEditorShell({
                 description="Choose a bundled shader, environment, and overall scale. Editing the source makes this a custom shader."
                 title="Scene"
               >
+                {creationMode}
                 <div className="scene-editor-grid">
                   <SelectField
                     description={

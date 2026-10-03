@@ -140,6 +140,13 @@ html[data-theme] .scene-editor-page textarea.scene-textarea--code { min-height: 
 html[data-theme] .scene-editor-page .scene-secondary-button, html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle { min-height: 34px; padding: 0 12px; border: 1px solid var(--studio-border-strong); border-radius: 8px; background: var(--studio-control); color: var(--studio-text); font-size: 11px; font-weight: 650; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
 html[data-theme] .scene-editor-page :is(.scene-secondary-button, .scene-editor-collapsible__toggle):not(:disabled):hover { border-color: var(--editor-button-hover-border); background: var(--editor-button-hover-background); color: var(--studio-accent); }
 html[data-theme] .scene-editor-page :is(.scene-secondary-button, .scene-editor-collapsible__toggle):disabled { opacity: .55; cursor: default; }
+.scene-creation-mode { display: grid; gap: 8px; }
+.scene-creation-mode > :is(h3, p) { margin: 0; }
+.scene-creation-mode__options { display: flex; width: fit-content; max-width: 100%; }
+html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button { min-width: 100px; width: auto; min-height: 38px; border-radius: 0; }
+html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:first-child { border-radius: var(--editor-button-radius) 0 0 var(--editor-button-radius); }
+html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:last-child { margin-left: -1px; border-radius: 0 var(--editor-button-radius) var(--editor-button-radius) 0; }
+html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button[aria-pressed="true"] { position: relative; border-color: var(--studio-accent-border); background: var(--studio-accent-fill); color: var(--studio-accent); opacity: 1; }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 14px; padding: 13px; border: 1px solid var(--studio-border); border-radius: 12px; background: var(--studio-field); }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { display: grid; place-items: center; position: relative; aspect-ratio: 16/10; overflow: hidden; border-radius: 9px; background: #090a0f; }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }

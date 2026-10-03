@@ -10,12 +10,13 @@ import { ConfirmSummaryItem, ConfirmSummarySection } from './SceneEditorLayout'
 type Props = {
   section: EditorSectionId
   document: TemplateSceneDocument
+  creationMode?: ReactNode
   fields?: Record<string, string>
   onTemplateChange: (id: string) => void
   onChange: (path: TemplateFieldPath, value: number | string | boolean) => void
 }
 
-export function TemplateSceneControls({ section, document, fields = {}, onTemplateChange, onChange }: Props) {
+export function TemplateSceneControls({ section, document, creationMode, fields = {}, onTemplateChange, onChange }: Props) {
   const error = (path: string) => fields[`sceneData.${path}`] ?? fields[path] ?? fields[`scene.${path}`]
   const id = (path: string) => `template-${path.replaceAll('.', '-')}`
   const issue = (path: string) => error(path) ? <p className="field-error" id={`${id(path)}-error`} role="alert">{error(path)}</p> : null
@@ -48,6 +49,7 @@ export function TemplateSceneControls({ section, document, fields = {}, onTempla
     </div>
   }
   if (section === 'scene') return <SceneSection title="Scene" description="Choose a template, then adjust its scale and surroundings.">
+    {creationMode}
     <div data-template-field="templateId">
       <EditorFieldShell htmlFor={id('templateId')} label="Template" description="Choose the visual to build your scene around.">
         <select {...props('templateId')} className="mage-select" id={id('templateId')} value={document.templateId} onChange={event => onTemplateChange(event.currentTarget.value)}>
