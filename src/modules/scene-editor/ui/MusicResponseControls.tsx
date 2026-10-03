@@ -169,6 +169,7 @@ export function MusicResponseControls({
           >
             <NumberField
               id={`${id}-offset`} label="Response offset"
+              min={0} max={10}
               description="Adds an offset to the visual size response. Does not change listening volume."
               value={classicSettings.responseOffset}
               onChange={(value) => onClassicSettingChange('responseOffset', value)}

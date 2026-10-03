@@ -1,6 +1,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
+import { assertSceneRequestBudget } from '@modules/player'
 import { replaceSceneThumbnail, uploadNewSceneThumbnail } from './sceneThumbnailUpload'
 import type {
   CreateSceneFormErrors,
@@ -10,6 +11,12 @@ import type {
   TagAttachmentFailure,
 } from './types'
 import { buildSceneSubmissionDocument, parseCreatedSceneId, validateForm } from './utils'
+import { describeSceneValidationError, sceneSubmissionErrors } from './sceneValidation'
+
+function serializeSceneRequest(value: Record<string, unknown>) {
+  assertSceneRequestBudget(value)
+  return JSON.stringify(value)
+}
 
 type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   authenticatedFetch: AuthenticatedFetch
@@ -147,7 +154,14 @@ export function useSceneEditorSubmission({
         return
       }
 
-      const sanitizedSceneData = buildSceneSubmissionDocument(parsedSceneData ?? sceneData)
+      let requestBody: string
+      try {
+        requestBody = serializeSceneRequest({ name: trimmedName, description: trimmedDescription || null,
+          sceneData: buildSceneSubmissionDocument(parsedSceneData ?? sceneData) })
+      } catch (error) {
+        setErrors({ form: describeSceneValidationError(error) })
+        return
+      }
 
       setIsSubmitting(true)
       setErrors({})
@@ -156,24 +170,12 @@ export function useSceneEditorSubmission({
         const response = await authenticatedFetch(`/scenes/${mode.sceneId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: trimmedName,
-            description: trimmedDescription || null,
-            sceneData: sanitizedSceneData,
-          }),
+          body: requestBody,
         })
 
         if (!response.ok) {
           const apiError = await parseApiError(response)
-          const backendDetails = apiError?.details ?? {}
-
-          setErrors({
-            description: backendDetails.description,
-            name: backendDetails.name,
-            sceneData: backendDetails.sceneData,
-            form:
-              apiError?.message ?? 'Failed to update scene. Please try again.',
-          })
+          setErrors(sceneSubmissionErrors(response.status, apiError))
           return
         }
 
@@ -256,6 +258,17 @@ export function useSceneEditorSubmission({
       return
     }
 
+    let sceneRequest: Record<string, unknown>
+    try {
+      sceneRequest = { name: trimmedName, ...(trimmedDescription ? { description: trimmedDescription } : {}),
+        sceneData: buildSceneSubmissionDocument(parsedSceneData ?? sceneData) }
+      // Fail before thumbnail capture/upload; check the actual key again below.
+      serializeSceneRequest(sceneRequest)
+    } catch (error) {
+      setErrors({ form: describeSceneValidationError(error) })
+      return
+    }
+
     let effectiveThumbnailFile = thumbnailFile
 
     if (!effectiveThumbnailFile) {
@@ -272,8 +285,6 @@ export function useSceneEditorSubmission({
       }
     }
 
-    const sanitizedSceneData = buildSceneSubmissionDocument(parsedSceneData ?? sceneData)
-
     setIsSubmitting(true)
     setErrors({})
 
@@ -286,24 +297,12 @@ export function useSceneEditorSubmission({
       const response = await authenticatedFetch('/scenes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: trimmedName,
-          description: trimmedDescription || undefined,
-          sceneData: sanitizedSceneData,
-          thumbnailObjectKey,
-        }),
+        body: serializeSceneRequest({ ...sceneRequest, ...(thumbnailObjectKey ? { thumbnailObjectKey } : {}) }),
       })
 
       if (!response.ok) {
         const apiError = await parseApiError(response)
-        const backendDetails = apiError?.details ?? {}
-        setErrors({
-          description: backendDetails.description,
-          name: backendDetails.name,
-          sceneData: backendDetails.sceneData,
-          form:
-            apiError?.message ?? 'Failed to create scene. Please try again.',
-        })
+        setErrors(sceneSubmissionErrors(response.status, apiError))
         return
       }
 

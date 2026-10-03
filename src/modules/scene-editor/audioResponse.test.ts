@@ -48,17 +48,15 @@ describe('scene audio response persistence', () => {
     expect(sanitizeSceneData(scene).audioResponse).toBe('legacy')
   })
 
-  it('preserves the response mode while removing retired reaction-control metadata', () => {
-    const scene = buildEffectiveSceneData({
+  it('keeps the response mode in repair data while rejecting retired metadata instead of deleting it', () => {
+    const original = {
       ...createDefaultSceneData(),
       audioResponse: 'transient-v1',
       reactions: { pulse: 1 },
       mageTemplate: 'retired',
-    })
-
-    expect(scene.audioResponse).toBe('transient-v1')
-    expect(scene).not.toHaveProperty('reactions')
-    expect(scene).not.toHaveProperty('mageTemplate')
+    }
+    expect(() => buildEffectiveSceneData(original)).toThrow('Unknown field')
+    expect(JSON.parse(prettyPrintEditorSceneData(original))).toEqual(original)
   })
   it.each(['legacy', 'transient-v1', 'mapped-v1'] as const)('retains explicit mappings even while %s is selected', (mode) => {
     const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 1.7, mappings: [

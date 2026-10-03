@@ -1,9 +1,7 @@
 import { fetchAvailableTags, type TagResponse } from '@shared/lib'
-import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type SceneDocument } from '@modules/player'
+import { hasSceneDocumentMarkers, parseSceneDocument, parseSceneImport, validateSceneForPlayback, SceneContractError, type SceneDocument } from '@modules/player'
 import {
   getSceneEditorModel,
-  parseSceneDataJson,
-  prettyPrintSceneData,
   sanitizeSceneData,
   SHADER_SCENES,
   TONE_MAPPING_OPTIONS,
@@ -12,6 +10,7 @@ import {
 } from './sceneEditor'
 import { ALLOWED_THUMBNAIL_CONTENT_TYPES, MAX_THUMBNAIL_BYTES, passFlagsById } from './fixtures'
 import type { CreateSceneFormErrors } from './types'
+import { describeSceneValidationError } from './sceneValidation'
 
 const CAPTURED_THUMBNAIL_CONTENT_TYPE = 'image/png'
 const CAPTURED_THUMBNAIL_FILENAME = 'scene-preview-thumbnail.png'
@@ -115,14 +114,11 @@ export function validateSceneDataText(sceneDataText: string) {
   try {
     return {
       error: null,
-      parsedSceneData: buildEffectiveSceneData(parseSceneDataJson(sceneDataText)),
+      parsedSceneData: readEditableSceneData(parseSceneImport(sceneDataText)),
     }
   } catch (error) {
     return {
-      error:
-        error instanceof Error && error.message.trim()
-          ? error.message
-          : 'Scene data must be valid JSON.',
+      error: describeSceneValidationError(error),
       parsedSceneData: null as SceneData | null,
     }
   }
@@ -198,20 +194,13 @@ export function readEditableSceneData(sceneData: SceneData): SceneData {
 
 /** Every new API write declares its format, without guessing trust from a preset shader. */
 export function buildSceneSubmissionDocument(sceneData: SceneData): SceneDocument {
-  if (hasSceneDocumentMarkers(sceneData)) {
-    const document = parseSceneDocument(sceneData)
-    if (document.kind === 'template') return document
-  }
-  return parseSceneDocument({ schemaVersion: 1, kind: 'custom', scene: buildEffectiveSceneData(sceneData) })
+  return validateSceneForPlayback(sceneData)
 }
 
 export function buildEffectiveSceneData(sceneData: SceneData) {
-  const nextSceneData = { ...sanitizeSceneData(readEditableSceneData(sceneData)) }
-  // Retired controls no longer own the authored shader. Preserve every saved
-  // setting independently of which editor disclosures are currently open.
-  delete nextSceneData.reactions
-  delete nextSceneData.mageTemplate
-  return nextSceneData
+  // Validate the original first: defaults must not hide malformed imported data.
+  const document = validateSceneForPlayback(sceneData)
+  return sanitizeSceneData(readEditableSceneData(document))
 }
 
 export function getVisiblePassOrder(passOrder: readonly ScenePassId[]) {
@@ -253,5 +242,6 @@ export function describePassState(
 }
 
 export function prettyPrintEditorSceneData(sceneData: SceneData) {
-  return prettyPrintSceneData(readEditableSceneData(sceneData))
+  // Owner repair data may fail current limits; keep it intact for editing/export.
+  return JSON.stringify(readEditableSceneData(sceneData), null, 2)
 }

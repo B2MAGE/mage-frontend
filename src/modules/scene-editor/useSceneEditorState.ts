@@ -2,8 +2,6 @@ import { useId, useState } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import {
   getSceneEditorModel,
-  mergeSceneEditorBranch,
-  parseSceneDataJson,
   SHADER_SCENES,
   type SceneData,
   type SceneEditorModel,
@@ -17,7 +15,6 @@ import type {
   SceneEditorInitialState,
 } from './types'
 import {
-  buildEffectiveSceneData,
   moveVisiblePass,
   prettyPrintEditorSceneData,
   readEditableSceneData,
@@ -27,8 +24,25 @@ import {
 } from './utils'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
-import type { AudioResponseConfig, AudioResponseTarget, SceneAudioResponseMode } from '@shared/lib'
-import { changeMusicResponseConfig, changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
+import { normalizeAudioResponseConfig, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
+import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
+import { parseSceneImport } from '@modules/player'
+import { describeSceneValidationError } from './sceneValidation'
+
+/** Apply only the user's changed fields, retaining unsupported repair values. */
+function mergeChangedValues(original: unknown, before: unknown, after: unknown): unknown {
+  if (before === after) return original
+  if (original && before && after && typeof original === 'object' && typeof before === 'object' && typeof after === 'object'
+    && !Array.isArray(original) && !Array.isArray(before) && !Array.isArray(after)) {
+    const next = { ...original } as Record<string, unknown>
+    for (const [key, value] of Object.entries(after)) {
+      const previous = (before as Record<string, unknown>)[key]
+      if (previous !== value) next[key] = mergeChangedValues(next[key], previous, value)
+    }
+    return next
+  }
+  return after
+}
 
 type UseSceneEditorStateArgs = {
   authenticatedFetch: AuthenticatedFetch
@@ -132,11 +146,17 @@ export function useSceneEditorState({
     setErrors,
   })
 
-  function applySceneData(nextSceneData: SceneData) {
-    const sanitizedSceneData = buildEffectiveSceneData(nextSceneData)
-    setSceneData(sanitizedSceneData)
-    setSceneDataText(prettyPrintEditorSceneData(sanitizedSceneData))
-    clearErrors('sceneData', 'form')
+  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false) {
+    if (!replaceRawDraft && confirmSectionIssueMessage && sceneDataText !== JSON.stringify(sceneData, null, 2)) {
+      setErrors(current => ({ ...current, sceneData: confirmSectionIssueMessage ?? undefined,
+        form: 'Fix the Scene Data JSON before changing other controls. Your imported draft has been kept.' }))
+      return
+    }
+    const nextText = JSON.stringify(nextSceneData, null, 2)
+    setSceneData(nextSceneData)
+    setSceneDataText(nextText)
+    const validation = validateSceneDataText(nextText)
+    setErrors(current => ({ ...current, sceneData: validation.error ?? undefined, form: undefined }))
   }
 
   function updateBranch<K extends keyof SceneEditorModel>(
@@ -145,7 +165,7 @@ export function useSceneEditorState({
   ) {
     const currentModel = getSceneEditorModel(sceneData)
     const nextBranch = recipe(currentModel[branch])
-    applySceneData(mergeSceneEditorBranch(sceneData, branch, nextBranch))
+    applySceneData({ ...sceneData, [branch]: mergeChangedValues(sceneData[branch], currentModel[branch], nextBranch) })
   }
 
   function handleAudioResponseModeChange(mode: SceneAudioResponseMode, supportedTargets?: readonly AudioResponseTarget[]) {
@@ -153,11 +173,17 @@ export function useSceneEditorState({
   }
 
   function handleAudioResponseConfigChange(config: AudioResponseConfig) {
-    applySceneData(changeMusicResponseConfig(sceneData, config))
+    applySceneData({ ...sceneData, audioResponseConfig: mergeChangedValues(sceneData.audioResponseConfig,
+      normalizeAudioResponseConfig(sceneData.audioResponseConfig).config, config) })
   }
 
   function handleAudioResponseReset() {
-    applySceneData(restoreMusicResponseDefaults(sceneData, musicResponseDefaults))
+    const next = restoreMusicResponseDefaults(sceneData, musicResponseDefaults)
+    const currentModel = getSceneEditorModel(sceneData)
+    applySceneData({ ...next,
+      intent: mergeChangedValues(sceneData.intent, currentModel.intent, next.intent),
+      state: mergeChangedValues(sceneData.state, currentModel.state, next.state),
+    })
   }
 
   const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(sceneData)) !== JSON.stringify(musicResponseDefaults)
@@ -169,11 +195,10 @@ export function useSceneEditorState({
   function handleShaderSelection(shaderId: string) {
     const shader = SHADER_SCENES.find((option) => option.id === shaderId)
     if (!shader) return
-    const selectedScene = mergeSceneEditorBranch(sceneData, 'visualizer', {
-      ...getSceneEditorModel(sceneData).visualizer,
+    updateBranch('visualizer', current => ({
+      ...current,
       shader: shader.shader,
-    })
-    applySceneData(selectedScene)
+    }))
   }
 
   function handleMotionAdvancedToggle(nextValue: boolean) {
@@ -200,17 +225,15 @@ export function useSceneEditorState({
     clearErrors('sceneData', 'form')
 
     try {
-      setSceneData(
-        buildEffectiveSceneData(parseSceneDataJson(nextValue)),
-      )
-    } catch {
-      return
+      setSceneData(readEditableSceneData(parseSceneImport(nextValue)))
+    } catch (error) {
+      setErrors(current => ({ ...current, sceneData: describeSceneValidationError(error) }))
     }
   }
 
   function handleFormatJson() {
     try {
-      applySceneData(parseSceneDataJson(sceneDataText))
+      applySceneData(readEditableSceneData(parseSceneImport(sceneDataText)), true)
     } catch (error) {
       setErrors((currentErrors) => ({
         ...currentErrors,
