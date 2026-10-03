@@ -461,6 +461,13 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       }
     },
     isPersistent: () => persistenceAvailable,
+    /** Server permission changes never carry a local retry into a later session. */
+    revokeRetry(key: string) {
+      retryGrants.delete(key)
+      suspendedRetryGrants.delete(key)
+      activeRetries.delete(key)
+      emit()
+    },
     isSafeMode() { refreshHistory(); return safeMode },
     setSafeMode(enabled: boolean) {
       if (destroyed) return

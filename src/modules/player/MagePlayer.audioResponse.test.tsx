@@ -70,7 +70,7 @@ describe('live scene audio response', () => {
     await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledTimes(2))
     expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2)
     expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(createMagePlayer).toHaveBeenCalledTimes(2)
   })
 
   it('loads the document into a replacement engine before considering it ready', async () => {
@@ -86,4 +86,10 @@ describe('live scene audio response', () => {
     expect(second.setAudioResponseSettings).not.toHaveBeenCalled()
     expect(first.dispose).toHaveBeenCalledOnce()
   })
+})
+
+// This suite tests existing playback behavior with server permission already granted.
+vi.mock('@modules/player/availability/sceneAvailability', async () => {
+  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
+  return { sceneAvailabilityStore: allowedSceneAvailability }
 })

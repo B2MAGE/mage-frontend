@@ -2,6 +2,8 @@
 
 This directory is the frontend-owned boundary for scene playback.
 
+See [scene availability](../../../docs/scene-availability.md) for PP-R03's polling bounds, operator workflow, and remaining isolation release dependency.
+
 ## Public API
 
 Import player behavior through `@modules/player`.
@@ -12,6 +14,8 @@ Exports:
 - `MagePlayerProps`
 - `createMagePlayer()`
 - `sceneRecovery` / `sceneRecoveryKey()` (shared recovery guard for all render surfaces)
+- `sceneAvailabilityStore` / `useSceneAvailability()` (fresh server permission, independent of local recovery)
+- `SceneAvailabilityAdminControls` (server-authorized operator controls)
 - `listSceneTemplates()` (immutable picker metadata, without executable source)
 - `parseSceneDocument()` / `SceneContractError`
 - `SceneDocument`, `TemplateSceneDocument`, `CustomSceneDocument`, `SceneTemplate`
@@ -49,6 +53,7 @@ Exports:
 - `sceneKey?` (stable scene identity; pass a route scene ID when available)
 - `recoverySceneBlob?` (original document before host-added preview defaults; identity only)
 - `posterUrl?` (static thumbnail shown while recovery blocks playback)
+- `onAvailabilityRestored?` (refetch withheld saved source after fresh permission; retain route/session identity)
 - `ariaLabel?`
 - `className?`
 - `initialPlayback?`

@@ -29,6 +29,10 @@ import { hasSceneDocumentMarkers } from './templates/sceneContract'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
 import { PlaybackOptions } from './recovery/PlaybackOptions'
+import { sceneAvailabilityStore } from './availability/sceneAvailability'
+import { availabilityTarget } from './availability/availabilityTarget'
+import { useSceneAvailability } from './availability/useSceneAvailability'
+import { SceneAvailabilityPanel } from './availability/SceneAvailabilityPanel'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -49,6 +53,7 @@ export type MagePlayerProps = {
   onRequestPlaylistOpen?: () => void
   onSelectedTrackChange?: (trackId: string | null) => void
   onTrackDurationChange?: (trackId: string, duration: number) => void
+  onAvailabilityRestored?: () => void | Promise<void>
   playlistTracks?: MagePlayerPlaylistTrack[]
   posterUrl?: string | null
   repeatEnabled?: boolean
@@ -81,12 +86,45 @@ export function MagePlayer(props: MagePlayerProps) {
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
   const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
+  const target = availabilityTarget(props.sceneKey)
+  const availability = useSceneAvailability(target)
+  const requiresAvailability = !!props.sceneBlob || target !== 'custom'
+  const [reloadAttempt, setReloadAttempt] = useState(0)
+  const [sourceError, setSourceError] = useState(false)
+  const restoreSourceRef = useRef(props.onAvailabilityRestored)
+  useEffect(() => { restoreSourceRef.current = props.onAvailabilityRestored }, [props.onAvailabilityRestored])
+  const hasSource = !!props.sceneBlob
+  const canRestoreSource = !!props.onAvailabilityRestored
+
+  useEffect(() => {
+    if (!availability.allowed && recoveryKey) sceneRecovery.revokeRetry(recoveryKey)
+  }, [availability.allowed, recoveryKey])
+
+  useEffect(() => {
+    if (!availability.allowed || hasSource || target === 'custom' || !canRestoreSource) return
+    let cancelled = false
+    void Promise.resolve().then(() => {
+      if (cancelled || !sceneAvailabilityStore.isAllowed(target)) return
+      setSourceError(false)
+      return restoreSourceRef.current?.()
+    }).catch(() => {
+      if (!cancelled) setSourceError(true)
+    })
+    return () => { cancelled = true }
+  }, [availability.allowed, canRestoreSource, hasSource, reloadAttempt, target])
 
   // A global pause replaces the renderer, but keeps this viewing session open.
   // Navigating away or editing the revision ends any retained retry permission.
   useEffect(() => {
-    if (recoveryKey) return sceneRecovery.retainPlaybackSession(recoveryKey)
-  }, [recoveryKey])
+    if (!recoveryKey || !availability.allowed) return
+    const release = sceneRecovery.retainPlaybackSession(recoveryKey)
+    return () => {
+      // Cleanup runs before the new effect. Revoke first so a server stop cannot
+      // retire a remembered interruption through a suspended local retry.
+      if (!sceneAvailabilityStore.isAllowed(target)) sceneRecovery.revokeRetry(recoveryKey)
+      release()
+    }
+  }, [availability.allowed, recoveryKey, target])
 
   useEffect(() => {
     // A cached browser page retains React state, but pagehide has shut down its
@@ -98,6 +136,17 @@ export function MagePlayer(props: MagePlayerProps) {
     return () => window.removeEventListener('pageshow', restorePage)
   }, [])
 
+  if (requiresAvailability && (!availability.allowed || !props.sceneBlob)) {
+    return <SceneAvailabilityPanel className={props.className} posterUrl={props.posterUrl}
+      message={!availability.allowed ? availability.message : sourceError
+        ? 'This scene could not be loaded. You can check again.' : canRestoreSource
+          ? 'Loading this scene…' : 'This scene is temporarily unavailable.'}
+      checking={availability.code === 'CHECKING' || (availability.allowed && canRestoreSource && !sourceError)}
+      onCheck={availability.code === 'STATUS_UNAVAILABLE' ? () => { void sceneAvailabilityStore.check(target) }
+        : availability.allowed && sourceError ? () => setReloadAttempt((value) => value + 1) : undefined}
+    />
+  }
+
   if (props.sceneBlob && (block || safeMode)) {
     return <SceneRecoveryPanel
       className={props.className}
@@ -105,7 +154,7 @@ export function MagePlayer(props: MagePlayerProps) {
       block={block}
       safeMode={safeMode}
       onRetry={() => {
-        if (!recoveryKey) return
+        if (!recoveryKey || !sceneAvailabilityStore.isAllowed(target)) return
         if (block?.reason === 'stopped') sceneRecovery.resumeStoppedScene(recoveryKey, block.at)
         else sceneRecovery.retry(recoveryKey)
       }}
@@ -113,7 +162,7 @@ export function MagePlayer(props: MagePlayerProps) {
     />
   }
 
-  return <MagePlayerRenderer key={rendererInstance} {...props}
+  return <MagePlayerRenderer key={`${target}:${rendererInstance}`} {...props}
     playlist={playlist}
     onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
     onSafeMode={() => sceneRecovery.setSafeMode(true)}
@@ -237,7 +286,7 @@ function MagePlayerRenderer({
     animationFrameId = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          nextPlayer = await createMagePlayer(canvas, { log, mouseInteractions: true, mouseWheelZoom: true })
+          nextPlayer = await createMagePlayer(canvas, { log, mouseInteractions: true, mouseWheelZoom: true, ...(sceneKey === undefined ? {} : { sceneKey }) })
 
           if (isDisposed) {
             disposePlayer()
@@ -273,7 +322,7 @@ function MagePlayerRenderer({
       diagnosticsCallbackRef.current?.(null)
       disposePlayer()
     }
-  }, [log])
+  }, [log, sceneKey])
 
   useEffect(() => {
     if (!sceneBlob) {
@@ -460,9 +509,13 @@ function MagePlayerRenderer({
     const player = playerRef.current
 
     if (status === 'ready' && typeof player?.captureFramePreview === 'function') {
-      onCaptureFramePreviewChange(() => {
+      let cancelled = false
+      const capturedSource = sceneBlob
+      onCaptureFramePreviewChange(async () => {
         const canvas = canvasRef.current
-        if (!canvas) return Promise.resolve(null)
+        if (!canvas || cancelled || playerRef.current !== player
+          || latestSceneBlobRef.current !== capturedSource
+          || !sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey))) return null
 
         // The engine stretches its source to these dimensions. Read the live
         // viewport at capture time so resizing cannot squash the saved frame.
@@ -471,14 +524,17 @@ function MagePlayerRenderer({
         const sourceHeight = bounds.height > 0 ? bounds.height : canvas.height
         const scale = 512 / Math.max(sourceWidth, sourceHeight, 1)
 
-        return player.captureFramePreview?.({
+        const frame = await player.captureFramePreview?.({
           height: Math.max(1, Math.round(sourceHeight * scale)),
           type: 'image/png',
           width: Math.max(1, Math.round(sourceWidth * scale)),
-        }) ?? Promise.resolve(null)
+        })
+        return !cancelled && playerRef.current === player && latestSceneBlobRef.current === capturedSource
+          && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey)) ? frame ?? null : null
       })
 
       return () => {
+        cancelled = true
         onCaptureFramePreviewChange(null)
       }
     }
@@ -488,7 +544,7 @@ function MagePlayerRenderer({
     return () => {
       onCaptureFramePreviewChange(null)
     }
-  }, [onCaptureFramePreviewChange, playerVersion, status])
+  }, [onCaptureFramePreviewChange, playerVersion, sceneBlob, sceneKey, status])
 
   useEffect(() => {
     const player = playerRef.current

@@ -173,7 +173,7 @@ describe('createMagePlayer', () => {
 
   it('writes an active marker before scene compilation and clears it only after disposal', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
-    const player = await createMagePlayer(document.createElement('canvas'))
+    const player = await createMagePlayer(document.createElement('canvas'), { sceneKey: 42 })
     const scene = { visualizer: { shader: 'test' } }
     player.loadSceneBlob(scene, { sceneKey: 42 })
     expect(recoveryMocks.key).toHaveBeenCalledWith(scene, 42)
@@ -446,7 +446,7 @@ describe('createMagePlayer', () => {
   it('transfers recovery identity after live response edits without restarting or recompiling', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
     recoveryMocks.key.mockImplementation((scene: unknown, id?: string | number) => JSON.stringify([scene, id]))
-    const player = await createMagePlayer(document.createElement('canvas'))
+    const player = await createMagePlayer(document.createElement('canvas'), { sceneKey: 12 })
     const scene = { visualizer: { shader: 'test' }, audioResponse: 'legacy' }
     const updated = { ...scene, audioResponse: 'transient-v1' }
     player.loadSceneBlob(scene, { sceneKey: 12 })
@@ -463,7 +463,7 @@ describe('createMagePlayer', () => {
   it('tracks the original editor document while validating and rendering only the actual preview payload', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
     recoveryMocks.key.mockImplementation((scene: unknown, id?: string | number) => JSON.stringify([scene, id]))
-    const player = await createMagePlayer(document.createElement('canvas'))
+    const player = await createMagePlayer(document.createElement('canvas'), { sceneKey: 12 })
     const original = { visualizer: { shader: 'original source never rendered' } }
     const preview = { visualizer: { shader: 'test', scale: 10 }, audioResponse: 'legacy' }
     player.loadSceneBlob(preview, { sceneKey: 12, recoverySceneBlob: original })
@@ -1175,4 +1175,10 @@ describe('createMagePlayer', () => {
     } finally { vi.useRealTimers() }
   })
 
+})
+
+// This suite tests existing playback behavior with server permission already granted.
+vi.mock('@modules/player/availability/sceneAvailability', async () => {
+  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
+  return { sceneAvailabilityStore: allowedSceneAvailability }
 })

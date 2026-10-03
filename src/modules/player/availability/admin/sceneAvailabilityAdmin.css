@@ -1,0 +1,14 @@
+.scene-availability-admin { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--text); font-size: 13px; }
+.scene-availability-admin summary { width: fit-content; cursor: pointer; font-weight: 650; }
+.scene-availability-admin summary:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 4px; }
+.scene-availability-admin__content { display: grid; gap: 18px; padding-top: 16px; }
+.scene-availability-admin__content form { display: grid; justify-items: start; gap: 9px; min-width: 0; }
+.scene-availability-admin__content h3 { margin: 0; font-size: 14px; }
+.scene-availability-admin__content p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.scene-availability-admin__intro, .scene-availability-admin__audit { color: var(--text-muted); }
+.scene-availability-admin__audit { display: grid; gap: 4px; font-size: 12px; }
+.scene-availability-admin__content textarea { width: 100%; box-sizing: border-box; resize: vertical; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.scene-availability-admin__content button { width: fit-content; min-height: 34px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 12px; font-weight: 650; letter-spacing: normal; text-transform: none; }
+.scene-availability-admin__content button:disabled { opacity: .5; cursor: not-allowed; }
+.scene-availability-admin__content button:not(:disabled):hover { background: var(--surface-hover); }
+.scene-availability-admin__content [role='alert'] { color: var(--danger, #f5a5a5); }
