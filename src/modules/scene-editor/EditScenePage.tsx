@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { normalizeSceneListItem, parseApiError, type SceneListResponse } from '@shared/lib'
+import { normalizeSceneAvailability, normalizeSceneListItem, parseApiError, type SceneListResponse } from '@shared/lib'
 import { SceneEditorLoadingState } from './SceneEditorLoadingState'
 import { SceneEditorShell } from './SceneEditorShell'
 
-type EditableScene = SceneListResponse & {
+type EditableScene = Omit<SceneListResponse, 'sceneData'> & {
+  sceneData: Record<string, unknown>
   tagNames: string[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function readSceneIdParam(sceneIdParam: string | undefined) {
@@ -62,6 +67,7 @@ export function EditScenePage() {
     async function loadScene() {
       setIsLoading(true)
       setErrorMessage('')
+      setScene(null)
 
       try {
         const response = await authenticatedFetch(`/scenes/${sceneId}`)
@@ -72,22 +78,49 @@ export function EditScenePage() {
         }
 
         const payload = await response.json().catch(() => null)
+        if (!isCurrent) return
         const normalizedScene = normalizeSceneListItem(payload)
 
-        if (!normalizedScene) {
-          throw new Error('Scene response is missing the fields required for editing.')
+        if (!normalizedScene || normalizedScene.sceneId !== sceneId) {
+          throw new Error('This scene could not be opened for editing.')
         }
 
         if (
-          typeof user?.userId === 'number' &&
+          typeof user?.userId !== 'number' ||
           normalizedScene.ownerUserId !== user.userId
         ) {
           throw new Error('You can only edit scenes created by your account.')
         }
 
+        let sceneData = normalizedScene.sceneData
+        if (sceneData === null) {
+          if (normalizedScene.availability?.available !== false || !isRecord(payload) || payload.sceneData !== null) {
+            throw new Error('This scene could not be opened for editing.')
+          }
+
+          const repairResponse = await authenticatedFetch(`/scenes/${sceneId}/repair`, { cache: 'no-store' })
+          if (!isCurrent) return
+          if (!repairResponse.ok) {
+            throw new Error('Unable to load this scene for repair. Please try again later.')
+          }
+          const repair: unknown = await repairResponse.json().catch(() => null)
+          if (!isCurrent) return
+          if (
+            !isRecord(repair) || repair.sceneId !== sceneId || repair.ownerUserId !== user.userId ||
+            repair.playable !== false || !isRecord(repair.sceneData) ||
+            !normalizeSceneAvailability(repair.availability, normalizedScene.sceneId)
+          ) {
+            throw new Error('This scene could not be opened for repair.')
+          }
+          // Repair access provides editable source only. The saved scene ID still
+          // goes through the player's independent live availability check.
+          sceneData = repair.sceneData
+        }
+
         if (isCurrent) {
           setScene({
             ...normalizedScene,
+            sceneData,
             tagNames: normalizeSceneTagNames(payload),
           })
         }
@@ -131,7 +164,7 @@ export function EditScenePage() {
     )
   }
 
-  if (isLoading) {
+  if (isLoading || (scene && (scene.sceneId !== sceneId || scene.ownerUserId !== user?.userId))) {
     return <SceneEditorLoadingState />
   }
 
@@ -146,6 +179,7 @@ export function EditScenePage() {
 
   return (
     <SceneEditorShell
+      key={`${scene.sceneId}:${scene.ownerUserId}`}
       authenticatedFetch={authenticatedFetch}
       initialState={{
         description: scene.description,

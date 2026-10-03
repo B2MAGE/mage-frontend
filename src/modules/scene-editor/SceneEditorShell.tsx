@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { MagePlayer, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -67,6 +67,8 @@ export function SceneEditorShell({
   onComplete,
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
+  const availabilityTarget = mode.type === 'edit' ? mode.sceneId : 'custom';
+  const availability = useSceneAvailability(availabilityTarget);
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   const [isBeatSimulated, setIsBeatSimulated] = useState(false);
   const [previewBpm, setPreviewBpm] = useState(120);
@@ -163,9 +165,29 @@ export function SceneEditorShell({
     null,
   );
   const thumbnailCaptureInFlightRef = useRef(false);
+  const thumbnailCaptureGenerationRef = useRef(0);
   const [isCapturingThumbnail, setIsCapturingThumbnail] = useState(false);
 
+  useEffect(() => {
+    const unsubscribe = sceneAvailabilityStore.subscribe(availabilityTarget, () => {
+      if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
+        thumbnailCaptureGenerationRef.current += 1;
+        thumbnailCaptureInFlightRef.current = false;
+        setIsCapturingThumbnail(false);
+      }
+    });
+    return () => {
+      unsubscribe();
+      thumbnailCaptureGenerationRef.current += 1;
+      thumbnailCaptureInFlightRef.current = false;
+    };
+  }, [availabilityTarget]);
+
   async function captureThumbnailFromPreview() {
+    const generation = thumbnailCaptureGenerationRef.current;
+    if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
+      throw new Error("Thumbnail capture is unavailable while scene playback is paused.");
+    }
     if (!captureFramePreviewRef.current) {
       throw new Error(
         "Wait for the live preview to finish loading before capturing a thumbnail.",
@@ -173,6 +195,10 @@ export function SceneEditorShell({
     }
 
     const capturedPreviewUrl = await captureFramePreviewRef.current();
+
+    if (generation !== thumbnailCaptureGenerationRef.current || !sceneAvailabilityStore.isAllowed(availabilityTarget)) {
+      throw new Error("Thumbnail capture was cancelled because scene availability changed.");
+    }
 
     if (!capturedPreviewUrl) {
       throw new Error(
@@ -192,16 +218,18 @@ export function SceneEditorShell({
   }
 
   async function handleThumbnailCaptureRequest() {
-    if (thumbnailCaptureInFlightRef.current) {
+    if (thumbnailCaptureInFlightRef.current || !sceneAvailabilityStore.isAllowed(availabilityTarget)) {
       return;
     }
 
     thumbnailCaptureInFlightRef.current = true;
+    const generation = thumbnailCaptureGenerationRef.current;
     setIsCapturingThumbnail(true);
 
     try {
       await captureThumbnailFromPreview();
     } catch (error) {
+      if (generation !== thumbnailCaptureGenerationRef.current) return;
       setErrors((currentErrors) => ({
         ...currentErrors,
         form: undefined,
@@ -211,8 +239,10 @@ export function SceneEditorShell({
             : "The live preview could not be captured right now. Please try again.",
       }));
     } finally {
-      thumbnailCaptureInFlightRef.current = false;
-      setIsCapturingThumbnail(false);
+      if (generation === thumbnailCaptureGenerationRef.current) {
+        thumbnailCaptureInFlightRef.current = false;
+        setIsCapturingThumbnail(false);
+      }
     }
   }
 
@@ -469,6 +499,7 @@ export function SceneEditorShell({
                 tagsError={tagsError}
                 tagsLoading={tagsLoading}
                 thumbnailPreviewUrl={thumbnailPreviewUrl}
+                isThumbnailCaptureAvailable={availability.allowed}
                 onCreateTag={handleCreateTag}
                 onDescriptionChange={handleDescriptionChange}
                 onNameChange={handleNameChange}

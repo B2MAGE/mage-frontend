@@ -169,3 +169,9 @@ describe('creator music response workflow', () => {
     expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
   })
 })
+
+// These editor workflows exercise fields/submission with explicit playback permission.
+vi.mock('@modules/player/availability/sceneAvailability', async () => {
+  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
+  return { sceneAvailabilityStore: allowedSceneAvailability }
+})
