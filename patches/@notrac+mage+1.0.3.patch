@@ -2308,3 +2308,25 @@ index ff1861a..ad57c04 100644
  		log,
  		withControls: {
  			active,
+diff --git a/node_modules/@notrac/mage/package.json b/node_modules/@notrac/mage/package.json
+--- a/node_modules/@notrac/mage/package.json
++++ b/node_modules/@notrac/mage/package.json
+@@ -9,6 +9,18 @@
+     ".": {
+       "types": "./dist/mage-engine.d.ts",
+       "import": "./dist/mage-engine.js"
++    },
++    "./audio-response": {
++      "types": "./dist/audio-response.d.ts",
++      "import": "./dist/audio-response.js"
++    },
++    "./audio-analysis": {
++      "types": "./dist/audio-analysis.d.ts",
++      "import": "./dist/audio-analysis.js"
++    },
++    "./audio-mapping": {
++      "types": "./dist/audio-mapping.d.ts",
++      "import": "./dist/audio-mapping.js"
+     }
+   },
+   "files": [
