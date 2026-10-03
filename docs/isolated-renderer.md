@@ -1,6 +1,34 @@
-# Isolated renderer (PP-I01)
+# Isolated renderer (PP-I01 / PP-I02)
 
-PP-I01 provides a separately built, hosted player and a developer check that runs a fixed sample. It does **not** enable Advanced mode, accept user source through its message protocol, move production players to iframes, or relax the global custom-rendering gate. The audio/control bridge is PP-I02; routing every custom entry point and release verification is PP-I03.
+PP-I01 provides a separately built, hosted player and a fixed-sample check. PP-I02 adds a versioned playback bridge and a local music/control check. Neither story enables Advanced mode or changes the public custom-rendering gate. Routing every normal player and verifying the release gate remain PP-I03. The deployed CloudFront/player-check sample remains the previously verified PP-I01 build until a coordinated bridge deployment.
+
+## PP-I02 playback bridge
+
+Open `http://127.0.0.1:5178/scripts/isolated-playback-check.html` with the local renderer on `http://localhost:5181`. Start the player, use **Play test rhythm** or select a local audio file, then switch scenes, pause/resume, seek, toggle simulated beat, choose Original/Selective response, drag, zoom, and capture a frame. The fixture uses the exported `createIsolatedPlayer` boundary. It is not a production custom-code authoring surface.
+
+- Protocol v2 uses a fresh session, monotonic request IDs, and a new generation for each scene. The child chooses v1 fixed-sample or v2 playback once from the first authorized bootstrap. The parent transfers a private MessagePort to the exact iframe window. The sole `targetOrigin='*'` is this payload-free opaque-origin bootstrap; the child checks the exact parent source and allowed origin. Window messages are not accepted as playback replies.
+- Load data is bounded and validated with the shared submission/resource policy in both parent and child. Template source is resolved from the immutable library inside the child. No bearer tokens, cookies, profile objects, file contents, media addresses, or fetch instructions appear in protocol messages. Unknown fields and command types are rejected.
+- Parent Web Audio owns decoding, transport, volume, seek, and analysis. The same session survives scene replacement. A source is at most 64 MiB; URL fetches omit credentials/referrers and reject redirects. The worklet receives parent audio; only numeric levels, up to 16 hits, the legacy FFT64 bin-2 amplitude, and bounded clocks reach the renderer. Real playing audio takes precedence over simulated beats.
+- Inputs are coalesced at roughly 30 Hz, retaining intervening hits. Limits are 90 commands/s, 45 child replies/s, 4 loads/s and 2 captures/s. Resize, pointer and zoom have one pending value each. Diagnostics are fixed codes, displayed as text. There is one current scene load, one capture, and one parent image decode. Stale work cannot complete a newer generation.
+- The engine patch provides external audio and an external visual clock. Authored animation speed and saved time are preserved; interpolation stops after 250 ms without new clock input. Legacy and mapped music response, pointer deformation, left-drag orbit and optional wheel zoom stay inside the renderer. Touch camera gestures and browser Ctrl/Meta-wheel zoom remain outside these controls.
+- Render ceilings come from `getRenderBudget(profile)`, never submitted data. Scene/effect validation runs before loading. This bridge conservatively renders at DPR 1, with full/preview pixel, edge, FPS and raymarch ceilings. Size updates cannot raise those ceilings. Zoom stays within 0.4–2.5 times the authored camera distance.
+- Captures are requested, limited to the shared preview pixel/edge ceiling and 1 MiB, and transferred as PNG/JPEG/WebP bytes. The parent checks the request/generation, MIME signature, encoded dimensions, decoded dimensions and requested size before returning a Blob. URLs, HTML, SVG, unexpected formats and unsolicited captures are rejected. Timeouts/disposal reject pending captures and release frame/port/timer resources; an in-flight browser image decode may finish later and its bitmap is closed.
+- Startup has a parent-observed 15-second timeout; active foreground progress has a 10-second timeout. Completed-frame progress is throttled to twice per second. Intentional pause/background suspension does not produce false progress failures. Failures remove the frame, stop sampling and pause parent audio, with a typed callback for PP-R01 integration. A claimed frame/heartbeat is only a liveness signal, not proof of safe source.
+
+PP-I03 must apply availability checks, revocation, recovery leases and retry rules around this adapter on every normal app entry point. There must be no parent-side custom-source fallback. The local fixture does not enable the public arbitrary-code release gate. This story does not claim that source limits prevent infinite loops, that JavaScript can cancel a GPU hang, or that a receiver can prevent structured-clone allocation before delivery. A hostile child can defeat its own engine limits or lie about progress; the browser sandbox, separate site, parent teardown and later release-gate verification remain necessary.
+
+### Local regression checks
+
+```powershell
+npx vitest run src/modules/player/isolation src/isolated-renderer src/modules/player/infrastructure/engineExternalAudio.test.ts src/modules/player/infrastructure/engineClock.test.ts
+npm run renderer:build
+npm run renderer:serve
+npm run renderer:verify
+```
+
+The local server retains a verified build in memory; restart it after rebuilding. Parent and child must both contain protocol v2 before using the music check. The original v1 sample and dedicated live `/player-check/` service continue to work independently.
+
+Browser verification on October 3, 2026 used Chromium with the real response-header sandbox and CSP on the local cross-site pair. Verified visible rendering, real parent Web Audio from a generated WAV, music time continuing across a scene switch (0.2 to 0.4 seconds), pause preservation across a switch (0.6 seconds), resume/seek, both response modes, simulated beats, pointer/zoom interaction, a decoded PNG preview, and removal of the iframe on Stop. Scene replacement uses a new canvas after disposing the old engine so delayed WebGL context loss cannot stop the new scene. Production v2 deployment and the full multi-browser/public-source release checks remain ahead.
 
 ## Hosting boundary
 

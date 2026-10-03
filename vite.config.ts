@@ -16,6 +16,10 @@ export default defineConfig({
           response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:5178 ws://localhost:5178; frame-src http://localhost:5181; object-src 'none'; base-uri 'none'; form-action 'none'")
           response.setHeader('Referrer-Policy', 'no-referrer')
         }
+        if (request.url?.split('?')[0] === '/scripts/isolated-playback-check.html') {
+          response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src blob:; style-src 'unsafe-inline'; connect-src 'self' blob: ws://127.0.0.1:5178 ws://localhost:5178; img-src 'self' blob:; media-src blob:; frame-src http://localhost:5181; object-src 'none'; base-uri 'none'; form-action 'none'")
+          response.setHeader('Referrer-Policy', 'no-referrer')
+        }
         next()
       })
     },
