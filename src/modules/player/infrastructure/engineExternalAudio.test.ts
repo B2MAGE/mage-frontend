@@ -18,6 +18,8 @@ const renderStart = engineClass.indexOf('#_render = () => {')
 const audioStart = engineClass.indexOf('let bass_input = 0;', renderStart)
 const audioEnd = engineClass.indexOf('this.#controls.update();', audioStart)
 const renderAudio = new Function('delta', engineClass.slice(audioStart, audioEnd).replaceAll('this.#', 'this.')) as Method
+const clockStart = engineClass.indexOf('this.#clock.update();', renderStart)
+const renderClock = new Function(engineClass.slice(clockStart, audioStart).replaceAll('this.#', 'this.')) as Method
 
 function sample(time = 2, sequence = 1) {
   return { audioTime: time, loaded: true, playing: true, legacyAmplitude: 180 / 255,
@@ -28,6 +30,8 @@ function fixture() {
   const engine: Harness = {
     externalAudio: null, externalAudioFrames: [], externalAudioLastFrame: null,
     externalAudioReceivedAt: 0, externalTransientEnvelope: 0,
+    externalClock: null, externalClockReceivedAt: 0,
+    clock: { reset: vi.fn(), update: vi.fn(), getDelta: () => 1 / 60 },
     audioMapper: new AudioResponseMapper({ version: 1, mappings: [{ target: 'size', source: 'bass-hit', amount: 1, attack: 0, release: 0.1 }] }),
     audioAnalysis: { disconnect: vi.fn() }, audioAnalysisSource: null, audioAnalysisFrame: null,
     audioResponseMode: 'mapped-v1', mappedSource: 'none', mappedTime: 0,
@@ -38,7 +42,8 @@ function fixture() {
     _disconnectTransientAnalyser: vi.fn(),
   }
   for (const name of ['setExternalAudioFrame', '_externalAudioSnapshot', '_sampleExternalTransientAudio',
-    '_sampleMappedAudio', '_syncAudioAnalysis', '_resetAudioAnalysis', 'getAudioAnalysis', 'setEngineTime']) engine[name] = method(name)
+    '_sampleMappedAudio', '_syncAudioAnalysis', '_resetAudioAnalysis', 'getAudioAnalysis', 'setEngineTime',
+    'setExternalClock', '_updateExternalClock']) engine[name] = method(name)
   return engine
 }
 afterEach(() => { vi.restoreAllMocks() })
@@ -184,5 +189,59 @@ describe('installed external audio bridge API', () => {
     expect(engine.clock.reset).toHaveBeenCalledOnce()
     expect(engine.setEngineTime(604800)).toBe(true)
     expect(engine.timeIncreasing).toBe(false)
+  })
+
+  it.each([0, 2])('uses the host visual clock at rate %s without advancing it a second time', rate => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000)
+    const engine = fixture()
+    engine.state.time_multiplier = 9 // Must have no effect while the host owns time.
+    const anchor = { time: 100, rate, playing: true }
+    engine.setExternalClock(anchor)
+    anchor.rate = 10 // External input is copied.
+    now.mockReturnValue(1050)
+    renderClock.call(engine)
+    expect(engine.state.time).toBeCloseTo(100 + rate * 0.05)
+    now.mockReturnValue(1100)
+    engine.setExternalClock({ time: 100 + rate * 0.1, rate, playing: true })
+    now.mockReturnValue(1150)
+    renderClock.call(engine)
+    expect(engine.state.time).toBeCloseTo(100 + rate * 0.15)
+  })
+
+  it('freezes paused host time, bounds extrapolation and resumes native animation after detaching', () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000)
+    const engine = fixture()
+    engine.setExternalClock({ time: 5, rate: 2, playing: false })
+    now.mockReturnValue(2000)
+    renderClock.call(engine)
+    expect(engine.state.time).toBe(5)
+    engine.setExternalClock({ time: 5, rate: 2, playing: true })
+    now.mockReturnValue(7000)
+    renderClock.call(engine)
+    expect(engine.state.time).toBe(5.5)
+    engine.setExternalClock(null)
+    engine.state.time_multiplier = 3
+    renderClock.call(engine)
+    expect(engine.state.time).toBeCloseTo(5.55)
+    engine.setExternalClock({ time: 604800, rate: 10, playing: true })
+    now.mockReturnValue(8000)
+    renderClock.call(engine)
+    expect(engine.state.time).toBe(604800)
+  })
+
+  it('rejects invalid external clock ranges, extra fields and executable getters', () => {
+    const engine = fixture()
+    const valid = { time: 10, rate: 1, playing: true }
+    engine.setExternalClock(valid)
+    for (const invalid of [undefined, 5, [], { ...valid, time: NaN }, { ...valid, time: -1 },
+      { ...valid, time: 604801 }, { ...valid, rate: -1 }, { ...valid, rate: 11 },
+      { ...valid, rate: Infinity }, { ...valid, playing: 1 }, { ...valid, url: '/' }]) {
+      expect(() => engine.setExternalClock(invalid)).toThrow(TypeError)
+      expect(engine.state.time).toBe(10)
+    }
+    const read = vi.fn(() => 0)
+    Object.defineProperty(valid, 'time', { get: read })
+    expect(() => engine.setExternalClock(valid)).toThrow(TypeError)
+    expect(read).not.toHaveBeenCalled()
   })
 })
