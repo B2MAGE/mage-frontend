@@ -1,15 +1,18 @@
 import { resolveSceneForPlayback } from '../templates/resolveScene'
+import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig, normalizeAudioResponseMode,
+  type AudioResponseMode, type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
 import type { RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
 import { createParentAudioSession, type ParentAudioSession } from './parentAudio'
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus } from './playbackHost'
-import { BRIDGE_LIMITS, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'
+import { BRIDGE_LIMITS, isAudioResponseSettings, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'
 
 export type IsolatedPlayerOptions = {
   container: HTMLElement
   rendererUrl: string
   profile?: RenderProfile
   wheelZoom?: boolean
+  pointerInteractions?: boolean
   useInlineFrameStyles?: boolean
   onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void
@@ -26,7 +29,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   const audio = (dependencies.createAudio ?? createParentAudioSession)()
   const now = dependencies.now ?? (() => performance.now())
   const previousUserSelect = options.container.style.userSelect
-  options.container.style.userSelect = 'none'
+  if (options.pointerInteractions !== false) options.container.style.userSelect = 'none'
   let disposed = false, failed = false, available = false, sceneLoaded = false
   let playing = true, elapsed = 0, previousTick = now()
   let sceneGeneration = 0, audioGeneration = 0
@@ -37,6 +40,8 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   let zoom = 1
   let pointer: PlaybackPayloads['input']['pointer'] = { x: 0, y: 0, down: false, inside: false }
   let synthetic: PlaybackPayloads['synthetic'] = { enabled: false, seed: 1, tempoScale: 1 }
+  let response: PlaybackPayloads['audio-response'] = { mode: 'legacy', config: null }
+  let supportedTargets: AudioResponseTarget[] | null = null
 
   function assertActive() {
     if (disposed || failed) throw new Error('This isolated player has stopped.')
@@ -110,7 +115,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   }
 
   function removeInputs() {
-    if (options.container.style.userSelect === 'none') options.container.style.userSelect = previousUserSelect
+    if (options.pointerInteractions !== false && options.container.style.userSelect === 'none') options.container.style.userSelect = previousUserSelect
     observer?.disconnect()
     observer = null
     options.container.removeEventListener('pointerdown', onPointerDown)
@@ -177,15 +182,17 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
     throw error
   }
 
-  options.container.addEventListener('pointerdown', onPointerDown)
-  options.container.addEventListener('pointerenter', onPointerMove)
-  options.container.addEventListener('pointermove', onPointerMove)
-  options.container.addEventListener('pointerleave', leavePointer)
-  options.container.addEventListener('lostpointercapture', releasePointer)
-  options.container.addEventListener('wheel', onWheel, { passive: false })
-  window.addEventListener('pointerup', onPointerUp)
-  window.addEventListener('pointercancel', onPointerUp)
-  window.addEventListener('blur', leavePointer)
+  if (options.pointerInteractions !== false) {
+    options.container.addEventListener('pointerdown', onPointerDown)
+    options.container.addEventListener('pointerenter', onPointerMove)
+    options.container.addEventListener('pointermove', onPointerMove)
+    options.container.addEventListener('pointerleave', leavePointer)
+    options.container.addEventListener('lostpointercapture', releasePointer)
+    options.container.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
+    window.addEventListener('blur', leavePointer)
+  }
   window.addEventListener('resize', resize)
   document.addEventListener('visibilitychange', onVisibilityChange)
   if (typeof ResizeObserver !== 'undefined') {
@@ -212,8 +219,9 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       assertActive()
       const safeScene = sceneForBridge(scene)
       const resolved = resolveSceneForPlayback(safeScene).engineScene
-      const config = resolved.audioResponseConfig as { sensitivity?: number } | undefined
-      const sensitivity = config?.sensitivity ?? 1
+      response = { mode: normalizeAudioResponseMode(resolved.audioResponse),
+        config: resolved.audioResponseConfig ? normalizeAudioResponseConfig(resolved.audioResponseConfig).config : null }
+      supportedTargets = null
       const current = ++sceneGeneration
       sceneLoaded = false
       await ready
@@ -222,11 +230,16 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       await host!.loadScene(safeScene, profile)
       assertActive()
       if (current !== sceneGeneration) throw new Error('Scene changed.')
+      const capabilities = await host!.getCapabilities()
+      assertActive()
+      if (current !== sceneGeneration) throw new Error('Scene changed.')
+      supportedTargets = capabilities.supportedTargets
       sceneLoaded = true
       elapsed = 0
       zoom = 1
       previousTick = now()
-      audio.setSensitivity(sensitivity)
+      audio.setSensitivity(response.config?.sensitivity ?? 1)
+      host!.setAudioResponse(response)
       host!.setPlayback(playing)
       host!.setZoom(zoom)
       host!.setSynthetic(synthetic.enabled, synthetic.seed, synthetic.tempoScale)
@@ -280,6 +293,21 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         || !Number.isFinite(tempoScale) || tempoScale < 0.25 || tempoScale > 4) throw new Error('Invalid simulated beat settings.')
       synthetic = { enabled, seed, tempoScale }
       if (available && sceneLoaded) host!.setSynthetic(enabled, seed, tempoScale)
+    },
+    setAudioResponse(mode: AudioResponseMode = 'legacy', config: AudioResponseConfig | null = null) {
+      assertActive()
+      const next = { mode, config }
+      if (!isAudioResponseSettings(next)) throw new Error('Invalid music response settings.')
+      response = structuredClone(next)
+      audio.setSensitivity(response.config?.sensitivity ?? 1)
+      if (available && sceneLoaded) host!.setAudioResponse(response)
+    },
+    getAudioResponseCapabilities() {
+      if (!supportedTargets) return null
+      const unsupportedTargets = response.config?.mappings.map(mapping => mapping.target).filter(target => !supportedTargets!.includes(target)) ?? []
+      return { mode: response.mode, signals: [...AUDIO_RESPONSE_SIGNALS], targets: [...AUDIO_RESPONSE_TARGETS],
+        supportedTargets: [...supportedTargets], unsupportedTargets,
+        warnings: unsupportedTargets.map(target => `The active shader does not declare the ${target} input.`) }
     },
     getAudioState: () => audio.getState(),
     capture(request?: Partial<CaptureRequest>) { assertActive(); return host!.capture(request) },

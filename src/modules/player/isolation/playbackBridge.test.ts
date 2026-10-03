@@ -47,6 +47,7 @@ function makeEngine() {
     dispose: vi.fn(), playback: vi.fn<PlaybackEngine['playback']>(), resize: vi.fn<PlaybackEngine['resize']>(),
     input: vi.fn<PlaybackEngine['input']>(), synthetic: vi.fn<PlaybackEngine['synthetic']>(),
     zoom: vi.fn<PlaybackEngine['zoom']>(),
+    audioResponse: vi.fn<PlaybackEngine['audioResponse']>(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
     capture: vi.fn<PlaybackEngine['capture']>().mockImplementation(async () => raster()),
   }
 }

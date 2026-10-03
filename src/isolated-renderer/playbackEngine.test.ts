@@ -28,6 +28,20 @@ function fixture() {
 }
 
 describe('isolated playback engine', () => {
+  it('fails on real canvas context loss even when paused, and ignores disposal events', async () => {
+    const f = fixture(), control = await f.ready()
+    control.playback(false)
+    f.canvas.dispatchEvent(new Event('webglcontextlost'))
+    expect(f.onError).toHaveBeenCalledOnce()
+    expect(f.engine.dispose).toHaveBeenCalledOnce()
+    f.canvas.dispatchEvent(new Event('webglcontextlost'))
+    expect(f.onError).toHaveBeenCalledOnce()
+    const next = fixture(), nextControl = await next.ready()
+    nextControl.dispose()
+    next.canvas.dispatchEvent(new Event('webglcontextlost'))
+    expect(next.onError).not.toHaveBeenCalled()
+  })
+
   it('cancels before allocation and rejects parent-only media', async () => {
     const f = fixture(); const loading = f.load(); f.abort.abort()
     await expect(loading).rejects.toThrow()

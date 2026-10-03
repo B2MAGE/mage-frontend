@@ -28,6 +28,19 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('coalesces music response changes and binds capability responses to the current request',async()=>{
+    const s=setup();await s.load()
+    for(let i=0;i<100;i++)s.host.setAudioResponse({mode:'mapped-v1',config:{version:1,sensitivity:1+i/100,mappings:[]}})
+    await vi.advanceTimersByTimeAsync(34)
+    const settings=s.port.postMessage.mock.calls.filter(([m])=>m.type==='audio-response')
+    expect(settings).toHaveLength(1);expect(settings[0][0].payload.config.sensitivity).toBe(1.99)
+    const result=s.host.getCapabilities(),command=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('capabilities-result',{supportedTargets:['bass']},1,command.requestId-1)
+    s.reply('capabilities-result',{supportedTargets:['size']},1,command.requestId)
+    await expect(result).resolves.toEqual({supportedTargets:['size']})
+    const stale=s.host.getCapabilities(),rejected=expect(stale).rejects.toThrow(/Scene changed/)
+    await s.load();await rejected;s.host.dispose()
+  })
   it('can use an external stylesheet without introducing inline frame styles',()=>{
     const s=setup(undefined,false)
     expect(s.frame.hasAttribute('style')).toBe(false)

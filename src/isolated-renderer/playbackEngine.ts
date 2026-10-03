@@ -13,6 +13,8 @@ export type PlaybackEngine = {
   input: (value: PlaybackPayloads['input']) => void
   playback: (playing: boolean) => void
   synthetic: (value: PlaybackPayloads['synthetic']) => void
+  audioResponse: (value: PlaybackPayloads['audio-response']) => void
+  capabilities: () => PlaybackPayloads['capabilities-result']
   zoom: (factor: number) => void
   capture: (value: CaptureRequest) => Promise<PlaybackPayloads['captured']>
 }
@@ -52,16 +54,22 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   const speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
   const initialTime = typeof state?.time === 'number' ? state.time : 0
   let playing = true
+  function onContextLost() {
+    if (disposed) return
+    try { onError() } finally { dispose() }
+  }
   function dispose() {
     if (disposed) return
     disposed = true
     signal.removeEventListener('abort', dispose)
+    canvas.removeEventListener('webglcontextlost', onContextLost)
     orbit?.dispose(); deformation?.dispose(); orbit = deformation = null
     try { unsubscribe() } catch { /* Continue releasing graphics after listener cleanup. */ }
     try { engine.dispose() } catch { /* Removing the iframe is the final cleanup boundary. */ }
     rejectStartup(new Error('Rendering stopped.'))
   }
   signal.addEventListener('abort', dispose, { once: true })
+  canvas.addEventListener('webglcontextlost', onContextLost)
   try {
     await new Promise<void>((resolve, reject) => {
       rejectStartup = reject
@@ -123,6 +131,12 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
           clientY: rect.top + (1 - value.pointer.y) * rect.height / 2 })
       },
       synthetic(value) { if (!disposed) engine.setSyntheticPreview(value.enabled, value.seed, value.tempoScale) },
+      audioResponse(value) {
+        if (disposed) return
+        engine.setAudioResponseConfig(value.config)
+        engine.setAudioResponseMode(value.mode)
+      },
+      capabilities() { return { supportedTargets: engine.getAudioResponseCapabilities().supportedTargets } },
       zoom(factor) { if (!disposed) orbit?.zoom(factor) },
       async capture(value) {
         if (disposed || capturePending) throw new Error('Capture is unavailable.')

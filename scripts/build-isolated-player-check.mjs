@@ -29,6 +29,7 @@ const allowedModules = new Set([
   'src/modules/player/templates/versions/v1/definitions.ts',
   'contracts/scenes/scene-limits.v1.json',
   'node_modules/@notrac/mage/dist/audio-analysis.js',
+  'node_modules/@notrac/mage/dist/audio-response.js',
 ].map(path => resolve(root, path).replaceAll('\\', '/')))
 const integrityOf = body => `sha384-${createHash('sha384').update(body).digest('base64')}`
 
