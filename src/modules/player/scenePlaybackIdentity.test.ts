@@ -16,4 +16,30 @@ describe('versioned scene playback identity', () => {
     expect(scenePlaybackIdentity(value)).toBeNull()
     expect(getter).not.toHaveBeenCalled()
   })
+
+  it('ignores only fully validated template response settings and does not mutate their document', () => {
+    const document = { ...template, settings: { audioResponse: 'mapped-v1', audioResponseConfig: {
+      version: 1, sensitivity: 0.4, mappings: [{ target: 'size', source: 'bass-hit', amount: 0.2 }],
+    } } }
+    const before = structuredClone(document)
+    expect(scenePlaybackIdentity(document, 24)).toBe(scenePlaybackIdentity(template, 24))
+    expect(document).toEqual(before)
+    expect(scenePlaybackIdentity(document, 25)).not.toBe(scenePlaybackIdentity(document, 24))
+    for (const changed of [
+      { ...document, templateId: 'embedded-scene-1' },
+      { ...document, parameters: { scale: 11 } },
+      { ...document, settings: { ...document.settings, camera: { fov: 90 } } },
+      { ...document, settings: { ...document.settings, motion: { minimizing_factor: 0.3 } } },
+      { ...document, settings: { ...document.settings, state: { time: 12 } } },
+    ]) expect(scenePlaybackIdentity(changed, 24)).not.toBe(scenePlaybackIdentity(document, 24))
+  })
+
+  it.each([
+    { version: 1, shader: 'untrusted()' },
+    { version: 1, sensitivity: 5 },
+    { version: 1, mappings: [{ target: 'size', source: 'bass-hit', code: 'untrusted()' }] },
+    { version: 1, mappings: [{ target: 'size', source: 'bass-hit' }, { target: 'size', source: 'mid-hit' }] },
+  ])('validates nested template response fields before excluding them from identity', audioResponseConfig => {
+    expect(scenePlaybackIdentity({ ...template, settings: { audioResponseConfig } })).toBeNull()
+  })
 })

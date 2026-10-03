@@ -24,7 +24,6 @@ import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 import { useMagePlayerAudioSelection } from './useMagePlayerAudioSelection'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { normalizeAudioResponseMode } from '@shared/lib'
-import { hasSceneDocumentMarkers } from './templates/sceneContract'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
 import { PlaybackOptions } from './recovery/PlaybackOptions'
@@ -409,13 +408,14 @@ function MagePlayerRenderer({
 
     try {
       const isResponseUpdate = playbackIdentity !== null
-        && !hasSceneDocumentMarkers(sceneBlob)
         && appliedSceneRef.current?.player === player
         && appliedSceneRef.current.identity === playbackIdentity
       if (isResponseUpdate) {
+          const validated = validateSceneForPlayback(sceneBlob)
+          const response = validated.kind === 'template' ? validated.settings : validated.scene
           player.setAudioResponseSettings(
-            Object.hasOwn(sceneBlob, 'audioResponse') ? normalizeAudioResponseMode(sceneBlob.audioResponse) : undefined,
-            sceneBlob.audioResponseConfig,
+            Object.hasOwn(response, 'audioResponse') ? normalizeAudioResponseMode(response.audioResponse) : undefined,
+            response.audioResponseConfig,
           )
           player.updateRecoveryIdentity?.(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
         } else {

@@ -1,5 +1,6 @@
 import type { MageSceneBlob } from './infrastructure/engineAdapter'
-import { hasSceneDocumentMarkers, parseSceneDocument } from './templates/sceneContract'
+import { hasSceneDocumentMarkers } from './templates/sceneContract'
+import { validateSceneForPlayback } from './policy/sceneValidation'
 
 export type MageSceneKey = string | number
 
@@ -12,8 +13,15 @@ export function scenePlaybackIdentity(
   if (!sceneBlob) return null
   try {
     const versioned = hasSceneDocumentMarkers(sceneBlob)
-    const scene: MageSceneBlob = versioned ? parseSceneDocument(sceneBlob) : { ...sceneBlob }
-    if (!versioned) {
+    // Validate the complete document before omitting any live-update fields.
+    // Otherwise forbidden fields nested in a response config could disappear
+    // from comparison and wrongly reuse an already authorized renderer.
+    const validated = validateSceneForPlayback(sceneBlob)
+    const scene: MageSceneBlob = versioned ? validated : { ...(validated.kind === 'custom' ? validated.scene : validated) }
+    if (validated.kind === 'template') {
+      delete validated.settings.audioResponse
+      delete validated.settings.audioResponseConfig
+    } else if (!versioned) {
       delete scene.audioResponse
       delete scene.audioResponseConfig
     }
