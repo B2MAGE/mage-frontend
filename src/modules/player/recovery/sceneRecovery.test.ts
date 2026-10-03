@@ -438,6 +438,106 @@ describe('recovery leases and local history', () => {
     recovery.retry(key)
     expect(recovery.begin(key)).not.toBeNull()
   })
+
+  it('retires an interrupted-only suspicion after a deliberate retry ends cleanly', () => {
+    const local = memoryStorage(); const session = memoryStorage()
+    const recovery = store({ localStorage: local, sessionStorage: session })
+    recovery.block(key, 'interrupted')
+    recovery.retry(key)
+    const listener = vi.fn(); recovery.subscribe(listener)
+    const attempt = recovery.begin(key)!
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe('interrupted')
+    expect(JSON.parse(session.getItem(RECOVERY_ACTIVE_KEY)!).entries).toHaveLength(1)
+    attempt.dispose()
+    expect(listener).not.toHaveBeenCalled() // Disposal must not interrupt an in-progress scene replacement.
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+    expect(JSON.parse(session.getItem(RECOVERY_ACTIVE_KEY)!).entries).toEqual([])
+    expect(store({ localStorage: local }).getBlock(key)).toBeNull()
+    expect(recovery.begin(key)).not.toBeNull()
+  })
+
+  it.each(['load', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout'] as const)(
+    'never retires an observed %s failure merely because its retry ends cleanly', (reason) => {
+      const recovery = store()
+      recovery.block(key, reason)
+      recovery.retry(key)
+      recovery.begin(key)!.dispose()
+      expect(recovery.getBlock(key)?.reason).toBe(reason)
+      expect(recovery.begin(key)).toBeNull()
+    },
+  )
+
+  it('a failed or unfinished retry retains recovery protection', () => {
+    const local = memoryStorage(); const session = memoryStorage()
+    const recovery = store({ localStorage: local, sessionStorage: session })
+    recovery.block(key, 'interrupted')
+    recovery.retry(key)
+    recovery.begin(key)!.fail('runtime')
+    expect(recovery.getBlock(key)?.reason).toBe('runtime')
+    const other = revision(902)
+    recovery.block(other, 'interrupted')
+    recovery.retry(other)
+    recovery.begin(other)
+    recovery.destroy() // A crashed document never reaches clean lease disposal.
+    const reopened = store({ localStorage: local, sessionStorage: session })
+    expect(reopened.getBlock(other)?.reason).toBe('interrupted')
+    expect(reopened.begin(other)).toBeNull()
+  })
+
+  it('global pause defers interrupted retirement until the same viewing session truly ends', () => {
+    const recovery = store()
+    const release = recovery.retainPlaybackSession(key)
+    recovery.block(key, 'interrupted')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    attempt.dispose()
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe('interrupted')
+    expect(recovery.getBlock(key)).toBeNull()
+    recovery.setSafeMode(false)
+    recovery.begin(key)!.dispose()
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+    release()
+  })
+
+  it('leaving a globally paused clean retry retires only its old interrupted suspicion', () => {
+    const recovery = store()
+    const release = recovery.retainPlaybackSession(key)
+    recovery.block(key, 'interrupted')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    attempt.dispose()
+    release()
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+  })
+
+  it('an interruption retry cannot retire a newer failure received during cleanup', () => {
+    const local = memoryStorage()
+    const first = store({ localStorage: local }); const second = store({ localStorage: local })
+    first.block(key, 'interrupted')
+    first.retry(key)
+    const attempt = first.begin(key)!
+    second.block(key, 'context-lost')
+    attempt.dispose()
+    expect(first.getBlock(key)?.reason).toBe('context-lost')
+    expect(second.getBlock(key)?.reason).toBe('context-lost')
+  })
+
+  it('clean retry during an owner probe removes local suspicion without changing the live owner marker', () => {
+    const local = memoryStorage(); const session = memoryStorage(); const hub = channelHub()
+    const first = store({ localStorage: local, sessionStorage: session, createChannel: hub.createChannel })
+    first.begin(key)
+    const originalMarker = session.getItem(RECOVERY_ACTIVE_KEY)
+    const copied = store({ localStorage: local, sessionStorage: session.clone(), createChannel: hub.createChannel })
+    copied.retry(key)
+    copied.begin(key)!.dispose()
+    hub.flush()
+    vi.advanceTimersByTime(RECOVERY_OWNER_PROBE_MS)
+    expect(copied.getAutomaticBlock(key)).toBeNull()
+    expect(first.getAutomaticBlock(key)).toBeNull()
+    expect(session.getItem(RECOVERY_ACTIVE_KEY)).toBe(originalMarker)
+  })
 })
 
 describe('tab ownership', () => {

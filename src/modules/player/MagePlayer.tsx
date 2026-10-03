@@ -76,6 +76,7 @@ function blurMouseActivatedControl(control: HTMLButtonElement, clickCount: numbe
 /** Keep recovery controls and editor state outside the renderer's lifetime. */
 export function MagePlayer(props: MagePlayerProps) {
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
+  const [rendererInstance, setRendererInstance] = useState(0)
   const playlist = useMagePlayerPlaylist(props)
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
   const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
@@ -86,6 +87,16 @@ export function MagePlayer(props: MagePlayerProps) {
   useEffect(() => {
     if (recoveryKey) return sceneRecovery.retainPlaybackSession(recoveryKey)
   }, [recoveryKey])
+
+  useEffect(() => {
+    // A cached browser page retains React state, but pagehide has shut down its
+    // graphics resources. Recreate only the renderer, keeping the editor/playlist.
+    const restorePage = (event: PageTransitionEvent) => {
+      if (event.persisted) setRendererInstance((instance) => instance + 1)
+    }
+    window.addEventListener('pageshow', restorePage)
+    return () => window.removeEventListener('pageshow', restorePage)
+  }, [])
 
   if (props.sceneBlob && (block || safeMode)) {
     return <SceneRecoveryPanel
@@ -102,7 +113,7 @@ export function MagePlayer(props: MagePlayerProps) {
     />
   }
 
-  return <MagePlayerRenderer {...props}
+  return <MagePlayerRenderer key={rendererInstance} {...props}
     playlist={playlist}
     onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
     onSafeMode={() => sceneRecovery.setSafeMode(true)}

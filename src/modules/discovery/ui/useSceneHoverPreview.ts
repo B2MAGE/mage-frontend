@@ -35,6 +35,13 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
   const focusedRef = useRef(false)
   const visibleRef = useRef(true)
 
+  const previewIsWanted = useCallback(() =>
+    preferenceEnabled &&
+    motionIsAllowed() &&
+    visibleRef.current &&
+    (focusedRef.current || (pointerInsideRef.current && pointerPreviewIsAllowed())),
+  [preferenceEnabled])
+
   const syncPreview = useCallback(() => {
     const id = registrationIdRef.current
     if (recoveryPaused) {
@@ -44,18 +51,12 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
       sceneHoverPreviewCoordinator.cancel(id)
       return
     }
-    const shouldPreview =
-      preferenceEnabled &&
-      motionIsAllowed() &&
-      visibleRef.current &&
-      (focusedRef.current || (pointerInsideRef.current && pointerPreviewIsAllowed()))
-
-    if (shouldPreview) {
+    if (previewIsWanted()) {
       sceneHoverPreviewCoordinator.schedule(id)
     } else {
       sceneHoverPreviewCoordinator.cancel(id)
     }
-  }, [preferenceEnabled, recoveryPaused])
+  }, [previewIsWanted, recoveryPaused])
 
   useEffect(() => {
     const target = thumbnailRef.current
@@ -64,7 +65,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
     }
 
     const id = registrationIdRef.current
-    sceneHoverPreviewCoordinator.register(id, { sceneBlob, sceneId, seed, target })
+    sceneHoverPreviewCoordinator.register(id, { sceneBlob, sceneId, seed, target, shouldPreview: previewIsWanted })
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     const finePointer = window.matchMedia?.('(hover: hover) and (pointer: fine)')
@@ -91,7 +92,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       sceneHoverPreviewCoordinator.unregister(id)
     }
-  }, [sceneBlob, sceneId, seed, syncPreview])
+  }, [sceneBlob, sceneId, seed, syncPreview, previewIsWanted])
 
   useEffect(() => {
     syncPreview()

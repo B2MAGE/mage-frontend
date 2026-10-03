@@ -34,13 +34,14 @@ const recoveryMocks = vi.hoisted(() => ({
   dispose: vi.fn(),
   fail: vi.fn(),
   getBlock: vi.fn(),
+  getAutomaticBlock: vi.fn(),
   isSafeMode: vi.fn(),
   block: vi.fn(),
 }))
 
 vi.mock('../recovery/sceneRecovery', () => ({
   sceneRecoveryKey: recoveryMocks.key,
-  sceneRecovery: { begin: recoveryMocks.begin, getBlock: recoveryMocks.getBlock, isSafeMode: recoveryMocks.isSafeMode, block: recoveryMocks.block },
+  sceneRecovery: { begin: recoveryMocks.begin, getBlock: recoveryMocks.getBlock, getAutomaticBlock: recoveryMocks.getAutomaticBlock, isSafeMode: recoveryMocks.isSafeMode, block: recoveryMocks.block },
 }))
 
 vi.mock('@notrac/mage', () => ({
@@ -53,11 +54,16 @@ describe('createMagePlayer', () => {
     let audioVolume = 1
     let engineTime = 0
 
+    // Close any player left by the preceding test, as a normal document
+    // navigation would, before resetting shared engine/recovery spies.
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+    window.dispatchEvent(new PageTransitionEvent('pageshow'))
     vi.resetModules()
     vi.clearAllMocks()
     recoveryMocks.begin.mockImplementation(() => ({ dispose: recoveryMocks.dispose, fail: recoveryMocks.fail }))
     recoveryMocks.key.mockReturnValue('scene-content-key')
     recoveryMocks.getBlock.mockReturnValue(null)
+    recoveryMocks.getAutomaticBlock.mockReturnValue(null)
     recoveryMocks.isSafeMode.mockReturnValue(false)
     document.body.innerHTML = ''
 
@@ -318,6 +324,123 @@ describe('createMagePlayer', () => {
       expect(recoveryMocks.fail).not.toHaveBeenCalled()
       player.dispose()
     } finally { vi.useRealTimers() }
+  })
+
+  it('clears active markers after successful disposal on ordinary page navigation', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+    expect(engineMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(recoveryMocks.dispose).toHaveBeenCalledTimes(1)
+    expect(engineMocks.dispose.mock.invocationCallOrder[0]).toBeLessThan(recoveryMocks.dispose.mock.invocationCallOrder[0])
+    expect(recoveryMocks.fail).not.toHaveBeenCalled()
+    expect(() => player.setPlaybackState('playing')).toThrow(/stopped/)
+    player.dispose()
+    expect(recoveryMocks.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps disposed BFCache controllers dead while allowing a fresh renderer after restoration', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const old = await createMagePlayer(document.createElement('canvas'))
+    old.loadSceneBlob({ visualizer: { shader: 'test' } })
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+    await expect(createMagePlayer(document.createElement('canvas'))).rejects.toThrow(/page navigation/)
+    expect(engineMocks.initMAGE).toHaveBeenCalledTimes(1)
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    expect(() => old.setPlaybackState('playing')).toThrow(/stopped/)
+    const fresh = await createMagePlayer(document.createElement('canvas'))
+    fresh.loadSceneBlob({ visualizer: { shader: 'test' } })
+    expect(engineMocks.initMAGE).toHaveBeenCalledTimes(2)
+    expect(recoveryMocks.block).not.toHaveBeenCalled()
+    fresh.dispose()
+    old.dispose()
+  })
+
+  it('retains unfinished markers on navigation cleanup failure and blocks BFCache auto-restart', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.dispose.mockImplementationOnce(() => { throw new Error('GPU cleanup failed') })
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    expect(recoveryMocks.block).toHaveBeenCalledExactlyOnceWith('scene-content-key', 'interrupted')
+    expect(() => player.setPlaybackState('playing')).toThrow(/stopped/)
+    player.dispose()
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+  })
+
+  it('preserves a retry\'s original failure on cleanup failure before host BFCache restoration handlers run', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const hostRestore = vi.fn()
+    window.addEventListener('pageshow', hostRestore)
+    try {
+      const player = await createMagePlayer(document.createElement('canvas'))
+      player.loadSceneBlob({ visualizer: { shader: 'test' } })
+      recoveryMocks.getAutomaticBlock.mockReturnValue({ reason: 'runtime', at: Date.now() })
+      engineMocks.dispose.mockImplementationOnce(() => { throw new Error('cleanup failed during retry') })
+      window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+      expect(recoveryMocks.block).toHaveBeenCalledExactlyOnceWith('scene-content-key', 'runtime')
+      expect(recoveryMocks.block.mock.invocationCallOrder[0]).toBeLessThan(hostRestore.mock.invocationCallOrder[0])
+      expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+      player.dispose()
+    } finally { window.removeEventListener('pageshow', hostRestore) }
+  })
+
+  it.each(['public-first', 'pagehide-first'] as const)('records unfinished cleanup before detaching restoration guards (%s)', async (order) => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    engineMocks.dispose.mockImplementationOnce(() => { throw new Error('dispose failed') })
+    if (order === 'public-first') expect(() => player.dispose()).toThrow('dispose failed')
+    else {
+      window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+      player.dispose()
+    }
+    expect(recoveryMocks.block).toHaveBeenCalledExactlyOnceWith('scene-content-key', 'interrupted')
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    player.dispose()
+    expect(recoveryMocks.block).toHaveBeenCalledTimes(1)
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+  })
+
+  it('retains a known shader failure when public cleanup fails during a retry', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    recoveryMocks.getAutomaticBlock.mockReturnValue({ reason: 'load', at: Date.now() })
+    engineMocks.dispose.mockImplementationOnce(() => { throw new Error('dispose failed') })
+    expect(() => player.dispose()).toThrow('dispose failed')
+    expect(recoveryMocks.block).toHaveBeenCalledExactlyOnceWith('scene-content-key', 'load')
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+  })
+
+  it('rejects an in-flight creation even if the page is restored before its module load finishes', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const pending = createMagePlayer(document.createElement('canvas'))
+    const rejected = expect(pending).rejects.toThrow(/page navigation/)
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    await rejected
+    expect(engineMocks.initMAGE).not.toHaveBeenCalled()
+    expect(engineMocks.start).not.toHaveBeenCalled()
+  })
+
+  it('unregisters navigation listeners on ordinary controller disposal', async () => {
+    const { createMagePlayer } = await import('./engineAdapter')
+    const player = await createMagePlayer(document.createElement('canvas'))
+    player.loadSceneBlob({ visualizer: { shader: 'test' } })
+    player.dispose()
+    engineMocks.dispose.mockClear()
+    recoveryMocks.dispose.mockClear()
+    window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    expect(engineMocks.dispose).not.toHaveBeenCalled()
+    expect(recoveryMocks.dispose).not.toHaveBeenCalled()
+    expect(recoveryMocks.block).not.toHaveBeenCalled()
   })
 
   it('transfers recovery identity after live response edits without restarting or recompiling', async () => {
@@ -1027,7 +1150,7 @@ describe('createMagePlayer', () => {
     } finally { vi.useRealTimers() }
   })
 
-  it.each(['clear', 'scene', 'dispose'] as const)('invalidates pending audio completion after %s', async (action) => {
+  it.each(['clear', 'scene', 'dispose', 'pagehide'] as const)('invalidates pending audio completion after %s', async (action) => {
     vi.useFakeTimers()
     try {
       const { createMagePlayer } = await import('./engineAdapter')
@@ -1040,6 +1163,7 @@ describe('createMagePlayer', () => {
       const rejected = expect(pending).rejects.toThrow(/superseded/)
       if (action === 'clear') player.clearAudio()
       else if (action === 'scene') player.loadSceneBlob({ visualizer: { shader: 'next' } })
+      else if (action === 'pagehide') window.dispatchEvent(new PageTransitionEvent('pagehide'))
       else player.dispose()
       engineMocks.seek.mockClear()
       engineMocks.play.mockClear()

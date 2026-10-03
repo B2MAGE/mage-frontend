@@ -18,9 +18,11 @@ no backend change or server-side crash classification.
   stop shown by the button; a newer stop or failure stays blocked.
 - **Retry scene** permits another attempt in the current tab. It does not approve
   the scene, change validation, or disable any other playback restrictions.
-  Other tabs remain blocked. The permission lasts for one rendering attempt; after
-  leaving the scene, another visit requires a fresh retry until the record expires
-  or is explicitly cleared. A corrected revision has its own identity.
+  Other tabs remain blocked during the attempt. For observed errors, leaving the
+  scene means another visit requires a fresh retry until the record expires or is
+  explicitly cleared. A suspected interruption is retired when its deliberate
+  retry ends cleanly, allowing subsequent visits; a newer error always wins.
+  A corrected revision has its own identity.
   Stopping an accepted retry retains its original failure history and requires
   **Retry scene** again; it cannot turn a failure into a clearable manual stop.
 - One **Playback paused** panel explains whether playback was stopped, interrupted,
@@ -69,8 +71,11 @@ An active marker is written **before source loading/compilation** and remains fo
 the entire rendering lifetime, including pauses. Clean replacement or disposal
 removes it. Observed failure records a block; failed cleanup retains the marker.
 Reloading with a leftover marker means **suspected interruption**, not proof of a
-crash. Ordinary reloads while rendering can therefore also show this prompt. No
-unload handler or short startup grace period clears a running scene's marker.
+crash. On a normal page exit or refresh, `pagehide` synchronously disposes the
+renderer and clears its marker only after successful cleanup. Failed cleanup or
+an unresponsive page retains its marker. Browser cache restoration creates a fresh
+renderer while preserving the surrounding editor and playlist state. No timer or
+first-frame signal clears a running scene's marker.
 
 Each document has its own owner ID. When a tab inherits sessionStorage, a one-second
 BroadcastChannel probe asks whether the old owner is still live. Until resolved,
@@ -111,6 +116,7 @@ patch is checked against a pristine MAGE 1.0.3 package.
 
 For a harmless manual check, stop a valid scene, reload, and verify it stays static.
 Resume explicitly, navigate away and return, and verify the manual pause is gone.
+Refresh a playing valid scene and verify it loads without an interruption prompt.
 Enable Pause all scenes, browse to another scene, then turn it off.
 For editor recovery, make unsaved changes, stop the preview, and confirm the fields
 remain intact. Do not use an infinite loop to test a renderer on the browser thread.

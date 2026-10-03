@@ -77,6 +77,12 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+function pageTransition(type: 'pagehide' | 'pageshow', persisted = true) {
+  const event = new Event(type)
+  Object.defineProperty(event, 'persisted', { value: persisted })
+  window.dispatchEvent(event)
+}
+
 async function setIntersecting(isIntersecting: boolean) {
   await act(async () => {
     intersectionCallback([{ isIntersecting } as IntersectionObserverEntry], {} as IntersectionObserver)
@@ -504,5 +510,55 @@ describe('AboutScene', () => {
     expect(controller.loadSceneBlob).not.toHaveBeenCalled()
     expect(controller.captureFramePreview).not.toHaveBeenCalled()
     expect(canvas()).toBeNull()
+  })
+
+  it('recreates the artwork after BFCache restoration without quarantining intentional context disposal', async () => {
+    const first = buildController()
+    const restored = buildController()
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
+    render(<BrandScene reactToBeat={false} />)
+    await setIntersecting(true)
+    const originalCanvas = canvas()
+    await act(async () => { pageTransition('pageshow', false) })
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pageTransition('pagehide')
+      // Adapter pagehide cleanup intentionally loses the WebGL context.
+      originalCanvas.dispatchEvent(new Event('webglcontextlost'))
+    })
+    expect(recoveryMocks.blocks.size).toBe(0)
+    await act(async () => { pageTransition('pageshow') })
+    expect(first.dispose).toHaveBeenCalledTimes(1)
+    expect(canvas()).not.toBe(originalCanvas)
+    expectLoading()
+    await setIntersecting(true)
+
+    expectReady()
+    expect(restored.loadSceneBlob).toHaveBeenCalledWith(BRAND_SCENE)
+    expect(restored.setPlaybackState).toHaveBeenLastCalledWith('playing')
+    expect(restored.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
+    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+  })
+
+  it('recreates after BFCache interrupts initialization and discards the old result', async () => {
+    const pending = deferred<MagePlayerController>()
+    const stale = buildController()
+    const restored = buildController()
+    vi.mocked(createMagePlayer).mockReturnValueOnce(pending.promise).mockResolvedValueOnce(restored)
+    render(<BrandScene />)
+    await setIntersecting(true)
+    await act(async () => {
+      pageTransition('pagehide')
+      pageTransition('pageshow')
+    })
+    await setIntersecting(true)
+    await act(async () => { pending.resolve(stale) })
+
+    expect(stale.dispose).toHaveBeenCalledTimes(1)
+    expect(stale.loadSceneBlob).not.toHaveBeenCalled()
+    expect(stale.captureFramePreview).not.toHaveBeenCalled()
+    expect(restored.loadSceneBlob).toHaveBeenCalledWith(BRAND_SCENE)
+    expectReady()
   })
 })

@@ -145,6 +145,25 @@ export class MagePlayerAdapterError extends Error {
 }
 
 let mageEngineModulePromise: Promise<MageEngineModule> | null = null
+let pageSuspended = false
+let pageLifecycleGeneration = 0
+
+// A route cleanup does not run reliably on document navigation. Also guard
+// asynchronous player creation that resolves after the browser has left.
+function onDocumentPageHide() {
+  pageSuspended = true
+  pageLifecycleGeneration += 1
+}
+function onDocumentPageShow() { pageSuspended = false }
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', onDocumentPageHide, { capture: true })
+  window.addEventListener('pageshow', onDocumentPageShow, { capture: true })
+  import.meta.hot?.dispose(() => {
+    onDocumentPageHide()
+    window.removeEventListener('pagehide', onDocumentPageHide, { capture: true })
+    window.removeEventListener('pageshow', onDocumentPageShow, { capture: true })
+  })
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -294,7 +313,12 @@ export async function createMagePlayer(
   canvas: HTMLCanvasElement,
   options: { log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean } = {},
 ): Promise<MagePlayerController> {
+  if (pageSuspended) throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
+  const creationGeneration = pageLifecycleGeneration
   const { initMAGE } = await loadMageEngineModule()
+  if (pageSuspended || creationGeneration !== pageLifecycleGeneration) {
+    throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
+  }
   const engine = initMAGE({
     canvas,
     autoStart: false,
@@ -329,9 +353,54 @@ export async function createMagePlayer(
   let audioLoadGeneration = 0
   let disposed = false
   let cleanlyDisposed = false
+  let cleanupFailureRecorded = false
   let recoveryLease: ReturnType<typeof sceneRecovery.begin> = null
   let currentRecoveryKey: string | null = null
   let renderMonitor: ReturnType<typeof monitorSceneRendering> | null = null
+
+  function detachPageLifecycle() {
+    window.removeEventListener('pagehide', onPageHide)
+    window.removeEventListener('pageshow', onPageShow, { capture: true })
+  }
+
+  function clearLeaseAfterDisposal() {
+    disposeEngine()
+    // A failed disposal keeps its marker even when dispose() is called again.
+    if (cleanlyDisposed) {
+      recoveryLease?.dispose()
+      recoveryLease = null
+    }
+  }
+
+  function onPageHide(event: PageTransitionEvent) {
+    if (disposed) return
+    try {
+      clearLeaseAfterDisposal()
+      detachPageLifecycle()
+    } catch {
+      // The unfinished marker must survive when GPU/resource cleanup fails.
+      // A BFCache restoration keeps this same store alive; explicitly block
+      // that revision before the host constructs its replacement renderer.
+      window.removeEventListener('pagehide', onPageHide)
+      if (!event.persisted) window.removeEventListener('pageshow', onPageShow, { capture: true })
+    }
+  }
+
+  function onPageShow(event: PageTransitionEvent) {
+    if (!event.persisted || !disposed || cleanlyDisposed) return
+    detachPageLifecycle()
+    rememberFailedDisposal()
+  }
+
+  function rememberFailedDisposal() {
+    if (!currentRecoveryKey || cleanupFailureRecorded) return
+    cleanupFailureRecorded = true
+    const previousFailure = sceneRecovery.getAutomaticBlock(currentRecoveryKey)
+    sceneRecovery.block(currentRecoveryKey, previousFailure?.reason ?? 'interrupted')
+  }
+
+  window.addEventListener('pagehide', onPageHide)
+  window.addEventListener('pageshow', onPageShow, { capture: true })
 
   function disposeEngine() {
     if (disposed) return
@@ -346,6 +415,7 @@ export async function createMagePlayer(
   }
 
   function failRendering(reason: RenderFailure | 'load' | 'stopped') {
+    detachPageLifecycle()
     const failedLease = recoveryLease
     recoveryLease = null
     try {
@@ -357,7 +427,7 @@ export async function createMagePlayer(
   }
 
   function assertUsable() {
-    if (disposed) throw new MagePlayerAdapterError('This preview has stopped. Retry to create a new player.')
+    if (disposed || pageSuspended) throw new MagePlayerAdapterError('This preview has stopped. Retry to create a new player.')
   }
 
   function assertRenderingAllowed() {
@@ -866,12 +936,16 @@ export async function createMagePlayer(
       if (!disposed) failRendering('stopped')
     },
     dispose() {
-      disposeEngine()
-      // A thrown engine disposal deliberately leaves the unfinished marker.
-      if (cleanlyDisposed) {
-        recoveryLease?.dispose()
-        recoveryLease = null
+      detachPageLifecycle()
+      try {
+        clearLeaseAfterDisposal()
+      } catch (error) {
+        rememberFailedDisposal()
+        throw error
       }
+      // A prior pagehide attempt may already have failed. Public cleanup can
+      // now detach its restore listener only after recording that failure.
+      if (disposed && !cleanlyDisposed) rememberFailedDisposal()
     },
   }
 }

@@ -175,6 +175,44 @@ describe('MagePlayer recovery', () => {
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
   })
 
+  it('recreates the renderer on a cached browser return without losing the playlist', async () => {
+    const scene = buildMagePlayerSceneBlob()
+    identity(scene, 811)
+    const first = buildMagePlayerController()
+    const restored = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
+    render(<MagePlayer sceneBlob={scene} sceneKey={811} playlistTracks={[buildMagePlayerTrack()]} selectedTrackId="track-1" />)
+    await waitFor(() => expect(first.loadAudio).toHaveBeenCalled())
+    act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false })))
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+
+    act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+    await waitFor(() => expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 811 }))
+    await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one' }))
+    expect(first.dispose).toHaveBeenCalledOnce()
+    expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
+  })
+
+  it('retires an old interruption after an explicit retry ends cleanly', async () => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 812)
+    sceneRecovery.block(key, 'interrupted')
+    const retried = controllerWithLease(key)
+    const revisited = controllerWithLease(key)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(retried).mockResolvedValueOnce(revisited)
+    const view = render(<MagePlayer sceneBlob={scene} sceneKey={812} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Retry scene' }))
+    await waitFor(() => expect(retried.loadSceneBlob).toHaveBeenCalled())
+    expect(sceneRecovery.getAutomaticBlock(key)?.reason).toBe('interrupted')
+    view.unmount()
+    expect(retried.dispose).toHaveBeenCalledOnce()
+
+    render(<MagePlayer sceneBlob={scene} sceneKey={812} />)
+    await waitFor(() => expect(revisited.loadSceneBlob).toHaveBeenCalled())
+    expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
+    expect(sceneRecovery.getAutomaticBlock(key)).toBeNull()
+  })
+
   it('allows a revised scene without clearing the failed version or repeating its load', async () => {
     const original = buildMagePlayerSceneBlob({ visualizer: { shader: 'sphere(1)' } })
     const revised = buildMagePlayerSceneBlob({ visualizer: { shader: 'sphere(.5)' } })

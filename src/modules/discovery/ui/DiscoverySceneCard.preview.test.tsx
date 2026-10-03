@@ -45,6 +45,12 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+function pageTransition(type: 'pagehide' | 'pageshow', persisted = true) {
+  const event = new Event(type)
+  Object.defineProperty(event, 'persisted', { value: persisted })
+  window.dispatchEvent(event)
+}
+
 vi.mock('@modules/player/infrastructure/engineAdapter', () => ({
   createMagePlayer: engineMocks.createMagePlayer,
 }))
@@ -462,5 +468,65 @@ describe('DiscoverySceneCard animated preview', () => {
     fireEvent.pointerEnter(screen.getByRole('link', { name: /second signal/i }), { pointerType: 'mouse' })
     await finishActivation()
     expect(nextController.loadSceneBlob).toHaveBeenCalledWith(nextScene.sceneData, { sceneKey: nextScene.sceneId })
+  })
+
+  it('recreates the still-focused preview after BFCache restoration using a fresh canvas', async () => {
+    const first = buildMagePlayerController()
+    const restored = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
+    const { container } = renderCard()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    const originalCanvas = container.querySelector('canvas')
+    await act(async () => { pageTransition('pageshow', false) })
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      pageTransition('pagehide')
+      pageTransition('pageshow')
+    })
+    await finishActivation()
+
+    expect(first.dispose).toHaveBeenCalledTimes(1)
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene.sceneData, { sceneKey: scene.sceneId })
+    expect(container.querySelector('canvas')).not.toBe(originalCanvas)
+    expect(container.querySelector('canvas')).toHaveClass('is-visible')
+  })
+
+  it('does not restart a preview after BFCache restoration when focus has left the card', async () => {
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    renderCard()
+    const link = screen.getByRole('link', { name: /signal bloom/i })
+    fireEvent.focus(link)
+    await finishActivation()
+    await act(async () => { pageTransition('pagehide') })
+    fireEvent.blur(link)
+    await act(async () => { pageTransition('pageshow') })
+    await finishActivation()
+
+    expect(controller.dispose).toHaveBeenCalledTimes(1)
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(1)
+  })
+
+  it('discards initialization interrupted by BFCache and restores only the current preview', async () => {
+    const pending = deferred<MagePlayerController>()
+    const stale = buildMagePlayerController()
+    const restored = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(restored)
+    renderCard()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    await act(async () => {
+      pageTransition('pagehide')
+      pageTransition('pageshow')
+    })
+    await finishActivation()
+    await act(async () => { pending.resolve(stale) })
+
+    expect(stale.dispose).toHaveBeenCalledTimes(1)
+    expect(stale.loadSceneBlob).not.toHaveBeenCalled()
+    expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene.sceneData, { sceneKey: scene.sceneId })
+    expect(restored.dispose).not.toHaveBeenCalled()
   })
 })

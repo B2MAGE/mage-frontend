@@ -15,6 +15,7 @@ export type SceneHoverPreviewRegistration = {
   sceneId: number
   seed: number
   target: HTMLElement
+  shouldPreview: () => boolean
 }
 
 type PreviewRegistrationId = symbol
@@ -34,11 +35,14 @@ class SceneHoverPreviewCoordinator {
   private active: ActivePreview | null = null
   private pendingId: PreviewRegistrationId | null = null
   private pendingTimer: number | null = null
+  private pageSuspended = false
   private readonly fadingCanvases = new Map<HTMLCanvasElement, number>()
   private readonly registrations = new Map<PreviewRegistrationId, SceneHoverPreviewRegistration>()
 
   constructor() {
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
+    window.addEventListener('pagehide', this.handlePageHide, true)
+    window.addEventListener('pageshow', this.handlePageShow)
     sceneRecovery.subscribe(this.handleRecoveryChange)
   }
 
@@ -78,7 +82,7 @@ class SceneHoverPreviewCoordinator {
 
   private canPreview(id: PreviewRegistrationId) {
     const registration = this.registrations.get(id)
-    if (!registration || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode()) return false
+    if (!registration || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
     const key = sceneRecoveryKey(registration.sceneBlob, registration.sceneId)
     return !!key && !sceneRecovery.getAutomaticBlock(key)
   }
@@ -93,6 +97,24 @@ class SceneHoverPreviewCoordinator {
   private readonly handleRecoveryChange = () => {
     if (this.pendingId && !this.canPreview(this.pendingId)) this.cancelPendingActivation()
     if (this.active && !this.canPreview(this.active.id)) this.stopActivePreview()
+  }
+
+  private readonly handlePageHide = () => {
+    this.pageSuspended = true
+    this.cancelPendingActivation()
+  }
+
+  private readonly handlePageShow = (event: PageTransitionEvent) => {
+    if (!event.persisted) return
+    this.pageSuspended = false
+    const previousId = this.active?.id
+    this.cancelPendingActivation()
+    this.stopActivePreview(false)
+    // Restore only a card that is still visible and hovered/focused. The
+    // adapter disposed its old engine before this document entered BFCache.
+    const nextId = previousId && this.canPreview(previousId) ? previousId
+      : [...this.registrations.keys()].find((id) => this.canPreview(id))
+    if (nextId) this.schedule(nextId)
   }
 
   private cancelPendingActivation() {

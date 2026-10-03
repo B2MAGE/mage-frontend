@@ -381,7 +381,22 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
     saveActive()
     emit()
   }
-  const finishLease = (key: string, token: symbol) => {
+  const retireInterruption = (key: string, expected: RecoveryBlock) => {
+    refreshHistory()
+    const latest = readBlock(key)
+    if (expected.reason !== 'interrupted' || latest?.reason !== 'interrupted' || latest.at !== expected.at) return
+    // A deliberate attempt ended cleanly. Retire only the old suspicion, not
+    // any observed failure, and never certify a still-running renderer as safe.
+    blocks.delete(key)
+    pending.delete(key)
+    carried.delete(key)
+    interruptionsWritten.delete(key)
+    retryGrants.delete(key)
+    suspendedRetryGrants.delete(key)
+    localRetryBlocks.delete(key)
+    saveHistory()
+  }
+  const finishLease = (key: string, token: symbol, clean: boolean) => {
     if (destroyed) return
     // A newer failure (including one from another tab) always takes precedence
     // over the permission that was used for this playback attempt.
@@ -389,12 +404,14 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
     const attempt = activeRetries.get(key)
     if (attempt?.token === token) {
       activeRetries.delete(key)
-      if (safeMode && playbackSessions.get(key)?.size && !retryGrants.has(key)) {
+      if (clean && safeMode && playbackSessions.get(key)?.size) {
         // Global pause replaces the renderer while its outer player remains.
         // Keep only that already accepted attempt eligible for continuation.
-        retryGrants.set(key, attempt.block)
-        suspendedRetryGrants.add(key)
-      }
+        if (!retryGrants.has(key)) {
+          retryGrants.set(key, attempt.block)
+          suspendedRetryGrants.add(key)
+        }
+      } else if (clean) retireInterruption(key, attempt.block)
     }
     const entry = leases.get(key)
     entry?.tokens.delete(token)
@@ -436,7 +453,11 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
         playbackSessions.delete(key)
         // A later explicit Retry is independent of this suspended continuation.
         // retry() removes its suspended tag so releasing a scope cannot revoke it.
-        if (suspendedRetryGrants.delete(key)) retryGrants.delete(key)
+        if (suspendedRetryGrants.delete(key)) {
+          const suspended = retryGrants.get(key)
+          retryGrants.delete(key)
+          if (suspended) retireInterruption(key, suspended)
+        }
       }
     },
     isPersistent: () => persistenceAvailable,
@@ -479,12 +500,12 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
         dispose() {
           if (finished) return
           finished = true
-          finishLease(key, token)
+          finishLease(key, token, true)
         },
         fail(reason: RecoveryReason) {
           if (finished) return
           finished = true
-          finishLease(key, token)
+          finishLease(key, token, false)
           block(key, reason)
         },
       }
