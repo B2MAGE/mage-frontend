@@ -45,6 +45,20 @@ describe('editor thumbnail availability', () => {
     permission.capture.mockResolvedValue('data:image/png;base64,cHJldmlldw==')
   })
 
+  it('accepts a pending capture after a permission recheck succeeds for the same source', async () => {
+    let finish!: (value: string) => void
+    permission.capture.mockImplementationOnce(() => new Promise<string>(resolve => { finish = resolve }))
+    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} initialState={{ sceneData: createTemplateScene() }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Thumbnail' }))
+    await act(async () => {
+      permission.snapshot = { allowed: false, code: 'CHECKING', message: '', checkedAt: 2 }
+      permission.listeners.forEach(listener => listener())
+    })
+    await act(async () => setAllowed(true))
+    await act(async () => finish('data:image/png;base64,cHJldmlldw=='))
+    expect(screen.getByAltText('Captured thumbnail preview')).toHaveAttribute('src', 'data:image/png;base64,cHJldmlldw==')
+  })
+
   it('disables draft capture while custom rendering is unavailable but keeps fields editable', async () => {
     setAllowed(false)
     render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} initialState={{ sceneData: createDefaultSceneData() }} />)

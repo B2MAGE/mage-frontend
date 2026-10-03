@@ -24,10 +24,11 @@
   <body>
     <main>
       <h1>Scene availability browser check</h1>
-      <p>This page runs the real player and engine with the bundled Ripple Rings template. Only this page’s availability replies are simulated; the running backend and release approval are unchanged.</p>
-      <p>Wait for the scene, then disable the fixture. Leave this page visible and focused. The next regular poll must stop the renderer and remove its canvas within 30 seconds. No immediate invalidation is sent by the button.</p>
+      <p>This page runs the real isolated player with the bundled Ripple Rings template. Only this page’s availability replies are simulated; the running backend and release approval are unchanged.</p>
+      <p>Wait for the scene, then disable the fixture. Leave this page visible and focused. The next regular poll must remove its iframe within 30 seconds, with no scene canvas in the parent page. No immediate invalidation is sent by the button. GPU cleanup inside the opaque frame is checked separately by the child lifecycle tests.</p>
       <div class="actions">
         <button id="disable" disabled>Disable fixture scene</button>
+        <button id="reenable" disabled>Check re-enable and local recovery</button>
         <button id="again">Reload check</button>
       </div>
       <pre id="result" role="status" aria-live="polite">Starting the fixture player…</pre>

@@ -97,7 +97,7 @@ describe('scene editor resource preflight', () => {
     const imported = await rawEditor(user)
     fireEvent.change(imported, { target: { value: JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: createDefaultSceneData() }) } })
     await user.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
-    expect(screen.queryByTestId('preview')).not.toBeInTheDocument()
+    expect(screen.getByTestId('preview')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     for (const label of ['Bloom', 'Toon', 'Bleach Bypass', 'RGB Shift']) await user.click(effect(label))
     expect(screen.getByText(/4 of 4 optional effects enabled/)).toBeInTheDocument()
@@ -107,7 +107,7 @@ describe('scene editor resource preflight', () => {
     expect(effect('Afterimage')).toBeEnabled()
     const editor = await rawEditor(user) as HTMLTextAreaElement
     expect(JSON.parse(editor.value).fx.bloom.enabled).toBe(false)
-    expect(screen.queryByTestId('preview')).not.toBeInTheDocument()
+    expect(screen.getByTestId('preview')).toBeInTheDocument()
   })
 
   it('checks the whole request budget before thumbnail capture or upload', async () => {

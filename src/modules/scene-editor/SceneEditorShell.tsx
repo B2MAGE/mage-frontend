@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, sceneAvailabilityStore, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, sceneAvailabilityStore, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -44,6 +44,7 @@ import {
   buildCapturedThumbnailFile,
   describePassState,
   getVisiblePassOrder,
+  readEditableSceneData,
   validateThumbnailFile,
 } from "./utils";
 
@@ -194,8 +195,15 @@ export function SceneEditorShell({
     shaderSelection,
     toneMappingSelection,
   } = useSceneEditorPreview({ sceneData });
-  const recoverySceneData = previewOriginalSceneData;
-  const canPreviewTemplate = isTemplate && previewSceneData?.kind === 'template';
+  // The editor unwraps custom documents for form fields. Preserve the saved
+  // envelope's recovery identity until the user changes its actual source.
+  const recoverySceneData = useMemo(() => {
+    const original = initialState?.sceneData;
+    if (original && previewOriginalSceneData
+      && sceneRecoveryKey(readEditableSceneData(original)) === sceneRecoveryKey(previewOriginalSceneData)) return original;
+    return previewOriginalSceneData;
+  }, [initialState?.sceneData, previewOriginalSceneData]);
+  const canPreviewScene = !!previewSceneData;
   const sceneDraftError = sectionIssuesById.confirm ?? previewError;
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
@@ -214,6 +222,9 @@ export function SceneEditorShell({
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );
+  const registerCaptureFramePreview = useCallback((nextCapture: (() => Promise<string | null>) | null) => {
+    captureFramePreviewRef.current = nextCapture;
+  }, []);
   const thumbnailCaptureInFlightRef = useRef(false);
   const thumbnailCaptureGenerationRef = useRef(0);
   const [isCapturingThumbnail, setIsCapturingThumbnail] = useState(false);
@@ -226,7 +237,8 @@ export function SceneEditorShell({
 
   useEffect(() => {
     const unsubscribe = sceneAvailabilityStore.subscribe(availabilityTarget, () => {
-      if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
+      const availability = sceneAvailabilityStore.getSnapshot(availabilityTarget);
+      if (!availability.allowed && availability.code !== 'CHECKING') {
         thumbnailCaptureGenerationRef.current += 1;
         thumbnailCaptureInFlightRef.current = false;
         setIsCapturingThumbnail(false);
@@ -240,7 +252,7 @@ export function SceneEditorShell({
   }, [availabilityTarget]);
 
   async function captureThumbnailFromPreview() {
-    if (!canPreviewTemplate) throw new Error("Custom scene preview is not available yet. Choose a basic template to capture a new thumbnail.");
+    if (!canPreviewScene) throw new Error("Load a valid scene before capturing a new thumbnail.");
     if (sceneDraftError) throw new Error("Fix the scene settings before capturing a thumbnail.");
     const generation = thumbnailCaptureGenerationRef.current;
     if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
@@ -397,7 +409,7 @@ export function SceneEditorShell({
             />
             <p className="field-hint">
               {isTemplate ? 'Raw scene data stays available here. While the JSON is invalid, the preview keeps the last valid template.'
-                : 'Your custom code and settings stay available here for editing or download. Custom scene preview is not available yet.'}
+                : 'Your custom code and settings stay available here for editing or download. Valid changes are previewed in the separate player when playback is available.'}
             </p>
           </div>
           <button
@@ -517,7 +529,7 @@ export function SceneEditorShell({
           aria-describedby="advanced-creation-hint">Advanced</button>
       </div>
       <p className="field-hint" id="advanced-creation-hint">{isTemplate ? 'Advanced creation is not available yet.'
-        : 'Your custom scene is open for repair. Custom previews are not available yet.'}</p>
+        : 'Your custom scene is open for repair. Playback is checked before the separate preview starts.'}</p>
       {!isTemplate && isReplacementPending ? (
         <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
           onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
@@ -615,7 +627,7 @@ export function SceneEditorShell({
                 tagsError={tagsError}
                 tagsLoading={tagsLoading}
                 thumbnailPreviewUrl={thumbnailPreviewUrl}
-                isThumbnailCaptureAvailable={canPreviewTemplate && availability.allowed && !sceneDraftError}
+                isThumbnailCaptureAvailable={canPreviewScene && availability.allowed && !sceneDraftError}
                 onCreateTag={handleCreateTag}
                 onDescriptionChange={handleDescriptionChange}
                 onNameChange={handleNameChange}
@@ -1524,15 +1536,12 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
-              {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {canPreviewTemplate ? 'The preview shows your last valid settings.' : 'Fix these settings before continuing.'}</p> : null}
-              {!isTemplate ? <p className="field-hint" role="status">Custom scene preview is not available yet. Your code and settings are kept for editing or download.</p> : null}
-              {canPreviewTemplate ? <MagePlayer
+              {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {canPreviewScene ? 'The preview shows your last valid settings.' : 'Fix these settings before continuing.'}</p> : null}
+              {canPreviewScene ? <MagePlayer
                 renderProfile="preview"
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
-                onCaptureFramePreviewChange={(nextCapture) => {
-                  captureFramePreviewRef.current = nextCapture;
-                }}
+                onCaptureFramePreviewChange={registerCaptureFramePreview}
                 sceneBlob={previewSceneData}
                 recoverySceneBlob={recoverySceneData ?? undefined}
                 posterUrl={thumbnailPreviewUrl}

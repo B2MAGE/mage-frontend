@@ -18,10 +18,13 @@ no backend change or server-side crash classification.
   stop shown by the button; a newer stop or failure stays blocked.
 - **Retry scene** permits another attempt in the current tab. It does not approve
   the scene, change validation, or disable any other playback restrictions.
-  Other tabs remain blocked during the attempt. For observed errors, leaving the
-  scene means another visit requires a fresh retry until the record expires or is
-  explicitly cleared. A suspected interruption is retired when its deliberate
-  retry ends cleanly, allowing subsequent visits; a newer error always wins.
+  Other tabs remain blocked during the attempt. The isolated player retires that
+  exact warning after ten seconds of sustained foreground frame progress, so a
+  recovered scene can play on later visits. Loading, paused or hidden time and
+  delayed browser tasks do not count. A newer failure or global pause cannot be
+  cleared by an old success signal. Leaving before recovery is confirmed keeps
+  observed errors blocked. A suspected interruption can also be retired when its
+  deliberate retry ends cleanly, allowing subsequent visits; a newer error always wins.
   A corrected revision has its own identity.
   Stopping an accepted retry retains its original failure history and requires
   **Retry scene** again; it cannot turn a failure into a clearable manual stop.
@@ -76,6 +79,13 @@ renderer and clears its marker only after successful cleanup. Failed cleanup or
 an unresponsive page retains its marker. Browser cache restoration creates a fresh
 renderer while preserving the surrounding editor and playlist state. No timer or
 first-frame signal clears a running scene's marker.
+
+Successful retry confirmation only removes the matching history warning. The
+active marker stays until clean disposal, so an interrupted or failed attempt
+after confirmation is still detected. This is browser-local recovery, not scene
+approval; validation and server playback restrictions continue to apply. Browser
+profiles have independent history, so a scene can be blocked in one browser while
+playing normally in another.
 
 Each document has its own owner ID. When a tab inherits sessionStorage, a one-second
 BroadcastChannel probe asks whether the old owner is still live. Until resolved,

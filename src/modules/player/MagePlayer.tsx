@@ -120,11 +120,10 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     [props.sceneBlob, props.sceneKey, recoveryKey, target])
   const [retainedSource, setRetainedSource] = useState<string | null>(null)
   const onRendererReady = useCallback(() => setRetainedSource(sourceIdentity), [sourceIdentity])
-  // Only a successfully loaded controller can survive a mandatory recheck.
-  // A changed revision or a real denial permanently ends that retained lease.
-  if (retainedSource !== null && !availability.allowed
-    && (availability.code !== 'CHECKING' || retainedSource !== sourceIdentity)) setRetainedSource(null)
-  const availabilityPending = availability.code === 'CHECKING' && retainedSource === sourceIdentity
+  // Keep the parent session while checking a replacement scene. Its renderer is
+  // paused until permission is confirmed; a denial still ends the entire session.
+  if (retainedSource !== null && !availability.allowed && availability.code !== 'CHECKING') setRetainedSource(null)
+  const availabilityPending = availability.code === 'CHECKING' && retainedSource !== null
   const retainsSession = availability.allowed || availabilityPending
   const requiresAvailability = !!props.sceneBlob || target !== 'custom'
   const [reloadAttempt, setReloadAttempt] = useState(0)
@@ -211,7 +210,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     </section>
   }
 
-  return <MagePlayerRenderer key={`${target}:${rendererInstance}`} {...props}
+  return <MagePlayerRenderer key={rendererInstance} {...props}
     availabilityPending={availabilityPending}
     onRendererReady={onRendererReady}
     playlist={playlist}
@@ -244,12 +243,13 @@ function MagePlayerRenderer({
   availabilityPending,
   onRendererReady,
 }: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; availabilityPending: boolean; onRendererReady: () => void } & SessionAudioProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const renderHostRef = useRef<HTMLDivElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MagePlayerController | null>(null)
   const capabilitiesCallbackRef = useRef(onAudioResponseCapabilitiesChange)
   const diagnosticsCallbackRef = useRef(onEngineDiagnosticsChange)
   const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
+  const latestSceneKeyRef = useRef(sceneKey)
   const requestedPlaybackRef = useRef<MagePlayerPlaybackState>(initialPlayback)
   const loadedTrackIdRef = useRef<string | null>(null)
   const completedTrackIdRef = useRef<string | null>(null)
@@ -257,6 +257,7 @@ function MagePlayerRenderer({
   const appliedSceneRef = useRef<{ player: MagePlayerController; identity: string | null; sceneBlob: MageSceneBlob; recoverySceneBlob?: MageSceneBlob } | null>(null)
   const pendingAudioRef = useRef<{ player: MagePlayerController; trackId: string; result: Promise<MagePlayerAudioState> } | null>(null)
   const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
+  const hasScene = Boolean(sceneBlob)
 
   const {
     commitSelectedTrackId,
@@ -294,7 +295,8 @@ function MagePlayerRenderer({
 
   useEffect(() => {
     latestSceneBlobRef.current = sceneBlob
-  }, [sceneBlob])
+    latestSceneKeyRef.current = sceneKey
+  }, [sceneBlob, sceneKey])
 
   useEffect(() => {
     if (sceneBlob) {
@@ -324,15 +326,16 @@ function MagePlayerRenderer({
 
   useEffect(() => {
     const player = playerRef.current
-    if (!availabilityPending && player && player.getPlaybackState() !== requestedPlaybackRef.current) {
-      setPlaybackState(player.setPlaybackState(requestedPlaybackRef.current))
+    if (player) {
+      const next = availabilityPending ? 'paused' : requestedPlaybackRef.current
+      if (player.getPlaybackState() !== next) setPlaybackState(player.setPlaybackState(next))
     }
   }, [availabilityPending])
 
   useEffect(() => {
-    const canvas = canvasRef.current
+    const canvas = renderHostRef.current
 
-    if (!canvas) {
+    if (!canvas || !latestSceneBlobRef.current) {
       return
     }
 
@@ -349,7 +352,8 @@ function MagePlayerRenderer({
     animationFrameId = window.requestAnimationFrame(() => {
       void (async () => {
         try {
-          nextPlayer = await createMagePlayer(canvas, { log, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(sceneKey === undefined ? {} : { sceneKey }) })
+          const initialSceneKey = latestSceneKeyRef.current
+          nextPlayer = await createMagePlayer(canvas, { log, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(initialSceneKey === undefined ? {} : { sceneKey: initialSceneKey }) })
 
           if (isDisposed) {
             disposePlayer()
@@ -357,6 +361,10 @@ function MagePlayerRenderer({
           }
 
           playerRef.current = nextPlayer
+          appliedSceneRef.current = null
+          loadedTrackIdRef.current = null
+          completedTrackIdRef.current = null
+          pendingAudioRef.current = null
           setPlaybackState(nextPlayer.setPlaybackState(requestedPlaybackRef.current))
           setAudioState(nextPlayer.getAudioState())
           setPlayerVersion((currentVersion) => currentVersion + 1)
@@ -385,7 +393,7 @@ function MagePlayerRenderer({
       diagnosticsCallbackRef.current?.(null)
       disposePlayer()
     }
-  }, [log, sceneKey, renderProfile])
+  }, [hasScene, log, renderProfile])
 
   useEffect(() => {
     if (availabilityPending) return
@@ -401,16 +409,17 @@ function MagePlayerRenderer({
     if (!player) {
       return
     }
-    if (appliedSceneRef.current?.player === player && appliedSceneRef.current.sceneBlob === sceneBlob
+    if (appliedSceneRef.current?.player === player && appliedSceneRef.current.identity === playbackIdentity && appliedSceneRef.current.sceneBlob === sceneBlob
       && appliedSceneRef.current.recoverySceneBlob === recoverySceneBlob) return
 
     let isCancelled = false
 
-    try {
-      const isResponseUpdate = playbackIdentity !== null
-        && appliedSceneRef.current?.player === player
-        && appliedSceneRef.current.identity === playbackIdentity
-      if (isResponseUpdate) {
+    void (async () => {
+      try {
+        const isResponseUpdate = playbackIdentity !== null
+          && appliedSceneRef.current?.player === player
+          && appliedSceneRef.current.identity === playbackIdentity
+        if (isResponseUpdate) {
           const validated = validateSceneForPlayback(sceneBlob)
           const response = validated.kind === 'template' ? validated.settings : validated.scene
           player.setAudioResponseSettings(
@@ -419,64 +428,63 @@ function MagePlayerRenderer({
           )
           player.updateRecoveryIdentity?.(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
         } else {
-          if (recoverySceneBlob !== undefined) player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
-          else if (sceneKey === undefined) player.loadSceneBlob(sceneBlob)
-          else player.loadSceneBlob(sceneBlob, { sceneKey })
-        loadedTrackIdRef.current = null
-        completedTrackIdRef.current = null
-        pendingAudioRef.current = null
+          if (recoverySceneBlob !== undefined) await player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
+          else if (sceneKey === undefined) await player.loadSceneBlob(sceneBlob)
+          else await player.loadSceneBlob(sceneBlob, { sceneKey })
+        }
+        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) return
+        appliedSceneRef.current = { player, identity: playbackIdentity, sceneBlob, recoverySceneBlob }
+        const nextPlaybackState = player.getPlaybackState()
+
+        queueMicrotask(() => {
+          if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
+            return
+          }
+
+          // Read capabilities only after this exact document has reached this
+          // player. A missing older-engine API must not make playback fail.
+          let capabilities: MageAudioResponseCapabilities | null = null
+          try {
+            capabilities = player.getAudioResponseCapabilities?.() ?? null
+          } catch {
+            capabilities = null
+          }
+          setCapabilitiesResult({
+            player,
+            identity: playbackIdentity,
+            snapshot: capabilities ? { sceneBlob, capabilities } : null,
+          })
+          requestedPlaybackRef.current = nextPlaybackState
+          setLoadError(null)
+          setLoadedSceneIdentity(playbackIdentity)
+          setLoadedPlayerVersion(playerVersion)
+          setPlaybackState(nextPlaybackState)
+          setAudioState(player.getAudioState())
+          onRendererReady()
+          if (!isResponseUpdate) {
+            setAudioError(null)
+            setActiveAudioAction(null)
+          }
+        })
+      } catch (error) {
+        queueMicrotask(() => {
+          if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
+            return
+          }
+
+          setAudioState(EMPTY_AUDIO_STATE)
+          setLoadError({
+            message: readMagePlayerErrorMessage(error),
+            sceneBlob,
+          })
+        })
       }
-      appliedSceneRef.current = { player, identity: playbackIdentity, sceneBlob, recoverySceneBlob }
-      const nextPlaybackState = player.getPlaybackState()
-
-      queueMicrotask(() => {
-        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
-          return
-        }
-
-        // Read capabilities only after this exact document has reached this
-        // player. A missing older-engine API must not make playback fail.
-        let capabilities: MageAudioResponseCapabilities | null = null
-        try {
-          capabilities = player.getAudioResponseCapabilities?.() ?? null
-        } catch {
-          capabilities = null
-        }
-        setCapabilitiesResult({
-          player,
-          identity: playbackIdentity,
-          snapshot: capabilities ? { sceneBlob, capabilities } : null,
-        })
-        requestedPlaybackRef.current = nextPlaybackState
-        setLoadError(null)
-        setLoadedSceneIdentity(playbackIdentity)
-        setLoadedPlayerVersion(playerVersion)
-        setPlaybackState(nextPlaybackState)
-        setAudioState(player.getAudioState())
-        onRendererReady()
-        if (!isResponseUpdate) {
-          setAudioError(null)
-          setActiveAudioAction(null)
-        }
-      })
-    } catch (error) {
-      queueMicrotask(() => {
-        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
-          return
-        }
-
-        setAudioState(EMPTY_AUDIO_STATE)
-        setLoadError({
-          message: readMagePlayerErrorMessage(error),
-          sceneBlob,
-        })
-      })
-    }
+    })()
 
     return () => {
       isCancelled = true
     }
-    }, [availabilityPending, onRendererReady, playbackIdentity, playerVersion, recoverySceneBlob, sceneBlob, sceneKey])
+  }, [availabilityPending, onRendererReady, playbackIdentity, playerVersion, recoverySceneBlob, sceneBlob, sceneKey])
 
   const status: MagePlayerStatus =
     availabilityPending
@@ -580,31 +588,29 @@ function MagePlayerRenderer({
     const player = playerRef.current
 
     if (status === 'ready' && typeof player?.captureFramePreview === 'function') {
-      let cancelled = false
       const capturedSource = sceneBlob
       onCaptureFramePreviewChange(async () => {
-        const canvas = canvasRef.current
-        if (!canvas || cancelled || playerRef.current !== player
+        const canvas = renderHostRef.current
+        if (!canvas || playerRef.current !== player
           || latestSceneBlobRef.current !== capturedSource
           || !sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, capturedSource))) return null
 
         // The engine stretches its source to these dimensions. Read the live
         // viewport at capture time so resizing cannot squash the saved frame.
         const bounds = canvas.getBoundingClientRect()
-        const sourceWidth = bounds.width > 0 ? bounds.width : canvas.width
-        const sourceHeight = bounds.height > 0 ? bounds.height : canvas.height
+        const sourceWidth = bounds.width > 0 ? bounds.width : canvas.clientWidth || 640
+        const sourceHeight = bounds.height > 0 ? bounds.height : canvas.clientHeight || 360
         const scale = 512 / Math.max(sourceWidth, sourceHeight, 1)
 
         const frame = await player.captureFramePreview?.({
           ...boundCaptureSize(sourceWidth * scale, sourceHeight * scale),
           type: 'image/png',
         })
-        return !cancelled && playerRef.current === player && latestSceneBlobRef.current === capturedSource
+        return playerRef.current === player && latestSceneBlobRef.current === capturedSource
           && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, capturedSource)) ? frame ?? null : null
       })
 
       return () => {
-        cancelled = true
         onCaptureFramePreviewChange(null)
       }
     }
@@ -897,7 +903,7 @@ function MagePlayerRenderer({
   return (
     <section className={buildMagePlayerClassName('mage-player', className)} data-state={status} data-availability-pending={availabilityPending || undefined}>
       <div className="mage-player__viewport" aria-busy={status === 'loading'}>
-        <canvas aria-label={ariaLabel} className="mage-player__canvas" ref={canvasRef} />
+        <div aria-label={ariaLabel} className="mage-player__render-host" ref={renderHostRef} role="img" />
         {availabilityPending ? (
           <div className="mage-player__availability-check" role="status">Checking whether this scene can play…</div>
         ) : status === 'loading' ? (

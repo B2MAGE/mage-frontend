@@ -66,7 +66,7 @@ async function importCustomScene(user: ReturnType<typeof userEvent.setup>) {
   fireEvent.change(screen.getByLabelText('Scene Data JSON'), { target: { value: JSON.stringify({
     schemaVersion: 1, kind: 'custom', scene: createDefaultSceneData(),
   }) } })
-  expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+  expect(screen.getByTestId('mage-player')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
   await user.click(screen.getByRole('button', { name: 'Details' }))
 }
@@ -343,10 +343,10 @@ describe('CreateScenePage workflow', () => {
     await user.click(screen.getByRole('button', { name: /show advanced camera controls/i }))
     expect(screen.getByLabelText(/camera orientation mode/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/camera orientation speed/i)).toBeInTheDocument()
-    expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mage-player')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /hide advanced camera controls/i }))
     expect(screen.queryByLabelText(/camera orientation mode/i)).not.toBeInTheDocument()
-    expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mage-player')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^motion$/i }))
 
@@ -356,10 +356,10 @@ describe('CreateScenePage workflow', () => {
     await user.click(screen.getByRole('button', { name: /show advanced animation controls/i }))
     expect(screen.getByLabelText(/starting animation time/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/state size|current pointer|current audio|pointer down/i)).not.toBeInTheDocument()
-    expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mage-player')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /hide advanced animation controls/i }))
     expect(screen.queryByLabelText(/starting animation time/i)).not.toBeInTheDocument()
-    expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mage-player')).toBeInTheDocument()
 
     expect(screen.queryByRole('button', { name: /^advanced$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /show scene data|show engine diagnostics|reset advanced settings/i })).not.toBeInTheDocument()
@@ -377,7 +377,7 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByRole('button', { name: /format json/i })).toBeInTheDocument()
     const document = JSON.parse((screen.getByLabelText(/scene data json/i) as HTMLTextAreaElement).value)
     expect(document).toEqual({ schemaVersion: 1, kind: 'custom', scene: createDefaultSceneData() })
-    expect(screen.queryByTestId('mage-player')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mage-player')).toBeInTheDocument()
   })
 })
 

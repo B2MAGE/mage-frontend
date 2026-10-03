@@ -1,13 +1,9 @@
 // Development-only harness. Frames come from the same engine as the scene player.
-import { initMAGE } from '@notrac/mage';
+import { createIsolatedPlayer } from '../src/modules/player/isolation/isolatedPlayer.ts';
+import { getIsolatedRendererUrl } from '../src/modules/player/isolation/rendererConfig.ts';
 import { validateSceneForPlayback } from '../src/modules/player/policy/sceneValidation.ts';
-import { getRenderBudget } from '../src/modules/player/policy/renderBudget.ts';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const frames = async count => {
-  for (let index = 0; index < count; index++) await new Promise(requestAnimationFrame);
-};
-
 async function readPixels(dataUrl) {
   const bitmap = await createImageBitmap(await (await fetch(dataUrl)).blob());
   const canvas = document.createElement('canvas');
@@ -53,66 +49,60 @@ function testTone() {
   return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
 }
 
-export function createQualityRenderer(canvas) {
-  let engine;
+export function createQualityRenderer(container) {
+  let player;
+  async function capture() {
+    return URL.createObjectURL(await player.capture({ width: 640, height: 360, type: 'image/png' }));
+  }
   return {
     async captureScene(sceneData, { checkAudio = false } = {}) {
-      const document = validateSceneForPlayback(sceneData);
-      if (document.kind !== 'custom') throw new Error('The quality corpus requires explicit engine data.');
-      sceneData = document.scene;
-      if (!engine) {
-        engine = initMAGE({ canvas, renderBudget: getRenderBudget('preview'), log: false, withControls: { active: false, integrated: false }, autoStart: false });
-        engine.start();
-      }
-      engine.pause(); engine.unloadAudio(); engine.setSyntheticPreview(false);
-      // Compare each frame against its own skybox, not a color heuristic: white
-      // geometry is valid, but a starfield without geometry must fail.
-      engine.loadPreset({ ...sceneData, visualizer: { ...sceneData.visualizer, shader: 'let size = input(); let pointerDown = input(); sphere(0.00001);' } });
-      engine.start(); await delay(300); await frames(3); engine.pause();
-      const background = await readPixels(await engine.captureFramePreview({ width: 640, height: 360 }));
-      if (!engine.loadPreset(sceneData)) throw new Error('Scene rejected by MAGE');
-      engine.start(); await delay(220); await frames(5);
-      const startTime = engine.getEngineTime(); await frames(8);
-      const endTime = engine.getEngineTime();
-      if (!(endTime > startTime)) throw new Error(`Animation clock did not advance: ${startTime} -> ${endTime}`);
-      const idleSize = engine.toPreset().state.size;
-      engine.pause();
-      const samples = []; let best;
-      for (const phase of [0.5, 3.5, 8, 15, 30, 55, 90, 145, 179]) {
-        engine.loadPreset({ audioResponse: sceneData.audioResponse, state: { time: phase, size: idleSize } });
-        const dataUrl = await engine.captureFramePreview({ width: 640, height: 360, type: 'image/png' });
-        if (!dataUrl) throw new Error('Engine did not return a captured frame');
-        const stats = await measure(dataUrl, background);
-        const valid = stats.central > 0.0015 && stats.colored < 0.6 && stats.edge < 0.035 && stats.deviation > 5;
-        samples.push({ phase, ...stats, valid });
-        const score = stats.central * 100 + stats.deviation / 40 - stats.edge * 100;
-        if (phase <= 8 && (!best || score > best.score)) best = { phase, score, dataUrl };
-      }
-      // Stress loud input at distant animation points without changing the saved scene.
-      for (const phase of [15, 90, 179]) {
-        engine.loadPreset({ audioResponse: sceneData.audioResponse, state: { time: phase, size: 0.9 } });
-        const stats = await measure(await engine.captureFramePreview({ width: 640, height: 360 }), background);
-        samples.push({ phase, peakInput: true, ...stats, valid: stats.central > 0.0015 && stats.colored < 0.6 && stats.edge < 0.035 && stats.deviation > 5 });
-      }
-      let audio = null;
-      if (checkAudio) {
-        engine.loadPreset({ audioResponse: sceneData.audioResponse, state: { time: 1, size: idleSize } });
-        const url = testTone();
-        try {
-          engine.loadAudio(url);
-          for (let attempt = 0; attempt < 100 && !engine.isAudioLoaded(); attempt++) await delay(50);
-          if (!engine.isAudioLoaded()) throw new Error('Local test audio did not load');
-          engine.play();
-          const sizes = [];
-          for (let i = 0; i < 24; i++) { await delay(70); sizes.push(engine.toPreset().state.size); }
-          audio = { idleSize, min: Math.min(...sizes), max: Math.max(...sizes), elapsed: engine.getAudioTime(), loaded: engine.isAudioLoaded() };
-          audio.reactive = audio.max > idleSize + 0.04 && audio.max - audio.min > 0.025 && audio.elapsed > 0;
-        } finally { engine.pause(); engine.unloadAudio(); URL.revokeObjectURL(url); }
-      }
-      if (!best) throw new Error('No visible, well-framed thumbnail candidate: ' + JSON.stringify(samples));
-      return { dataUrl: best.dataUrl, selectedPhase: best.phase, clockAdvanced: endTime - startTime, samples, audio,
-        valid: samples.every(sample => sample.valid) && (!audio || audio.reactive) };
+      const validated = validateSceneForPlayback(sceneData);
+      if (validated.kind !== 'custom') throw new Error('The quality corpus requires explicit engine data.');
+      sceneData = validated.scene;
+      player ??= createIsolatedPlayer({ container, rendererUrl: getIsolatedRendererUrl(), profile: 'preview' });
+      await player.ready;
+      player.pause(); player.clearAudio(); player.setSynthetic(false);
+      const objectUrls = [];
+      try {
+        await player.loadScene({ ...sceneData, visualizer: { ...sceneData.visualizer, shader: 'let size = input(); let pointerDown = input(); sphere(0.00001);' } });
+        const backgroundUrl = await capture(); objectUrls.push(backgroundUrl);
+        const background = await readPixels(backgroundUrl);
+        await player.loadScene(sceneData);
+        await player.play();
+        const startedAt = performance.now(), samples = []; let best;
+        // Observe actual child frames. Private engine state and arbitrary time/input
+        // mutation are intentionally unavailable across the isolation boundary.
+        for (let sample = 0; sample < 9; sample++) {
+          await delay(550);
+          const dataUrl = await capture(); objectUrls.push(dataUrl);
+          const phase = (performance.now() - startedAt) / 1000;
+          const stats = await measure(dataUrl, background);
+          const valid = stats.central > 0.0015 && stats.colored < 0.6 && stats.edge < 0.035 && stats.deviation > 5;
+          samples.push({ phase, ...stats, valid });
+          const score = stats.central * 100 + stats.deviation / 40 - stats.edge * 100;
+          if (!best || score > best.score) best = { phase, score, dataUrl };
+        }
+        let audio = null;
+        if (checkAudio) {
+          const url = testTone();
+          try {
+            await player.loadAudio(url); await player.play(); await delay(500);
+            const state = player.getAudioState();
+            audio = { loaded: state.loaded, elapsed: state.time, playing: state.playing,
+              note: 'Transport check only; visual reactivity is verified in the isolated playback check.' };
+          } finally { player.pause(); player.clearAudio(); URL.revokeObjectURL(url); }
+        }
+        if (!best) throw new Error('No thumbnail candidate.');
+        const dataUrl = await new Promise((resolve, reject) => {
+          fetch(best.dataUrl).then(response => response.blob()).then(blob => {
+            const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob);
+          }, reject);
+        });
+        return { dataUrl, selectedPhase: best.phase, sampleDurationSeconds: (performance.now() - startedAt) / 1000, samples, audio,
+          note: 'Early animation samples only; no claim of distant-phase or private-uniform inspection.',
+          valid: samples.every(sample => sample.valid) && (!audio || (audio.loaded && audio.elapsed > 0)) };
+      } finally { player.pause(); for (const url of objectUrls) URL.revokeObjectURL(url); }
     },
-    dispose() { engine?.dispose(); engine = undefined; },
+    dispose() { player?.dispose(); player = undefined; },
   };
 }

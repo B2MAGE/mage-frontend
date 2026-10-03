@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAGE isolation checks</title><link rel="stylesheet" href="./isolated-security-check.css"></head>
+<body><main><h1>Isolated player safety checks</h1>
+<p>These local checks run fixed test scenes inside the separate renderer. They never send account data or contact external services. Keep this tab visible while a test runs.</p>
+<div class="actions"><button id="boundary">Check browser boundaries</button><button id="failures">Check failure recovery</button><button id="stall">Check a bounded CPU stall</button><button id="stop">Stop checks</button></div>
+<p>The CPU check deliberately blocks only the child for three seconds. It never runs an infinite loop or GPU stress test. A passing result is not a guarantee against browser or GPU hangs.</p>
+<div id="player" aria-label="Isolated test scene"></div><p id="status" role="status">Ready.</p>
+<table><thead><tr><th>Check</th><th>Result</th><th>Evidence</th></tr></thead><tbody id="results"></tbody></table>
+<p id="summary"></p><a href="/">Back to MAGE</a>
+</main><script type="module" src="./isolated-security-check.ts"></script></body></html>

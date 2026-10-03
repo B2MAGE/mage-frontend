@@ -8,26 +8,122 @@ class Port {
   receive(data:unknown){this.onmessage?.({data} as MessageEvent)}
 }
 const channels:Array<{port1:Port;port2:Port}>=[]
-function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true) {
+function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true, progressTimeoutMs = 1000) {
   const container=document.createElement('div');document.body.append(container)
-  const failure=vi.fn(),status=vi.fn()
-  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,startupTimeoutMs:100,progressTimeoutMs:1000,decodeCapture,useInlineFrameStyles})
+  const failure=vi.fn(),status=vi.fn(),healthy=vi.fn()
+  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,onHealthy:healthy,startupTimeoutMs:100,progressTimeoutMs,decodeCapture,useInlineFrameStyles})
   const frame=container.querySelector('iframe')!,post=vi.spyOn(frame.contentWindow!,'postMessage').mockImplementation(()=>{})
   frame.dispatchEvent(new Event('load'))
   const port=channels.at(-1)!.port1
   function reply<T extends PlaybackType>(type:T,payload:PlaybackPayloads[T],generation=1,requestId=0,session=SESSION){port.receive(playbackMessage(type,session,generation,requestId,payload))}
   reply('ready',null,0)
   async function load(){const promise=host.loadScene({visualizer:{shader:'sphere(0.5);'}});await Promise.resolve();const m=port.postMessage.mock.calls.at(-1)![0];reply('loaded',null,m.generation,m.requestId);await promise}
-  return {host,frame,port,post,failure,status,reply,load,container}
+  let frames=0
+  const progress=(generation=1)=>reply('progress',{frames:++frames},generation)
+  async function advanceProgress(milliseconds:number,generation=1) {
+    for(let time=0;time<milliseconds;time+=500){await vi.advanceTimersByTimeAsync(500);progress(generation)}
+  }
+  return {host,frame,port,post,failure,status,healthy,reply,load,container,progress,advanceProgress}
 }
 beforeEach(()=>{
   vi.useFakeTimers();vi.stubEnv('DEV',true)
+  vi.spyOn(document,'visibilityState','get').mockReturnValue('visible')
   vi.stubGlobal('window',{location:{href:'http://localhost:5178/'},addEventListener:vi.fn(),removeEventListener:vi.fn()})
   vi.stubGlobal('MessageChannel',class{port1=new Port();port2=new Port();constructor(){channels.push(this)}})
   vi.spyOn(crypto,'randomUUID').mockReturnValue(SESSION);channels.length=0
 })
-afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.unstubAllEnvs();vi.unstubAllGlobals()})
+afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('requires ten seconds between fresh frame reports and reports subsequent healthy intervals',async()=>{
+    const s=setup(undefined,true,30000);await s.load()
+    expect(s.healthy).not.toHaveBeenCalled()
+    s.progress()
+    await vi.advanceTimersByTimeAsync(12000)
+    expect(s.healthy).not.toHaveBeenCalled()
+    expect(s.failure).not.toHaveBeenCalled()
+    s.progress()
+    await s.advanceProgress(9500)
+    expect(s.healthy).not.toHaveBeenCalled()
+    await s.advanceProgress(500)
+    expect(s.healthy).toHaveBeenCalledOnce()
+    await s.advanceProgress(10000)
+    expect(s.healthy).toHaveBeenCalledTimes(2)
+    s.host.dispose()
+  })
+  it('starts a new healthy streak after pauses and foreground visibility changes',async()=>{
+    const s=setup(undefined,true,30000);await s.load();s.progress()
+    await s.advanceProgress(9000)
+    s.host.setPlayback(false)
+    await s.advanceProgress(12000)
+    expect(s.healthy).not.toHaveBeenCalled()
+    s.host.setPlayback(true);s.progress()
+    await s.advanceProgress(9000)
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await s.advanceProgress(12000)
+    expect(s.healthy).not.toHaveBeenCalled()
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'));s.progress()
+    await s.advanceProgress(9500)
+    expect(s.healthy).not.toHaveBeenCalled()
+    await s.advanceProgress(500)
+    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
+  })
+  it('discards partial health after a frame gap longer than two seconds',async()=>{
+    const s=setup(undefined,true,30000);await s.load();s.progress()
+    await s.advanceProgress(9000)
+    await vi.advanceTimersByTimeAsync(2500);s.progress()
+    await s.advanceProgress(9500)
+    expect(s.healthy).not.toHaveBeenCalled()
+    await s.advanceProgress(500)
+    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
+  })
+  it('does not count old generations or duplicate progress, and resets when the scene loads',async()=>{
+    const s=setup(undefined,true,30000);await s.load();s.progress()
+    await s.advanceProgress(9000)
+    await s.load()
+    await s.advanceProgress(12000,1)
+    expect(s.healthy).not.toHaveBeenCalled()
+    s.progress(2)
+    for(let i=0;i<20;i++){
+      await vi.advanceTimersByTimeAsync(500)
+      s.reply('progress',{frames:1},2)
+    }
+    expect(s.healthy).not.toHaveBeenCalled()
+    s.progress(2)
+    await s.advanceProgress(10000,2)
+    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
+  })
+  it('does not count browser suspension even when queued progress arrives on resume',async()=>{
+    const s=setup(undefined,true,30000);await s.load();s.progress()
+    await s.advanceProgress(9000)
+    const resumeAt=performance.now()+60000
+    const suspendedClock=vi.spyOn(performance,'now').mockReturnValue(resumeAt)
+    await vi.advanceTimersByTimeAsync(250)
+    s.progress()
+    expect(s.healthy).not.toHaveBeenCalled()
+    for(let i=1;i<=19;i++){
+      suspendedClock.mockReturnValue(resumeAt+i*500)
+      await vi.advanceTimersByTimeAsync(500);s.progress()
+    }
+    expect(s.healthy).not.toHaveBeenCalled()
+    suspendedClock.mockReturnValue(resumeAt+10000)
+    await vi.advanceTimersByTimeAsync(500);s.progress()
+    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
+  })
+  it('coalesces music response changes and binds capability responses to the current request',async()=>{
+    const s=setup();await s.load()
+    for(let i=0;i<100;i++)s.host.setAudioResponse({mode:'mapped-v1',config:{version:1,sensitivity:1+i/100,mappings:[]}})
+    await vi.advanceTimersByTimeAsync(34)
+    const settings=s.port.postMessage.mock.calls.filter(([m])=>m.type==='audio-response')
+    expect(settings).toHaveLength(1);expect(settings[0][0].payload.config.sensitivity).toBe(1.99)
+    const result=s.host.getCapabilities(),command=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('capabilities-result',{supportedTargets:['bass']},1,command.requestId-1)
+    s.reply('capabilities-result',{supportedTargets:['size']},1,command.requestId)
+    await expect(result).resolves.toEqual({supportedTargets:['size']})
+    const stale=s.host.getCapabilities(),rejected=expect(stale).rejects.toThrow(/Scene changed/)
+    await s.load();await rejected;s.host.dispose()
+  })
   it('can use an external stylesheet without introducing inline frame styles',()=>{
     const s=setup(undefined,false)
     expect(s.frame.hasAttribute('style')).toBe(false)

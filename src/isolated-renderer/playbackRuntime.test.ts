@@ -11,6 +11,7 @@ afterEach(() => { releases.splice(0).forEach(fn => fn()); vi.restoreAllMocks(); 
 function fixture() {
   const target = Object.assign(new EventTarget(), { parent: {} }) as unknown as Window
   const engine = { dispose: vi.fn(), resize: vi.fn(), input: vi.fn(), playback: vi.fn(), synthetic: vi.fn(), zoom: vi.fn(),
+    audioResponse: vi.fn(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
     capture: vi.fn().mockResolvedValue({ bytes: new ArrayBuffer(12), type: 'image/png', width: 10, height: 10 }) }
   const loadScene = vi.fn<PlaybackLoader>().mockResolvedValue(engine)
   const statusElement = document.createElement('p')
@@ -32,6 +33,17 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('changes music response without reloading and returns capabilities only when requested', async () => {
+    const f = fixture()
+    f.bootstrap(); f.load(); await Promise.resolve()
+    expect(f.responses('capabilities-result')).toHaveLength(0)
+    const settings = { mode: 'mapped-v1' as const, config: { version: 1 as const, sensitivity: 2, mappings: [] } }
+    f.send('audio-response', settings)
+    f.send('capabilities', null)
+    expect(f.engine.audioResponse).toHaveBeenCalledExactlyOnceWith(settings)
+    expect(f.loadScene).toHaveBeenCalledOnce()
+    expect(f.responses('capabilities-result')[0].payload).toEqual({ supportedTargets: ['size'] })
+  })
   it.each(['source', 'origin', 'port', 'schema'])('ignores unauthorized %s without allocating an engine', invalid => {
     const f = fixture()
     f.bootstrap(invalid === 'source' ? { source: {} as Window } : invalid === 'origin' ? { origin: 'null' }

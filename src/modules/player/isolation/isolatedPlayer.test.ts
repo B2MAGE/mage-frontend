@@ -14,7 +14,7 @@ const scene = { visualizer: { shader: 'sphere(0.5);' } }
 const players: IsolatedPlayer[] = []
 const observers: Array<{ callback: ResizeObserverCallback; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = []
 
-function fixture(wheelZoom = false) {
+function fixture(wheelZoom = false, pointerInteractions = true) {
   const container = document.createElement('div')
   document.body.append(container)
   vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(new DOMRect(10, 20, 400, 200))
@@ -34,15 +34,16 @@ function fixture(wheelZoom = false) {
   const boot = deferred<void>()
   const host = {
     ready: boot.promise,
+    setAudioResponse: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
     loadScene: vi.fn(async () => {}), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }
   let hostOptions!: Parameters<typeof createIsolatedPlaybackHost>[0]
   const createHost = vi.fn<typeof createIsolatedPlaybackHost>(options => { hostOptions = options; return host })
   const createAudio = vi.fn(() => audio)
-  const onFailure = vi.fn(), onStatus = vi.fn()
+  const onFailure = vi.fn(), onStatus = vi.fn(), onHealthy = vi.fn()
   let time = 0
-  const player = createIsolatedPlayer({ container, rendererUrl: 'http://localhost:5181/', onFailure, onStatus, wheelZoom }, {
+  const player = createIsolatedPlayer({ container, rendererUrl: 'http://localhost:5181/', onFailure, onStatus, onHealthy, wheelZoom, pointerInteractions }, {
     createHost, createAudio, now: () => time,
   })
   players.push(player)
@@ -52,7 +53,7 @@ function fixture(wheelZoom = false) {
     container.dispatchEvent(event)
   }
   return {
-    player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, pointer,
+    player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, onHealthy, pointer,
     get hostOptions() { return hostOptions },
     async start() { boot.resolve(); await player.ready; await player.loadScene(scene) },
     async tick(ms = 34) { time += ms; await vi.advanceTimersByTimeAsync(ms) },
@@ -77,6 +78,56 @@ afterEach(() => {
 })
 
 describe('isolated player parent integration', () => {
+  it.each(['dispose', 'failure'] as const)('forwards healthy playback only while the current scene is loaded and playing, ending on %s', async ending => {
+    const f = fixture()
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).not.toHaveBeenCalled()
+    await f.start()
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledOnce()
+    f.player.pause()
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledOnce()
+    await f.player.play()
+    const replacement = deferred<void>()
+    f.host.loadScene.mockImplementationOnce(() => replacement.promise)
+    const loading = f.player.loadScene(scene)
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledOnce()
+    replacement.resolve(); await loading
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledTimes(2)
+    if (ending === 'dispose') f.player.dispose()
+    else f.hostOptions.onFailure?.('runtime')
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledTimes(2)
+  })
+  it('updates response settings without scene or audio reload and reports actual shader inputs', async () => {
+    const f = fixture()
+    expect(f.player.getAudioResponseCapabilities()).toBeNull()
+    await f.start()
+    await f.player.loadAudio(new Blob(['music']))
+    const config = { version: 1 as const, sensitivity: 2, mappings: [{ target: 'bass' as const, source: 'bass-hit' as const, amount: 1, attack: 0, release: 0.2 }] }
+    f.player.setAudioResponse('mapped-v1', config)
+    expect(f.host.setAudioResponse).toHaveBeenLastCalledWith({ mode: 'mapped-v1', config })
+    expect(f.audio.setSensitivity).toHaveBeenLastCalledWith(2)
+    expect(f.host.loadScene).toHaveBeenCalledOnce()
+    expect(f.audio.load).toHaveBeenCalledOnce()
+    expect(f.player.getAudioResponseCapabilities()).toMatchObject({ mode: 'mapped-v1', supportedTargets: ['size'], unsupportedTargets: ['bass'] })
+  })
+
+  it('leaves hover preview hosts noninteractive when pointer input is disabled', async () => {
+    const f = fixture(true, false)
+    await f.start()
+    f.pointer('pointerdown', 300, 50)
+    const wheel = new WheelEvent('wheel', { deltaY: 100, cancelable: true })
+    f.container.dispatchEvent(wheel)
+    await f.tick()
+    expect(wheel.defaultPrevented).toBe(false)
+    expect(f.container.style.userSelect).toBe('')
+    expect(f.host.update.mock.calls.at(-1)![0].pointer).toEqual({ x: 0, y: 0, down: false, inside: false })
+    expect(f.host.setZoom).toHaveBeenCalledExactlyOnceWith(1)
+  })
   it('switches scenes while retaining the playing song, its position and volume in the same audio session', async () => {
     const f = fixture()
     await f.start()

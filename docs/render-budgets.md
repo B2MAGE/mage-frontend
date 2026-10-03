@@ -85,9 +85,8 @@ in the draft with an actionable message while global playback stays disabled.
 
 ## Remaining release boundary
 
-This is resource control for the normal engine path, not execution isolation. Custom shader source
-can still run JavaScript during compilation; a hostile loop can block the current thread before a
-frame is drawn, and arbitrary code can bypass ordinary engine APIs. The global custom-rendering
-release gate stays disabled. PP-I02 must enforce the same policy inside the isolated renderer and
-support independent termination; PP-I03 owns enabling that release. No trust is inferred from a
-custom shader matching a template string. Real phone hardware performance must be measured separately.
+The isolated renderer enforces these ceilings, but they are resource controls rather than a hard
+CPU/GPU execution limit. Submitted source can run JavaScript during compilation. The global
+custom-rendering release gate stays disabled until the PP-I03 release checklist is satisfied.
+No trust is inferred from a custom shader matching a template string. Real phone hardware
+performance and unsupported browsers must be measured separately.

@@ -17,6 +17,45 @@ describe('MagePlayer', () => {
     vi.clearAllMocks()
   })
 
+  it('waits for isolated scene loading and ignores completion from a superseded scene', async () => {
+    let completeFirst!: () => void
+    let completeSecond!: () => void
+    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn()
+      .mockImplementationOnce(() => new Promise<void>(resolve => { completeFirst = resolve }))
+      .mockImplementationOnce(() => new Promise<void>(resolve => { completeSecond = resolve })) })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const captureChanged = vi.fn()
+    const first = buildMagePlayerSceneBlob()
+    const second = buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.4);' } })
+    const view = render(<MagePlayer sceneBlob={first} onCaptureFramePreviewChange={captureChanged} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledOnce())
+    expect(screen.getByText('Loading scene preview.')).toBeInTheDocument()
+    expect(captureChanged).not.toHaveBeenCalledWith(expect.any(Function))
+    view.rerender(<MagePlayer sceneBlob={second} onCaptureFramePreviewChange={captureChanged} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    completeFirst()
+    await Promise.resolve()
+    expect(screen.getByText('Loading scene preview.')).toBeInTheDocument()
+    completeSecond()
+    await waitFor(() => expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument())
+    expect(captureChanged).toHaveBeenCalledWith(expect.any(Function))
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+  })
+
+  it('keeps an in-flight capture valid through a callback-only rerender', async () => {
+    let finish!: (value: string) => void
+    const controller = buildMagePlayerController({ captureFramePreview: vi.fn(() => new Promise<string>(resolve => { finish = resolve })) })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const scene = buildMagePlayerSceneBlob()
+    const firstCallback = vi.fn(), nextCallback = vi.fn()
+    const view = render(<MagePlayer sceneBlob={scene} onCaptureFramePreviewChange={firstCallback} />)
+    await waitFor(() => expect(firstCallback).toHaveBeenCalledWith(expect.any(Function)))
+    const pending = firstCallback.mock.calls.at(-1)![0]()
+    view.rerender(<MagePlayer sceneBlob={scene} onCaptureFramePreviewChange={nextCallback} />)
+    finish('data:image/png;base64,cHJldmlldw==')
+    await expect(pending).resolves.toBe('data:image/png;base64,cHJldmlldw==')
+  })
+
   it('loads a scene blob and disposes the engine on unmount', async () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
@@ -28,7 +67,7 @@ describe('MagePlayer', () => {
 
     await waitFor(() => {
       expect(createMagePlayer).toHaveBeenCalledTimes(1)
-      expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), {
+      expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement), {
         log: false, renderProfile: 'full', initialSceneBlob: sceneBlob, mouseInteractions: true, mouseWheelZoom: true,
       })
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
@@ -169,7 +208,7 @@ describe('MagePlayer', () => {
     })
   })
 
-  it('captures the live aspect ratio after resizing, with a drawing-buffer fallback', async () => {
+  it('captures the live aspect ratio after resizing, with a host-size fallback', async () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
@@ -193,9 +232,9 @@ describe('MagePlayer', () => {
     const captureFramePreview =
       onCaptureFramePreviewChange.mock.calls.at(-1)?.[0]
 
-    const canvas = screen.getByLabelText('MAGE scene preview') as HTMLCanvasElement
-    canvas.width = 1280
-    canvas.height = 720
+    const canvas = screen.getByLabelText('MAGE scene preview') as HTMLDivElement
+    const readBounds = vi.spyOn(canvas, 'getBoundingClientRect')
+    readBounds.mockReturnValue({ width: 1280, height: 720 } as DOMRect)
     const previewDataUrl = await captureFramePreview?.()
 
     expect(controller.captureFramePreview).toHaveBeenCalledWith({
@@ -205,7 +244,6 @@ describe('MagePlayer', () => {
     })
     expect(previewDataUrl).toMatch(/^data:image\/png;base64,/)
 
-    const readBounds = vi.spyOn(canvas, 'getBoundingClientRect')
     readBounds.mockReturnValue({ width: 450, height: 800 } as DOMRect)
     await captureFramePreview?.()
     expect(controller.captureFramePreview).toHaveBeenLastCalledWith({
@@ -215,8 +253,7 @@ describe('MagePlayer', () => {
     })
 
     readBounds.mockReturnValue({ width: 0, height: 0 } as DOMRect)
-    canvas.width = 512
-    canvas.height = 512
+    Object.defineProperties(canvas, { clientWidth: { value: 512 }, clientHeight: { value: 512 } })
     await captureFramePreview?.()
     expect(controller.captureFramePreview).toHaveBeenLastCalledWith({
       height: 480,
@@ -234,7 +271,7 @@ describe('MagePlayer', () => {
     expect(createMagePlayer).not.toHaveBeenCalled()
     const valid = buildMagePlayerSceneBlob()
     rerender(<MagePlayer sceneBlob={valid} renderProfile="preview" />)
-    await waitFor(() => expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement),
+    await waitFor(() => expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement),
       expect.objectContaining({ renderProfile: 'preview', initialSceneBlob: valid })))
     expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid)
   })

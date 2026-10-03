@@ -172,6 +172,21 @@ async function finishActivation() {
 }
 
 describe('DiscoverySceneCard animated preview', () => {
+  it('does not reveal a preview or restart it after an asynchronous load completes following hover exit', async () => {
+    const pending = deferred<void>()
+    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn(() => pending.promise) })
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    const view = renderCard()
+    const link = screen.getByRole('link', { name: /signal bloom/i })
+    fireEvent.pointerEnter(link, { pointerType: 'mouse' })
+    await finishActivation()
+    expect(controller.loadSceneBlob).toHaveBeenCalledOnce()
+    expect(view.container.querySelector('.scene-card__preview-canvas')).not.toHaveClass('is-visible')
+    fireEvent.pointerLeave(link, { pointerType: 'mouse' })
+    await act(async () => { pending.resolve(); await Promise.resolve() })
+    expect(controller.setSyntheticPreview).not.toHaveBeenCalledWith(true, expect.any(Number))
+    expect(controller.dispose).toHaveBeenCalledOnce()
+  })
   beforeEach(() => {
     vi.useFakeTimers()
     availabilityMocks.snapshot = { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 }
@@ -313,7 +328,7 @@ describe('DiscoverySceneCard animated preview', () => {
     renderCard()
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
-    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLCanvasElement), { sceneKey: scene.sceneId, renderProfile: 'preview', initialSceneBlob: scene.sceneData })
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement), { sceneKey: scene.sceneId, renderProfile: 'preview', initialSceneBlob: scene.sceneData })
     await act(async () => blockAvailability())
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
@@ -631,14 +646,14 @@ describe('DiscoverySceneCard animated preview', () => {
     expect(nextController.loadSceneBlob).toHaveBeenCalledWith(nextScene.sceneData, { sceneKey: nextScene.sceneId })
   })
 
-  it('recreates the still-focused preview after BFCache restoration using a fresh canvas', async () => {
+  it('recreates the still-focused preview after BFCache restoration using a fresh isolated host', async () => {
     const first = buildMagePlayerController()
     const restored = buildMagePlayerController()
     engineMocks.createMagePlayer.mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
     const { container } = renderCard()
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
-    const originalCanvas = container.querySelector('canvas')
+    const originalCanvas = container.querySelector('.scene-card__preview-canvas')
     await act(async () => { pageTransition('pageshow', false) })
     expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(1)
     await act(async () => {
@@ -650,8 +665,8 @@ describe('DiscoverySceneCard animated preview', () => {
     expect(first.dispose).toHaveBeenCalledTimes(1)
     expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(2)
     expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene.sceneData, { sceneKey: scene.sceneId })
-    expect(container.querySelector('canvas')).not.toBe(originalCanvas)
-    expect(container.querySelector('canvas')).toHaveClass('is-visible')
+    expect(container.querySelector('.scene-card__preview-canvas')).not.toBe(originalCanvas)
+    expect(container.querySelector('.scene-card__preview-canvas')).toHaveClass('is-visible')
   })
 
   it('does not restart a preview after BFCache restoration when focus has left the card', async () => {

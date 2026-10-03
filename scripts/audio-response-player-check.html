@@ -2,12 +2,12 @@
 <html lang="en">
 <meta charset="utf-8">
 <title>MAGE saved and temporary audio settings check</title>
-<style>body{font:16px system-ui;background:#101522;color:#ecf1ff;padding:32px;max-width:1000px;margin:auto}button{padding:12px 18px;font:inherit}pre{white-space:pre-wrap;line-height:1.7;padding:20px;background:#1c2539;border-radius:12px}canvas{width:256px;height:256px}</style>
+<style>body{font:16px system-ui;background:#101522;color:#ecf1ff;padding:32px;max-width:1000px;margin:auto}button{padding:12px 18px;font:inherit}pre{white-space:pre-wrap;line-height:1.7;padding:20px;background:#1c2539;border-radius:12px}#scene{width:256px;height:256px}</style>
 <h1>MAGE saved and temporary audio settings check</h1>
-<p>Exercises the platform adapter and the real engine with a silent test track.</p>
+<p>Exercises the platform adapter and isolated engine with a silent test track. Local custom playback must be allowed by the development backend.</p>
 <button id="run">Run player check</button>
 <pre id="results">Ready.</pre>
-<canvas id="scene" width="256" height="256" aria-label="Test scene"></canvas>
+<div id="scene" aria-label="Test scene"></div>
 <script type="module">
 import { createMagePlayer } from '/src/modules/player/infrastructure/engineAdapter.ts'
 const button = document.querySelector('#run'), result = document.querySelector('#results')
@@ -28,13 +28,13 @@ button.addEventListener('click', async () => {
   button.disabled = true; result.textContent = ''
   let player, track
   try {
-    player = await createMagePlayer(document.querySelector('#scene'), { pixelRatio: 1 })
     const scene = { audioResponse: 'mapped-v1', audioResponseConfig: settings(1), visualizer: { shader: 'let size = input(); color(0.2,0.7,1); sphere(0.4 + size * 0.1);' } }
-    player.loadSceneBlob(scene)
+    player = await createMagePlayer(document.querySelector('#scene'), { pixelRatio: 1, initialSceneBlob: scene })
+    await player.loadSceneBlob(scene)
     track = silentTrack()
     await player.loadAudio({ sourcePath: track, sourceLabel: 'Silent verification track' })
     await wait(200)
-    assert(player.getAudioResponseDiagnostics().analysis.status === 'connected', 'Native analysis did not connect through player adapter')
+    assert(player.getAudioState().isLoaded, 'Audio did not load through the parent adapter')
     const before = player.getAudioState()
     player.setAudioResponseSettings('mapped-v1', settings(2))
     await wait(180)
@@ -50,7 +50,7 @@ button.addEventListener('click', async () => {
     pass('temporary overrides stay separate and reset to current creator defaults')
     const capabilities = player.getAudioResponseCapabilities()
     assert(capabilities.supportedTargets.includes('size') && capabilities.unsupportedTargets.length === 0, 'Shader capabilities were lost at adapter boundary')
-    pass('compiled shader capabilities and native analysis diagnostics are available')
+    pass('compiled shader capabilities cross the bounded bridge')
     player.setPlaybackState('paused')
     const pausedTime = player.getAudioState().currentTime
     player.setAudioResponseSettings('mapped-v1', settings(0.5))
@@ -58,7 +58,7 @@ button.addEventListener('click', async () => {
     assert(player.getPlaybackState() === 'paused' && Math.abs(player.getAudioState().currentTime - pausedTime) < 0.03, 'Updating settings resumed paused audio')
     pass('settings changes preserve paused playback')
     player.setAudioResponseOverride(settings(3))
-    player.loadSceneBlob({ visualizer: scene.visualizer })
+    await player.loadSceneBlob({ visualizer: scene.visualizer })
     assert(player.getAudioResponseState().override === null && player.getAudioResponseState().effectiveMode === 'legacy', 'Scene change leaked prior override or mode')
     pass('switching to an older scene clears temporary settings and restores legacy behavior')
     result.textContent += '\nAll platform player checks passed.'

@@ -89,7 +89,7 @@ describe('MagePlayer live availability', () => {
     await waitFor(() => expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toBeEnabled())
     fireEvent.change(screen.getByRole('slider', { name: 'Seek scene audio' }), { target: { value: '42' } })
     expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toHaveValue('42')
-    const canvas = view.container.querySelector('canvas')
+    const canvas = view.container.querySelector('.mage-player__render-host')
     const sourceLoads = vi.mocked(controller.loadSceneBlob).mock.calls.length
     const trackLoads = vi.mocked(controller.loadAudio).mock.calls.length
     const playlistChanges = onPlaylistChange.mock.calls.length
@@ -98,7 +98,7 @@ describe('MagePlayer live availability', () => {
 
     permission(920, checking)
     expect(screen.getByText(checking.message)).toBeInTheDocument()
-    expect(view.container.querySelector('canvas')).toBe(canvas)
+    expect(view.container.querySelector('.mage-player__render-host')).toBe(canvas)
     expect(controller.dispose).not.toHaveBeenCalled()
     expect(onCapture).toHaveBeenLastCalledWith(null)
     await expect(oldCapture()).resolves.toBeNull()
@@ -114,7 +114,7 @@ describe('MagePlayer live availability', () => {
     expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toHaveValue('42')
     expect(screen.getByRole('button', { name: 'Track 2/2: second.mp3' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: `${initialPlayback === 'playing' ? 'Pause' : 'Play'} scene and audio playback` })).toBeEnabled()
-    expect(view.container.querySelector('canvas')).toBe(canvas)
+    expect(view.container.querySelector('.mage-player__render-host')).toBe(canvas)
     expect(createMagePlayer).toHaveBeenCalledOnce()
     expect(controller.loadSceneBlob).toHaveBeenCalledTimes(sourceLoads)
     expect(controller.loadAudio).toHaveBeenCalledTimes(trackLoads)
@@ -134,18 +134,17 @@ describe('MagePlayer live availability', () => {
       expect(controller.dispose).not.toHaveBeenCalled()
       permission(921, result)
       expect(controller.dispose).toHaveBeenCalledOnce()
-      expect(view.container.querySelector('canvas')).toBeNull()
+      expect(view.container.querySelector('.mage-player__render-host')).toBeNull()
       expect(screen.getByText(result.message)).toBeInTheDocument()
       expect(createMagePlayer).toHaveBeenCalledOnce()
     })
 
-  it('discards the retained renderer when its source changes during checking and delays replacement until allowed', async () => {
+  it('retains the paused renderer when its source changes during checking and delays replacement until allowed', async () => {
     const first = buildMagePlayerSceneBlob()
     const second = buildMagePlayerSceneBlob({ visualizer: { shader: 'box(1);' } })
     const controller = buildMagePlayerController()
-    const replacement = buildMagePlayerController()
     const tracks = [buildMagePlayerTrack(), buildMagePlayerTrack({ id: 'next', name: 'next.mp3', sourcePath: '/next.mp3' })]
-    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller).mockResolvedValueOnce(replacement)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
     permission(922, allowed)
     const view = render(<MagePlayer sceneBlob={first} sceneKey={922} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledOnce())
@@ -156,12 +155,12 @@ describe('MagePlayer live availability', () => {
     await act(async () => {})
     expect(controller.loadSceneBlob).toHaveBeenCalledTimes(sourceLoads)
     expect(controller.loadAudio).toHaveBeenCalledTimes(trackLoads)
-    expect(controller.dispose).toHaveBeenCalledOnce()
+    expect(controller.dispose).not.toHaveBeenCalled()
     expect(createMagePlayer).toHaveBeenCalledOnce()
     permission(922, allowed)
-    await waitFor(() => expect(replacement.loadSceneBlob).toHaveBeenLastCalledWith(second, { sceneKey: 922 }))
-    await waitFor(() => expect(replacement.loadAudio).toHaveBeenLastCalledWith({ sourceLabel: 'next.mp3', sourcePath: '/next.mp3' }))
-    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(second, { sceneKey: 922 }))
+    await waitFor(() => expect(controller.loadAudio).toHaveBeenLastCalledWith({ sourceLabel: 'next.mp3', sourcePath: '/next.mp3' }))
+    expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 
   it('retains the renderer for a track-only change and delays loading that audio until allowed', async () => {
@@ -196,7 +195,7 @@ describe('MagePlayer live availability', () => {
     permission(923, checking)
     await act(async () => {})
     expect(createMagePlayer).toHaveBeenCalledOnce()
-    expect(view.container.querySelector('canvas')).toBeNull()
+    expect(view.container.querySelector('.mage-player__render-host')).toBeNull()
   })
 
   it.each(['resolves', 'rejects'] as const)('recovers initialization that %s after a recheck begins without loading under unknown permission', async outcome => {
@@ -239,7 +238,7 @@ describe('MagePlayer live availability', () => {
     expect(view.container.querySelector('img')).toHaveAttribute('src', '/saved.png')
     await act(async () => {})
     expect(createMagePlayer).not.toHaveBeenCalled()
-    expect(view.container.querySelector('canvas')).toBeNull()
+    expect(view.container.querySelector('.mage-player__render-host')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Retry scene' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Resume scene' })).not.toBeInTheDocument()
   })
@@ -327,7 +326,7 @@ describe('MagePlayer live availability', () => {
     permission('template:917', allowed)
     view.rerender(<MagePlayer sceneBlob={template} sceneKey={917} onAvailabilityRestored={onAvailabilityRestored} />)
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(template, { sceneKey: 917 }))
-    expect(createMagePlayer).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLCanvasElement), expect.objectContaining({ initialSceneBlob: template, sceneKey: 917 }))
+    expect(createMagePlayer).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLDivElement), expect.objectContaining({ initialSceneBlob: template, sceneKey: 917 }))
   })
 
   it('does not render an unexpected custom response obtained through metadata-only restoration', async () => {
@@ -339,7 +338,7 @@ describe('MagePlayer live availability', () => {
     view.rerender(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} sceneKey={918} onAvailabilityRestored={onAvailabilityRestored} />)
     expect(screen.getByText('Scene playback is temporarily disabled.')).toBeInTheDocument()
     expect(createMagePlayer).not.toHaveBeenCalled()
-    expect(view.container.querySelector('canvas')).toBeNull()
+    expect(view.container.querySelector('.mage-player__render-host')).toBeNull()
   })
 
   it('ends a draft template renderer and its capture when the editor switches to custom mode', async () => {

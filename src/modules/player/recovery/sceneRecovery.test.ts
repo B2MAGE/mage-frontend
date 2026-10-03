@@ -281,6 +281,119 @@ describe('recovery leases and local history', () => {
     expect(recovery.getBlock(key)).toBeNull()
   })
 
+  it.each(['load', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout'] as const)(
+    'confirmed healthy retry retires only its remembered %s failure and retains its active marker', (reason) => {
+      const local = memoryStorage(); const session = memoryStorage()
+      const recovery = store({ localStorage: local, sessionStorage: session })
+      const other = revision(904)
+      recovery.block(key, reason)
+      recovery.block(other, 'runtime')
+      recovery.retry(key)
+      const attempt = recovery.begin(key)!
+      const marker = session.getItem(RECOVERY_ACTIVE_KEY)
+      const listener = vi.fn(); recovery.subscribe(listener)
+
+      attempt.confirmHealthy()
+      expect(recovery.getAutomaticBlock(key)).toBeNull()
+      expect(recovery.getBlock(other)?.reason).toBe('runtime')
+      expect(session.getItem(RECOVERY_ACTIVE_KEY)).toBe(marker)
+      expect(JSON.parse(session.getItem(RECOVERY_ACTIVE_KEY)!).entries).toHaveLength(1)
+      expect(store({ localStorage: local }).getBlock(key)).toBeNull()
+      expect(listener).toHaveBeenCalledOnce()
+      attempt.confirmHealthy()
+      expect(listener).toHaveBeenCalledOnce()
+
+      attempt.dispose()
+      expect(JSON.parse(session.getItem(RECOVERY_ACTIVE_KEY)!).entries).toEqual([])
+      expect(recovery.getBlock(key)).toBeNull()
+      expect(recovery.begin(key)).not.toBeNull()
+    },
+  )
+
+  it('an ordinary lease cannot confirm another renderer’s explicit retry', () => {
+    const recovery = store()
+    const original = recovery.begin(key)!
+    recovery.block(key, 'runtime')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    original.confirmHealthy()
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe('runtime')
+    original.dispose()
+    attempt.confirmHealthy()
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+  })
+
+  it('disposed or superseded retry tokens cannot clear a later attempt’s failure', () => {
+    const recovery = store()
+    recovery.block(key, 'runtime')
+    recovery.retry(key)
+    const disposed = recovery.begin(key)!
+    disposed.dispose()
+    disposed.confirmHealthy()
+    expect(recovery.getBlock(key)?.reason).toBe('runtime')
+    recovery.retry(key)
+    const superseded = recovery.begin(key)!
+    recovery.block(key, 'context-lost')
+    recovery.retry(key)
+    const current = recovery.begin(key)!
+    disposed.confirmHealthy()
+    superseded.confirmHealthy()
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe('context-lost')
+    current.confirmHealthy()
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+    superseded.dispose(); current.dispose()
+  })
+
+  it('healthy confirmation cannot erase a newer cross-tab failure with the same reason and clock tick', () => {
+    const local = memoryStorage()
+    const first = store({ localStorage: local }); const second = store({ localStorage: local })
+    first.block(key, 'runtime')
+    first.retry(key)
+    const attempt = first.begin(key)!
+    const original = first.getAutomaticBlock(key)!
+    second.block(key, 'runtime')
+    const newer = second.getBlock(key)!
+    attempt.confirmHealthy()
+    expect(newer.at).toBeGreaterThan(original.at)
+    expect(first.getBlock(key)).toEqual(newer)
+    expect(second.getBlock(key)).toEqual(newer)
+    attempt.dispose()
+  })
+
+  it('healthy confirmation respects global pause without changing its stored state', () => {
+    const recovery = store()
+    recovery.block(key, 'runtime')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    recovery.setSafeMode(true)
+    attempt.confirmHealthy()
+    expect(recovery.isSafeMode()).toBe(true)
+    expect(recovery.getAutomaticBlock(key)?.reason).toBe('runtime')
+    recovery.setSafeMode(false)
+    attempt.confirmHealthy()
+    expect(recovery.getAutomaticBlock(key)).toBeNull()
+  })
+
+  it('a confirmed healthy retry remains protected against a later crash or render failure', () => {
+    const local = memoryStorage(); const session = memoryStorage()
+    const recovery = store({ localStorage: local, sessionStorage: session })
+    recovery.block(key, 'runtime')
+    recovery.retry(key)
+    const attempt = recovery.begin(key)!
+    attempt.confirmHealthy()
+    attempt.fail('context-lost')
+    expect(recovery.getBlock(key)?.reason).toBe('context-lost')
+    expect(JSON.parse(session.getItem(RECOVERY_ACTIVE_KEY)!).entries).toEqual([])
+    recovery.retry(key)
+    const next = recovery.begin(key)!
+    next.confirmHealthy()
+    recovery.destroy()
+    next.confirmHealthy() // A dead store cannot turn retained markers into safety evidence.
+    const reopened = store({ localStorage: local, sessionStorage: session })
+    expect(reopened.getBlock(key)?.reason).toBe('interrupted')
+    expect(reopened.begin(key)).toBeNull()
+  })
+
   it.each(['stopped', 'runtime'] as const)('continues an accepted %s retry after a global pause in the same player', (reason) => {
     const recovery = store()
     const release = recovery.retainPlaybackSession(key)

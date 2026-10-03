@@ -8,7 +8,7 @@ export type RecoveryReason =
   | 'interrupted'
 
 export type RecoveryBlock = Readonly<{ reason: RecoveryReason; at: number }>
-export type RecoveryLease = { dispose(): void; fail(reason: RecoveryReason): void }
+export type RecoveryLease = { dispose(): void; fail(reason: RecoveryReason): void; confirmHealthy(): void }
 
 /** Recovery contains identifiers and timestamps only, never submitted scene data. */
 export const RECOVERY_HISTORY_KEY = 'mage.scene-recovery.v1'
@@ -504,6 +504,18 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       saveActive()
       let finished = false
       return {
+        confirmHealthy() {
+          if (finished || destroyed) return
+          refreshHistory()
+          const attempt = activeRetries.get(key)
+          const latest = readBlock(key)
+          // Only evidence from the exact live, explicitly retried renderer may
+          // retire its remembered failure. Keep the active crash marker until
+          // cleanup, and never let a late confirmation erase a newer fault.
+          if (safeMode || attempt?.token !== token || !leases.get(key)?.tokens.has(token)
+            || latest?.at !== attempt.block.at || latest.reason !== attempt.block.reason) return
+          clearBlock(key)
+        },
         dispose() {
           if (finished) return
           finished = true

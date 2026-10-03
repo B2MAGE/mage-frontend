@@ -16,6 +16,7 @@ export function installPlaybackRuntime(options: {
   let pendingResize: PlaybackPayloads['resize'] | null = null
   let pendingInput: PlaybackPayloads['input'] | null = null
   let pendingSynthetic: PlaybackPayloads['synthetic'] | null = null
+  let pendingAudioResponse: PlaybackPayloads['audio-response'] | null = null
   let playing = true
   let zoom = 1
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
@@ -32,7 +33,7 @@ export function installPlaybackRuntime(options: {
     target.removeEventListener('pagehide', dispose)
     loadAbort?.abort(); loadAbort = null
     try { engine?.dispose() } catch { /* Continue closing the private channel. */ }
-    engine = null; pendingInput = pendingResize = pendingSynthetic = null
+    engine = null; pendingInput = pendingResize = pendingSynthetic = pendingAudioResponse = null
     port?.close(); port = null
     display('Renderer stopped.')
   }
@@ -55,7 +56,7 @@ export function installPlaybackRuntime(options: {
       activeCanvas = replacement
     }
     generation = message.generation
-    pendingInput = pendingResize = pendingSynthetic = null
+    pendingInput = pendingResize = pendingSynthetic = pendingAudioResponse = null
     playing = true; zoom = 1; frames = 0; lastProgress = -Infinity
     const abort = new AbortController()
     loadAbort = abort
@@ -76,6 +77,7 @@ export function installPlaybackRuntime(options: {
       if (pendingResize) engine.resize(pendingResize)
       if (pendingInput) engine.input(pendingInput)
       if (pendingSynthetic) engine.synthetic(pendingSynthetic)
+      if (pendingAudioResponse) engine.audioResponse(pendingAudioResponse)
       engine.zoom(zoom)
       engine.playback(playing)
       options.statusElement.hidden = true
@@ -117,6 +119,8 @@ export function installPlaybackRuntime(options: {
         case 'resize': pendingResize = message.payload; engine?.resize(message.payload); break
         case 'input': pendingInput = message.payload; engine?.input(message.payload); break
         case 'synthetic': pendingSynthetic = message.payload; engine?.synthetic(message.payload); break
+        case 'audio-response': pendingAudioResponse = message.payload; engine?.audioResponse(message.payload); break
+        case 'capabilities': if (engine) send('capabilities-result', message.requestId, engine.capabilities()); break
         case 'playback': playing = message.payload.playing; engine?.playback(playing); break
         case 'zoom': zoom = message.payload.factor; engine?.zoom(zoom); break
         case 'capture':

@@ -71,7 +71,7 @@ function passRow(label: string) {
 }
 
 function draftScene() {
-  expect(screen.queryByTestId('effect-preview')).not.toBeInTheDocument()
+  expect(screen.getByTestId('effect-preview')).toBeInTheDocument()
   const currentSection = document.querySelector('[aria-current="step"]')?.getAttribute('aria-label') ?? 'Details'
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
   const open = screen.queryByRole('button', { name: 'Show Raw JSON' })

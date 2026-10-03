@@ -31,7 +31,7 @@ vi.mock('@modules/player', async importOriginal => {
 
 afterEach(() => { vi.restoreAllMocks(); window.localStorage.clear() })
 function draftScene() {
-  expect(screen.queryByTestId('music-preview')).not.toBeInTheDocument()
+  expect(screen.getByTestId('music-preview')).toBeInTheDocument()
   const currentSection = document.querySelector('[aria-current="step"]')?.getAttribute('aria-label') ?? 'Details'
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
   const open = screen.queryByRole('button', { name: 'Show Raw JSON' })

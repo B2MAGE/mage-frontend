@@ -5,6 +5,21 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('accepts bounded response settings and rejects code, duplicate targets, and arbitrary child capabilities', () => {
+    const mapping = { target: 'size', source: 'bass-hit', amount: 1, attack: 0, release: 0.2 }
+    const payload = { mode: 'mapped-v1', config: { version: 1, sensitivity: 1, mappings: [mapping] } }
+    const message = { ...playbackMessage('audio-response', session, 1, 1, { mode: 'legacy', config: null }), payload }
+    expect(isPlaybackMessage(message, ['audio-response'])).toBe(true)
+    for (const config of [{ ...payload.config, mappings: [mapping, mapping] },
+      { ...payload.config, sensitivity: 100 }, { ...payload.config, shader: 'sphere(1);' },
+      { ...payload.config, mappings: [{ ...mapping, amount: Infinity }] }]) {
+      expect(isPlaybackMessage({ ...message, payload: { ...payload, config } }, ['audio-response'])).toBe(false)
+    }
+    const response = playbackMessage('capabilities-result', session, 1, 1, { supportedTargets: ['size'] })
+    expect(isPlaybackMessage(response, ['capabilities-result'])).toBe(true)
+    expect(isPlaybackMessage({ ...response, payload: { supportedTargets: ['size', 'size'] } }, ['capabilities-result'])).toBe(false)
+    expect(isPlaybackMessage({ ...response, payload: { supportedTargets: ['https://example.test'] } }, ['capabilities-result'])).toBe(false)
+  })
   it('accepts versioned numeric input and rejects extra authority', () => {
     const message = playbackMessage('input', session, 1, 2, input)
     expect(isPlaybackMessage(message, ['input'])).toBe(true)

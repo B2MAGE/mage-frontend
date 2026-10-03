@@ -1,4 +1,5 @@
 import type { InputState, MAGEEngineAPI, MAGEPreset } from '@notrac/mage'
+import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
 import { boundCaptureSize, getRenderBudget, type RenderProfile } from '../modules/player/policy/renderBudget'
 import { SCENE_POLICY, validateSceneForPlayback } from '../modules/player/policy/sceneValidation'
 import { resolveSceneForPlayback } from '../modules/player/templates/resolveScene'
@@ -13,6 +14,8 @@ export type PlaybackEngine = {
   input: (value: PlaybackPayloads['input']) => void
   playback: (playing: boolean) => void
   synthetic: (value: PlaybackPayloads['synthetic']) => void
+  audioResponse: (value: PlaybackPayloads['audio-response']) => void
+  capabilities: () => PlaybackPayloads['capabilities-result']
   zoom: (factor: number) => void
   capture: (value: CaptureRequest) => Promise<PlaybackPayloads['captured']>
 }
@@ -51,17 +54,26 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   const state = resolved.state as Record<string, unknown> | undefined
   const speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
   const initialTime = typeof state?.time === 'number' ? state.time : 0
+  let appliedResponseMode = normalizeAudioResponseMode(resolved.audioResponse)
+  let appliedResponseConfig = appliedResponseMode === 'mapped-v1'
+    ? JSON.stringify(normalizeAudioResponseConfig(resolved.audioResponseConfig).config) : null
   let playing = true
+  function onContextLost() {
+    if (disposed) return
+    try { onError() } finally { dispose() }
+  }
   function dispose() {
     if (disposed) return
     disposed = true
     signal.removeEventListener('abort', dispose)
+    canvas.removeEventListener('webglcontextlost', onContextLost)
     orbit?.dispose(); deformation?.dispose(); orbit = deformation = null
     try { unsubscribe() } catch { /* Continue releasing graphics after listener cleanup. */ }
     try { engine.dispose() } catch { /* Removing the iframe is the final cleanup boundary. */ }
     rejectStartup(new Error('Rendering stopped.'))
   }
   signal.addEventListener('abort', dispose, { once: true })
+  canvas.addEventListener('webglcontextlost', onContextLost)
   try {
     await new Promise<void>((resolve, reject) => {
       rejectStartup = reject
@@ -123,6 +135,21 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
           clientY: rect.top + (1 - value.pointer.y) * rect.height / 2 })
       },
       synthetic(value) { if (!disposed) engine.setSyntheticPreview(value.enabled, value.seed, value.tempoScale) },
+      audioResponse(value) {
+        if (disposed) return
+        const modeChanged = value.mode !== appliedResponseMode
+        const config = value.mode === 'mapped-v1' ? normalizeAudioResponseConfig(value.config).config : null
+        const configKey = config ? JSON.stringify(config) : null
+        // Selecting a mode resets the engine's config and analysis sessions.
+        // Apply it first, and preserve those sessions during same-mode edits.
+        if (modeChanged) engine.setAudioResponseMode(value.mode)
+        if (value.mode === 'mapped-v1' && (modeChanged || configKey !== appliedResponseConfig)) {
+          engine.setAudioResponseConfig(config)
+        }
+        appliedResponseMode = value.mode
+        appliedResponseConfig = configKey
+      },
+      capabilities() { return { supportedTargets: engine.getAudioResponseCapabilities().supportedTargets } },
       zoom(factor) { if (!disposed) orbit?.zoom(factor) },
       async capture(value) {
         if (disposed || capturePending) throw new Error('Capture is unavailable.')
