@@ -11,7 +11,12 @@
     "lint": "eslint .",
     "postinstall": "patch-package --error-on-fail",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prerenderer:build": "patch-package --error-on-fail",
+    "renderer:build": "tsc -b && node scripts/build-isolated-renderer.mjs",
+    "renderer:serve": "node scripts/serve-isolated-renderer.mjs",
+    "renderer:verify": "node scripts/verify-isolated-renderer.mjs",
+    "renderer:test": "node --test deployment/isolated-renderer/hosting.test.mjs"
   },
   "dependencies": {
     "@notrac/mage": "1.0.3",

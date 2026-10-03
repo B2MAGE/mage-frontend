@@ -1,0 +1,69 @@
+import { build } from 'vite'
+import { readFile, writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
+import { createHostingManifest, parseParentOrigins, renderDocument } from '../deployment/isolated-renderer/hosting-policy.mjs'
+import { createCloudFormationTemplate } from '../deployment/isolated-renderer/cloudformation-template.mjs'
+
+const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const outDir = resolve(root, 'dist-isolated-renderer')
+const production = process.argv.includes('--production')
+const parentOrigins = parseParentOrigins(process.env.MAGE_RENDERER_PARENT_ORIGINS, production)
+const sourcePrefix = `${root.replaceAll('\\', '/')}/src/`
+const rootPrefix = `${root.replaceAll('\\', '/')}/`
+const allowedSharedFiles = new Set([
+  `${sourcePrefix}modules/player/isolation/protocol.ts`,
+  `${sourcePrefix}modules/player/policy/renderBudget.ts`,
+  `${rootPrefix}contracts/scenes/scene-limits.v1.json`,
+])
+let bundledModules = []
+
+await build({
+  root,
+  configFile: false,
+  envDir: false,
+  publicDir: false,
+  envPrefix: '__MAGE_RENDERER_NO_CLIENT_ENV__',
+  define: {
+    __MAGE_RENDERER_PARENT_ORIGINS__: JSON.stringify(parentOrigins),
+    'import.meta.env': JSON.stringify({ MODE: 'production', PROD: true, DEV: false, BASE_URL: '/' }),
+  },
+  plugins: [{
+    name: 'isolated-renderer-boundary',
+    generateBundle(_options, bundle) {
+      const outputs = Object.values(bundle)
+      if (outputs.length !== 1 || outputs[0].type !== 'chunk' || outputs[0].imports.length || outputs[0].dynamicImports.length) {
+        throw new Error('Renderer must be exactly one self-contained script with no external or dynamic imports.')
+      }
+      bundledModules = Object.keys(outputs[0].modules).map((id) => id.replaceAll('\\', '/'))
+      for (const id of bundledModules) {
+        const localId = id.replace(/^\0/, '').split('?')[0]
+        const physicalModule = /^[A-Za-z]:\//.test(localId) || localId.startsWith('/')
+        if (physicalModule && !localId.startsWith(`${rootPrefix}node_modules/`) && !localId.startsWith(`${sourcePrefix}isolated-renderer/`) && !allowedSharedFiles.has(localId)) {
+          throw new Error(`Main application code cannot be bundled in the renderer: ${localId}`)
+        }
+      }
+    },
+  }],
+  build: {
+    outDir,
+    emptyOutDir: true,
+    target: 'es2022',
+    sourcemap: false,
+    cssCodeSplit: false,
+    lib: { entry: resolve(root, 'src/isolated-renderer/main.ts'), name: 'MageIsolatedRenderer', formats: ['iife'] },
+    rollupOptions: { output: { entryFileNames: 'assets/renderer-[hash].js', inlineDynamicImports: true } },
+  },
+})
+
+const { readdir } = await import('node:fs/promises')
+const assets = await readdir(resolve(outDir, 'assets'))
+if (assets.length !== 1) throw new Error('Renderer build contains unexpected assets.')
+const bundlePath = `assets/${assets[0]}`
+const bundle = await readFile(resolve(outDir, bundlePath))
+const manifest = createHostingManifest({ bundlePath, bundle, parentOrigins, production })
+await writeFile(resolve(outDir, 'index.html'), renderDocument(manifest))
+await writeFile(resolve(outDir, 'hosting-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+await writeFile(resolve(outDir, 'build-audit.json'), `${JSON.stringify({ sourceModules: bundledModules.filter((id) => id.startsWith(sourcePrefix)).map((id) => id.slice(root.length + 1)) }, null, 2)}\n`)
+if (production) await writeFile(resolve(outDir, 'cloudformation.json'), `${JSON.stringify(createCloudFormationTemplate(manifest), null, 2)}\n`)
+console.log(`Isolated renderer built for ${parentOrigins.join(', ')}. Hosting files: ${outDir}`)
