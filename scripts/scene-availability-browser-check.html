@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <title>MAGE scene availability browser check</title>
+    <style>
+      body { margin: 0; padding: 28px; color: #ecf1ff; background: #0d111b; font: 15px/1.6 system-ui, sans-serif; }
+      main { max-width: 960px; margin: auto; }
+      h1 { margin-top: 0; font-size: 28px; }
+      p { max-width: 840px; color: #bbc5d9; }
+      button { padding: 10px 16px; border: 1px solid #68728a; border-radius: 7px; background: #ddd5ff; color: #111421; font: inherit; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: default; }
+      .actions { display: flex; gap: 12px; align-items: center; margin: 18px 0; }
+      #preview { --text: #ecf1ff; --text-muted: #bbc5d9; --border: #333b4d; --surface: #111722; --accent: #9c85ff; }
+      #preview .mage-player__viewport { min-height: 320px; max-height: 440px; }
+      #result { min-height: 130px; padding: 18px; border: 1px solid #39445d; border-radius: 8px; background: #151d2c; white-space: pre-wrap; }
+      #result[data-result="pass"] { border-color: #56c2a2; }
+      #result[data-result="fail"] { border-color: #ff8383; }
+      #requests { font-size: 12px; white-space: pre-wrap; color: #aebbd4; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Scene availability browser check</h1>
+      <p>This page runs the real player and engine with the bundled Ripple Rings template. Only this page’s availability replies are simulated; the running backend and release approval are unchanged.</p>
+      <p>Wait for the scene, then disable the fixture. Leave this page visible and focused. The next regular poll must stop the renderer and remove its canvas within 30 seconds. No immediate invalidation is sent by the button.</p>
+      <div class="actions">
+        <button id="disable" disabled>Disable fixture scene</button>
+        <button id="again">Reload check</button>
+      </div>
+      <pre id="result" role="status" aria-live="polite">Starting the fixture player…</pre>
+      <div id="preview"></div>
+      <details><summary>Fixture request log</summary><pre id="requests"></pre></details>
+    </main>
+    <script type="module" src="./scene-availability-browser-check.tsx"></script>
+  </body>
+</html>
