@@ -41,9 +41,9 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
   let hostOptions!: Parameters<typeof createIsolatedPlaybackHost>[0]
   const createHost = vi.fn<typeof createIsolatedPlaybackHost>(options => { hostOptions = options; return host })
   const createAudio = vi.fn(() => audio)
-  const onFailure = vi.fn(), onStatus = vi.fn()
+  const onFailure = vi.fn(), onStatus = vi.fn(), onHealthy = vi.fn()
   let time = 0
-  const player = createIsolatedPlayer({ container, rendererUrl: 'http://localhost:5181/', onFailure, onStatus, wheelZoom, pointerInteractions }, {
+  const player = createIsolatedPlayer({ container, rendererUrl: 'http://localhost:5181/', onFailure, onStatus, onHealthy, wheelZoom, pointerInteractions }, {
     createHost, createAudio, now: () => time,
   })
   players.push(player)
@@ -53,7 +53,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
     container.dispatchEvent(event)
   }
   return {
-    player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, pointer,
+    player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, onHealthy, pointer,
     get hostOptions() { return hostOptions },
     async start() { boot.resolve(); await player.ready; await player.loadScene(scene) },
     async tick(ms = 34) { time += ms; await vi.advanceTimersByTimeAsync(ms) },
@@ -78,6 +78,30 @@ afterEach(() => {
 })
 
 describe('isolated player parent integration', () => {
+  it.each(['dispose', 'failure'] as const)('forwards healthy playback only while the current scene is loaded and playing, ending on %s', async ending => {
+    const f = fixture()
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).not.toHaveBeenCalled()
+    await f.start()
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledOnce()
+    f.player.pause()
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledOnce()
+    await f.player.play()
+    const replacement = deferred<void>()
+    f.host.loadScene.mockImplementationOnce(() => replacement.promise)
+    const loading = f.player.loadScene(scene)
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledOnce()
+    replacement.resolve(); await loading
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledTimes(2)
+    if (ending === 'dispose') f.player.dispose()
+    else f.hostOptions.onFailure?.('runtime')
+    f.hostOptions.onHealthy?.()
+    expect(f.onHealthy).toHaveBeenCalledTimes(2)
+  })
   it('updates response settings without scene or audio reload and reports actual shader inputs', async () => {
     const f = fixture()
     expect(f.player.getAudioResponseCapabilities()).toBeNull()

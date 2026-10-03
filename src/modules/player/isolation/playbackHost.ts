@@ -10,6 +10,7 @@ export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 
 export function createIsolatedPlaybackHost(options: {
   container: HTMLElement; rendererUrl: string; onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void; startupTimeoutMs?: number; progressTimeoutMs?: number
+  onHealthy?: () => void
   decodeCapture?: typeof createImageBitmap
   useInlineFrameStyles?: boolean
 }) {
@@ -26,6 +27,7 @@ export function createIsolatedPlaybackHost(options: {
   const session = crypto.randomUUID()
   let generation = 0, sequence = 0, lastFrame = -1, lastProgress = performance.now()
   let previousObservation = performance.now(), observedSilence = 0
+  let healthyProgressAt: number | null = null, healthyProgressMs = 0
   let pendingLoad: Pending<void> | null = null
   let pendingCapabilities: Pending<PlaybackPayloads['capabilities-result']> | null = null
   let queuedAudioResponse: PlaybackPayloads['audio-response'] | null = null
@@ -66,7 +68,23 @@ export function createIsolatedPlaybackHost(options: {
   }
   function onFrameError() { dispose('runtime') }
   function onPageHide() { dispose() }
-  function resetObservation() { previousObservation = performance.now(); observedSilence = 0; lastProgress = previousObservation }
+  function resetHealthyProgress() { healthyProgressAt = null; healthyProgressMs = 0 }
+  function resetObservation() {
+    previousObservation = performance.now(); observedSilence = 0; lastProgress = previousObservation
+    resetHealthyProgress()
+  }
+  function observeHealthyProgress(now: number) {
+    if (!loaded || !playing || document.visibilityState !== 'visible') { resetHealthyProgress(); return }
+    const delta = healthyProgressAt === null ? 0 : now - healthyProgressAt
+    if (delta < 0 || delta > 2000) resetHealthyProgress()
+    // Only time between fresh, increasing frame reports counts. Loading, a
+    // lone frame, silent waits and suspended browser time never establish health.
+    else healthyProgressMs += delta
+    healthyProgressAt = now
+    if (healthyProgressMs < 10000) return
+    healthyProgressMs = 0
+    try { options.onHealthy?.() } catch { /* Observers cannot interrupt rendering or its watchdog. */ }
+  }
   function send<T extends PlaybackType>(type: T, payload: PlaybackPayloads[T]) {
     if (closed || !available || !port) throw new Error('Isolated player is unavailable.')
     const message = playbackMessage(type, session, generation, ++sequence, payload)
@@ -96,7 +114,8 @@ export function createIsolatedPlaybackHost(options: {
     }
     if (message.type === 'progress') {
       if (message.requestId !== 0 || message.payload.frames <= lastFrame) return
-      lastFrame = message.payload.frames; lastProgress = performance.now(); observedSilence = 0; return
+      lastFrame = message.payload.frames; lastProgress = performance.now(); observedSilence = 0
+      observeHealthyProgress(lastProgress); return
     }
     if (message.type === 'capabilities-result') {
       if (!pendingCapabilities || pendingCapabilities.id !== message.requestId) return
@@ -148,7 +167,7 @@ export function createIsolatedPlaybackHost(options: {
     const now = performance.now(), delta = now - previousObservation
     previousObservation = now
     if (closed || !loaded || !playing || document.visibilityState === 'hidden' || delta < 0 || delta > 2000) {
-      observedSilence = 0; return
+      observedSilence = 0; resetHealthyProgress(); return
     }
     if (now - lastProgress < 500) observedSilence = 0
     else observedSilence += delta
@@ -165,6 +184,7 @@ export function createIsolatedPlaybackHost(options: {
       // Increment before waiting so only the latest load can cross the bootstrap.
       const next = ++generation
       rejectWork('Scene changed.'); loaded = false; lastFrame = -1; queuedInput = null; queuedAudioResponse = null
+      resetHealthyProgress()
       await ready
       if (closed || next !== generation) throw new Error('Scene changed.')
       return new Promise<void>((resolve, reject) => {

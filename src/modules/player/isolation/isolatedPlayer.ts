@@ -16,6 +16,7 @@ export type IsolatedPlayerOptions = {
   useInlineFrameStyles?: boolean
   onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void
+  onHealthy?: () => void
 }
 
 export type IsolatedPlayerDependencies = {
@@ -175,6 +176,10 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         try { options.onStatus?.(status) } catch { /* Observers cannot interfere with the bridge. */ }
       },
       onFailure: fail,
+      onHealthy() {
+        if (disposed || failed || !available || !sceneLoaded || !playing) return
+        try { options.onHealthy?.() } catch { /* Recovery observers cannot disrupt playback. */ }
+      },
     })
   } catch (error) {
     options.container.style.userSelect = previousUserSelect

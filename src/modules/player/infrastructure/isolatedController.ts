@@ -213,6 +213,13 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       wheelZoom: options.mouseWheelZoom === true,
       pointerInteractions: options.mouseInteractions === true,
       onFailure: fail,
+      onHealthy() {
+        if (disposed || !loaded || suspended || denied || playback !== 'playing') return
+        if (!sceneAvailabilityStore.isAllowed(target) || sceneRecovery.isSafeMode()) return
+        // Only this active retry can retire its original warning. The lease
+        // keeps its unfinished-render marker and rejects a newer failure.
+        lease?.confirmHealthy()
+      },
       onStatus: status => { if (status === 'disposed' && !disposed) dispose() },
     })
     await bridge.ready
