@@ -4,8 +4,9 @@ import { MagePlayer } from './MagePlayer'
 import { createMagePlayer, type MagePlayerController } from './infrastructure/engineAdapter'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { buildMagePlayerController, buildMagePlayerSceneBlob, buildMagePlayerTrack } from './test-fixtures'
+import type { SceneAvailabilityTarget } from './availability/sceneAvailability'
 
-type Target = number | 'custom'
+type Target = SceneAvailabilityTarget
 type Permission = { allowed: boolean; code: string; message: string; checkedAt: number | null }
 const permissions = vi.hoisted(() => {
   const states = new Map<Target, Permission>()
@@ -109,11 +110,11 @@ describe('MagePlayer live availability', () => {
 
   it('requests freshly restored source only after permission allows the saved scene', async () => {
     const onAvailabilityRestored = vi.fn(async () => undefined)
-    permission(903, disabled)
+    permission('status:903', disabled)
     const view = render(<MagePlayer sceneBlob={null} sceneKey={903} onAvailabilityRestored={onAvailabilityRestored} />)
     expect(onAvailabilityRestored).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument()
-    permission(903, allowed)
+    permission('status:903', allowed)
     await waitFor(() => expect(onAvailabilityRestored).toHaveBeenCalledOnce())
     expect(screen.getByText('Loading this scene…')).toBeInTheDocument()
     expect(createMagePlayer).not.toHaveBeenCalled()
@@ -121,6 +122,7 @@ describe('MagePlayer live availability', () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
     const restored = buildMagePlayerSceneBlob({ visualizer: { shader: 'repaired' } })
+    permission(903, allowed)
     view.rerender(<MagePlayer sceneBlob={restored} sceneKey={903} onAvailabilityRestored={onAvailabilityRestored} />)
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(restored, { sceneKey: 903 }))
     expect(onAvailabilityRestored).toHaveBeenCalledOnce()
@@ -128,7 +130,7 @@ describe('MagePlayer live availability', () => {
 
   it('catches a source refresh rejection and offers a deliberate retry without rendering defaults', async () => {
     const onAvailabilityRestored = vi.fn().mockRejectedValueOnce(new Error('Source download failed')).mockResolvedValueOnce(undefined)
-    permission(904, allowed)
+    permission('status:904', allowed)
     render(<MagePlayer sceneBlob={null} sceneKey={904} onAvailabilityRestored={onAvailabilityRestored} />)
     expect(await screen.findByText('This scene could not be loaded. You can check again.')).toBeInTheDocument()
     expect(createMagePlayer).not.toHaveBeenCalled()
@@ -142,17 +144,68 @@ describe('MagePlayer live availability', () => {
   it('ignores a source refresh rejection after moving to a different saved scene', async () => {
     const oldSource = deferred<void>()
     const oldRestore = vi.fn(() => oldSource.promise)
-    permission(905, allowed)
+    permission('status:905', allowed)
     const view = render(<MagePlayer sceneBlob={null} sceneKey={905} onAvailabilityRestored={oldRestore} />)
     await waitFor(() => expect(oldRestore).toHaveBeenCalledOnce())
     const nextRestore = vi.fn(async () => undefined)
-    permission(906, allowed)
+    permission('status:906', allowed)
     view.rerender(<MagePlayer sceneBlob={null} sceneKey={906} onAvailabilityRestored={nextRestore} />)
     await waitFor(() => expect(nextRestore).toHaveBeenCalledOnce())
     await act(async () => oldSource.reject(new Error('Stale source failure')))
     expect(screen.getByText('Loading this scene…')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument()
     expect(createMagePlayer).not.toHaveBeenCalled()
+  })
+
+  it('restores an initially unavailable template with custom rendering disabled after checking fresh source', async () => {
+    const onAvailabilityRestored = vi.fn(async () => undefined)
+    const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+    permission('custom', globalDisabled)
+    permission(917, globalDisabled)
+    permission('status:917', disabled)
+    const view = render(<MagePlayer sceneBlob={null} sceneKey={917} onAvailabilityRestored={onAvailabilityRestored} />)
+    expect(onAvailabilityRestored).not.toHaveBeenCalled()
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    permission('status:917', allowed)
+    await waitFor(() => expect(onAvailabilityRestored).toHaveBeenCalledOnce())
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
+    permission('template:917', allowed)
+    view.rerender(<MagePlayer sceneBlob={template} sceneKey={917} onAvailabilityRestored={onAvailabilityRestored} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(template, { sceneKey: 917 }))
+    expect(createMagePlayer).toHaveBeenCalledExactlyOnceWith(expect.any(HTMLCanvasElement), expect.objectContaining({ initialSceneBlob: template, sceneKey: 917 }))
+  })
+
+  it('does not render an unexpected custom response obtained through metadata-only restoration', async () => {
+    const onAvailabilityRestored = vi.fn(async () => undefined)
+    permission('status:918', allowed)
+    permission(918, globalDisabled)
+    const view = render(<MagePlayer sceneBlob={null} sceneKey={918} onAvailabilityRestored={onAvailabilityRestored} />)
+    await waitFor(() => expect(onAvailabilityRestored).toHaveBeenCalledOnce())
+    view.rerender(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} sceneKey={918} onAvailabilityRestored={onAvailabilityRestored} />)
+    expect(screen.getByText('Scene playback is temporarily disabled.')).toBeInTheDocument()
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(view.container.querySelector('canvas')).toBeNull()
+  })
+
+  it('ends a draft template renderer and its capture when the editor switches to custom mode', async () => {
+    const pending = deferred<string>()
+    const controller = buildMagePlayerController({ captureFramePreview: vi.fn(() => pending.promise) })
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
+    const onCapture = vi.fn()
+    const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+    permission('draft-template', allowed)
+    permission('custom', globalDisabled)
+    const view = render(<MagePlayer sceneBlob={template} onCaptureFramePreviewChange={onCapture} />)
+    await waitFor(() => expect(onCapture.mock.lastCall?.[0]).toEqual(expect.any(Function)))
+    const capture = (onCapture.mock.lastCall![0] as () => Promise<string | null>)()
+    view.rerender(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} onCaptureFramePreviewChange={onCapture} />)
+    expect(controller.dispose).toHaveBeenCalledOnce()
+    expect(onCapture).toHaveBeenLastCalledWith(null)
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+    pending.resolve('data:image/png;base64,old-template')
+    await expect(capture).resolves.toBeNull()
   })
 
   it('disposes running rendering, withdraws capture access, and restores the current editor and playlist props', async () => {

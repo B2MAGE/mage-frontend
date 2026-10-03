@@ -584,7 +584,9 @@ describe('createMagePlayer', () => {
 
   it('loads every registered template through the owned-source resolver', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
-    const player = await createMagePlayer(document.createElement('canvas'))
+    const player = await createMagePlayer(document.createElement('canvas'), {
+      initialSceneBlob: { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 },
+    })
     for (const template of listSceneTemplates()) {
       player.loadSceneBlob({ schemaVersion: 1, kind: 'template', templateId: template.templateId, templateVersion: template.templateVersion })
       expect(engineMocks.loadPreset).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -599,8 +601,8 @@ describe('createMagePlayer', () => {
 
   it('rejects mixed template/source before compilation or disturbing a loaded scene', async () => {
     const { createMagePlayer } = await import('./engineAdapter')
-    const player = await createMagePlayer(document.createElement('canvas'))
     const valid = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+    const player = await createMagePlayer(document.createElement('canvas'), { initialSceneBlob: valid })
     player.loadSceneBlob(valid)
     engineMocks.loadPreset.mockClear()
     engineMocks.unloadAudio.mockClear()

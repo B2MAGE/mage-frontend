@@ -24,6 +24,7 @@ vi.mock('../recovery/renderRecoveryMonitor', () => ({
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 const source = { visualizer: { shader: 'sphere(1);' } }
+const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((done) => { resolve = done })
@@ -98,6 +99,92 @@ describe('engine availability boundary with the real polling store', () => {
     expect(engine.initMAGE).toHaveBeenCalledTimes(1)
     expect(engine.loadPreset).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/api/rendering-status', '/api/scene-availability?ids=47'])
+  })
+
+  it('plays, resets, and captures a validated unsaved template with custom rendering disabled', async () => {
+    enabled = false
+    const player = await create({ initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    expect(engine.loadPreset.mock.lastCall?.[0]).toHaveProperty('visualizer.shader')
+    player.resetPlayback()
+    player.setPlaybackState('playing')
+    await expect(player.captureFramePreview!()).resolves.toBe('data:image/png;base64,frame')
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(engine.loadPreset).toHaveBeenCalledTimes(2)
+  })
+
+  it('verifies saved template status while custom rendering is disabled and stops on scene disable', async () => {
+    enabled = false
+    const player = await create({ sceneKey: 47, initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/api/scene-availability?ids=47'])
+    expect(recovery.begin).toHaveBeenCalledWith('recovery:47')
+    disabledIds.add(47)
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(engine.dispose).toHaveBeenCalledOnce()
+    expect(recovery.revokeRetry).toHaveBeenCalledWith('recovery:47')
+    expect(() => player.resetPlayback()).toThrow()
+    expect(() => player.setPlaybackState('playing')).toThrow()
+  })
+
+  it.each(['disabled', 'network'])('does not allocate a saved template engine when its status is %s', async reason => {
+    enabled = false
+    if (reason === 'disabled') disabledIds.add(47)
+    else fetchMock.mockRejectedValue(new Error('Offline'))
+    await expect(create({ sceneKey: 47, initialSceneBlob: template })).rejects.toThrow()
+    expect(engine.initMAGE).not.toHaveBeenCalled()
+    expect(recovery.begin).not.toHaveBeenCalled()
+  })
+
+  it('does not inherit template permission through mode changes, raw matching source, or recovery identity', async () => {
+    enabled = false
+    const player = await create({ initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    const resolvedSource = engine.loadPreset.mock.lastCall![0]
+    for (const candidate of [source, resolvedSource, { schemaVersion: 1, kind: 'custom', scene: source }, { ...template, source: 'sphere(1);' }]) {
+      expect(() => player.loadSceneBlob(candidate, { recoverySceneBlob: template })).toThrow()
+      expect(() => player.updateRecoveryIdentity!(candidate, { recoverySceneBlob: template })).toThrow()
+    }
+    expect(engine.loadPreset).toHaveBeenCalledOnce()
+    await expect(create({ initialSceneBlob: resolvedSource })).rejects.toThrow()
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
+  })
+
+  it('revalidates source changed while saved template authorization is in flight', async () => {
+    enabled = false
+    const pending = deferred<Response>()
+    fetchMock.mockReturnValueOnce(pending.promise)
+    const changing: Record<string, unknown> = { ...template }
+    const creation = create({ sceneKey: 47, initialSceneBlob: changing })
+    await vi.advanceTimersByTimeAsync(0)
+    Object.assign(changing, { visualizer: { shader: 'sphere(1);' } })
+    pending.resolve(json([{ sceneId: 47, available: true, code: 'AVAILABLE' }]))
+    const player = await creation
+    expect(() => player.loadSceneBlob(changing)).toThrow()
+    expect(engine.loadPreset).not.toHaveBeenCalled()
+  })
+
+  it('does not use a metadata-only status permission to allocate an empty custom controller', async () => {
+    enabled = false
+    expect((await store.check('status:47')).allowed).toBe(true)
+    await expect(create({ sceneKey: 47 })).rejects.toThrow()
+    await expect(create({ sceneKey: 'status:47' })).rejects.toThrow()
+    expect(engine.initMAGE).not.toHaveBeenCalled()
+  })
+
+  it('rechecks saved template status before capture and discards revoked in-flight results', async () => {
+    enabled = false
+    const player = await create({ sceneKey: 47, initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    const pending = deferred<string>()
+    engine.captureFramePreview.mockReturnValue(pending.promise)
+    const capture = player.captureFramePreview!().catch(() => null)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    store.invalidate(47)
+    pending.resolve('data:image/png;base64,late')
+    await expect(capture).resolves.toBeNull()
+    expect(engine.dispose).toHaveBeenCalledOnce()
   })
 
   it.each(['global', 'scene', 'network'])('does not initialize for a %s denial, even with cached source', async (kind) => {

@@ -30,7 +30,7 @@ import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
 import { PlaybackOptions } from './recovery/PlaybackOptions'
 import { sceneAvailabilityStore } from './availability/sceneAvailability'
-import { availabilityTarget } from './availability/availabilityTarget'
+import { availabilityStatusTarget, availabilityTarget } from './availability/availabilityTarget'
 import { useSceneAvailability } from './availability/useSceneAvailability'
 import { SceneAvailabilityPanel } from './availability/SceneAvailabilityPanel'
 import { validateSceneForPlayback } from './policy/sceneValidation'
@@ -94,7 +94,8 @@ export function MagePlayer(props: MagePlayerProps) {
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
   const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
-  const target = availabilityTarget(props.sceneKey)
+  const target = useMemo(() => props.sceneBlob ? availabilityTarget(props.sceneKey, props.sceneBlob)
+    : availabilityStatusTarget(props.sceneKey), [props.sceneKey, props.sceneBlob])
   const availability = useSceneAvailability(target)
   const requiresAvailability = !!props.sceneBlob || target !== 'custom'
   const [reloadAttempt, setReloadAttempt] = useState(0)
@@ -534,7 +535,7 @@ function MagePlayerRenderer({
         const canvas = canvasRef.current
         if (!canvas || cancelled || playerRef.current !== player
           || latestSceneBlobRef.current !== capturedSource
-          || !sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey))) return null
+          || !sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, capturedSource))) return null
 
         // The engine stretches its source to these dimensions. Read the live
         // viewport at capture time so resizing cannot squash the saved frame.
@@ -548,7 +549,7 @@ function MagePlayerRenderer({
           type: 'image/png',
         })
         return !cancelled && playerRef.current === player && latestSceneBlobRef.current === capturedSource
-          && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey)) ? frame ?? null : null
+          && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, capturedSource)) ? frame ?? null : null
       })
 
       return () => {

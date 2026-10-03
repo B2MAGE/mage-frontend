@@ -342,7 +342,8 @@ export async function createMagePlayer(
   if (options.initialSceneBlob !== undefined) validateSceneForPlayback(options.initialSceneBlob)
   if (options.platformArtwork === 'brand') validateSceneForPlayback(BRAND_SCENE)
   const creationGeneration = pageLifecycleGeneration
-  const target = availabilityTarget(options.sceneKey)
+  const target = availabilityTarget(options.sceneKey, options.initialSceneBlob)
+  const creationSceneKey = options.sceneKey
   const platformArtwork = options.platformArtwork === 'brand' && options.sceneKey === undefined
   let availabilityArmed = false
   let permissionRevoked = false
@@ -843,8 +844,8 @@ export async function createMagePlayer(
     loadSceneBlob(submittedScene, loadOptions = {}) {
       assertUsable()
       assertAvailability()
-      const options = { sceneKey: target === 'custom' ? undefined : target, ...loadOptions }
-      if (availabilityTarget(options.sceneKey) !== target
+      const options = { sceneKey: creationSceneKey, ...loadOptions }
+      if (availabilityTarget(options.sceneKey, submittedScene) !== target
         || (platformArtwork && (submittedScene !== BRAND_SCENE || options.sceneKey !== undefined))) {
         throw new MagePlayerAdapterError('Create a separate player to load this scene.')
       }
@@ -931,8 +932,8 @@ export async function createMagePlayer(
     updateRecoveryIdentity(submittedScene, loadOptions = {}) {
       assertUsable()
       assertAvailability()
-      const options = { sceneKey: target === 'custom' ? undefined : target, ...loadOptions }
-      if (availabilityTarget(options.sceneKey) !== target || platformArtwork) throw new MagePlayerAdapterError('Create a separate player to load this scene.')
+      const options = { sceneKey: creationSceneKey, ...loadOptions }
+      if (availabilityTarget(options.sceneKey, submittedScene) !== target || platformArtwork) throw new MagePlayerAdapterError('Create a separate player to load this scene.')
       const nextScene = resolveSceneForPlayback(validateSceneForPlayback(submittedScene)).engineScene
       const recoverySource = Object.hasOwn(options, 'recoverySceneBlob') ? options.recoverySceneBlob : submittedScene
       const nextKey = sceneRecoveryKey(recoverySource, options.sceneKey)
