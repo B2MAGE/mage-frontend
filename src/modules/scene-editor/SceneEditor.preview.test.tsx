@@ -46,7 +46,7 @@ function previewScene() {
 }
 
 function draftScene() {
-  expect(screen.queryByTestId('scene-preview')).not.toBeInTheDocument()
+  expect(screen.getByTestId('scene-preview')).toBeInTheDocument()
   const currentSection = document.querySelector('[aria-current="step"]')?.getAttribute('aria-label') ?? 'Details'
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
   const open = screen.queryByRole('button', { name: 'Show Raw JSON' })
@@ -154,7 +154,7 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toBeEnabled()
   })
 
-  it.each(['mage-pulse', 'classic-facebook'] as const)('retains temporary custom beat settings across editor sections without playing source in %s', async (theme) => {
+  it.each(['mage-pulse', 'classic-facebook'] as const)('retains temporary custom beat settings across editor sections in the separate preview in %s', async (theme) => {
     storeSceneEditorSession()
     mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
       ? jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] })) : undefined)
@@ -181,12 +181,12 @@ describe('scene editor presets and beat preview', () => {
     if (!(tempoField instanceof HTMLElement)) throw new Error('Missing tempo field')
     const tempo = within(tempoField).getByRole('spinbutton', { name: 'Tempo numeric value' })
     fireEvent.change(tempo, { target: { value: '150' } })
-    expect(screen.queryByTestId('scene-preview')).not.toBeInTheDocument()
+    expect(screen.getByTestId('scene-preview')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     expect(screen.queryByRole('checkbox', { name: 'Simulate beat' })).not.toBeInTheDocument()
     expect(screen.queryByRole('slider', { name: 'Tempo' })).not.toBeInTheDocument()
-    expect(screen.queryByTestId('scene-preview')).not.toBeInTheDocument()
+    expect(screen.getByTestId('scene-preview')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expect(screen.getByRole('checkbox', { name: 'Simulate beat' })).toBeChecked()
     expect(screen.getByRole('slider', { name: 'Tempo' })).toHaveValue('150')

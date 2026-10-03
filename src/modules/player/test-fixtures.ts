@@ -84,33 +84,7 @@ export function buildMagePlayerController(
 
       return audioState
     }),
-    loadSceneBlob: vi.fn((sceneBlob: unknown) => {
-      if (typeof sceneBlob === 'object' && sceneBlob !== null) {
-        const nextSceneBlob = sceneBlob as Record<string, unknown>
-        const audioValue = nextSceneBlob.audio
-        const sourcePath =
-          typeof nextSceneBlob.audioPath === 'string'
-            ? nextSceneBlob.audioPath
-            : typeof audioValue === 'string'
-              ? audioValue
-              : audioValue && typeof audioValue === 'object'
-                ? typeof (audioValue as Record<string, unknown>).path === 'string'
-                  ? ((audioValue as Record<string, unknown>).path as string)
-                  : typeof (audioValue as Record<string, unknown>).url === 'string'
-                    ? ((audioValue as Record<string, unknown>).url as string)
-                    : null
-                : null
-
-        audioState = {
-          currentTime: 0,
-          duration: 0,
-          hasSource: Boolean(sourcePath),
-          isLoaded: false,
-          sourcePath,
-          volume: 1,
-        }
-      }
-    }),
+    loadSceneBlob: vi.fn(),
     resetPlayback: vi.fn(() => {
       audioState = {
         ...audioState,

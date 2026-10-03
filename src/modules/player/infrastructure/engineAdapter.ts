@@ -1,4 +1,7 @@
 import type { MAGEEngineAPI } from '@notrac/mage'
+import { createIsolatedMageController } from './isolatedController'
+import { MagePlayerAdapterError, type MageSceneBlob, type MagePlayerPlaybackState, type MagePlayerAudioState, type MagePlayerController, type MageAudioResponseState, type MagePlayerOptions } from './playerController'
+export * from './playerController'
 import { normalizeAudioResponseMode, normalizeAudioResponseConfig, type AudioResponseConfig, type SceneAudioResponseMode } from '@shared/lib'
 import { attachViewerMouseInteractions, type ViewerMouseEngine } from './viewerMouseInteractions'
 import { resolveSceneForPlayback } from '../templates/resolveScene'
@@ -8,7 +11,7 @@ import { sceneAvailabilityStore } from '../availability/sceneAvailability'
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { BRAND_SCENE } from '../templates/platformBrandScene'
 import { SCENE_POLICY, validateSceneForPlayback } from '../policy/sceneValidation'
-import { boundCaptureSize, getRenderBudget, type RenderBudget, type RenderProfile } from '../policy/renderBudget'
+import { boundCaptureSize, getRenderBudget, type RenderBudget } from '../policy/renderBudget'
 
 const SCENE_BLOB_KEYS = [
   'audio',
@@ -68,86 +71,6 @@ type MageEngineModule = {
       integrated?: boolean
     }
   }) => MageEngineBridge
-}
-
-export type MageSceneBlob = Record<string, unknown>
-
-export type MagePlayerPlaybackState = 'paused' | 'playing'
-
-export type MageEngineDiagnostics = Readonly<{
-  size: number | null
-  pointerDown: number | null
-  currPointerDown: number | null
-  currAudio: number | null
-}>
-
-export type MageAudioResponseCapabilities = ReturnType<MAGEEngineAPI['getAudioResponseCapabilities']>
-export type MageAudioResponseDiagnostics = ReturnType<MAGEEngineAPI['getAudioResponseDiagnostics']>
-export type MageAudioResponseEvent = ReturnType<MAGEEngineAPI['getAudioResponseEvents']>[number]
-export type MageAudioResponseState = {
-  savedMode: SceneAudioResponseMode
-  savedConfig: AudioResponseConfig | null
-  override: AudioResponseConfig | null
-  effectiveMode: SceneAudioResponseMode
-  effectiveConfig: AudioResponseConfig | null
-}
-
-export type MagePlayerAudioState = {
-  currentTime: number
-  duration: number
-  hasSource: boolean
-  isLoaded: boolean
-  sourcePath: string | null
-  volume: number
-}
-
-export type MagePlayerCaptureFrameOptions = {
-  height?: number
-  quality?: number
-  type?: string
-  width?: number
-}
-
-export type MageSceneLoadOptions = {
-  sceneKey?: string | number
-  /** Original saved/editor document before host-side preview defaults. Identity only. */
-  recoverySceneBlob?: MageSceneBlob
-}
-
-export type MagePlayerController = {
-  captureFramePreview?: (
-    options?: MagePlayerCaptureFrameOptions,
-  ) => Promise<string | null>
-  clearAudio: () => MagePlayerAudioState
-  dispose: () => void
-  getAudioState: () => MagePlayerAudioState
-  getAudioResponseState: () => MageAudioResponseState
-  getAudioResponseCapabilities: () => MageAudioResponseCapabilities | null
-  getAudioResponseDiagnostics: () => MageAudioResponseDiagnostics | null
-  getAudioResponseEvents: (afterId?: number) => MageAudioResponseEvent[]
-  getPlaybackState: () => MagePlayerPlaybackState
-  getEngineDiagnostics?: () => MageEngineDiagnostics | null
-  loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
-  loadSceneBlob: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void
-  updateRecoveryIdentity?: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void
-  resetPlayback: () => MagePlayerPlaybackState
-  seekAudio: (time: number) => MagePlayerAudioState
-  setAudioVolume: (volume: number) => MagePlayerAudioState
-  setAudioResponseSettings: (mode: SceneAudioResponseMode | undefined, config?: unknown) => MageAudioResponseState
-  setAudioResponseOverride: (config: unknown | null) => MageAudioResponseState
-  setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
-  setSyntheticPreview: (enabled: boolean, seed?: number, tempoScale?: number) => void
-  stopRendering?: () => void
-}
-
-export class MagePlayerAdapterError extends Error {
-  override cause: unknown
-
-  constructor(message: string, options: { cause?: unknown } = {}) {
-    super(message)
-    this.name = 'MagePlayerAdapterError'
-    this.cause = options.cause
-  }
 }
 
 let mageEngineModulePromise: Promise<MageEngineModule> | null = null
@@ -332,10 +255,26 @@ async function loadMageEngineModule() {
   return mageEngineModulePromise
 }
 
-export async function createMagePlayer(
-  canvas: HTMLCanvasElement,
-  options: { log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean; sceneKey?: string | number; platformArtwork?: 'brand'; renderProfile?: RenderProfile; initialSceneBlob?: unknown } = {},
-): Promise<MagePlayerController> {
+/** Every user scene, including templates, crosses the isolated renderer boundary. */
+export async function createMagePlayer(target: HTMLElement, options: MagePlayerOptions = {}): Promise<MagePlayerController> {
+  if (pageSuspended) throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
+  if (options.platformArtwork === 'brand') {
+    if (!(target instanceof HTMLCanvasElement) || options.sceneKey !== undefined
+      || (options.initialSceneBlob !== undefined && options.initialSceneBlob !== BRAND_SCENE)) {
+      throw new MagePlayerAdapterError('Only the built-in brand artwork may use the local renderer.')
+    }
+    return createBrandPlayer(target, options)
+  }
+  if (options.initialSceneBlob === undefined) throw new MagePlayerAdapterError('Supply a valid initial scene before creating a player.')
+  validateSceneForPlayback(options.initialSceneBlob)
+  return createIsolatedMageController(target, options)
+}
+
+async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerOptions): Promise<MagePlayerController> {
+  if (options.platformArtwork !== 'brand' || options.sceneKey !== undefined
+    || (options.initialSceneBlob !== undefined && options.initialSceneBlob !== BRAND_SCENE)) {
+    throw new MagePlayerAdapterError('Only the built-in brand artwork may use the local renderer.')
+  }
   if (pageSuspended) throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
   // All public surfaces supply their initial source before any graphics allocation.
   // Empty controllers can still be created, but every later load revalidates.

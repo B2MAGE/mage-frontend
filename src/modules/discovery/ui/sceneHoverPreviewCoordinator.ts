@@ -24,7 +24,7 @@ type PreviewRegistrationId = symbol
 type RegisteredPreview = SceneHoverPreviewRegistration & { availabilityTarget: ReturnType<typeof availabilityTarget> }
 type ActivePreview = {
   id: PreviewRegistrationId
-  canvas: HTMLCanvasElement
+  canvas: HTMLDivElement
   controller: MagePlayerController | null
 }
 
@@ -39,7 +39,7 @@ class SceneHoverPreviewCoordinator {
   private pendingId: PreviewRegistrationId | null = null
   private pendingTimer: number | null = null
   private pageSuspended = false
-  private readonly fadingCanvases = new Map<HTMLCanvasElement, number>()
+  private readonly fadingCanvases = new Map<HTMLDivElement, number>()
   private readonly registrations = new Map<PreviewRegistrationId, RegisteredPreview>()
   private readonly availabilitySubscriptions = new Map<PreviewRegistrationId, () => void>()
 
@@ -137,9 +137,8 @@ class SceneHoverPreviewCoordinator {
     if (!registration || !this.canPreview(id)) return
     this.stopActivePreview()
 
-    // Disposing a renderer ends its recovery marker and loses the WebGL context.
-    // A subsequent hover gets a fresh canvas, including while creation is pending.
-    const canvas = document.createElement('canvas')
+    // Each hover owns a separate iframe host. Scene source never runs in the card.
+    const canvas = document.createElement('div')
     canvas.className = 'scene-card__preview-canvas'
     canvas.setAttribute('aria-hidden', 'true')
     canvas.tabIndex = -1
@@ -156,7 +155,7 @@ class SceneHoverPreviewCoordinator {
       }
 
       activation.controller = controller
-      controller.loadSceneBlob(registration.sceneBlob, { sceneKey: registration.sceneId })
+      await controller.loadSceneBlob(registration.sceneBlob, { sceneKey: registration.sceneId })
       if (this.active !== activation || !this.canPreview(id)) {
         if (this.active === activation) this.stopActivePreview(false)
         return

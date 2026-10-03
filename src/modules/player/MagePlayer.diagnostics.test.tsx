@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer } from './MagePlayer'
 import { createMagePlayer, type MageEngineDiagnostics } from './infrastructure/engineAdapter'
@@ -21,6 +21,7 @@ describe('player live engine diagnostics', () => {
     const scene = buildMagePlayerSceneBlob()
     const { rerender, unmount } = render(<MagePlayer sceneBlob={scene} />)
     await waitFor(() => expect(controller.getAudioResponseCapabilities).toHaveBeenCalled())
+    await screen.findByRole('button', { name: 'Pause scene and audio playback' })
     expect(getEngineDiagnostics).not.toHaveBeenCalled()
     interval.mockClear()
     const onChange = vi.fn()

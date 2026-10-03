@@ -61,8 +61,10 @@ describe('scene editor recovery', () => {
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('My unfinished scene')
   })
 
-  it.each(['legacy', 'custom'] as const)('keeps failed saved %s source editable without offering custom playback', async (mode) => {
-    vi.mocked(createMagePlayer).mockClear()
+  it.each(['legacy', 'custom'] as const)('keeps failed saved %s source editable and previews a valid repair separately', async (mode) => {
+    vi.mocked(createMagePlayer).mockReset()
+    const repaired = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(repaired)
     storeSceneEditorSession()
     const raw = { visualizer: { shader: 'sphere(0.7)' } }
     const document = mode === 'custom' ? { schemaVersion: 1, kind: 'custom', scene: raw } : raw
@@ -73,14 +75,13 @@ describe('scene editor recovery', () => {
       ? jsonResponse(buildSceneEditorApiScene({ sceneData: document, tags: [] })) : undefined)
     renderEditScenePage(undefined, 'mage-pulse')
     await screen.findByLabelText(/scene name/i)
-    expect(screen.queryByRole('button', { name: 'Retry scene' })).not.toBeInTheDocument()
-    expect(screen.getByText(/Custom scene preview is not available yet/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeInTheDocument()
     expect(createMagePlayer).not.toHaveBeenCalled()
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /^Scene$/ }))
     expect(screen.getByLabelText('Custom Shader', { exact: true })).toHaveValue(raw.visualizer.shader)
     fireEvent.change(screen.getByLabelText('Custom Shader', { exact: true }), { target: { value: 'sphere(0.6)' } })
-    expect(createMagePlayer).not.toHaveBeenCalled()
+    await waitFor(() => expect(repaired.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({ visualizer: expect.objectContaining({ shader: 'sphere(0.6)' }) }), expect.any(Object)))
     expect(sceneRecovery.getBlock(key)?.reason).toBe('load')
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(screen.getByText('7 · Confirm')).toBeInTheDocument()

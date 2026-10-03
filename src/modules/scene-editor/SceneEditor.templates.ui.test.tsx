@@ -242,11 +242,11 @@ describe('Basic template editor controls', () => {
 })
 
 describe('custom repair and explicit template replacement', () => {
-  it('never mounts custom playback and requires acceptance before replacing source', async () => {
+  it('routes valid custom source to the isolated player and requires acceptance before replacing source', async () => {
     const user = userEvent.setup()
     const source = await customEditor()
-    expect(renderedPlayer).not.toHaveBeenCalled()
-    expect(screen.getByText(/custom scene preview is not available yet/i)).toBeInTheDocument()
+    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
+    expect(previewDocument().visualizer.shader).toBe(source.visualizer.shader)
     expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
     let raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
@@ -264,7 +264,7 @@ describe('custom repair and explicit template replacement', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
-    expect(renderedPlayer).not.toHaveBeenCalled()
+    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.click(screen.getByRole('button', { name: 'Basic' }))
     await user.click(screen.getByRole('button', { name: 'Replace custom scene' }))
@@ -282,7 +282,7 @@ describe('custom repair and explicit template replacement', () => {
     const imported = createTemplateScene('reaction-rings-v1')
     fireEvent.change(raw, { target: { value: JSON.stringify(imported) } })
     expect(screen.getByRole('alertdialog')).toHaveTextContent('The imported template replaces your custom code and settings.')
-    expect(renderedPlayer).not.toHaveBeenCalled()
+    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(raw).toHaveFocus())
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)

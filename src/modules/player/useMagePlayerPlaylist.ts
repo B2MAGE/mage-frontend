@@ -38,6 +38,7 @@ export function useMagePlayerPlaylist({
   })
   const internalPlaylistTracksRef = useRef<MagePlayerPlaylistTrack[]>(internalPlaylistTracks)
   const previousSceneIdentity = useRef<string | null | undefined>(undefined)
+  const previousSceneKey = useRef(sceneKey)
   const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
 
   const tracks = playlistTracks ?? internalPlaylistTracks
@@ -90,6 +91,12 @@ export function useMagePlayerPlaylist({
       return
     }
     if (playbackIdentity !== null && previousSceneIdentity.current === playbackIdentity) return
+    // Local music belongs to this viewing/editor session, not a shader revision.
+    if (previousSceneIdentity.current !== undefined && previousSceneKey.current === sceneKey
+      && sceneBlob && internalPlaylistTracksRef.current.some(track => track.sourceType === 'device')) {
+      previousSceneIdentity.current = playbackIdentity
+      return
+    }
 
     let isCancelled = false
     const sceneTrack = buildScenePlaylistTrack(sceneBlob)
@@ -100,6 +107,7 @@ export function useMagePlayerPlaylist({
         return
       }
       previousSceneIdentity.current = playbackIdentity
+      previousSceneKey.current = sceneKey
 
       setInternalPlaylistTracks((currentTracks) => {
         revokePlaylistTrackSources(currentTracks)
@@ -111,7 +119,7 @@ export function useMagePlayerPlaylist({
     return () => {
       isCancelled = true
     }
-  }, [isPlaylistControlled, playbackIdentity, sceneBlob])
+  }, [isPlaylistControlled, playbackIdentity, sceneBlob, sceneKey])
 
   useEffect(() => {
     let isCancelled = false

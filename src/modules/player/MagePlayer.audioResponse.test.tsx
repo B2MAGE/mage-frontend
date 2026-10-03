@@ -18,6 +18,30 @@ describe('live scene audio response', () => {
   beforeEach(() => vi.clearAllMocks())
   afterEach(() => vi.restoreAllMocks())
 
+  it('preserves chosen local music across template and custom scene switches', async () => {
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const view = render(<MagePlayer sceneBlob={template} />)
+    await screen.findByRole('button', { name: /add audio tracks/i })
+    await userEvent.setup().upload(view.container.querySelector('input[type=file]') as HTMLInputElement,
+      new File(['audio'], 'local-song.mp3', { type: 'audio/mpeg' }))
+    await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledOnce())
+    fireEvent.change(screen.getByRole('slider', { name: /seek scene audio/i }), { target: { value: '42' } })
+    const host = view.container.querySelector('.mage-player__render-host')
+    const revoke = vi.spyOn(URL, 'revokeObjectURL')
+    vi.mocked(controller.clearAudio).mockClear()
+    view.rerender(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    await screen.findByRole('slider', { name: /seek scene audio/i })
+    expect(screen.getByText('0:42')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /track 1\/1: local-song.mp3/i })).toBeInTheDocument()
+    expect(controller.loadAudio).toHaveBeenCalledOnce()
+    expect(controller.clearAudio).not.toHaveBeenCalled()
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+    expect(view.container.querySelector('.mage-player__render-host')).toBe(host)
+    expect(revoke).not.toHaveBeenCalled()
+  })
+
   it.each(['custom', 'template'])('keeps a local playlist, playback position, volume, and player while %s mappings change', async kind => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
@@ -27,7 +51,7 @@ describe('live scene audio response', () => {
     await userEvent.setup().upload(container.querySelector('input[type=file]') as HTMLInputElement,
       new File(['audio'], 'local-song.mp3', { type: 'audio/mpeg' }))
     await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledTimes(1))
-    const canvas = container.querySelector('canvas')
+    const canvas = container.querySelector('.mage-player__render-host')
     fireEvent.change(screen.getByRole('slider', { name: /seek scene audio/i }), { target: { value: '42' } })
     fireEvent.click(screen.getByRole('button', { name: /adjust audio volume/i }))
     fireEvent.change(screen.getByRole('slider', { name: /audio volume/i }), { target: { value: '0.4' } })
@@ -42,7 +66,7 @@ describe('live scene audio response', () => {
     expect(controller.loadAudio).toHaveBeenCalledTimes(1)
     expect(controller.clearAudio).not.toHaveBeenCalled()
     expect(createMagePlayer).toHaveBeenCalledTimes(1)
-    expect(container.querySelector('canvas')).toBe(canvas)
+    expect(container.querySelector('.mage-player__render-host')).toBe(canvas)
     expect(revoke).not.toHaveBeenCalled()
     expect(screen.getByText('0:42')).toBeInTheDocument()
     expect(screen.getByText('40%')).toBeInTheDocument()
@@ -94,7 +118,7 @@ describe('live scene audio response', () => {
     expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
   })
 
-  it('reloads on a different scene key even with the same document object and stable controlled tracks', async () => {
+  it('retargets a different scene key without reloading stable controlled audio', async () => {
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const scene = buildMagePlayerSceneBlob()
@@ -102,10 +126,10 @@ describe('live scene audio response', () => {
     const { rerender } = render(<MagePlayer sceneBlob={scene} sceneKey={1} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledTimes(1))
     rerender(<MagePlayer sceneBlob={scene} sceneKey={2} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
-    await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledTimes(2))
-    expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    expect(controller.loadAudio).toHaveBeenCalledTimes(1)
     expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
-    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
   })
 
   it('loads the document into a replacement engine before considering it ready', async () => {
