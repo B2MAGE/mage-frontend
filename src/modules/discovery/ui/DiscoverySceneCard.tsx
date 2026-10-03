@@ -29,6 +29,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
     onPointerEnter,
     onPointerLeave,
     recoveryPaused,
+    availabilityPaused,
     thumbnailRef,
   } = useSceneHoverPreview({ sceneBlob: scene.sceneData, sceneId: scene.sceneId, seed: scene.sceneId })
 
@@ -51,7 +52,11 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
           ) : (
             <div className="scene-card__thumbnail-placeholder" aria-hidden="true" />
           )}
-          {recoveryPaused ? (
+          {availabilityPaused ? (
+            <span className="scene-card__preview-paused">Playback unavailable</span>
+          ) : !scene.sceneData ? (
+            <span className="scene-card__preview-paused">Open scene to play</span>
+          ) : recoveryPaused ? (
             <span className="scene-card__preview-paused">Preview paused. Open scene to retry.</span>
           ) : <span className="scene-card__play" aria-hidden="true"><AppIcon name="play" size={16} /></span>}
         </div>

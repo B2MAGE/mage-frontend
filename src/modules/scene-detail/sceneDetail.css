@@ -1,4 +1,8 @@
 .scene-detail-page { --watch-stage: #050609; --watch-shadow: rgba(0,0,0,.24); --watch-thumbnail-border: #171b24; --watch-playlist-border: rgba(178,168,255,.22); --watch-playlist-tint: rgba(124,108,255,.06); --watch-submit-hover: #dedee8; }
+html[data-theme] .scene-detail-state { padding-top: 64px; }
+.scene-detail-state h1 { margin: 0 0 16px; font-size: clamp(24px, 4vw, 36px); line-height: 1.2; }
+.scene-detail-state > p { max-width: 60ch; color: var(--muted); line-height: 1.6; }
+.scene-detail-state .auth-actions { margin-top: 24px; }
 /* Watch-page layout matched to mage-scene-detail-watch-mockup.html. */
 .scene-detail-page .scene-detail-comment__header strong.scene-detail-comment__author {
   min-width: 0;

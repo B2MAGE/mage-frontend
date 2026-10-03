@@ -24,7 +24,7 @@ export function readErrorCopy(errorCode: SceneDetailErrorCode) {
   if (errorCode === 'invalid-id') {
     return {
       title: 'Invalid scene link',
-      description: 'This route is missing a valid scene id. Check the URL and try again.',
+      description: 'This scene link isn’t valid. Check the address or explore other scenes.',
     }
   }
 
@@ -32,7 +32,7 @@ export function readErrorCopy(errorCode: SceneDetailErrorCode) {
     return {
       title: 'Sign in to view this scene',
       description:
-        'Scene detail requests are still authenticated in this build. Sign in, then reopen this scene route.',
+        'Sign in to your MAGE account to open this scene.',
     }
   }
 
@@ -45,9 +45,9 @@ export function readErrorCopy(errorCode: SceneDetailErrorCode) {
 
   if (errorCode === 'invalid-payload') {
     return {
-      title: 'Unable to render this scene',
+      title: 'This scene couldn’t be loaded',
       description:
-        'The backend returned scene detail data, but the scene payload is missing fields required by the player.',
+        'Something is missing from this scene. You can explore other scenes while it’s being fixed.',
     }
   }
 

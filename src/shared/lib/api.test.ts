@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildApiUrl, fetchTags, normalizeSceneListItem } from './api'
+import { buildApiUrl, fetchTags, normalizeSceneAvailability, normalizeSceneListItem } from './api'
 
 describe('buildApiUrl', () => {
   afterEach(() => {
@@ -55,6 +55,41 @@ describe('scene avatar colors', () => {
     expect(normalizeSceneListItem({
       ...scene, creatorAvatarGradientStart: 'red', creatorAvatarGradientEnd: null,
     })).toMatchObject({ creatorAvatarGradientStart: '#5c51ba', creatorAvatarGradientEnd: '#264a48' })
+  })
+})
+
+describe('scene availability', () => {
+  const availability = { sceneId: 1, available: false, code: 'SCENE_DISABLED', message: 'Scene playback is unavailable.' }
+  const scene = {
+    sceneId: 1, ownerUserId: 8, creatorDisplayName: 'Scene Artist', name: 'Signal Bloom',
+    createdAt: '2026-10-03T00:00:00Z', thumbnailRef: '/signal.png', description: 'Soft movement.',
+  }
+
+  it('keeps disabled scene metadata without manufacturing playable source', () => {
+    expect(normalizeSceneListItem({ ...scene, sceneData: null, availability })).toMatchObject({
+      ...scene, sceneData: null, availability,
+    })
+  })
+
+  it('discards source when the same response says playback is disabled', () => {
+    expect(normalizeSceneListItem({ ...scene, sceneData: { shader: 'stale' }, availability })?.sceneData).toBeNull()
+  })
+
+  it('does not fabricate source or an available status from a malformed response', () => {
+    expect(normalizeSceneListItem({ ...scene, sceneData: null })).toMatchObject({ sceneData: null, availability: null })
+    expect(normalizeSceneAvailability({ ...availability, sceneId: 2 }, 1)).toBeNull()
+    expect(normalizeSceneAvailability({ ...availability, available: 'false' }, 1)).toBeNull()
+  })
+
+  it('only retains public availability fields', () => {
+    expect(normalizeSceneAvailability({ ...availability, reason: 'Private operator note', changedByUserId: 8 }, 1)).toEqual(availability)
+  })
+
+  it('accepts the backend’s null message for AVAILABLE without inventing an error', () => {
+    expect(normalizeSceneAvailability({ sceneId: 1, available: true, code: 'AVAILABLE', message: null }, 1))
+      .toEqual({ sceneId: 1, available: true, code: 'AVAILABLE', message: '' })
+    expect(normalizeSceneAvailability({ sceneId: 1, available: true, code: 'AVAILABLE', message: 'Unused message' }, 1)?.message).toBe('')
+    expect(normalizeSceneAvailability({ ...availability, message: null }, 1)).toBeNull()
   })
 })
 

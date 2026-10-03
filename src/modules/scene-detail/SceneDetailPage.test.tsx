@@ -601,7 +601,7 @@ describe('SceneDetailPage route states', () => {
     renderSceneDetailPage(['/scenes/not-a-number'])
 
     expect(await screen.findByRole('heading', { name: /invalid scene link/i })).toBeInTheDocument()
-    expect(screen.getByText(/missing a valid scene id/i)).toBeInTheDocument()
+    expect(screen.getByText(/This scene link isn’t valid/i)).toBeInTheDocument()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 

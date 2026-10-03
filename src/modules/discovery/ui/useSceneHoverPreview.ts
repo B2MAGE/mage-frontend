@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore, type FocusEvent, type PointerEvent } from 'react'
-import { sceneRecovery, sceneRecoveryKey, type MageSceneBlob } from '@modules/player'
+import { sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MageSceneBlob } from '@modules/player'
 import { useAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
 import {
   createSceneHoverPreviewRegistrationId,
@@ -7,7 +7,7 @@ import {
 } from './sceneHoverPreviewCoordinator'
 
 type UseSceneHoverPreviewOptions = {
-  sceneBlob: MageSceneBlob
+  sceneBlob: MageSceneBlob | null
   sceneId: number
   seed: number
 }
@@ -26,6 +26,7 @@ function pointerPreviewIsAllowed() {
 
 export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHoverPreviewOptions) {
   const preferenceEnabled = useAnimatedSceneThumbnailsEnabled()
+  const availability = useSceneAvailability(sceneId)
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const recoveryKey = useMemo(() => sceneRecoveryKey(sceneBlob, sceneId), [sceneBlob, sceneId])
   const recoveryPaused = !recoveryKey || sceneRecovery.isSafeMode() || !!sceneRecovery.getAutomaticBlock(recoveryKey)
@@ -36,11 +37,12 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
   const visibleRef = useRef(true)
 
   const previewIsWanted = useCallback(() =>
+    !!sceneBlob && availability.allowed &&
     preferenceEnabled &&
     motionIsAllowed() &&
     visibleRef.current &&
     (focusedRef.current || (pointerInsideRef.current && pointerPreviewIsAllowed())),
-  [preferenceEnabled])
+  [preferenceEnabled, sceneBlob, availability.allowed])
 
   const syncPreview = useCallback(() => {
     const id = registrationIdRef.current
@@ -60,7 +62,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
 
   useEffect(() => {
     const target = thumbnailRef.current
-    if (!target) {
+    if (!target || !sceneBlob) {
       return
     }
 
@@ -132,6 +134,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
     onPointerEnter,
     onPointerLeave,
     recoveryPaused,
+    availabilityPaused: !availability.allowed,
     thumbnailRef,
   }
 }
