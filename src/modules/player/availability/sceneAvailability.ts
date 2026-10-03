@@ -98,7 +98,10 @@ export function createSceneAvailabilityStore() {
 
   function getSnapshot(target: SceneAvailabilityTarget): SceneAvailabilitySnapshot {
     let result: SceneAvailabilitySnapshot
-    if (!isTarget(target) || !reachable()) result = unavailable
+    if (!isTarget(target) || disposed || pageHidden || navigator.onLine === false) result = unavailable
+    // Hidden pages cannot execute, but can retain their paused resources until a
+    // fresh visible-page check. Offline/navigation failures still revoke them.
+    else if (document.visibilityState === 'hidden') result = checking
     else if (target === 'draft-template') result = localTemplate
     else if (typeof target === 'string' && (target.startsWith('template:') || target.startsWith('status:'))) {
       const scene = scenes.get(sceneId(target)!)

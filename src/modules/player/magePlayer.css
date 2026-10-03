@@ -28,6 +28,20 @@
   height: 100%;
 }
 
+.mage-player__availability-check {
+  position: absolute;
+  inset: 14px auto auto 14px;
+  max-width: calc(100% - 28px);
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(9, 10, 15, .75);
+  color: #f4f5f7;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.mage-player[data-availability-pending] .mage-player__canvas { pointer-events: none; }
+
 .mage-player__recovery-actions button {
   border: 1px solid var(--border, #383b45);
   border-radius: 6px;

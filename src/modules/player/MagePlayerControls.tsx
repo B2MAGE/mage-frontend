@@ -12,6 +12,7 @@ import { formatAudioTime } from './magePlayerUtils'
 import { PlaybackOptions } from './recovery/PlaybackOptions'
 
 type MagePlayerControlsProps = {
+  disabled?: boolean
   activeAudioAction: 'add' | 'load' | null
   audioError: string | null
   audioProgressPercent: string
@@ -34,6 +35,7 @@ type MagePlayerControlsProps = {
 }
 
 export function MagePlayerControls({
+  disabled = false,
   activeAudioAction,
   audioError,
   audioProgressPercent,
@@ -54,7 +56,7 @@ export function MagePlayerControls({
   tracksCount,
   volumeControlRef,
 }: MagePlayerControlsProps) {
-  const controlsBusy = activeAudioAction !== null
+  const controlsBusy = disabled || activeAudioAction !== null
   const isAddingAudio = activeAudioAction === 'add'
   const isLoadingTrack = activeAudioAction === 'load'
   const playbackLabel = playbackState === 'playing' ? 'Pause' : 'Play'

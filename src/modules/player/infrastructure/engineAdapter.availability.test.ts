@@ -27,8 +27,9 @@ const source = { visualizer: { shader: 'sphere(1);' } }
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((done) => { resolve = done })
-  return { promise, resolve }
+  let reject!: (reason: Error) => void
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail })
+  return { promise, resolve, reject }
 }
 
 describe('engine availability boundary with the real polling store', () => {
@@ -99,6 +100,25 @@ describe('engine availability boundary with the real polling store', () => {
     expect(engine.initMAGE).toHaveBeenCalledTimes(1)
     expect(engine.loadPreset).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(['/api/rendering-status', '/api/scene-availability?ids=47'])
+  })
+
+  it('ignores a superseded initial response when focus forces another check before engine creation', async () => {
+    const first = deferred<Response>()
+    const fresh = deferred<Response>()
+    fetchMock.mockReturnValueOnce(first.promise).mockReturnValueOnce(fresh.promise)
+    const creating = create({ sceneKey: 47, initialSceneBlob: template })
+    await vi.advanceTimersByTimeAsync(0)
+    window.dispatchEvent(new Event('focus'))
+    await vi.advanceTimersByTimeAsync(0)
+    first.resolve(json([{ sceneId: 47, available: true, code: 'AVAILABLE' }]))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(engine.initMAGE).not.toHaveBeenCalled()
+    expect(engine.loadPreset).not.toHaveBeenCalled()
+    fresh.resolve(json([{ sceneId: 47, available: true, code: 'AVAILABLE' }]))
+    const player = await creating
+    player.loadSceneBlob(template)
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
+    expect(engine.loadPreset).toHaveBeenCalledOnce()
   })
 
   it('plays, resets, and captures a validated unsaved template with custom rendering disabled', async () => {
@@ -181,7 +201,9 @@ describe('engine availability boundary with the real polling store', () => {
     const capture = player.captureFramePreview!().catch(() => null)
     await vi.advanceTimersByTimeAsync(0)
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    disabledIds.add(47)
     store.invalidate(47)
+    await store.check('template:47')
     pending.resolve('data:image/png;base64,late')
     await expect(capture).resolves.toBeNull()
     expect(engine.dispose).toHaveBeenCalledOnce()
@@ -268,7 +290,9 @@ describe('engine availability boundary with the real polling store', () => {
     const loading = player.loadAudio({ sourcePath: '/music.mp3' }).then(() => 'loaded', () => 'cancelled')
     expect(engine.loadAudio).toHaveBeenCalledWith('/music.mp3')
     const playCalls = engine.play.mock.calls.length
+    disabledIds.add(47)
     store.invalidate(47)
+    await store.check(47)
     expect(engine.dispose).toHaveBeenCalledTimes(1)
     engine.isAudioLoaded.mockReturnValue(true)
     await vi.advanceTimersByTimeAsync(50)
@@ -301,17 +325,138 @@ describe('engine availability boundary with the real polling store', () => {
     expect(await capturing).toBeNull()
   })
 
-  it('revokes a retry grant on focus and requires a new player after permission returns', async () => {
-    const player = await create({ sceneKey: 47 })
-    player.loadSceneBlob(source)
+  it.each(['custom', 'template'] as const)('suspends a playing saved %s on focus and resumes its engine, audio, and position after approval', async kind => {
+    const scene = kind === 'template' ? template : source
+    const target = kind === 'template' ? 'template:47' as const : 47
+    const player = await create({ sceneKey: 47, initialSceneBlob: scene })
+    player.loadSceneBlob(scene)
+    engine.isAudioLoaded.mockReturnValue(true)
+    await player.loadAudio({ sourcePath: '/music.mp3', sourceLabel: 'Current track' })
+    player.seekAudio(42)
+    const starting = engine.start.mock.calls.length
+    const playing = engine.play.mock.calls.length
+    const seeking = engine.seek.mock.calls.length
+    const pending = deferred<Response>()
+    fetchMock.mockImplementation(async input => String(input).includes('rendering-status')
+      ? json({ enabled: true, code: 'AVAILABLE' }) : pending.promise)
+    engine.pause.mockClear()
+
     window.dispatchEvent(new Event('focus'))
-    expect(engine.dispose).toHaveBeenCalledTimes(1)
-    expect(recovery.revokeRetry).toHaveBeenCalledWith('recovery:47')
-    await store.check(47)
+    expect(store.getSnapshot(target).code).toBe('CHECKING')
+    expect(engine.pause).toHaveBeenCalledOnce()
+    expect(engine.dispose).not.toHaveBeenCalled()
+    expect(recovery.revokeRetry).not.toHaveBeenCalled()
+    expect(player.getPlaybackState()).toBe('playing')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(player.getAudioState().currentTime).toBe(42)
+    expect(() => player.loadSceneBlob(scene)).toThrow()
+    expect(() => player.resetPlayback()).toThrow()
     expect(() => player.setPlaybackState('playing')).toThrow()
-    const replacement = await create({ sceneKey: 47 })
-    replacement.loadSceneBlob(source)
-    expect(engine.initMAGE).toHaveBeenCalledTimes(2)
+    await expect(player.loadAudio({ sourcePath: '/other.mp3' })).rejects.toThrow()
+    await expect(player.captureFramePreview!()).rejects.toThrow()
+    expect(engine.loadPreset).toHaveBeenCalledOnce()
+    expect(engine.loadAudio).toHaveBeenCalledOnce()
+    expect(engine.captureFramePreview).not.toHaveBeenCalled()
+    expect(engine.start).toHaveBeenCalledTimes(starting)
+    expect(engine.play).toHaveBeenCalledTimes(playing)
+
+    pending.resolve(json([{ sceneId: 47, available: true, code: 'AVAILABLE' }]))
+    await store.check(target)
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
+    expect(engine.loadPreset).toHaveBeenCalledOnce()
+    expect(engine.loadAudio).toHaveBeenCalledOnce()
+    expect(engine.seek).toHaveBeenCalledTimes(seeking)
+    expect(engine.play).toHaveBeenCalledTimes(playing + 1)
+    expect(player.getAudioState()).toMatchObject({ currentTime: 42, isLoaded: true, sourcePath: 'Current track' })
+    expect(engine.dispose).not.toHaveBeenCalled()
+  })
+
+  it('retains a deliberately paused scene and audio after a successful focus recheck', async () => {
+    const player = await create({ sceneKey: 47, initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    engine.isAudioLoaded.mockReturnValue(true)
+    await player.loadAudio({ sourcePath: '/music.mp3' })
+    player.seekAudio(31)
+    player.setPlaybackState('paused')
+    const playing = engine.play.mock.calls.length
+    const starting = engine.start.mock.calls.length
+    window.dispatchEvent(new Event('focus'))
+    expect(engine.dispose).not.toHaveBeenCalled()
+    await store.check('template:47')
+    expect(player.getPlaybackState()).toBe('paused')
+    expect(player.getAudioState().currentTime).toBe(31)
+    expect(engine.play).toHaveBeenCalledTimes(playing)
+    expect(engine.start).toHaveBeenCalledTimes(starting)
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
+  })
+
+  it('holds pending audio decoding while hidden and completes it only after the visible-page recheck', async () => {
+    const player = await create({ sceneKey: 47, initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    const completed = vi.fn()
+    const loading = player.loadAudio({ sourcePath: '/music.mp3' }).then(completed)
+    const playing = engine.play.mock.calls.length
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(store.getSnapshot('template:47').code).toBe('CHECKING')
+    engine.isAudioLoaded.mockReturnValue(true)
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(completed).not.toHaveBeenCalled()
+    expect(engine.play).toHaveBeenCalledTimes(playing)
+    expect(engine.dispose).not.toHaveBeenCalled()
+    expect(engine.loadAudio).toHaveBeenCalledOnce()
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await store.check('template:47')
+    await vi.advanceTimersByTimeAsync(50)
+    await loading
+    expect(completed).toHaveBeenCalledOnce()
+    expect(engine.play).toHaveBeenCalledTimes(playing + 1)
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
+    expect(engine.loadAudio).toHaveBeenCalledOnce()
+  })
+
+  it.each(['disabled', 'network', 'malformed', 'timeout'] as const)('disposes a suspended renderer if the focus recheck ends in %s', async outcome => {
+    const player = await create({ sceneKey: 47, initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    const pending = deferred<Response>()
+    fetchMock.mockReturnValue(pending.promise)
+    const starts = engine.start.mock.calls.length
+    window.dispatchEvent(new Event('focus'))
+    expect(engine.pause).toHaveBeenCalled()
+    expect(engine.dispose).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(0)
+    const checking = store.check('template:47')
+    if (outcome === 'disabled') pending.resolve(json([{ sceneId: 47, available: false, code: 'SCENE_DISABLED' }]))
+    if (outcome === 'malformed') pending.resolve(json({ available: true }))
+    if (outcome === 'network') pending.reject(new Error('Disconnected'))
+    if (outcome === 'timeout') await vi.advanceTimersByTimeAsync(5000)
+    await checking
+    expect(engine.dispose).toHaveBeenCalledOnce()
+    expect(recovery.revokeRetry).toHaveBeenCalledWith('recovery:47')
+    expect(recovery.fail).not.toHaveBeenCalled()
+    expect(() => player.setPlaybackState('playing')).toThrow()
+    expect(engine.start).toHaveBeenCalledTimes(starts)
+    pending.resolve(json([{ sceneId: 47, available: true, code: 'AVAILABLE' }]))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
+    expect(engine.start).toHaveBeenCalledTimes(starts)
+  })
+
+  it('discards an earlier capture after a benign recheck without replacing the renderer', async () => {
+    const player = await create({ sceneKey: 47, initialSceneBlob: template })
+    player.loadSceneBlob(template)
+    const pendingCapture = deferred<string>()
+    engine.captureFramePreview.mockReturnValue(pendingCapture.promise)
+    const result = player.captureFramePreview!().catch(() => null)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(engine.captureFramePreview).toHaveBeenCalledOnce()
+    window.dispatchEvent(new Event('focus'))
+    await store.check('template:47')
+    pendingCapture.resolve('data:image/png;base64,old-permission')
+    expect(await result).toBeNull()
+    expect(engine.dispose).not.toHaveBeenCalled()
+    expect(engine.initMAGE).toHaveBeenCalledOnce()
   })
 
   it('only exempts the fixed bundled brand object, not copies or unrelated scene source', async () => {
