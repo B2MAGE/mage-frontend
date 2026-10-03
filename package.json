@@ -19,7 +19,8 @@
     "renderer:serve": "node scripts/serve-isolated-renderer.mjs",
     "renderer:verify": "node scripts/verify-isolated-renderer.mjs",
     "renderer:verify:production": "node scripts/verify-isolated-renderer.mjs --production",
-    "renderer:test": "node --test deployment/isolated-renderer/hosting.test.mjs"
+    "renderer:test": "node --test deployment/isolated-renderer/hosting.test.mjs",
+    "player-check:build": "node scripts/build-isolated-player-check.mjs"
   },
   "dependencies": {
     "@notrac/mage": "1.0.3",

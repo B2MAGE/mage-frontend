@@ -66,6 +66,35 @@ npx vite --config deployment/isolated-renderer/local-https.vite.config.mjs
 
 Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. The companion configuration changes only the local HTTPS server and developer fixture's frame policy. For command-line verification, set `MAGE_RENDERER_VERIFY_ORIGIN=https://localhost:5181` and supply the local CA to Node via `NODE_EXTRA_CA_CERTS` if it is not already trusted; never disable TLS verification. Clear these session environment variables before returning to the default HTTP workflow.
 
+## Live parent verification page
+
+`npm run player-check:build` builds a separate, fixed-sample parent page into
+`dist-player-check/`. Its module allowlist admits only the test UI, parent-boundary
+check, renderer host and protocol; it cannot import the MAGE engine, account code
+or API clients. The production parent and CloudFront URL are fixed at build time.
+The page refuses to start outside `https://mage.peterbucci.com`.
+
+The dedicated `deployment/isolated-renderer/Dockerfile.player-check` serves this
+artifact at `/player-check/`, using `nginx.player-check.conf`. Deploy it as a
+separate Coolify application with repository root `/`, container port `80`, and
+domain `https://mage.peterbucci.com/player-check`. Preserve the path prefix.
+Only that prefix routes to this container; the existing MAGE frontend/backend
+resources and versions remain unchanged. This is a verification service, not the
+renderer host or a replacement for normal app players.
+
+The page has external integrity-checked assets, no arbitrary renderer address or
+shader input, no API requests, `no-store` and `noindex` responses, and a CSP which
+permits frames only from the deployed CloudFront origin. Missing files return
+404 rather than the application's SPA fallback. The parent has no response
+sandbox and does not permit `unsafe-eval` or inline styles/scripts.
+
+After deployment, open `https://mage.peterbucci.com/player-check/`: start the
+sample, confirm the rendered image and parent-access check, stop it, then test
+the unavailable player and retry. Successful child startup also requires its
+cookie, local-storage and parent-document access checks to throw `SecurityError`.
+The fixed-sample protocol does not exercise child-initiated network requests or
+self-navigation; do not describe those as browser-tested by this page.
+
 ## AWS deployment — provider-issued CloudFront address
 
 The template is prepared for the selected plan. Deployment and production-browser verification are separate from building it; record the real stack outputs and verification results when those steps succeed. Do not mark PP-I01 deployed based on a local build or template validation alone. AWS credentials must remain in the operator's CLI profile or deployment environment, never in renderer build inputs.

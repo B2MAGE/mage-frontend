@@ -107,6 +107,14 @@ describe('isolated renderer endpoint validation', () => {
 })
 
 describe('isolated renderer host', () => {
+  it('can use an external parent stylesheet without inserting a CSP-blocked style attribute', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    const host = createIsolatedRendererHost({ container, rendererUrl: RENDERER_URL, useInlineFrameStyles: false })
+    expect(container.querySelector('iframe')!.hasAttribute('style')).toBe(false)
+    host.dispose()
+  })
+
   it('creates a scripts-only, opaque, credentialless child and binds its fresh session to a dedicated port', () => {
     const { frame, postMessage, host, load, onStatus } = setup()
     expect(frame.getAttribute('sandbox')).toBe('allow-scripts')

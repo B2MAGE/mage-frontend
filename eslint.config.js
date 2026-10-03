@@ -21,7 +21,7 @@ const crossLayerRelativeImportRegex = `^(?:\\.\\.\\/)+(?:${sourceBoundaryRoots.j
 const deepModuleImportRegex = '^@modules\\/[^/]+\\/.+$'
 
 export default defineConfig([
-  globalIgnores(['dist', 'dist-isolated-renderer', 'dist-isolated-renderer-production', '.local/**']),
+  globalIgnores(['dist', 'dist-isolated-renderer', 'dist-isolated-renderer-production', 'dist-player-check', '.local/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

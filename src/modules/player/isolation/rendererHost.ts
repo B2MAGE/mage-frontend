@@ -11,6 +11,8 @@ export interface IsolatedRendererHostOptions {
   rendererUrl: string
   onStatus?: (status: IsolatedRendererStatus) => void
   startupTimeoutMs?: number
+  /** Disable for strict parent CSP pages that size the iframe through an external stylesheet. */
+  useInlineFrameStyles?: boolean
 }
 
 export interface IsolatedRendererHost {
@@ -77,7 +79,9 @@ export function createIsolatedRendererHost(options: IsolatedRendererHostOptions)
   frame.setAttribute('allow', DENIED_FEATURES)
   frame.setAttribute('tabindex', '-1')
   frame.setAttribute('credentialless', '')
-  frame.style.cssText = 'display:block;width:100%;height:100%;border:0;background:#090b10'
+  if (options.useInlineFrameStyles !== false) {
+    frame.style.cssText = 'display:block;width:100%;height:100%;border:0;background:#090b10'
+  }
 
   let status: IsolatedRendererStatus = 'starting'
   let closed = false
