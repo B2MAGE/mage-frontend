@@ -23,13 +23,14 @@
   <body>
     <main>
       <h1>Playback continuity check</h1>
-      <p>The real player runs a fixed bundled template with a silent local test track. This page simulates the availability recheck that happens when a file picker closes. It does not change backend settings.</p>
+      <p>The real isolated player runs a fixed bundled template with a silent local test track. Choose Start test audio to permit playback, then check the availability recheck that happens when a file picker closes. The same iframe and song position must be retained. Denial must remove the iframe; the parent must never contain a scene canvas. It does not change backend settings.</p>
       <div class="actions">
+        <button id="start" disabled>Start test audio</button>
         <button id="resume" disabled>Check pause and resume</button>
         <button id="deny" disabled>Check denied playback</button>
         <button id="again">Reload check</button>
       </div>
-      <pre id="result" role="status" aria-live="polite">Starting the player and local test audio…</pre>
+      <pre id="result" role="status" aria-live="polite">Loading the player and paused local test audio…</pre>
       <div id="preview"></div>
     </main>
     <script type="module" src="./scene-focus-browser-check.tsx"></script>
