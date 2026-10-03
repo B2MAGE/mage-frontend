@@ -698,7 +698,7 @@
         "templateId": "embedded-scene-0",
         "templateVersion": 1,
         "parameters": {
-          "scale": 30.001
+          "scale": 200.001
         }
       }
     },
@@ -724,7 +724,7 @@
         "templateId": "embedded-scene-0",
         "templateVersion": 1,
         "parameters": {
-          "speed": 3.001
+          "speed": 10.001
         }
       }
     },
@@ -738,7 +738,7 @@
         "templateVersion": 1,
         "settings": {
           "camera": {
-            "fov": 19.999
+            "fov": 0.999
           }
         }
       }
@@ -753,7 +753,7 @@
         "templateVersion": 1,
         "settings": {
           "camera": {
-            "fov": 100.001
+            "fov": 179.001
           }
         }
       }
@@ -768,7 +768,7 @@
         "templateVersion": 1,
         "settings": {
           "camera": {
-            "orbitSpeed": -0.001
+            "orbitSpeed": -50.001
           }
         }
       }
@@ -783,7 +783,7 @@
         "templateVersion": 1,
         "settings": {
           "camera": {
-            "orbitSpeed": 2.001
+            "orbitSpeed": 50.001
           }
         }
       }
@@ -813,7 +813,7 @@
         "templateVersion": 1,
         "settings": {
           "bloom": {
-            "strength": 3.001
+            "strength": 10.001
           }
         }
       }
@@ -828,7 +828,7 @@
         "templateVersion": 1,
         "settings": {
           "bloom": {
-            "radius": -0.001
+            "radius": -10.001
           }
         }
       }
@@ -843,7 +843,7 @@
         "templateVersion": 1,
         "settings": {
           "bloom": {
-            "radius": 1.001
+            "radius": 10.001
           }
         }
       }
@@ -873,7 +873,7 @@
         "templateVersion": 1,
         "settings": {
           "bloom": {
-            "threshold": 1.001
+            "threshold": 10.001
           }
         }
       }
@@ -1140,6 +1140,770 @@
         "scene": {
           "nested": {
             "constructor": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-empty-objects-preserve-omitted-leaves",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {},
+          "motion": {},
+          "effects": {
+            "passes": {},
+            "params": {
+              "rgbShift": {}
+            }
+          },
+          "state": {},
+          "audioResponseConfig": {
+            "version": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-all-editor-controls",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 200,
+          "speed": 10
+        },
+        "settings": {
+          "camera": {
+            "fov": 179,
+            "autoRotate": false,
+            "orbitSpeed": -50,
+            "tilt": -6.283185307179586,
+            "orientationMode": 2,
+            "orientationSpeed": 10
+          },
+          "controls": {
+            "position0": {
+              "x": -1000,
+              "y": 1000,
+              "z": 5.5
+            },
+            "target0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "zoom0": 100
+          },
+          "motion": {
+            "minimizing_factor": 2,
+            "power_factor": 10,
+            "pointerDownMultiplier": 10,
+            "base_speed": 1,
+            "easing_speed": 0
+          },
+          "bloom": {
+            "enabled": true,
+            "strength": 10,
+            "radius": -10,
+            "threshold": 10
+          },
+          "tint": {
+            "enabled": true,
+            "color": "#12AbEF"
+          },
+          "effects": {
+            "passOrder": [
+              "outputPass",
+              "RGBShift",
+              "afterImagePass",
+              "bloom",
+              "colorifyShader"
+            ],
+            "toneMapping": {
+              "method": 7,
+              "exposure": 10
+            },
+            "passes": {
+              "rgbShift": true,
+              "afterImage": true,
+              "outputPass": false,
+              "dot": false
+            },
+            "params": {
+              "rgbShift": {
+                "amount": 0.1,
+                "angle": -6.283185307179586
+              },
+              "afterImage": {
+                "damp": 1
+              },
+              "kaleid": {
+                "sides": 24,
+                "angle": 6.283185307179586
+              }
+            }
+          },
+          "state": {
+            "size": 100,
+            "pointerDown": 1,
+            "currPointerDown": 0,
+            "currAudio": 100,
+            "time": 86400,
+            "volume_multiplier": 10
+          },
+          "audioResponse": "mapped-v1",
+          "audioResponseConfig": {
+            "version": 1,
+            "sensitivity": 4,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "bass-hit",
+                "amount": 4,
+                "attack": 2,
+                "release": 5
+              },
+              {
+                "target": "bass",
+                "source": "mid-level"
+              },
+              {
+                "target": "mid",
+                "source": "treble-level"
+              },
+              {
+                "target": "treble",
+                "source": "overall-level"
+              },
+              {
+                "target": "audioLevel",
+                "source": "bass-level"
+              },
+              {
+                "target": "audioHit",
+                "source": "overall-hit"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-lower-bounds",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 1,
+          "speed": 0
+        },
+        "settings": {
+          "camera": {
+            "fov": 1,
+            "orbitSpeed": 0,
+            "tilt": 0,
+            "orientationMode": 0,
+            "orientationSpeed": 0
+          },
+          "bloom": {
+            "strength": 0,
+            "radius": 10,
+            "threshold": 0
+          },
+          "motion": {
+            "minimizing_factor": 0.01,
+            "power_factor": 1,
+            "pointerDownMultiplier": 0,
+            "base_speed": 0,
+            "easing_speed": 1
+          },
+          "controls": {
+            "position0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "target0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "zoom0": 0.01
+          },
+          "state": {
+            "size": 0,
+            "pointerDown": 0,
+            "currPointerDown": 0,
+            "currAudio": 0,
+            "time": 0,
+            "volume_multiplier": 0
+          },
+          "effects": {
+            "passOrder": [],
+            "toneMapping": {
+              "method": 0,
+              "exposure": 0
+            },
+            "params": {
+              "kaleid": {
+                "sides": 1,
+                "angle": 0
+              },
+              "afterImage": {
+                "damp": 0
+              },
+              "rgbShift": {
+                "amount": 0,
+                "angle": 0
+              }
+            }
+          },
+          "audioResponse": "legacy",
+          "audioResponseConfig": {
+            "version": 1,
+            "sensitivity": 0.1,
+            "mappings": []
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-camera-orientation-fraction",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "orientationMode": 0.5
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-camera-tilt-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "tilt": 7
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-camera-orientation-speed-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "orientationSpeed": 11
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-controls-missing-zoom",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "controls": {
+            "position0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "target0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-control-vector-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "controls": {
+            "position0": {
+              "x": 1001,
+              "y": 0,
+              "z": 0
+            },
+            "target0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "zoom0": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-motion-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "motion": {
+            "power_factor": 11
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-motion-source-injection",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "motion": {
+            "shader": "sphere(100);"
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-motion-camera-alias",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "motion": {
+            "fov": 75
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-bloom-alias",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "bloom": {
+              "enabled": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-tint-alias",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "passes": {
+              "colorify": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-color-alias",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "params": {
+              "colorify": {
+                "color": "#ffffff"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-unknown-pass",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "passes": {
+              "script": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-duplicate-pass",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "passOrder": [
+              "bloom",
+              "bloom"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-unknown-pass-id",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "passOrder": [
+              "customPass"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-tone-map-method",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "toneMapping": {
+              "method": 5
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-param-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "params": {
+              "rgbShift": {
+                "amount": 0.2
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-fractional-kaleid",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "params": {
+              "kaleid": {
+                "sides": 2.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-effects-five-enabled",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "enabled": true
+          },
+          "tint": {
+            "enabled": true
+          },
+          "effects": {
+            "passes": {
+              "rgbShift": true,
+              "dot": true,
+              "afterImage": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-state-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "state": {
+            "time": 86401
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-state-source-injection",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "state": {
+            "shader": "sphere(100);"
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-audio-mode-unknown",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponse": "other"
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-audio-version-missing",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponseConfig": {
+            "sensitivity": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-audio-mapping-duplicate-target",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponseConfig": {
+            "version": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "bass-hit"
+              },
+              {
+                "target": "size",
+                "source": "mid-level"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-audio-mapping-source-expression",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponseConfig": {
+            "version": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "Math.random()"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-audio-mapping-over-budget",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponseConfig": {
+            "version": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "bass-hit",
+                "amount": 5
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-audio-mapping-unknown-field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponseConfig": {
+            "version": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "bass-hit",
+                "shader": "source"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-renderer-injection",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "renderer": {
+            "pixelRatio": 100
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-asset-injection",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "effects": {
+            "textureUrl": "https://example.invalid/source"
+          }
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-null-motion",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "motion": null
+        }
+      }
+    },
+    {
+      "name": "expanded-settings-state-number-string",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "state": {
+            "volume_multiplier": "2"
           }
         }
       }

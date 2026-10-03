@@ -59,13 +59,13 @@
             "scale": {
               "type": "number",
               "minimum": 1,
-              "maximum": 30,
+              "maximum": 200,
               "default": 10
             },
             "speed": {
               "type": "number",
               "minimum": 0,
-              "maximum": 3,
+              "maximum": 10,
               "default": 1
             }
           },
@@ -97,8 +97,8 @@
               "properties": {
                 "fov": {
                   "type": "number",
-                  "minimum": 20,
-                  "maximum": 100,
+                  "minimum": 1,
+                  "maximum": 179,
                   "default": 75
                 },
                 "autoRotate": {
@@ -107,9 +107,24 @@
                 },
                 "orbitSpeed": {
                   "type": "number",
-                  "minimum": 0,
-                  "maximum": 2,
+                  "minimum": -50,
+                  "maximum": 50,
                   "default": 0.2
+                },
+                "tilt": {
+                  "type": "number",
+                  "minimum": -6.283185307179586,
+                  "maximum": 6.283185307179586
+                },
+                "orientationMode": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "orientationSpeed": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10
                 }
               },
               "default": {}
@@ -125,19 +140,19 @@
                 "strength": {
                   "type": "number",
                   "minimum": 0,
-                  "maximum": 3,
+                  "maximum": 10,
                   "default": 1
                 },
                 "radius": {
                   "type": "number",
-                  "minimum": 0,
-                  "maximum": 1,
+                  "minimum": -10,
+                  "maximum": 10,
                   "default": 0.2
                 },
                 "threshold": {
                   "type": "number",
                   "minimum": 0,
-                  "maximum": 1,
+                  "maximum": 10,
                   "default": 0.1
                 }
               },
@@ -160,9 +175,370 @@
                 }
               },
               "default": {}
+            },
+            "controls": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "position0",
+                "target0",
+                "zoom0"
+              ],
+              "properties": {
+                "position0": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "z": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  }
+                },
+                "target0": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "x",
+                    "y",
+                    "z"
+                  ],
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "z": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  }
+                },
+                "zoom0": {
+                  "type": "number",
+                  "minimum": 0.01,
+                  "maximum": 100
+                }
+              }
+            },
+            "motion": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "minimizing_factor": {
+                  "type": "number",
+                  "minimum": 0.01,
+                  "maximum": 2
+                },
+                "power_factor": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 10
+                },
+                "pointerDownMultiplier": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "base_speed": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "easing_speed": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            "effects": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "passOrder": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "glitchPass",
+                      "bloom",
+                      "RGBShift",
+                      "dotShader",
+                      "technicolorShader",
+                      "luminosityShader",
+                      "afterImagePass",
+                      "sobelShader",
+                      "colorifyShader",
+                      "halftonePass",
+                      "gammaCorrectionShader",
+                      "kaleidoShader",
+                      "copyShader",
+                      "bleachBypassShader",
+                      "toonShader",
+                      "outputPass"
+                    ]
+                  }
+                },
+                "toneMapping": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "method": {
+                      "enum": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        4,
+                        6,
+                        7
+                      ]
+                    },
+                    "exposure": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 10
+                    }
+                  }
+                },
+                "passes": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "rgbShift": {
+                      "type": "boolean"
+                    },
+                    "dot": {
+                      "type": "boolean"
+                    },
+                    "technicolor": {
+                      "type": "boolean"
+                    },
+                    "luminosity": {
+                      "type": "boolean"
+                    },
+                    "afterImage": {
+                      "type": "boolean"
+                    },
+                    "sobel": {
+                      "type": "boolean"
+                    },
+                    "glitch": {
+                      "type": "boolean"
+                    },
+                    "halftone": {
+                      "type": "boolean"
+                    },
+                    "gammaCorrection": {
+                      "type": "boolean"
+                    },
+                    "kaleid": {
+                      "type": "boolean"
+                    },
+                    "bleachBypass": {
+                      "type": "boolean"
+                    },
+                    "toon": {
+                      "type": "boolean"
+                    },
+                    "outputPass": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "params": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "rgbShift": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "amount": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 0.1
+                        },
+                        "angle": {
+                          "type": "number",
+                          "minimum": -6.283185307179586,
+                          "maximum": 6.283185307179586
+                        }
+                      }
+                    },
+                    "afterImage": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "damp": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      }
+                    },
+                    "kaleid": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "sides": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 24
+                        },
+                        "angle": {
+                          "type": "number",
+                          "minimum": -6.283185307179586,
+                          "maximum": 6.283185307179586
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "state": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "size": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "pointerDown": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "currPointerDown": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "currAudio": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "time": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 86400
+                },
+                "volume_multiplier": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10
+                }
+              }
+            },
+            "audioResponse": {
+              "enum": [
+                "legacy",
+                "transient-v1",
+                "mapped-v1"
+              ]
+            },
+            "audioResponseConfig": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "version"
+              ],
+              "properties": {
+                "version": {
+                  "enum": [
+                    1
+                  ]
+                },
+                "sensitivity": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 4
+                },
+                "mappings": {
+                  "type": "array",
+                  "maxItems": 6,
+                  "x-uniqueBy": "target",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "source"
+                    ],
+                    "properties": {
+                      "target": {
+                        "enum": [
+                          "size",
+                          "bass",
+                          "mid",
+                          "treble",
+                          "audioLevel",
+                          "audioHit"
+                        ]
+                      },
+                      "source": {
+                        "enum": [
+                          "bass-level",
+                          "mid-level",
+                          "treble-level",
+                          "overall-level",
+                          "bass-hit",
+                          "mid-hit",
+                          "treble-hit",
+                          "overall-hit"
+                        ]
+                      },
+                      "amount": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 4
+                      },
+                      "attack": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 2
+                      },
+                      "release": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 5
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
-          "default": {}
+          "default": {},
+          "x-maxOptionalEffects": 4
         }
       }
     },
