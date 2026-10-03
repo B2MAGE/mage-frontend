@@ -4,14 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HomePage } from './HomePage'
 import { APP_THEME_STORAGE_KEY, ThemeProvider, type AppThemeId } from '@theme'
 import { fetchScenes, fetchTags } from '@shared/lib'
-import { fetchSceneDetail, updateSceneVote } from '../scene-detail/loaders'
+import { fetchSceneDetail, SceneDetailRequestError, updateSceneVote } from '../scene-detail/loaders'
 import type { SceneEngagementSummary } from '../scene-detail/types'
 import { HOME_CREATE_PROMPT_HIDDEN_STORAGE_KEY } from './welcomePromptPreference'
 
 let authState = { isAuthenticated:false, isRestoringSession:false, authenticatedFetch:vi.fn() }
 vi.mock('@auth',()=>({useAuth:()=>authState}))
 vi.mock('@shared/lib',async original=>({ ...await original<typeof import('@shared/lib')>(), fetchScenes:vi.fn(), fetchTags:vi.fn() }))
-vi.mock('../scene-detail/loaders',()=>({fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
+vi.mock('../scene-detail/loaders',async original=>({ ...await original<typeof import('../scene-detail/loaders')>(), fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
 vi.mock('@modules/player',async original=>({ ...await original<typeof import('@modules/player')>(), MagePlayer:({sceneBlob,posterUrl,onAvailabilityRestored}:{sceneBlob:unknown;posterUrl?:string|null;onAvailabilityRestored?:()=>Promise<void>})=> <div>
  {sceneBlob ? 'Live featured player' : <><span>Playback temporarily unavailable</span>{posterUrl && <img src={posterUrl} alt="Featured scene poster"/>}</>}
  <button type="button" onClick={()=>void onAvailabilityRestored?.()}>Restore verified playback</button>
@@ -246,6 +246,7 @@ describe('Homepage mockup behavior',()=>{
   expect(filters.getByRole('button',{name:'Glass'})).toHaveAttribute('aria-pressed','true')
   expect(filters.getAllByRole('button').map(button=>button.textContent)).toEqual(choices)
   expect(fetchTags).toHaveBeenCalledTimes(1)
+  expect(fetchSceneDetail).toHaveBeenCalledTimes(featuredCalls)
  })
  it('dismisses only the guest panel and leaves featured content visible',async()=>{
   const {unmount}=show()
@@ -270,12 +271,27 @@ describe('Homepage mockup behavior',()=>{
   vi.mocked(fetchSceneDetail).mockRejectedValueOnce(new Error('offline'))
   show()
   const featuredSection=screen.getByRole('region',{name:'Featured Scenes'})
-  expect(await within(featuredSection).findByRole('alert')).toHaveTextContent('Featured scene unavailable')
+  expect(await within(featuredSection).findByRole('alert')).toHaveTextContent('Featured scene couldn’t be loaded')
   expect(within(featuredSection).getByRole('link',{name:'Explore scenes'})).toHaveAttribute('href','/scenes')
   expect(screen.queryByRole('heading',{name:'The next feature is on its way'})).not.toBeInTheDocument()
   fireEvent.click(within(featuredSection).getByRole('button',{name:'Try again'}))
   expect(await screen.findByText('Live featured player')).toBeInTheDocument()
   expect(within(featuredSection).queryByRole('alert')).not.toBeInTheDocument()
+ })
+ it.each([
+  ['not-found','Scene not found'],
+  ['invalid-payload','This scene couldn’t be loaded'],
+  ['auth-required','Sign in to view this scene'],
+ ] as const)('does not offer an ineffective featured retry for %s',async(code,title)=>{
+  vi.mocked(fetchSceneDetail).mockRejectedValueOnce(new SceneDetailRequestError(code,'Private technical details'))
+  show()
+  const featuredSection=screen.getByRole('region',{name:'Featured Scenes'})
+  expect(await within(featuredSection).findByRole('heading',{name:title})).toBeInTheDocument()
+  expect(within(featuredSection).queryByRole('button',{name:'Try again'})).not.toBeInTheDocument()
+  expect(within(featuredSection).getByRole('link',{name:'Explore scenes'})).toHaveAttribute('href','/scenes')
+  expect(within(featuredSection).queryByText('Private technical details')).not.toBeInTheDocument()
+  if(code==='auth-required') expect(within(featuredSection).getByRole('link',{name:'Sign in'})).toHaveAttribute('href','/login')
+  expect(fetchSceneDetail).toHaveBeenCalledTimes(1)
  })
  it('distinguishes an empty homepage from an empty tag filter',async()=>{
   vi.mocked(fetchScenes).mockResolvedValue([])

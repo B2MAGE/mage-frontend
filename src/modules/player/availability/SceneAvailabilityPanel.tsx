@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { buildMagePlayerClassName } from '../magePlayerUtils'
 
 export function SceneAvailabilityPanel({ className, posterUrl, message, checking = false, onCheck }: {
@@ -7,16 +8,17 @@ export function SceneAvailabilityPanel({ className, posterUrl, message, checking
   checking?: boolean
   onCheck?: () => void
 }) {
-  return <section className={buildMagePlayerClassName('mage-player', className)} data-state="unavailable">
-    <div className="mage-player__viewport mage-player__recovery-viewport">
+  const titleId = useId(), messageId = useId()
+  return <section className={buildMagePlayerClassName('mage-player', className)} data-state="unavailable" aria-labelledby={titleId} aria-describedby={messageId}>
+    <div className="mage-player__viewport mage-player__recovery-viewport mage-player__availability-viewport">
       {posterUrl ? <img className="mage-player__recovery-poster" src={posterUrl} alt="" /> : null}
-      <div className="mage-player__recovery-panel">
+      <div className="mage-player__recovery-panel mage-player__availability-panel">
         <div role="status" aria-live="polite">
-          <strong>{checking ? 'Checking playback' : 'Playback unavailable'}</strong>
-          <p>{message}</p>
+          <strong id={titleId}>{checking ? 'Checking playback' : 'Playback unavailable'}</strong>
+          <p id={messageId}>{message}</p>
         </div>
         {onCheck ? <div className="mage-player__recovery-actions">
-          <button type="button" onClick={onCheck}>Check again</button>
+          <button type="button" disabled={checking} onClick={onCheck}>Check again</button>
         </div> : null}
       </div>
     </div>

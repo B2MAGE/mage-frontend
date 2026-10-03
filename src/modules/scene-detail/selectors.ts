@@ -47,7 +47,7 @@ export function readErrorCopy(errorCode: SceneDetailErrorCode) {
     return {
       title: 'This scene couldn’t be loaded',
       description:
-        'Something is missing from this scene. You can explore other scenes while it’s being fixed.',
+        'There’s a problem loading this scene. You can explore other scenes.',
     }
   }
 

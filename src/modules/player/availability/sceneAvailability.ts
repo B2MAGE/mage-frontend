@@ -25,7 +25,7 @@ export const AVAILABILITY_BATCH_SIZE = 100
 const messages: Record<SceneAvailabilityCode, string> = {
   CHECKING: 'Checking whether this scene can play…',
   AVAILABLE: '',
-  SCENE_DISABLED: 'This scene is temporarily unavailable.',
+  SCENE_DISABLED: 'This scene is currently unavailable.',
   SCENE_NOT_FOUND: 'This scene is no longer available.',
   SCENE_UPGRADE_REQUIRED: 'This scene needs an update from its creator before it can play.',
   CUSTOM_RENDERING_DISABLED: 'Scene playback is temporarily disabled.',

@@ -103,6 +103,7 @@ export function SceneDetailPage() {
   const [scene, setScene] = useState<SceneDetail | null>(null)
   const [errorCode, setErrorCode] = useState<SceneDetailErrorCode | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [requestRetry, setRequestRetry] = useState(0)
   const [engagementActionError, setEngagementActionError] = useState<string | null>(null)
   const [pendingEngagementAction, setPendingEngagementAction] = useState<SceneVoteState | 'save' | null>(null)
   const [shareStatus, setShareStatus] = useState<string | null>(null)
@@ -187,7 +188,7 @@ export function SceneDetailPage() {
       isCurrent = false
       sceneLoadGeneration.current += 1
     }
-  }, [authenticatedFetch, isAuthenticated, isRestoringSession, sceneId])
+  }, [authenticatedFetch, isAuthenticated, isRestoringSession, sceneId, requestRetry])
 
   const reloadSceneSource = useCallback(async () => {
     if (loadedSceneId === null) return
@@ -351,15 +352,15 @@ export function SceneDetailPage() {
         title={title}
         description={description}
         actions={
-          <div className="auth-actions">
-            <Link className="demo-link" to="/">
+          <div className="scene-detail-state__actions">
+            <Link className="primary-button" to="/">
               Back to Home
             </Link>
             {isAuthenticated ? (
-              <Link className="secondary-link" to="/my-scenes">
+              <Link className="secondary-button" to="/my-scenes">
                 Back to My Scenes
               </Link>
-            ) : null}
+            ) : <Link className="secondary-button" to="/scenes">Explore scenes</Link>}
           </div>
         }
       />
@@ -378,23 +379,24 @@ export function SceneDetailPage() {
         title={title}
         description={description}
         actions={
-          <div className="auth-actions">
+          <div className="scene-detail-state__actions">
+            {errorCode === 'unavailable' && <button className="primary-button" type="button" onClick={() => setRequestRetry(value => value + 1)}>Try again</button>}
             {errorCode === 'auth-required' ? (
-              <Link className="demo-link" to="/login">
+              <Link className="primary-button" to="/login">
                 Go to Login
               </Link>
             ) : (
-              <Link className="demo-link" to="/">
+              <Link className={errorCode === 'unavailable' ? 'secondary-button' : 'primary-button'} to="/">
                 Back to Home
               </Link>
             )}
             {isAuthenticated ? (
-              <Link className="secondary-link" to="/my-scenes">
+              <Link className="secondary-button" to="/my-scenes">
                 Back to My Scenes
               </Link>
             ) : errorCode !== 'auth-required' ? (
-              <Link className="secondary-link" to="/login">
-                Sign In
+              <Link className="secondary-button" to="/scenes">
+                Explore scenes
               </Link>
             ) : null}
           </div>
