@@ -42,6 +42,28 @@ https://mage.example.com/        -> frontend
 https://mage.example.com/api/*   -> backend
 ```
 
+## Separate Renderer Hosting (PP-I01)
+
+MAGE remains at `https://mage.peterbucci.com` on its existing deployment. The
+isolated renderer uses a separate CloudFront-assigned HTTPS address, such as
+`https://d123example.cloudfront.net`, backed by a private S3 bucket. That hostname
+is illustrative; use the deployment's `RendererOrigin` output. No new domain,
+Route 53 zone, DNS change or custom ACM certificate is required. CloudFront
+provides the certificate and controls its default viewer TLS policy.
+
+Follow [isolated renderer](isolated-renderer.md) for the separate production
+build, template validation, CloudFormation change-set review, two-file upload
+and verification steps. The renderer is a restricted static site: do not reuse
+the app container's SPA fallback, proxy its execution through `/api`, or publish
+deployment metadata with its HTML and hashed script. Production allows only the
+parent origin `https://mage.peterbucci.com`.
+
+Its production deployment and browser verification must be completed before the
+later PP-I03 release gate can enable custom scenes. PP-I01's developer check does
+not yet replace the app's normal scene players; that connection remains in the
+following integration stories. CloudFront/S3 usage charges are separate from the
+existing server, and any account-wide transfer allowance is not a spending cap.
+
 ## Local Development
 
 None of this changes local development:

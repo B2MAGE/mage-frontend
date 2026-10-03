@@ -1,5 +1,9 @@
 node_modules
 dist
+dist-player-check
+dist-isolated-renderer
+dist-isolated-renderer-production
+.local
 .git
 .github
 .vscode

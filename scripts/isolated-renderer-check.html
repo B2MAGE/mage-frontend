@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAGE isolated player check</title>
+<style>
+body{margin:0;background:#0c0e13;color:#f5f5f7;font:16px system-ui,sans-serif}main{max-width:900px;margin:32px auto;padding:0 24px}h1{font-size:28px}p{color:#b8bac7;line-height:1.5}button{border:1px solid #55596b;border-radius:6px;background:#222533;color:inherit;font:inherit;padding:10px 16px;cursor:pointer}button:focus-visible{outline:3px solid #a793ff}button:disabled{opacity:.5;cursor:default}.actions{display:flex;gap:12px;flex-wrap:wrap}#player{height:min(50vh,420px);margin:20px 0;background:#141722;border-radius:8px;overflow:hidden}#status{padding:12px 0;color:#d4ccff}code{color:#d4ccff}a{color:#b9a7ff}
+</style></head><body><main>
+<h1>Isolated player check</h1>
+<p>This test runs a sample in a separate player. Your account, audio files, and scene drafts stay in MAGE.</p>
+<div class="actions"><button id="start">Start sample</button><button id="stop" disabled>Stop player</button><button id="unavailable">Test unavailable player</button></div>
+<div id="player" aria-label="Isolated sample player"></div><p id="status" role="status">Ready to test.</p><p id="boundary" aria-live="polite"></p>
+<p>Player address: <code id="address"></code></p><p>Custom scene editing and music controls are connected in the next stories.</p>
+<a href="/">Back to MAGE</a>
+</main><script type="module" src="./isolated-renderer-check.ts"></script></body></html>

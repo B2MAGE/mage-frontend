@@ -11,7 +11,16 @@
     "lint": "eslint .",
     "postinstall": "patch-package --error-on-fail",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prerenderer:build": "patch-package --error-on-fail",
+    "renderer:build": "tsc -b && node scripts/build-isolated-renderer.mjs",
+    "prerenderer:build:production": "patch-package --error-on-fail",
+    "renderer:build:production": "tsc -b && node scripts/build-isolated-renderer.mjs --production",
+    "renderer:serve": "node scripts/serve-isolated-renderer.mjs",
+    "renderer:verify": "node scripts/verify-isolated-renderer.mjs",
+    "renderer:verify:production": "node scripts/verify-isolated-renderer.mjs --production",
+    "renderer:test": "node --test deployment/isolated-renderer/hosting.test.mjs",
+    "player-check:build": "node scripts/build-isolated-player-check.mjs"
   },
   "dependencies": {
     "@notrac/mage": "1.0.3",
