@@ -78,6 +78,16 @@ The dedicated `deployment/isolated-renderer/Dockerfile.player-check` serves this
 artifact at `/player-check/`, using `nginx.player-check.conf`. Deploy it as a
 separate Coolify application with repository root `/`, container port `80`, and
 domain `https://mage.peterbucci.com/player-check`. Preserve the path prefix.
+Coolify generates a StripPrefix middleware for a domain containing a path. For
+this service, disable read-only labels, remove that middleware's definition and
+router reference, and restrict both routers to this rule:
+
+```text
+Host(`mage.peterbucci.com`) && (Path(`/player-check`) || PathPrefix(`/player-check/`))
+```
+
+Keep HTTPS and port 80 routing. If using Caddy instead, use `handle` rather than `handle_path` and omit
+the generated SPA `try_files` fallback. Do not apply these labels to the main app.
 Only that prefix routes to this container; the existing MAGE frontend/backend
 resources and versions remain unchanged. This is a verification service, not the
 renderer host or a replacement for normal app players.
@@ -95,6 +105,29 @@ cookie, local-storage and parent-document access checks to throw `SecurityError`
 The fixed-sample protocol does not exercise child-initiated network requests or
 self-navigation; do not describe those as browser-tested by this page.
 
+### Live verification recorded October 3, 2026
+
+The page is deployed at **https://mage.peterbucci.com/player-check/** through
+Coolify application `mage-player-check` (`u8rnherfuj07qyl0tbc5c8y0`), pinned to
+feature-branch commit `304a8be83ce4c238e8ec228190ad1dd42b5abbe6`. Deployment
+`zt41epxqm8dsmkmeo2kntkyh` finished successfully. The source branch was pushed for
+this deployment but has not been merged into main.
+
+Chromium on the real HTTPS parent displayed the torus sample loaded from
+CloudFront. Parent access to the renderer document was blocked; the frame had
+exactly `sandbox="allow-scripts"`. The child's successful boot also confirms its
+cookie, local-storage and parent-document access guards. Stop removed the iframe
+with no canvas in the parent. An unavailable child timed out, removed its frame,
+and offered retry; retry rendered a fresh sample and passed isolation again.
+The live page's error log was empty after the successful retry.
+
+Live HTTP checks confirmed the exact parent CSP, no-store and no-referrer
+headers, and 404 for a missing test file. The main homepage still returned 200
+with the same `/assets/index-CwcHXyJq.js` bundle and no test-page CSP. The existing
+frontend/backend deployment was not rebuilt. Validation also passed 39 focused
+host/boundary tests, three page-policy tests, TypeScript, lint, the fixture build,
+the Docker build, nginx configuration validation and local container HTTP checks.
+
 ## AWS deployment — provider-issued CloudFront address
 
 The template is prepared for the selected plan. Deployment and production-browser verification are separate from building it; record the real stack outputs and verification results when those steps succeed. Do not mark PP-I01 deployed based on a local build or template validation alone. AWS credentials must remain in the operator's CLI profile or deployment environment, never in renderer build inputs.
@@ -111,7 +144,7 @@ The template is prepared for the selected plan. Deployment and production-browse
 | Uploaded bundle | `assets/renderer-CLjwoTfj.js` (16,950,333 bytes) |
 | Uploaded entry document | `index.html` (753 bytes) |
 
-Only the two runtime files were uploaded, with the content types and cache metadata specified below. The production HTTP verifier passed against the assigned HTTPS origin, checking response policies, bundle integrity, no credentialed responses, and rejected routes/query strings/methods. Additional live checks confirmed correct MIME types, lengths, caching and HSTS, plus HTTP 403 for unencrypted viewing and direct S3 object access. Direct navigation in Chromium displayed “Open this player from MAGE.” Production-parent embedded sample, isolation and lifecycle checks remain pending; the normal application players are not connected by this deployment.
+Only the two runtime files were uploaded, with the content types and cache metadata specified below. The production HTTP verifier passed against the assigned HTTPS origin, checking response policies, bundle integrity, no credentialed responses, and rejected routes/query strings/methods. Additional live checks confirmed correct MIME types, lengths, caching and HSTS, plus HTTP 403 for unencrypted viewing and direct S3 object access. Direct navigation in Chromium displayed “Open this player from MAGE.” The production-parent sample, isolation and lifecycle checks subsequently passed as recorded above; the normal application players are not connected by this deployment.
 
 Build for MAGE's actual parent origin into a separate output folder, so the local HTTP fixture keeps its matching local bundle and headers. Production builds have no default parent and reject loopback/HTTP:
 
@@ -193,8 +226,8 @@ tests, TypeScript, ESLint, the standalone build and the main application build.
 The existing engine eval and size warnings remain. Local HTTPS and additional
 browser engines have a documented test setup but were not exercised here.
 Production CloudFront response checks subsequently passed as recorded above;
-production-parent embedded browser checks remain pending. Do not treat this
-local record as PP-I03's arbitrary-code release approval.
+production-parent sample and lifecycle checks also passed as recorded above.
+Do not treat these fixed-sample checks as PP-I03's arbitrary-code release approval.
 
 The provider-address follow-up passed 34 host tests and seven hosting tests,
 TypeScript, ESLint, and the production renderer build for
@@ -210,6 +243,6 @@ This separates the account-bearing page from shader execution. It is not a guara
 
 Iframe sandbox flags block parent navigation, popups, downloads, forms and same-origin access. They do not completely ban a child from navigating its **own** frame in every browser. The embedding page's strict `frame-src`, child-load monitoring and disposal are additional checks, not a claim of a universal network or resource sandbox. Browser verification must cover self-navigation/redirect attempts, lost child documents, direct navigation, denied requests, cookie/storage access and parent DOM access. Never send auth tokens, private account data or arbitrary fetch URLs into this renderer. PP-I01's protocol accepts only the fixed sample and disposal commands.
 
-The HTTP verifier checks actual response policies, immutable integrity, no cookies, method rejection and route rejection. The Node tests cover exact origins, manifest tampering, local HTTP behavior and generated CloudFront behavior. Browser checks cover the remaining browser-enforced boundaries and successful sample rendering. Hosting is deployed and its HTTPS responses verified; production-parent embedded browser verification remains outstanding before this story can be closed.
+The HTTP verifier checks actual response policies, immutable integrity, no cookies, method rejection and route rejection. The Node tests cover exact origins, manifest tampering, local HTTP behavior and generated CloudFront behavior. The recorded browser checks cover the fixed sample, DOM/storage boundary, teardown and recovery. Hosting and the production-parent sample are deployed and verified; broader custom-code and browser-engine checks remain part of the integration/release work. Neither the fixture nor its successful result enables arbitrary custom execution in normal players.
 
 References: [CSP external script hashes and evaluation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src), [CloudFront response headers policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html), [private S3 origins with OAC](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html).
