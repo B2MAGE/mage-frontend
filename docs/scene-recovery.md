@@ -9,15 +9,21 @@ no backend change or server-side crash classification.
 - A failed or possibly interrupted scene stays static on the next visit. A saved
   thumbnail is shown when available; the message distinguishes an observed error
   from an interruption whose cause is unknown.
-- **Stop rendering** disposes the active player and blocks automatic rendering of
-  that revision. **Resume rendering** deliberately tries it again.
+- The **Playback options** cogwheel beside fullscreen contains **Stop this scene**
+  and a **Pause all scenes** toggle. These controls are also available in the bottom
+  bar while loading, with no permanent buttons covering the scene.
+- **Stop this scene** disposes the active player and blocks automatic rendering of
+  that revision. **Resume scene** deliberately tries it again.
 - **Retry scene** permits another attempt in the current tab. It does not approve
   the scene, change validation, or disable any other playback restrictions.
   Other tabs remain blocked. The permission lasts for one rendering attempt; after
   leaving the scene, another visit requires a fresh retry until the record expires
   or is explicitly cleared. A corrected revision has its own identity.
-- **Safe mode** turns off automatic rendering across this site's tabs. Browsing
-  and editing remain available. Leaving safe mode does not erase failed scenes.
+- One **Playback paused** panel explains whether playback was stopped, interrupted,
+  or failed. **Pause all scenes** turns off automatic rendering across this site's
+  tabs. Browsing and editing remain available; turning it off does not erase failed
+  scenes. Resume stays disabled while all scenes are paused. Internally this setting
+  retains the existing safe-mode flag and persistence behavior.
 - Editor fields and locally selected audio tracks survive replacing a failed
   player. This is not draft autosave: a browser crash or page reload can still
   discard unsaved editor changes and local file selections.
@@ -95,6 +101,6 @@ preservation. Patched-engine tests exercise real lifecycle notifications, and th
 patch is checked against a pristine MAGE 1.0.3 package.
 
 For a harmless manual check, stop a valid scene, reload, and verify it stays static.
-Resume explicitly, enter safe mode, browse to another scene, then leave safe mode.
+Resume explicitly, enable Pause all scenes, browse to another scene, then turn it off.
 For editor recovery, make unsaved changes, stop the preview, and confirm the fields
 remain intact. Do not use an infinite loop to test a renderer on the browser thread.

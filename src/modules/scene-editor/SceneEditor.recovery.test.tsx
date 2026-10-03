@@ -40,16 +40,19 @@ describe('scene editor recovery', () => {
     const key = sceneRecoveryKey(loaded)!
     blockedKeys.add(key)
     act(() => sceneRecovery.block(key, 'runtime'))
-    expect(screen.getByText('This scene could not keep rendering.')).toBeInTheDocument()
+    expect(screen.getByText('Playback paused')).toBeInTheDocument()
+    expect(screen.getByText(/playback error/i)).toBeInTheDocument()
     expect(first.dispose).toHaveBeenCalledTimes(1)
     expect(screen.getByLabelText('Custom Shader', { exact: true })).toHaveValue(shader)
 
-    await user.click(screen.getByRole('button', { name: 'Browse in safe mode' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
     const corrected = 'sphere(0.6) // corrected unsaved source'
     fireEvent.change(screen.getByLabelText('Custom Shader', { exact: true }), { target: { value: corrected } })
-    expect(screen.getByText('Safe mode is on.')).toBeInTheDocument()
+    expect(screen.getByText('Playback paused')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Pause all scenes' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Resume scene' })).toBeDisabled()
     expect(createMagePlayer).toHaveBeenCalledTimes(1)
-    await user.click(screen.getByRole('button', { name: 'Leave safe mode' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({
       visualizer: expect.objectContaining({ shader: corrected }),
     }), expect.any(Object)))

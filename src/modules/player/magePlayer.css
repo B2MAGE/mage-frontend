@@ -28,16 +28,6 @@
   height: 100%;
 }
 
-.mage-player__recovery-tools {
-  position: absolute;
-  z-index: 3;
-  inset: 10px 10px auto auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.mage-player__recovery-tools button,
 .mage-player__recovery-actions button {
   border: 1px solid var(--border, #383b45);
   border-radius: 6px;
@@ -49,12 +39,10 @@
   cursor: pointer;
 }
 
-.mage-player__recovery-tools button:hover,
-.mage-player__recovery-actions button:hover {
+.mage-player__recovery-actions button:enabled:hover {
   background: var(--surface-soft, #292c36);
 }
 
-.mage-player__recovery-tools button:focus-visible,
 .mage-player__recovery-actions button:focus-visible {
   outline: 2px solid var(--accent-light, #9e91ff);
   outline-offset: 2px;
@@ -85,6 +73,57 @@
 .mage-player__recovery-panel strong { font-size: clamp(14px, 2vw, 19px); }
 .mage-player__recovery-panel p { max-width: 44ch; margin: 0; font-size: 13px; line-height: 1.5; }
 .mage-player__recovery-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.mage-player__recovery-actions button:disabled { opacity: .5; cursor: default; }
+.mage-player__recovery-viewport { min-height: 230px; }
+
+.mage-player__playback-options { position: relative; flex: 0 0 auto; }
+.mage-player__options-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  z-index: 4;
+  width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border, #383b45);
+  border-radius: 10px;
+  background: var(--surface, #15171d);
+  color: var(--text, #f4f5f7);
+  box-shadow: 0 8px 24px #0005;
+}
+.mage-player__options-panel > button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mage-player__options-panel > button:hover { background: var(--surface-soft, #292c36); }
+.mage-player__options-panel > button:focus-visible { outline: 2px solid var(--accent-light, #9e91ff); outline-offset: -2px; }
+.mage-player__pause-all { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 8px 10px; min-height: 40px; font-size: 13px; cursor: pointer; }
+.mage-player__pause-all input {
+  appearance: none;
+  position: relative;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #3c404a;
+  cursor: pointer;
+}
+.mage-player__pause-all input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #f4f5f7; transition: transform 120ms ease; }
+.mage-player__pause-all input:checked { background: var(--accent, #8364fa); }
+.mage-player__pause-all input:checked::after { transform: translateX(14px); }
+.mage-player__pause-all input:focus-visible { outline: 2px solid var(--accent-light, #9e91ff); outline-offset: 3px; }
 
 .mage-player__controls {
   position: absolute;

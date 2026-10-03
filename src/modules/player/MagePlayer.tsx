@@ -28,6 +28,7 @@ import { normalizeAudioResponseMode } from '@shared/lib'
 import { hasSceneDocumentMarkers } from './templates/sceneContract'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
+import { PlaybackOptions } from './recovery/PlaybackOptions'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -791,10 +792,6 @@ function MagePlayerRenderer({
     <section className={buildMagePlayerClassName('mage-player', className)} data-state={status}>
       <div className="mage-player__viewport" aria-busy={status === 'loading'}>
         <canvas aria-label={ariaLabel} className="mage-player__canvas" ref={canvasRef} />
-        {sceneBlob ? <div className="mage-player__recovery-tools" aria-label="Rendering recovery">
-          {onStopRendering ? <button type="button" onClick={onStopRendering}>Stop rendering</button> : null}
-          <button type="button" onClick={onSafeMode}>Safe mode</button>
-        </div> : null}
         <input
           accept="audio/*"
           className="mage-player__audio-input"
@@ -832,12 +829,16 @@ function MagePlayerRenderer({
             onToggleVolumePanel={handleToggleVolumePanel}
             onTrackSummaryClick={handleTrackSummaryClick}
             onVolumeChange={handleVolumeChange}
+            onStopScene={onStopRendering}
+            onPauseAllScenes={onSafeMode}
             playbackState={playbackState}
             showPlaylistButton={Boolean(onRequestPlaylistOpen)}
             tracksCount={tracks.length}
             volumeControlRef={volumeControlRef}
           />
-        ) : null}
+        ) : sceneBlob ? <div className="mage-player__controls mage-player__controls--recovery-only">
+          <PlaybackOptions onStopScene={onStopRendering} onPauseAllScenes={onSafeMode} />
+        </div> : null}
     </section>
   )
 }
