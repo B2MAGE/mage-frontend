@@ -88,6 +88,14 @@ describe('isolated renderer endpoint validation', () => {
     expect(() => validateRendererUrl(RENDERER_URL)).toThrow()
   })
 
+  it('accepts a provider-issued CloudFront address for MAGE without allowing sibling app domains', () => {
+    vi.stubEnv('DEV', false)
+    const parent = 'https://mage.peterbucci.com/'
+    expect(validateRendererUrl('https://d111111abcdef8.cloudfront.net/index.html', parent).origin)
+      .toBe('https://d111111abcdef8.cloudfront.net')
+    expect(() => validateRendererUrl('https://player.peterbucci.com/', parent)).toThrow(/separate site/)
+  })
+
   it.each([
     '/renderer', '//127.0.0.1:5181/',
     'http://user:password@127.0.0.1:5181/', 'http://127.0.0.1:5181/?token=secret',

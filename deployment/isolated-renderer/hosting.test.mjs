@@ -109,12 +109,16 @@ test('AWS template uses the same policy, private OAC bucket, exact paths, and no
   const manifest = productionManifest()
   const template = createCloudFormationTemplate(manifest)
   const resources = template.Resources
-  assert(resources.RendererBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy)
+  assert.deepEqual(resources.RendererBucket.Properties.PublicAccessBlockConfiguration, {
+    BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true,
+  })
   assert.equal(resources.OriginAccessControl.Properties.OriginAccessControlConfig.SigningBehavior, 'always')
+  assert.equal(resources.OriginAccessControl.Properties.OriginAccessControlConfig.SigningProtocol, 'sigv4')
   const documentPolicy = resources.DocumentHeaders.Properties.ResponseHeadersPolicyConfig
   assert.equal(documentPolicy.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy, manifest.headers['Content-Security-Policy'])
   assert.equal(documentPolicy.SecurityHeadersConfig.ContentSecurityPolicy.Override, true)
   assert.equal(documentPolicy.CorsConfig.AccessControlAllowCredentials, false)
+  assert(documentPolicy.RemoveHeadersConfig.Items.some(({ Header }) => Header === 'Set-Cookie'))
   for (const name of ['DocumentCache', 'AssetCache']) {
     const cache = resources[name].Properties.CachePolicyConfig.ParametersInCacheKeyAndForwardedToOrigin
     assert.equal(cache.CookiesConfig.CookieBehavior, 'none')
@@ -123,9 +127,21 @@ test('AWS template uses the same policy, private OAC bucket, exact paths, and no
   }
   const distribution = resources.Distribution.Properties.DistributionConfig
   for (const behavior of [distribution.DefaultCacheBehavior, ...distribution.CacheBehaviors]) {
+    assert.equal(behavior.ViewerProtocolPolicy, 'https-only')
+    assert.deepEqual(behavior.AllowedMethods, ['GET', 'HEAD'])
     assert.deepEqual(behavior.FunctionAssociations, [{ EventType: 'viewer-request', FunctionARN: { 'Fn::GetAtt': ['AllowlistedFiles', 'FunctionMetadata.FunctionARN'] } }])
   }
   assert.equal(distribution.Origins.length, 1)
+  assert.deepEqual(distribution.Origins[0].OriginAccessControlId, { Ref: 'OriginAccessControl' })
+  assert.deepEqual(distribution.Origins[0].DomainName, { 'Fn::GetAtt': ['RendererBucket', 'RegionalDomainName'] })
+  const bucketStatements = resources.RendererBucketPolicy.Properties.PolicyDocument.Statement
+  const access = bucketStatements.find(({ Sid }) => Sid === 'CloudFrontReadOnly')
+  assert.deepEqual(access.Principal, { Service: 'cloudfront.amazonaws.com' })
+  assert.equal(access.Action, 's3:GetObject')
+  assert.deepEqual(access.Condition.StringEquals['AWS:SourceArn'], { 'Fn::Sub': 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}' })
+  const tls = bucketStatements.find(({ Sid }) => Sid === 'RequireTLS')
+  assert.equal(tls.Effect, 'Deny')
+  assert.equal(tls.Condition.Bool['aws:SecureTransport'], 'false')
   assert.equal(distribution.CacheBehaviors[0].PathPattern, manifest.bundlePath)
   assert(!distribution.CustomErrorResponses.some((entry) => entry.ResponsePagePath))
   const handler = runInNewContext(`${resources.AllowlistedFiles.Properties.FunctionCode}; handler`)
@@ -137,4 +153,20 @@ test('AWS template uses the same policy, private OAC bucket, exact paths, and no
     assert.equal(denied.statusCode, 403)
     assert(denied.headers['content-security-policy'].value.includes('sandbox allow-scripts'))
   }
+})
+
+test('AWS hosting needs no domain registration, DNS records, or custom certificate', () => {
+  const template = createCloudFormationTemplate(productionManifest())
+  const distribution = template.Resources.Distribution.Properties.DistributionConfig
+  assert.equal(template.Parameters, undefined)
+  assert.equal(distribution.Aliases, undefined)
+  assert.deepEqual(distribution.ViewerCertificate, { CloudFrontDefaultCertificate: true })
+  assert.deepEqual(template.Outputs.DistributionDomainName.Value, { 'Fn::GetAtt': ['Distribution', 'DomainName'] })
+  assert.deepEqual(template.Outputs.RendererOrigin.Value, { 'Fn::Sub': 'https://${Distribution.DomainName}' })
+  for (const { Type } of Object.values(template.Resources)) {
+    assert(!Type.startsWith('AWS::Route53::'), 'Provider-issued hosting must not create DNS resources.')
+    assert(!Type.startsWith('AWS::CertificateManager::'), 'Provider-issued hosting must not require an ACM certificate.')
+  }
+  assert(!JSON.stringify(template).includes('RendererDomainName'))
+  assert(!JSON.stringify(template).includes('CertificateArn'))
 })

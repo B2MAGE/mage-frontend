@@ -62,11 +62,7 @@ export function createCloudFormationTemplate(manifest) {
   })
   return {
     AWSTemplateFormatVersion: '2010-09-09',
-    Description: 'MAGE renderer only. Private S3, exact immutable assets, opaque response sandbox and no application API.',
-    Parameters: {
-      RendererDomainName: { Type: 'String', Description: 'Dedicated renderer hostname on a different registrable domain than MAGE. Never an app subdomain.', AllowedPattern: '[a-z0-9][a-z0-9.-]*\\.[a-z]{2,}' },
-      CertificateArn: { Type: 'String', Description: 'Validated ACM certificate in us-east-1 for RendererDomainName.', AllowedPattern: 'arn:aws:acm:us-east-1:[0-9]{12}:certificate/[A-Za-z0-9-]+' },
-    },
+    Description: 'MAGE renderer only. CloudFront HTTPS address, private S3, exact immutable assets, opaque response sandbox and no application API.',
     Resources: {
       RendererBucket: {
         Type: 'AWS::S3::Bucket', DeletionPolicy: 'Retain', UpdateReplacePolicy: 'Retain',
@@ -87,10 +83,10 @@ export function createCloudFormationTemplate(manifest) {
         Type: 'AWS::CloudFront::Distribution', Properties: { DistributionConfig: {
           Enabled: true,
           Comment: 'MAGE isolated custom renderer; keep main-app custom playback gate disabled until PP-I03.',
-          Aliases: [{ Ref: 'RendererDomainName' }],
           HttpVersion: 'http2and3',
           IPV6Enabled: true,
-          ViewerCertificate: { AcmCertificateArn: { Ref: 'CertificateArn' }, SslSupportMethod: 'sni-only', MinimumProtocolVersion: 'TLSv1.2_2021' },
+          // The provider-issued hostname uses CloudFront's certificate with no custom TLS fields.
+          ViewerCertificate: { CloudFrontDefaultCertificate: true },
           Origins: [{ Id: 'RendererBucket', DomainName: { 'Fn::GetAtt': ['RendererBucket', 'RegionalDomainName'] }, S3OriginConfig: { OriginAccessIdentity: '' }, OriginAccessControlId: { Ref: 'OriginAccessControl' } }],
           DefaultCacheBehavior: behavior('DocumentCache', 'DocumentHeaders'),
           CacheBehaviors: [{ PathPattern: manifest.bundlePath, ...behavior('AssetCache', 'AssetHeaders') }],
@@ -107,7 +103,7 @@ export function createCloudFormationTemplate(manifest) {
       BucketName: { Value: { Ref: 'RendererBucket' } },
       DistributionId: { Value: { Ref: 'Distribution' } },
       DistributionDomainName: { Value: { 'Fn::GetAtt': ['Distribution', 'DomainName'] } },
-      RendererOrigin: { Value: { 'Fn::Sub': 'https://${RendererDomainName}' } },
+      RendererOrigin: { Value: { 'Fn::Sub': 'https://${Distribution.DomainName}' } },
     },
   }
 }
