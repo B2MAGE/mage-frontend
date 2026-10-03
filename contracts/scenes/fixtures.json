@@ -1,0 +1,1148 @@
+{
+  "contractVersion": 1,
+  "description": "Shared frontend and Java API conformance examples. 'valid' is structural contract validity, never permission to run custom source. Optional 'normalized' asserts materialized defaults.",
+  "cases": [
+    {
+      "name": "omitted-options-use-version-one-defaults",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-1",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-1",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-2",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-2",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-3",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-3",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-4",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-4",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-5",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-5",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-6",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-6",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-7",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-7",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-8",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-8",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-9",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-9",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-10",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-10",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-11",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-11",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-12",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-12",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-embedded-scene-13",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-13",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-reaction-rings-v1",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "reaction-rings-v1",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "catalog-reaction-lantern-v1",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "reaction-lantern-v1",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "empty-option-objects-use-defaults",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {},
+        "settings": {
+          "camera": {},
+          "bloom": {},
+          "tint": {}
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "lower-bounds-and-false-values",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 1,
+          "speed": 0
+        },
+        "settings": {
+          "skybox": 1,
+          "camera": {
+            "fov": 20,
+            "autoRotate": false,
+            "orbitSpeed": 0
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 0,
+            "radius": 0,
+            "threshold": 0
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#000000"
+          }
+        }
+      }
+    },
+    {
+      "name": "upper-bounds-and-enabled-effects",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 30,
+          "speed": 3
+        },
+        "settings": {
+          "skybox": 10,
+          "camera": {
+            "fov": 100,
+            "autoRotate": true,
+            "orbitSpeed": 2
+          },
+          "bloom": {
+            "enabled": true,
+            "strength": 3,
+            "radius": 1,
+            "threshold": 1
+          },
+          "tint": {
+            "enabled": true,
+            "color": "#AABBCC"
+          }
+        }
+      }
+    },
+    {
+      "name": "fractional-bounded-values",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 12.5,
+          "speed": 0.5
+        },
+        "settings": {
+          "camera": {
+            "fov": 62.5,
+            "orbitSpeed": 0.3
+          }
+        }
+      }
+    },
+    {
+      "name": "explicit-custom-remains-untrusted",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "visualizer": {
+            "shader": "void main() { gl_FragColor = vec4(1.0); }"
+          },
+          "controls": {
+            "zoom0": 1
+          },
+          "state": {
+            "pointerDown": false
+          },
+          "note": null,
+          "array": [
+            1,
+            "string",
+            false,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "name": "empty-custom-remains-untrusted",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {}
+      }
+    },
+    {
+      "name": "unsupported-schema-version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 2,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "missing-schema-version",
+      "valid": false,
+      "document": {
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "schema-version-is-not-coerced",
+      "valid": false,
+      "document": {
+        "schemaVersion": "1",
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "unsupported-template-version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 2
+      }
+    },
+    {
+      "name": "missing-template-version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0"
+      }
+    },
+    {
+      "name": "unknown-template",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "remote-custom",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "missing-discriminator",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "unknown-discriminator",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "preset",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      }
+    },
+    {
+      "name": "bare-legacy-engine-document",
+      "valid": false,
+      "document": {
+        "visualizer": {
+          "shader": "void main() {}"
+        }
+      }
+    },
+    {
+      "name": "mixed-template-source",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "source": "void main() {}"
+      }
+    },
+    {
+      "name": "mixed-template-code",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "code": "alert(1)"
+      }
+    },
+    {
+      "name": "mixed-template-shader",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "shader": "void main() {}"
+      }
+    },
+    {
+      "name": "mixed-template-imports",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "imports": [
+          "https://example.invalid/code.js"
+        ]
+      }
+    },
+    {
+      "name": "mixed-template-assetUrl",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "assetUrl": "https://example.invalid/sky.jpg"
+      }
+    },
+    {
+      "name": "mixed-template-scene",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "scene": {
+          "visualizer": {
+            "shader": "void main() {}"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-parameter",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 10,
+          "expression": "Math.random()"
+        }
+      }
+    },
+    {
+      "name": "parameter-expression-string",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "speed": "time * 2"
+        }
+      }
+    },
+    {
+      "name": "parameter-numeric-string",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": "10"
+        }
+      }
+    },
+    {
+      "name": "unknown-settings",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "audioResponse": {
+            "mode": "mapped"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-camera-field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "position": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-bloom-field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "shader": "void main() {}"
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-tint-field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": {
+            "url": "https://example.invalid/image.png"
+          }
+        }
+      }
+    },
+    {
+      "name": "parameters-null",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": null
+      }
+    },
+    {
+      "name": "settings-array",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": []
+      }
+    },
+    {
+      "name": "camera-null",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": null
+        }
+      }
+    },
+    {
+      "name": "bloom-string",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": "on"
+        }
+      }
+    },
+    {
+      "name": "tint-array",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": []
+        }
+      }
+    },
+    {
+      "name": "parameters-scale-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 0.999
+        }
+      }
+    },
+    {
+      "name": "parameters-scale-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 30.001
+        }
+      }
+    },
+    {
+      "name": "parameters-speed-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "speed": -0.001
+        }
+      }
+    },
+    {
+      "name": "parameters-speed-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "speed": 3.001
+        }
+      }
+    },
+    {
+      "name": "camera-fov-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "fov": 19.999
+          }
+        }
+      }
+    },
+    {
+      "name": "camera-fov-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "fov": 100.001
+          }
+        }
+      }
+    },
+    {
+      "name": "camera-orbitSpeed-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "orbitSpeed": -0.001
+          }
+        }
+      }
+    },
+    {
+      "name": "camera-orbitSpeed-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "orbitSpeed": 2.001
+          }
+        }
+      }
+    },
+    {
+      "name": "bloom-strength-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "strength": -0.001
+          }
+        }
+      }
+    },
+    {
+      "name": "bloom-strength-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "strength": 3.001
+          }
+        }
+      }
+    },
+    {
+      "name": "bloom-radius-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "radius": -0.001
+          }
+        }
+      }
+    },
+    {
+      "name": "bloom-radius-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "radius": 1.001
+          }
+        }
+      }
+    },
+    {
+      "name": "bloom-threshold-below-minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "threshold": -0.001
+          }
+        }
+      }
+    },
+    {
+      "name": "bloom-threshold-above-maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "bloom": {
+            "threshold": 1.001
+          }
+        }
+      }
+    },
+    {
+      "name": "skybox-invalid-0",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "skybox": 0
+        }
+      }
+    },
+    {
+      "name": "skybox-invalid-11",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "skybox": 11
+        }
+      }
+    },
+    {
+      "name": "skybox-invalid-1.5",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "skybox": 1.5
+        }
+      }
+    },
+    {
+      "name": "skybox-invalid-6",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "skybox": "6"
+        }
+      }
+    },
+    {
+      "name": "color-invalid-67",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": {
+            "color": "red"
+          }
+        }
+      }
+    },
+    {
+      "name": "color-invalid-68",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": {
+            "color": "#fff"
+          }
+        }
+      }
+    },
+    {
+      "name": "color-invalid-69",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": {
+            "color": "#ffffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "color-invalid-70",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": {
+            "color": "#ffffff\n"
+          }
+        }
+      }
+    },
+    {
+      "name": "color-invalid-71",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "tint": {
+            "color": "https://example.invalid/tint.png"
+          }
+        }
+      }
+    },
+    {
+      "name": "boolean-is-not-coerced",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "autoRotate": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "custom-with-template-metadata",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "templateId": "embedded-scene-0",
+        "scene": {}
+      }
+    },
+    {
+      "name": "custom-with-top-level-source",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "source": "arbitrary",
+        "scene": {}
+      }
+    },
+    {
+      "name": "custom-scene-array",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": []
+      }
+    },
+    {
+      "name": "custom-scene-null",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": null
+      }
+    },
+    {
+      "name": "custom-scene-missing",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom"
+      }
+    },
+    {
+      "name": "template-prototype-key-__proto__",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "__proto__": {}
+        }
+      }
+    },
+    {
+      "name": "custom-prototype-key-__proto__",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "nested": {
+            "__proto__": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "template-prototype-key-prototype",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "prototype": {}
+        }
+      }
+    },
+    {
+      "name": "custom-prototype-key-prototype",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "nested": {
+            "prototype": {}
+          }
+        }
+      }
+    },
+    {
+      "name": "template-prototype-key-constructor",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "constructor": {}
+        }
+      }
+    },
+    {
+      "name": "custom-prototype-key-constructor",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "nested": {
+            "constructor": {}
+          }
+        }
+      }
+    }
+  ]
+}

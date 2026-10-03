@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:mage:scene:v1",
+  "title": "MAGE scene document version 1",
+  "description": "Template documents contain only bounded data. Custom documents remain untrusted executable scene source. Defaults are annotations; consumers must materialize them after validation.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/template"
+    },
+    {
+      "$ref": "#/$defs/custom"
+    }
+  ],
+  "$defs": {
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "templateId",
+        "templateVersion"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "kind": {
+          "const": "template"
+        },
+        "templateId": {
+          "type": "string",
+          "enum": [
+            "embedded-scene-0",
+            "embedded-scene-1",
+            "embedded-scene-2",
+            "embedded-scene-3",
+            "embedded-scene-4",
+            "embedded-scene-5",
+            "embedded-scene-6",
+            "embedded-scene-7",
+            "embedded-scene-8",
+            "embedded-scene-9",
+            "embedded-scene-10",
+            "embedded-scene-11",
+            "embedded-scene-12",
+            "embedded-scene-13",
+            "reaction-rings-v1",
+            "reaction-lantern-v1"
+          ]
+        },
+        "templateVersion": {
+          "const": 1
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scale": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 30,
+              "default": 10
+            },
+            "speed": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 3,
+              "default": 1
+            }
+          },
+          "default": {}
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "skybox": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10
+              ],
+              "default": 6
+            },
+            "camera": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fov": {
+                  "type": "number",
+                  "minimum": 20,
+                  "maximum": 100,
+                  "default": 75
+                },
+                "autoRotate": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "orbitSpeed": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2,
+                  "default": 0.2
+                }
+              },
+              "default": {}
+            },
+            "bloom": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 3,
+                  "default": 1
+                },
+                "radius": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 0.2
+                },
+                "threshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 0.1
+                }
+              },
+              "default": {}
+            },
+            "tint": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "minLength": 7,
+                  "maxLength": 7,
+                  "default": "#ffffff"
+                }
+              },
+              "default": {}
+            }
+          },
+          "default": {}
+        }
+      }
+    },
+    "custom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "kind",
+        "scene"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "kind": {
+          "const": "custom"
+        },
+        "scene": {
+          "$ref": "#/$defs/jsonRecord"
+        }
+      }
+    },
+    "jsonRecord": {
+      "type": "object",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "__proto__",
+            "prototype",
+            "constructor"
+          ]
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/jsonValue"
+      }
+    },
+    "jsonValue": {
+      "anyOf": [
+        {
+          "type": [
+            "null",
+            "boolean",
+            "number",
+            "string"
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jsonValue"
+          }
+        },
+        {
+          "$ref": "#/$defs/jsonRecord"
+        }
+      ]
+    }
+  }
+}
