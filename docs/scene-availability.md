@@ -11,6 +11,7 @@ Public availability is a playback permission, separate from local crash history 
 - Denial disposes the renderer and revokes retained local retry grants. Pending creation, audio, hover, and capture work cannot deliver late results into a disabled or replaced scene. Captures require a fresh check and discard results after source replacement or disposal.
 - Re-enable allows a new renderer without clearing remembered failures, editor fields, or playlists. Home and detail refetch withheld source while checking route and authentication-session identity.
 - Owners can fetch `/scenes/{id}/repair` after ownership verification. Its `playable: false` response supplies editor fields only. The preview keeps the saved ID and the same server guard.
+- `SCENE_UPGRADE_REQUIRED` keeps legacy source static until its owner explicitly saves a valid versioned document. Its fixed message does not expose stored-source or operator details. Returned `sceneMode` metadata never bypasses a fresh status check or the global switch, including for templates.
 
 The sole exception is fixed, deeply frozen platform brand artwork. Its explicit adapter capability accepts only that exact bundled object, never a clone, saved scene, or submitted document. The engine receives a separate copy.
 
