@@ -2,7 +2,7 @@ import type { PersistedPassFlag, SceneData, SceneEditorModel, ScenePassId } from
 
 export type CreateSceneFormErrors = Partial<
   Record<'description' | 'form' | 'name' | 'newTag' | 'sceneData' | 'tags' | 'thumbnail', string>
->
+> & { fields?: Record<string, string> }
 
 export type EditorSectionId =
   | 'confirm'

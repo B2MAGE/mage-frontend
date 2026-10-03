@@ -83,21 +83,24 @@ describe('owner repair loading', () => {
     expect(screen.getByTestId('editor')).toHaveAttribute('data-scene-id', '23')
   })
 
-  it('keeps template scenes read-only and allows downloading the validated document', async () => {
+  it('opens a disabled template for owner editing while preserving its original document and scene ID', async () => {
     const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
     mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
       ? { ...repair, sceneData: template } : { ...metadata, sceneMode: 'template-v1' })))
-    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:template-export')
-    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL')
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     render(page())
-    expect(await screen.findByRole('heading', { name: 'This template scene is read-only' })).toBeInTheDocument()
-    expect(mocks.editor).not.toHaveBeenCalled()
-    expect(screen.getByRole('link', { name: 'View scene' })).toHaveAttribute('href', '/scenes/23')
-    fireEvent.click(screen.getByRole('button', { name: 'Download scene JSON' }))
-    expect(createUrl).toHaveBeenCalledWith(expect.any(Blob))
-    expect(click.mock.instances[0]).toHaveAttribute('download', 'scene-23.json')
-    expect(revokeUrl).toHaveBeenCalledWith('blob:template-export')
+    expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(template))
+    expect(screen.getByTestId('editor')).toHaveAttribute('data-scene-id', '23')
+    expect(mocks.fetch).toHaveBeenCalledWith('/scenes/23/repair', { cache: 'no-store' })
+  })
+
+  it('opens a playable template directly without requesting owner repair or inserting shader source', async () => {
+    const template = { schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1,
+      parameters: { speed: 0.5, scale: 8 }, settings: { skybox: 3 } }
+    mocks.fetch.mockResolvedValueOnce(jsonResponse({ ...metadata, sceneData: template, sceneMode: 'template-v1',
+      availability: { ...availability, available: true, code: 'AVAILABLE' } }))
+    render(page())
+    expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(template))
+    expect(mocks.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('rejects malformed document markers before creating an editor or preview', async () => {

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { hasSceneDocumentMarkers, parseSceneDocument, type TemplateSceneDocument } from '@modules/player'
+import { hasSceneDocumentMarkers, parseSceneDocument } from '@modules/player'
 import { normalizeSceneAvailability, normalizeSceneListItem, parseApiError, type SceneListResponse } from '@shared/lib'
 import { SceneEditorLoadingState } from './SceneEditorLoadingState'
 import { SceneEditorShell } from './SceneEditorShell'
@@ -10,7 +10,6 @@ import { readEditableSceneData } from './utils'
 type EditableScene = Omit<SceneListResponse, 'sceneData'> & {
   sceneData: Record<string, unknown>
   tagNames: string[]
-  templateDocument?: TemplateSceneDocument
   unsupportedDocument?: boolean
 }
 
@@ -124,12 +123,12 @@ export function EditScenePage() {
           sceneData = repair.sceneData
         }
 
-        let templateDocument: TemplateSceneDocument | undefined
         let unsupportedDocument = false
         try {
           const document = hasSceneDocumentMarkers(sceneData) ? parseSceneDocument(sceneData) : null
-          templateDocument = document?.kind === 'template' ? document : undefined
-          if (!templateDocument) readEditableSceneData(sceneData)
+          // Keep the original document as the editor's authority. Valid template
+          // settings are editable; unsupported versions remain export-only.
+          if (document?.kind !== 'template') readEditableSceneData(sceneData)
         } catch {
           // An authenticated owner can export unsupported stored JSON for repair,
           // but it must never be normalized into a different executable mode.
@@ -141,7 +140,6 @@ export function EditScenePage() {
             ...normalizedScene,
             sceneData,
             tagNames: normalizeSceneTagNames(payload),
-            ...(templateDocument ? { templateDocument } : {}),
             ...(unsupportedDocument ? { unsupportedDocument: true } : {}),
           })
         }
@@ -198,7 +196,7 @@ export function EditScenePage() {
     )
   }
 
-  if (scene.templateDocument || scene.unsupportedDocument) {
+  if (scene.unsupportedDocument) {
     const downloadSource = () => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(scene.sceneData, null, 2)], { type: 'application/json' }))
       const link = document.createElement('a')
@@ -208,9 +206,8 @@ export function EditScenePage() {
       URL.revokeObjectURL(url)
     }
     return <EditSceneState
-      title={scene.templateDocument ? 'This template scene is read-only' : 'This scene’s format is not supported'}
-      description={scene.templateDocument ? 'You can view or download this scene. Template editing isn’t available yet.'
-        : 'Download the saved scene data to repair it. This editor will not run or replace an unsupported format.'}>
+      title="This scene’s format is not supported"
+      description="Download the saved scene data to repair it. This editor will not run or replace an unsupported format.">
       <div className="auth-actions">
         <Link className="demo-link" to={`/scenes/${scene.sceneId}`}>View scene</Link>
         <Link className="secondary-link" to="/my-scenes">Back to My Scenes</Link>
