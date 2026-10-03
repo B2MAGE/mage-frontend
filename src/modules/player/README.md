@@ -4,6 +4,10 @@ This directory is the frontend-owned boundary for scene playback.
 
 See [scene availability](../../../docs/scene-availability.md) for PP-R03's polling bounds, operator workflow, and remaining isolation release dependency.
 See [render budgets](../../../docs/render-budgets.md) for PP-V02's shared validation policy, preview profiles, and runtime ceilings.
+See [isolated renderer](../../../docs/isolated-renderer.md) for the PP-I01 host,
+standalone child, fixed-sample check, and AWS deployment handoff. It is not yet
+the `MagePlayerController` adapter; PP-I02 supplies that bridge and PP-I03 enables
+custom execution after verification.
 
 ## Public API
 

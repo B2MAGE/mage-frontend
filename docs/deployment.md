@@ -44,6 +44,12 @@ https://mage.example.com/api/*   -> backend
 
 ## Local Development
 
+The separately hosted PP-I01 renderer has its own build, local server and AWS
+deployment artifact. Follow [isolated renderer](isolated-renderer.md); never serve
+its custom execution on the application origin or proxy it through `/api`.
+Its production deployment and browser verification must be completed before the
+later PP-I03 release gate can enable custom scenes.
+
 None of this changes local development:
 
 - `npm run dev` still uses the Vite `/api` proxy

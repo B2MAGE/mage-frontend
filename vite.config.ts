@@ -7,7 +7,19 @@ const workspaceRoot = fileURLToPath(new URL('..', import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), {
+    name: 'isolated-renderer-check-headers',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        if (request.url?.split('?')[0] === '/scripts/isolated-renderer-check.html') {
+          // Developer fixture only; never relax the application's custom-code policy.
+          response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:5178 ws://localhost:5178; frame-src http://localhost:5181; object-src 'none'; base-uri 'none'; form-action 'none'")
+          response.setHeader('Referrer-Policy', 'no-referrer')
+        }
+        next()
+      })
+    },
+  }],
   resolve: {
     alias: {
       '@app': fileURLToPath(new URL('./src/app', import.meta.url)),

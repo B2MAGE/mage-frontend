@@ -14,6 +14,12 @@ App code should not talk to the engine directly. The intended boundary is:
 
 That keeps engine-specific startup, loading, audio bridging, and disposal logic in one place.
 
+PP-I01 adds a separately bundled child entry at `src/isolated-renderer/main.ts`.
+Its engine import runs only in the restricted renderer document; the parent host
+under `src/modules/player/isolation` never imports the engine. This fixed-sample
+bootstrap does not yet route user scenes or audio. See [isolated renderer](isolated-renderer.md)
+for local checks, hosting policy, AWS handoff, and the PP-I02/PP-I03 release boundary.
+
 The adapter and the checked-in package patch are both infrastructure. Feature modules should not depend on raw engine package behavior, patched internals, or browser-workaround code directly.
 
 ## Current Integration
