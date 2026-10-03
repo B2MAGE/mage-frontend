@@ -718,7 +718,7 @@ index 0000000..0be1d5e
 +	return { config, warnings };
 +}
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.d.ts b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-index 7e71e8c..0118f50 100644
+index 7e71e8c..d385c6f 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.d.ts
 +++ b/node_modules/@notrac/mage/dist/mage-engine.d.ts
 @@ -1,3 +1,6 @@
@@ -737,7 +737,30 @@ index 7e71e8c..0118f50 100644
    // The structure of the preset is not defined here, as it is considered an opaque type.
    // It can be any serializable object that represents the state of the MAGE engine.
    [key: string]: any;
-@@ -215,6 +220,8 @@ export interface MAGEEngineAPI {
+@@ -51,6 +56,7 @@ export interface InputSource {
+  * - quality: The quality of the output image, a number between 0 and 1, where 1 is the highest quality (default is 0.84). This option is only applicable for lossy formats like 'image/jpeg'.
+  * These options allow users to customize the appearance and format of the captured frame preview according to their needs, making it easier to generate thumbnails or snapshots of the current visual state of the MAGE engine.
+  */
++/** Output and transient capture rendering are bounded to 230400 pixels and a 640px longest edge. */
+ export interface CaptureFramePreviewOptions {
+   width?: number; // Width of the captured thumbnail in pixels (default: 224)
+   height?: number; // Height of the captured thumbnail in pixels (default: 224)
+@@ -64,7 +70,7 @@ export interface CaptureFramePreviewOptions {
+  * The CaptureThumbnailOptions can be used with the captureThumbnail method of the MAGEEngineAPI to generate thumbnails that are more representative of the intended visual output, especially in dynamic scenes where the visuals may be changing frequently.
+  */
+ export interface CaptureThumbnailOptions extends CaptureFramePreviewOptions {
+-  settleFrames?: number; // Number of frames to wait for the scene to settle before capturing (default: 0)
++  settleFrames?: number; // Bounded to 1-4 settling renders (default: 2)
+ }
+ 
+ /** 
+@@ -211,10 +217,14 @@ export interface MAGEFxAPI {
+  * engine.dispose();
+  */
+ export interface MAGEEngineAPI {
++  /** Immutable copy of effective host-owned runtime ceilings. */
++  getRenderBudget(): Readonly<MAGERenderBudget>;
+   /**
     * Starts the MAGE engine, initiating the rendering loop and enabling audio playback.
     */
    start(): void;
@@ -746,7 +769,7 @@ index 7e71e8c..0118f50 100644
    /**
     * Returns the total duration of the loaded audio in seconds. If no audio is loaded, it returns 0.
     */
-@@ -223,6 +230,10 @@ export interface MAGEEngineAPI {
+@@ -223,6 +233,10 @@ export interface MAGEEngineAPI {
     * Returns the current playback time of the audio in seconds. If no audio is loaded, it returns 0.
     */
    getAudioTime(): number;
@@ -757,7 +780,7 @@ index 7e71e8c..0118f50 100644
    /**
     * Seeks to a specific time in the audio playback.
     * @param time 
-@@ -251,6 +262,34 @@ export interface MAGEEngineAPI {
+@@ -251,6 +265,34 @@ export interface MAGEEngineAPI {
     * (URL must support CORS so things like YouTube will not work). 
     */
    loadAudio(path?: string | URL): void;
@@ -792,17 +815,30 @@ index 7e71e8c..0118f50 100644
    /**
     * Loads a MAGEPreset into the engine, applying all the settings and configurations contained in the preset to recreate the visual output. 
     * @param {MAGEPreset} preset - presetInput The preset to load into the engine.
-@@ -347,6 +386,8 @@ export interface MAGEEngineAPI {
+@@ -344,9 +386,21 @@ export interface MAGEEngineAPI {
+ /**
+  * Configuration options for the MAGE Engine.
+  */
++/** Host configuration only; requested values can lower but never raise platform ceilings. */
++export interface MAGERenderBudget {
++  maxRenderPixels: number;
++  maxLongestEdge: number;
++  maxDevicePixelRatio: number;
++  maxFramesPerSecond: number;
++  maxRaymarchIterations: number;
++}
++
  export interface MAGEConfig {
++  renderBudget?: Partial<MAGERenderBudget>;
    /** The HTML canvas element to render the engine on. */
    canvas: HTMLCanvasElement;
-+  /** Optional render density, clamped to 1-3; defaults to the device pixel ratio. */
++  /** Optional render density, capped by the host render budget (at most 1.5); defaults to the device pixel ratio. */
 +  pixelRatio?: number;
    /** Whether to enable engine logging. Defaults to false. */
    log?: boolean;
    /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index ff1861a..3dd3e97 100644
+index ff1861a..e1dd240 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
 @@ -1,3 +1,6 @@
@@ -812,7 +848,37 @@ index ff1861a..3dd3e97 100644
  //#region \0rolldown/runtime.js
  var __commonJSMin = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
  //#endregion
-@@ -72787,6 +72790,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -71862,7 +71865,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 			replaceSliderInput(tree);
+ 			return escodegen$1.generate(tree);
+ 		}
+-		function sculptToGLSL(userProvidedSrc) {
++		function sculptToGLSL(userProvidedSrc, requestedMaxIterations = 200) {
+ 			var PI = Math.PI;
+ 			var TWO_PI = Math.PI * 2;
+ 			var TAU = TWO_PI;
+@@ -71881,7 +71884,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 			var stateStack = [];
+ 			var uniforms = baseUniforms();
+ 			var stepSizeConstant = .85;
+-			var maxIterations = 300;
++			const maxIterationCeiling = Number.isFinite(requestedMaxIterations) && requestedMaxIterations > 0 ? Math.min(200, Math.max(1, Math.floor(requestedMaxIterations))) : 200;
++			var maxIterations = maxIterationCeiling;
+ 			var maxReflections = 0;
+ 			var dimsMapping = {
+ 				float: 1,
+@@ -72104,8 +72108,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 				stepSizeConstant = 1 - .01 * val * .995;
+ 			}
+ 			function setMaxIterations(val) {
+-				if (typeof val !== "number" || val < 0) compileError("setMaxIterations accepts only a constant number >= 0. Was given: '" + val.type + "'");
+-				maxIterations = Math.round(val);
++				if (!Number.isFinite(val) || val < 0) compileError("setMaxIterations accepts only a finite constant number >= 0.");
++				maxIterations = Math.min(maxIterationCeiling, Math.round(val));
+ 			}
+ 			function setMaxReflections(val) {
+ 				if (typeof val !== "number" || val < 0) compileError("reflections accepts only a constant int >= 0. Was given: '" + val.type + "'");
+@@ -72787,6 +72791,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				rotateX,
  				rotateY,
  				rotateZ,
@@ -820,7 +886,7 @@ index ff1861a..3dd3e97 100644
  				mirrorX,
  				mirrorY,
  				mirrorZ,
-@@ -72818,6 +72822,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72818,6 +72823,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				extrude2D,
  				getSpherical,
  				mirrorN,
@@ -829,7 +895,52 @@ index ff1861a..3dd3e97 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
-@@ -100048,7 +100054,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -99977,7 +99984,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 		function glslToThreeJSShaderSource(source) {
+ 			return {
+ 				uniforms: baseUniforms(),
+-				frag: threeHeader + "const float STEP_SIZE_CONSTANT = 0.9;\nconst int MAX_ITERATIONS = 300;\n#define MAX_REFLECTIONS 0 \n" + uniformsToGLSL(baseUniforms()) + sculptureStarterCode + source + glslFragFooter,
++				frag: threeHeader + "const float STEP_SIZE_CONSTANT = 0.9;\nconst int MAX_ITERATIONS = 200;\n#define MAX_REFLECTIONS 0 \n" + uniformsToGLSL(baseUniforms()) + sculptureStarterCode + source + glslFragFooter,
+ 				vert: threeJSVertexSource
+ 			};
+ 		}
+@@ -99988,8 +99995,11 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 		function glslToThreeJSMesh(source, payload) {
+ 			return makeBasicMesh(glslToThreeJSMaterial(source, payload));
+ 		}
+-		function sculptToThreeJSShaderSource(source) {
+-			var src = sculptToGLSL(source);
++		function sculptToThreeJSShaderSource(source, requestedMaxIterations = 200) {
++			const ceiling = Number.isFinite(requestedMaxIterations) && requestedMaxIterations > 0 ? Math.min(200, Math.max(1, Math.floor(requestedMaxIterations))) : 200;
++			var src = sculptToGLSL(source, ceiling);
++			// Enforce again at the generated-program boundary, before GPU compilation.
++			src.maxIterations = Number.isFinite(src.maxIterations) ? Math.max(0, Math.min(ceiling, Math.round(src.maxIterations))) : ceiling;
+ 			if (src.error) console.log(src.error);
+ 			var frg = threeHeader + usePBRHeader + useHemisphereLight + uniformsToGLSL(src.uniforms) + "const float STEP_SIZE_CONSTANT = " + src.stepSizeConstant + ";\nconst int MAX_ITERATIONS = " + src.maxIterations + ";\n#define MAX_REFLECTIONS " + src.maxReflections + "\n" + sculptureStarterCode + src.geoGLSL + "\n" + src.colorGLSL + "\n" + fragFooter;
+ 			return {
+@@ -100001,10 +100011,10 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 				colorGLSL: src.colorGLSL
+ 			};
+ 		}
+-		function sculptToThreeJSMaterial(source, payload, generatedGLSL) {
++		function sculptToThreeJSMaterial(source, payload, generatedGLSL, maxRaymarchIterations) {
+ 			var src;
+ 			if (generatedGLSL) src = generatedGLSL;
+-			else src = sculptToThreeJSShaderSource(source);
++			else src = sculptToThreeJSShaderSource(source, maxRaymarchIterations);
+ 			var material = makeMaterial(src.uniforms, src.vert, src.frag, payload);
+ 			material.uniformDescriptions = src.uniforms;
+ 			return material;
+@@ -100038,7 +100048,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 				var segments = "segments" in params ? params.segments : 8;
+ 				geometry = new SphereGeometry(radius, segments, segments);
+ 			}
+-			var material = sculptToThreeJSMaterial(source, null, generatedGLSL);
++			var material = sculptToThreeJSMaterial(source, null, generatedGLSL, params.maxRaymarchIterations);
+ 			material.uniforms["opacity"].value = 1;
+ 			material.uniforms["mouse"].value = new Vector3();
+ 			material.uniforms["_scale"].value = radius;
+@@ -100048,7 +100058,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				if (!(_typeof(uniformsToUpdate) === "object")) throw "createSculpture takes, (source, uniformCallback, params) the uniformCallback must be a function that returns a dictionary of uniforms to update";
  				for (var _i = 0, _Object$entries = Object.entries(uniformsToUpdate); _i < _Object$entries.length; _i++) {
  					var _Object$entries$_i = _slicedToArray(_Object$entries[_i], 2), uniform = _Object$entries$_i[0], value = _Object$entries$_i[1];
@@ -838,7 +949,25 @@ index ff1861a..3dd3e97 100644
  				}
  			};
  			return mesh;
-@@ -100455,6 +100461,7 @@ var MAGEVisualizer = class {
+@@ -100109,7 +100119,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 			return cppHeader + glslToGLM("const float STEP_SIZE_CONSTANT = " + src.stepSizeConstant + "f;\nconst int MAX_ITERATIONS = " + src.maxIterations + ";\n#define MAX_REFLECTIONS " + src.maxReflections + "\n" + sculptureStarterCode + src.geoGLSL + src.colorGLSL) + cppFooter;
+ 		}
+ 		function glslToMinimalRenderer(canvas, source, updateUniforms) {
+-			return fragToMinimalRenderer(canvas, minimalHeader + usePBRHeader + useHemisphereLight + uniformsToGLSL(baseUniforms()) + "const float STEP_SIZE_CONSTANT = 0.9;\nconst int MAX_ITERATIONS = 300;\n#define MAX_REFLECTIONS 0 \n" + sculptureStarterCode + source + glslFragFooter, updateUniforms);
++			return fragToMinimalRenderer(canvas, minimalHeader + usePBRHeader + useHemisphereLight + uniformsToGLSL(baseUniforms()) + "const float STEP_SIZE_CONSTANT = 0.9;\nconst int MAX_ITERATIONS = 200;\n#define MAX_REFLECTIONS 0 \n" + sculptureStarterCode + source + glslFragFooter, updateUniforms);
+ 		}
+ 		function sculptToFullGLSLSource(source) {
+ 			if (typeof source === "function") {
+@@ -100336,7 +100346,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+ 		function glslToTouchDesignerShaderSource(source) {
+ 			return {
+ 				uniforms: baseUniforms(),
+-				frag: TDHeader + "const float STEP_SIZE_CONSTANT = 0.9;\nconst int MAX_ITERATIONS = 300;\n#define MAX_REFLECTIONS 0 \n" + uniformsToGLSL(baseUniforms()) + sculptureStarterCode + source + TDFooter,
++				frag: TDHeader + "const float STEP_SIZE_CONSTANT = 0.9;\nconst int MAX_ITERATIONS = 200;\n#define MAX_REFLECTIONS 0 \n" + uniformsToGLSL(baseUniforms()) + sculptureStarterCode + source + TDFooter,
+ 				vert: minimalVertexSource
+ 			};
+ 		}
+@@ -100455,13 +100465,14 @@ var MAGEVisualizer = class {
  		const { state } = this.engine.getEngineFields();
  		this.mesh = (0, import_shader_park_core_umd.createSculptureWithGeometry)(new BoxGeometry(2e4, 2e4, 2e4), shaderCode, () => {
  			return {
@@ -846,7 +975,15 @@ index ff1861a..3dd3e97 100644
  				time: state.time,
  				size: state.size,
  				pointerDown: state.pointerDown,
-@@ -100503,7 +100510,7 @@ var MAGEVisualizer = class {
+ 				mouse: state.mouse,
+ 				_scale: this.scale
+ 			};
+-		});
++		}, { maxRaymarchIterations: this.engine.getRenderBudget().maxRaymarchIterations });
+ 	}
+ 	getActiveShader() {
+ 		if (this.shaderIndex >= 0 && this.shaderIndex < this.shaders.length) return this.shaders[this.shaderIndex].shader;
+@@ -100503,7 +100514,7 @@ var MAGEVisualizer = class {
  //#endregion
  //#region js/MAGEPreset.js
  var MAGEPreset = class MAGEPreset {
@@ -855,7 +992,7 @@ index ff1861a..3dd3e97 100644
  		this.controls = controls;
  		this.settings = settings;
  		this.state = state;
-@@ -100511,6 +100518,8 @@ var MAGEPreset = class MAGEPreset {
+@@ -100511,6 +100522,8 @@ var MAGEPreset = class MAGEPreset {
  		this.fx = fx;
  		this.visualizer = visualizer;
  		this.audioPath = audioPath;
@@ -864,7 +1001,7 @@ index ff1861a..3dd3e97 100644
  	}
  	static from(input) {
  		if (!input) return null;
-@@ -100529,7 +100538,9 @@ var MAGEPreset = class MAGEPreset {
+@@ -100529,7 +100542,9 @@ var MAGEPreset = class MAGEPreset {
  			intent: data.intent ?? null,
  			fx: data.fx ?? null,
  			visualizer: data.visualizer ?? null,
@@ -875,7 +1012,21 @@ index ff1861a..3dd3e97 100644
  		});
  	}
  };
-@@ -103584,6 +103595,43 @@ var BleachBypassShader = {
+@@ -102001,11 +102016,11 @@ var AfterimagePass = class extends Pass {
+ 			depthTest: false,
+ 			depthWrite: false
+ 		});
+-		this._textureComp = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
++		this._textureComp = new WebGLRenderTarget(1, 1, {
+ 			magFilter: NearestFilter,
+ 			type: HalfFloatType
+ 		});
+-		this._textureOld = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
++		this._textureOld = new WebGLRenderTarget(1, 1, {
+ 			magFilter: NearestFilter,
+ 			type: HalfFloatType
+ 		});
+@@ -103584,6 +103599,43 @@ var BleachBypassShader = {
  };
  //#endregion
  //#region js/MAGEFx.js
@@ -919,7 +1070,7 @@ index ff1861a..3dd3e97 100644
  /**
  * Full-screen textured quad shader
  */
-@@ -103736,11 +103784,10 @@ var MAGEEffects = class {
+@@ -103736,11 +103788,10 @@ var MAGEEffects = class {
  		};
  		/** @type {any} */
  		this.toonShader = {
@@ -934,16 +1085,40 @@ index ff1861a..3dd3e97 100644
  			}
  		};
  		this.copyShader = {
-@@ -103958,7 +104005,7 @@ var MAGEEffects = class {
+@@ -103762,10 +103813,10 @@ var MAGEEffects = class {
+ 				radius: .2,
+ 				threshold: .1
+ 			},
+-			shader: new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 1.6, .2, .2),
++			shader: new UnrealBloomPass(new Vector2(1, 1), 1.6, .2, .2),
+ 			enabled: false,
+ 			update: function(renderer) {
+-				const resolution = new Vector2(window.innerWidth, window.innerHeight);
++				const resolution = new Vector2(1, 1);
+ 				if (renderer && renderer.getDrawingBufferSize) renderer.getDrawingBufferSize(resolution);
+ 				this.shader?.dispose();
+ 				this.shader = new UnrealBloomPass(resolution, this.settings.strength, this.settings.radius, this.settings.threshold);
+@@ -103957,15 +104008,17 @@ var MAGEEffects = class {
+ 		return true;
  	}
  	applyPostProcessing(scene, renderer, camera, composer) {
- 		this.bloom.update(renderer);
+-		this.bloom.update(renderer);
 -		this.toonShader.update();
 +		this.toonShader.update(renderer);
  		this.colorifyShader.update();
  		composer?.dispose();
  		const newComposer = new EffectComposer(renderer);
-@@ -107066,10 +107113,75 @@ var MAGE_VERSION = "1.0.3";
+ 		newComposer.addPass(new RenderPass(scene, camera));
++		let optionalEffects = 0;
+ 		this.getPassOrder().forEach((passId) => {
+ 			const passConfig = this[passId];
+ 			if (!passConfig || !passConfig.enabled) return;
++			if (passId !== "outputPass" && passId !== "copyShader" && optionalEffects++ >= 4) return;
++			if (passId === "bloom") this.bloom.update(renderer);
+ 			newComposer.addPass(passConfig.shader);
+ 		});
+ 		return newComposer;
+@@ -107066,10 +107119,106 @@ var MAGE_VERSION = "1.0.3";
  * @property {EngineControlSettings} [withControls={ active: true, integrated: false }] - Enable scene controls and specify their layout
  * @property {boolean} [autoStart=false] - Automatically start rendering
  */
@@ -1011,15 +1186,46 @@ index ff1861a..3dd3e97 100644
 +		return this.envelope;
 +	}
 +};
++// PP-V02: host-owned ceilings. Scene JSON never supplies renderer budgets.
++// These bound normal rendering paths; they are not an arbitrary-code sandbox.
++// PP-I02 must isolate the source compiler (which evaluates generated JS), DOM,
++// WebGL constructors, and raw renderer/effect handles exposed by getEngineFields.
++// Arbitrary source can otherwise invoke resource operations outside these paths.
++var MAGE_RENDER_BUDGET = Object.freeze({ maxRenderPixels: 2073600, maxLongestEdge: 1920, maxDevicePixelRatio: 1.5, maxFramesPerSecond: 60, maxRaymarchIterations: 200 });
++var MAGE_PREVIEW_BUDGET = Object.freeze({ ...MAGE_RENDER_BUDGET, maxRenderPixels: 230400, maxLongestEdge: 640, maxFramesPerSecond: 30 });
++function normalizeMageRenderBudget(input = {}) {
++	const budget = {};
++	for (const [key, ceiling] of Object.entries(MAGE_RENDER_BUDGET)) {
++		const requested = input?.[key];
++		const value = Number.isFinite(requested) && requested > 0 ? Math.min(requested, ceiling) : ceiling;
++		budget[key] = key === "maxDevicePixelRatio" ? value : Math.max(1, Math.floor(value));
++	}
++	return Object.freeze(budget);
++}
++function fitMageRenderDimensions(width, height, budget) {
++	const dimension = (value) => Number.isFinite(value) && value > 0 ? Math.max(1, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value))) : 1;
++	const w = dimension(width), h = dimension(height);
++	const scale = Math.min(1, budget.maxLongestEdge / Math.max(w, h), Math.sqrt(budget.maxRenderPixels / w / h));
++	return { width: Math.max(1, Math.floor(w * scale)), height: Math.max(1, Math.floor(h * scale)) };
++}
++function mageCaptureDimensions(width, height) {
++	return fitMageRenderDimensions(Number.isFinite(width) && width > 0 ? width : 224, Number.isFinite(height) && height > 0 ? height : 224, MAGE_PREVIEW_BUDGET);
++}
++function mageCaptureSettleFrames(value) {
++	return Number.isFinite(value) && value > 0 ? Math.min(4, Math.max(1, Math.floor(value))) : 2;
++}
  var MAGEEngine = class MAGEEngine {
  	#uiController = null;
  	#engineVersion = MAGE_VERSION;
  	#canvas = null;
 +	#pixelRatio = null;
++	#renderBudget = MAGE_RENDER_BUDGET;
++	#viewportPixelRatio = 0;
++	#lastRenderTime = null;
  	#scene = null;
  	#renderer = null;
  	#composer = null;
-@@ -107082,11 +107194,33 @@ var MAGEEngine = class MAGEEngine {
+@@ -107082,11 +107231,33 @@ var MAGEEngine = class MAGEEngine {
  	#listener = null;
  	#audio = null;
  	#audioFile = null;
@@ -1053,7 +1259,7 @@ index ff1861a..3dd3e97 100644
  	#visualizer = null;
  	#inputs = null;
  	#state = null;
-@@ -107094,6 +107228,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107094,6 +107265,7 @@ var MAGEEngine = class MAGEEngine {
  	#screenShake = null;
  	#currentPreset = null;
  	#onAfterFrame = null;
@@ -1061,23 +1267,25 @@ index ff1861a..3dd3e97 100644
  	#onPresetLoaded = null;
  	#cameraUpdateHook = null;
  	#importSettingsState = null;
-@@ -107127,13 +107262,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107127,13 +107299,16 @@ var MAGEEngine = class MAGEEngine {
  	#previewFrameCount = 0;
  	#previewFramesTarget = 0;
  	#isLowQualityMode = false;
 -	constructor({ canvas, log = false, autoStart = false, withControls: { active = false, integrated = false } = {}, lowQualityMode = false } = {}) {
-+	constructor({ canvas, pixelRatio, log = false, autoStart = false, withControls: { active = false, integrated = false } = {}, lowQualityMode = false } = {}) {
++	constructor({ canvas, pixelRatio, renderBudget, log = false, autoStart = false, withControls: { active = false, integrated = false } = {}, lowQualityMode = false } = {}) {
  		if (log) {
  			console.log(`Initializing MAGE Engine v${this.#engineVersion}...`);
  			this.log = true;
  		} else this.log = false;
++		this.#renderBudget = normalizeMageRenderBudget(renderBudget);
++		this.#isLowQualityMode = Boolean(lowQualityMode);
  		this.fx = new MAGEEffects(this);
  		this.#canvas = canvas || null;
-+		this.#pixelRatio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? Math.min(Math.max(pixelRatio, 1), 3) : null;
++		this.#pixelRatio = Number.isFinite(pixelRatio) && pixelRatio > 0 ? Math.min(pixelRatio, this.#renderBudget.maxDevicePixelRatio) : null;
  		this.#controlSettings = {
  			active: Boolean(active),
  			integrated: Boolean(integrated)
-@@ -107156,6 +107292,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107156,6 +107331,10 @@ var MAGEEngine = class MAGEEngine {
  		this.#audioBuffer = null;
  		this.#playbackTime = 0;
  		this.#isReversed = false;
@@ -1088,14 +1296,18 @@ index ff1861a..3dd3e97 100644
  		this.#visualizer = new MAGEVisualizer(this);
  		this.#inputs = {
  			currMouse: new Vector3(),
-@@ -107277,12 +107417,24 @@ var MAGEEngine = class MAGEEngine {
+@@ -107277,12 +107456,28 @@ var MAGEEngine = class MAGEEngine {
  			this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
  			this.#_syncSobelResolution();
  		}
 +		this.#clock.reset();
++		this.#lastRenderTime = null;
  		this.#_render();
  		if (!this.#currentPreset && !this.#visualizer.mesh) this.#_loadDefaultPreset();
  	}
++	getRenderBudget() {
++		return Object.freeze({ ...this.#renderBudget });
++	}
  	getActiveShader() {
  		return this.#visualizer.getActiveShader();
  	}
@@ -1113,7 +1325,7 @@ index ff1861a..3dd3e97 100644
  	/**
  	* Returns the duration of the currently loaded audio in seconds. If no audio is loaded, returns 0.
  	* @return {number} Duration of the currently loaded audio in seconds, or 0 if no audio is loaded.
-@@ -107297,16 +107449,40 @@ var MAGEEngine = class MAGEEngine {
+@@ -107297,16 +107492,40 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -1155,7 +1367,7 @@ index ff1861a..3dd3e97 100644
  		const clampedTime = Math.max(0, Math.min(time, duration));
  		this.#playbackTime = clampedTime;
  		const forwardWasPlaying = Boolean(this.#audio.isPlaying);
-@@ -107318,6 +107494,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107318,6 +107537,8 @@ var MAGEEngine = class MAGEEngine {
  		}
  		if (forwardWasPlaying) this.#audio.stop();
  		if (reverseWasPlaying && this.#reversedAudio) this.#reversedAudio.stop();
@@ -1164,7 +1376,7 @@ index ff1861a..3dd3e97 100644
  		if (forwardWasPlaying && reverseWasPlaying) if (this.#isReversed && this.#reversedAudio?.buffer) this.#reversedAudio.play();
  		else this.#audio.play();
  		else if (forwardWasPlaying) this.#audio.play();
-@@ -107333,20 +107511,210 @@ var MAGEEngine = class MAGEEngine {
+@@ -107333,20 +107554,210 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -1375,7 +1587,7 @@ index ff1861a..3dd3e97 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -107362,6 +107730,13 @@ var MAGEEngine = class MAGEEngine {
+@@ -107362,6 +107773,13 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	loadAudio(filePath) {
@@ -1389,7 +1601,7 @@ index ff1861a..3dd3e97 100644
  		const previousVolume = this.#audio?.getVolume();
  		this.#audio?.pause();
  		this.#reversedAudio?.pause();
-@@ -107371,34 +107746,80 @@ var MAGEEngine = class MAGEEngine {
+@@ -107371,34 +107789,80 @@ var MAGEEngine = class MAGEEngine {
  		this.#reversedAudio = new Audio(this.#listener);
  		this.#reversedAudio.setVolume(previousVolume || 1);
  		this.#reversedAudio.setLoop(false);
@@ -1484,7 +1696,7 @@ index ff1861a..3dd3e97 100644
  	* Loads a preset into the engine.
  	* @param {MAGEPreset} presetInput - The preset input to load.
  	* @returns {MAGEPreset} The loaded preset.
-@@ -107411,6 +107832,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107411,6 +107875,8 @@ var MAGEEngine = class MAGEEngine {
  			return;
  		}
  		this.#currentPreset = preset;
@@ -1493,7 +1705,7 @@ index ff1861a..3dd3e97 100644
  		if (preset.controls) this.#_loadControls(preset.controls);
  		if (preset.visualizer) {
  			if (preset.visualizer.skyboxPreset !== void 0 && preset.visualizer.skyboxPreset !== null) {
-@@ -107418,11 +107841,14 @@ var MAGEEngine = class MAGEEngine {
+@@ -107418,11 +107884,14 @@ var MAGEEngine = class MAGEEngine {
  				if (normalizedSkybox) this.#_loadSkybox(normalizedSkybox);
  				else if (this.log) console.warn("[MAGEEngine.loadPreset] Invalid skyboxPreset input; expected preset id, preset path, or { type, presetId }", { input: preset.visualizer.skyboxPreset });
  			}
@@ -1513,7 +1725,7 @@ index ff1861a..3dd3e97 100644
  			if (typeof preset.visualizer.scale === "number") this.#visualizer.scale = preset.visualizer.scale;
  		}
  		if (preset.state) this.#_applyStatePatch(preset.state, {
-@@ -107431,6 +107857,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107431,6 +107900,10 @@ var MAGEEngine = class MAGEEngine {
  		});
  		if (typeof this.#importSettingsState === "function" && preset.settings) this.#importSettingsState(preset.settings);
  		if (preset.intent) this.#_applyCompactIntent(preset.intent);
@@ -1524,7 +1736,7 @@ index ff1861a..3dd3e97 100644
  		if (preset.fx) this.#_applyCompactFx(preset.fx);
  		this.#_syncPostProcessingFromState();
  		this.#_syncSobelResolution();
-@@ -107488,7 +107918,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107488,7 +107961,7 @@ var MAGEEngine = class MAGEEngine {
  		const preset = {
  			version: MAGE_VERSION,
  			visualizer: {
@@ -1533,7 +1745,7 @@ index ff1861a..3dd3e97 100644
  				skyboxPreset: this.#visualizer.skyboxPreset,
  				scale: this.#visualizer.scale
  			},
-@@ -107535,6 +107965,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107535,6 +108008,8 @@ var MAGEEngine = class MAGEEngine {
  					halftone: this.fx.halftonePass.enabled,
  					gammaCorrection: this.fx.gammaCorrectionShader.enabled,
  					kaleid: this.fx.kaleidoShader.enabled,
@@ -1542,7 +1754,7 @@ index ff1861a..3dd3e97 100644
  					outputPass: this.fx.outputPass.enabled
  				},
  				params: {
-@@ -107552,6 +107984,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107552,6 +108027,8 @@ var MAGEEngine = class MAGEEngine {
  			}
  		};
  		preset.state = { ...this.#state };
@@ -1551,7 +1763,38 @@ index ff1861a..3dd3e97 100644
  		if (this.log) console.log("Generated preset from current state:", preset);
  		return preset;
  	}
-@@ -107702,10 +108136,15 @@ var MAGEEngine = class MAGEEngine {
+@@ -107652,18 +108129,18 @@ var MAGEEngine = class MAGEEngine {
+ 	*/
+ 	static async captureThumbnail(presetInput, { width = 224, height = 224, settleFrames = 2, quality = .84, type = "image/png" } = {}) {
+ 		if (typeof document === "undefined") return null;
+-		const w = Math.max(1, Number.parseInt(`${width}`, 10) || 224);
+-		const h = Math.max(1, Number.parseInt(`${height}`, 10) || 224);
++		const { width: w, height: h } = mageCaptureDimensions(width, height);
+ 		const offscreenCanvas = document.createElement("canvas");
+ 		offscreenCanvas.width = w;
+ 		offscreenCanvas.height = h;
+ 		const thumbnailEngine = new MAGEEngine({
+ 			canvas: offscreenCanvas,
++			renderBudget: MAGE_PREVIEW_BUDGET,
+ 			log: false
+ 		});
+ 		try {
+ 			thumbnailEngine.#_createScene();
+-			thumbnailEngine.#renderer.setPixelRatio(1);
++			thumbnailEngine.#pixelRatio = 1;
+ 			thumbnailEngine.#_syncViewport(true);
+ 			thumbnailEngine.#composer = thumbnailEngine.fx.applyPostProcessing(thumbnailEngine.#scene, thumbnailEngine.#renderer, thumbnailEngine.#camera);
+ 			thumbnailEngine.#_syncSobelResolution();
+@@ -107678,7 +108155,7 @@ var MAGEEngine = class MAGEEngine {
+ 			thumbnailEngine.#state.pointerDown = 1;
+ 			thumbnailEngine.#state.currPointerDown = 1;
+ 			thumbnailEngine.#state.size += .05;
+-			const frames = Math.max(1, Number.parseInt(`${settleFrames}`, 10) || 2);
++			const frames = mageCaptureSettleFrames(settleFrames);
+ 			for (let i = 0; i < frames; i += 1) thumbnailEngine.#_renderSingleFrame();
+ 			return thumbnailEngine.#_captureFramePreviewDataUrlSync({
+ 				width: w,
+@@ -107702,10 +108179,15 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	dispose() {
@@ -1568,7 +1811,57 @@ index ff1861a..3dd3e97 100644
  		if (this.#animationFrameId !== null) {
  			cancelAnimationFrame(this.#animationFrameId);
  			this.#animationFrameId = null;
-@@ -108038,12 +108477,16 @@ var MAGEEngine = class MAGEEngine {
+@@ -107990,19 +108472,25 @@ var MAGEEngine = class MAGEEngine {
+ 	* @property {number} [settleFrames = 2] - Number of frames to render after loading preset before capturing thumbnail, to allow for any async loading and shader stabilization (default: 2)
+ 	*/
+ 	async #_captureFramePreviewBlob({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
+-		if (!this.#renderer?.domElement) return null;
+-		this.#_renderSingleFrame();
+-		const w = Math.max(1, Number.parseInt(`${width}`, 10) || 224);
+-		const h = Math.max(1, Number.parseInt(`${height}`, 10) || 224);
++		const canvas = this.#_createCaptureCanvas(width, height);
++		if (!canvas) return null;
++		return await new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), type, quality));
++	}
++	#_createCaptureCanvas(width, height) {
++		if (this.#isDisposed || !this.#renderer?.domElement) return null;
++		const { width: w, height: h } = mageCaptureDimensions(width, height);
+ 		const canvas = document.createElement("canvas");
+ 		canvas.width = w;
+ 		canvas.height = h;
+ 		const context = canvas.getContext("2d", { alpha: true });
+ 		if (!context) return null;
+-		context.drawImage(this.#renderer.domElement, 0, 0, w, h);
+-		return await new Promise((resolve) => {
+-			canvas.toBlob((blob) => resolve(blob), type, quality);
+-		});
++		try {
++			this.#_renderSingleFrame(true);
++			context.drawImage(this.#renderer.domElement, 0, 0, w, h);
++			return canvas;
++		} finally {
++			this.#_syncViewport(true);
++		}
+ 	}
+ 	#_waitForPendingSkyboxLoad(timeoutMs = 2e3) {
+ 		if (!this.#_pendingSkyboxLoad) return Promise.resolve();
+@@ -108017,9 +108505,12 @@ var MAGEEngine = class MAGEEngine {
+ 			reader.readAsDataURL(blob);
+ 		});
+ 	}
+-	#_renderSingleFrame() {
+-		if (!this.#renderer || !this.#scene || !this.#camera) return;
+-		this.#_syncViewport();
++	#_renderSingleFrame(forCapture = false) {
++		if (this.#isDisposed || !this.#renderer || !this.#scene || !this.#camera) return;
++		if (forCapture) {
++			const budget = { ...this.#renderBudget, maxRenderPixels: Math.min(this.#renderBudget.maxRenderPixels, MAGE_PREVIEW_BUDGET.maxRenderPixels), maxLongestEdge: Math.min(this.#renderBudget.maxLongestEdge, MAGE_PREVIEW_BUDGET.maxLongestEdge) };
++			this.#_syncViewport(true, budget);
++		} else this.#_syncViewport();
+ 		this.#_syncSobelResolution();
+ 		if (this.#composer) this.#composer.render(this.#scene, this.#camera);
+ 		else this.#renderer.render(this.#scene, this.#camera);
+@@ -108038,26 +108529,20 @@ var MAGEEngine = class MAGEEngine {
  		this.#_syncSobelResolution();
  	}
  	#_syncSobelResolution() {
@@ -1588,8 +1881,23 @@ index ff1861a..3dd3e97 100644
 +		}
  	}
  	#_captureFramePreviewDataUrlSync({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
- 		if (!this.#renderer?.domElement) return null;
-@@ -108120,6 +108563,8 @@ var MAGEEngine = class MAGEEngine {
+-		if (!this.#renderer?.domElement) return null;
+ 		try {
+-			this.#_renderSingleFrame();
+-			const w = Math.max(1, Number.parseInt(`${width}`, 10) || 224);
+-			const h = Math.max(1, Number.parseInt(`${height}`, 10) || 224);
+-			const canvas = document.createElement("canvas");
+-			canvas.width = w;
+-			canvas.height = h;
+-			const context = canvas.getContext("2d", { alpha: true });
+-			if (!context) return null;
+-			context.drawImage(this.#renderer.domElement, 0, 0, w, h);
+-			return canvas.toDataURL(type, quality);
++			return this.#_createCaptureCanvas(width, height)?.toDataURL(type, quality) ?? null;
+ 		} catch {
+ 			return null;
+ 		}
+@@ -108120,6 +108605,8 @@ var MAGEEngine = class MAGEEngine {
  			if (typeof fx.passes.halftone === "boolean") this.fx.halftonePass.enabled = fx.passes.halftone;
  			if (typeof fx.passes.gammaCorrection === "boolean") this.fx.gammaCorrectionShader.enabled = fx.passes.gammaCorrection;
  			if (typeof fx.passes.kaleid === "boolean") this.fx.kaleidoShader.enabled = fx.passes.kaleid;
@@ -1598,24 +1906,90 @@ index ff1861a..3dd3e97 100644
  			if (typeof fx.passes.outputPass === "boolean") this.fx.outputPass.enabled = fx.passes.outputPass;
  		}
  		if (fx.params && typeof fx.params === "object") {
-@@ -108358,9 +108803,15 @@ var MAGEEngine = class MAGEEngine {
- 		if (this.#canvas) rendererOptions.canvas = this.#canvas;
+@@ -108276,31 +108763,38 @@ var MAGEEngine = class MAGEEngine {
+ 		};
+ 	}
+ 	#_getViewportSize() {
++		const dimension = (...values) => Math.max(1, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(values.find((value) => Number.isFinite(value) && value > 0) || 1)));
+ 		if (this.#canvas) {
+ 			const rect = this.#canvas.getBoundingClientRect();
+-			const width = Math.max(1, Math.floor(rect.width || this.#canvas.clientWidth || this.#canvas.width || 0));
+-			const height = Math.max(1, Math.floor(rect.height || this.#canvas.clientHeight || this.#canvas.height || 0));
+-			if (width > 0 && height > 0) return {
+-				width,
+-				height
++			return {
++				width: dimension(rect.width, this.#canvas.clientWidth, this.#canvas.width),
++				height: dimension(rect.height, this.#canvas.clientHeight, this.#canvas.height)
+ 			};
+ 		}
+-		return {
+-			width: Math.max(1, Math.floor(window.innerWidth || 1)),
+-			height: Math.max(1, Math.floor(window.innerHeight || 1))
+-		};
++		return { width: dimension(window.innerWidth), height: dimension(window.innerHeight) };
+ 	}
+-	#_syncViewport(force = false) {
++	#_syncViewport(force = false, budget = this.#renderBudget) {
+ 		if (!this.#renderer || !this.#camera) return;
+ 		const { width, height } = this.#_getViewportSize();
+-		if (!force && width === this.#viewportWidth && height === this.#viewportHeight) return;
++		const deviceRatio = this.#pixelRatio ?? (this.#isLowQualityMode ? .1 : window.devicePixelRatio);
++		const requestedRatio = Math.min(Number.isFinite(deviceRatio) && deviceRatio > 0 ? deviceRatio : 1, budget.maxDevicePixelRatio);
++		const dimensions = fitMageRenderDimensions(width * requestedRatio, height * requestedRatio, budget);
++		const pixelRatio = Math.min(requestedRatio, dimensions.width / width, dimensions.height / height);
++		if (!force && width === this.#viewportWidth && height === this.#viewportHeight && pixelRatio === this.#viewportPixelRatio) return;
+ 		this.#viewportWidth = width;
+ 		this.#viewportHeight = height;
++		this.#viewportPixelRatio = pixelRatio;
+ 		this.#camera.aspect = width / height;
+ 		this.#camera.updateProjectionMatrix();
+-		this.#renderer.setSize(width, height, false);
+-		if (this.#composer && this.#composer.setSize) this.#composer.setSize(width, height);
+-		if (this.#renderTarget && this.#renderTarget.setSize) this.#renderTarget.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)));
++		// Backing pixels are already DPR-adjusted. DPR1 avoids a second scale
++		// and keeps very thin viewports at least one physical pixel tall/wide.
++		this.#renderer.setDrawingBufferSize(dimensions.width, dimensions.height, 1);
++		if (this.#composer) {
++			this.#composer.setSize(1, 1);
++			this.#composer.setPixelRatio(1);
++			this.#composer.setSize(dimensions.width, dimensions.height);
++		}
++		if (this.#renderTarget?.setSize) this.#renderTarget.setSize(Math.max(1, Math.floor(dimensions.width / 4)), Math.max(1, Math.floor(dimensions.height / 4)));
+ 		this.#_syncSobelResolution();
+ 	}
+ 	#_ensureViewportToast() {
+@@ -108353,15 +108847,23 @@ var MAGEEngine = class MAGEEngine {
+ 		this.#viewportToast.el = null;
+ 	}
+ 	#_createRenderer() {
+-		const { width, height } = this.#_getViewportSize();
+ 		const rendererOptions = {};
+-		if (this.#canvas) rendererOptions.canvas = this.#canvas;
++		if (this.#canvas) {
++			// A supplied canvas can already have oversized backing attributes.
++			// Bound them before creating its WebGL context, not just after resize.
++			const initial = fitMageRenderDimensions(this.#canvas.width, this.#canvas.height, this.#renderBudget);
++			if (this.#canvas.width !== initial.width) this.#canvas.width = initial.width;
++			if (this.#canvas.height !== initial.height) this.#canvas.height = initial.height;
++			rendererOptions.canvas = this.#canvas;
++		}
  		if (this.#isLowQualityMode) rendererOptions.powerPreference = "low-power";
  		this.#renderer = new WebGLRenderer(rendererOptions);
+-		if (this.#isLowQualityMode) this.#renderer.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)), false);
+-		else this.#renderer.setSize(width, height, false);
+-		if (this.#isLowQualityMode) this.#renderer.setPixelRatio(.1);
+-		else this.#renderer.setPixelRatio(window.devicePixelRatio || 1);
 +		// Three normally logs failed GPU programs and keeps rendering. Surface
 +		// that failure to the player without exposing generated source in errors.
 +		this.#renderer.debug.onShaderError = () => {
 +			throw new Error("The scene's GPU program could not be compiled.");
 +		};
- 		if (this.#isLowQualityMode) this.#renderer.setSize(Math.max(1, Math.floor(width / 4)), Math.max(1, Math.floor(height / 4)), false);
- 		else this.#renderer.setSize(width, height, false);
--		if (this.#isLowQualityMode) this.#renderer.setPixelRatio(.1);
-+		if (this.#pixelRatio !== null) this.#renderer.setPixelRatio(this.#pixelRatio);
-+		else if (this.#isLowQualityMode) this.#renderer.setPixelRatio(.1);
- 		else this.#renderer.setPixelRatio(window.devicePixelRatio || 1);
++		this.#_syncViewport(true);
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
  		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
-@@ -108471,8 +108922,32 @@ var MAGEEngine = class MAGEEngine {
+ 		this.#renderer.outputColorSpace = SRGBColorSpace;
+@@ -108471,10 +108973,34 @@ var MAGEEngine = class MAGEEngine {
  		}
  	}
  	#_updateVisualizer() {
@@ -1647,15 +2021,22 @@ index ff1861a..3dd3e97 100644
 +		this.#renderTarget?.dispose();
 +		this.#_clearScene();
  		this.#scene.add(mesh);
- 		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#viewportWidth / 4)), Math.max(1, Math.floor(this.#viewportHeight / 4)), {
+-		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#viewportWidth / 4)), Math.max(1, Math.floor(this.#viewportHeight / 4)), {
++		this.#renderTarget = new WebGLRenderTarget(Math.max(1, Math.floor(this.#renderer.domElement.width / 4)), Math.max(1, Math.floor(this.#renderer.domElement.height / 4)), {
  			format: RGBAFormat,
-@@ -108484,11 +108959,13 @@ var MAGEEngine = class MAGEEngine {
+ 			type: UnsignedByteType
+ 		});
+@@ -108484,11 +109010,17 @@ var MAGEEngine = class MAGEEngine {
  		if (this.log) console.log("Visualizer Loaded!");
  	}
  	#_render = () => {
 -		if (this.#isDisposed || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
 +		if (this.#isDisposed || !this.#isRunning || !this.#state || !this.#scene || !this.#camera || !this.#renderer) return;
  		this.#animationFrameId = requestAnimationFrame(this.#_render);
++		const now = performance.now();
++		const interval = 1000 / this.#renderBudget.maxFramesPerSecond;
++		if (this.#lastRenderTime !== null && now - this.#lastRenderTime + 1e-7 < interval) return;
++		this.#lastRenderTime = now;
 +		try {
  		this.#_syncViewport();
 -		const delta = this.#clock.getDelta();
@@ -1666,7 +2047,7 @@ index ff1861a..3dd3e97 100644
  		if (!Number.isFinite(this.#state.time_multiplier)) this.#state.time_multiplier = 1;
  		if (this.#state.time < 180 && this.#timeIncreasing) this.#state.time += this.#state.time_multiplier * delta;
  		else {
-@@ -108497,12 +108974,44 @@ var MAGEEngine = class MAGEEngine {
+@@ -108497,12 +109029,44 @@ var MAGEEngine = class MAGEEngine {
  			if (this.#state.time <= 0) this.#timeIncreasing = true;
  		}
  		let bass_input = 0;
@@ -1713,7 +2094,7 @@ index ff1861a..3dd3e97 100644
  		else {
  			const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
  			this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;
-@@ -108533,6 +109042,15 @@ var MAGEEngine = class MAGEEngine {
+@@ -108533,6 +109097,15 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#cameraUpdateHook) this.#cameraUpdateHook(this);
  		if (this.#composer) this.#composer.render(this.#scene, this.#camera);
  		else this.#renderer.render(this.#scene, this.#camera);
@@ -1729,15 +2110,16 @@ index ff1861a..3dd3e97 100644
  	};
  	#_growVisualizer() {
  		this.#state.size += .035 * (1 - this.#state.easing_speed + .01);
-@@ -108787,9 +109305,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -108787,9 +109360,11 @@ var MAGEEngine = class MAGEEngine {
  };
  //#endregion
  //#region js/mage-lib.js
 -function initMAGE({ canvas, log = false, withControls: { active = false, integrated = false } = {}, autoStart = false } = {}) {
-+function initMAGE({ canvas, pixelRatio, log = false, withControls: { active = false, integrated = false } = {}, autoStart = false } = {}) {
++function initMAGE({ canvas, pixelRatio, renderBudget, log = false, withControls: { active = false, integrated = false } = {}, autoStart = false } = {}) {
  	return new MAGEEngine({
  		canvas,
 +		pixelRatio,
++		renderBudget,
  		log,
  		withControls: {
  			active,
