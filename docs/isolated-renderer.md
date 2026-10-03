@@ -1,6 +1,20 @@
-# Isolated renderer (PP-I01 / PP-I02)
+# Isolated renderer (PP-I01 / PP-I02 / PP-I03)
 
-PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. The bridge is deployed to the existing CloudFront renderer and `https://mage.peterbucci.com/player-check/`. Neither story enables Advanced mode or changes the public custom-rendering gate. Routing every normal player and verifying the release gate remain PP-I03.
+PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. That bridge is deployed to the existing CloudFront renderer and `https://mage.peterbucci.com/player-check/`. PP-I03 connects normal application players to the bridge on the integration branch. This is implementation and local verification, not a record of PP-I03 production deployment or approval to run public custom source. The public custom-rendering release gate remains off.
+
+See [the PP-I03 release record](isolated-renderer-release.md) for the current test matrix, remaining verification, deployment order, rollback, and owner repair/export behavior. Historical deployment results below describe their named PP-I01/PP-I02 artifacts only.
+
+## PP-I03 application boundary
+
+`createMagePlayer()` validates an initial document before creating a player and routes templates, custom documents and legacy blobs through `isolatedController.ts`. The shared controller retains the `MagePlayerController` interface for Home, Watch, editor create/edit/import previews, hover cards and capture. It wraps the isolated bridge with fresh availability checks and browser-local recovery leases. Invalid documents, missing hosts, unsupported sites, startup failures, denied permission and retry failures never fall back to compiling submitted source in the parent page.
+
+The sole in-page engine path is fixed platform brand artwork. It requires the exact imported `BRAND_SCENE` object, the internal brand option and no saved scene ID. Submitted JSON, matching source text, a template label or caller-supplied trust flags cannot obtain that path. Development rendering harnesses also use the isolated boundary; the audio-analysis-only fixture does not compile scenes.
+
+The parent owns account access, availability polling, recovery UI, editor state, playlists, Web Audio and input collection. The child owns source resolution/compilation, WebGL and camera/deformation controls. Pending availability checks suspend the existing player; confirmed denial disposes it. Starting, resuming, switching scenes, loading audio and capturing require current permission. A retry clears neither server denial nor validation requirements. Recovery markers are acquired before source loading, and retired only after the old renderer stops.
+
+The production renderer URL is fixed to `https://d2wwpgc7sgvmnm.cloudfront.net/index.html` for `https://mage.peterbucci.com`. The development resolver accepts only the opposite loopback hostname on ports 5178/5181 over HTTP. Other sites fail closed. The parent response policy restricts `frame-src` to that exact renderer entry; the child response sandbox and iframe both use only `allow-scripts`. No scene field, query parameter or message can choose another renderer.
+
+Audio response edits use a bounded `audio-response` message, preserving the parent audio session. The optional `capabilities` request returns only the supported target enum list; it does not expose shader source or private engine data. These new commands require the PP-I03 child. Deploy it before the new parent: the PP-I02 child rejects unknown commands rather than silently accepting an incompatible client.
 
 ## PP-I02 playback bridge
 
@@ -15,7 +29,7 @@ Open `http://127.0.0.1:5178/scripts/isolated-playback-check.html` with the local
 - Captures are requested, limited to the shared preview pixel/edge ceiling and 1 MiB, and transferred as PNG/JPEG/WebP bytes. The parent checks the request/generation, MIME signature, encoded dimensions, decoded dimensions and requested size before returning a Blob. URLs, HTML, SVG, unexpected formats and unsolicited captures are rejected. Timeouts/disposal reject pending captures and release frame/port/timer resources; an in-flight browser image decode may finish later and its bitmap is closed.
 - Startup has a parent-observed 15-second timeout; active foreground progress has a 10-second timeout. Completed-frame progress is throttled to twice per second. Intentional pause/background suspension does not produce false progress failures. Failures remove the frame, stop sampling and pause parent audio, with a typed callback for PP-R01 integration. A claimed frame/heartbeat is only a liveness signal, not proof of safe source.
 
-PP-I03 must apply availability checks, revocation, recovery leases and retry rules around this adapter on every normal app entry point. There must be no parent-side custom-source fallback. The local fixture does not enable the public arbitrary-code release gate. This story does not claim that source limits prevent infinite loops, that JavaScript can cancel a GPU hang, or that a receiver can prevent structured-clone allocation before delivery. A hostile child can defeat its own engine limits or lie about progress; the browser sandbox, separate site, parent teardown and later release-gate verification remain necessary.
+The normal application controller applies availability, revocation, recovery and retry rules around this lower-level bridge. The developer fixture is not an authorization surface and does not enable the public arbitrary-code release gate. Source limits cannot prevent infinite loops, JavaScript cannot guarantee cancellation of a GPU hang, and a receiver cannot prevent structured-clone allocation before delivery. A hostile child can defeat its own engine limits or lie about progress; the browser sandbox, separate site, parent teardown and release verification remain necessary.
 
 The package patch includes the `audio-response`, `audio-analysis` and
 `audio-mapping` exports in the engine's `package.json`. Preserve this hunk when
@@ -43,7 +57,7 @@ This implementation requires the renderer to use a different **registrable domai
 
 The selected hosting plan needs no additional domain purchase, Route 53 zone, DNS changes or custom ACM certificate. CloudFront supplies the hostname and certificate. MAGE's existing Coolify/frontend/backend deployment stays in place; CloudFront and its private S3 bucket host only the separate renderer files.
 
-Only `src/isolated-renderer/main.ts`, its child implementation, the small shared protocol, fixed render-budget policy and the engine are bundled. The build rejects other workspace modules and emits one classic IIFE with all engine assets embedded. It does not load the app's Vite configuration, public directory or environment files. No API client, account session, auth code, telemetry or service worker is included. The allowed parent origins are an explicit build input, not a URL parameter or message field.
+Only `src/isolated-renderer/main.ts`, its child implementation, the engine and an exact allowlist of shared protocol, capture, scene validation, render-budget, template-resolution and pointer-deformation modules are bundled. The build rejects other workspace modules and emits one classic IIFE with all engine assets embedded. It does not load the app's Vite configuration, public directory or environment files. No API client, account session, auth code, telemetry or service worker is included. The allowed parent origins are an explicit build input, not a URL parameter or message field.
 
 Each build's `hosting-manifest.json` is the source of its response headers and generated CloudFormation policies. Local output lives in `dist-isolated-renderer/`; `renderer:build:production` uses `dist-isolated-renderer-production/` so the two do not overwrite each other:
 
@@ -74,7 +88,7 @@ npm run renderer:test
 
 Open `http://127.0.0.1:5178/scripts/isolated-renderer-check.html`. Start the sample, stop it, and try the unavailable-player case. A failed host must leave a retryable error with no main-page engine fallback. This developer fixture is not bundled into the main application.
 
-The renderer build defaults to allowing parent origins `http://127.0.0.1:5178` and `http://localhost:5178`. The parent host deliberately permits only the local cross-site pair `127.0.0.1:5178` → `localhost:5181`, using matching HTTP or HTTPS. Changing ports requires changing that host rule and the developer fixture's frame policy as well as setting `MAGE_RENDERER_PARENT_ORIGINS` before building, `MAGE_RENDERER_PORT` before serving and the matching `VITE_ISOLATED_RENDERER_URL`. Wildcards, credentials, paths and query strings are rejected as parent origins.
+The renderer build defaults to allowing parent origins `http://127.0.0.1:5178` and `http://localhost:5178`. The normal application uses the opposite hostname on renderer port 5181 over HTTP. The fixed-sample host also supports a matching HTTPS pair for the optional fixture below. Changing normal application addresses requires coordinated changes to `rendererConfig.ts`, host URL validation, parent CSP, the child origin build input and the server port; `VITE_ISOLATED_RENDERER_URL` is only a developer-fixture input, not a production redirect mechanism. Wildcards, credentials, paths and query strings are rejected as parent origins.
 
 ### Optional HTTPS parity check
 
@@ -99,7 +113,7 @@ $env:VITE_ISOLATED_RENDERER_URL = 'https://localhost:5181/index.html'
 npx vite --config deployment/isolated-renderer/local-https.vite.config.mjs
 ```
 
-Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. The companion configuration changes only the local HTTPS server and developer fixture's frame policy. For command-line verification, set `MAGE_RENDERER_VERIFY_ORIGIN=https://localhost:5181` and supply the local CA to Node via `NODE_EXTRA_CA_CERTS` if it is not already trusted; never disable TLS verification. Clear these session environment variables before returning to the default HTTP workflow.
+Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. This setup covers the fixed-sample fixture, not the normal application's HTTP-only development resolver or the HTTP-only security canary. The companion configuration changes only the local HTTPS server and developer fixture's frame policy. For command-line verification, set `MAGE_RENDERER_VERIFY_ORIGIN=https://localhost:5181` and supply the local CA to Node via `NODE_EXTRA_CA_CERTS` if it is not already trusted; never disable TLS verification. Clear these session environment variables before returning to the default HTTP workflow.
 
 ## Live parent verification page
 
@@ -160,8 +174,8 @@ versioned bucket and the operator's `.local/deployments/pp-i01-production/` back
 
 Coolify's existing `mage-player-check` service is pinned to
 `4c0f9e11d54f4e8a1aada362ac3373769329b49c` on `pp-i02-isolated-playback`.
-Deployment `fa8dwklr5yxol2dgbdsqmij4` finished at 18:59:41 UTC. The branch is
-pushed but has not been merged. No normal frontend/backend service was rebuilt.
+Deployment `fa8dwklr5yxol2dgbdsqmij4` finished at 18:59:41 UTC. PP-I02 subsequently
+merged in pull request #215. No normal frontend/backend service was rebuilt for that deployment.
 
 The live Chromium check rendered the new player, verified its opaque boundary,
 played the generated WAV, preserved music across scene replacement (0.0 to 0.2
@@ -270,7 +284,7 @@ Existing-release sequence:
 5. Upload the new `index.html` last, with `Cache-Control: no-store`. Verify the existing parent against the new renderer before replacing the parent service. PP-I02's child accepts both the original v1 sample and the v2 bridge, so test v1 compatibility as well as v2 playback, music, capture, teardown and retry from the authorized live parent. Keep normal application rollout and its release gate separate from this verification service.
 6. After those checks pass, create and review a second **UPDATE** change set using the new build's unmodified final `cloudformation.json`. It removes the old hash, path and cache behavior from public access while leaving the old S3 object available for rollback. Wait for stack completion and CloudFront convergence before running the final production verifier below. The verifier intentionally requires the exact single-build headers and will reject the temporary two-hash policy.
 
-For rollback, restore the previous parent service first if the newer parent requires v2: the previous v1 parent can use the new dual-protocol child, but a v2-only parent cannot use the old v1 renderer. If the final renderer policy has already removed the old bundle, reapply the reviewed two-hash transition and wait for propagation. Restore the saved old `index.html`, verify it with the old parent, then restore the saved old final CloudFormation template and verify against that matching artifact after convergence. Existing tabs running the newer parent may need a reload. Keep the previous and current immutable bundles until the rollback window closes.
+For rollback, restore a compatible previous parent service first: an older parent can use the backward-compatible new child, but a parent requiring v2 or PP-I03's added commands cannot use a child lacking them. If the final renderer policy has already removed the old bundle, reapply the reviewed two-hash transition and wait for propagation. Restore the saved old `index.html`, verify it with the old parent, then restore the saved old final CloudFormation template and verify against that matching artifact after convergence. Existing tabs running the newer parent may need a reload. Keep the previous and current immutable bundles until the rollback window closes. See the [PP-I03 release procedure](isolated-renderer-release.md) before changing normal application services or release gates.
 
 A mismatched document/script policy fails closed; there is no fallback to unrestricted application rendering. Never remove the sandbox or broaden CSP to recover from a mismatched deployment. Upload only runtime HTML and script files; the manifests, audits and templates stay private.
 
@@ -329,8 +343,8 @@ executed the reviewed change set successfully.
 
 This separates the account-bearing page from shader execution. It is not a guarantee against GPU hangs, browser defects or all CPU denial of service. Render budgets and removal/timeout handling reduce the impact; browser process allocation and GPU scheduling remain browser-controlled. A separate registrable site encourages site isolation but does not guarantee a dedicated GPU process.
 
-Iframe sandbox flags block parent navigation, popups, downloads, forms and same-origin access. They do not completely ban a child from navigating its **own** frame in every browser. The embedding page's strict `frame-src`, child-load monitoring and disposal are additional checks, not a claim of a universal network or resource sandbox. Browser verification must cover self-navigation/redirect attempts, lost child documents, direct navigation, denied requests, cookie/storage access and parent DOM access. Never send auth tokens, private account data or arbitrary fetch URLs into this renderer. PP-I01's protocol accepts only the fixed sample and disposal commands.
+Iframe sandbox flags block parent navigation, popups, downloads, forms and same-origin access. They do not completely ban a child from navigating its **own** frame in every browser. The embedding page's strict `frame-src`, child-load monitoring and disposal are additional checks, not a claim of a universal network or resource sandbox. Browser verification must cover self-navigation/redirect attempts, lost child documents, direct navigation, denied requests, cookie/storage access and parent DOM access. Never send auth tokens, private account data or arbitrary fetch URLs into this renderer. The retained v1 protocol accepts only the fixed sample and disposal commands; v2 adds the bounded playback bridge above.
 
-The HTTP verifier checks actual response policies, immutable integrity, no cookies, method rejection and route rejection. The Node tests cover exact origins, manifest tampering, local HTTP behavior and generated CloudFront behavior. The recorded browser checks cover the fixed sample, DOM/storage boundary, teardown and recovery. Hosting and the production-parent sample are deployed and verified; broader custom-code and browser-engine checks remain part of the integration/release work. Neither the fixture nor its successful result enables arbitrary custom execution in normal players.
+The HTTP verifier checks actual response policies, immutable integrity, no cookies, method rejection and route rejection. The Node tests cover exact origins, manifest tampering, local HTTP behavior and generated CloudFront behavior. The historical checks above cover the deployed sample and PP-I02 bridge. The [PP-I03 record](isolated-renderer-release.md) separately tracks adversarial probes and normal application integration. Neither fixture success nor a local test enables public custom execution; production verification and the supported-browser matrix remain release conditions.
 
 References: [CSP external script hashes and evaluation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src), [CloudFront response headers policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/understanding-response-headers-policies.html), [private S3 origins with OAC](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html).

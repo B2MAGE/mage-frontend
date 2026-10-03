@@ -4,10 +4,11 @@ This directory is the frontend-owned boundary for scene playback.
 
 See [scene availability](../../../docs/scene-availability.md) for PP-R03's polling bounds, operator workflow, and remaining isolation release dependency.
 See [render budgets](../../../docs/render-budgets.md) for PP-V02's shared validation policy, preview profiles, and runtime ceilings.
-See [isolated renderer](../../../docs/isolated-renderer.md) for the PP-I01 host,
-standalone child, fixed-sample check, and AWS deployment handoff. It is not yet
-the `MagePlayerController` adapter; PP-I02 supplies that bridge and PP-I03 enables
-custom execution after verification.
+See [isolated renderer](../../../docs/isolated-renderer.md) for the separate host,
+playback bridge, application adapter and AWS deployment procedure. PP-I03 routes
+normal players through that boundary. The [release record](../../../docs/isolated-renderer-release.md)
+distinguishes local integration results from production approval; public custom
+rendering remains release-gated off until verification is complete.
 
 ## Public API
 
@@ -18,13 +19,14 @@ Exports:
 - `MagePlayer`
 - `MagePlayerProps`
 - `createMagePlayer()`
+- `createIsolatedPlayer()` (lower-level transport for controlled fixtures; normal app surfaces use the guarded `createMagePlayer` facade)
 - `sceneRecovery` / `sceneRecoveryKey()` (shared recovery guard for all render surfaces)
 - `sceneAvailabilityStore` / `useSceneAvailability()` (fresh server permission, independent of local recovery)
 - `SceneAvailabilityAdminControls` (server-authorized operator controls)
 - `listSceneTemplates()` (immutable picker metadata, without executable source)
 - `parseSceneDocument()` / `hasSceneDocumentMarkers()` / `SceneContractError` (strict document validation; marker-bearing input must never fall back to raw scene data)
 - `validateSceneDocument()` / `validateSceneForPlayback()` / `parseSceneImport()` / `SceneValidationError` (bounded policy validation before normalization or renderer creation)
-- `getRenderBudget()` / `boundCaptureSize()` / `RenderProfile` (host-owned full/preview limits, shared with future isolation adapters)
+- `getRenderBudget()` / `boundCaptureSize()` / `RenderProfile` (host-owned full/preview limits shared with the isolated renderer)
 - `SceneDocument`, `TemplateSceneDocument`, `CustomSceneDocument`, `SceneTemplate`
 - `MagePlayerController`
 - `MageSceneBlob`
@@ -50,7 +52,11 @@ Exports:
 - `useMagePlayerPlaylist.ts`
   Internal playlist state orchestration for the shared player UI.
 - `infrastructure/engineAdapter.ts`
-  Engine bootstrap, scene loading, audio bridging, and patch-aware runtime behavior for `@notrac/mage`.
+  Guarded public facade: submitted scenes use the isolated controller; only the exact fixed platform brand artwork can use its private in-page engine path.
+- `infrastructure/isolatedController.ts`
+  `MagePlayerController` adapter applying validation, fresh availability, recovery leases, audio settings and capture/retry rules around the bridge.
+- `isolation/`
+  Parent-owned audio/input, fixed renderer configuration, versioned private-port transport and validated raster capture. Executable renderer code lives in `src/isolated-renderer/`.
 
 ## Component Surface
 
@@ -80,7 +86,7 @@ Optional route-level playlist props:
 
 The adapter accepts versioned template/custom documents described in
 [`contracts/scenes`](../../../contracts/scenes/README.md). Template documents are validated
-before any engine load and resolved from the immutable platform library. The source never
+before any engine load and resolved inside the child from the immutable platform library. The source never
 comes from the submitted document. All 16 existing shader presets have a version 1 entry.
 
 For compatibility, the adapter also accepts raw custom scene blobs that satisfy the shared
@@ -88,13 +94,13 @@ submission policy: `visualizer.shader` is required, and only documented scene fi
 Renderer settings, audio URLs, external assets, unknown keys, and out-of-range values are rejected.
 Load playlist audio through the explicit host audio API, never through scene data.
 Legacy blobs and explicit custom documents remain **untrusted**, even when their source matches
-a template. PP-B01 does not isolate their existing execution path; PP-I01–I03 own that work.
+a template. All submitted scene kinds take the isolated path; classification does not authorize parent compilation.
 Documents with any version/kind/template markers cannot fall back to legacy loading when invalid.
 
 ## Runtime Behavior
 
 - `sceneBlob={null}` or `undefined` shows the empty state
-- original scene data is validated before the engine is created; pass `initialSceneBlob` when using `createMagePlayer()` directly
+- original scene data is validated before the renderer is created; `initialSceneBlob` is required when using `createMagePlayer()` directly
 - engine pixel dimensions, DPR, frame rate, raymarch steps, effects, and captures are bounded without changing the saved document
 - the current scene is applied when both the player and a valid `sceneBlob` are available
 - changes only to saved audio-response settings apply live, preserving the song, position, volume, and playlist; changing `sceneKey` always loads the new scene, even for identical documents
@@ -107,8 +113,8 @@ Documents with any version/kind/template markers cannot fall back to legacy load
 - `initialPlayback="paused"` freezes the scene until the user presses `Play`
 - `initialPlayback="playing"` keeps the scene running and shows a `Pause` control instead
 - invalid scene data produces a recoverable error overlay instead of crashing the page
-- versioned documents always take the validated scene-load path; the audio-only update shortcut is limited to legacy scenes
-- the engine instance is disposed on unmount
+- initial/replacement documents always take the validated scene-load path; an audio-response-only update uses the numeric bridge without restarting the song
+- the iframe, port, audio and pending work are disposed on unmount
 - failed or interrupted revisions stay static until deliberate retry; safe mode disables automatic rendering across the site
 - Stop and recovery controls remain outside the renderer; editor and playlist state survives replacing it
 
@@ -133,7 +139,7 @@ Current route defaults:
 
 1. Feature modules should import from `@modules/player`, not from `@notrac/mage` or `infrastructure/engineAdapter.ts`.
 2. Treat the engine adapter as infrastructure. Engine patch assumptions, startup workarounds, and browser/runtime quirks stay behind that layer.
-3. Full playback surfaces should embed `MagePlayer` and pass raw backend `sceneData` objects as `sceneBlob`. Controls-free previews may use `createMagePlayer()` through this public module boundary, must share renderer instances where practical, and must dispose their controller when no preview consumers remain.
+3. Full playback surfaces should embed `MagePlayer` and pass raw backend `sceneData` objects as `sceneBlob`. Controls-free previews may use `createMagePlayer()` with an HTML container and `initialSceneBlob` through this public module boundary, must share renderer instances where practical, await asynchronous `loadSceneBlob()`, and dispose their controller when no preview consumers remain. Bind saved IDs at creation/loading; never use the fixture-level transport to bypass permission or recovery.
 4. Route-owned playlist editing UI may keep its own state, but shared playlist types and helpers come from this module.
 
 The controller also exposes authored audio settings, temporary viewer overrides, scene capabilities,
@@ -147,7 +153,9 @@ that distinguishes a configuration update from a scene reload.
 PP-B01 provides the contract, code-free catalog metadata, and playback resolution. PP-B03 connects
 the existing editor to template selection and preserves template ID/version and bounded data
 during editing and saving. New scenes default to a template; existing custom scenes remain custom
-and open for repair without mounting a renderer until isolation is available.
+and remain editable/exportable when playback is disabled or unavailable. Previewing
+valid custom edits requires fresh permission and the separate renderer; repair access
+does not grant execution permission.
 Do not run template documents through the legacy editor's `sanitizeSceneData` helpers: those
 helpers add engine fields and would make a template document invalid. Source edits must create
 a custom document, never alter the trusted registry or retain a template classification.
@@ -157,19 +165,23 @@ Changing source or defaults requires a new template version; old saved scenes mu
 their old ID/version resolution. The shared JSON catalog pins source fingerprints for regression
 checks but is not a mechanism for approving submitted source.
 
-## Isolated playback (PP-I02)
+## Isolated playback (PP-I02 / PP-I03)
 
 `createIsolatedPlayer` composes the parent-owned audio session with a bounded,
 versioned MessagePort bridge. Scene code is resolved and compiled only by the
 separate renderer. It supports scene switching without replacing the audio session,
 play/pause/reset/seek/volume, simulated beats, response mappings in scene settings,
-resize, numeric pointer/orbit/optional wheel zoom, and validated raster capture.
+resize, numeric pointer/orbit/optional wheel zoom, validated raster capture and bounded
+live response settings/capability queries.
 The local integration page is `/scripts/isolated-playback-check.html`.
 
-This API does not itself authorize saved or custom content. PP-I03 must route the
-normal players through it with the existing availability/recovery/release guards;
-do not bypass those guards or fall back to in-page custom execution. See
-`docs/isolated-renderer.md` for protocol limits, deployment, and browser checks.
+This lower-level API does not itself authorize saved or custom content. Normal
+players use `isolatedController.ts` through `createMagePlayer()` with the existing
+availability/recovery/release guards. Do not bypass those guards or fall back to
+in-page custom execution. The renderer URL and parent frame policy are fixed;
+unconfigured sites fail closed. See `docs/isolated-renderer.md` for protocol limits
+and `docs/isolated-renderer-release.md` for child-first deployment, parent-first
+rollback and browser verification still required before public custom execution.
 
 ## Tests
 

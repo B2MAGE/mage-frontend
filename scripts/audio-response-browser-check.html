@@ -6,48 +6,15 @@
 <h1>MAGE audio response browser check</h1>
 <p>Runs the installed engine analysis in a real AudioWorklet using silent, generated test tones.</p>
 <button id="run">Run audio check</button>
-<button id="render">Run rendering check</button>
+<a href="/scripts/isolated-playback-check.html">Open isolated rendering and music check</a>
 <pre id="results">Ready.</pre>
-<canvas id="scene" width="256" height="256" aria-label="Test scene" style="width:256px;height:256px"></canvas>
+
 <script type="module">
 const modulePath = new URLSearchParams(location.search).has('minified')
   ? '/.local/audio-analysis-built.js' : '/node_modules/@notrac/mage/dist/audio-analysis.js'
 const { AudioAnalysisSession } = await import(/* @vite-ignore */ modulePath)
 const button = document.querySelector('#run')
 const results = document.querySelector('#results')
-document.querySelector('#render').addEventListener('click', async event => {
-  const control = event.currentTarget
-  control.disabled = true
-  let engine
-  try {
-    const { initMAGE } = await import('/node_modules/@notrac/mage/dist/mage-engine.js')
-    engine = initMAGE({ canvas: document.querySelector('#scene'), autoStart: false, withControls: { active: false, integrated: false }, pixelRatio: 1 })
-    engine.start()
-    for (const [label, shader, targets] of [
-      ['bass-only', 'let bass = input(); color(0.2, 0.7, 1); sphere(0.3 + bass * 0.15);', ['bass']],
-      ['size and midrange', 'let size = input(); let mid = input(); color(0.8, 0.3, 1); sphere(0.3 + size * 0.1 + mid * 0.15);', ['size', 'mid']],
-    ]) {
-      engine.loadPreset({ audioResponse: 'mapped-v1', visualizer: { shader }, audioResponseConfig: { version: 1, mappings: targets.map(target => ({ target, source: target === 'size' ? 'bass-hit' : `${target}-level`, amount: 1, attack: 0.02, release: 0.2 })) } })
-      engine.getEngineFields().state.time = 0.01
-      engine.setSyntheticPreview(true, 24, 1)
-      engine.start()
-      await new Promise(resolve => setTimeout(resolve, 350))
-      const capabilities = engine.getAudioResponseCapabilities()
-      const diagnostics = engine.getAudioResponseDiagnostics()
-      if (capabilities.unsupportedTargets.length || !targets.every(target => capabilities.supportedTargets.includes(target)) || diagnostics.source !== 'synthetic') throw new Error(`${label}: ${JSON.stringify({ capabilities, diagnostics })}`)
-      const uniforms = engine.getEngineFields().visualizer.mesh.material.uniforms
-      if (!targets.every(target => uniforms[target].value > 0)) throw new Error(`${label}: shader inputs did not receive positive values`)
-      results.textContent += `\nPASS · actual WebGL ${label} shader receives independent inputs`
-      engine.pause()
-    }
-    results.textContent += '\nAll rendering checks passed.'
-  } catch (error) {
-    results.textContent += `\nFAIL · ${error.stack || error}`
-  } finally {
-    engine?.dispose()
-    control.disabled = false
-  }
-})
 button.addEventListener('click', async () => {
   button.disabled = true
   results.textContent = 'Checking native audio processing…\n'

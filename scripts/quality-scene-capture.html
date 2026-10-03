@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
   <head><meta charset="utf-8"><link rel="icon" href="data:,"><title>Local MAGE scene validation</title></head>
-  <body style="margin:0;background:#08090c"><canvas id="preview" style="display:block;width:640px;height:360px" width="640" height="360"></canvas>
+  <body style="margin:0;background:#08090c"><div id="preview" style="display:block;width:640px;height:360px"></div>
     <script type="module">
       import { createQualityRenderer } from './quality-scene-renderer.mjs';
-      window.qualityRenderer = createQualityRenderer(document.querySelector('canvas'));
+      window.qualityRenderer = createQualityRenderer(document.querySelector('#preview'));
     </script>
   </body>
 </html>
