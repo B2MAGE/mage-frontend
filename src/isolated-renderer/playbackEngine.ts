@@ -1,4 +1,5 @@
 import type { InputState, MAGEEngineAPI, MAGEPreset } from '@notrac/mage'
+import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
 import { boundCaptureSize, getRenderBudget, type RenderProfile } from '../modules/player/policy/renderBudget'
 import { SCENE_POLICY, validateSceneForPlayback } from '../modules/player/policy/sceneValidation'
 import { resolveSceneForPlayback } from '../modules/player/templates/resolveScene'
@@ -53,6 +54,9 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   const state = resolved.state as Record<string, unknown> | undefined
   const speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
   const initialTime = typeof state?.time === 'number' ? state.time : 0
+  let appliedResponseMode = normalizeAudioResponseMode(resolved.audioResponse)
+  let appliedResponseConfig = appliedResponseMode === 'mapped-v1'
+    ? JSON.stringify(normalizeAudioResponseConfig(resolved.audioResponseConfig).config) : null
   let playing = true
   function onContextLost() {
     if (disposed) return
@@ -133,8 +137,17 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       synthetic(value) { if (!disposed) engine.setSyntheticPreview(value.enabled, value.seed, value.tempoScale) },
       audioResponse(value) {
         if (disposed) return
-        engine.setAudioResponseConfig(value.config)
-        engine.setAudioResponseMode(value.mode)
+        const modeChanged = value.mode !== appliedResponseMode
+        const config = value.mode === 'mapped-v1' ? normalizeAudioResponseConfig(value.config).config : null
+        const configKey = config ? JSON.stringify(config) : null
+        // Selecting a mode resets the engine's config and analysis sessions.
+        // Apply it first, and preserve those sessions during same-mode edits.
+        if (modeChanged) engine.setAudioResponseMode(value.mode)
+        if (value.mode === 'mapped-v1' && (modeChanged || configKey !== appliedResponseConfig)) {
+          engine.setAudioResponseConfig(config)
+        }
+        appliedResponseMode = value.mode
+        appliedResponseConfig = configKey
       },
       capabilities() { return { supportedTargets: engine.getAudioResponseCapabilities().supportedTargets } },
       zoom(factor) { if (!disposed) orbit?.zoom(factor) },
