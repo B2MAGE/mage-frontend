@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><link rel="icon" href="data:,"><title>MAGE render budget check</title>
+<style>body{font:16px system-ui;background:#101219;color:#eee;margin:32px}button{padding:12px 20px;cursor:pointer}table{border-collapse:collapse;margin:20px 0}td,th{padding:10px;text-align:left;border-bottom:1px solid #454859}#stage{width:640px;height:360px;overflow:hidden}#stage:empty{display:none}canvas{display:block}pre{white-space:pre-wrap;max-width:1100px}small{color:#bcc2d4}</style></head>
+<body><h1>MAGE render budget check</h1><p>Fixed platform test scenes. No account data or submitted source is loaded.</p>
+<button id="run">Run render checks</button><p id="status" role="status">Ready</p><small>Mobile-sized canvases are simulated in this desktop browser; this is not a physical phone benchmark.</small>
+<table><thead><tr><th>Profile / size</th><th>Buffer</th><th>Frames / sec</th><th>Result</th></tr></thead><tbody id="rows"></tbody></table>
+<div id="stage"></div><details><summary>Measurement details</summary><pre id="report"></pre></details><script type="module" src="./render-budget-check.mjs"></script></body></html>
