@@ -598,13 +598,14 @@ describe('installed MAGE engine compatibility', () => {
     const init = new Function('MAGEEngine', `${engineSource.slice(initStart, initEnd)}; return initMAGE;`)(ConfigReceiver) as (config: Partial<MAGEConfig>) => ConfigReceiver
     expect(init({ pixelRatio: 2 }).config.pixelRatio).toBe(2)
 
-    const renderer = { setSize: vi.fn(), setPixelRatio: vi.fn(), setClearColor: vi.fn() }
+    const renderer = { debug: {} as { onShaderError?: () => void }, setSize: vi.fn(), setPixelRatio: vi.fn(), setClearColor: vi.fn() }
     class Renderer { constructor() { return renderer } }
     const createRenderer = engineMethod('_createRenderer', { WebGLRenderer: Renderer, Color: class {}, SRGBColorSpace: 'srgb', window: { devicePixelRatio: 1.5 } })
     for (const [pixelRatio, lowQuality, expected] of [[2, false, 2], [null, false, 1.5], [null, true, 0.1], [2, true, 2]]) {
       createRenderer.call({ pixelRatio, isLowQualityMode: lowQuality, _getViewportSize: () => ({ width: 640, height: 360 }), fx: { toneMapping: { exposure: 1 } } })
       expect(renderer.setPixelRatio).toHaveBeenLastCalledWith(expected)
     }
+    expect(() => renderer.debug.onShaderError?.()).toThrow(/GPU program could not be compiled/)
   })
 
   it('compiles saved-scene ShaderPark helpers through the real embedded compiler', () => {

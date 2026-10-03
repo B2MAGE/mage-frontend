@@ -19,3 +19,7 @@
 }
 
 .brand-scene__canvas[data-ready='true'] { visibility: visible; }
+
+.brand-scene[data-preview-paused='true'] {
+  background: radial-gradient(ellipse at 35% 40%, #343057, #17303a 65%, #101218);
+}

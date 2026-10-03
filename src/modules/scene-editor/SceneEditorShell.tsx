@@ -1366,8 +1366,10 @@ export function SceneEditorShell({
                   captureFramePreviewRef.current = nextCapture;
                 }}
                 sceneBlob={previewSceneData}
+                recoverySceneBlob={sceneData}
+                posterUrl={thumbnailPreviewUrl}
                 onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
-                sceneKey={mode.type === 'edit' ? `edit:${mode.sceneId}` : 'create'}
+                sceneKey={mode.type === 'edit' ? mode.sceneId : undefined}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               />
               </div>

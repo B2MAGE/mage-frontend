@@ -9,6 +9,7 @@ import {
   type MagePlayerPlaybackState,
 } from './infrastructure/engineAdapter'
 import { formatAudioTime } from './magePlayerUtils'
+import { PlaybackOptions } from './recovery/PlaybackOptions'
 
 type MagePlayerControlsProps = {
   activeAudioAction: 'add' | 'load' | null
@@ -24,6 +25,8 @@ type MagePlayerControlsProps = {
   onToggleVolumePanel: () => void
   onTrackSummaryClick: (event: ReactMouseEvent<HTMLButtonElement>) => void
   onVolumeChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onStopScene?: () => void
+  onPauseAllScenes: () => void
   playbackState: MagePlayerPlaybackState
   showPlaylistButton: boolean
   tracksCount: number
@@ -44,6 +47,8 @@ export function MagePlayerControls({
   onToggleVolumePanel,
   onTrackSummaryClick,
   onVolumeChange,
+  onStopScene,
+  onPauseAllScenes,
   playbackState,
   showPlaylistButton,
   tracksCount,
@@ -173,6 +178,7 @@ export function MagePlayerControls({
 
 
         <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
+        <PlaybackOptions onStopScene={onStopScene} onPauseAllScenes={onPauseAllScenes} />
         {showPlaylistButton && (
           <button
             className="mage-player__control-button mage-player__control-button--playlist"

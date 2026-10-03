@@ -18,6 +18,8 @@ function createProps(): ComponentProps<typeof MagePlayerControls> {
     onToggleVolumePanel: vi.fn(),
     onTrackSummaryClick: vi.fn(),
     onVolumeChange: vi.fn(),
+    onStopScene: vi.fn(),
+    onPauseAllScenes: vi.fn(),
     playbackState: 'playing',
     showPlaylistButton: true,
     tracksCount: 0,
@@ -34,6 +36,7 @@ describe('MagePlayerControls library icons', () => {
       ['Add audio tracks', 'plus', '22'],
       ['Adjust audio volume', 'volume-2', '20'],
       ['Toggle fullscreen', 'maximize', '20'],
+      ['Playback options', 'settings', '20'],
       ['Open playlist', 'list-music', '20'],
     ]
 
@@ -73,5 +76,26 @@ describe('MagePlayerControls library icons', () => {
     expect(screen.getByRole('button', { name: 'Add audio tracks' })).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Adjust audio volume' })).toBeDisabled()
+  })
+
+  it('keeps recovery actions in the options menu and supports dismissal without activating them', () => {
+    const props = createProps()
+    render(<MagePlayerControls {...props} />)
+    const trigger = screen.getByRole('button', { name: 'Playback options' })
+    expect(screen.queryByRole('button', { name: 'Stop this scene' })).not.toBeInTheDocument()
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    screen.getByRole('button', { name: 'Stop this scene' }).focus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(trigger).toHaveFocus()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(trigger)
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('group', { name: 'Playback options' })).not.toBeInTheDocument()
+    expect(props.onStopScene).not.toHaveBeenCalled()
+    expect(props.onPauseAllScenes).not.toHaveBeenCalled()
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+    expect(props.onPauseAllScenes).toHaveBeenCalledOnce()
   })
 })

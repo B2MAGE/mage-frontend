@@ -20,7 +20,9 @@ html[data-theme] .mage-player:fullscreen .mage-player__viewport {width:100%;heig
 html[data-theme] .mage-player:fullscreen .mage-player__controls {align-self:end;align-items:center;min-height:66px;padding-block:0;}
 @media(max-width:760px){html[data-theme] .mage-player__control-meta{display:none;}html[data-theme] .mage-player__controls{gap:8px;padding-inline:12px;}}
 
-html[data-theme] .mage-player__control-button--playlist {order:5;}
+html[data-theme] .mage-player__playback-options {order:5;}
+html[data-theme] .mage-player__control-button--playlist {order:6;}
+html[data-theme] .mage-player__controls--recovery-only {justify-content:flex-end;}
 
 html[data-theme] .mage-player__control-button:not(.mage-player__control-button--playback):enabled:hover {background:var(--surface-soft);color:var(--text);}
 html[data-theme] .mage-player__control-button:focus-visible {outline:2px solid var(--accent-light);outline-offset:2px;}
