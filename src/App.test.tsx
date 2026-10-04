@@ -64,10 +64,10 @@ describe('App routing', () => {
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   })
 
-  it('keeps moderator settings behind authentication', async () => {
-    render(<MemoryRouter initialEntries={['/settings/moderators']}><App /></MemoryRouter>)
+  it.each(['/settings/moderators', '/moderation', '/moderation/moderators', '/moderation/playback'])('keeps %s behind authentication', async path => {
+    render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>)
     expect(await screen.findByText('Login page')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Scene moderators' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Moderation' })).not.toBeInTheDocument()
   })
 
   it('allows direct scene detail visits without redirecting to login', async () => {

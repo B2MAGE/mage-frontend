@@ -260,15 +260,21 @@ describe('moderator management', () => {
   })
 })
 
-describe('moderator settings navigation', () => {
-  it('shows the link only after the administrator capability is verified and removes it on account change', async () => {
+describe('moderation settings navigation', () => {
+  it('shows the link only after staff permissions are verified and removes it on account change', async () => {
     const view = render(<ModeratorSettingsLink />)
-    expect(screen.queryByRole('link', { name: 'Scene moderators' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('link', { name: 'Scene moderators' })).toHaveAttribute('href', '/settings/moderators')
-    auth.accessToken = 'regular-session'; caps = { ...admin, canManageModerators: false }
+    expect(screen.queryByRole('link', { name: 'Moderation' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Moderation' })).toHaveAttribute('href', '/moderation')
+    auth.accessToken = 'regular-session'; caps = { canManageModerators: false, canModerateScenes: false, canManageCustomRendering: false }
     view.rerender(<ModeratorSettingsLink />)
-    expect(screen.queryByRole('link', { name: 'Scene moderators' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Moderation' })).not.toBeInTheDocument()
     await waitFor(() => expect(auth.authenticatedFetch).toHaveBeenCalledTimes(2))
-    expect(screen.queryByRole('link', { name: 'Scene moderators' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Moderation' })).not.toBeInTheDocument()
+  })
+  it('includes moderators in the new area without granting administrator tools', async () => {
+    caps = { canManageModerators: false, canModerateScenes: true, canManageCustomRendering: false }
+    render(<ModeratorSettingsLink />)
+    expect(await screen.findByRole('link', { name: 'Moderation' })).toHaveAttribute('href', '/moderation')
+    expect(auth.authenticatedFetch.mock.calls.every(([path]) => path === '/admin/capabilities')).toBe(true)
   })
 })

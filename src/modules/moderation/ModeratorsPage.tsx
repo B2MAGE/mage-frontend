@@ -6,14 +6,16 @@ import { fetchAdminCapabilities, fetchModeratorAudit, findModeratorUsers, isExac
 import { useAdminCapabilities } from './useAdminCapabilities'
 import './moderation.css'
 
-export function ModeratorsPage() {
+export function ModeratorsPage({ embedded = false }: { embedded?: boolean }) {
   const { accessToken, user, authenticatedFetch } = useAuth()
   const { capabilities, checking, failed, refresh } = useAdminCapabilities()
-  return <main className="moderators-page">
-    <Link to="/settings">Back to settings</Link>
+  const Container = embedded ? 'section' : 'main'
+  const Heading = embedded ? 'h2' : 'h1'
+  return <Container className={embedded ? 'moderation-area__moderators' : 'moderators-page'}>
+    {!embedded && <Link to="/moderation">Back to moderation</Link>}
     <header>
-      <h1>Scene moderators</h1>
-      <p>Moderators can disable and re-enable individual scenes. They cannot manage other moderators or change platform-wide playback settings.</p>
+      <Heading>Moderator access</Heading>
+      <p>Add or remove people who can block and unblock scenes. Only administrators can manage moderators or change custom shader playback for everyone.</p>
     </header>
     {checking ? <p role="status">Checking your permissions…</p> : capabilities?.canManageModerators
       ? <ModeratorManagement key={`${accessToken}:${user?.userId}`} fetcher={authenticatedFetch} onAccessLost={refresh} />
@@ -22,7 +24,7 @@ export function ModeratorsPage() {
         <p>{failed ? 'Please check your connection and try again.' : 'Only an administrator can manage scene moderators.'}</p>
         {failed && <button type="button" className="secondary-button" onClick={refresh}>Try again</button>}
       </section>}
-  </main>
+  </Container>
 }
 
 function ModeratorManagement({ fetcher, onAccessLost }: { fetcher: AuthenticatedFetch; onAccessLost: () => void }) {

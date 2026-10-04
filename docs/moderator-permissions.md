@@ -16,11 +16,11 @@ Administrator access is explicitly configured with `MAGE_ADMIN_USER_IDS`; R05 do
 
 ## Administrator workflow
 
-1. Open **Settings**, then **Scene moderators**. The link appears only after the server confirms administrator access.
+1. Open the account menu's **Moderation** area, then **Moderator access** (`/moderation/moderators`). Administrators and moderators can enter the area; only administrators see moderator management and custom shader playback. Settings also links to the area, and the old `/settings/moderators` address redirects to the new location.
 2. Search for an existing account using its exact user ID, handle or email. Check the displayed account identity and current permission before making a change.
 3. Enter the reason and review the proposed grant or revocation, then explicitly confirm it.
 4. A successful response updates the account's status and the private permission audit. A stale revision requires a fresh review before another change; the original request ID makes an uncertain retry safe to repeat.
-5. A moderator uses **Manage playback availability** on a scene detail page. Moderators see the individual-scene controls only. Administrators also see the separate platform-wide rendering controls.
+5. A moderator uses the **Manage this scene** shield beside Follow or Edit scene to block or unblock that scene. This modal never reads or changes global custom shader playback. Administrators manage that separate control at **Moderation → Custom shaders** (`/moderation/playback`).
 
 Administrator accounts are identified separately in the account lookup. Their powers cannot be removed by toggling a moderator grant. Removing or recovering administrator access is an explicit server-configuration operation rather than a last-administrator action in this UI.
 

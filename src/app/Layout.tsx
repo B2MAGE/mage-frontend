@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '@auth'
+import { ModerationMenuLink } from '@modules/moderation'
 import { AppIcon, Skeleton, UserAvatar } from '@shared/ui'
 import './pulseChrome.css'
 
@@ -162,6 +163,8 @@ export function Layout({ children }: PropsWithChildren) {
                     </span>
                     <span>Settings</span>
                   </Link>
+
+                  <ModerationMenuLink onNavigate={() => setIsAccountMenuOpen(false)} />
 
                   <button
                     className="nav-menu__item nav-menu__item--button"
