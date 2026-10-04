@@ -10,6 +10,16 @@ See [isolated renderer architecture and hosting](isolated-renderer.md) for proto
 
 ## Release verification — October 4, 2026
 
+### iOS failure under investigation
+
+User-provided Chrome 154, Edge 154 and Firefox 157 reports each passed all 27 deployed fixed safety checks. The Safari 17.6 report passed the 25 boundary/recovery checks but failed both finite CPU-stall checks: the parent timer gap reached 3,807 ms and the combined failure/removal condition was not satisfied at observation. The tester identified that run as an iOS device and also reported failures in BrowserStack iPhone/iPad sessions. Exact device/OS versions and exports for the additional sessions remain unconfirmed. The Mac-style Safari user-agent string is not evidence of desktop Safari coverage.
+
+The report alone does not establish a sandbox escape or Safari's process architecture. The host deliberately discards watchdog observation gaps above two seconds to avoid treating suspended-page time as scene failure. That reset is consistent with the result, but the original report does not contain enough event timing to establish the cause. Its marker was sent before the finite loop began, and its removal result combined failure state with frame disconnection before unconditional fixture cleanup.
+
+The diagnostic verification build exports report schema 2 (`fixed-security-2`). It adds a separately timed benign baseline, child queued/scheduled/start/end markers, host load/progress/watchdog events and separate failure/frame-connected observations. The original 3,600 ms observation and below-1,000 ms parent responsiveness criterion remain; the subsequent 1,200 ms recovery observation cannot change the recorded verdict. The two rows measure removal and parent responsiveness during the scheduled fixed probe, using scheduling evidence as before; queued/scheduled markers alone are explicitly not evidence of loop entry or completion. Teardown can discard a start/end message from the blocked child, so absent messages are not proof the loop never ran. Child elapsed timestamps and parent receipt timestamps are separate; the report caps its allowlisted timeline at 256 events and flags truncation. Cleanup and cancellation preserve the last connected-frame state before removing the test frame.
+
+The fixture uses a 1,000 ms progress timeout; the normal host default remains 10,000 ms. Host watchdog decisions, renderer artifacts, browser policy and release controls are unchanged. After this build is deployed, rerun **Check a bounded CPU stall** on the same iOS and BrowserStack devices with the tab visible, export the version 2 report and record the service/device model/OS. Retain the original reports. This work does not approve iOS playback; keep public custom rendering off until the failed supported-browser path and remaining acceptance work are resolved.
+
 ### Browser evidence collection
 
 The fixed HTTPS safety page is built for `https://mage.peterbucci.com/player-check/security/` on the existing dedicated player-check service. It adds the same 17 boundary, eight recovery and two optional finite-stall checks available locally, with retained JSON results and a copyable report. It accepts no shader input or account data. Its bounded canary stores only short-lived random identifiers and request counts; it does not forward requests to MAGE APIs.

@@ -17,6 +17,14 @@ All rows below begin **NOT RUN**. They are the requested coverage plan, not a cl
 
 Safari on Windows or Android is not a release target. Do not infer browser-engine coverage from a browser brand on a different OS. If a listed platform is unavailable, retain NOT RUN and record the blocker; do not silently narrow the requested release scope.
 
+### Reports received on October 4, 2026
+
+The tester supplied complete deployed reports for Chrome 154, Edge 154 and Firefox 157 with Windows user-agent strings. Each passed all 27 fixed checks. A Safari 17.6 report passed 17 boundary and eight recovery checks but failed both finite-stall checks, recording a 3,807 ms parent timer gap. The tester confirmed an iOS device despite the report's desktop-style Mac user-agent string. The exact device and OS version are unconfirmed; this does not establish a desktop Safari result. The tester also reported failures in BrowserStack iPhone and iPad sessions; their exports, device versions and exact failed checks have not been supplied.
+
+These results are recorded in [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204). Original reports and hashes are preserved locally under `.local/deployments/pp-i03-release-verification/user-browser-reports-20261004/`. The table above remains the coverage plan; the reports establish only their recorded fixed checks, not the music or normal-app release walkthrough. Retain the failing iOS result while investigating it.
+
+The follow-up diagnostic page identifies itself as `fixed-security-2` and exports report schema 2. After its deployment, repeat **Check a bounded CPU stall** on the affected devices in the foreground and download the JSON; include the actual device model/OS and BrowserStack session configuration separately. The report adds a benign baseline and bounded timing/failure evidence without relaxing thresholds. Its later recovery observation cannot turn the original failure into a pass. A version 1 report remains valid historical evidence but lacks this diagnostic detail.
+
 ## Freeze the test environment
 
 Before a run, record the frontend and backend commit/image, renderer bundle path and integrity hash, parent and renderer URLs, backend release setting and persisted global setting. Capture the actual HTTP policies with the matching renderer verifier. Build output alone is not deployment evidence.
