@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-import { boundedStallSource, portAttackSource, THROW_PROBE_SOURCE } from './isolated-security-probes.mjs'
+import { boundedStallSource, portAttackSource, readStallMarker, THROW_PROBE_SOURCE } from './isolated-security-probes.mjs'
 
 const source = readFileSync(new URL('../node_modules/@notrac/mage/dist/mage-engine.js', import.meta.url), 'utf8')
 const start = source.indexOf('var require_shader_park_core_umd =')
@@ -37,7 +37,7 @@ test('fixed thrown-source probe reaches its deliberate error in the installed pa
   assert.throws(() => runInNewContext(`${source.slice(start, end)}; require_shader_park_core_umd().sculptToGLSL(shader);`, context, { timeout: 3000 }), /Fixed isolation throw probe/)
 })
 
-test('finite CPU probe reports first and its delayed loop executes through the installed parser', () => {
+test('finite CPU probe distinguishes queued, scheduled, start and end through the installed parser', () => {
   const windowMessages = [], scheduled = []
   let clock = 0
   const context = { parent: { postMessage(message) { windowMessages.push(message) } },
@@ -49,10 +49,26 @@ test('finite CPU probe reports first and its delayed loop executes through the i
   const result = runInNewContext(`${source.slice(start, end)}; require_shader_park_core_umd().sculptToGLSL(shader);`, context, { timeout: 3000 })
   assert.equal(result.error, undefined)
   assert.equal(windowMessages[0].nonce, nonce)
-  assert.equal(windowMessages[0].checks['probe-executed'], true)
-  assert.equal(clock, 0, 'The loop waits until after the execution evidence is sent.')
+  assert.deepEqual(windowMessages.map(message => message.marker), ['queued', 'scheduled'])
+  assert.equal(windowMessages.some(message => message.marker === 'start'), false, 'Scheduling is not execution evidence.')
   assert.equal(scheduled.length, 1)
   // Advance a fake clock instead of occupying a real CPU for three seconds.
   scheduled[0]()
-  assert.equal(clock, 3100)
+  assert.deepEqual(windowMessages.map(message => message.marker), ['queued', 'scheduled', 'start', 'end'])
+  assert(windowMessages[3].atMs - windowMessages[2].atMs >= 3000)
+  assert(windowMessages.every(message => readStallMarker({ source: context.parent, origin: 'null', data: message }, context.parent, nonce)))
+})
+
+test('stall marker rejects wrong frame, origin, nonce, extra fields, unknown markers and invalid timestamps', () => {
+  const frame = {}, other = {}, data = { type: 'mage-isolation-stall', nonce, marker: 'start', atMs: 150 }
+  const event = { source: frame, origin: 'null', data }
+  assert.deepEqual(readStallMarker(event, frame, nonce), { marker: 'start', atMs: 150 })
+  for (const invalid of [{ ...event, source: other }, { ...event, origin: 'https://renderer.example' },
+    ...[{ ...data, nonce: 'b'.repeat(32) }, { ...data, source: 'private' }, { ...data, marker: 'executed' },
+      ...[NaN, Infinity, -1, 86400001, '150'].map(atMs => ({ ...data, atMs })), null, [], { marker: 'start' }].map(data => ({ ...event, data }))]) {
+    assert.equal(readStallMarker(invalid, frame, nonce), null)
+  }
+  assert.equal(readStallMarker(event, null, nonce), null)
+  assert.equal(readStallMarker(event, frame, 'invalid'), null)
+  assert.throws(() => boundedStallSource('invalid'), /Invalid/)
 })
