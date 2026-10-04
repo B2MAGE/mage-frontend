@@ -25,7 +25,7 @@ export type PlaybackPayloads = {
   capture: CaptureRequest
   captured: { bytes: ArrayBuffer; type: CaptureRequest['type']; width: number; height: number }
   progress: { frames: number }
-  error: { code: 'render' | 'protocol' | 'capture' }
+  error: { code: 'render' | 'protocol' | 'capture' | 'compile' }
 }
 export type PlaybackType = keyof PlaybackPayloads
 export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends PlaybackType ? {
@@ -114,7 +114,7 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
       && numberIn(p.width, 1, CAPTURE_BUDGET.maxLongestEdge) && Number.isInteger(p.width) && numberIn(p.height, 1, CAPTURE_BUDGET.maxLongestEdge)
       && Number.isInteger(p.height) && p.width * p.height <= CAPTURE_BUDGET.maxRenderPixels
     case 'progress': return record(p, ['frames']) && uint(p.frames)
-    case 'error': return record(p, ['code']) && ['render', 'protocol', 'capture'].includes(p.code as string)
+    case 'error': return record(p, ['code']) && ['render', 'protocol', 'capture', 'compile'].includes(p.code as string)
     default: return false
   }
 }

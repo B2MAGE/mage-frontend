@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installPlaybackRuntime } from './playbackRuntime'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
 import type { PlaybackLoader } from './playbackEngine'
+import { ShaderCompilationError } from './compiler/errors'
 
 const origin = 'https://mage.peterbucci.com', session = '4b50667d-27d8-4634-93e8-3a795e110123'
 const scene = { visualizer: { shader: 'sphere(1);' } }
@@ -33,6 +34,46 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('reports only the fixed compile code and closes after a compiler-policy rejection', async () => {
+    const f = fixture()
+    const rejected = new ShaderCompilationError()
+    rejected.message = 'private source and compiler diagnostics must not leave the child'
+    f.loadScene.mockRejectedValueOnce(rejected)
+    f.bootstrap(); f.load(7); await Promise.resolve()
+    expect(f.loadScene.mock.calls[0][0].sceneRevision).toBe(7)
+    expect(f.responses('error')).toEqual([playbackMessage('error', session, 7, 1, { code: 'compile' })])
+    expect(f.responses('loaded')).toEqual([])
+    expect(f.port.close).toHaveBeenCalledOnce()
+    expect(f.loadScene.mock.calls[0][0].signal.aborted).toBe(true)
+    expect(f.statusElement.textContent).toBe('This scene could not be displayed.')
+    expect(JSON.stringify(f.port.postMessage.mock.calls)).not.toContain(rejected.message)
+    f.load(8); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledOnce()
+  })
+
+  it('does not treat arbitrary loader errors or a forged error name as compiler rejection', async () => {
+    const f = fixture()
+    const error = new Error('private renderer error')
+    error.name = 'ShaderCompilationError'
+    f.loadScene.mockRejectedValueOnce(error)
+    f.bootstrap(); f.load(); await Promise.resolve()
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'render' }])
+    expect(JSON.stringify(f.port.postMessage.mock.calls)).not.toContain(error.message)
+  })
+
+  it('ignores a late compiler rejection from an aborted scene revision', async () => {
+    const f = fixture()
+    let reject!: (error: Error) => void
+    f.loadScene.mockReturnValueOnce(new Promise((_resolve, no) => { reject = no }))
+    f.bootstrap(); f.load(1)
+    f.load(2); await Promise.resolve()
+    reject(new ShaderCompilationError()); await Promise.resolve()
+    expect(f.loadScene.mock.calls.map(([options]) => options.sceneRevision)).toEqual([1, 2])
+    expect(f.responses('error')).toEqual([])
+    expect(f.responses('loaded').map(message => message.generation)).toEqual([2])
+    expect(f.port.close).not.toHaveBeenCalled()
+  })
+
   it('changes music response without reloading and returns capabilities only when requested', async () => {
     const f = fixture()
     f.bootstrap(); f.load(); await Promise.resolve()

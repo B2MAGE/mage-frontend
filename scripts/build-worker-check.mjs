@@ -10,7 +10,8 @@ const outDir = resolve(root, '.local/worker-check-renderer')
 const compiler = await buildCompilerWorker(root)
 const allowed = new Set(['scripts/worker-check-local.ts', 'scripts/worker-check-child.ts', 'scripts/worker-check-runner.ts', 'scripts/worker-check-fixture.ts',
   'src/isolated-renderer/compiler/client.ts', 'src/isolated-renderer/compiler/protocol.ts', 'src/isolated-renderer/boundary.ts',
-  'node_modules/@notrac/mage/dist/compiled-shader.js'])
+  'src/isolated-renderer/compiler/errors.ts', 'node_modules/@notrac/mage/dist/compiled-shader.js',
+  'node_modules/@notrac/mage/dist/compiled-shader-shell.generated.js'])
 let modules = []
 await build({ root, configFile: false, envDir: false, publicDir: false, envPrefix: '__MAGE_WORKER_CHECK_NO_ENV__',
   define: { __MAGE_COMPILER_WORKER_SOURCE__: JSON.stringify(compiler.source),

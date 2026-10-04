@@ -39,6 +39,23 @@ describe('MagePlayer recovery', () => {
     })
   })
 
+  it('keeps compiler-rejected scenes static and actionable across mounts without automatic retries', () => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 831)
+    sceneRecovery.block(key, 'compile')
+    const first = render(<MagePlayer sceneBlob={scene} sceneKey={831} posterUrl="/scene-poster.png" />)
+    expect(screen.getByText(/simplify the shader code or choose a template/i)).toHaveTextContent("It won't restart automatically.")
+    expect(first.container.querySelector('img')).toHaveAttribute('src', '/scene-poster.png')
+    expect(first.container.querySelector('iframe,canvas')).toBeNull()
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    first.unmount()
+    const second = render(<MagePlayer sceneBlob={{ ...scene }} sceneKey={831} />)
+    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeEnabled()
+    expect(sceneRecovery.getBlock(key)?.reason).toBe('compile')
+    expect(second.container.querySelector('iframe,canvas')).toBeNull()
+    expect(createMagePlayer).not.toHaveBeenCalled()
+  })
+
   it('keeps a remembered failure static across a new player mount until deliberate retry', async () => {
     const scene = buildMagePlayerSceneBlob()
     const key = identity(scene, 801)

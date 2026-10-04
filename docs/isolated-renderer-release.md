@@ -4,7 +4,9 @@
 
 Normal player and availability integration is merged and deployed. PP-I03 has been reopened for the outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
 
-PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story remains **To Verify** and unmerged. The user reports passing worker tests on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; these are user-reported passes.
+PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232) at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222) is **Done**. The owner accepted user-reported worker-test passes on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; collecting them remains in PP-I03 release verification. No independent mobile run is claimed.
+
+PP-I05's compiled-output policy is implemented and committed locally on `pp-i05-compiled-output-policy`, with status **To Verify**. It has not been pushed, merged or deployed and does not grant public release approval. Local verification passed the full application suite (1,907 tests), the final 14 artifact contract tests and 128 focused engine/runtime tests, clean-package patch reproduction across 116 fixtures at two ceilings, lint, TypeScript, builds and hosting checks. The final local worker browser check passed 11/11 and the normal Home featured scene rendered after explicit retry. See [PP-I05 local evidence](isolated-renderer.md#pp-i05-compiled-output-policy--local-implementation) for scope and evidence paths. The deployed artifact identifiers below remain the PP-I04 evidence.
 
 Use the [browser/device checklist](custom-shader-release-checklist.md) and [result template](custom-shader-release-result.template.json) for the remaining runs. The recovery epic is complete; its closure does not approve arbitrary-source playback.
 
@@ -29,12 +31,17 @@ This rollout changes the separate renderer and the existing fixed-check service.
 | Live music compatibility | Startup and opaque boundary; audio continuity through scene switching and Original response; pause/switch/resume; decoded 320 × 180 capture; Stop removal/audio release; unavailable-player safe failure and successful Retry passed. Capture evidence: `.local/deployments/pp-i04-worker/live-music-capture.png`. |
 | Initial music interruption | Before retry, the player stopped safely after reporting capture success and before image dimensions were inspected. The fixed page did not retain the failure reason. Subsequent retry/checks succeeded. Offscreen scheduling is a hypothesis only; this interruption remains recorded, not reclassified as an expected or diagnosed failure. |
 | Normal live scene | `/scenes/15` (Aurora Drift) rendered through the CloudFront iframe. Visual evidence: `.local/deployments/pp-i04-worker/live-scene-smoke.png`. This is a focused smoke check, not the complete normal-app acceptance matrix. |
-| Android and Apple devices | **User-reported passes:** Pixel / Chrome / Android 17; Apple device / Safari / iOS, described as the latest version but exact version unspecified. Exact models, browser versions and exported mobile reports were not provided. No independent mobile run is claimed. |
-| Public controls and story | Production custom release approval and saved playback remain off, verified during this rollout. Deployment verification is complete; PP-I04 remains **To Verify** and unmerged. The broader custom-rendering release is not approved. |
+| Android and Apple devices | **Owner-accepted, user-reported passes:** Pixel / Chrome / Android 17; Apple device / Safari / iOS, described as the latest version but exact version unspecified. Exact models, browser versions and exported mobile reports were not provided; that remaining metadata belongs to PP-I03. No independent mobile run is claimed. |
+| Public controls and story | Production custom release approval and saved playback remain off, verified during this rollout. PP-I04 is merged through PR #232 at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and issue #222 is Done. The broader custom-rendering release is not approved. |
 
 Preparation and rollback evidence are retained under `.local/deployments/pp-i04-worker/`, including the previous `Cz795m_s` artifact, exact transition/final templates, build audit, reviewed package and approved LF check-service files. The submitted-source worker lifetime checks do not establish network denial, GPU containment or every application lifecycle. `/player-check/security/` now labels its earlier window-source probes as historical and links to the current worker page; the prior reports below remain historical evidence rather than worker results. PP-I05/I06 and the wider release matrix keep their separate scope.
 
-### iOS failure under investigation
+### Historical pre-worker iOS failure
+
+The following investigation records the earlier renderer that evaluated source
+on its window thread. PP-I04's later disposable-worker checks passed according
+to the owner's accepted mobile reports above. Those reports close PP-I04; they
+do not replace missing device metadata or the remaining PP-I03 release matrix.
 
 User-provided Chrome 154, Edge 154 and Firefox 157 reports each passed all 27 deployed fixed safety checks. The Safari 17.6 report passed the 25 boundary/recovery checks but failed both finite CPU-stall checks: the parent timer gap reached 3,807 ms and the combined failure/removal condition was not satisfied at observation. The tester identified that run as an iOS device and also reported failures in BrowserStack iPhone/iPad sessions. Exact device/OS versions and exports for the additional sessions remain unconfirmed. The Mac-style Safari user-agent string is not evidence of desktop Safari coverage.
 
@@ -67,6 +74,44 @@ At the time of this pre-worker verification, the normal production frontend was 
 Sanitized evidence and logs are retained locally under frontend `.local/deployments/pp-i03-release-verification/` and backend `.local/release-approval-20261004/`. Report export collects fixed check outcomes, timestamps, browser identification and test endpoints only. It does not collect account data, source or storage contents. Cancelled, incomplete and hidden-page runs cannot count as passing; stale asynchronous results cannot be attributed to a newer run.
 
 The connected browser inventory only exposes the Windows in-app browser; requesting desktop Chrome automation returned unavailable. Actual Chrome, Edge, Firefox, Safari and mobile runs remain unverified. No viewport emulation, user-agent string, automated unit test or fixed music sample is counted as a substitute. Public release remains unapproved until the required browser/device and production-equivalent normal-app checks are complete.
+
+## PP-I05 local compiled-output policy
+
+The implementation retains artifact version 1 but adds independent validation
+in the worker receiver and the patched engine before graphics allocation. The
+compiler channel is now protocol version 2 with fresh job/channel IDs and the
+current scene revision, an absolute two-second deadline and at most two replies.
+Stale, malformed, oversized and unsupported output fails closed and retires the
+worker. Correlation does not make output trusted.
+
+The accepted program uses the installed compiler's exact vertex and fragment
+scaffold. UTF-8 limits are 524,288 bytes for the fragment, 65,536 for the vertex,
+262,144 each for geometry/color, and 786,432 in aggregate. At most 64 uniquely
+named float/vector uniforms are allowed, with finite bounded values and valid
+ranges. Host-owned policy independently clamps raymarch iterations to the profile
+ceiling (no more than 200), reflections to two and finite step constants to
+0.005–1. Existing full/preview pixel, edge, DPR, FPS, effect and capture budgets
+remain separate and cannot be raised by an artifact or uniform.
+
+Ordinary Shader Park DSL and finite JavaScript geometry-building loops remain
+supported when their output meets the policy. Raw GLSL is not a general supported
+escape hatch: GPU loops, arrays/indexing, recursive helpers (including cycles
+through trusted functions), arbitrary directives and shader-shell replacements
+are rejected. Accepted saved source/settings stay unchanged. Compiler rejection
+becomes a fixed `compile` playback error, a removed frame and a stored static
+recovery state explaining how to simplify the shader or choose a template.
+Retries stay explicit; existing owner repair/export remains available, and raw
+worker diagnostics/source never reach the UI.
+
+See [the architecture policy](isolated-renderer.md#pp-i05-compiled-output-policy--local-implementation)
+and `.local/pp-i05-budget-compatibility.md` for the code-derived policy and the
+16-preset compatibility audit. Local implementation still awaits integration
+validation; no final full-suite or browser result is claimed here. This work
+does not deploy a new artifact, change the historical hashes below or approve
+public custom execution. Future deployment is child first, then the matching
+parent, with gates off: playback protocol remains v2, and an older parent safely
+rejects the new fixed error code as a generic failure. Accepted finite programs
+can still stress a driver; this is not a general GPU-containment guarantee.
 
 ## Production rollout — October 3, 2026
 

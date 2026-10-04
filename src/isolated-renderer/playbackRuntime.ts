@@ -1,6 +1,7 @@
 import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_COMMANDS,
   type PlaybackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
 import type { PlaybackEngine, PlaybackLoader } from './playbackEngine'
+import { ShaderCompilationError } from './compiler/errors'
 
 export function installPlaybackRuntime(options: {
   canvas: HTMLCanvasElement; statusElement: HTMLElement; allowedParentOrigins: readonly string[]
@@ -37,7 +38,7 @@ export function installPlaybackRuntime(options: {
     port?.close(); port = null
     display('Renderer stopped.')
   }
-  function fail(code: 'render' | 'protocol', request = lastRequest) {
+  function fail(code: 'render' | 'protocol' | 'compile', request = lastRequest) {
     if (closed) return
     try { send('error', request, { code }) } catch { /* Parent may already have removed the frame. */ }
     dispose()
@@ -64,6 +65,7 @@ export function installPlaybackRuntime(options: {
     display('Loading scene…')
     try {
       const loadedEngine = await options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
+        sceneRevision: message.generation,
         onError: () => { if (active()) fail('render', message.requestId) },
         onFrame: () => {
           if (!active()) return
@@ -82,7 +84,9 @@ export function installPlaybackRuntime(options: {
       engine.playback(playing)
       options.statusElement.hidden = true
       send('loaded', message.requestId, null)
-    } catch { if (active()) fail('render', message.requestId) }
+    } catch (error) {
+      if (active()) fail(error instanceof ShaderCompilationError ? 'compile' : 'render', message.requestId)
+    }
   }
   async function capture(message: PlaybackMessage<'capture'>) {
     const source = engine, token = loadAbort

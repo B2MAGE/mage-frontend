@@ -253,11 +253,26 @@ describe('isolated controller guards', () => {
     expect(mocks.leases[0].fail).toHaveBeenCalledWith('load')
   })
 
-  it.each(['runtime', 'context-lost', 'startup-timeout', 'progress-timeout'])('records %s from the child boundary', async reason => {
+  it.each(['runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'compile'])('records %s from the child boundary', async reason => {
     await loaded()
     mocks.create.mock.calls[0][0].onFailure(reason)
     expect(mocks.leases[0].fail).toHaveBeenCalledWith(reason)
     expect(playerBridge.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('preserves compile rejection when the pending scene load subsequently rejects', async () => {
+    const work = deferred<void>()
+    playerBridge.loadScene.mockReturnValueOnce(work.promise)
+    const player = await create(custom)
+    const pending = player.loadSceneBlob(custom)
+    const rejected = expect(pending).rejects.toThrow('Isolated player stopped.')
+    await flush()
+    mocks.create.mock.calls[0][0].onFailure('compile')
+    work.reject(new Error('Isolated player stopped.'))
+    await rejected
+    expect(mocks.leases[0].fail).toHaveBeenCalledExactlyOnceWith('compile')
+    expect(playerBridge.dispose).toHaveBeenCalledOnce()
+    expect(playerBridge.play).not.toHaveBeenCalled()
   })
 
   it('distinguishes deliberate stop from ordinary pause', async () => {

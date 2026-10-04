@@ -8,6 +8,7 @@ export const COMPILER_WORKER_ALLOWED_MODULES = Object.freeze([
   'src/isolated-renderer/compiler/protocol.ts',
   'node_modules/@notrac/mage/dist/compiler.js',
   'node_modules/@notrac/mage/dist/compiled-shader.js',
+  'node_modules/@notrac/mage/dist/compiled-shader-shell.generated.js',
   'node_modules/@notrac/mage/dist/shader-park-compiler.generated.js',
 ])
 

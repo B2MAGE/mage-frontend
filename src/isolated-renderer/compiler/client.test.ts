@@ -10,10 +10,11 @@ function fixture() {
   const release = vi.fn(), terminate = vi.fn(), postMessage = vi.fn()
   const worker: CompilerWorker = { postMessage, terminate, onmessage: null, onerror: null, onmessageerror: null }
   const createWorker = vi.fn(() => ({ worker, release }))
-  const load = (source = 'sphere(0.5);') => compileInWorker(source, { signal: abort.signal, maxRaymarchIterations: 200 }, { createWorker, observe })
+  const load = (source = 'sphere(0.5);', sceneRevision = 7) => compileInWorker(source, { signal: abort.signal, maxRaymarchIterations: 200, sceneRevision }, { createWorker, observe })
   const respond = (type: string, extras: object = {}) => {
     const request = postMessage.mock.calls.at(-1)?.[0] as CompileRequest
-    const data = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId: request.jobId, type, ...extras }
+    const data = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId: request.jobId,
+      channelId: request.channelId, sceneRevision: request.sceneRevision, type, ...extras }
     worker.onmessage?.call(worker as Worker, new MessageEvent('message', { data }))
   }
   const started = () => respond('started')
@@ -37,10 +38,12 @@ describe('disposable compiler owner', () => {
   it('uses a fresh worker/job for each compilation', async () => {
     const f = fixture(), first = f.load()
     const firstJob = f.postMessage.mock.calls[0][0].jobId
+    const firstChannel = f.postMessage.mock.calls[0][0].channelId
     f.success(); await first
     const second = f.load()
     expect(f.createWorker).toHaveBeenCalledTimes(2)
     expect(f.postMessage.mock.calls[1][0].jobId).not.toBe(firstJob)
+    expect(f.postMessage.mock.calls[1][0].channelId).not.toBe(firstChannel)
     f.success(); await second
     expect(f.terminate).toHaveBeenCalledTimes(2)
   })
@@ -93,7 +96,53 @@ describe('disposable compiler owner', () => {
     expect(f.postMessage).not.toHaveBeenCalled()
   })
 
-  it.each(['error', 'unexpected', 'duplicate-start', 'wrong-job', 'invalid-artifact', 'early-result', 'extra-fields'])(
+  it.each([0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1])('allocates no worker for invalid scene revision %s', async revision => {
+    const f = fixture()
+    await expect(f.load('sphere(0.5);', revision)).rejects.toThrow('Invalid')
+    expect(f.createWorker).not.toHaveBeenCalled()
+  })
+
+  it('rejects unsupported output with actionable, fixed text and no worker-supplied diagnostic', async () => {
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({
+      name: 'ShaderCompilationError', code: 'invalid-output',
+      message: 'Shader compilation failed because its output is unsupported. Simplify the shader or choose a template.',
+    })
+    f.started(); f.respond('compiled', { artifact: { ...artifact, frag: 'private source and diagnostic' } })
+    await pending
+    expect(f.observe.mock.calls.some(([event]) => event.type === 'validated')).toBe(false)
+  })
+
+  it('retires on a duplicate response and cannot be revived by queued message floods', async () => {
+    const f = fixture(), pending = expect(f.load()).rejects.toThrow('failed')
+    const queued = f.worker.onmessage!
+    const request = f.postMessage.mock.calls[0][0] as CompileRequest
+    const envelope = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId: request.jobId,
+      channelId: request.channelId, sceneRevision: request.sceneRevision }
+    f.started(); f.started()
+    for (let i = 0; i < 100; i++) queued.call(f.worker as Worker,
+      new MessageEvent('message', { data: { ...envelope, type: 'compiled', artifact } }))
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce(); expect(f.release).toHaveBeenCalledOnce()
+    expect(f.observe.mock.calls.some(([event]) => event.type === 'validated')).toBe(false)
+  })
+
+  it('ignores an old owner callback during a newer scene compilation', async () => {
+    const f = fixture(), first = f.load('sphere(0.5);', 1)
+    const oldCallback = f.worker.onmessage!
+    const firstRequest = f.postMessage.mock.calls[0][0] as CompileRequest
+    f.success(); await first
+    const second = f.load('sphere(0.5);', 2)
+    oldCallback.call(f.worker as Worker, new MessageEvent('message', { data: {
+      protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId: firstRequest.jobId,
+      channelId: firstRequest.channelId, sceneRevision: 1, type: 'compiled', artifact,
+    } }))
+    expect(f.terminate).toHaveBeenCalledTimes(1)
+    expect(f.worker.onmessage).not.toBeNull()
+    f.success(); await second
+    expect(f.terminate).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['error', 'unexpected', 'duplicate-start', 'wrong-job', 'wrong-channel', 'wrong-revision', 'wrong-version', 'invalid-artifact', 'early-result', 'extra-fields'])(
     'terminates on %s without falling back to source', async kind => {
       const f = fixture(), pending = expect(f.load()).rejects.toThrow('failed')
       if (kind !== 'early-result') f.started()
@@ -101,6 +150,9 @@ describe('disposable compiler owner', () => {
       if (kind === 'unexpected') f.respond('progress')
       if (kind === 'duplicate-start') f.started()
       if (kind === 'wrong-job') f.respond('compiled', { artifact, jobId: '0'.repeat(32) })
+      if (kind === 'wrong-channel') f.respond('compiled', { artifact, channelId: '0'.repeat(32) })
+      if (kind === 'wrong-revision') f.respond('compiled', { artifact, sceneRevision: 6 })
+      if (kind === 'wrong-version') f.respond('compiled', { artifact, version: 1 })
       if (kind === 'invalid-artifact') f.respond('compiled', { artifact: { ...artifact, execute: 'evil' } })
       if (kind === 'early-result') f.respond('compiled', { artifact })
       if (kind === 'extra-fields') f.respond('compiled', { artifact, source: 'evil' })

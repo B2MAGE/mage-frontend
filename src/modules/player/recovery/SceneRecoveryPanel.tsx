@@ -16,10 +16,12 @@ export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRe
   const messageId = useId()
   const interrupted = block?.reason === 'interrupted'
   const stopped = block?.reason === 'stopped'
+  const compileRejected = block?.reason === 'compile'
   const message = safeMode ? 'All scenes and previews are paused. Turn off Pause all scenes to resume playback.'
     : stopped ? "You paused this scene. Resume it when you're ready."
       : interrupted ? "The previous playback may have been interrupted. It won't restart automatically."
-        : 'This scene stopped because of a playback error. You can retry it.'
+        : compileRejected ? "This shader could not be prepared for playback. Simplify the shader code or choose a template, then try again. It won't restart automatically."
+          : 'This scene stopped because of a playback error. You can retry it.'
 
   return <section className={buildMagePlayerClassName('mage-player', className)} data-state="blocked">
     <div className="mage-player__viewport mage-player__recovery-viewport">
