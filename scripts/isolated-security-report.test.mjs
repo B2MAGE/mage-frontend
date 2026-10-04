@@ -5,6 +5,13 @@ import { createSecurityReport, SECURITY_GROUP_CHECK_COUNTS } from './isolated-se
 const metadata = { userAgent: 'Fixture browser', parentOrigin: 'http://127.0.0.1:5178', rendererUrl: 'http://localhost:5181/index.html' }
 const addPassing = (report, id, count) => { for (let i = 0; i < count; i++) report.add(id, { name: `Fixed check ${i}`, outcome: 'PASS', evidence: 'Fixed check passed.' }) }
 
+test('deployed reports identify fixed-fixture evidence without granting release approval', () => {
+  const report = createSecurityReport({ mode: 'deployed' }).snapshot(metadata)
+  assert.match(report.scope, /^Deployed fixed-fixture checks only\./)
+  assert.match(report.scope, /Not full application verification or release approval\./)
+  assert.throws(() => createSecurityReport({ mode: 'approved' }), /Unknown/)
+})
+
 test('retains independent groups and requires complete passing evidence', () => {
   const report = createSecurityReport({ now: () => '2026-10-04T00:00:00.000Z' })
   for (const [group, count] of Object.entries(SECURITY_GROUP_CHECK_COUNTS)) {

@@ -1,5 +1,5 @@
 export const SECURITY_GROUP_CHECK_COUNTS: Readonly<{ boundary: 17; failures: 8; stall: 2 }>
-export function createSecurityReport(options?: { now?: () => string }): {
+export function createSecurityReport(options?: { now?: () => string; mode?: 'local' | 'deployed' }): {
   start(group: keyof typeof SECURITY_GROUP_CHECK_COUNTS): number
   add(id: number, row: { name: string; outcome: 'PASS' | 'FAIL' | 'PENDING'; evidence: string }): void
   markHidden(id: number): void

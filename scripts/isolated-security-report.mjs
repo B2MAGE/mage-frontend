@@ -4,7 +4,8 @@ const MAX_CHECKS = 32
 const bounded = (value, limit) => typeof value === 'string' ? value.slice(0, limit) : ''
 
 /** Session-only, fixed-fixture evidence. Never collect page, account, storage or scene data. */
-export function createSecurityReport({ now = () => new Date().toISOString() } = {}) {
+export function createSecurityReport({ now = () => new Date().toISOString(), mode = 'local' } = {}) {
+  if (!['local', 'deployed'].includes(mode)) throw new Error('Unknown fixed report scope.')
   const runs = []
   let nextId = 0
   const current = id => runs.find(run => run.id === id && run.status === 'running')
@@ -37,7 +38,8 @@ export function createSecurityReport({ now = () => new Date().toISOString() } = 
       const safeOrigin = value => { try { return new URL(value).origin } catch { return 'unknown' } }
       return {
         version: 1,
-        scope: 'Local fixed-fixture checks only. Not production verification or release approval.',
+        scope: mode === 'deployed' ? 'Deployed fixed-fixture checks only. Not full application verification or release approval.'
+          : 'Local fixed-fixture checks only. Not production verification or release approval.',
         exportedAt: now(),
         browserUserAgent: bounded(userAgent, 512),
         parentOrigin: safeOrigin(parentOrigin),

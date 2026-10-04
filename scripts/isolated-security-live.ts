@@ -1,3 +1,3 @@
 import { mountIsolatedSecurityCheck } from './isolated-security-ui'
 
-mountIsolatedSecurityCheck('local')
+mountIsolatedSecurityCheck('deployed')
