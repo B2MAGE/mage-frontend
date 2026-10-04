@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { normalizeSceneDetail } from './dto'
@@ -95,6 +96,50 @@ describe('unavailable scene details', () => {
     expect(await screen.findByRole('heading', { name: 'This scene couldn’t be loaded' })).toBeInTheDocument()
     expect(screen.queryByTestId('detail-player')).not.toBeInTheDocument()
     expect(screen.queryByText(/backend|payload|live player flow/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('There’s a problem loading this scene. You can explore other scenes.')
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
     await waitFor(() => expect(fetchSceneComments).not.toHaveBeenCalled())
+  })
+
+  it('allows a failed scene request to be retried from the keyboard', async () => {
+    vi.mocked(fetchSceneDetail).mockRejectedValueOnce(new Error('Private server details'))
+    show()
+    expect(await screen.findByRole('heading', { name: 'Unable to load this scene' })).toBeInTheDocument()
+    expect(screen.queryByText('Private server details')).not.toBeInTheDocument()
+    const retry = screen.getByRole('button', { name: 'Try again' })
+    retry.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(await screen.findByRole('heading', { name: 'Signal Bloom 23' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(fetchSceneDetail).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a pending retry after navigating to another scene', async () => {
+    vi.mocked(fetchSceneDetail).mockRejectedValueOnce(new Error('Offline'))
+    show()
+    await screen.findByRole('heading', { name: 'Unable to load this scene' })
+    let resolveRetry!: (value: SceneDetail) => void
+    vi.mocked(fetchSceneDetail).mockImplementationOnce(() => new Promise(resolve => { resolveRetry = resolve }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    vi.mocked(fetchSceneDetail).mockResolvedValueOnce(unavailableScene(24))
+    fireEvent.click(screen.getByRole('link', { name: 'Next scene' }))
+    await screen.findByRole('heading', { name: 'Signal Bloom 24' })
+    await act(async () => resolveRetry(unavailableScene()))
+    expect(screen.getByRole('heading', { name: 'Signal Bloom 24' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Signal Bloom 23' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['not-found', 'Scene not found'],
+    ['auth-required', 'Sign in to view this scene'],
+  ] as const)('gives a useful destination instead of retrying a %s response', async (code, title) => {
+    vi.mocked(fetchSceneDetail).mockRejectedValueOnce(new SceneDetailRequestError(code, 'Private server details'))
+    show()
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Private server details')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: code === 'auth-required' ? 'Go to Login' : 'Explore scenes' }))
+      .toHaveAttribute('href', code === 'auth-required' ? '/login' : '/scenes')
+    expect(fetchSceneDetail).toHaveBeenCalledTimes(1)
   })
 })

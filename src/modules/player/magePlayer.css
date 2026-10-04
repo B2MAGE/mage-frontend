@@ -93,6 +93,19 @@
 .mage-player__recovery-actions button:disabled { opacity: .5; cursor: default; }
 .mage-player__recovery-viewport { min-height: 230px; }
 
+/* Keep unavailable-scene artwork visible with a simple message in the player. */
+.mage-player__availability-viewport .mage-player__recovery-poster { opacity: 1; }
+.mage-player__availability-panel {
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: clamp(16px, 3vw, 24px);
+  text-align: left;
+  background: linear-gradient(180deg, rgba(9, 10, 15, .12), rgba(9, 10, 15, .88));
+}
+.mage-player__availability-panel strong { display: block; margin-bottom: 6px; }
+.mage-player__availability-panel .mage-player__recovery-actions { justify-content: flex-start; }
+.mage-player__availability-panel button { min-height: 44px; }
+
 .mage-player__playback-options { position: relative; flex: 0 0 auto; }
 .mage-player__options-panel {
   position: absolute;

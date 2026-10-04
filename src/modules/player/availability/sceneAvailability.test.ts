@@ -148,7 +148,7 @@ describe('shared live scene availability', () => {
     let disabled = true
     fetchMock.mockImplementation(async (input) => json(String(input).includes('rendering-status') ? global() : [scene(9, disabled ? 'SCENE_DISABLED' : 'AVAILABLE')]))
     await vi.advanceTimersByTimeAsync(AVAILABILITY_POLL_MS)
-    expect(store.getSnapshot(9)).toMatchObject({ allowed: false, code: 'SCENE_DISABLED', message: 'This scene is temporarily unavailable.' })
+    expect(store.getSnapshot(9)).toMatchObject({ allowed: false, code: 'SCENE_DISABLED', message: 'This scene is currently unavailable.' })
     expect(listener).toHaveBeenCalled()
     disabled = false
     await vi.advanceTimersByTimeAsync(AVAILABILITY_POLL_MS)

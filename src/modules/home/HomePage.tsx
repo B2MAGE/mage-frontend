@@ -9,8 +9,9 @@ import { BrandScene } from '@modules/scene-artwork'
 import { DiscoverySceneCard } from '../discovery/ui/DiscoverySceneCard'
 import { SceneCollectionState } from '../discovery/ui/SceneCollectionState'
 import { DiscoveryEmptyState, DiscoveryErrorState, SceneGridSkeleton } from '../discovery/ui/DiscoveryStates'
-import { fetchSceneDetail, updateSceneVote, clearSceneVote, updateSceneSave } from '../scene-detail/loaders'
-import type { SceneDetail } from '../scene-detail/types'
+import { fetchSceneDetail, updateSceneVote, clearSceneVote, updateSceneSave, SceneDetailRequestError } from '../scene-detail/loaders'
+import type { SceneDetail, SceneDetailErrorCode } from '../scene-detail/types'
+import { readErrorCopy } from '../scene-detail/selectors'
 import { isHomeCreatePromptHidden, setHomeCreatePromptHidden } from './welcomePromptPreference'
 import './home.css'
 import '../discovery/discovery.css'
@@ -66,8 +67,9 @@ export function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [featuredLoading, setFeaturedLoading] = useState(true)
-  const [featuredError, setFeaturedError] = useState(false)
+  const [featuredError, setFeaturedError] = useState<SceneDetailErrorCode | null>(null)
   const [retry, setRetry] = useState(0)
+  const [featuredRetry, setFeaturedRetry] = useState(0)
   const [pendingEngagementAction, setPendingEngagementAction] = useState<'up' | 'down' | 'save' | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const featuredLoadGeneration = useRef(0)
@@ -111,7 +113,7 @@ export function HomePage() {
     let cancelled = false
     featuredLoadGeneration.current += 1
     setFeaturedLoading(true)
-    setFeaturedError(false)
+    setFeaturedError(null)
     const configured = Number(import.meta.env.VITE_HOME_FEATURED_SCENE_ID)
     const featuredId = Number.isSafeInteger(configured) && configured > 0
       ? Promise.resolve(configured)
@@ -127,11 +129,14 @@ export function HomePage() {
           setFeaturedLoading(false)
         }
       })
-      .catch(() => {
-        if (!cancelled) { setFeaturedError(true); setFeaturedLoading(false) }
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setFeaturedError(error instanceof SceneDetailRequestError ? error.code : 'unavailable')
+          setFeaturedLoading(false)
+        }
       })
     return () => { cancelled = true; featuredLoadGeneration.current += 1 }
-  }, [retry, isAuthenticated, authenticatedFetch])
+  }, [featuredRetry, isAuthenticated, authenticatedFetch])
 
   const featuredSceneId = featured?.id
   const reloadFeaturedSource = useCallback(async () => {
@@ -158,6 +163,7 @@ export function HomePage() {
     finally { setPendingEngagementAction(null) }
   }
   const showWelcome = !isAuthenticated && !isRestoringSession && !dismissed
+  const featuredErrorCopy = featuredError ? readErrorCopy(featuredError) : null
   return (
     <main className={`pulse-home${showWelcome ? '' : ' pulse-home--without-welcome'}`}>
       {showWelcome && <section className="creator-section" aria-label="Create with MAGE">
@@ -195,12 +201,13 @@ export function HomePage() {
           <Link className="browse-link" to="/scenes?sort=featured"><span className="browse-link__label">Browse all featured</span> <AppIcon name="arrow-right" size={16} /></Link>
         </div>
         {featuredLoading && !featured && <FeaturedSceneSkeleton />}
-        {featuredError && <SceneCollectionState
+        {featuredErrorCopy && <SceneCollectionState
           kind="error"
-          title="Featured scene unavailable"
-          description="We couldn’t load the featured scene. You can try again or explore the collection."
+          title={featuredError === 'unavailable' ? 'Featured scene couldn’t be loaded' : featuredErrorCopy.title}
+          description={featuredErrorCopy.description}
           action={<>
-            <button className="scene-collection-state__button" type="button" onClick={() => setRetry(n => n + 1)}>Try again</button>
+            {featuredError === 'unavailable' && <button className="scene-collection-state__button" type="button" onClick={() => setFeaturedRetry(n => n + 1)}>Try again</button>}
+            {featuredError === 'auth-required' && <Link className="scene-collection-state__button" to="/login">Sign in</Link>}
             <Link className="scene-collection-state__button scene-collection-state__button--secondary" to="/scenes">Explore scenes</Link>
           </>}
         />}

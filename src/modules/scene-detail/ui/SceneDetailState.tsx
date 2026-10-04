@@ -11,8 +11,10 @@ export function SceneDetailState({
 }) {
   return (
     <main className="scene-detail-page scene-detail-state">
-      <h1>{title}</h1>
-      <p>{description}</p>
+      <div className="scene-detail-state__copy" role="alert">
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
       {actions}
     </main>
   )
