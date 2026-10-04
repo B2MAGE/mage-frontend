@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_THEME_STORAGE_KEY, ThemeProvider } from '@theme'
 import { ANIMATED_SCENE_THUMBNAILS_STORAGE_KEY } from '@shared/preferences'
 import { SettingsPage } from './SettingsPage'
+vi.mock('@modules/moderation', () => ({ ModeratorSettingsLink: () => null }))
 
 let authState = {
   accessToken: null as string | null,

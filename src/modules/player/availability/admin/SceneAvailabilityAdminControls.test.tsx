@@ -13,7 +13,13 @@ vi.mock('../sceneAvailability', () => ({ sceneAvailabilityStore: { invalidate: m
 const audit = { changedByUserId: 7, changedAt: '2026-10-03T12:00:00Z', reason: 'Private investigation' }
 const custom = { ...audit, enabled: true, releaseApproved: true }
 const scene = { ...audit, sceneId: 23, disabled: false }
+const adminCapabilities = { canModerateScenes: true, canManageModerators: true, canManageCustomRendering: true }
+const moderatorCapabilities = { canModerateScenes: true, canManageModerators: false, canManageCustomRendering: false }
+const regularCapabilities = { canModerateScenes: false, canManageModerators: false, canManageCustomRendering: false }
 function response(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status }) }
+function readResponse(path: string, sceneControl = scene, customControl = custom, capabilities = adminCapabilities) {
+  return response(path === '/admin/capabilities' ? capabilities : path === '/admin/rendering/custom' ? customControl : sceneControl)
+}
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((done) => { resolve = done })
@@ -27,7 +33,7 @@ describe('SceneAvailabilityAdminControls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.auth = { accessToken: 'operator-token', isAuthenticated: true, isRestoringSession: false, user: { userId: 7 } }
-    mocks.fetcher.mockImplementation(async (path: string) => response(path === '/admin/rendering/custom' ? custom : scene))
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path))
   })
 
   it('makes no operator request or owner inference for guests', () => {
@@ -61,7 +67,7 @@ describe('SceneAvailabilityAdminControls', () => {
     let saved = false
     mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => {
       if (init?.method === 'PUT') { saved = true; return saving.promise }
-      return response(path === '/admin/rendering/custom' ? custom : { ...scene, disabled: saved, reason: saved ? 'Confirmed GPU failure' : audit.reason })
+      return readResponse(path, { ...scene, disabled: saved, reason: saved ? 'Confirmed GPU failure' : audit.reason })
     })
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
@@ -78,11 +84,12 @@ describe('SceneAvailabilityAdminControls', () => {
     expect(screen.getByRole('button', { name: 'Re-enable scene' })).toBeDisabled()
     expect(mocks.invalidate).toHaveBeenCalledWith(23)
     const invalidateOrder = mocks.invalidate.mock.invocationCallOrder[0]
-    expect(mocks.fetcher.mock.invocationCallOrder[3]).toBeGreaterThan(invalidateOrder)
+    const firstRefresh = mocks.fetcher.mock.calls.findIndex(([path], index) => index > 4 && path === '/admin/capabilities')
+    expect(mocks.fetcher.mock.invocationCallOrder[firstRefresh]).toBeGreaterThan(invalidateOrder)
   })
 
   it('gates global enabling on release approval', async () => {
-    mocks.fetcher.mockImplementation(async (path: string) => response(path === '/admin/rendering/custom' ? { ...custom, enabled: false, releaseApproved: false } : scene))
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, { ...custom, enabled: false, releaseApproved: false }))
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
     await userEvent.type(screen.getByLabelText('Reason for the platform change'), 'Ready')
@@ -94,7 +101,7 @@ describe('SceneAvailabilityAdminControls', () => {
     let conflicted = false
     mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => {
       if (init?.method === 'PUT') { conflicted = true; return response({}, 409) }
-      return response(path === '/admin/rendering/custom' ? { ...custom, enabled: false, releaseApproved: !conflicted } : scene)
+      return readResponse(path, scene, { ...custom, enabled: false, releaseApproved: !conflicted })
     })
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
@@ -106,7 +113,7 @@ describe('SceneAvailabilityAdminControls', () => {
   })
 
   it.each([401, 403])('clears operator controls and audit when mutation returns %s', async (status) => {
-    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => response(init?.method === 'PUT' ? {} : path === '/admin/rendering/custom' ? custom : scene, init?.method === 'PUT' ? status : 200))
+    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => init?.method === 'PUT' ? response({}, status) : readResponse(path))
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Private new reason')
@@ -117,7 +124,7 @@ describe('SceneAvailabilityAdminControls', () => {
 
   it('clears private state on logout and ignores a late mutation response', async () => {
     const saving = deferred<Response>()
-    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => init?.method === 'PUT' ? saving.promise : response(path === '/admin/rendering/custom' ? custom : scene))
+    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => init?.method === 'PUT' ? saving.promise : readResponse(path))
     const view = render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Private pending reason')
@@ -129,7 +136,7 @@ describe('SceneAvailabilityAdminControls', () => {
     await act(async () => saving.resolve(response({ ...scene, disabled: true })))
     expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
     expect(screen.queryByText('Scene availability updated.')).not.toBeInTheDocument()
-    expect(mocks.fetcher).toHaveBeenCalledTimes(3)
+    expect(mocks.fetcher).toHaveBeenCalledTimes(5)
     expect(mocks.invalidate).toHaveBeenCalledWith(23)
   })
 
@@ -139,7 +146,7 @@ describe('SceneAvailabilityAdminControls', () => {
     const view = render(<SceneAvailabilityAdminControls sceneId={23} />)
     mocks.auth = { ...mocks.auth, accessToken: 'different-account', user: { userId: 99 } }
     view.rerender(<SceneAvailabilityAdminControls sceneId={23} />)
-    await act(async () => oldRequest.resolve(response(custom)))
+    await act(async () => oldRequest.resolve(response(adminCapabilities)))
     expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
     expect(mocks.fetcher).toHaveBeenCalledTimes(2)
   })
@@ -151,6 +158,133 @@ describe('SceneAvailabilityAdminControls', () => {
     fireEvent.change(reason, { target: { value: 'x'.repeat(1001) } })
     fireEvent.submit(reason.closest('form')!)
     expect(await screen.findByRole('alert')).toHaveTextContent('between 1 and 1000')
-    expect(mocks.fetcher).toHaveBeenCalledTimes(2)
+    expect(mocks.fetcher).toHaveBeenCalledTimes(3)
+  })
+
+  it('discovers a regular account without reading any private scene or global audit', async () => {
+    mocks.fetcher.mockResolvedValue(response(regularCapabilities))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await waitFor(() => expect(mocks.fetcher).toHaveBeenCalledOnce())
+    expect(mocks.fetcher).toHaveBeenCalledWith('/admin/capabilities', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }))
+    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+  })
+
+  it('gives a moderator scene controls and audit only, including after a scene mutation', async () => {
+    let disabled = false
+    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') { disabled = true; return response({ ...scene, disabled }) }
+      return readResponse(path, { ...scene, disabled }, custom, moderatorCapabilities)
+    })
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(1)
+    expect(screen.queryByRole('heading', { name: 'Custom rendering across MAGE' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Reason for the platform change')).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Broken scene confirmed')
+    await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
+    expect(await screen.findByText('Scene availability updated.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Re-enable scene' })).toBeDisabled()
+    expect(mocks.fetcher.mock.calls.some(([path]) => path === '/admin/rendering/custom')).toBe(false)
+    expect(mocks.invalidate).toHaveBeenCalledWith(23)
+  })
+
+  it('rechecks capabilities before submitting and never sends a write after a moderator is revoked', async () => {
+    let capabilities = moderatorCapabilities
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, custom, capabilities))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Pending private reason')
+    capabilities = regularCapabilities
+    await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
+    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+    expect(mocks.invalidate).not.toHaveBeenCalled()
+  })
+
+  it('removes an old administrator global scope before a global write when only scene moderation remains', async () => {
+    let capabilities = adminCapabilities
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, custom, capabilities))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    await userEvent.type(screen.getByLabelText('Reason for the platform change'), 'Private platform reason')
+    const originalGlobalReads = mocks.fetcher.mock.calls.filter(([path]) => path === '/admin/rendering/custom').length
+    capabilities = moderatorCapabilities
+    await userEvent.click(screen.getByRole('button', { name: 'Disable custom rendering for everyone' }))
+    await waitFor(() => expect(screen.queryByLabelText('Reason for the platform change')).not.toBeInTheDocument())
+    expect(screen.getByText('Manage playback availability')).toBeInTheDocument()
+    expect(mocks.fetcher.mock.calls.filter(([path]) => path === '/admin/rendering/custom')).toHaveLength(originalGlobalReads)
+    expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+  })
+
+  it('clears revoked private controls on a focus recheck without a user attempting a mutation', async () => {
+    let capabilities = moderatorCapabilities
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, custom, capabilities))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    capabilities = regularCapabilities
+    fireEvent.focus(window)
+    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+  })
+
+  it.each(['network', 'malformed'] as const)('does not authorize private reads from %s capability discovery', async kind => {
+    if (kind === 'network') mocks.fetcher.mockRejectedValue(new TypeError('Network error'))
+    else mocks.fetcher.mockResolvedValue(response({ canModerateScenes: 'true', canManageCustomRendering: true }))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await act(async () => {})
+    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(mocks.fetcher).toHaveBeenCalledOnce()
+  })
+
+  it('does not submit from stale UI when fresh capability discovery fails', async () => {
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Waiting on permission')
+    mocks.fetcher.mockRejectedValue(new TypeError('Network error'))
+    await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
+    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+  })
+
+  it('clears previous private state when refreshing capabilities fails instead of retaining active controls', async () => {
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    mocks.fetcher.mockRejectedValue(new TypeError('Network error'))
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh status' }))
+    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+  })
+
+  it('does not publish old private scene data or continue a global read after an account change', async () => {
+    const oldScene = deferred<Response>()
+    mocks.fetcher.mockImplementation(async (path: string) => path === '/admin/capabilities'
+      ? response(adminCapabilities) : oldScene.promise)
+    const view = render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await waitFor(() => expect(mocks.fetcher).toHaveBeenCalledWith('/admin/scenes/23/availability', expect.anything()))
+    mocks.auth = { ...mocks.auth, accessToken: 'ordinary-account', user: { userId: 99 } }
+    mocks.fetcher.mockResolvedValue(response(regularCapabilities))
+    view.rerender(<SceneAvailabilityAdminControls sceneId={23} />)
+    await act(async () => oldScene.resolve(response(scene)))
+    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+    expect(mocks.fetcher.mock.calls.some(([path]) => path === '/admin/rendering/custom')).toBe(false)
+  })
+
+  it('clears stale private state when the capability refresh after a committed change fails', async () => {
+    let saved = false
+    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') { saved = true; return response({ ...scene, disabled: true }) }
+      if (saved) throw new TypeError('Permission refresh unavailable')
+      return readResponse(path)
+    })
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Confirmed failure')
+    await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
+    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+    expect(screen.queryByText('Scene availability updated.')).not.toBeInTheDocument()
+    expect(mocks.invalidate).toHaveBeenCalledWith(23)
   })
 })

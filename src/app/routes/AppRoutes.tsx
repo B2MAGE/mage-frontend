@@ -14,6 +14,7 @@ import {
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
 import { MyScenesLoadingState, MyScenesPage } from '@modules/my-scenes'
+import { ModeratorsPage } from '@modules/moderation'
 import { ProfilePage } from '@modules/profile'
 import { CreateScenePage, EditScenePage, SceneEditorLoadingState } from '@modules/scene-editor'
 import { SceneDetailPage } from '@modules/scene-detail'
@@ -146,6 +147,7 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/settings/moderators" element={<ProtectedRoute loadingFallback={<SettingsLoadingState />}><ModeratorsPage /></ProtectedRoute>} />
         <Route path="/:profileHandle" element={<HandleProfileRoute />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>

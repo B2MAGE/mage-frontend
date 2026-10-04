@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@auth'
+import { ModeratorSettingsLink } from '@modules/moderation'
 import { changePassword } from './password'
 import { saveUserProfile } from './profile'
 import { PasswordChangeForm, ProfileDetailsForm, ThemeSettingsSection } from './ui'
@@ -43,6 +44,7 @@ export function SettingsPage() {
             <a className="settings-nav__link" aria-current={activeSection === 'security' ? 'location' : undefined} href="#security" onClick={() => setActiveSection('security')}>
               Password
             </a>
+            <ModeratorSettingsLink />
           </nav>
         </aside>
 

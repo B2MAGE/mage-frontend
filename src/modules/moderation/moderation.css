@@ -1,0 +1,32 @@
+.moderators-page { width: min(calc(100% - 48px), 920px); margin: 0 auto; padding: 48px 0 80px; color: var(--text); overflow-wrap: anywhere; }
+.moderators-page header { margin: 24px 0 40px; }
+.moderators-page h1 { margin: 0 0 16px; font-size: clamp(28px, 5vw, 42px); line-height: 1.15; }
+.moderators-page h2 { margin: 0 0 18px; font-size: 22px; }
+.moderators-page h3 { margin: 0 0 14px; font-size: 18px; }
+.moderators-page p { max-width: 70ch; line-height: 1.6; }
+.moderators-page > section { margin-top: 40px; }
+.moderators-page label { display: block; font-weight: 600; margin-bottom: 8px; }
+.moderators-page :is(input, textarea) { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--surface); font: inherit; }
+.moderators-page input { flex: 1 1 260px; }
+.moderators-page textarea { display: block; min-height: 96px; resize: vertical; margin-bottom: 16px; }
+.moderators-page :is(input, textarea, button, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.moderators-page button { min-height: 44px; max-width: 100%; white-space: normal; }
+.moderators-page button:disabled { opacity: .55; cursor: default; }
+.moderators-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.moderators-muted, .moderators-page header p { color: var(--text-soft); }
+.moderators-error { color: var(--danger, #b42318); }
+html[data-theme='mage-pulse'] .moderators-error { color: #ffabab; }
+.moderators-account { margin-top: 28px; }
+.moderators-identity { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 0 0 24px; }
+.moderators-identity dt { color: var(--text-soft); font-size: 13px; margin-bottom: 4px; }
+.moderators-identity dd { margin: 0; }
+.moderators-confirmation { border-left: 3px solid var(--accent); padding-left: 20px; margin-top: 24px; }
+.moderators-section-heading { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.moderators-section-heading h2 { margin: 0; }
+.moderators-history { list-style: none; margin: 0; padding: 0; }
+.moderators-history li { padding: 20px 0; border-top: 1px solid var(--border); }
+.moderators-history p { margin: 6px 0 0; white-space: pre-wrap; }
+@media (max-width: 600px) {
+  .moderators-page { width: calc(100% - 28px); padding-top: 32px; }
+  .moderators-identity { grid-template-columns: 1fr; }
+}
