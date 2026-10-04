@@ -5,7 +5,9 @@ const MAX_RUNS = 24
 const MAX_CHECKS = 32
 const bounded = (value, limit) => typeof value === 'string' ? value.slice(0, limit) : ''
 const phases = ['baseline-startup', 'baseline', 'stall-startup', 'stall', 'recovery', 'cleanup']
-const failures = ['runtime', 'context-lost', 'startup-timeout', 'progress-timeout']
+// Current host diagnostics can report compilation rejection. Accepting this fixed
+// reason does not turn the historical window-thread probes into worker coverage.
+const failures = ['runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'compile']
 const time = value => Number.isFinite(value) && value >= 0 && value <= 86400000
 const signedTime = value => Number.isFinite(value) && Math.abs(value) <= 86400000
 const exact = (value, keys) => !!value && typeof value === 'object' && !Array.isArray(value)

@@ -2,7 +2,7 @@ export const SECURITY_GROUP_CHECK_COUNTS: Readonly<{ boundary: 17; failures: 8; 
 export const SECURITY_DIAGNOSTIC_LIMIT: 256
 export const SECURITY_TEST_VERSION: 'fixed-security-2'
 export type DiagnosticPhase = 'baseline-startup' | 'baseline' | 'stall-startup' | 'stall' | 'recovery' | 'cleanup'
-type FailureReason = 'runtime' | 'context-lost' | 'startup-timeout' | 'progress-timeout'
+type FailureReason = 'runtime' | 'context-lost' | 'startup-timeout' | 'progress-timeout' | 'compile'
 export type SecurityDiagnostic = { phase: DiagnosticPhase; atMs: number } & (
   { type: 'phase' | 'progress' } |
   { type: 'status'; status: 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed' } |
