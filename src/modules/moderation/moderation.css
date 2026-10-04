@@ -26,6 +26,16 @@ html[data-theme='mage-pulse'] .moderators-error { color: #ffabab; }
 .moderators-history { list-style: none; margin: 0; padding: 0; }
 .moderators-history li { padding: 20px 0; border-top: 1px solid var(--border); }
 .moderators-history p { margin: 6px 0 0; white-space: pre-wrap; }
+.moderation-area .moderation-area__header { margin: 0 0 28px; }
+.moderation-area__nav { display: flex; flex-wrap: wrap; gap: 8px 28px; border-bottom: 1px solid var(--border); margin-bottom: 36px; }
+.moderation-area__nav a { display: inline-flex; padding: 12px 0; border-bottom: 2px solid transparent; color: var(--text-soft); text-decoration: none; font-weight: 600; }
+.moderation-area__nav a[aria-current='page'] { color: var(--text); border-bottom-color: var(--accent); }
+.moderation-area__nav a:hover { color: var(--text); }
+.moderation-area__browse { display: inline-flex; align-items: center; justify-content: center; margin-top: 12px; min-height: 44px; text-decoration: none; }
+.moderation-area__lookup { max-width: 520px; margin-top: 36px; }
+.moderation-area__lookup input { flex-basis: 180px; }
+.moderation-area__moderators > header { margin: 0 0 32px; }
+.moderation-area__moderators > section + section { margin-top: 40px; }
 @media (max-width: 600px) {
   .moderators-page { width: calc(100% - 28px); padding-top: 32px; }
   .moderators-identity { grid-template-columns: 1fr; }

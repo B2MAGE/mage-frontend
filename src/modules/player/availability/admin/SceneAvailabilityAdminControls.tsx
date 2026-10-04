@@ -3,15 +3,11 @@ import { createPortal } from 'react-dom'
 import { Shield, X } from 'lucide-react'
 import { useAuth, type AuthenticatedFetch } from '@auth'
 import { sceneAvailabilityStore } from '../sceneAvailability'
-import { fetchAdminCapabilities, isModerationAccessDenied, type AdminCapabilities } from '@modules/moderation'
+import { fetchAdminCapabilities, isModerationAccessDenied } from '@modules/moderation'
 import {
-  fetchCustomControl, fetchSceneControl, isOperatorAccessDenied, OperatorRequestError,
-  updateCustomControl, updateSceneControl, type CustomRenderingControl, type SceneControl,
+  fetchSceneControl, isOperatorAccessDenied, OperatorRequestError, updateSceneControl, type SceneControl,
 } from './adminApi'
 import './sceneAvailabilityAdmin.css'
-
-type Controls = { capabilities: AdminCapabilities; custom: CustomRenderingControl | null; scene: SceneControl | null }
-type AvailabilityTool = 'scene' | 'global'
 
 export function SceneAvailabilityAdminControls({ sceneId }: { sceneId: number }) {
   const { accessToken, authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
@@ -19,7 +15,7 @@ export function SceneAvailabilityAdminControls({ sceneId }: { sceneId: number })
   return <OperatorControls key={`${accessToken}:${user.userId}:${sceneId}`} sceneId={sceneId} fetcher={authenticatedFetch} />
 }
 
-function AuditDetails({ control }: { control: SceneControl | CustomRenderingControl }) {
+function AuditDetails({ control }: { control: SceneControl }) {
   if (!control.changedAt) return null
   return <div className="scene-availability-admin__audit">
     <p>Last changed {new Date(control.changedAt).toLocaleString()}{control.changedByUserId ? ` by account #${control.changedByUserId}` : ''}.</p>
@@ -59,8 +55,8 @@ function AvailabilityDialog({ id, onClose, children }: { id: string; onClose: ()
   >
     <div className="scene-availability-admin__panel">
       <header className="scene-availability-admin__header">
-        <h2 id={titleId}>Moderation tools</h2>
-        <button type="button" className="scene-availability-admin__close" aria-label="Close moderation tools" onClick={onClose}>
+        <h2 id={titleId}>Manage this scene</h2>
+        <button type="button" className="scene-availability-admin__close" aria-label="Close scene controls" onClick={onClose}>
           <X size={20} aria-hidden="true" />
         </button>
       </header>
@@ -70,31 +66,25 @@ function AvailabilityDialog({ id, onClose, children }: { id: string; onClose: ()
 }
 
 function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: AuthenticatedFetch }) {
-  const [controls, setControls] = useState<Controls | null>(null)
+  const [control, setControl] = useState<SceneControl | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [pending, setPending] = useState(false)
-  const [selectedTool, setSelectedTool] = useState<AvailabilityTool>('scene')
-  const [sceneReason, setSceneReason] = useState('')
-  const [globalReason, setGlobalReason] = useState('')
+  const [reason, setReason] = useState('')
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null)
   const lifecycle = useRef<AbortController | null>(null)
   const busy = useRef(false)
-  const sceneReasonId = useId()
-  const globalReasonId = useId()
+  const reasonId = useId()
   const dialogId = useId()
-  const toolId = useId()
   const reasonHintId = useId()
 
   function closeDialog() {
     setIsOpen(false)
-    setSelectedTool('scene')
-    setSceneReason('')
-    setGlobalReason('')
+    setReason('')
     setNotice(null)
   }
 
   function revokeAccess() {
-    setControls(null)
+    setControl(null)
     closeDialog()
   }
 
@@ -110,20 +100,14 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
     try {
       const capabilities = await fetchAdminCapabilities(fetcher, signal)
       if (!active(signal)) return
-      if (!capabilities.canModerateScenes && !capabilities.canManageCustomRendering) {
+      if (!capabilities.canModerateScenes) {
         revokeAccess()
         return
       }
-      // Capability discovery never exposes another scope's private status/audit.
-      // The backend independently authorizes every subsequent read and write.
-      const scene = capabilities.canModerateScenes ? await fetchSceneControl(fetcher, sceneId, signal) : null
-      if (!active(signal)) return
-      const custom = capabilities.canManageCustomRendering ? await fetchCustomControl(fetcher, signal) : null
-      if (!active(signal)) return
-      if (!scene) setSceneReason('')
-      if (!custom) setGlobalReason('')
-      setSelectedTool((current) => current === 'global' && custom ? 'global' : scene ? 'scene' : 'global')
-      setControls({ capabilities, custom, scene })
+      // This dialog only reads this scene's private status. The backend
+      // independently authorizes every subsequent read and write.
+      const scene = await fetchSceneControl(fetcher, sceneId, signal)
+      if (active(signal)) setControl(scene)
     } catch (error) {
       // Includes the refresh after a committed mutation: old permissions and
       // private audit must not appear current when the fresh read is unknown.
@@ -166,57 +150,49 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       if (active(signal)) setNotice(null)
     } catch {
       if (!active(signal)) return
-      // Unknown permission cannot keep previously privileged controls active.
       revokeAccess()
     } finally {
       if (active(signal)) { busy.current = false; setPending(false) }
     }
   }
 
-  async function handleSubmit(event: FormEvent, target: AvailabilityTool) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const signal = lifecycle.current?.signal
-    if (!controls || !signal || !active(signal) || busy.current) return
-    if (target === 'scene' ? !controls.scene || !controls.capabilities.canModerateScenes
-      : !controls.custom || !controls.capabilities.canManageCustomRendering) return
-    const reason = (target === 'scene' ? sceneReason : globalReason).trim()
-    if (!reason || reason.length > 1000) {
+    if (!control || !signal || !active(signal) || busy.current) return
+    const trimmedReason = reason.trim()
+    if (!trimmedReason || trimmedReason.length > 1000) {
       setNotice({ error: true, text: 'Add a reason (up to 1,000 characters).' })
       return
     }
-    if (target === 'global' && !controls.custom!.enabled && !controls.custom!.releaseApproved) return
     busy.current = true
     setPending(true)
     setNotice(null)
     let invalidated = false
     let mutationAttempted = false
     try {
-      // A role may have been revoked since the panel was opened. Discover its
-      // current scopes before issuing a mutation; never infer them from a token.
+      // Permission may have been revoked since the dialog was opened.
       const capabilities = await fetchAdminCapabilities(fetcher, signal)
       if (!active(signal)) return
-      if (target === 'scene' ? !capabilities.canModerateScenes : !capabilities.canManageCustomRendering) {
+      if (!capabilities.canModerateScenes) {
         revokeAccess()
-        await refresh(signal)
         return
       }
       mutationAttempted = true
-      if (target === 'scene') await updateSceneControl(fetcher, sceneId, !controls.scene!.disabled, reason, signal)
-      else await updateCustomControl(fetcher, !controls.custom!.enabled, reason, signal)
-      sceneAvailabilityStore.invalidate(target === 'scene' ? sceneId : undefined)
+      await updateSceneControl(fetcher, sceneId, !control.disabled, trimmedReason, signal)
+      sceneAvailabilityStore.invalidate(sceneId)
       invalidated = true
       if (!active(signal)) return
-      if (target === 'scene') setSceneReason('')
-      else setGlobalReason('')
+      setReason('')
       await refresh(signal)
-      if (active(signal)) setNotice({ error: false, text: target === 'scene'
-        ? controls.scene!.disabled ? 'Scene unblocked.' : 'Scene blocked.'
-        : controls.custom!.enabled ? 'Custom shader playback turned off.' : 'Custom shader playback turned on.' })
+      if (active(signal)) setNotice({ error: false, text: control.disabled ? 'Scene unblocked.' : 'Scene blocked.' })
     } catch (error) {
       if (!active(signal)) return
       if (accessDenied(error) || !mutationAttempted) revokeAccess()
       else {
-        setNotice({ error: true, text: error instanceof OperatorRequestError ? error.message : "We couldn't confirm whether your change was saved. Check the current status before trying again." })
+        setNotice({ error: true, text: error instanceof OperatorRequestError
+          ? "We couldn't save the change. Check the current status and try again."
+          : "We couldn't confirm whether your change was saved. Check the current status before trying again." })
         if (error instanceof OperatorRequestError && error.status === 409) {
           try { await refresh(signal) } catch (refreshError) {
             if (active(signal) && accessDenied(refreshError)) revokeAccess()
@@ -225,20 +201,18 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       }
     } finally {
       // A failed or aborted response may still represent a committed server change.
-      if (mutationAttempted && !invalidated) sceneAvailabilityStore.invalidate(target === 'scene' ? sceneId : undefined)
+      if (mutationAttempted && !invalidated) sceneAvailabilityStore.invalidate(sceneId)
       if (active(signal)) { busy.current = false; setPending(false) }
     }
   }
 
-  if (!controls) return null
-  const customEnabled = controls.custom?.enabled && controls.custom.releaseApproved
-  const activeTool = selectedTool === 'scene' && controls.scene ? 'scene' : controls.custom ? 'global' : 'scene'
+  if (!control) return null
   return <>
     <button
       type="button"
       className="scene-availability-admin__trigger"
-      aria-label="Open moderation tools"
-      title="Moderation tools"
+      aria-label="Manage this scene"
+      title="Manage this scene"
       aria-haspopup="dialog"
       aria-expanded={isOpen}
       aria-controls={isOpen ? dialogId : undefined}
@@ -248,41 +222,16 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
     </button>
     {isOpen ? <AvailabilityDialog id={dialogId} onClose={closeDialog}>
       <div className="scene-availability-admin__content" aria-busy={pending}>
-        <div className="scene-availability-admin__tool">
-          <label htmlFor={toolId}>Manage</label>
-          <select id={toolId} value={activeTool} disabled={pending || !controls.scene || !controls.custom} onChange={(event) => {
-            setSelectedTool(event.target.value as AvailabilityTool)
-            setSceneReason('')
-            setGlobalReason('')
-            setNotice(null)
-          }}>
-            {controls.scene ? <option value="scene">This scene</option> : null}
-            {controls.custom ? <option value="global">All custom shader scenes</option> : null}
-          </select>
-        </div>
-        <p className="scene-availability-admin__intro">
-          {activeTool === 'scene'
-            ? 'Blocking this scene stops it from playing for everyone. It stays saved and can be unblocked later.'
-            : 'Turn playback on or off for all scenes that use custom shader code. Scenes using built-in templates are not affected.'}
-        </p>
-        {activeTool === 'scene' && controls.scene ? <form onSubmit={(event) => void handleSubmit(event, 'scene')}>
-          <p><strong>{controls.scene.disabled ? 'This scene is blocked.' : 'This scene is not blocked.'}</strong></p>
-          <AuditDetails control={controls.scene} />
-          <label htmlFor={sceneReasonId}>Why are you making this change?</label>
-          <textarea id={sceneReasonId} aria-describedby={reasonHintId} value={sceneReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setSceneReason(event.target.value)} />
+        <p className="scene-availability-admin__intro">Blocking this scene stops it from playing for everyone. It stays saved and can be unblocked later.</p>
+        <form onSubmit={(event) => void handleSubmit(event)}>
+          <p><strong>{control.disabled ? 'This scene is blocked.' : 'This scene is not blocked.'}</strong></p>
+          <AuditDetails control={control} />
+          <label htmlFor={reasonId}>Why are you making this change?</label>
+          <textarea id={reasonId} aria-describedby={reasonHintId} value={reason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setReason(event.target.value)} />
           <p id={reasonHintId} className="scene-availability-admin__intro">Required. Only moderators and administrators can see your reason.</p>
-          <button type="submit" disabled={pending || !sceneReason.trim()}>{controls.scene.disabled ? 'Unblock scene' : 'Block scene'}</button>
-        </form> : null}
-        {activeTool === 'global' && controls.custom ? <form onSubmit={(event) => void handleSubmit(event, 'global')}>
-          <p><strong>{customEnabled ? 'Custom shader playback is on.' : 'Custom shader playback is off.'}</strong></p>
-          {!controls.custom.releaseApproved ? <p>Custom shaders are locked off until MAGE's safety checks are approved. This can't be changed from this window.</p> : null}
-          <AuditDetails control={controls.custom} />
-          <label htmlFor={globalReasonId}>Why are you making this change?</label>
-          <textarea id={globalReasonId} aria-describedby={reasonHintId} value={globalReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setGlobalReason(event.target.value)} />
-          <p id={reasonHintId} className="scene-availability-admin__intro">Required. Only moderators and administrators can see your reason.</p>
-          <button type="submit" disabled={pending || !globalReason.trim() || (!controls.custom.enabled && !controls.custom.releaseApproved)}>{controls.custom.enabled ? 'Turn off custom shaders' : 'Turn on custom shaders'}</button>
-        </form> : null}
-        {pending ? <p role="status">Updatingâ€¦</p> : null}
+          <button type="submit" disabled={pending || !reason.trim()}>{control.disabled ? 'Unblock scene' : 'Block scene'}</button>
+        </form>
+        {pending ? <p role="status">Updating…</p> : null}
         {notice ? <p role={notice.error ? 'alert' : 'status'}>{notice.text}</p> : null}
         <button type="button" disabled={pending} onClick={() => void handleRefresh()}>Check current status</button>
       </div>
