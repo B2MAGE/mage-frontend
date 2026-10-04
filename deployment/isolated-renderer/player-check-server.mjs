@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { LIVE_CHECK_PARENT_ORIGIN, LIVE_CHECK_RENDERER_URL, LIVE_CHECK_CSP } from './live-check-page.mjs'
 import { SECURITY_CHECK_CSP, SECURITY_CHECK_CANARY_PREFIX } from './security-check-page.mjs'
+import { WORKER_CHECK_CSP } from './worker-check-page.mjs'
 
 const BASE = '/player-check/'
 const HOST = new URL(LIVE_CHECK_PARENT_ORIGIN).host
@@ -30,7 +31,7 @@ export async function loadPlayerCheckBuild(directory) {
   }
   const files = new Map()
   for (const [subdirectory, prefix, csp] of [
-    ['', 'check', LIVE_CHECK_CSP], ['security', 'security', SECURITY_CHECK_CSP],
+    ['', 'check', LIVE_CHECK_CSP], ['security', 'security', SECURITY_CHECK_CSP], ['worker', 'worker', WORKER_CHECK_CSP],
   ]) {
     const root = resolve(directory, subdirectory)
     const manifestBytes = await boundedFile(resolve(root, 'build-manifest.json'), 16384)
@@ -110,7 +111,7 @@ export function createPlayerCheckHandler(files, { now = () => Date.now() } = {})
     if (!url.pathname.startsWith(SECURITY_CHECK_CANARY_PREFIX)) {
       if (!['GET', 'HEAD'].includes(request.method)) return finish(405, { error: 'Method not allowed.' })
       if (url.search) return finish(400, { error: 'Unexpected verification query.' })
-      const redirects = { '/player-check': BASE, '/player-check/security': `${BASE}security/` }
+      const redirects = { '/player-check': BASE, '/player-check/security': `${BASE}security/`, '/player-check/worker': `${BASE}worker/` }
       if (Object.hasOwn(redirects, url.pathname)) {
         response.setHeader('Location', redirects[url.pathname])
         return finish(308, '')

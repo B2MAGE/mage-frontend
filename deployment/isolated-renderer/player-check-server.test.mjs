@@ -10,6 +10,7 @@ import { once } from 'node:events'
 import { createPlayerCheckHandler, createPlayerCheckServer, loadPlayerCheckBuild } from './player-check-server.mjs'
 import { LIVE_CHECK_PARENT_ORIGIN, LIVE_CHECK_RENDERER_URL, LIVE_CHECK_CSP } from './live-check-page.mjs'
 import { SECURITY_CHECK_CSP, SECURITY_CHECK_CANARY_PREFIX as PREFIX } from './security-check-page.mjs'
+import { WORKER_CHECK_CSP } from './worker-check-page.mjs'
 
 const host = new URL(LIVE_CHECK_PARENT_ORIGIN).host
 const nonce = '1'.repeat(32)
@@ -24,7 +25,7 @@ async function fixture(t) {
     assert(basename(directory).startsWith('player-check-server-test-'))
     await rm(directory, { recursive: true, force: true })
   })
-  for (const [folder, prefix] of [['', 'check'], ['security', 'security']]) {
+  for (const [folder, prefix] of [['', 'check'], ['security', 'security'], ['worker', 'worker']]) {
     const root = resolve(directory, folder)
     await mkdir(resolve(root, 'assets'), { recursive: true })
     const scriptPath = `assets/${prefix}-abc123.js`, stylePath = `assets/${prefix}-def456.css`
@@ -52,8 +53,8 @@ const results = (handler, id = nonce) => JSON.parse(request(handler, `${PREFIX}r
 
 test('loads exact manifest bytes and serves only fixed verified documents and SRI assets', async t => {
   const directory = await fixture(t), files = await loadPlayerCheckBuild(directory), handler = createPlayerCheckHandler(files)
-  assert.equal(files.size, 8)
-  for (const [path, csp] of [['/player-check/', LIVE_CHECK_CSP], ['/player-check/security/', SECURITY_CHECK_CSP]]) {
+  assert.equal(files.size, 12)
+  for (const [path, csp] of [['/player-check/', LIVE_CHECK_CSP], ['/player-check/security/', SECURITY_CHECK_CSP], ['/player-check/worker/', WORKER_CHECK_CSP]]) {
     const value = request(handler, path)
     assert.equal(value.status, 200)
     assert.equal(value.headers['content-security-policy'], `${csp}; frame-ancestors 'none'`)
@@ -65,13 +66,33 @@ test('loads exact manifest bytes and serves only fixed verified documents and SR
   }
   assert.equal(request(handler, '/player-check').headers.location, '/player-check/')
   assert.equal(request(handler, '/player-check/security').headers.location, '/player-check/security/')
+  assert.equal(request(handler, '/player-check/worker').headers.location, '/player-check/worker/')
   for (const path of ['/', '/api/auth/me', '/player-check/build-manifest.json', '/player-check/security/build-manifest.json',
-    '/player-check/assets/not-built.js', '/player-check/../index.html', '/player-check/%2e%2e/index.html', '/player-check/?token=x']) {
+    '/player-check/worker/build-manifest.json', '/player-check/worker/compiler.js', '/player-check/worker/?source=evil',
+    '/player-check/worker/assets/not-built.js', '/player-check/assets/not-built.js', '/player-check/../index.html', '/player-check/%2e%2e/index.html', '/player-check/?token=x']) {
     assert(request(handler, path).status >= 400, path)
   }
   assert.equal(request(handler, '/player-check/', { headers: { host: 'attacker.invalid', 'x-forwarded-host': host } }).status, 421)
   assert.equal(request(handler, '/player-check/', { rawHeaders: ['Host', host, 'Host', host] }).status, 400)
   assert.equal(request(handler, '/player-check/', { rawHeaders: Array.from({ length: 130 }, () => 'x') }).status, 431)
+})
+
+test('worker-page manifest, source bytes and script type cannot bypass startup verification', async t => {
+  const directory = await fixture(t), root = resolve(directory, 'worker'), path = resolve(root, 'build-manifest.json')
+  const original = JSON.parse(await readFile(path, 'utf8'))
+  for (const mutate of [
+    manifest => { manifest.parentOrigin = 'http://127.0.0.1:5178' },
+    manifest => { manifest.rendererUrl = 'http://localhost:5182/index.html' },
+    manifest => { manifest.files['assets/worker-abc123.js'].contentType = 'text/plain' },
+    manifest => { manifest.files['compiler.js'] = manifest.files['assets/worker-abc123.js'] },
+  ]) {
+    const altered = structuredClone(original); mutate(altered)
+    await writeFile(path, JSON.stringify(altered))
+    await assert.rejects(loadPlayerCheckBuild(directory))
+  }
+  await writeFile(path, JSON.stringify(original))
+  await writeFile(resolve(root, 'assets/worker-abc123.js'), 'tampered worker parent')
+  await assert.rejects(loadPlayerCheckBuild(directory), /integrity/)
 })
 
 test('fails startup for tampered bytes, wrong origins, unknown files, bad MIME and missing SRI', async t => {

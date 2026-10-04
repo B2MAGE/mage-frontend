@@ -43,7 +43,9 @@ export function createHostingManifest({ bundlePath, bundle, parentOrigins, produ
     "style-src-attr 'none'",
     'img-src data: blob:',
     "connect-src 'none'",
-    "worker-src 'none'",
+    // Only locally created Blob worker URLs are permitted. The trusted loader
+    // uses the embedded compiler; inherited CSP denies requests/external scripts.
+    'worker-src blob:',
     "frame-src 'none'",
     "child-src 'none'",
     "object-src 'none'",

@@ -2,8 +2,9 @@ import { build } from 'vite'
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
-import { createHostingManifest, parseParentOrigins, renderDocument } from '../deployment/isolated-renderer/hosting-policy.mjs'
+import { createHostingManifest, integrityOf, parseParentOrigins, renderDocument } from '../deployment/isolated-renderer/hosting-policy.mjs'
 import { createCloudFormationTemplate } from '../deployment/isolated-renderer/cloudformation-template.mjs'
+import { buildCompilerWorker } from './build-compiler-worker.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const production = process.argv.includes('--production')
@@ -25,8 +26,15 @@ const allowedSharedFiles = new Set([
   `${sourcePrefix}modules/player/templates/templateRegistry.ts`,
   `${sourcePrefix}modules/player/templates/versions/v1/definitions.ts`,
   `${rootPrefix}contracts/scenes/scene-limits.v1.json`,
+  `${rootPrefix}scripts/worker-check-child.ts`,
+  `${rootPrefix}scripts/worker-check-runner.ts`,
+  `${rootPrefix}scripts/worker-check-fixture.ts`,
 ])
 let bundledModules = []
+// Inline the separately audited worker in the integrity-pinned renderer. An
+// opaque sandbox cannot safely fetch an origin-bound worker script; a Blob URL
+// also ensures the worker inherits the renderer's restrictive network policy.
+const { source: compilerWorkerSource, modules: compilerWorkerModules } = await buildCompilerWorker(root)
 
 await build({
   root,
@@ -36,6 +44,7 @@ await build({
   envPrefix: '__MAGE_RENDERER_NO_CLIENT_ENV__',
   define: {
     __MAGE_RENDERER_PARENT_ORIGINS__: JSON.stringify(parentOrigins),
+    __MAGE_COMPILER_WORKER_SOURCE__: JSON.stringify(compilerWorkerSource),
     'import.meta.env': JSON.stringify({ MODE: 'production', PROD: true, DEV: false, BASE_URL: '/' }),
   },
   plugins: [{
@@ -74,6 +83,13 @@ const bundle = await readFile(resolve(outDir, bundlePath))
 const manifest = createHostingManifest({ bundlePath, bundle, parentOrigins, production })
 await writeFile(resolve(outDir, 'index.html'), renderDocument(manifest))
 await writeFile(resolve(outDir, 'hosting-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-await writeFile(resolve(outDir, 'build-audit.json'), `${JSON.stringify({ sourceModules: bundledModules.filter((id) => id.startsWith(sourcePrefix)).map((id) => id.slice(root.length + 1)) }, null, 2)}\n`)
+await writeFile(resolve(outDir, 'build-audit.json'), `${JSON.stringify({
+  sourceModules: bundledModules.filter((id) => id.startsWith(sourcePrefix) || allowedSharedFiles.has(id)).map((id) => id.slice(root.length + 1)),
+  compilerWorker: {
+    sourceIntegrity: integrityOf(compilerWorkerSource),
+    sourceBytes: Buffer.byteLength(compilerWorkerSource),
+    sourceModules: compilerWorkerModules.map(id => id.slice(root.length + 1)),
+  },
+}, null, 2)}\n`)
 if (production) await writeFile(resolve(outDir, 'cloudformation.json'), `${JSON.stringify(createCloudFormationTemplate(manifest), null, 2)}\n`)
 console.log(`Isolated renderer built for ${parentOrigins.join(', ')}. Hosting files: ${outDir}`)

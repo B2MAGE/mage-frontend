@@ -28,7 +28,7 @@ const scriptResponse = await fetch(new URL(manifest.bundlePath, base), { redirec
 assert.equal(scriptResponse.status, 200)
 checkHeaders(scriptResponse)
 assert.equal(integrityOf(Buffer.from(await scriptResponse.arrayBuffer())), manifest.scriptIntegrity)
-for (const path of ['/api/auth/me', '/anything', '/hosting-manifest.json', '/build-audit.json', '/index.html?token=must-not-be-accepted']) {
+for (const path of ['/api/auth/me', '/anything', '/hosting-manifest.json', '/build-audit.json', '/compiler-worker.js', '/index.html?token=must-not-be-accepted']) {
   const response = await fetch(new URL(path, base), { redirect: 'error' })
   assert(response.status >= 400 && response.status < 500, `Unexpected public renderer path: ${path}`)
   // CloudFront edge rejections carry a stricter CSP with no scripts; the local server retains its full policy.

@@ -28,6 +28,11 @@ export default defineConfig({
           response.setHeader('Referrer-Policy', 'no-referrer')
           response.setHeader('Cache-Control', 'no-store')
         }
+        if (request.url?.split('?')[0] === '/scripts/isolated-worker-check.html') {
+          response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; connect-src 'self' ws://127.0.0.1:5178 ws://localhost:5178; frame-src http://localhost:5182/index.html; object-src 'none'; base-uri 'none'; form-action 'none'")
+          response.setHeader('Referrer-Policy', 'no-referrer')
+          response.setHeader('Cache-Control', 'no-store')
+        }
         next()
       })
     },

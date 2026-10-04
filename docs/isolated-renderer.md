@@ -1,4 +1,4 @@
-# Isolated renderer (PP-I01 / PP-I02 / PP-I03)
+# Isolated renderer (PP-I01 / PP-I02 / PP-I03 / PP-I04)
 
 PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The public custom-rendering release gate remains off while the broader browser/device release matrix is unfinished.
 
@@ -52,7 +52,140 @@ The local server retains a verified build in memory; restart it after rebuilding
 
 Browser verification on October 3, 2026 used Chromium with the real response-header sandbox and CSP on the local cross-site pair. Verified visible rendering, real parent Web Audio from a generated WAV, music time continuing across a scene switch (0.2 to 0.4 seconds), pause preservation across a switch (0.6 seconds), resume/seek, both response modes, simulated beats, pointer/zoom interaction, a decoded PNG preview, and removal of the iframe on Stop. Scene replacement uses a new canvas after disposing the old engine so delayed WebGL context loss cannot stop the new scene. Production verification is recorded below; the full multi-browser/public-source release checks remain ahead.
 
+## PP-I04 disposable compilation
+
+Each scene load creates a fresh compile-only worker before allocating graphics.
+The owner accepts one matching versioned result within a fixed 2,000 ms deadline;
+started messages never extend that deadline. Success, failure, timeout, scene
+replacement and cancellation terminate the worker and revoke its Blob URL.
+Workers also close themselves immediately after returning. Unsupported worker
+creation fails the load without evaluating submitted source in the renderer or app.
+
+Artifact version 1 contains only `uniforms`, `frag`, `vert`, `geoGLSL`, and
+`colorGLSL`, plus its version. Uniforms are named finite float/vec2/vec3/vec4
+values, with optional finite bounds. The receiver normalizes and copies this
+bounded data, then the engine's `loadCompiledPreset` builds the mesh from it.
+The original source remains inert metadata for exports and existing response
+capability detection. Audio, time, camera, pointer and effects still update
+trusted engine fields. Captures reuse the compiled mesh/artifact.
+
+Shader Park geometry and declared inputs are supported; code relying on a DOM,
+parent window, nested workers or later callbacks is not. Delayed callbacks are
+deliberately retired after compilation. The baseline artifact checks do not
+establish that arbitrary generated GLSL is safe: PP-I05 strengthens that policy,
+and PP-I06 verifies every application lifecycle. Workers do not guarantee GPU
+hang containment or prevent all memory pressure.
+
+### Fixed local worker checks
+
+With the app running at `http://127.0.0.1:5178`, build and start the fixed child:
+
+```powershell
+npm run engine:prepare
+node scripts/build-worker-check.mjs
+node scripts/serve-worker-check.mjs
+```
+
+Open `http://127.0.0.1:5178/scripts/isolated-worker-check.html` and run the fixed
+checks. The separate child on `http://localhost:5182` uses the same hosting
+manifest, opaque sandbox and compiler build as the renderer. A finite
+three-second loop must be terminated by the unchanged two-second deadline while
+the parent stays responsive. A positive timer control distinguishes a working
+delayed callback from a compiler callback correctly retired after completion.
+The same fixture checks thrown source, invalid syntax, cancellation after actual
+loop entry, and fresh globals across repeated compilation jobs. Run its automated
+checks with `npm run worker-check:test`; these also run before `npm test`.
+Reports retain exact browser information and bounded lifecycle/timing evidence;
+hidden or cancelled runs cannot pass. These checks do not test network denial,
+GPU behavior or full application acceptance. Historical window-based security
+probes do not become evidence for workers merely by running against this build.
+
+Public custom-shader gates remain off. Deployment verification is complete;
+PP-I04 remains **To Verify** and unmerged. The user reports passing worker checks
+on a Pixel using Chrome / Android 17 and an Apple device using Safari / iOS
+(described as the latest iOS; exact version unspecified). Exact hardware models,
+browser versions and exported mobile reports were not supplied. These are
+user-reported passes, not independent mobile runs.
+
+Local evidence on October 4, 2026: all 11 fixed checks passed in the Codex in-app
+browser on Windows (reported Chromium 154.0.0.0). The finite-loop worker was
+terminated after 2,004.4 ms; the maximum parent timer gap was 63.3 ms. The normal
+Home featured player also rendered through the new compiler path. The saved
+report is `.local/pp-i04-worker-iab.json`; this evidence does not cover physical
+mobile devices. The application suite passed 1,873 tests, and both the app and
+renderer builds and the actual local HTTP policy verification passed.
+
+### Production worker deployment — October 4, 2026
+
+Source `eede2567b455bd7cf9931d7c4718ed7dd5f7a893` produced the deployed
+`assets/renderer-DZcqe5Im.js` (17,711,804 bytes), SHA-256
+`e776e5dbb44a5339b19d1e4dedae2572c37968e342ebb8d7593015b2180b282c`.
+The existing AWS stack's exact old/new-hash transition completed at
+20:34:27 UTC. The final single-hash update completed, and both the AWS helper
+and official production HTTP verifier passed against the exact artifact. No new
+AWS resource or domain was added; the explicit policy change permits Blob
+compiler workers while preserving the opaque sandbox and network restrictions.
+
+The existing player-check service deployed the same source in Coolify operation
+`p11yjmd2lk5dib05isfe1goe` and was healthy at 20:34:44 UTC. Its three pages
+passed 31 live HTTPS byte/header/routing checks against the approved LF Docker
+artifacts. The actual deployed worker page passed all 11 fixed checks in the
+Windows in-app Chromium browser: finite-loop termination took 2,004.7 ms and
+the maximum parent timer gap was 63 ms. The visible run verified the opaque
+frame. Report: `.local/deployments/pp-i04-worker/live-worker-report.json`;
+HTTP evidence: `fixed-harness-live-verification.json` in the same directory.
+
+Live music checks verified startup/isolation, music continuity through scene
+and response changes, pause/switch/resume, a decoded 320 × 180 capture, Stop,
+unavailable-player failure and successful Retry. An initial run stopped safely
+after capture before its image dimensions were inspected; the reason was not
+retained by that page. Retry and subsequent checks succeeded. Offscreen frame
+scheduling is a possible cause, not an established diagnosis. Retain that
+interruption alongside the passing checks. Public custom gates were verified
+off. The normal live scene `/scenes/15` (Aurora Drift) also rendered successfully;
+its screenshot is `.local/deployments/pp-i04-worker/live-scene-smoke.png`.
+See the [release record](isolated-renderer-release.md#pp-i04-compiler-worker-deployment)
+for artifact and evidence details; fixed checks do not approve the full release.
+
 ## Hosting boundary
+
+### PP-I04 compiler worker hosting
+
+The renderer build first builds `src/isolated-renderer/compiler/worker.ts` as a
+separate, in-memory classic script. Its exact module allowlist admits only the
+worker protocol/bootstrap and the engine's compiler-only modules; it rejects the
+DOM/WebGL engine, app modules, arbitrary packages and additional script chunks.
+The resulting source is embedded in the renderer through
+`__MAGE_COMPILER_WORKER_SOURCE__`. The outer renderer's existing SRI hash therefore
+covers the worker source too. `build-audit.json` records the worker's source hash,
+byte count and module list for release review; it remains private deployment
+metadata. There is still only one public JavaScript file plus `index.html`.
+
+The sole hosting-policy change is `worker-src blob:`. The opaque renderer creates
+a disposable dedicated worker from the bundled source; it never fetches a worker
+URL or enables same-origin access. Blob workers inherit the renderer's CSP,
+including `connect-src 'none'` and the absence of remote script sources. The
+compiler can evaluate source under the existing `unsafe-eval` allowance, but
+requests and external script imports remain blocked. See [worker CSP
+inheritance](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers#content_security_policy).
+
+The worker bootstrap removes nested-worker constructors before evaluating source.
+This JavaScript hardening is defense in depth, not a separate security boundary:
+the inherited `worker-src blob:` directive itself does not distinguish first-level
+workers from nested workers. Browser checks must demonstrate successful opaque
+worker startup, blocked network requests, compilation timeout/termination and
+safe recovery. A build or unit test alone does not prove those browser behaviors.
+Browsers that cannot start the restricted worker must fail safely without
+compiling on the renderer or parent page as a fallback.
+
+This is a hosting-policy release, not merely a new bundle. Preserve the prior
+production artifact and review the explicit worker-policy change along with the
+two-hash transition before deploying. Restart local hosting after rebuilding;
+existing in-memory servers retain the previous policy. No new AWS resource or
+public worker route is required, and preparing this build does not update the
+deployed CloudFront distribution or open the custom-rendering release gate.
+
+### Shared renderer policy
 
 This implementation requires the renderer to use a different **registrable domain** from MAGE in production. MAGE is hosted at `https://mage.peterbucci.com`; the renderer will use the HTTPS hostname assigned by CloudFront, such as `https://d123example.cloudfront.net`. That example hostname is illustrative, not a provisioned resource. A sibling such as `https://player.peterbucci.com` does not meet this story's chosen separate-site boundary. The iframe sandbox remains the core access restriction; the separate site adds browser isolation where supported.
 
@@ -63,8 +196,8 @@ Only `src/isolated-renderer/main.ts`, its child implementation, the engine and a
 Each build's `hosting-manifest.json` is the source of its response headers and generated CloudFormation policies. Local output lives in `dist-isolated-renderer/`; `renderer:build:production` uses `dist-isolated-renderer-production/` so the two do not overwrite each other:
 
 - Response-header `sandbox allow-scripts` creates an opaque origin even when somebody navigates directly to the renderer. The parent iframe also uses only `allow-scripts`.
-- CSP defaults to no resources. It allows the exact immutable script hash with SRI and a fixed stylesheet hash. There is no broad `self`, remote script, inline-script or worker allowance. Only the renderer permits `unsafe-eval`, which the existing Shader Park compiler requires.
-- Embedded `data:`/`blob:` images support engine skyboxes; external images, requests, frames, workers, media, objects, fonts and form submission are denied. The parent controls the exact allowed frame source as well.
+- CSP defaults to no resources. It allows the exact immutable script hash with SRI, a fixed stylesheet hash and only Blob worker URLs. There is no broad `self`, remote script, inline-script or network-worker allowance. Only the renderer and its inherited compiler-worker policy permit `unsafe-eval`, which the existing Shader Park compiler requires.
+- Embedded `data:`/`blob:` images support engine skyboxes; external images, requests, frames, external worker scripts, media, objects, fonts and form submission are denied. The parent controls the exact allowed frame source as well.
 - The public static script uses anonymous CORS (`Access-Control-Allow-Origin: *`, no credentials) because its sandboxed document has an opaque origin. This is not an API CORS policy.
 - Permissions Policy denies camera, microphone, geolocation, clipboard, fullscreen, device APIs and other sensitive features. No cookies are set; referrers are omitted and MIME sniffing is disabled.
 - Only `/`, `/index.html` and the one current hashed script are served. Methods other than GET/HEAD, arbitrary paths, query strings and API routes are rejected. There is no proxy or SPA fallback.
@@ -117,6 +250,27 @@ npx vite --config deployment/isolated-renderer/local-https.vite.config.mjs
 Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. This setup covers the fixed-sample fixture, not the normal application's HTTP-only development resolver or the HTTP-only security canary. The companion configuration changes only the local HTTPS server and developer fixture's frame policy. For command-line verification, set `MAGE_RENDERER_VERIFY_ORIGIN=https://localhost:5181` and supply the local CA to Node via `NODE_EXTRA_CA_CERTS` if it is not already trusted; never disable TLS verification. Clear these session environment variables before returning to the default HTTP workflow.
 
 ## Live parent verification page
+
+The fixed PP-I04 compiler checks are built with `npm run worker-check:page:build`
+into `dist-player-check/worker/` and served at
+`https://mage.peterbucci.com/player-check/worker/` by the existing verification
+service. Build music first, then security and worker pages; the music build clears
+the root output directory. The Dockerfile performs all three builds in that order.
+Its startup verifier requires and checks the three exact HTML/script/style
+manifests, and rejects worker-page metadata, source parameters and unbuilt files.
+
+The worker-check parent contains no engine, compiler or probe runner. Its CSP
+allows only the exact CloudFront renderer frame and same-origin static assets;
+network requests, parent workers and dynamic evaluation are denied. Production
+addresses and the trailing-slash page path are fixed at build time. The child
+accepts a separate fixed-check protocol that cannot accept source, worker URLs,
+credentials or configurable test programs. Deploy the matching renderer before
+this check page. An older renderer ignores the new protocol and the check times
+out safely; existing music/security routes keep their separate protocols.
+
+This public page records only its fixed compiler capability and lifetime checks.
+It does not approve network isolation, GPU behavior, normal app flows or the full
+browser/device release matrix. Its report explicitly preserves those limits.
 
 `npm run player-check:build` builds a separate music-check parent page into
 `dist-player-check/`, including a three-file integrity manifest. Its exact module allowlist admits the test UI, parent-boundary
@@ -363,7 +517,7 @@ Also run the browser isolation checks from the actual deployed parent: headers a
 
 Rendering happens in the visitor's browser. Hosting charges come from CloudFront data transfer, requests and the request-validation function, plus S3 storage and requests. S3 versioning also retains prior file versions for rollback. No renderer compute instance, domain registration, Route 53 zone or custom certificate is needed for this plan.
 
-The measured local bundle is about 16.95 MB, excluding any transfer compression. At that size, a conservative decimal 1 TB budget corresponds to roughly 59,000 complete downloads; budgeting around 50,000 leaves room for other requests and estimation differences. The bundle is shared across scenes and has an immutable URL, allowing browser caching when supported. Builds, cache eviction and browser cache partitioning affect actual repeat downloads.
+The PP-I04 local bundle is about 17.70 MB, including about 665 KB of embedded compiler-worker code, before transfer compression. At that size, a conservative decimal 1 TB budget corresponds to roughly 56,000 complete downloads; budgeting around 50,000 leaves room for other requests and estimation differences. The worker runs on the visitor's device and adds no server compute service. The bundle is shared across scenes and has an immutable URL, allowing browser caching when supported. Builds, cache eviction and browser cache partitioning affect actual repeat downloads.
 
 The pay-as-you-go 1 TB allowance discussed for this plan is **account-wide**, not reserved for this distribution and not a hard spending cap. It does not stop delivery at 1 TB. Verify the account's plan and current [CloudFront pricing](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/) and [S3 pricing](https://aws.amazon.com/s3/pricing/); monitor billed usage and set billing notifications appropriate to the account. This deployment template does not create a budget, spending cutoff or usage monitor.
 
