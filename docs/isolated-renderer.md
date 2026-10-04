@@ -1,8 +1,8 @@
 # Isolated renderer (PP-I01 / PP-I02 / PP-I03)
 
-PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. That bridge is deployed to the existing CloudFront renderer and `https://mage.peterbucci.com/player-check/`. PP-I03 connects normal application players to the bridge on the integration branch. This is implementation and local verification, not a record of PP-I03 production deployment or approval to run public custom source. The public custom-rendering release gate remains off.
+PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The public custom-rendering release gate remains off while the broader browser/device release matrix is unfinished.
 
-See [the PP-I03 release record](isolated-renderer-release.md) for the current test matrix, remaining verification, deployment order, rollback, and owner repair/export behavior. Historical deployment results below describe their named PP-I01/PP-I02 artifacts only.
+See [the PP-I03 release record](isolated-renderer-release.md) for actual deployment evidence, remaining verification, deployment order, rollback, and owner repair/export behavior, and the [browser release checklist](custom-shader-release-checklist.md) for repeatable desktop/mobile testing. Historical deployment results below describe their named artifacts only.
 
 ## PP-I03 application boundary
 
@@ -119,14 +119,16 @@ Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. This se
 ## Live parent verification page
 
 `npm run player-check:build` builds a separate music-check parent page into
-`dist-player-check/`. Its exact module allowlist admits the test UI, parent-boundary
+`dist-player-check/`, including a three-file integrity manifest. Its exact module allowlist admits the test UI, parent-boundary
 check, playback controller, protocol, shared scene policy and lightweight audio
 analysis. It cannot import the rendering engine, account code or API clients.
 The production parent and CloudFront URL are fixed at build time.
 The page refuses to start outside `https://mage.peterbucci.com`.
 
-The dedicated `deployment/isolated-renderer/Dockerfile.player-check` serves this
-artifact at `/player-check/`, using `nginx.player-check.conf`. Deploy it as a
+The dedicated `deployment/isolated-renderer/Dockerfile.player-check` builds both
+this page and the fixed HTTPS security check described below, then serves the verified
+artifacts through a small Node service. The earlier nginx configuration remains a
+record of the music-only deployment. Deploy the updated check service as a
 separate Coolify application with repository root `/`, container port `80`, and
 domain `https://mage.peterbucci.com/player-check`. Preserve the path prefix.
 Coolify generates a StripPrefix middleware for a domain containing a path. For
@@ -160,7 +162,65 @@ controls and frame capture. Stop it, then test the unavailable player and retry.
 Successful child startup also requires its
 cookie, local-storage and parent-document access checks to throw `SecurityError`.
 The check does not exercise child-initiated network requests or
-self-navigation; do not describe those as browser-tested by this page.
+self-navigation; use the separate security check below for those probes.
+
+### Fixed HTTPS browser safety check
+
+`npm run security-check:build` builds the fixed security page into
+`dist-player-check/security/`. Build the music page first: its build replaces the
+parent output directory. The check Dockerfile builds them in that order.
+
+The production entry is fixed to
+`https://mage.peterbucci.com/player-check/security/`, with no query string or
+fragment, and the exact existing CloudFront `/index.html` renderer. It has no
+arbitrary source, renderer address or account input. Desktop and mobile testers
+can open the same HTTPS page after the check service is deployed. The local page
+at `http://127.0.0.1:5178/scripts/isolated-security-check.html` retains its existing
+loopback-only development boundary.
+
+The security page has one self-contained allowlisted script and one external
+stylesheet, both with integrity metadata. Its strict parent CSP allows the exact
+renderer entry and only the same-origin canary registration/results endpoints.
+It does not enable inline scripts, dynamic evaluation, workers, broad network
+access or additional renderer sandbox flags. Account, API client and rendering
+engine modules cannot enter its build. The production renderer artifact and its
+allowed parent remain unchanged.
+
+The check service loads the two bounded build manifests, verifies every served
+file and HTML integrity reference at startup, and serves only their exact paths.
+No request path reaches the filesystem. The security fixture's dummy canary is
+limited to `/player-check/__isolated-security/`; registration requires the exact
+parent origin. Requests use fresh 32-hex nonces, reject bodies and unknown fields,
+expire after five minutes, hold at most 32 sessions and saturate each count at
+1,000. A WebSocket attempt is counted and rejected. The service does not read or
+record cookies, tokens, request bodies, scene source or account data, and it has
+no backend credentials or account API calls. HTTP response policies include
+`no-store`, `noindex`, `nosniff`, `no-referrer` and denied frame ancestors.
+
+Run **Check browser boundaries**, **Check failure recovery**, then the separately
+selected **Check a bounded CPU stall**. Expected result counts are 17, 8 and 2.
+Reports retain the latest 24 runs in this page's memory, recording cancelled and
+hidden runs without accepting them as passing. **Download results JSON** saves
+the sanitized report; **Show report JSON** provides selectable text when browser
+downloads are unavailable. Reloading clears that history. A deployed report is
+labelled “Deployed fixed-fixture checks”; it does not approve release or claim
+normal application/owner recovery testing.
+
+Before updating the existing Coolify check application, preserve its old image,
+deployment reference and built artifact. Keep its existing `/player-check/` path
+routing; do not change the normal app, backend or CloudFront configuration.
+Validate with `npm run security-check:test`, `npm run test:isolation-security`,
+both check builds and the check container's HTTP smoke tests. After deployment,
+inspect actual response headers and run all three groups in a real browser.
+Confirm the original music check and normal MAGE pages still work. If the helper
+fails, restore the previous check image; the public custom-release gate stays
+off throughout. Record the observed helper deployment and browser results in the
+[release record](isolated-renderer-release.md), separately from implementation.
+
+Follow the [release checklist](custom-shader-release-checklist.md) for the
+remaining normal-app, permission, recovery and actual device checks. A passing
+in-app Chromium report does not cover untested Chrome, Edge, Firefox, Safari or
+mobile devices, and a finite CPU stall is not a GPU or unlimited-resource guarantee.
 
 ### PP-I02 deployment and live verification — October 3, 2026
 

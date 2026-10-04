@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "releaseDecision": "NOT_APPROVED",
+  "checkedAt": null,
+  "tester": "",
+  "environment": {
+    "kind": "UNRECORDED",
+    "frontendCommitOrImage": "",
+    "backendCommitOrImage": "",
+    "rendererBundlePath": "",
+    "rendererIntegrity": "",
+    "parentOrigin": "",
+    "rendererOrigin": "",
+    "releaseApproved": null,
+    "globalCustomPlaybackEnabled": null,
+    "dedicatedTestDataOnly": null,
+    "actualHttpPolicyEvidence": ""
+  },
+  "browser": {
+    "name": "",
+    "version": "",
+    "os": "",
+    "osVersion": "",
+    "device": "",
+    "physicalDevice": null,
+    "emulationUsed": null
+  },
+  "checks": {
+    "browserBoundariesAndServerCanary": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "failureRecoveryAndFiniteStall": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "deployedFixedPlaybackAndAudio": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "normalAppEntryPointsAndCapture": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "templateAndCustomContractValidation": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "localRecoveryAndRetry": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "sceneAndGlobalRevocation": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
+    "ownerRepairExportAndAccountChanges": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" }
+  },
+  "restoration": { "testPlayersStopped": null, "testDataAndControlsRestored": null, "notes": "" },
+  "blockers": [],
+  "evidenceRules": "Reference sanitized local files only. Do not include tokens, passwords, storage contents, private reasons or scene source. PASS requires observations for the named artifacts and actual browser/device; NOT_APPLICABLE needs a reason. Local, emulated or fixed-sample results cannot be promoted to untested deployed/device coverage."
+}

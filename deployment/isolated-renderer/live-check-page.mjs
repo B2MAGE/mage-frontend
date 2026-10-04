@@ -64,7 +64,7 @@ export function renderLiveCheckDocument({ scriptPath, scriptIntegrity, stylePath
     <p id="retry-result" class="detail">Connection: not tested.</p>
     <p class="detail">Player address: <code id="address"></code></p>
     <p class="detail">The isolation check confirms that this page cannot access the player document and that the frame allows scripts only. It is not a complete security audit.</p>
-    <p class="detail">This page tests the music and controls bridge. Normal MAGE players switch over in the next integration story.</p>
+    <p class="detail">Normal MAGE players also use this bridge. This fixed check does not test every browser boundary, saved-scene permission or owner recovery path, and does not approve public custom-shader playback.</p>
     <noscript><p>Enable JavaScript to run this check.</p></noscript>
   </main>
   <script src="./${scriptPath}" integrity="${scriptIntegrity}" defer></script>

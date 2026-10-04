@@ -1,10 +1,38 @@
 # PP-I03 integration and release record
 
-## Status — October 3, 2026
+## Status — October 4, 2026
 
-Normal player and availability integration verification is complete. The user-authorized production deployment and recorded smoke checks are complete. The production custom-rendering release gate stays **off**. Integration completion does not approve public arbitrary-source execution: the wider release checks and supported-browser matrix below remain prerequisites for that separate release decision.
+Normal player and availability integration is merged and deployed. PP-I03 has been reopened for the outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
+
+Use the [browser/device checklist](custom-shader-release-checklist.md) and [result template](custom-shader-release-result.template.json) for the remaining runs. The recovery epic is complete; its closure does not approve arbitrary-source playback.
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
+
+## Release verification — October 4, 2026
+
+### Browser evidence collection
+
+The fixed HTTPS safety page is built for `https://mage.peterbucci.com/player-check/security/` on the existing dedicated player-check service. It adds the same 17 boundary, eight recovery and two optional finite-stall checks available locally, with retained JSON results and a copyable report. It accepts no shader input or account data. Its bounded canary stores only short-lived random identifiers and request counts; it does not forward requests to MAGE APIs.
+
+The service verifies its exact built assets and integrity hashes at startup, uses a non-root Node 24 runtime, and rejects unknown files, request bodies, excess headers and invalid control requests. Independent review verified the final bundle boundary, artifact hashes, CSP, five HTTP server regression tests and additional malformed-request checks. Fourteen combined policy/report/server tests, two UI initialization tests, TypeScript and lint passed. The final Node 24 Docker image ran healthy as uid 1000 on port 80; all six public file hashes and both private manifests matched the reviewed build. Its HTTP checks passed exact headers, closed routes and canary behavior. Evidence is retained under `.local/deployments/pp-i03-release-verification/`. This service is evidence collection, not a change to renderer isolation or release approval. Deployment and actual browser/device results must still be recorded separately.
+
+The previous dedicated check service was pinned to `70087e7ecb060b0294b3759cbe26fb269d0dbd0a`; its built files are preserved under `.local/deployments/pp-i03-release-verification/player-check-before-security/`. Restore that pin to roll back the check service. The normal app, backend and CloudFront renderer are separate deployments.
+
+The normal production frontend is `a49a955ff12ecb14c85d898b9cc0082f2ac018e8` (PR #219), backend is `ae03e7399a8364bb0068c90197908b7a80e12aa2` (PR #154), and the unchanged renderer is `assets/renderer-Cz795m_s.js`, SHA-256 `727bc2abc98ac24026ee99212de43dfcded4d11f5bf331921f55437550f2bad1`. These supersede the earlier normal-app/backend rollout identifiers below; historical evidence is retained with its original scope.
+
+| Check | Result and scope |
+| --- | --- |
+| Backend regression | 275 tests across 17 classes passed with no failures/errors/skips using isolated PostgreSQL Testcontainers. Covers validation, shared contracts, release controls, moderator authorization/revocation, source withholding, owner repair and block preservation, concurrency, thumbnails and migrations. Frontend/backend contracts matched after newline normalization. |
+| Packaged backend HTTP walkthrough | Ten grouped checks passed using the current packaged backend and a disposable database. Approval off rejected enable; approval on with the saved switch off still withheld source; an explicit administrator enable published eligible source; withdrawing approval suppressed it again. Moderator grant/revoke, owner repair, block preservation, private reasons and cache controls passed. All temporary resources were removed and existing services remained unchanged. This is HTTP/persistence evidence, not a normal-app browser walkthrough. |
+| Frontend regression | The initial full run passed 1,835 tests in 134 files and had eight editor timeouts in two files. A controlled single-worker rerun of both files passed all 17 tests in 50.01 seconds with a command-only 30-second default timeout; existing explicit 15-second test limits were unchanged. All 1,843 tests were observed passing across these runs. The initial full command's timeouts remain recorded. TypeScript, lint and production frontend build passed. |
+| Renderer hosting | Seven hosting tests and the official live renderer verifier passed against the unchanged `Cz795m_s` artifact, including exact response policies, document/script integrity and rejected paths/methods. |
+| Local browser boundaries and failures | The Windows in-app browser (Chromium 154 user agent) passed 17 boundary, eight failure and two finite-stall checks. The three-second child stall's largest observed parent timer gap was 63 ms. The report-enhanced fixture repeated these groups and retained a deliberately cancelled run alongside completed runs. These are local loopback results, not Chrome/Edge/Firefox/Safari device approval. |
+| Existing live music check | The deployed fixed check verified the isolated document boundary, generated audio, scene switching, Original response, capture, seek, pause at 7.7 seconds, unavailable-player disposal and successful Retry. This fixed page does not establish saved-scene or owner/account behavior. |
+| Production controls | The authenticated administrator page showed saved playback Off and the release lock still active. No production scene, account permission or release setting was changed for these checks. |
+
+Sanitized evidence and logs are retained locally under frontend `.local/deployments/pp-i03-release-verification/` and backend `.local/release-approval-20261004/`. Report export collects fixed check outcomes, timestamps, browser identification and test endpoints only. It does not collect account data, source or storage contents. Cancelled, incomplete and hidden-page runs cannot count as passing; stale asynchronous results cannot be attributed to a newer run.
+
+The connected browser inventory only exposes the Windows in-app browser; requesting desktop Chrome automation returned unavailable. Actual Chrome, Edge, Firefox, Safari and mobile runs remain unverified. No viewport emulation, user-agent string, automated unit test or fixed music sample is counted as a substitute. Public release remains unapproved until the required browser/device and production-equivalent normal-app checks are complete.
 
 ## Production rollout — October 3, 2026
 

@@ -73,5 +73,13 @@ const script = await readFile(resolve(outDir, scriptPath))
 const style = await readFile(resolve(isolationDirectory, 'live-check/style.css'))
 const stylePath = `assets/check-${createHash('sha256').update(style).digest('hex').slice(0, 16)}.css`
 await writeFile(resolve(outDir, stylePath), style)
-await writeFile(resolve(outDir, 'index.html'), renderLiveCheckDocument({ scriptPath, scriptIntegrity: integrityOf(script), stylePath, styleIntegrity: integrityOf(style) }))
+const html = renderLiveCheckDocument({ scriptPath, scriptIntegrity: integrityOf(script), stylePath, styleIntegrity: integrityOf(style) })
+await writeFile(resolve(outDir, 'index.html'), html)
+await writeFile(resolve(outDir, 'build-manifest.json'), JSON.stringify({ version: 1, parentOrigin: LIVE_CHECK_PARENT_ORIGIN, rendererUrl: LIVE_CHECK_RENDERER_URL,
+  files: {
+    'index.html': { integrity: integrityOf(html), contentType: 'text/html; charset=utf-8' },
+    [scriptPath]: { integrity: integrityOf(script), contentType: 'text/javascript; charset=utf-8' },
+    [stylePath]: { integrity: integrityOf(style), contentType: 'text/css; charset=utf-8' },
+  },
+}, null, 2) + '\n')
 console.log(`Live check built for ${LIVE_CHECK_PARENT_ORIGIN}/player-check/ using ${LIVE_CHECK_RENDERER_URL}. Copy ${outDir} into the app artifact's player-check directory.`)
