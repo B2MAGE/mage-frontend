@@ -4,11 +4,35 @@
 
 Normal player and availability integration is merged and deployed. PP-I03 has been reopened for the outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
 
+PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story remains **To Verify** and unmerged. The user reports passing worker tests on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; these are user-reported passes.
+
 Use the [browser/device checklist](custom-shader-release-checklist.md) and [result template](custom-shader-release-result.template.json) for the remaining runs. The recovery epic is complete; its closure does not approve arbitrary-source playback.
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
 
 ## Release verification — October 4, 2026
+
+### PP-I04 compiler-worker deployment
+
+This rollout changes the separate renderer and the existing fixed-check service. It does not deploy a new normal frontend/backend or enable public custom rendering. The exact parent is `https://mage.peterbucci.com`; the renderer remains `https://d2wwpgc7sgvmnm.cloudfront.net/index.html`.
+
+| Artifact or check | Recorded evidence |
+| --- | --- |
+| Frozen source | `eede2567b455bd7cf9931d7c4718ed7dd5f7a893` |
+| Renderer | `assets/renderer-DZcqe5Im.js`, 17,711,804 bytes; SHA-256 `e776e5dbb44a5339b19d1e4dedae2572c37968e342ebb8d7593015b2180b282c`; SRI `sha384-0antzIvPnO/7yis7YNpEAXlCO6iTAYl080o22HwNadC0s9zYLGC5G0m/V4ZqgIeE` |
+| Embedded compiler worker | 665,108 bytes; integrity `sha384-MhVJbAz3clkmm5kXtrvVrY7cWOpFuR6mXWTtvsdeB0+B46LDOLjLf0I++6m1Oz1P`. The build audits the exact five compiler/bootstrap modules. No separate worker file is hosted. |
+| AWS rollout | Existing stack `mage-isolated-renderer` completed its exact old/new-hash transition at `2026-10-04T20:34:27Z`, followed by a successful final single-hash update. The only hosting-policy change is `worker-src 'none'` to `worker-src blob:`; opaque sandbox, exact parent and network restrictions remain. The AWS helper verified final deployment, exact bytes/headers and forbidden paths; `npm run renderer:verify:production` also passed against the matching artifact. Evidence: `.local/deployments/pp-i04-worker/aws-final-verification.txt`. |
+| Check-service image | Built from the frozen Git archive with `core.autocrlf=false`, `core.eol=lf`; image `sha256:2fc3343f256536084dacae440dc28c7ac6297eabc854c8818a6fdf7a3ed0384a`. Its actual nine runtime files were exported from `/app/dist-player-check` to `player-check-approved-lf/`. Twenty-six local HTTP checks passed in a read-only, network-disabled container as uid 1000 with all capabilities dropped. |
+| Coolify deployment | `p11yjmd2lk5dib05isfe1goe`, pinned to the frozen source above; healthy at `2026-10-04T20:34:44Z`. Music, historical security and new worker pages use the same existing service. |
+| Live HTTP | All 31 checks passed at `20:35:13Z`: exact approved file bytes/headers, aliases, HEAD/redirect behavior, rejected routes/methods, bounded canary behavior and normal homepage availability. Evidence: `.local/deployments/pp-i04-worker/fixed-harness-live-verification.json`. |
+| Live worker browser check | All 11 fixed checks passed at `/player-check/worker/` in Windows in-app Chromium 154.0.0.0, `20:35:49Z`–`20:35:56Z`. Report status `passed`, opaque frame verified, no hidden-page interruption; finite-loop termination 2,004.7 ms and maximum parent timer gap 63 ms. Evidence: `.local/deployments/pp-i04-worker/live-worker-report.json` and `live-worker-pass.png`. |
+| Live music compatibility | Startup and opaque boundary; audio continuity through scene switching and Original response; pause/switch/resume; decoded 320 × 180 capture; Stop removal/audio release; unavailable-player safe failure and successful Retry passed. Capture evidence: `.local/deployments/pp-i04-worker/live-music-capture.png`. |
+| Initial music interruption | Before retry, the player stopped safely after reporting capture success and before image dimensions were inspected. The fixed page did not retain the failure reason. Subsequent retry/checks succeeded. Offscreen scheduling is a hypothesis only; this interruption remains recorded, not reclassified as an expected or diagnosed failure. |
+| Normal live scene | `/scenes/15` (Aurora Drift) rendered through the CloudFront iframe. Visual evidence: `.local/deployments/pp-i04-worker/live-scene-smoke.png`. This is a focused smoke check, not the complete normal-app acceptance matrix. |
+| Android and Apple devices | **User-reported passes:** Pixel / Chrome / Android 17; Apple device / Safari / iOS, described as the latest version but exact version unspecified. Exact models, browser versions and exported mobile reports were not provided. No independent mobile run is claimed. |
+| Public controls and story | Production custom release approval and saved playback remain off, verified during this rollout. Deployment verification is complete; PP-I04 remains **To Verify** and unmerged. The broader custom-rendering release is not approved. |
+
+Preparation and rollback evidence are retained under `.local/deployments/pp-i04-worker/`, including the previous `Cz795m_s` artifact, exact transition/final templates, build audit, reviewed package and approved LF check-service files. The submitted-source worker lifetime checks do not establish network denial, GPU containment or every application lifecycle. `/player-check/security/` now labels its earlier window-source probes as historical and links to the current worker page; the prior reports below remain historical evidence rather than worker results. PP-I05/I06 and the wider release matrix keep their separate scope.
 
 ### iOS failure under investigation
 
@@ -28,7 +52,7 @@ The service verifies its exact built assets and integrity hashes at startup, use
 
 The previous dedicated check service was pinned to `70087e7ecb060b0294b3759cbe26fb269d0dbd0a`; its built files are preserved under `.local/deployments/pp-i03-release-verification/player-check-before-security/`. Restore that pin to roll back the check service. The normal app, backend and CloudFront renderer are separate deployments.
 
-The normal production frontend is `a49a955ff12ecb14c85d898b9cc0082f2ac018e8` (PR #219), backend is `ae03e7399a8364bb0068c90197908b7a80e12aa2` (PR #154), and the unchanged renderer is `assets/renderer-Cz795m_s.js`, SHA-256 `727bc2abc98ac24026ee99212de43dfcded4d11f5bf331921f55437550f2bad1`. These supersede the earlier normal-app/backend rollout identifiers below; historical evidence is retained with its original scope.
+At the time of this pre-worker verification, the normal production frontend was `a49a955ff12ecb14c85d898b9cc0082f2ac018e8` (PR #219), backend was `ae03e7399a8364bb0068c90197908b7a80e12aa2` (PR #154), and renderer was `assets/renderer-Cz795m_s.js`, SHA-256 `727bc2abc98ac24026ee99212de43dfcded4d11f5bf331921f55437550f2bad1`. The frontend/backend identifiers remain unchanged by PP-I04; its renderer and check-service deployment above supersede those earlier artifacts. Historical evidence is retained with its original scope.
 
 | Check | Result and scope |
 | --- | --- |

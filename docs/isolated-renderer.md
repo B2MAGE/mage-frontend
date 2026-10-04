@@ -100,9 +100,12 @@ hidden or cancelled runs cannot pass. These checks do not test network denial,
 GPU behavior or full application acceptance. Historical window-based security
 probes do not become evidence for workers merely by running against this build.
 
-Actual affected Android/iOS runs under deployed policy are still required before
-PP-I04 acceptance. Public custom-shader gates remain off. No AWS changes have
-been deployed for this local implementation.
+Public custom-shader gates remain off. Deployment verification is complete;
+PP-I04 remains **To Verify** and unmerged. The user reports passing worker checks
+on a Pixel using Chrome / Android 17 and an Apple device using Safari / iOS
+(described as the latest iOS; exact version unspecified). Exact hardware models,
+browser versions and exported mobile reports were not supplied. These are
+user-reported passes, not independent mobile runs.
 
 Local evidence on October 4, 2026: all 11 fixed checks passed in the Codex in-app
 browser on Windows (reported Chromium 154.0.0.0). The finite-loop worker was
@@ -111,6 +114,38 @@ Home featured player also rendered through the new compiler path. The saved
 report is `.local/pp-i04-worker-iab.json`; this evidence does not cover physical
 mobile devices. The application suite passed 1,873 tests, and both the app and
 renderer builds and the actual local HTTP policy verification passed.
+
+### Production worker deployment — October 4, 2026
+
+Source `eede2567b455bd7cf9931d7c4718ed7dd5f7a893` produced the deployed
+`assets/renderer-DZcqe5Im.js` (17,711,804 bytes), SHA-256
+`e776e5dbb44a5339b19d1e4dedae2572c37968e342ebb8d7593015b2180b282c`.
+The existing AWS stack's exact old/new-hash transition completed at
+20:34:27 UTC. The final single-hash update completed, and both the AWS helper
+and official production HTTP verifier passed against the exact artifact. No new
+AWS resource or domain was added; the explicit policy change permits Blob
+compiler workers while preserving the opaque sandbox and network restrictions.
+
+The existing player-check service deployed the same source in Coolify operation
+`p11yjmd2lk5dib05isfe1goe` and was healthy at 20:34:44 UTC. Its three pages
+passed 31 live HTTPS byte/header/routing checks against the approved LF Docker
+artifacts. The actual deployed worker page passed all 11 fixed checks in the
+Windows in-app Chromium browser: finite-loop termination took 2,004.7 ms and
+the maximum parent timer gap was 63 ms. The visible run verified the opaque
+frame. Report: `.local/deployments/pp-i04-worker/live-worker-report.json`;
+HTTP evidence: `fixed-harness-live-verification.json` in the same directory.
+
+Live music checks verified startup/isolation, music continuity through scene
+and response changes, pause/switch/resume, a decoded 320 × 180 capture, Stop,
+unavailable-player failure and successful Retry. An initial run stopped safely
+after capture before its image dimensions were inspected; the reason was not
+retained by that page. Retry and subsequent checks succeeded. Offscreen frame
+scheduling is a possible cause, not an established diagnosis. Retain that
+interruption alongside the passing checks. Public custom gates were verified
+off. The normal live scene `/scenes/15` (Aurora Drift) also rendered successfully;
+its screenshot is `.local/deployments/pp-i04-worker/live-scene-smoke.png`.
+See the [release record](isolated-renderer-release.md#pp-i04-compiler-worker-deployment)
+for artifact and evidence details; fixed checks do not approve the full release.
 
 ## Hosting boundary
 
