@@ -11,5 +11,5 @@ body{margin:0;background:#0c0e13;color:#f5f5f7;font:16px system-ui,sans-serif}ma
 <div class="actions"><button id="test-audio" disabled>Play test rhythm</button><label>Choose music <input id="audio" type="file" accept="audio/*" disabled></label><button id="clear" disabled>Clear music</button></div>
 <div class="actions"><label><input id="simulate" type="checkbox" disabled> Simulate beat</label><label>Response <select id="response" disabled><option value="mapped-v1">Selective</option><option value="legacy">Original</option></select></label><label>Volume <input id="volume" type="range" min="0" max="1" step="0.05" value="0.4" disabled></label><button id="seek" disabled>Back five seconds</button><button id="capture-button" disabled>Capture frame</button></div>
 <p id="audio-status" aria-live="off">No music loaded.</p><img id="capture" alt="Captured isolated scene" hidden>
-<p>This local check exercises PP-I02. Normal app players switch over in PP-I03.</p><a href="/">Back to MAGE</a>
+<p>This fixed local check exercises the isolated music and controls bridge. Normal MAGE players also use this bridge. Passing this check does not approve public custom-shader playback or replace the browser release checklist.</p><a href="/">Back to MAGE</a>
 </main><script type="module" src="./isolated-playback-check.ts"></script></body></html>
