@@ -2,6 +2,19 @@ export const WORKER_CHECK_VERSION = 'fixed-worker-1'
 export const WORKER_CHECK_PARENT = 'http://127.0.0.1:5178'
 export const WORKER_CHECK_PATH = '/scripts/isolated-worker-check.html'
 export const WORKER_CHECK_CHILD = 'http://localhost:5182/index.html'
+export const WORKER_CHECK_PRODUCTION_PARENT = 'https://mage.peterbucci.com'
+export const WORKER_CHECK_PRODUCTION_PATH = '/player-check/worker/'
+export const WORKER_CHECK_PRODUCTION_CHILD = 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html'
+export type WorkerCheckScope = 'local' | 'production'
+export function workerCheckConfig(scope: WorkerCheckScope) {
+  if (scope === 'local') return { parentOrigin: WORKER_CHECK_PARENT, path: WORKER_CHECK_PATH, rendererUrl: WORKER_CHECK_CHILD }
+  if (scope === 'production') return { parentOrigin: WORKER_CHECK_PRODUCTION_PARENT, path: WORKER_CHECK_PRODUCTION_PATH, rendererUrl: WORKER_CHECK_PRODUCTION_CHILD }
+  throw new Error('Unknown fixed worker-check scope.')
+}
+export function isWorkerCheckLocation(scope: WorkerCheckScope, href: string, development: boolean) {
+  const config = workerCheckConfig(scope)
+  return (scope === 'production' || development) && href === `${config.parentOrigin}${config.path}`
+}
 export const WORKER_CHECK_PROTOCOL = 'mage-fixed-worker-check'
 export const WORKER_CHECK_PHASES = ['control', 'normal', 'completion', 'throw', 'syntax', 'abort', 'repeat', 'stall'] as const
 export type WorkerCheckPhase = typeof WORKER_CHECK_PHASES[number]
@@ -29,6 +42,10 @@ export function exact(value: unknown, keys: readonly string[]): value is Record<
   const own = Reflect.ownKeys(value)
   return own.length === keys.length && own.every(key => typeof key === 'string' && keys.includes(key)
     && Object.hasOwn(Object.getOwnPropertyDescriptor(value, key) ?? {}, 'value'))
+}
+export function isWorkerCheckConnection(value: unknown): value is { protocol: typeof WORKER_CHECK_PROTOCOL; version: 1; type: 'connect'; nonce: string } {
+  return exact(value, ['protocol', 'version', 'type', 'nonce']) && value.protocol === WORKER_CHECK_PROTOCOL
+    && value.version === 1 && value.type === 'connect' && validNonce(value.nonce)
 }
 export function isSummary(value: unknown): value is WorkerCheckSummary {
   return exact(value, [...flagKeys, 'stallDurationMs', 'completionObservationMs', 'abortDurationMs', 'repeatedJobs'])

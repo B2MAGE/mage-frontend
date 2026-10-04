@@ -1,5 +1,10 @@
-import { exact, isCheckEvent, isSummary, time, WORKER_CHECK_CHILD, WORKER_CHECK_PARENT, WORKER_CHECK_PATH, WORKER_CHECK_PROTOCOL,
+import { exact, isCheckEvent, isSummary, isWorkerCheckLocation, time, workerCheckConfig, WORKER_CHECK_PROTOCOL,
   WORKER_CHECK_VERSION, workerCheckVerdicts, type WorkerCheckEvent, type WorkerCheckSummary } from './worker-check-fixture'
+
+declare const __MAGE_WORKER_CHECK_SCOPE__: string
+declare const __MAGE_WORKER_CHECK_PARENT__: string
+declare const __MAGE_WORKER_CHECK_PATH__: string
+declare const __MAGE_WORKER_CHECK_CHILD__: string
 
 type CheckRun = { id: number; startedAt: string; finishedAt: string | null; status: 'running' | 'passed' | 'failed' | 'cancelled';
   interruptedByHiddenPage: boolean; opaqueFrameVerified: boolean; parentStallMaxGapMs: number; diagnosticsTruncated: boolean;
@@ -7,12 +12,19 @@ type CheckRun = { id: number; startedAt: string; finishedAt: string | null; stat
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const runs: CheckRun[] = []
 let sequence = 0, dispose: (() => void) | null = null, active: CheckRun | null = null
-const allowed = import.meta.env.DEV && location.href === `${WORKER_CHECK_PARENT}${WORKER_CHECK_PATH}`
+const scope = typeof __MAGE_WORKER_CHECK_SCOPE__ === 'undefined' ? 'local' : __MAGE_WORKER_CHECK_SCOPE__
+const config = workerCheckConfig(scope === 'production' ? 'production' : 'local')
+// Build settings cannot introduce a different host, renderer, or configurable URL.
+const configured = scope === 'local' || (scope === 'production'
+  && typeof __MAGE_WORKER_CHECK_PARENT__ !== 'undefined' && __MAGE_WORKER_CHECK_PARENT__ === config.parentOrigin
+  && typeof __MAGE_WORKER_CHECK_PATH__ !== 'undefined' && __MAGE_WORKER_CHECK_PATH__ === config.path
+  && typeof __MAGE_WORKER_CHECK_CHILD__ !== 'undefined' && __MAGE_WORKER_CHECK_CHILD__ === config.rendererUrl)
+const allowed = configured && isWorkerCheckLocation(scope === 'production' ? 'production' : 'local', location.href, import.meta.env.DEV)
 const snapshot = () => ({ version: 1, testVersion: WORKER_CHECK_VERSION, exportedAt: new Date().toISOString(),
-  scope: 'Local fixed compiler-worker capability and lifetime checks only. Network, GPU, application and release verification are not performed.',
-  browserUserAgent: navigator.userAgent.slice(0, 512), parentOrigin: WORKER_CHECK_PARENT, rendererUrl: WORKER_CHECK_CHILD,
+  scope: `${scope === 'production' ? 'Deployed' : 'Local'} fixed compiler-worker capability and lifetime checks only. Network, GPU, application and release verification are not performed.`,
+  browserUserAgent: navigator.userAgent.slice(0, 512), parentOrigin: config.parentOrigin, rendererUrl: config.rendererUrl,
   parameters: { compilerDeadlineMs: 2000, finiteLoopMs: 3000, delayedCallbackMs: 250, callbackObservationMs: 600, parentTimerIntervalMs: 50, parentResponsivenessLimitMs: 1000 },
-  eventLimit: 128, retainedRunLimit: 12, runs: structuredClone(runs) })
+  expectedChecks: 11, eventLimit: 128, retainedRunLimit: 12, runs: structuredClone(runs) })
 function saved() {
   element('saved-runs').textContent = `${WORKER_CHECK_VERSION}; ${runs.length} run(s) retained, up to the latest 12. Reloading clears this history.`
   element<HTMLButtonElement>('download').disabled = runs.length === 0
@@ -85,7 +97,7 @@ function start() {
     port?.close(); port = null; frame.removeEventListener('load', load); frame.remove()
   }
   frame.addEventListener('load', load); frame.addEventListener('error', fail, { once: true })
-  frame.src = WORKER_CHECK_CHILD; element('player').append(frame)
+  frame.src = config.rendererUrl; element('player').append(frame)
   element('status').textContent = 'Starting the opaque child…'
 }
 element('start').onclick = start; element('stop').onclick = stop
@@ -98,5 +110,5 @@ element('download').onclick = () => {
 document.addEventListener('visibilitychange', () => { if (active && document.visibilityState !== 'visible') active.interruptedByHiddenPage = true })
 window.addEventListener('pagehide', stop)
 element<HTMLButtonElement>('start').disabled = !allowed
-if (!allowed) element('status').textContent = 'Open the exact local worker-check address without query parameters or a fragment.'
+if (!allowed) element('status').textContent = 'Open the exact configured worker-check address without query parameters or a fragment.'
 saved()

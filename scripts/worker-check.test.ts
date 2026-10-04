@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { compileShader } from '@notrac/mage/compiler'
 import { normalizeCompiledShader } from '@notrac/mage/compiled-shader'
-import { fixedWorkerSource, isCheckEvent, isSummary, positiveControlSource, readWorkerMarker, workerCheckVerdicts, type WorkerCheckSummary } from './worker-check-fixture'
+import { fixedWorkerSource, isCheckEvent, isSummary, isWorkerCheckConnection, isWorkerCheckLocation, positiveControlSource, readWorkerMarker,
+  workerCheckConfig, workerCheckVerdicts, WORKER_CHECK_PROTOCOL, type WorkerCheckSummary } from './worker-check-fixture'
 import { runFixedWorkerChecks } from './worker-check-runner'
 import type { compileInWorker } from '../src/isolated-renderer/compiler/client'
 
@@ -14,6 +15,21 @@ const summary: WorkerCheckSummary = { controlDelayed: true, scopeVerified: true,
   abortStarted: true, abortEntered: true, abortCancelled: true, stallDurationMs: 2001, completionObservationMs: 600, abortDurationMs: 50, repeatedJobs: 2 }
 
 describe('fixed compiler-worker fixture evidence', () => {
+  it('binds live and local pages to their exact fixed addresses', () => {
+    const local = workerCheckConfig('local'), live = workerCheckConfig('production')
+    expect(isWorkerCheckLocation('local', local.parentOrigin + local.path, true)).toBe(true)
+    expect(isWorkerCheckLocation('local', local.parentOrigin + local.path, false)).toBe(false)
+    expect(isWorkerCheckLocation('production', live.parentOrigin + live.path, false)).toBe(true)
+    expect(live.rendererUrl).toBe('https://d2wwpgc7sgvmnm.cloudfront.net/index.html')
+    for (const href of [live.parentOrigin + live.path + '?source=arbitrary', live.parentOrigin + live.path + '#test',
+      live.parentOrigin + live.path + 'index.html', 'https://other.example/player-check/worker/', 'http://mage.peterbucci.com/player-check/worker/']) {
+      expect(isWorkerCheckLocation('production', href, false)).toBe(false)
+    }
+    const connect = { protocol: WORKER_CHECK_PROTOCOL, version: 1, type: 'connect', nonce }
+    expect(isWorkerCheckConnection(connect)).toBe(true)
+    for (const value of [{ ...connect, source: 'sphere(1)' }, { ...connect, renderer: 'https://other.example' }, { ...connect, version: 2 },
+      { ...connect, nonce: 'invalid' }, { ...connect, type: 'compile' }, null]) expect(isWorkerCheckConnection(value)).toBe(false)
+  })
   it('accepts only bounded fixed report and marker fields', () => {
     expect(isSummary(summary)).toBe(true)
     for (const value of [{ ...summary, source: 'excluded' }, { ...summary, stallDurationMs: Infinity }, { ...summary, stallDurationMs: -1 },

@@ -24,9 +24,10 @@
     "renderer:verify:production": "node scripts/verify-isolated-renderer.mjs --production",
     "renderer:test": "node --test deployment/isolated-renderer/hosting.test.mjs",
     "worker-check:test": "tsc -p scripts/tsconfig.worker-check.json && vitest run --config scripts/vitest-worker-check.config.mjs",
+    "worker-check:page:build": "tsc -b scripts/tsconfig.worker-check.json && node scripts/build-isolated-worker-check.mjs",
     "player-check:build": "node scripts/build-isolated-player-check.mjs",
     "security-check:build": "tsc -b tsconfig.security-check.json && node scripts/build-isolated-security-check.mjs",
-    "security-check:test": "node --test deployment/isolated-renderer/security-check-page.test.mjs deployment/isolated-renderer/player-check-server.test.mjs scripts/isolated-security-report.test.mjs && vitest run --config scripts/vitest-security-check.config.mjs"
+    "security-check:test": "node --test deployment/isolated-renderer/security-check-page.test.mjs deployment/isolated-renderer/worker-check-page.test.mjs deployment/isolated-renderer/player-check-server.test.mjs scripts/isolated-security-report.test.mjs && vitest run --config scripts/vitest-security-check.config.mjs"
   },
   "dependencies": {
     "@notrac/mage": "1.0.3",

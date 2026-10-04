@@ -8,12 +8,12 @@ COPY deployment/isolated-renderer ./deployment/isolated-renderer
 COPY tsconfig*.json ./
 COPY src ./src
 COPY contracts/scenes ./contracts/scenes
-RUN npm run player-check:build && npm run security-check:build
+RUN npm run player-check:build && npm run security-check:build && npm run worker-check:page:build
 
 FROM node:24-bookworm-slim
 WORKDIR /app
 COPY --from=build /app/dist-player-check ./dist-player-check
-COPY deployment/isolated-renderer/player-check-server.mjs deployment/isolated-renderer/live-check-page.mjs deployment/isolated-renderer/security-check-page.mjs ./deployment/isolated-renderer/
+COPY deployment/isolated-renderer/player-check-server.mjs deployment/isolated-renderer/live-check-page.mjs deployment/isolated-renderer/security-check-page.mjs deployment/isolated-renderer/worker-check-page.mjs ./deployment/isolated-renderer/
 COPY scripts/isolated-security-config.mjs ./scripts/
 ENV NODE_ENV=production PORT=80
 USER node

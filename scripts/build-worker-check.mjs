@@ -8,7 +8,7 @@ import { createHostingManifest, integrityOf, renderDocument } from '../deploymen
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const outDir = resolve(root, '.local/worker-check-renderer')
 const compiler = await buildCompilerWorker(root)
-const allowed = new Set(['scripts/worker-check-child.ts', 'scripts/worker-check-runner.ts', 'scripts/worker-check-fixture.ts',
+const allowed = new Set(['scripts/worker-check-local.ts', 'scripts/worker-check-child.ts', 'scripts/worker-check-runner.ts', 'scripts/worker-check-fixture.ts',
   'src/isolated-renderer/compiler/client.ts', 'src/isolated-renderer/compiler/protocol.ts', 'src/isolated-renderer/boundary.ts',
   'node_modules/@notrac/mage/dist/compiled-shader.js'])
 let modules = []
@@ -22,7 +22,7 @@ await build({ root, configFile: false, envDir: false, publicDir: false, envPrefi
     if (modules.some(id => !allowed.has(id))) throw new Error(`Unexpected fixed worker fixture module: ${modules.filter(id => !allowed.has(id)).join(', ')}`)
   } }],
   build: { outDir, emptyOutDir: true, target: 'es2022', sourcemap: false,
-    lib: { entry: resolve(root, 'scripts/worker-check-child.ts'), name: 'MageFixedWorkerCheck', formats: ['iife'] },
+    lib: { entry: resolve(root, 'scripts/worker-check-local.ts'), name: 'MageFixedWorkerCheck', formats: ['iife'] },
     rollupOptions: { output: { entryFileNames: 'assets/renderer-[hash].js', inlineDynamicImports: true } } },
 })
 const assets = await readdir(resolve(outDir, 'assets'))

@@ -26,6 +26,9 @@ const allowedSharedFiles = new Set([
   `${sourcePrefix}modules/player/templates/templateRegistry.ts`,
   `${sourcePrefix}modules/player/templates/versions/v1/definitions.ts`,
   `${rootPrefix}contracts/scenes/scene-limits.v1.json`,
+  `${rootPrefix}scripts/worker-check-child.ts`,
+  `${rootPrefix}scripts/worker-check-runner.ts`,
+  `${rootPrefix}scripts/worker-check-fixture.ts`,
 ])
 let bundledModules = []
 // Inline the separately audited worker in the integrity-pinned renderer. An
@@ -81,7 +84,7 @@ const manifest = createHostingManifest({ bundlePath, bundle, parentOrigins, prod
 await writeFile(resolve(outDir, 'index.html'), renderDocument(manifest))
 await writeFile(resolve(outDir, 'hosting-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
 await writeFile(resolve(outDir, 'build-audit.json'), `${JSON.stringify({
-  sourceModules: bundledModules.filter((id) => id.startsWith(sourcePrefix)).map((id) => id.slice(root.length + 1)),
+  sourceModules: bundledModules.filter((id) => id.startsWith(sourcePrefix) || allowedSharedFiles.has(id)).map((id) => id.slice(root.length + 1)),
   compilerWorker: {
     sourceIntegrity: integrityOf(compilerWorkerSource),
     sourceBytes: Buffer.byteLength(compilerWorkerSource),

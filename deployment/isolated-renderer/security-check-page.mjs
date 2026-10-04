@@ -16,6 +16,7 @@ export function renderSecurityCheckDocument({ scriptPath, scriptIntegrity, style
 <meta http-equiv="Content-Security-Policy" content="${SECURITY_CHECK_CSP}"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
 <title>MAGE browser safety checks</title><link rel="stylesheet" href="./${stylePath}" integrity="${styleIntegrity}"></head>
 <body><main><a href="/player-check/">Music and controls check</a><h1>Browser safety checks</h1>
+<p><strong>Historical iframe checks:</strong> These probes were designed before shader compilation moved into a disposable worker. Their results must not be treated as evidence for the current compiler-worker boundary. Use the <a href="/player-check/worker/">fixed compiler worker checks</a> for current compiler capability and lifetime checks. Network isolation, GPU behavior and the full browser release matrix still require separate verification.</p>
 <p>These fixed checks use MAGE's separate player. They test browser boundaries, failure recovery and an optional short CPU stall. They do not access your account or saved scenes, and do not enable custom-shader playback.</p>
 <p>Run each group on the actual browser and device you want to test. Keep this tab visible until the group finishes. Untested browsers and devices remain unapproved.</p>
 <div class="actions"><button id="boundary" disabled>Check browser boundaries</button><button id="failures" disabled>Check failure recovery</button><button id="stall" disabled>Check a bounded CPU stall</button><button id="stop">Stop checks</button></div>

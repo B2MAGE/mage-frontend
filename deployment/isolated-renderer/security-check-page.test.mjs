@@ -53,6 +53,8 @@ test('page contains fixed opt-in controls and integrity-protected external asset
   assert(html.includes('id="stall" disabled>Check a bounded CPU stall'))
   assert(html.includes('three seconds'))
   assert(html.includes('does not replace testing normal MAGE pages'))
+  assert(html.includes('href="/player-check/worker/"'))
+  assert(html.includes('must not be treated as evidence for the current compiler-worker boundary'))
   assert(!/<input|<textarea|<style|<form|\son\w+=/.test(html))
   assert.equal((html.match(/<script/g) ?? []).length, 1)
   assert(html.includes(`src="./${options.scriptPath}" integrity="${options.scriptIntegrity}" defer`))

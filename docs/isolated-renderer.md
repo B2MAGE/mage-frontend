@@ -216,6 +216,27 @@ Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. This se
 
 ## Live parent verification page
 
+The fixed PP-I04 compiler checks are built with `npm run worker-check:page:build`
+into `dist-player-check/worker/` and served at
+`https://mage.peterbucci.com/player-check/worker/` by the existing verification
+service. Build music first, then security and worker pages; the music build clears
+the root output directory. The Dockerfile performs all three builds in that order.
+Its startup verifier requires and checks the three exact HTML/script/style
+manifests, and rejects worker-page metadata, source parameters and unbuilt files.
+
+The worker-check parent contains no engine, compiler or probe runner. Its CSP
+allows only the exact CloudFront renderer frame and same-origin static assets;
+network requests, parent workers and dynamic evaluation are denied. Production
+addresses and the trailing-slash page path are fixed at build time. The child
+accepts a separate fixed-check protocol that cannot accept source, worker URLs,
+credentials or configurable test programs. Deploy the matching renderer before
+this check page. An older renderer ignores the new protocol and the check times
+out safely; existing music/security routes keep their separate protocols.
+
+This public page records only its fixed compiler capability and lifetime checks.
+It does not approve network isolation, GPU behavior, normal app flows or the full
+browser/device release matrix. Its report explicitly preserves those limits.
+
 `npm run player-check:build` builds a separate music-check parent page into
 `dist-player-check/`, including a three-file integrity manifest. Its exact module allowlist admits the test UI, parent-boundary
 check, playback controller, protocol, shared scene policy and lightweight audio
