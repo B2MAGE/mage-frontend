@@ -1,6 +1,6 @@
-import { createIsolatedPlaybackHost, type IsolatedPlaybackHost } from '../src/modules/player/isolation/playbackHost'
-import { boundedStallSource, portAttackSource, reportProbeSource as reportSource, THROW_PROBE_SOURCE } from './isolated-security-probes.mjs'
-import { createSecurityReport } from './isolated-security-report.mjs'
+import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostDiagnostic } from '../src/modules/player/isolation/playbackHost'
+import { boundedStallSource, portAttackSource, readStallMarker, reportProbeSource as reportSource, THROW_PROBE_SOURCE, type StallMarker } from './isolated-security-probes.mjs'
+import { createSecurityReport, SECURITY_TEST_VERSION, type DiagnosticPhase, type SecurityDiagnostic, type StallObservation } from './isolated-security-report.mjs'
 import { fixedSecurityCheckConfig, isSecurityCheckLocation, securityCanaryUrl, type SecurityCheckMode } from './isolated-security-config.mjs'
 
 export function mountIsolatedSecurityCheck(mode: SecurityCheckMode) {
@@ -16,7 +16,7 @@ let reportRun: number | null = null
 const reportSnapshot = () => report.snapshot({ userAgent: navigator.userAgent, parentOrigin: location.origin, rendererUrl: renderer })
 function updateSavedRuns() {
   const saved = reportSnapshot().runs
-  el('saved-runs').textContent = `This tab retains ${saved.length} check run(s), up to the latest 24. The report includes earlier groups and any cancelled or incomplete runs. Fixed-fixture results do not approve release.`
+  el('saved-runs').textContent = `Test ${SECURITY_TEST_VERSION}; report schema 2. This tab retains ${saved.length} check run(s), up to the latest 24, including cancelled or incomplete runs. Fixed-fixture results do not approve release.`
   el<HTMLButtonElement>('download').disabled = saved.length === 0
   el<HTMLButtonElement>('show-report').disabled = saved.length === 0
   if (!el('report-json').hidden) el('report-json').textContent = JSON.stringify(reportSnapshot(), null, 2)
@@ -32,8 +32,9 @@ function row(token: number, name: string, outcome: Outcome, evidence: string, ex
   el('summary').textContent = `${rows.filter(value => value.outcome === 'PASS').length} passed; ${rows.filter(value => value.outcome === 'FAIL').length} failed. Browser: ${navigator.userAgent}`
 }
 function stop() {
+  activeCleanup?.(); activeCleanup = null
   if (reportRun !== null) { report.finish(reportRun, true); reportRun = null; updateSavedRuns() }
-  run++; activeCleanup?.(); activeCleanup = null; host?.dispose(); host = null
+  run++; host?.dispose(); host = null
   status.textContent = 'Checks stopped. The test player was removed.'
   for (const id of ['boundary', 'failures', 'stall']) el<HTMLButtonElement>(id).disabled = !allowed
 }
@@ -65,14 +66,20 @@ async function countRequests(nonce: string) {
   return value
 }
 const canary = (nonce: string, kind: string) => securityCanaryUrl(mode, nonce, kind)
-async function player(token: number, startupTimeoutMs = mode === 'deployed' ? 15000 : 5000) {
+type TestPlayer = { instance: IsolatedPlaybackHost; frame: HTMLIFrameElement; failed: () => boolean;
+  failure: () => { reason: Extract<PlaybackHostDiagnostic, { type: 'failure' }>['reason']; at: number } | null }
+async function player(token: number, startupTimeoutMs = mode === 'deployed' ? 15000 : 5000,
+  observer?: { diagnostic: (value: PlaybackHostDiagnostic) => void; created: (value: TestPlayer) => void }) {
   assertCurrent(token); host?.dispose(); host = null
-  let failed = false
+  let failure: ReturnType<TestPlayer['failure']> = null
   const instance = createIsolatedPlaybackHost({ container, rendererUrl: renderer, startupTimeoutMs, progressTimeoutMs: 1000,
-    useInlineFrameStyles: false, onFailure() { failed = true }, onStatus(value) { if (token === run) status.textContent = `Test player: ${value}.` } })
+    useInlineFrameStyles: false, onFailure(reason) { if (token === run) failure = { reason, at: performance.now() } },
+    onDiagnostic: observer?.diagnostic, onStatus(value) { if (token === run) status.textContent = `Test player: ${value}.` } })
   host = instance
+  const result: TestPlayer = { instance, frame: container.querySelector('iframe')!, failed: () => failure !== null, failure: () => failure }
+  observer?.created(result)
   await instance.ready; assertCurrent(token)
-  return { instance, frame: container.querySelector('iframe')!, failed: () => failed }
+  return result
 }
 function diagnostics(frame: HTMLIFrameElement, nonce: string, token: number) {
   const source = frame.contentWindow
@@ -199,20 +206,100 @@ async function failureChecks(token: number) {
   missing.dispose(); assertCurrent(token)
 }
 async function boundedStall(token: number) {
-  const p = await player(token, mode === 'deployed' ? 15000 : 1200)
-  const nonce = newNonce(), probe = diagnostics(p.frame, nonce, token)
-  let executed = false
-  void probe.promise.then(checks => { executed = checks['probe-executed'] === true }, () => {})
-  let previous = performance.now(), largestGap = 0
-  const heartbeat = setInterval(() => { const next = performance.now(); largestGap = Math.max(largestGap, next - previous); previous = next }, 50)
+  const reportId = reportRun!, origin = performance.now(), nonce = newNonce()
+  let phase: DiagnosticPhase = 'baseline-startup', current: TestPlayer | null = null, cleaned = false
+  let started = origin, previous = origin, largestGap = 0, heartbeat: ReturnType<typeof setInterval> | null = null
+  let pendingWait: { timer: ReturnType<typeof setTimeout>; reject: (error: Error) => void } | null = null
+  const markers = new Set<StallMarker>()
+  let markerSource: Window | null = null
+  const live = () => token === run && reportRun === reportId && !cleaned
+  function record(value: SecurityDiagnostic) { if (live()) report.diagnostic(reportId, value) }
+  function setPhase(value: DiagnosticPhase) {
+    phase = value; record({ type: 'phase', phase, atMs: performance.now() - origin })
+    status.textContent = `CPU check: ${phase.replaceAll('-', ' ')}.`
+  }
+  function hostDiagnostic(value: PlaybackHostDiagnostic) {
+    const { at, ...details } = value
+    record({ ...details, phase, atMs: at - origin })
+  }
+  function sample() {
+    if (!live()) return
+    const next = performance.now(), gap = next - previous
+    largestGap = Math.max(largestGap, gap); previous = next
+    record({ type: 'parent-timer', phase, atMs: next - origin, gapMs: gap })
+  }
+  function measure() {
+    if (heartbeat !== null) clearInterval(heartbeat)
+    started = previous = performance.now(); largestGap = 0
+    heartbeat = setInterval(sample, 50)
+  }
+  function observation(): StallObservation {
+    const failure = current?.failure()
+    return { elapsedMs: performance.now() - started, maxParentGapMs: largestGap,
+      failureReason: failure?.reason ?? null, failureCallbackAtMs: failure ? failure.at - origin : null,
+      iframeConnected: current?.frame.isConnected ?? false,
+      markerQueued: markers.has('queued'), markerScheduled: markers.has('scheduled'), markerStarted: markers.has('start'), markerEnded: markers.has('end') }
+  }
+  function receive(event: MessageEvent) {
+    if (!live()) return
+    const marker = readStallMarker(event, markerSource, nonce)
+    if (!marker || markers.has(marker.marker)) return
+    markers.add(marker.marker)
+    record({ type: 'marker', phase, atMs: performance.now() - origin, marker: marker.marker, childAtMs: marker.atMs })
+  }
+  function visibility() {
+    record({ type: 'visibility', phase, atMs: performance.now() - origin, state: document.visibilityState === 'visible' ? 'visible' : 'hidden' })
+  }
+  function wait(ms: number) {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => { pendingWait = null; resolve() }, ms)
+      pendingWait = { timer, reject }
+    })
+  }
+  function cleanup() {
+    if (cleaned) return
+    if (heartbeat !== null) sample()
+    report.observeStall(reportId, 'beforeCleanup', observation())
+    setPhase('cleanup')
+    cleaned = true
+    if (heartbeat !== null) clearInterval(heartbeat)
+    if (pendingWait) { clearTimeout(pendingWait.timer); pendingWait.reject(new Error('Checks stopped.')); pendingWait = null }
+    window.removeEventListener('message', receive); document.removeEventListener('visibilitychange', visibility)
+    current?.instance.dispose()
+    if (activeCleanup === cleanup) activeCleanup = null
+  }
+  activeCleanup = cleanup
+  window.addEventListener('message', receive); document.addEventListener('visibilitychange', visibility)
+  const observer = { diagnostic: hostDiagnostic, created: (value: TestPlayer) => { current = value } }
   try {
-    // Deliver the execution marker before blocking the child; destroying a
-    // frame can otherwise discard its still-queued window diagnostic.
+    setPhase('baseline-startup')
+    const baseline = await player(token, mode === 'deployed' ? 15000 : 1200, observer)
+    await baseline.instance.loadScene(scene(''), 'preview'); assertCurrent(token)
+    setPhase('baseline'); measure()
+    await wait(1200); assertCurrent(token); sample()
+    report.observeStall(reportId, 'baseline', observation())
+    clearInterval(heartbeat!); heartbeat = null
+    baseline.instance.dispose()
+    setPhase('stall-startup')
+    const p = await player(token, mode === 'deployed' ? 15000 : 1200, observer)
+    markerSource = p.frame.contentWindow
+    setPhase('stall'); measure()
     void p.instance.loadScene(scene(boundedStallSource(nonce)), 'preview').catch(() => {})
-    await sleep(3600); assertCurrent(token)
-    row(token, 'Bounded child CPU stall is removed', executed && p.failed() && !p.frame.isConnected ? 'PASS' : 'FAIL', `Three-second loop executed: ${executed}; no infinite loop or GPU stress test.`)
-    row(token, 'Parent remains responsive during stall', executed && largestGap < 1000 ? 'PASS' : 'FAIL', `Largest parent timer gap: ${Math.round(largestGap)}ms. This measures this browser run only.`)
-  } finally { probe.cancel(); clearInterval(heartbeat); p.instance.dispose() }
+    await wait(3600); assertCurrent(token); sample()
+    const observed = observation()
+    report.observeStall(reportId, 'observation', observed)
+    // Retain the original pre-loop evidence rule for the fixed scheduled probe. A browser may
+    // discard queued start/end messages when the host removes the blocked child. Scheduling
+    // alone never establishes loop entry; marker receipt remains separate diagnostic evidence.
+    row(token, 'Player is removed during the scheduled CPU probe', observed.markerScheduled && observed.failureReason !== null && !observed.iframeConnected ? 'PASS' : 'FAIL',
+      `Probe scheduled: ${observed.markerScheduled}; loop start received: ${observed.markerStarted}; loop end received: ${observed.markerEnded}; failure callback: ${observed.failureReason ?? 'none'}; iframe connected: ${observed.iframeConnected}. Measured before cleanup. Scheduling alone does not prove loop execution.`)
+    row(token, 'Parent remains responsive during the scheduled CPU probe', observed.markerScheduled && observed.maxParentGapMs < 1000 ? 'PASS' : 'FAIL',
+      `Largest parent timer gap: ${Math.round(observed.maxParentGapMs)}ms; probe scheduled: ${observed.markerScheduled}. Limit remains below 1000ms. Scheduling alone does not prove loop execution. This measures this browser run only.`)
+    // This short follow-up is recorded separately and never changes either verdict above.
+    setPhase('recovery'); measure()
+    await wait(1200); assertCurrent(token); sample()
+    report.observeStall(reportId, 'recovery', observation())
+  } finally { cleanup() }
 }
 async function execute(group: 'boundary' | 'failures' | 'stall') {
   if (!allowed) return

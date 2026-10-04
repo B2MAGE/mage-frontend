@@ -3,11 +3,11 @@
 <body><main><h1>Isolated player safety checks</h1>
 <p>These local checks run fixed test scenes inside the separate renderer. They never send account data or contact external services. Keep this tab visible while a test runs.</p>
 <div class="actions"><button id="boundary">Check browser boundaries</button><button id="failures">Check failure recovery</button><button id="stall">Check a bounded CPU stall</button><button id="stop">Stop checks</button></div>
-<p>The CPU check deliberately blocks only the child for three seconds. It never runs an infinite loop or GPU stress test. A passing result is not a guarantee against browser or GPU hangs.</p>
+<p>The CPU check first measures a benign scene, then runs a fixed loop inside the child for three seconds. Some browsers may also delay the parent page. It never runs an infinite loop or GPU stress test. A short recovery observation is recorded separately and cannot change the original results. A passing result is not a guarantee against browser or GPU hangs.</p>
 <div id="player" aria-label="Isolated test scene"></div><p id="status" role="status">Ready.</p>
 <table><thead><tr><th>Check</th><th>Result</th><th>Evidence</th></tr></thead><tbody id="results"></tbody></table>
 <p id="summary"></p><a href="/">Back to MAGE</a>
 <h2>Save the results</h2>
 <p id="saved-runs"></p><div class="actions"><button id="download" disabled>Download results JSON</button><button id="show-report" disabled>Show report JSON</button></div><pre id="report-json" tabindex="0" hidden></pre>
-<p>The download records browser information, fixed check results, times and local player addresses. It does not contain account data, scene source or storage values. Keep it with the artifact references in the release checklist. Reloading this page clears the report history.</p>
+<p>Report schema 2 records the fixed test version, browser information, check results, timing, local player addresses and a bounded diagnostic timeline. Queued or scheduled markers do not prove the loop started. Failure callbacks and whether the iframe remained connected are captured before cleanup. It does not contain account data, scene source, raw errors or storage values. Keep it with the artifact references in the release checklist. Reloading this page clears the report history.</p>
 </main><script type="module" src="./isolated-security-check.ts"></script></body></html>

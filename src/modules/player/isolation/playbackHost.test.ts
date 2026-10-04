@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createIsolatedPlaybackHost } from './playbackHost'
+import { createIsolatedPlaybackHost, type PlaybackHostDiagnostic } from './playbackHost'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from './playbackProtocol'
 const SESSION='ec40c660-205d-4b63-b6b3-ac3888f8c9aa'
 class Port {
@@ -8,10 +8,10 @@ class Port {
   receive(data:unknown){this.onmessage?.({data} as MessageEvent)}
 }
 const channels:Array<{port1:Port;port2:Port}>=[]
-function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true, progressTimeoutMs = 1000) {
+function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true, progressTimeoutMs = 1000, onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void) {
   const container=document.createElement('div');document.body.append(container)
   const failure=vi.fn(),status=vi.fn(),healthy=vi.fn()
-  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,onHealthy:healthy,startupTimeoutMs:100,progressTimeoutMs,decodeCapture,useInlineFrameStyles})
+  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,onHealthy:healthy,startupTimeoutMs:100,progressTimeoutMs,decodeCapture,useInlineFrameStyles,onDiagnostic})
   const frame=container.querySelector('iframe')!,post=vi.spyOn(frame.contentWindow!,'postMessage').mockImplementation(()=>{})
   frame.dispatchEvent(new Event('load'))
   const port=channels.at(-1)!.port1
@@ -34,6 +34,83 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('reports only lifecycle labels and the parent time of accepted progress',async()=>{
+    const clock=vi.spyOn(performance,'now').mockReturnValue(0),diagnostics:PlaybackHostDiagnostic[]=[]
+    const s=setup(undefined,true,1000,diagnostic=>diagnostics.push(diagnostic));await s.load()
+    clock.mockReturnValue(25);s.progress()
+    s.reply('progress',{frames:1})
+    s.reply('progress',{frames:2},0)
+    s.reply('progress',{frames:2},1,99)
+    s.host.dispose()
+    expect(diagnostics).toEqual([
+      {type:'status',at:0,status:'starting'},
+      {type:'status',at:0,status:'ready'},
+      {type:'status',at:0,status:'loading'},
+      {type:'status',at:0,status:'playing'},
+      {type:'progress',at:25},
+      {type:'status',at:25,status:'disposed'},
+    ])
+  })
+  it('reports a parent scheduling gap resetting silence before the unchanged timeout removes the frame',async()=>{
+    const clock=vi.spyOn(performance,'now').mockReturnValue(0),diagnostics:PlaybackHostDiagnostic[]=[]
+    const s=setup(undefined,true,1000,diagnostic=>diagnostics.push(diagnostic));await s.load()
+    for(const at of [250,500,4500,4750,5000,5250]){
+      clock.mockReturnValue(at);await vi.advanceTimersByTimeAsync(250)
+      expect(s.failure).not.toHaveBeenCalled()
+      expect(s.frame.isConnected).toBe(true)
+    }
+    clock.mockReturnValue(5500);await vi.advanceTimersByTimeAsync(250)
+    expect(diagnostics.filter(diagnostic=>diagnostic.type==='watchdog')).toEqual([
+      {type:'watchdog',at:250,deltaMs:250,silenceMs:0,progressAgeMs:250,resetReason:'recent-progress'},
+      {type:'watchdog',at:500,deltaMs:250,silenceMs:250,progressAgeMs:500,resetReason:'none'},
+      {type:'watchdog',at:4500,deltaMs:4000,silenceMs:0,progressAgeMs:4500,resetReason:'parent-gap'},
+      {type:'watchdog',at:4750,deltaMs:250,silenceMs:250,progressAgeMs:4750,resetReason:'none'},
+      {type:'watchdog',at:5000,deltaMs:250,silenceMs:500,progressAgeMs:5000,resetReason:'none'},
+      {type:'watchdog',at:5250,deltaMs:250,silenceMs:750,progressAgeMs:5250,resetReason:'none'},
+      {type:'watchdog',at:5500,deltaMs:250,silenceMs:1000,progressAgeMs:5500,resetReason:'none'},
+    ])
+    expect(diagnostics.slice(-2)).toEqual([
+      {type:'status',at:5500,status:'error'},
+      {type:'failure',at:5500,reason:'progress-timeout'},
+    ])
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('progress-timeout')
+    expect(s.frame.isConnected).toBe(false)
+    expect(s.port.close).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it('labels inactive and backwards-clock watchdog resets',async()=>{
+    const clock=vi.spyOn(performance,'now').mockReturnValue(0),diagnostics:PlaybackHostDiagnostic[]=[]
+    const s=setup(undefined,true,1000,diagnostic=>diagnostics.push(diagnostic))
+    clock.mockReturnValue(250);await vi.advanceTimersByTimeAsync(250)
+    await s.load();s.host.setPlayback(false)
+    clock.mockReturnValue(500);await vi.advanceTimersByTimeAsync(250)
+    s.host.setPlayback(true)
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('hidden')
+    clock.mockReturnValue(750);await vi.advanceTimersByTimeAsync(250)
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('visible')
+    clock.mockReturnValue(700);await vi.advanceTimersByTimeAsync(250)
+    expect(diagnostics.filter(diagnostic=>diagnostic.type==='watchdog')).toEqual([
+      {type:'watchdog',at:250,deltaMs:250,silenceMs:0,progressAgeMs:250,resetReason:'not-loaded'},
+      {type:'watchdog',at:500,deltaMs:250,silenceMs:0,progressAgeMs:250,resetReason:'paused'},
+      {type:'watchdog',at:750,deltaMs:250,silenceMs:0,progressAgeMs:250,resetReason:'hidden'},
+      {type:'watchdog',at:700,deltaMs:-50,silenceMs:0,progressAgeMs:200,resetReason:'invalid-clock'},
+    ])
+    expect(s.failure).not.toHaveBeenCalled();s.host.dispose()
+  })
+  it.each(['absent','throwing'] as const)('preserves pause, timeout and cleanup with an %s diagnostic observer',async observer=>{
+    const onDiagnostic=observer==='throwing'?vi.fn((diagnostic:PlaybackHostDiagnostic)=>{throw new Error(`Observer failed for ${diagnostic.type}.`)}):undefined
+    const s=setup(undefined,true,1000,onDiagnostic);await s.load();s.progress()
+    s.host.setPlayback(false);await vi.advanceTimersByTimeAsync(1500)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    s.host.setPlayback(true);await vi.advanceTimersByTimeAsync(1249)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('progress-timeout')
+    expect(s.status.mock.calls.map(([status])=>status)).toEqual(['starting','ready','loading','playing','paused','playing','error'])
+    expect(s.frame.isConnected).toBe(false);expect(s.port.onmessage).toBeNull();expect(s.port.close).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+    if(onDiagnostic)expect(onDiagnostic.mock.calls.map(([diagnostic])=>diagnostic.type)).toEqual(expect.arrayContaining(['status','progress','watchdog','failure']))
+  })
   it('requires ten seconds between fresh frame reports and reports subsequent healthy intervals',async()=>{
     const s=setup(undefined,true,30000);await s.load()
     expect(s.healthy).not.toHaveBeenCalled()

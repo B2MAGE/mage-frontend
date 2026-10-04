@@ -7,10 +7,17 @@ import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
 
 type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout>; id: number; generation: number }
 export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed'
+export type PlaybackHostDiagnostic =
+  | { type: 'status'; at: number; status: PlaybackHostStatus }
+  | { type: 'progress'; at: number }
+  | { type: 'watchdog'; at: number; deltaMs: number; silenceMs: number; progressAgeMs: number
+    resetReason: 'closed' | 'not-loaded' | 'paused' | 'hidden' | 'invalid-clock' | 'parent-gap' | 'recent-progress' | 'none' }
+  | { type: 'failure'; at: number; reason: RenderFailure }
 export function createIsolatedPlaybackHost(options: {
   container: HTMLElement; rendererUrl: string; onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void; startupTimeoutMs?: number; progressTimeoutMs?: number
   onHealthy?: () => void
+  onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void
   decodeCapture?: typeof createImageBitmap
   useInlineFrameStyles?: boolean
 }) {
@@ -45,7 +52,13 @@ export function createIsolatedPlaybackHost(options: {
   const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
   // Readiness can fail before a consumer begins waiting; callers still receive the rejection.
   void ready.catch(() => {})
-  const report = (status: PlaybackHostStatus) => { try { options.onStatus?.(status) } catch { /* Observers cannot block cleanup. */ } }
+  const diagnose = (diagnostic: PlaybackHostDiagnostic) => {
+    try { options.onDiagnostic?.(diagnostic) } catch { /* Diagnostics cannot interrupt rendering or cleanup. */ }
+  }
+  const report = (status: PlaybackHostStatus) => {
+    try { options.onStatus?.(status) } catch { /* Observers cannot block cleanup. */ }
+    if (options.onDiagnostic) diagnose({ type: 'status', at: performance.now(), status })
+  }
   function rejectWork(reason: string) {
     for (const pending of [pendingLoad, pendingCapture, pendingCapabilities]) {
       if (pending) { clearTimeout(pending.timer); pending.reject(new Error(reason)) }
@@ -64,7 +77,10 @@ export function createIsolatedPlaybackHost(options: {
     frame.remove(); queuedInput = null; queuedResize = null; queuedZoom = null
     rejectReady(new Error('Isolated player stopped.')); rejectWork('Isolated player stopped.')
     report(failure ? 'error' : 'disposed')
-    if (failure) { try { options.onFailure?.(failure) } catch { /* Already stopped. */ } }
+    if (failure) {
+      try { options.onFailure?.(failure) } catch { /* Already stopped. */ }
+      if (options.onDiagnostic) diagnose({ type: 'failure', at: performance.now(), reason: failure })
+    }
   }
   function onFrameError() { dispose('runtime') }
   function onPageHide() { dispose() }
@@ -115,7 +131,9 @@ export function createIsolatedPlaybackHost(options: {
     if (message.type === 'progress') {
       if (message.requestId !== 0 || message.payload.frames <= lastFrame) return
       lastFrame = message.payload.frames; lastProgress = performance.now(); observedSilence = 0
-      observeHealthyProgress(lastProgress); return
+      observeHealthyProgress(lastProgress)
+      if (options.onDiagnostic) diagnose({ type: 'progress', at: lastProgress })
+      return
     }
     if (message.type === 'capabilities-result') {
       if (!pendingCapabilities || pendingCapabilities.id !== message.requestId) return
@@ -167,10 +185,16 @@ export function createIsolatedPlaybackHost(options: {
     const now = performance.now(), delta = now - previousObservation
     previousObservation = now
     if (closed || !loaded || !playing || document.visibilityState === 'hidden' || delta < 0 || delta > 2000) {
-      observedSilence = 0; resetHealthyProgress(); return
+      observedSilence = 0; resetHealthyProgress()
+      if (options.onDiagnostic) diagnose({ type: 'watchdog', at: now, deltaMs: delta, silenceMs: observedSilence,
+        progressAgeMs: now - lastProgress, resetReason: closed ? 'closed' : !loaded ? 'not-loaded' : !playing ? 'paused'
+          : document.visibilityState === 'hidden' ? 'hidden' : delta < 0 ? 'invalid-clock' : 'parent-gap' })
+      return
     }
     if (now - lastProgress < 500) observedSilence = 0
     else observedSilence += delta
+    if (options.onDiagnostic) diagnose({ type: 'watchdog', at: now, deltaMs: delta, silenceMs: observedSilence,
+      progressAgeMs: now - lastProgress, resetReason: now - lastProgress < 500 ? 'recent-progress' : 'none' })
     if (observedSilence >= progressMs) dispose('progress-timeout')
   }, 250)
   frame.addEventListener('load', connect); frame.addEventListener('error', onFrameError)
