@@ -6,7 +6,7 @@ Normal player and availability integration is merged and deployed. PP-I03 has be
 
 PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232) at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222) is **Done**. The owner accepted user-reported worker-test passes on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; collecting them remains in PP-I03 release verification. No independent mobile run is claimed.
 
-PP-I05's compiled-output policy is implemented and committed locally on `pp-i05-compiled-output-policy`, with status **To Verify**. It has not been pushed, merged or deployed and does not grant public release approval. Local verification passed the full application suite (1,907 tests), the final 14 artifact contract tests and 128 focused engine/runtime tests, clean-package patch reproduction across 116 fixtures at two ceilings, lint, TypeScript, builds and hosting checks. The final local worker browser check passed 11/11 and the normal Home featured scene rendered after explicit retry. See [PP-I05 local evidence](isolated-renderer.md#pp-i05-compiled-output-policy--local-implementation) for scope and evidence paths. The deployed artifact identifiers below remain the PP-I04 evidence.
+PP-I05 is merged through [PR #233](https://github.com/B2MAGE/mage-frontend/pull/233) and the fixed-report compatibility follow-up [PR #234](https://github.com/B2MAGE/mage-frontend/pull/234). The renderer, check service and normal frontend deployed from `9f1d50bc2886136999a963cb78770d035fdfeb08`; [issue #223](https://github.com/B2MAGE/mage-frontend/issues/223) is **Done**. The deployment evidence below supersedes I04 artifacts. Public custom rendering remains disabled. PP-I06 continues the player lifecycle work; PP-I03 retains the wider release decision.
 
 Use the [browser/device checklist](custom-shader-release-checklist.md) and [result template](custom-shader-release-result.template.json) for the remaining runs. The recovery epic is complete; its closure does not approve arbitrary-source playback.
 
@@ -75,7 +75,7 @@ Sanitized evidence and logs are retained locally under frontend `.local/deployme
 
 The connected browser inventory only exposes the Windows in-app browser; requesting desktop Chrome automation returned unavailable. Actual Chrome, Edge, Firefox, Safari and mobile runs remain unverified. No viewport emulation, user-agent string, automated unit test or fixed music sample is counted as a substitute. Public release remains unapproved until the required browser/device and production-equivalent normal-app checks are complete.
 
-## PP-I05 local compiled-output policy
+## PP-I05 compiled-output policy and deployment
 
 The implementation retains artifact version 1 but adds independent validation
 in the worker receiver and the patched engine before graphics allocation. The
@@ -105,13 +105,27 @@ worker diagnostics/source never reach the UI.
 
 See [the architecture policy](isolated-renderer.md#pp-i05-compiled-output-policy--local-implementation)
 and `.local/pp-i05-budget-compatibility.md` for the code-derived policy and the
-16-preset compatibility audit. Local implementation still awaits integration
-validation; no final full-suite or browser result is claimed here. This work
-does not deploy a new artifact, change the historical hashes below or approve
-public custom execution. Future deployment is child first, then the matching
-parent, with gates off: playback protocol remains v2, and an older parent safely
-rejects the new fixed error code as a generic failure. Accepted finite programs
-can still stress a driver; this is not a general GPU-containment guarantee.
+16-preset compatibility audit. The final pre-merge application suite passed 1,907
+tests, artifact contract 14/14, and focused engine/runtime 128/128. A clean patched
+published package compiled all 16 presets and 100 demo fixtures at ceilings 32
+and 200. The report compatibility follow-up passed 21 Node and 9 UI tests plus
+all three check-page builds. Accepted finite programs can still stress a driver;
+this is not a general GPU-containment guarantee.
+
+### Production verification — October 4, 2026
+
+| Item | Recorded result |
+| --- | --- |
+| Source and rollout | `9f1d50bc2886136999a963cb78770d035fdfeb08`; exact child asset transition first, matching parent services next, then final single-asset policy. No new AWS resources or backend changes. |
+| Renderer | `assets/renderer-C_SgAeRr.js`, 17,766,528 bytes; SHA-256 `ce36780ac674085ad38353309f50a1f7f6978d69760b975c1bf10b62f3fec0cc`. Final CloudFormation `UPDATE_COMPLETE`; final document, hash, headers and denied paths verified from CloudShell and the frozen official production verifier. |
+| Check service | Coolify deployment `h6gkd6wgx1k079seskcdow9r`, Finished and healthy. Clean LF Docker build, 26 local HTTP checks, and 31/31 deployed checks matched the exact exported runtime files. |
+| Normal frontend | Coolify deployment `dtg6r409wrlwkzsifpmzas2a`, Finished. Entry `/assets/index-BnCY9eJE.js`; HTTP 200 with exact `frame-src https://d2wwpgc7sgvmnm.cloudfront.net/index.html`. Aurora Drift Watch playback succeeded with both the prior and updated parent. |
+| Live fixed checks | In-app Chromium worker 11/11; maximum parent gap 63 ms, stall termination 2,002.4 ms. Music check exercised test rhythm, scene replacement, seeking, pause/resume, capture and resource cleanup. These are not new mobile/browser-matrix results. |
+| Gates | Public `/api/rendering-status`: `enabled: false`, `CUSTOM_RENDERING_DISABLED`. No release approval or global switch changes. |
+
+Frozen artifact, exact templates, rollback source and verification evidence remain
+under `.local/deployments/pp-i05-output-policy-9f1d50b/`. The old I04 immutable asset
+and versioned document remain available for the reviewed rollback procedure.
 
 ## Production rollout — October 3, 2026
 

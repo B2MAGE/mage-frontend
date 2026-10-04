@@ -106,6 +106,50 @@ describe('scene editor recovery', () => {
     await userEvent.setup().click(retry)
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(source, expect.any(Object)))
   })
+
+  it('keeps a compiler-rejected custom draft editable and exports its exact text without replacing the saved thumbnail', async () => {
+    vi.mocked(createMagePlayer).mockReset()
+    storeSceneEditorSession()
+    const player = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(player)
+    mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
+      ? jsonResponse(buildSceneEditorApiScene({ sceneData: { visualizer: { shader: 'sphere(0.7);' } }, thumbnailRef: '/saved.png', tags: [] })) : undefined)
+    const user = userEvent.setup()
+    renderEditScenePage(undefined, 'mage-pulse')
+    await waitFor(() => expect(player.loadSceneBlob).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+    const draft = '{\n  "visualizer": { "shader": "while (true) { sphere(0.7); }" }\n}\n'
+    vi.mocked(player.loadSceneBlob).mockRejectedValue(new Error('Shader compiler rejected this draft.'))
+    fireEvent.change(screen.getByLabelText('Scene Data JSON'), { target: { value: draft } })
+    await screen.findByText('Shader compiler rejected this draft.')
+    expect(screen.getByLabelText('Scene Data JSON')).toHaveValue(draft)
+
+    await user.click(screen.getByRole('button', { name: /^Details$/ }))
+    expect(screen.getByAltText('Captured thumbnail preview')).toHaveAttribute('src', '/saved.png')
+    fireEvent.change(screen.getByLabelText(/scene name/i), { target: { value: 'Still editable after rejection' } })
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Still editable after rejection')
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(screen.getByLabelText('Scene Data JSON')).toHaveValue(draft)
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:rejected-draft')
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const downloads: { filename: string; href: string }[] = []
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push({ filename: this.download, href: this.href })
+    })
+    await user.click(screen.getByRole('button', { name: 'Download scene JSON' }))
+    const exported = createUrl.mock.calls[0][0] as Blob
+    const exportedText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(reader.error)
+      reader.readAsText(exported)
+    })
+    expect(exportedText).toBe(draft)
+    expect(downloads).toEqual([{ filename: 'scene-12.json', href: 'blob:rejected-draft' }])
+    expect(revokeUrl).toHaveBeenCalledWith('blob:rejected-draft')
+    expect(player.captureFramePreview).not.toHaveBeenCalled()
+  })
 })
 
 // This suite tests existing playback behavior with server permission already granted.
