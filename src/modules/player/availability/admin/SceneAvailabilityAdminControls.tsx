@@ -11,6 +11,7 @@ import {
 import './sceneAvailabilityAdmin.css'
 
 type Controls = { capabilities: AdminCapabilities; custom: CustomRenderingControl | null; scene: SceneControl | null }
+type AvailabilityTool = 'scene' | 'global'
 
 export function SceneAvailabilityAdminControls({ sceneId }: { sceneId: number }) {
   const { accessToken, authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
@@ -72,6 +73,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
   const [controls, setControls] = useState<Controls | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [pending, setPending] = useState(false)
+  const [selectedTool, setSelectedTool] = useState<AvailabilityTool>('scene')
   const [sceneReason, setSceneReason] = useState('')
   const [globalReason, setGlobalReason] = useState('')
   const [notice, setNotice] = useState<{ error: boolean; text: string } | null>(null)
@@ -80,9 +82,11 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
   const sceneReasonId = useId()
   const globalReasonId = useId()
   const dialogId = useId()
+  const toolId = useId()
 
   function closeDialog() {
     setIsOpen(false)
+    setSelectedTool('scene')
     setSceneReason('')
     setGlobalReason('')
     setNotice(null)
@@ -117,6 +121,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       if (!active(signal)) return
       if (!scene) setSceneReason('')
       if (!custom) setGlobalReason('')
+      setSelectedTool((current) => current === 'global' && custom ? 'global' : scene ? 'scene' : 'global')
       setControls({ capabilities, custom, scene })
     } catch (error) {
       // Includes the refresh after a committed mutation: old permissions and
@@ -167,7 +172,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
     }
   }
 
-  async function handleSubmit(event: FormEvent, target: 'scene' | 'global') {
+  async function handleSubmit(event: FormEvent, target: AvailabilityTool) {
     event.preventDefault()
     const signal = lifecycle.current?.signal
     if (!controls || !signal || !active(signal) || busy.current) return
@@ -224,6 +229,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
 
   if (!controls) return null
   const customEnabled = controls.custom?.enabled && controls.custom.releaseApproved
+  const activeTool = selectedTool === 'scene' && controls.scene ? 'scene' : controls.custom ? 'global' : 'scene'
   return <>
     <button
       type="button"
@@ -238,29 +244,41 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       <Shield size={18} aria-hidden="true" />
     </button>
     {isOpen ? <AvailabilityDialog id={dialogId} onClose={closeDialog}>
-    <div className="scene-availability-admin__content" aria-busy={pending}>
-      <p className="scene-availability-admin__intro">Changes apply to everyone. Reasons stay private to moderators and administrators.</p>
-      {controls.scene ? <form onSubmit={(event) => void handleSubmit(event, 'scene')}>
-        <h3>This scene</h3>
-        <p>{controls.scene.disabled ? 'Disabled by an operator.' : 'Allowed by scene controls.'}</p>
-        <AuditDetails control={controls.scene} />
-        <label htmlFor={sceneReasonId}>Reason for this scene change</label>
-        <textarea id={sceneReasonId} value={sceneReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setSceneReason(event.target.value)} />
-        <button type="submit" disabled={pending || !sceneReason.trim()}>{controls.scene.disabled ? 'Re-enable scene' : 'Disable scene'}</button>
-      </form> : null}
-      {controls.custom ? <form onSubmit={(event) => void handleSubmit(event, 'global')}>
-        <h3>Custom rendering across MAGE</h3>
-        <p>{customEnabled ? 'Custom rendering is enabled.' : 'Custom rendering is disabled.'}</p>
-        {!controls.custom.releaseApproved ? <p>Enabling is unavailable until the isolation release checks are approved.</p> : null}
-        <AuditDetails control={controls.custom} />
-        <label htmlFor={globalReasonId}>Reason for the platform change</label>
-        <textarea id={globalReasonId} value={globalReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setGlobalReason(event.target.value)} />
-        <button type="submit" disabled={pending || !globalReason.trim() || (!controls.custom.enabled && !controls.custom.releaseApproved)}>{controls.custom.enabled ? 'Disable custom rendering for everyone' : 'Enable custom rendering'}</button>
-      </form> : null}
-      {pending ? <p role="status">Updating availability…</p> : null}
-      {notice ? <p role={notice.error ? 'alert' : 'status'}>{notice.text}</p> : null}
-      <button type="button" disabled={pending} onClick={() => void handleRefresh()}>Refresh status</button>
-    </div>
+      <div className="scene-availability-admin__content" aria-busy={pending}>
+        <div className="scene-availability-admin__tool">
+          <label htmlFor={toolId}>Tool</label>
+          <select id={toolId} value={activeTool} disabled={pending || !controls.scene || !controls.custom} onChange={(event) => {
+            setSelectedTool(event.target.value as AvailabilityTool)
+            setSceneReason('')
+            setGlobalReason('')
+            setNotice(null)
+          }}>
+            {controls.scene ? <option value="scene">This scene</option> : null}
+            {controls.custom ? <option value="global">Custom rendering across MAGE</option> : null}
+          </select>
+        </div>
+        <p className="scene-availability-admin__intro">
+          {activeTool === 'scene' ? 'Control playback of this scene for everyone.' : 'Control custom shader playback across the entire platform.'} Reasons stay private to moderators and administrators.
+        </p>
+        {activeTool === 'scene' && controls.scene ? <form onSubmit={(event) => void handleSubmit(event, 'scene')}>
+          <p>{controls.scene.disabled ? 'Disabled by an operator.' : 'Allowed by scene controls.'}</p>
+          <AuditDetails control={controls.scene} />
+          <label htmlFor={sceneReasonId}>Reason for this scene change</label>
+          <textarea id={sceneReasonId} value={sceneReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setSceneReason(event.target.value)} />
+          <button type="submit" disabled={pending || !sceneReason.trim()}>{controls.scene.disabled ? 'Re-enable scene' : 'Disable scene'}</button>
+        </form> : null}
+        {activeTool === 'global' && controls.custom ? <form onSubmit={(event) => void handleSubmit(event, 'global')}>
+          <p>{customEnabled ? 'Custom rendering is enabled.' : 'Custom rendering is disabled.'}</p>
+          {!controls.custom.releaseApproved ? <p>Enabling is unavailable until the isolation release checks are approved.</p> : null}
+          <AuditDetails control={controls.custom} />
+          <label htmlFor={globalReasonId}>Reason for the platform change</label>
+          <textarea id={globalReasonId} value={globalReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setGlobalReason(event.target.value)} />
+          <button type="submit" disabled={pending || !globalReason.trim() || (!controls.custom.enabled && !controls.custom.releaseApproved)}>{controls.custom.enabled ? 'Disable custom rendering for everyone' : 'Enable custom rendering'}</button>
+        </form> : null}
+        {pending ? <p role="status">Updating availability…</p> : null}
+        {notice ? <p role={notice.error ? 'alert' : 'status'}>{notice.text}</p> : null}
+        <button type="button" disabled={pending} onClick={() => void handleRefresh()}>Refresh status</button>
+      </div>
     </AvailabilityDialog> : null}
   </>
 }

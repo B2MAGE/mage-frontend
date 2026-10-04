@@ -10,8 +10,10 @@
 .scene-availability-admin__close:hover { background: var(--surface-hover); color: var(--text); }
 .scene-availability-admin__content { display: grid; gap: 20px; }
 .scene-availability-admin__content form { display: grid; justify-items: start; gap: 9px; min-width: 0; }
-.scene-availability-admin__content form + form { padding-top: 20px; border-top: 1px solid var(--border); }
-.scene-availability-admin__content h3 { margin: 0; font-size: 14px; }
+.scene-availability-admin__tool { display: grid; gap: 8px; min-width: 0; }
+.scene-availability-admin__tool label { font-weight: 650; }
+.scene-availability-admin__tool select { width: 100%; min-width: 0; min-height: 40px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.scene-availability-admin__tool select:disabled { opacity: .7; }
 .scene-availability-admin__content p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
 .scene-availability-admin__intro, .scene-availability-admin__audit { color: var(--text-muted); }
 .scene-availability-admin__audit { display: grid; gap: 4px; font-size: 12px; }

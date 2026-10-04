@@ -85,7 +85,7 @@ describe('SceneAvailabilityAdminControls', () => {
     expect(screen.queryByLabelText('Reason for this scene change')).not.toBeInTheDocument()
     await userEvent.click(trigger)
     expect(await screen.findByRole('dialog', { name: 'Playback availability' })).toHaveAttribute('open')
-    expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(2)
+    expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(1)
   })
 
   it.each(['close button', 'native Escape cancellation'] as const)('dismisses the dialog with %s and returns focus without changing availability', async method => {
@@ -95,7 +95,8 @@ describe('SceneAvailabilityAdminControls', () => {
     await user.click(trigger)
     const dialog = await screen.findByRole('dialog', { name: 'Playback availability' })
     await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement))
-    await user.type(screen.getByLabelText('Reason for this scene change'), 'Unsubmitted private reason')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tool' }), 'global')
+    await user.type(screen.getByLabelText('Reason for the platform change'), 'Unsubmitted private reason')
     if (method === 'close button') await user.click(screen.getByRole('button', { name: 'Close playback availability' }))
     else fireEvent(dialog, new Event('cancel', { cancelable: true }))
     expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
@@ -106,13 +107,16 @@ describe('SceneAvailabilityAdminControls', () => {
     expect(mocks.invalidate).not.toHaveBeenCalled()
     await user.click(trigger)
     expect(await screen.findByRole('dialog', { name: 'Playback availability' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toHaveValue('scene')
     expect(screen.getByLabelText('Reason for this scene change')).toHaveValue('')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tool' }), 'global')
+    expect(screen.getByLabelText('Reason for the platform change')).toHaveValue('')
   })
 
   it('shows private audit only after server permission and requires an explicit reason', async () => {
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
-    expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(2)
+    expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Disable scene' })).toBeDisabled()
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), '   ')
     expect(screen.getByRole('button', { name: 'Disable scene' })).toBeDisabled()
@@ -132,6 +136,11 @@ describe('SceneAvailabilityAdminControls', () => {
     const button = screen.getByRole('button', { name: 'Disable scene' })
     await userEvent.dblClick(button)
     expect(button).toBeDisabled()
+    const tool = screen.getByRole('combobox', { name: 'Tool' })
+    expect(tool).toBeDisabled()
+    await userEvent.selectOptions(tool, 'global')
+    expect(tool).toHaveValue('scene')
+    expect(screen.queryByLabelText('Reason for the platform change')).not.toBeInTheDocument()
     expect(mocks.fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(1)
     expect(mocks.fetcher).toHaveBeenCalledWith('/admin/scenes/23/availability', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ disabled: true, reason: 'Confirmed GPU failure' }) }))
     await act(async () => saving.resolve(response({ ...scene, disabled: true })))
@@ -139,6 +148,7 @@ describe('SceneAvailabilityAdminControls', () => {
     expect(screen.getByText('Reason: Confirmed GPU failure')).toBeInTheDocument()
     expect(screen.getByLabelText('Reason for this scene change')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Re-enable scene' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toBeEnabled()
     expect(mocks.invalidate).toHaveBeenCalledWith(23)
     const invalidateOrder = mocks.invalidate.mock.invocationCallOrder[0]
     const firstRefresh = mocks.fetcher.mock.calls.findIndex(([path], index) => index > 4 && path === '/admin/capabilities')
@@ -149,6 +159,7 @@ describe('SceneAvailabilityAdminControls', () => {
     mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, { ...custom, enabled: false, releaseApproved: false }))
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Tool' }), 'global')
     await userEvent.type(screen.getByLabelText('Reason for the platform change'), 'Ready')
     expect(screen.getByRole('button', { name: 'Enable custom rendering' })).toBeDisabled()
     expect(screen.getByText('Enabling is unavailable until the isolation release checks are approved.')).toBeInTheDocument()
@@ -162,6 +173,7 @@ describe('SceneAvailabilityAdminControls', () => {
     })
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Tool' }), 'global')
     await userEvent.type(screen.getByLabelText('Reason for the platform change'), 'Release checks passed')
     await userEvent.click(screen.getByRole('button', { name: 'Enable custom rendering' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('cannot be enabled until the isolation release checks are approved')
@@ -237,6 +249,9 @@ describe('SceneAvailabilityAdminControls', () => {
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
     expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(1)
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toHaveValue('scene')
+    expect(screen.queryByRole('option', { name: 'Custom rendering across MAGE' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Custom rendering across MAGE' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Reason for the platform change')).not.toBeInTheDocument()
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Broken scene confirmed')
@@ -245,6 +260,83 @@ describe('SceneAvailabilityAdminControls', () => {
     expect(screen.getByRole('button', { name: 'Re-enable scene' })).toBeDisabled()
     expect(mocks.fetcher.mock.calls.some(([path]) => path === '/admin/rendering/custom')).toBe(false)
     expect(mocks.invalidate).toHaveBeenCalledWith(23)
+  })
+
+  it('shows one tool at a time and never carries drafts or a saved notice into another tool', async () => {
+    const user = userEvent.setup()
+    let globallyEnabled = true
+    mocks.fetcher.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        globallyEnabled = false
+        return response({ ...custom, enabled: false })
+      }
+      return readResponse(path, { ...scene, reason: 'Scene audit' }, { ...custom, enabled: globallyEnabled, reason: 'Global audit' })
+    })
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    const tool = screen.getByRole('combobox', { name: 'Tool' })
+    expect(tool).toHaveValue('scene')
+    expect(screen.getAllByRole('textbox')).toHaveLength(1)
+    expect(screen.getByText('Reason: Scene audit')).toBeInTheDocument()
+    expect(screen.queryByText('Reason: Global audit')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Reason for this scene change'), 'Scene draft')
+    await user.selectOptions(tool, 'global')
+    expect(screen.getAllByRole('textbox')).toHaveLength(1)
+    expect(screen.getByLabelText('Reason for the platform change')).toHaveValue('')
+    expect(screen.queryByLabelText('Reason for this scene change')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reason: Scene audit')).not.toBeInTheDocument()
+    expect(screen.getByText('Reason: Global audit')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Reason for the platform change'), 'Global draft')
+    await user.selectOptions(tool, 'scene')
+    expect(screen.getByLabelText('Reason for this scene change')).toHaveValue('')
+    expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+    await user.selectOptions(tool, 'global')
+    expect(screen.getByLabelText('Reason for the platform change')).toHaveValue('')
+    await user.type(screen.getByLabelText('Reason for the platform change'), 'Platform incident')
+    await user.click(screen.getByRole('button', { name: 'Disable custom rendering for everyone' }))
+    expect(await screen.findByText('Custom rendering availability updated.')).toBeInTheDocument()
+    expect(mocks.fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')).toEqual([
+      ['/admin/rendering/custom', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ enabled: false, reason: 'Platform incident' }) })],
+    ])
+    expect(mocks.invalidate).toHaveBeenCalledWith(undefined)
+    await user.selectOptions(tool, 'scene')
+    expect(screen.queryByText('Custom rendering availability updated.')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Reason for this scene change')).toHaveValue('')
+  })
+
+  it('selects the sole global tool without requesting or displaying scene controls', async () => {
+    const capabilities = { canModerateScenes: false, canManageModerators: false, canManageCustomRendering: true }
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, custom, capabilities))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toHaveValue('global')
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toBeDisabled()
+    expect(screen.queryByRole('option', { name: 'This scene' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('textbox')).toHaveLength(1)
+    expect(screen.getByLabelText('Reason for the platform change')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Reason for this scene change')).not.toBeInTheDocument()
+    expect(mocks.fetcher.mock.calls.some(([path]) => path === '/admin/scenes/23/availability')).toBe(false)
+  })
+
+  it('falls back to the scene tool and clears the private global draft when a refresh removes global permission', async () => {
+    let capabilities = adminCapabilities
+    mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, { ...custom, reason: 'Global-only audit' }, capabilities))
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    await openControls()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Tool' }), 'global')
+    await userEvent.type(screen.getByLabelText('Reason for the platform change'), 'Private platform draft')
+    const originalGlobalReads = mocks.fetcher.mock.calls.filter(([path]) => path === '/admin/rendering/custom').length
+    capabilities = moderatorCapabilities
+    await userEvent.click(screen.getByRole('button', { name: 'Refresh status' }))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Tool' })).toHaveValue('scene'))
+    expect(screen.getByRole('dialog', { name: 'Playback availability' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Tool' })).toBeDisabled()
+    expect(screen.queryByRole('option', { name: 'Custom rendering across MAGE' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Reason for the platform change')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reason: Global-only audit')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Reason for this scene change')).toHaveValue('')
+    expect(mocks.fetcher.mock.calls.filter(([path]) => path === '/admin/rendering/custom')).toHaveLength(originalGlobalReads)
+    expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
   })
 
   it('rechecks capabilities before submitting and never sends a write after a moderator is revoked', async () => {
@@ -267,6 +359,7 @@ describe('SceneAvailabilityAdminControls', () => {
     mocks.fetcher.mockImplementation(async (path: string) => readResponse(path, scene, custom, capabilities))
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await openControls()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Tool' }), 'global')
     await userEvent.type(screen.getByLabelText('Reason for the platform change'), 'Private platform reason')
     const originalGlobalReads = mocks.fetcher.mock.calls.filter(([path]) => path === '/admin/rendering/custom').length
     capabilities = moderatorCapabilities
