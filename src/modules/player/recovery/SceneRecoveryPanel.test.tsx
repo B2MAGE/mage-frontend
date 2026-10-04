@@ -9,6 +9,7 @@ describe('SceneRecoveryPanel', () => {
     ['stopped', 'Resume scene', /you paused this scene/i],
     ['interrupted', 'Retry scene', /may have been interrupted/i],
     ['runtime', 'Retry scene', /playback error/i],
+    ['compile', 'Retry scene', /simplify the shader code or choose a template/i],
   ] as const)('explains %s beneath the shared title and keeps its action outside the live announcement', async (reason, action, message) => {
     const onRetry = vi.fn()
     render(<SceneRecoveryPanel block={{ reason, at: 1 }} safeMode={false} onRetry={onRetry} onSafeModeChange={vi.fn()} />)
@@ -22,7 +23,7 @@ describe('SceneRecoveryPanel', () => {
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
-  it.each(['stopped', 'interrupted', 'runtime'] satisfies RecoveryReason[])('requires turning off the global pause before resuming a %s scene', async (reason) => {
+  it.each(['stopped', 'interrupted', 'runtime', 'compile'] satisfies RecoveryReason[])('requires turning off the global pause before resuming a %s scene', async (reason) => {
     const onRetry = vi.fn()
     const onSafeModeChange = vi.fn()
     render(<SceneRecoveryPanel block={{ reason, at: 1 }} safeMode onRetry={onRetry} onSafeModeChange={onSafeModeChange} />)

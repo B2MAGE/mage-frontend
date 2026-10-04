@@ -23,6 +23,7 @@ export type PlaybackEngine = {
 }
 export type PlaybackLoader = (options: {
   canvas: HTMLCanvasElement; scene: unknown; profile: RenderProfile; signal: AbortSignal
+  sceneRevision?: number
   onError: () => void; onFrame: () => void
 }) => Promise<PlaybackEngine>
 
@@ -37,7 +38,7 @@ const noShortcuts: InputState = { requestToggleUI: false, requestResetVisualizer
   requestNextShader: false, requestPreviousShader: false, requestWheelDirection: 0 }
 
 /** Only validated scene data and numbers enter this engine; no media loader is exposed. */
-export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, onError, onFrame }) => {
+export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, sceneRevision = 1, onError, onFrame }) => {
   const resolved = resolveSceneForPlayback(validateSceneForPlayback(scene)).engineScene
   validateSceneForPlayback(resolved)
   // Defense in depth for callers other than the protocol validator.
@@ -46,7 +47,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   const shader = (resolved.visualizer as { shader: string }).shader
   // Finish and retire submitted JavaScript before allocating the renderer. An
   // unavailable worker is an error, never permission to compile in this frame.
-  const artifact = await compileInWorker(shader, { signal, maxRaymarchIterations: renderBudget.maxRaymarchIterations })
+  const artifact = await compileInWorker(shader, { signal, sceneRevision, maxRaymarchIterations: renderBudget.maxRaymarchIterations })
   signal.throwIfAborted()
   const { initMAGE } = await import('@notrac/mage')
   signal.throwIfAborted()

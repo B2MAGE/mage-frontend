@@ -31,8 +31,8 @@ try {
 
 scope.addEventListener('message', (event: MessageEvent<unknown>) => {
   if (!isCompileRequest(event.data)) { close(); return }
-  const { jobId, source, maxRaymarchIterations } = event.data
-  const envelope = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId }
+  const { jobId, channelId, sceneRevision, source, maxRaymarchIterations } = event.data
+  const envelope = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId, channelId, sceneRevision }
   try {
     if (!restricted) throw new Error('Worker restrictions unavailable.')
     send({ ...envelope, type: 'started' })

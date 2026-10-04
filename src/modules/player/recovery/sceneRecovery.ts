@@ -1,5 +1,6 @@
 export type RecoveryReason =
   | 'load'
+  | 'compile'
   | 'runtime'
   | 'context-lost'
   | 'startup-timeout'
@@ -22,7 +23,7 @@ const channelName = 'mage.scene-recovery.owners.v1'
 const keyPattern = /^sr1:[a-f0-9]{32}:[a-f0-9]{32}$/
 const ownerPattern = /^[a-zA-Z0-9_-]{1,80}$/
 const reasons = new Set<RecoveryReason>([
-  'load', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'stopped', 'interrupted',
+  'load', 'compile', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'stopped', 'interrupted',
 ])
 
 /** A bounded, incremental content fingerprint; this is an identity, not a security signature. */

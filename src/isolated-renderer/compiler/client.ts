@@ -1,6 +1,7 @@
 import { normalizeCompiledShader, type CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
-import { COMPILER_LIMITS, COMPILER_PROTOCOL, COMPILER_VERSION, dataRecord, validCeiling, validSource,
+import { COMPILER_LIMITS, COMPILER_PROTOCOL, COMPILER_VERSION, dataRecord, validCeiling, validSource, validRevision,
   type CompileRequest } from './protocol'
+import { ShaderCompilationError, type ShaderCompilationFailure } from './errors'
 
 declare const __MAGE_COMPILER_WORKER_SOURCE__: string
 
@@ -16,7 +17,7 @@ type Dependencies = { createWorker?: () => CompilerWorkerHandle; observe?: (even
 export function createCompilerWorker(): CompilerWorkerHandle {
   if (typeof Worker !== 'function' || typeof URL.createObjectURL !== 'function'
     || typeof __MAGE_COMPILER_WORKER_SOURCE__ !== 'string' || !__MAGE_COMPILER_WORKER_SOURCE__) {
-    throw new Error('Shader compilation is unavailable in this browser.')
+    throw new ShaderCompilationError('unavailable')
   }
   const url = URL.createObjectURL(new Blob([__MAGE_COMPILER_WORKER_SOURCE__], { type: 'text/javascript' }))
   try {
@@ -26,15 +27,16 @@ export function createCompilerWorker(): CompilerWorkerHandle {
 }
 
 /** A fresh worker owns exactly one job. Progress never extends its absolute deadline. */
-export function compileInWorker(source: string, options: { signal: AbortSignal; maxRaymarchIterations: number },
+export function compileInWorker(source: string, options: { signal: AbortSignal; maxRaymarchIterations: number; sceneRevision?: number },
   dependencies: Dependencies = {}): Promise<CompiledShaderArtifact> {
-  const { signal, maxRaymarchIterations } = options
+  const { signal, maxRaymarchIterations, sceneRevision = 1 } = options
   if (signal.aborted) return Promise.reject(new DOMException('Compilation cancelled.', 'AbortError'))
-  if (!validSource(source) || !validCeiling(maxRaymarchIterations)) return Promise.reject(new Error('Invalid shader compilation request.'))
+  if (!validSource(source) || !validCeiling(maxRaymarchIterations) || !validRevision(sceneRevision)) return Promise.reject(new Error('Invalid shader compilation request.'))
   return new Promise((resolve, reject) => {
     let handle: CompilerWorkerHandle | null = null
-    let complete = false, started = false
-    const jobId = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+    let complete = false, started = false, messages = 0
+    const randomId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+    const jobId = randomId(), channelId = randomId()
     const deadline = performance.now() + COMPILER_LIMITS.deadlineMs
     const observe = (event: CompilerLifecycleEvent) => {
       try { dependencies.observe?.(event) } catch { /* Diagnostics cannot alter lifetime. */ }
@@ -48,7 +50,8 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
       try { current.release() } catch { /* Cleanup must not strand the pending load. */ }
       observe({ type: 'terminated', reason })
     }
-    const finish = (reason: 'complete' | 'error' | 'timeout' | 'abort', artifact?: CompiledShaderArtifact) => {
+    const finish = (reason: 'complete' | 'error' | 'timeout' | 'abort', artifact?: CompiledShaderArtifact,
+      failure: ShaderCompilationFailure = 'failed') => {
       if (complete) return
       complete = true
       clearTimeout(timer)
@@ -56,7 +59,7 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
       retire(reason)
       if (reason === 'complete' && artifact) resolve(artifact)
       else if (reason === 'abort') reject(new DOMException('Compilation cancelled.', 'AbortError'))
-      else reject(new Error(reason === 'timeout' ? 'Shader compilation took too long.' : 'Shader compilation failed.'))
+      else reject(new ShaderCompilationError(reason === 'timeout' ? 'timeout' : failure))
     }
     const abort = () => finish('abort')
     signal.addEventListener('abort', abort, { once: true })
@@ -69,12 +72,16 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
       handle.worker.onmessageerror = () => finish('error')
       handle.worker.onmessage = event => {
         if (complete) return
+        // Each dedicated worker may send exactly started + one terminal result.
+        // Correlation binds the channel and scene revision, not trust in its output.
+        if (++messages > COMPILER_LIMITS.responseMessages) { finish('error'); return }
         // A queued result cannot win over an expired deadline after backgrounding.
         if (performance.now() >= deadline) { finish('timeout'); return }
         const message: unknown = event.data
-        const fields = ['protocol', 'version', 'jobId', 'type']
+        const fields = ['protocol', 'version', 'jobId', 'channelId', 'sceneRevision', 'type']
         if (!(dataRecord(message, fields) || dataRecord(message, [...fields, 'artifact']))
-          || message.protocol !== COMPILER_PROTOCOL || message.version !== COMPILER_VERSION || message.jobId !== jobId) {
+          || message.protocol !== COMPILER_PROTOCOL || message.version !== COMPILER_VERSION || message.jobId !== jobId
+          || message.channelId !== channelId || message.sceneRevision !== sceneRevision) {
           finish('error'); return
         }
         if (message.type === 'started' && !started && dataRecord(message, fields)) {
@@ -88,13 +95,13 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
           if (performance.now() >= deadline) { finish('timeout'); return }
           observe({ type: 'validated' })
           finish('complete', artifact)
-        } catch { finish('error') }
+        } catch { finish('error', undefined, 'invalid-output') }
       }
       if (signal.aborted) { finish('abort'); return }
-      const request: CompileRequest = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId,
+      const request: CompileRequest = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId, channelId, sceneRevision,
         type: 'compile', source, maxRaymarchIterations }
       handle.worker.postMessage(request)
       observe({ type: 'dispatched' })
-    } catch { finish('error') }
+    } catch (error) { finish('error', undefined, error instanceof ShaderCompilationError ? error.code : 'failed') }
   })
 }

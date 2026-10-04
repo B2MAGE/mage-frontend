@@ -144,7 +144,7 @@ export function createIsolatedPlaybackHost(options: {
       if (message.payload.code === 'capture' && pendingCapture?.id === message.requestId) {
         clearTimeout(pendingCapture.timer); pendingCapture.reject(new Error('Frame capture failed.')); pendingCapture = null; return
       }
-      dispose('runtime'); return
+      dispose(message.payload.code === 'compile' && pendingLoad?.id === message.requestId ? 'compile' : 'runtime'); return
     }
     if (message.type === 'captured') {
       const pending = pendingCapture

@@ -5,6 +5,16 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('accepts only a fixed compile failure code without arbitrary compiler text or source', () => {
+    const message = playbackMessage('error', session, 1, 2, { code: 'compile' })
+    expect(message.version).toBe(2)
+    expect(isPlaybackMessage(message, ['error'])).toBe(true)
+    for (const payload of [{ code: 'compile', message: 'raw compiler error' },
+      { code: 'compile', source: 'sphere(0.5);' }, { code: 'unknown' }]) {
+      expect(isPlaybackMessage({ ...message, payload }, ['error'])).toBe(false)
+    }
+  })
+
   it('accepts bounded response settings and rejects code, duplicate targets, and arbitrary child capabilities', () => {
     const mapping = { target: 'size', source: 'bass-hit', amount: 1, attack: 0, release: 0.2 }
     const payload = { mode: 'mapped-v1', config: { version: 1, sensitivity: 1, mappings: [mapping] } }

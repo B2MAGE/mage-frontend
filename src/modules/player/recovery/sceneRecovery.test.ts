@@ -135,7 +135,7 @@ describe('recovery leases and local history', () => {
     expect(JSON.parse(session.getItem(RECOVERY_ACTIVE_KEY)!).entries).toEqual([])
   })
 
-  it.each(['load', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'stopped'] as const)(
+  it.each(['load', 'compile', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'stopped'] as const)(
     'persists %s failures and requires deliberate retry', (reason) => {
       const local = memoryStorage(); const session = memoryStorage()
       const recovery = store({ localStorage: local, sessionStorage: session })

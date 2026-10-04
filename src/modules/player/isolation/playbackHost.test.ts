@@ -34,6 +34,29 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('removes a compiler-rejected frame and reports the fixed actionable reason without retrying',async()=>{
+    const s=setup()
+    const promise=s.host.loadScene({visualizer:{shader:'sphere(0.5);'}})
+    const rejected=expect(promise).rejects.toThrow('Isolated player stopped.')
+    await Promise.resolve()
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('error',{code:'compile'},request.generation,request.requestId)
+    await rejected
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('compile')
+    expect(s.frame.isConnected).toBe(false)
+    expect(s.port.close).toHaveBeenCalledOnce()
+    expect(s.status).toHaveBeenLastCalledWith('error')
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(s.container.querySelector('iframe')).toBeNull()
+    expect(s.port.postMessage.mock.calls.filter(([message])=>message.type==='load')).toHaveLength(1)
+    expect(s.healthy).not.toHaveBeenCalled()
+  })
+  it('does not accept a compile classification for an unrelated request',async()=>{
+    const s=setup();await s.load()
+    s.reply('error',{code:'compile'},1,999)
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('runtime')
+    expect(s.frame.isConnected).toBe(false)
+  })
   it('reports only lifecycle labels and the parent time of accepted progress',async()=>{
     const clock=vi.spyOn(performance,'now').mockReturnValue(0),diagnostics:PlaybackHostDiagnostic[]=[]
     const s=setup(undefined,true,1000,diagnostic=>diagnostics.push(diagnostic));await s.load()
