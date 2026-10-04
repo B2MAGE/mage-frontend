@@ -12,8 +12,7 @@ export function installPlaybackRuntime(options: {
   let port: MessagePort | null = null
   let session = '', generation = 0, lastRequest = 0, frames = 0, lastProgress = -Infinity
   let closed = false, loadAbort: AbortController | null = null, engine: PlaybackEngine | null = null
-  let capturePending = false
-  let cancelCaptureTimeout: (() => void) | null = null
+  let pendingCapture: { cancel: () => void } | null = null
   let pendingResize: PlaybackPayloads['resize'] | null = null
   let pendingInput: PlaybackPayloads['input'] | null = null
   let pendingSynthetic: PlaybackPayloads['synthetic'] | null = null
@@ -23,13 +22,17 @@ export function installPlaybackRuntime(options: {
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
   const display = (text: string) => { options.statusElement.textContent = text; options.statusElement.hidden = false }
+  function retireCapture() {
+    pendingCapture?.cancel()
+    pendingCapture = null
+  }
   function send<T extends PlaybackType>(type: T, request: number, payload: PlaybackPayloads[T], transfer: Transferable[] = []) {
     if (!closed) port?.postMessage(playbackMessage(type, session, generation, request, payload), transfer)
   }
   function dispose() {
     if (closed) return
     closed = true
-    cancelCaptureTimeout?.(); cancelCaptureTimeout = null
+    retireCapture()
     target.removeEventListener('message', connect)
     target.removeEventListener('pagehide', dispose)
     loadAbort?.abort(); loadAbort = null
@@ -46,7 +49,7 @@ export function installPlaybackRuntime(options: {
   }
   async function load(message: PlaybackMessage<'load'>) {
     loadAbort?.abort()
-    cancelCaptureTimeout?.(); cancelCaptureTimeout = null
+    retireCapture()
     try { engine?.dispose() } catch { /* Abort already retired the previous generation. */ }
     engine = null
     // Disposing a WebGL renderer can dispatch contextlost asynchronously. A new
@@ -90,17 +93,16 @@ export function installPlaybackRuntime(options: {
   }
   async function capture(message: PlaybackMessage<'capture'>) {
     const source = engine, token = loadAbort
-    if (!source || capturePending) { send('error', message.requestId, { code: 'capture' }); return }
-    capturePending = true
-    const active = () => !closed && engine === source && loadAbort === token && !token?.signal.aborted
+    if (!source || pendingCapture) { send('error', message.requestId, { code: 'capture' }); return }
+    const pending = { cancel: () => clearTimeout(timeout) }
+    pendingCapture = pending
+    const active = () => !closed && pendingCapture === pending && engine === source && loadAbort === token && !token?.signal.aborted
     const timeout = setTimeout(() => { if (active()) fail('render', message.requestId) }, BRIDGE_LIMITS.captureTimeoutMs)
-    const cancel = () => clearTimeout(timeout)
-    cancelCaptureTimeout = cancel
     try {
       const result = await source.capture(message.payload)
       if (active()) send('captured', message.requestId, result, [result.bytes])
     } catch { if (active()) send('error', message.requestId, { code: 'capture' }) }
-    finally { cancel(); if (cancelCaptureTimeout === cancel) cancelCaptureTimeout = null; capturePending = false }
+    finally { pending.cancel(); if (pendingCapture === pending) pendingCapture = null }
   }
   function onCommand(event: MessageEvent) {
     if (closed) return
