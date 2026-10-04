@@ -18,9 +18,11 @@ function responseMethod(name: string) {
   return new Function(...Object.keys(dependencies), `return function ${engineClass.slice(start + 2, end + 3).replaceAll('this.#', 'this.')}`)(...Object.values(dependencies))
 }
 
-const { initMAGE } = vi.hoisted(() => ({ initMAGE: vi.fn() }))
+const { initMAGE, compileInWorker, compiledArtifact } = vi.hoisted(() => ({ initMAGE: vi.fn(), compileInWorker: vi.fn(),
+  compiledArtifact: { version: 1, uniforms: [], frag: 'compiled fragment', vert: 'compiled vertex', geoGLSL: '', colorGLSL: '' } }))
 vi.mock('@notrac/mage', () => ({ initMAGE }))
-beforeEach(() => initMAGE.mockReset())
+vi.mock('./compiler/client', () => ({ compileInWorker }))
+beforeEach(() => { initMAGE.mockReset(); compileInWorker.mockReset().mockResolvedValue(compiledArtifact) })
 function fixture() {
   const response: ResponseHarness = { audioAnalysis: null, transientAudio: null, syntheticPreviewSeed: 0, syntheticPreviewTempoScale: 1 }
   for (const name of ['setAudioResponseMode', 'setAudioResponseConfig', 'getAudioResponseConfig']) response[name] = responseMethod(name).bind(response)
@@ -33,7 +35,8 @@ function fixture() {
     setExternalAudioFrame: vi.fn(), setExternalClock: vi.fn(), getEngineTime: vi.fn(() => 2), setSyntheticPreview: vi.fn(),
     setAudioResponseMode: vi.fn((mode: unknown) => response.setAudioResponseMode(mode)),
     setAudioResponseConfig: vi.fn((config: unknown) => response.setAudioResponseConfig(config)),
-    loadPreset: vi.fn((preset: Record<string, unknown>): unknown => {
+    loadCompiledPreset: vi.fn((preset: Record<string, unknown>, artifact: unknown): unknown => {
+      expect(artifact).toEqual(compiledArtifact)
       response.setAudioResponseMode(preset.audioResponse)
       if (response.audioResponseMode === 'mapped-v1') response.setAudioResponseConfig(preset.audioResponseConfig)
       return {}
@@ -47,11 +50,34 @@ function fixture() {
   const abort = new AbortController(), canvas = document.createElement('canvas'), onError = vi.fn(), onFrame = vi.fn()
   const load = (scene: unknown = { visualizer: { shader: 'sphere(1);' } }) => loadPlaybackEngine({ canvas, signal: abort.signal, scene,
     profile: 'preview', onError, onFrame })
-  const ready = async (scene?: unknown) => { const loading = load(scene); await vi.waitFor(() => expect(engine.loadPreset).toHaveBeenCalledOnce()); listener?.({ type: 'frame' }); return loading }
+  const ready = async (scene?: unknown) => { const loading = load(scene); await vi.waitFor(() => expect(engine.loadCompiledPreset).toHaveBeenCalledOnce()); listener?.({ type: 'frame' }); return loading }
   return { engine, response, abort, canvas, onError, onFrame, load, ready, emit: (type: 'frame' | 'error') => listener?.({ type }) }
 }
 
 describe('isolated playback engine', () => {
+  it('compiles before creating graphics and passes only the resulting artifact to the compiled loader', async () => {
+    const f = fixture()
+    let compiled!: (artifact: unknown) => void
+    compileInWorker.mockReturnValue(new Promise(resolve => { compiled = resolve }))
+    const loading = f.load()
+    expect(initMAGE).not.toHaveBeenCalled()
+    expect(compileInWorker).toHaveBeenCalledWith('sphere(1);', { signal: f.abort.signal, maxRaymarchIterations: 200 })
+    compiled(compiledArtifact)
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
+    expect(f.engine.loadCompiledPreset.mock.calls[0][1]).toEqual(compiledArtifact)
+    f.emit('frame'); (await loading).dispose()
+  })
+
+  it('does not allocate a renderer or fall back when worker compilation fails or is cancelled', async () => {
+    const f = fixture()
+    compileInWorker.mockRejectedValue(new Error('Worker unavailable'))
+    await expect(f.load()).rejects.toThrow('Worker unavailable')
+    expect(initMAGE).not.toHaveBeenCalled()
+    compileInWorker.mockImplementation(async () => { f.abort.abort(); return compiledArtifact })
+    await expect(f.load()).rejects.toThrow()
+    expect(initMAGE).not.toHaveBeenCalled()
+  })
+
   it('preserves saved selective settings and mapper history when the parent replays them after loading', async () => {
     const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 0.3,
       mappings: [{ target: 'size', source: 'bass-hit', amount: 0.025, attack: 0.12, release: 0.7 }] }).config
@@ -135,8 +161,8 @@ describe('isolated playback engine', () => {
   it('resolves and validates template settings before allocating graphics', async () => {
     const f = fixture()
     const loading = f.load({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 })
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
-    expect(f.engine.loadPreset).toHaveBeenCalledWith(expect.objectContaining({ visualizer: expect.objectContaining({ shader: expect.any(String) }) }))
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
+    expect(f.engine.loadCompiledPreset).toHaveBeenCalledWith(expect.objectContaining({ visualizer: expect.objectContaining({ shader: expect.any(String) }) }), compiledArtifact)
     f.emit('frame'); (await loading).dispose()
   })
 
@@ -144,11 +170,11 @@ describe('isolated playback engine', () => {
     const f = fixture(); let completed = false
     f.engine.start.mockImplementation(() => f.emit('frame'))
     const loading = f.load().then(value => { completed = true; return value })
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     expect(completed).toBe(false)
     expect(initMAGE).toHaveBeenCalledWith(expect.objectContaining({ pixelRatio: 1,
       renderBudget: expect.objectContaining({ maxRenderPixels: 230400, maxFramesPerSecond: 30 }) }))
-    const preset = f.engine.loadPreset.mock.calls[0][0] as { fx: { passes: Record<string, boolean> } }
+    const preset = f.engine.loadCompiledPreset.mock.calls[0][0] as { fx: { passes: Record<string, boolean> } }
     expect(SCENE_POLICY.optionalEffectFlags.every(flag => preset.fx.passes[flag] === false)).toBe(true)
     f.emit('frame'); const control = await loading
     expect(f.onFrame).toHaveBeenCalledOnce()
@@ -175,7 +201,7 @@ describe('isolated playback engine', () => {
   it('preserves authored animation speed and saved time, including while paused', async () => {
     const f = fixture()
     const loading = f.load({ visualizer: { shader: 'sphere(1);' }, intent: { time_multiplier: 0.4 }, state: { time: 3 } })
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     f.emit('frame'); const control = await loading
     expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 3, rate: 0.4, playing: true })
     control.playback(false)
@@ -202,12 +228,12 @@ describe('isolated playback engine', () => {
   })
 
   it('rejects failed compilation and synchronous startup failure, releasing resources', async () => {
-    const f = fixture(); f.engine.loadPreset.mockReturnValue(undefined)
+    const f = fixture(); f.engine.loadCompiledPreset.mockReturnValue(undefined)
     await expect(f.load()).rejects.toThrow()
     expect(f.engine.dispose).toHaveBeenCalledOnce()
     const next = fixture(); next.engine.start.mockImplementation(() => next.emit('error'))
     await expect(next.load()).rejects.toThrow()
-    expect(next.engine.loadPreset).not.toHaveBeenCalled()
+    expect(next.engine.loadCompiledPreset).not.toHaveBeenCalled()
     expect(next.engine.dispose).toHaveBeenCalledOnce()
   })
 })

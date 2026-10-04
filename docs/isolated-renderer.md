@@ -54,6 +54,44 @@ Browser verification on October 3, 2026 used Chromium with the real response-hea
 
 ## Hosting boundary
 
+### PP-I04 compiler worker hosting
+
+The renderer build first builds `src/isolated-renderer/compiler/worker.ts` as a
+separate, in-memory classic script. Its exact module allowlist admits only the
+worker protocol/bootstrap and the engine's compiler-only modules; it rejects the
+DOM/WebGL engine, app modules, arbitrary packages and additional script chunks.
+The resulting source is embedded in the renderer through
+`__MAGE_COMPILER_WORKER_SOURCE__`. The outer renderer's existing SRI hash therefore
+covers the worker source too. `build-audit.json` records the worker's source hash,
+byte count and module list for release review; it remains private deployment
+metadata. There is still only one public JavaScript file plus `index.html`.
+
+The sole hosting-policy change is `worker-src blob:`. The opaque renderer creates
+a disposable dedicated worker from the bundled source; it never fetches a worker
+URL or enables same-origin access. Blob workers inherit the renderer's CSP,
+including `connect-src 'none'` and the absence of remote script sources. The
+compiler can evaluate source under the existing `unsafe-eval` allowance, but
+requests and external script imports remain blocked. See [worker CSP
+inheritance](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers#content_security_policy).
+
+The worker bootstrap removes nested-worker constructors before evaluating source.
+This JavaScript hardening is defense in depth, not a separate security boundary:
+the inherited `worker-src blob:` directive itself does not distinguish first-level
+workers from nested workers. Browser checks must demonstrate successful opaque
+worker startup, blocked network requests, compilation timeout/termination and
+safe recovery. A build or unit test alone does not prove those browser behaviors.
+Browsers that cannot start the restricted worker must fail safely without
+compiling on the renderer or parent page as a fallback.
+
+This is a hosting-policy release, not merely a new bundle. Preserve the prior
+production artifact and review the explicit worker-policy change along with the
+two-hash transition before deploying. Restart local hosting after rebuilding;
+existing in-memory servers retain the previous policy. No new AWS resource or
+public worker route is required, and preparing this build does not update the
+deployed CloudFront distribution or open the custom-rendering release gate.
+
+### Shared renderer policy
+
 This implementation requires the renderer to use a different **registrable domain** from MAGE in production. MAGE is hosted at `https://mage.peterbucci.com`; the renderer will use the HTTPS hostname assigned by CloudFront, such as `https://d123example.cloudfront.net`. That example hostname is illustrative, not a provisioned resource. A sibling such as `https://player.peterbucci.com` does not meet this story's chosen separate-site boundary. The iframe sandbox remains the core access restriction; the separate site adds browser isolation where supported.
 
 The selected hosting plan needs no additional domain purchase, Route 53 zone, DNS changes or custom ACM certificate. CloudFront supplies the hostname and certificate. MAGE's existing Coolify/frontend/backend deployment stays in place; CloudFront and its private S3 bucket host only the separate renderer files.
@@ -63,8 +101,8 @@ Only `src/isolated-renderer/main.ts`, its child implementation, the engine and a
 Each build's `hosting-manifest.json` is the source of its response headers and generated CloudFormation policies. Local output lives in `dist-isolated-renderer/`; `renderer:build:production` uses `dist-isolated-renderer-production/` so the two do not overwrite each other:
 
 - Response-header `sandbox allow-scripts` creates an opaque origin even when somebody navigates directly to the renderer. The parent iframe also uses only `allow-scripts`.
-- CSP defaults to no resources. It allows the exact immutable script hash with SRI and a fixed stylesheet hash. There is no broad `self`, remote script, inline-script or worker allowance. Only the renderer permits `unsafe-eval`, which the existing Shader Park compiler requires.
-- Embedded `data:`/`blob:` images support engine skyboxes; external images, requests, frames, workers, media, objects, fonts and form submission are denied. The parent controls the exact allowed frame source as well.
+- CSP defaults to no resources. It allows the exact immutable script hash with SRI, a fixed stylesheet hash and only Blob worker URLs. There is no broad `self`, remote script, inline-script or network-worker allowance. Only the renderer and its inherited compiler-worker policy permit `unsafe-eval`, which the existing Shader Park compiler requires.
+- Embedded `data:`/`blob:` images support engine skyboxes; external images, requests, frames, external worker scripts, media, objects, fonts and form submission are denied. The parent controls the exact allowed frame source as well.
 - The public static script uses anonymous CORS (`Access-Control-Allow-Origin: *`, no credentials) because its sandboxed document has an opaque origin. This is not an API CORS policy.
 - Permissions Policy denies camera, microphone, geolocation, clipboard, fullscreen, device APIs and other sensitive features. No cookies are set; referrers are omitted and MIME sniffing is disabled.
 - Only `/`, `/index.html` and the one current hashed script are served. Methods other than GET/HEAD, arbitrary paths, query strings and API routes are rejected. There is no proxy or SPA fallback.

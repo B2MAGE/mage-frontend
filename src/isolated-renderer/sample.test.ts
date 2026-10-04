@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadKnownSample } from './sample'
 
-const { initMAGE } = vi.hoisted(() => ({ initMAGE: vi.fn() }))
+const { initMAGE, compileInWorker } = vi.hoisted(() => ({ initMAGE: vi.fn(), compileInWorker: vi.fn() }))
 vi.mock('@notrac/mage', () => ({ initMAGE }))
+vi.mock('./compiler/client', () => ({ compileInWorker }))
 
 type RenderEvent = { type: 'frame' | 'error' }
 
@@ -12,7 +13,7 @@ function fixture() {
   // Deliberately expose only methods present in the installed engine API.
   const engine = {
     start: vi.fn(),
-    loadPreset: vi.fn().mockReturnValue({ visualizer: { shader: 'loaded' } }),
+    loadCompiledPreset: vi.fn().mockReturnValue({ visualizer: { shader: 'loaded' } }),
     subscribeRenderLifecycle: vi.fn((callback: (event: RenderEvent) => void) => {
       listener = callback
       return unsubscribe
@@ -31,7 +32,7 @@ function fixture() {
   }
 }
 
-beforeEach(() => initMAGE.mockReset())
+beforeEach(() => { initMAGE.mockReset(); compileInWorker.mockReset().mockResolvedValue({ version: 1 }) })
 
 describe('known isolated sample lifecycle', () => {
   it('does not allocate graphics after cancellation while importing the engine', async () => {
@@ -47,7 +48,7 @@ describe('known isolated sample lifecycle', () => {
     f.engine.start.mockImplementation(() => f.emit('frame'))
     let completed = false
     const loading = f.load().then(release => { completed = true; return release })
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     expect(completed).toBe(false)
     expect(initMAGE).toHaveBeenCalledWith(expect.objectContaining({
       canvas: f.canvas, autoStart: false,
@@ -71,7 +72,7 @@ describe('known isolated sample lifecycle', () => {
     f.engine.start.mockImplementation(() => f.emit('error'))
     await expect(f.load()).rejects.toThrow()
     expect(f.onError).toHaveBeenCalledOnce()
-    expect(f.engine.loadPreset).not.toHaveBeenCalled()
+    expect(f.engine.loadCompiledPreset).not.toHaveBeenCalled()
     expect(f.engine.dispose).toHaveBeenCalledOnce()
   })
 
@@ -79,7 +80,7 @@ describe('known isolated sample lifecycle', () => {
     const f = fixture()
     f.engine.start.mockImplementation(() => { throw new Error('GPU startup failed') })
     await expect(f.load()).rejects.toThrow('GPU startup failed')
-    expect(f.engine.loadPreset).not.toHaveBeenCalled()
+    expect(f.engine.loadCompiledPreset).not.toHaveBeenCalled()
     expect(f.engine.dispose).toHaveBeenCalledOnce()
     expect(f.unsubscribe).toHaveBeenCalledOnce()
     f.abort.abort()
@@ -88,7 +89,7 @@ describe('known isolated sample lifecycle', () => {
 
   it('rejects an invalid preset instead of reporting a successful scene', async () => {
     const f = fixture()
-    f.engine.loadPreset.mockReturnValue(undefined)
+    f.engine.loadCompiledPreset.mockReturnValue(undefined)
     await expect(f.load()).rejects.toThrow()
     expect(f.engine.dispose).toHaveBeenCalledOnce()
     expect(f.unsubscribe).toHaveBeenCalledOnce()
@@ -97,7 +98,7 @@ describe('known isolated sample lifecycle', () => {
   it('rejects a GPU failure before the first sample frame', async () => {
     const f = fixture()
     const failed = expect(f.load()).rejects.toThrow()
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     f.emit('error')
     await failed
     expect(f.onError).toHaveBeenCalledOnce()
@@ -107,7 +108,7 @@ describe('known isolated sample lifecycle', () => {
   it('cancels pending rendering and ignores late frame delivery', async () => {
     const f = fixture()
     const failed = expect(f.load()).rejects.toThrow()
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     f.abort.abort()
     f.emit('frame')
     await failed
@@ -119,7 +120,7 @@ describe('known isolated sample lifecycle', () => {
   it('releases a completed sample once when the frame is removed', async () => {
     const f = fixture()
     const loading = f.load()
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     f.emit('frame')
     const release = await loading
     f.abort.abort()
@@ -133,7 +134,7 @@ describe('known isolated sample lifecycle', () => {
     const f = fixture()
     f.engine.dispose.mockImplementation(() => { throw new Error('GPU cleanup failed') })
     const failed = expect(f.load()).rejects.toThrow()
-    await vi.waitFor(() => expect(f.engine.loadPreset).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     f.abort.abort()
     await failed
     expect(f.engine.dispose).toHaveBeenCalledOnce()

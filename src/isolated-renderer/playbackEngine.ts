@@ -7,6 +7,8 @@ import { BRIDGE_LIMITS, type PlaybackPayloads, type CaptureRequest } from '../mo
 import { rasterDimensions } from '../modules/player/isolation/capture'
 import { attachViewerPointerDeformation, type ViewerPointerMesh } from '../modules/player/infrastructure/viewerPointerDeformation'
 import { createPointerOrbit, type OrbitFields } from './pointerOrbit'
+import { compileInWorker } from './compiler/client'
+import type { CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
 
 export type PlaybackEngine = {
   dispose: () => void
@@ -24,8 +26,8 @@ export type PlaybackLoader = (options: {
   onError: () => void; onFrame: () => void
 }) => Promise<PlaybackEngine>
 
-type Engine = Omit<MAGEEngineAPI, 'loadPreset'> & {
-  loadPreset: (preset: MAGEPreset) => unknown
+type Engine = Omit<MAGEEngineAPI, 'loadPreset' | 'loadCompiledPreset'> & {
+  loadCompiledPreset: (preset: MAGEPreset, artifact: CompiledShaderArtifact) => unknown
   setExternalClock: (value: { time: number; rate: number; playing: boolean } | null) => void
   getEngineFields: () => OrbitFields & { controlSettings: { active: boolean; integrated: boolean }; controls: { enabled: boolean };
     visualizer: { render_tooltips: boolean; mesh: ViewerPointerMesh | null; getActiveShader: () => string | null } }
@@ -40,10 +42,16 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   validateSceneForPlayback(resolved)
   // Defense in depth for callers other than the protocol validator.
   if (Object.hasOwn(resolved, 'audio') || Object.hasOwn(resolved, 'audioPath')) throw new Error('Media is parent-owned.')
+  const renderBudget = getRenderBudget(profile)
+  const shader = (resolved.visualizer as { shader: string }).shader
+  // Finish and retire submitted JavaScript before allocating the renderer. An
+  // unavailable worker is an error, never permission to compile in this frame.
+  const artifact = await compileInWorker(shader, { signal, maxRaymarchIterations: renderBudget.maxRaymarchIterations })
+  signal.throwIfAborted()
   const { initMAGE } = await import('@notrac/mage')
   signal.throwIfAborted()
   const engine = initMAGE({ canvas, autoStart: false, log: false, pixelRatio: 1,
-    withControls: { active: false, integrated: false }, renderBudget: getRenderBudget(profile) }) as unknown as Engine
+    withControls: { active: false, integrated: false }, renderBudget }) as unknown as Engine
   let disposed = false
   let unsubscribe = () => {}
   let rejectStartup: (error: Error) => void = () => {}
@@ -94,11 +102,11 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       fields.controls.enabled = true
       fields.visualizer.render_tooltips = false
       const fx = resolved.fx && typeof resolved.fx === 'object' ? resolved.fx as Record<string, unknown> : {}
-      if (!engine.loadPreset({ ...resolved, fx: { ...fx,
+      if (!engine.loadCompiledPreset({ ...resolved, fx: { ...fx,
         bloom: { enabled: SCENE_POLICY.defaults.optionalEffects, ...(fx.bloom as object ?? {}) },
         passes: { ...Object.fromEntries(SCENE_POLICY.optionalEffectFlags.map(flag => [flag, SCENE_POLICY.defaults.optionalEffects])),
           outputPass: SCENE_POLICY.defaults.outputPass, ...(fx.passes as object ?? {}) },
-      } } as MAGEPreset)) throw new Error('Scene could not load.')
+      } } as MAGEPreset, artifact)) throw new Error('Scene could not load.')
       orbit = createPointerOrbit(fields)
       deformation = attachViewerPointerDeformation(fields.visualizer.mesh, fields.visualizer.getActiveShader() ?? '')
       loaded = true

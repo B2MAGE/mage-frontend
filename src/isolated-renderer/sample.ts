@@ -1,10 +1,13 @@
 import { getRenderBudget } from '../modules/player/policy/renderBudget'
 import type { SampleLoader } from './runtime'
 import type { MAGEEngineAPI, MAGEPreset } from '@notrac/mage'
+import { compileInWorker } from './compiler/client'
+import type { CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
 
-// The package declares loadPreset as void, although the installed runtime returns
-// the loaded preset (or undefined on failure), as used by our existing adapter.
-type SampleEngine = Omit<MAGEEngineAPI, 'loadPreset'> & { loadPreset: (preset: MAGEPreset) => unknown }
+// The loader returns the accepted preset, or undefined when rendering failed.
+type SampleEngine = Omit<MAGEEngineAPI, 'loadPreset' | 'loadCompiledPreset'> & {
+  loadCompiledPreset: (preset: MAGEPreset, artifact: CompiledShaderArtifact) => unknown
+}
 
 // This is the only source accepted by PP-I01. Loading user scenes is PP-I02/PP-I03.
 const SAMPLE = {
@@ -18,10 +21,13 @@ const SAMPLE = {
 }
 
 export const loadKnownSample: SampleLoader = async (canvas, signal, onError) => {
+  const renderBudget = getRenderBudget('preview')
+  const artifact = await compileInWorker(SAMPLE.visualizer.shader, { signal, maxRaymarchIterations: renderBudget.maxRaymarchIterations })
+  signal.throwIfAborted()
   const { initMAGE } = await import('@notrac/mage')
   signal.throwIfAborted()
   const engine = initMAGE({ canvas, autoStart: false, log: false, pixelRatio: 1,
-    withControls: { active: false, integrated: false }, renderBudget: getRenderBudget('preview') }) as unknown as SampleEngine
+    withControls: { active: false, integrated: false }, renderBudget }) as unknown as SampleEngine
   let released = false
   let unsubscribe = () => {}
   let rejectPending: (reason: Error) => void = () => {}
@@ -50,7 +56,7 @@ export const loadKnownSample: SampleLoader = async (canvas, signal, onError) => 
       })
       engine.start()
       if (released) throw new Error('Renderer failed during startup.')
-      if (!engine.loadPreset(SAMPLE)) throw new Error('Sample could not load.')
+      if (!engine.loadCompiledPreset(SAMPLE, artifact)) throw new Error('Sample could not load.')
       loaded = true
       engine.play()
       if (signal.aborted) dispose()

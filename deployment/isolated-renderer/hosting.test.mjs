@@ -7,6 +7,7 @@ import { join, resolve, sep } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { assertNonCredentialedResponse, createHostingManifest, integrityOf, parseParentOrigins, renderDocument } from './hosting-policy.mjs'
 import { createCloudFormationTemplate } from './cloudformation-template.mjs'
+import { assertCompilerWorkerBundle, COMPILER_WORKER_ALLOWED_MODULES } from './compiler-build-policy.mjs'
 import { createRendererRequestHandler, loadRendererBuild } from '../../scripts/serve-isolated-renderer.mjs'
 
 const bundle = Buffer.from('window.rendererLoaded = true;')
@@ -38,7 +39,9 @@ test('response policy keeps direct navigation opaque and permits only the immuta
   assert(csp.includes(`script-src '${integrityOf(bundle)}' 'unsafe-eval'`))
   assert(!csp.includes("'self'"))
   assert(!csp.includes("'unsafe-inline'"))
-  for (const source of ['connect', 'worker', 'frame', 'child', 'object', 'media', 'font', 'manifest']) assert(csp.includes(`${source}-src 'none'`))
+  for (const source of ['connect', 'frame', 'child', 'object', 'media', 'font', 'manifest']) assert(csp.includes(`${source}-src 'none'`))
+  assert.equal(csp.split('; ').find(directive => directive.startsWith('worker-src ')), 'worker-src blob:')
+  assert(!csp.split('; ').find(directive => directive.startsWith('script-src ')).includes('blob:'))
   assert(csp.includes("form-action 'none'"))
   assert(csp.includes("base-uri 'none'"))
   assert.equal(manifest.headers['Referrer-Policy'], 'no-referrer')
@@ -47,6 +50,40 @@ test('response policy keeps direct navigation opaque and permits only the immuta
   const html = renderDocument(manifest)
   assert(html.includes(`integrity="${integrityOf(bundle)}" crossorigin="anonymous"`))
   assert(!html.includes('type="module"'))
+})
+
+test('compiler worker module boundary excludes the DOM engine, application code and any external chunks', () => {
+  const root = resolve('compiler-boundary-test')
+  const bundle = (paths = COMPILER_WORKER_ALLOWED_MODULES) => ({ 'worker.js': {
+    type: 'chunk', code: '(() => {})();', imports: [], dynamicImports: [],
+    modules: Object.fromEntries(paths.map(path => [resolve(root, path), {}])),
+  } })
+  assert.doesNotThrow(() => assertCompilerWorkerBundle(bundle(), root))
+  for (const path of [
+    'src/isolated-renderer/playback.ts',
+    'src/isolated-renderer/compiler/client.ts',
+    'src/modules/auth/api.ts',
+    'node_modules/@notrac/mage/dist/mage-engine.js',
+    'node_modules/other-package/index.js',
+    '../untrusted/compiler.js',
+  ]) assert.throws(() => assertCompilerWorkerBundle(bundle([path]), root), /Unexpected module/)
+  const virtual = bundle([])
+  virtual['worker.js'].modules['\0unexpected-helper'] = {}
+  assert.throws(() => assertCompilerWorkerBundle(virtual, root), /Unexpected module/)
+  for (const imports of ['imports', 'dynamicImports']) {
+    const external = bundle()
+    external['worker.js'][imports] = ['remote.js']
+    assert.throws(() => assertCompilerWorkerBundle(external, root), /self-contained/)
+  }
+  const split = bundle()
+  split['extra.js'] = split['worker.js']
+  assert.throws(() => assertCompilerWorkerBundle(split, root), /self-contained/)
+  const asset = bundle()
+  asset['worker.js'].type = 'asset'
+  assert.throws(() => assertCompilerWorkerBundle(asset, root), /self-contained/)
+  const empty = bundle()
+  empty['worker.js'].code = ''
+  assert.throws(() => assertCompilerWorkerBundle(empty, root), /source is missing/)
 })
 
 test('local server serves only approved assets with real security headers, never API/SPA/query/method fallbacks', async () => {
@@ -69,7 +106,7 @@ test('local server serves only approved assets with real security headers, never
     const head = await fetch(base, { method: 'HEAD' })
     assert.equal(head.status, 200)
     assert.equal(await head.text(), '')
-    for (const path of ['/api/auth/me', '/create-scene', '/hosting-manifest.json', '/build-audit.json', '/index.html?parent=https://attacker.invalid', '/assets/renderer-other.js', '/%2e%2e/package.json']) {
+    for (const path of ['/api/auth/me', '/create-scene', '/hosting-manifest.json', '/build-audit.json', '/compiler-worker.js', '/index.html?parent=https://attacker.invalid', '/assets/renderer-other.js', '/%2e%2e/package.json']) {
       const response = await fetch(`${base}${path}`)
       assert.equal(response.status, 404, path)
       assert.equal(response.headers.get('content-security-policy'), manifest.headers['Content-Security-Policy'])
@@ -95,6 +132,10 @@ test('modified files or relaxed manifest policies fail server startup', async ()
     relaxed.headers['Content-Security-Policy'] = "default-src * 'unsafe-eval'"
     await writeFile(join(directory, 'hosting-manifest.json'), JSON.stringify(relaxed))
     await assert.rejects(loadRendererBuild(directory), /required hosting policy/)
+    const relaxedWorker = structuredClone(manifest)
+    relaxedWorker.headers['Content-Security-Policy'] = relaxedWorker.headers['Content-Security-Policy'].replace('worker-src blob:', 'worker-src blob: https:')
+    await writeFile(join(directory, 'hosting-manifest.json'), JSON.stringify(relaxedWorker))
+    await assert.rejects(loadRendererBuild(directory), /required hosting policy/)
     await writeFile(join(directory, 'hosting-manifest.json'), JSON.stringify(manifest))
     await writeFile(join(directory, manifest.bundlePath), 'window.tampered = true')
     await assert.rejects(loadRendererBuild(directory), /required hosting policy/)
@@ -117,6 +158,8 @@ test('AWS template uses the same policy, private OAC bucket, exact paths, and no
   const documentPolicy = resources.DocumentHeaders.Properties.ResponseHeadersPolicyConfig
   assert.equal(documentPolicy.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy, manifest.headers['Content-Security-Policy'])
   assert.equal(documentPolicy.SecurityHeadersConfig.ContentSecurityPolicy.Override, true)
+  assert(documentPolicy.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy.includes('worker-src blob:'))
+  assert(documentPolicy.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy.includes("connect-src 'none'"))
   assert.equal(documentPolicy.CorsConfig.AccessControlAllowCredentials, false)
   assert(documentPolicy.RemoveHeadersConfig.Items.some(({ Header }) => Header === 'Set-Cookie'))
   for (const name of ['DocumentCache', 'AssetCache']) {
