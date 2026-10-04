@@ -641,11 +641,14 @@ export function SceneDetailPage() {
                 </div>
               )}
 
-              {user?.userId === scene.ownerUserId ? (
-                <Link className="scene-detail-follow-button" to={`/scenes/${scene.id}/edit`}>Edit scene</Link>
-              ) : (
-                <button className="scene-detail-follow-button" disabled title="Following creators is not available yet" type="button">Follow</button>
-              )}
+              <div className="scene-detail-social-row__controls">
+                {user?.userId === scene.ownerUserId ? (
+                  <Link className="scene-detail-follow-button" to={`/scenes/${scene.id}/edit`}>Edit scene</Link>
+                ) : (
+                  <button className="scene-detail-follow-button" disabled title="Following creators is not available yet" type="button">Follow</button>
+                )}
+                <SceneAvailabilityAdminControls sceneId={scene.id} />
+              </div>
             </div>
 
             <div className="scene-detail-action-row">
@@ -709,8 +712,6 @@ export function SceneDetailPage() {
               setIsDescriptionExpanded((currentValue) => !currentValue)
             }}
           />
-
-          <SceneAvailabilityAdminControls sceneId={scene.id} />
 
           <SceneCommentsPanel
             actionError={commentActionError}

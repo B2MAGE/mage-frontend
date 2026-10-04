@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SceneAvailabilityAdminControls } from './SceneAvailabilityAdminControls'
 
 const mocks = vi.hoisted(() => ({
@@ -26,10 +26,35 @@ function deferred<T>() {
   return { promise, resolve }
 }
 async function openControls() {
-  await userEvent.click(await screen.findByText('Manage playback availability'))
+  await userEvent.click(await screen.findByRole('button', { name: 'Manage playback availability' }))
+  return screen.findByRole('dialog', { name: 'Playback availability' })
 }
 
 describe('SceneAvailabilityAdminControls', () => {
+  const nativeDialogMethods = {
+    showModal: Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal'),
+    close: Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close'),
+  }
+  // JSDOM has no native dialog methods. Model opening/closing only; browser QA
+  // verifies the native focus trap, inert background, and Escape-to-cancel behavior.
+  beforeAll(() => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) {
+      this.open = true
+      this.querySelector<HTMLElement>('button:not([disabled]), textarea:not([disabled])')?.focus()
+    } })
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value(this: HTMLDialogElement) {
+      this.open = false
+      this.dispatchEvent(new Event('close'))
+    } })
+  })
+  afterAll(() => {
+    for (const name of ['showModal', 'close'] as const) {
+      const descriptor = nativeDialogMethods[name]
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, name, descriptor)
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, name)
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.auth = { accessToken: 'operator-token', isAuthenticated: true, isRestoringSession: false, user: { userId: 7 } }
@@ -40,7 +65,7 @@ describe('SceneAvailabilityAdminControls', () => {
     mocks.auth.isAuthenticated = false
     mocks.auth.accessToken = null
     render(<SceneAvailabilityAdminControls sceneId={23} />)
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
     expect(mocks.fetcher).not.toHaveBeenCalled()
   })
 
@@ -48,8 +73,40 @@ describe('SceneAvailabilityAdminControls', () => {
     mocks.fetcher.mockResolvedValue(response({ reason: 'Never display this' }, status))
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await waitFor(() => expect(mocks.fetcher).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Never display this')).not.toBeInTheDocument()
+  })
+
+  it('keeps private audit and forms out of the page until the availability dialog is opened', async () => {
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    const trigger = await screen.findByRole('button', { name: 'Manage playback availability' })
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Reason for this scene change')).not.toBeInTheDocument()
+    await userEvent.click(trigger)
+    expect(await screen.findByRole('dialog', { name: 'Playback availability' })).toHaveAttribute('open')
+    expect(screen.getAllByText('Reason: Private investigation')).toHaveLength(2)
+  })
+
+  it.each(['close button', 'native Escape cancellation'] as const)('dismisses the dialog with %s and returns focus without changing availability', async method => {
+    const user = userEvent.setup()
+    render(<SceneAvailabilityAdminControls sceneId={23} />)
+    const trigger = await screen.findByRole('button', { name: 'Manage playback availability' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'Playback availability' })
+    await waitFor(() => expect(dialog).toContainElement(document.activeElement as HTMLElement))
+    await user.type(screen.getByLabelText('Reason for this scene change'), 'Unsubmitted private reason')
+    if (method === 'close button') await user.click(screen.getByRole('button', { name: 'Close playback availability' }))
+    else fireEvent(dialog, new Event('cancel', { cancelable: true }))
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Reason for this scene change')).not.toBeInTheDocument()
+    await waitFor(() => expect(trigger).toHaveFocus())
+    expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+    expect(mocks.invalidate).not.toHaveBeenCalled()
+    await user.click(trigger)
+    expect(await screen.findByRole('dialog', { name: 'Playback availability' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Reason for this scene change')).toHaveValue('')
   })
 
   it('shows private audit only after server permission and requires an explicit reason', async () => {
@@ -118,7 +175,8 @@ describe('SceneAvailabilityAdminControls', () => {
     await openControls()
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Private new reason')
     await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
-    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
   })
 
@@ -134,7 +192,7 @@ describe('SceneAvailabilityAdminControls', () => {
     view.rerender(<SceneAvailabilityAdminControls sceneId={23} />)
     expect(mutationSignal.aborted).toBe(true)
     await act(async () => saving.resolve(response({ ...scene, disabled: true })))
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Scene availability updated.')).not.toBeInTheDocument()
     expect(mocks.fetcher).toHaveBeenCalledTimes(5)
     expect(mocks.invalidate).toHaveBeenCalledWith(23)
@@ -147,7 +205,7 @@ describe('SceneAvailabilityAdminControls', () => {
     mocks.auth = { ...mocks.auth, accessToken: 'different-account', user: { userId: 99 } }
     view.rerender(<SceneAvailabilityAdminControls sceneId={23} />)
     await act(async () => oldRequest.resolve(response(adminCapabilities)))
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
     expect(mocks.fetcher).toHaveBeenCalledTimes(2)
   })
 
@@ -166,7 +224,8 @@ describe('SceneAvailabilityAdminControls', () => {
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await waitFor(() => expect(mocks.fetcher).toHaveBeenCalledOnce())
     expect(mocks.fetcher).toHaveBeenCalledWith('/admin/capabilities', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }))
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
   })
 
   it('gives a moderator scene controls and audit only, including after a scene mutation', async () => {
@@ -196,8 +255,9 @@ describe('SceneAvailabilityAdminControls', () => {
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Pending private reason')
     capabilities = regularCapabilities
     await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
-    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument())
     expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
     expect(mocks.invalidate).not.toHaveBeenCalled()
   })
@@ -212,7 +272,7 @@ describe('SceneAvailabilityAdminControls', () => {
     capabilities = moderatorCapabilities
     await userEvent.click(screen.getByRole('button', { name: 'Disable custom rendering for everyone' }))
     await waitFor(() => expect(screen.queryByLabelText('Reason for the platform change')).not.toBeInTheDocument())
-    expect(screen.getByText('Manage playback availability')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Manage playback availability' })).toBeInTheDocument()
     expect(mocks.fetcher.mock.calls.filter(([path]) => path === '/admin/rendering/custom')).toHaveLength(originalGlobalReads)
     expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
   })
@@ -224,7 +284,8 @@ describe('SceneAvailabilityAdminControls', () => {
     await openControls()
     capabilities = regularCapabilities
     fireEvent.focus(window)
-    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
   })
 
@@ -233,7 +294,7 @@ describe('SceneAvailabilityAdminControls', () => {
     else mocks.fetcher.mockResolvedValue(response({ canModerateScenes: 'true', canManageCustomRendering: true }))
     render(<SceneAvailabilityAdminControls sceneId={23} />)
     await act(async () => {})
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
     expect(mocks.fetcher).toHaveBeenCalledOnce()
   })
 
@@ -243,7 +304,7 @@ describe('SceneAvailabilityAdminControls', () => {
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Waiting on permission')
     mocks.fetcher.mockRejectedValue(new TypeError('Network error'))
     await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
-    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument())
     expect(mocks.fetcher.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
   })
 
@@ -252,7 +313,8 @@ describe('SceneAvailabilityAdminControls', () => {
     await openControls()
     mocks.fetcher.mockRejectedValue(new TypeError('Network error'))
     await userEvent.click(screen.getByRole('button', { name: 'Refresh status' }))
-    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
   })
 
@@ -266,7 +328,8 @@ describe('SceneAvailabilityAdminControls', () => {
     mocks.fetcher.mockResolvedValue(response(regularCapabilities))
     view.rerender(<SceneAvailabilityAdminControls sceneId={23} />)
     await act(async () => oldScene.resolve(response(scene)))
-    expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
     expect(mocks.fetcher.mock.calls.some(([path]) => path === '/admin/rendering/custom')).toBe(false)
   })
@@ -282,7 +345,8 @@ describe('SceneAvailabilityAdminControls', () => {
     await openControls()
     await userEvent.type(screen.getByLabelText('Reason for this scene change'), 'Confirmed failure')
     await userEvent.click(screen.getByRole('button', { name: 'Disable scene' }))
-    await waitFor(() => expect(screen.queryByText('Manage playback availability')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Manage playback availability' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: 'Playback availability' })).not.toBeInTheDocument()
     expect(screen.queryByText('Reason: Private investigation')).not.toBeInTheDocument()
     expect(screen.queryByText('Scene availability updated.')).not.toBeInTheDocument()
     expect(mocks.invalidate).toHaveBeenCalledWith(23)

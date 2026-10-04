@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { Shield, X } from 'lucide-react'
 import { useAuth, type AuthenticatedFetch } from '@auth'
 import { sceneAvailabilityStore } from '../sceneAvailability'
 import { fetchAdminCapabilities, isModerationAccessDenied, type AdminCapabilities } from '@modules/moderation'
@@ -24,8 +26,51 @@ function AuditDetails({ control }: { control: SceneControl | CustomRenderingCont
   </div>
 }
 
+function AvailabilityDialog({ id, onClose, children }: { id: string; onClose: () => void; children: ReactNode }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const backdropPointerDown = useRef(false)
+  const titleId = useId()
+
+  useEffect(() => {
+    const dialog = dialogRef.current!
+    const previousFocus = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    dialog.showModal()
+    document.body.style.overflow = 'hidden'
+    return () => {
+      dialog.close()
+      document.body.style.overflow = previousOverflow
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
+    }
+  }, [])
+
+  return createPortal(<dialog
+    ref={dialogRef}
+    id={id}
+    className="scene-availability-admin__dialog"
+    aria-labelledby={titleId}
+    onCancel={(event) => { event.preventDefault(); onClose() }}
+    onPointerDown={(event) => { backdropPointerDown.current = event.target === event.currentTarget }}
+    onClick={(event) => {
+      if (event.target === event.currentTarget && backdropPointerDown.current) onClose()
+      backdropPointerDown.current = false
+    }}
+  >
+    <div className="scene-availability-admin__panel">
+      <header className="scene-availability-admin__header">
+        <h2 id={titleId}>Playback availability</h2>
+        <button type="button" className="scene-availability-admin__close" aria-label="Close playback availability" onClick={onClose}>
+          <X size={20} aria-hidden="true" />
+        </button>
+      </header>
+      {children}
+    </div>
+  </dialog>, document.body)
+}
+
 function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: AuthenticatedFetch }) {
   const [controls, setControls] = useState<Controls | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [sceneReason, setSceneReason] = useState('')
   const [globalReason, setGlobalReason] = useState('')
@@ -34,12 +79,18 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
   const busy = useRef(false)
   const sceneReasonId = useId()
   const globalReasonId = useId()
+  const dialogId = useId()
 
-  function revokeAccess() {
-    setControls(null)
+  function closeDialog() {
+    setIsOpen(false)
     setSceneReason('')
     setGlobalReason('')
     setNotice(null)
+  }
+
+  function revokeAccess() {
+    setControls(null)
+    closeDialog()
   }
 
   function active(signal: AbortSignal) {
@@ -173,10 +224,22 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
 
   if (!controls) return null
   const customEnabled = controls.custom?.enabled && controls.custom.releaseApproved
-  return <details className="scene-availability-admin">
-    <summary>Manage playback availability</summary>
+  return <>
+    <button
+      type="button"
+      className="scene-availability-admin__trigger"
+      aria-label="Manage playback availability"
+      title="Manage playback availability"
+      aria-haspopup="dialog"
+      aria-expanded={isOpen}
+      aria-controls={isOpen ? dialogId : undefined}
+      onClick={() => setIsOpen(true)}
+    >
+      <Shield size={18} aria-hidden="true" />
+    </button>
+    {isOpen ? <AvailabilityDialog id={dialogId} onClose={closeDialog}>
     <div className="scene-availability-admin__content" aria-busy={pending}>
-      <p className="scene-availability-admin__intro">Operator controls. Changes apply to everyone. Reasons stay private to operators.</p>
+      <p className="scene-availability-admin__intro">Changes apply to everyone. Reasons stay private to moderators and administrators.</p>
       {controls.scene ? <form onSubmit={(event) => void handleSubmit(event, 'scene')}>
         <h3>This scene</h3>
         <p>{controls.scene.disabled ? 'Disabled by an operator.' : 'Allowed by scene controls.'}</p>
@@ -198,5 +261,6 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       {notice ? <p role={notice.error ? 'alert' : 'status'}>{notice.text}</p> : null}
       <button type="button" disabled={pending} onClick={() => void handleRefresh()}>Refresh status</button>
     </div>
-  </details>
+    </AvailabilityDialog> : null}
+  </>
 }

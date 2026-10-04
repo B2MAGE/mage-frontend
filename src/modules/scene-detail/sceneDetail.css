@@ -65,7 +65,8 @@ html[data-theme] .scene-detail-page {
   & .scene-detail-header { display: block; padding: 24px 2px 0; }
   & .mage-watch__title { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.05; letter-spacing: -.035em; }
   & .scene-detail-social-row { margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--border); }
-  & .scene-detail-social-row__creator { flex-direction: row; min-width: 0; gap: 11px; flex-wrap: nowrap; }
+  & .scene-detail-social-row__creator { flex-direction: row; min-width: 0; max-width: 100%; gap: 11px; flex-wrap: wrap; }
+  & .scene-detail-social-row__controls { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
   & .mage-channel-card { gap: 11px; }
   & a.mage-channel-card { color: inherit; text-decoration: none; }
   & a.mage-channel-card,
