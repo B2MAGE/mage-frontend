@@ -20,10 +20,10 @@ export function SceneAvailabilityAdminControls({ sceneId }: { sceneId: number })
 }
 
 function AuditDetails({ control }: { control: SceneControl | CustomRenderingControl }) {
-  if (!control.changedAt) return <p className="scene-availability-admin__audit">No operator changes recorded.</p>
+  if (!control.changedAt) return null
   return <div className="scene-availability-admin__audit">
-    <p>Last changed {new Date(control.changedAt).toLocaleString()}{control.changedByUserId ? ` by operator #${control.changedByUserId}` : ''}.</p>
-    <p>Reason: {control.reason}</p>
+    <p>Last changed {new Date(control.changedAt).toLocaleString()}{control.changedByUserId ? ` by account #${control.changedByUserId}` : ''}.</p>
+    <p>Previous reason: {control.reason}</p>
   </div>
 }
 
@@ -59,8 +59,8 @@ function AvailabilityDialog({ id, onClose, children }: { id: string; onClose: ()
   >
     <div className="scene-availability-admin__panel">
       <header className="scene-availability-admin__header">
-        <h2 id={titleId}>Playback availability</h2>
-        <button type="button" className="scene-availability-admin__close" aria-label="Close playback availability" onClick={onClose}>
+        <h2 id={titleId}>Moderation tools</h2>
+        <button type="button" className="scene-availability-admin__close" aria-label="Close moderation tools" onClick={onClose}>
           <X size={20} aria-hidden="true" />
         </button>
       </header>
@@ -83,6 +83,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
   const globalReasonId = useId()
   const dialogId = useId()
   const toolId = useId()
+  const reasonHintId = useId()
 
   function closeDialog() {
     setIsOpen(false)
@@ -180,7 +181,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       : !controls.custom || !controls.capabilities.canManageCustomRendering) return
     const reason = (target === 'scene' ? sceneReason : globalReason).trim()
     if (!reason || reason.length > 1000) {
-      setNotice({ error: true, text: 'Enter a reason between 1 and 1000 characters.' })
+      setNotice({ error: true, text: 'Add a reason (up to 1,000 characters).' })
       return
     }
     if (target === 'global' && !controls.custom!.enabled && !controls.custom!.releaseApproved) return
@@ -208,12 +209,14 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
       if (target === 'scene') setSceneReason('')
       else setGlobalReason('')
       await refresh(signal)
-      if (active(signal)) setNotice({ error: false, text: target === 'scene' ? 'Scene availability updated.' : 'Custom rendering availability updated.' })
+      if (active(signal)) setNotice({ error: false, text: target === 'scene'
+        ? controls.scene!.disabled ? 'Scene unblocked.' : 'Scene blocked.'
+        : controls.custom!.enabled ? 'Custom shader playback turned off.' : 'Custom shader playback turned on.' })
     } catch (error) {
       if (!active(signal)) return
       if (accessDenied(error) || !mutationAttempted) revokeAccess()
       else {
-        setNotice({ error: true, text: error instanceof OperatorRequestError ? error.message : 'Could not confirm the change. Refresh the status before trying again.' })
+        setNotice({ error: true, text: error instanceof OperatorRequestError ? error.message : "We couldn't confirm whether your change was saved. Check the current status before trying again." })
         if (error instanceof OperatorRequestError && error.status === 409) {
           try { await refresh(signal) } catch (refreshError) {
             if (active(signal) && accessDenied(refreshError)) revokeAccess()
@@ -234,8 +237,8 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
     <button
       type="button"
       className="scene-availability-admin__trigger"
-      aria-label="Manage playback availability"
-      title="Manage playback availability"
+      aria-label="Open moderation tools"
+      title="Moderation tools"
       aria-haspopup="dialog"
       aria-expanded={isOpen}
       aria-controls={isOpen ? dialogId : undefined}
@@ -246,7 +249,7 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
     {isOpen ? <AvailabilityDialog id={dialogId} onClose={closeDialog}>
       <div className="scene-availability-admin__content" aria-busy={pending}>
         <div className="scene-availability-admin__tool">
-          <label htmlFor={toolId}>Tool</label>
+          <label htmlFor={toolId}>Manage</label>
           <select id={toolId} value={activeTool} disabled={pending || !controls.scene || !controls.custom} onChange={(event) => {
             setSelectedTool(event.target.value as AvailabilityTool)
             setSceneReason('')
@@ -254,30 +257,34 @@ function OperatorControls({ sceneId, fetcher }: { sceneId: number; fetcher: Auth
             setNotice(null)
           }}>
             {controls.scene ? <option value="scene">This scene</option> : null}
-            {controls.custom ? <option value="global">Custom rendering across MAGE</option> : null}
+            {controls.custom ? <option value="global">All custom shader scenes</option> : null}
           </select>
         </div>
         <p className="scene-availability-admin__intro">
-          {activeTool === 'scene' ? 'Control playback of this scene for everyone.' : 'Control custom shader playback across the entire platform.'} Reasons stay private to moderators and administrators.
+          {activeTool === 'scene'
+            ? 'Blocking this scene stops it from playing for everyone. It stays saved and can be unblocked later.'
+            : 'Turn playback on or off for all scenes that use custom shader code. Scenes using built-in templates are not affected.'}
         </p>
         {activeTool === 'scene' && controls.scene ? <form onSubmit={(event) => void handleSubmit(event, 'scene')}>
-          <p>{controls.scene.disabled ? 'Disabled by an operator.' : 'Allowed by scene controls.'}</p>
+          <p><strong>{controls.scene.disabled ? 'This scene is blocked.' : 'This scene is not blocked.'}</strong></p>
           <AuditDetails control={controls.scene} />
-          <label htmlFor={sceneReasonId}>Reason for this scene change</label>
-          <textarea id={sceneReasonId} value={sceneReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setSceneReason(event.target.value)} />
-          <button type="submit" disabled={pending || !sceneReason.trim()}>{controls.scene.disabled ? 'Re-enable scene' : 'Disable scene'}</button>
+          <label htmlFor={sceneReasonId}>Why are you making this change?</label>
+          <textarea id={sceneReasonId} aria-describedby={reasonHintId} value={sceneReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setSceneReason(event.target.value)} />
+          <p id={reasonHintId} className="scene-availability-admin__intro">Required. Only moderators and administrators can see your reason.</p>
+          <button type="submit" disabled={pending || !sceneReason.trim()}>{controls.scene.disabled ? 'Unblock scene' : 'Block scene'}</button>
         </form> : null}
         {activeTool === 'global' && controls.custom ? <form onSubmit={(event) => void handleSubmit(event, 'global')}>
-          <p>{customEnabled ? 'Custom rendering is enabled.' : 'Custom rendering is disabled.'}</p>
-          {!controls.custom.releaseApproved ? <p>Enabling is unavailable until the isolation release checks are approved.</p> : null}
+          <p><strong>{customEnabled ? 'Custom shader playback is on.' : 'Custom shader playback is off.'}</strong></p>
+          {!controls.custom.releaseApproved ? <p>Custom shaders are locked off until MAGE's safety checks are approved. This can't be changed from this window.</p> : null}
           <AuditDetails control={controls.custom} />
-          <label htmlFor={globalReasonId}>Reason for the platform change</label>
-          <textarea id={globalReasonId} value={globalReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setGlobalReason(event.target.value)} />
-          <button type="submit" disabled={pending || !globalReason.trim() || (!controls.custom.enabled && !controls.custom.releaseApproved)}>{controls.custom.enabled ? 'Disable custom rendering for everyone' : 'Enable custom rendering'}</button>
+          <label htmlFor={globalReasonId}>Why are you making this change?</label>
+          <textarea id={globalReasonId} aria-describedby={reasonHintId} value={globalReason} maxLength={1000} rows={2} disabled={pending} onChange={(event) => setGlobalReason(event.target.value)} />
+          <p id={reasonHintId} className="scene-availability-admin__intro">Required. Only moderators and administrators can see your reason.</p>
+          <button type="submit" disabled={pending || !globalReason.trim() || (!controls.custom.enabled && !controls.custom.releaseApproved)}>{controls.custom.enabled ? 'Turn off custom shaders' : 'Turn on custom shaders'}</button>
         </form> : null}
-        {pending ? <p role="status">Updating availability…</p> : null}
+        {pending ? <p role="status">Updating…</p> : null}
         {notice ? <p role={notice.error ? 'alert' : 'status'}>{notice.text}</p> : null}
-        <button type="button" disabled={pending} onClick={() => void handleRefresh()}>Refresh status</button>
+        <button type="button" disabled={pending} onClick={() => void handleRefresh()}>Check current status</button>
       </div>
     </AvailabilityDialog> : null}
   </>

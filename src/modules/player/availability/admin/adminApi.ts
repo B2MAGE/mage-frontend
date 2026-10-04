@@ -8,8 +8,8 @@ export class OperatorRequestError extends Error {
   readonly status: number
   constructor(status: number) {
     super(status === 409
-      ? 'Custom rendering cannot be enabled until the isolation release checks are approved.'
-      : 'Could not update playback availability. Refresh the status and try again.')
+      ? "Custom shaders can't be turned on until MAGE's safety checks are approved. This can't be changed from this window."
+      : "We couldn't save the change. Check the current status and try again.")
     this.status = status
   }
 }
