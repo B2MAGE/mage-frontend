@@ -1,4 +1,4 @@
-# Isolated renderer (PP-I01 / PP-I02 / PP-I03)
+# Isolated renderer (PP-I01 / PP-I02 / PP-I03 / PP-I04)
 
 PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The public custom-rendering release gate remains off while the broader browser/device release matrix is unfinished.
 
@@ -51,6 +51,66 @@ npm run renderer:verify
 The local server retains a verified build in memory; restart it after rebuilding. Parent and child must both contain protocol v2 before using the music check. The original local v1 sample remains supported; the dedicated live `/player-check/` service now uses v2.
 
 Browser verification on October 3, 2026 used Chromium with the real response-header sandbox and CSP on the local cross-site pair. Verified visible rendering, real parent Web Audio from a generated WAV, music time continuing across a scene switch (0.2 to 0.4 seconds), pause preservation across a switch (0.6 seconds), resume/seek, both response modes, simulated beats, pointer/zoom interaction, a decoded PNG preview, and removal of the iframe on Stop. Scene replacement uses a new canvas after disposing the old engine so delayed WebGL context loss cannot stop the new scene. Production verification is recorded below; the full multi-browser/public-source release checks remain ahead.
+
+## PP-I04 disposable compilation
+
+Each scene load creates a fresh compile-only worker before allocating graphics.
+The owner accepts one matching versioned result within a fixed 2,000 ms deadline;
+started messages never extend that deadline. Success, failure, timeout, scene
+replacement and cancellation terminate the worker and revoke its Blob URL.
+Workers also close themselves immediately after returning. Unsupported worker
+creation fails the load without evaluating submitted source in the renderer or app.
+
+Artifact version 1 contains only `uniforms`, `frag`, `vert`, `geoGLSL`, and
+`colorGLSL`, plus its version. Uniforms are named finite float/vec2/vec3/vec4
+values, with optional finite bounds. The receiver normalizes and copies this
+bounded data, then the engine's `loadCompiledPreset` builds the mesh from it.
+The original source remains inert metadata for exports and existing response
+capability detection. Audio, time, camera, pointer and effects still update
+trusted engine fields. Captures reuse the compiled mesh/artifact.
+
+Shader Park geometry and declared inputs are supported; code relying on a DOM,
+parent window, nested workers or later callbacks is not. Delayed callbacks are
+deliberately retired after compilation. The baseline artifact checks do not
+establish that arbitrary generated GLSL is safe: PP-I05 strengthens that policy,
+and PP-I06 verifies every application lifecycle. Workers do not guarantee GPU
+hang containment or prevent all memory pressure.
+
+### Fixed local worker checks
+
+With the app running at `http://127.0.0.1:5178`, build and start the fixed child:
+
+```powershell
+npm run engine:prepare
+node scripts/build-worker-check.mjs
+node scripts/serve-worker-check.mjs
+```
+
+Open `http://127.0.0.1:5178/scripts/isolated-worker-check.html` and run the fixed
+checks. The separate child on `http://localhost:5182` uses the same hosting
+manifest, opaque sandbox and compiler build as the renderer. A finite
+three-second loop must be terminated by the unchanged two-second deadline while
+the parent stays responsive. A positive timer control distinguishes a working
+delayed callback from a compiler callback correctly retired after completion.
+The same fixture checks thrown source, invalid syntax, cancellation after actual
+loop entry, and fresh globals across repeated compilation jobs. Run its automated
+checks with `npm run worker-check:test`; these also run before `npm test`.
+Reports retain exact browser information and bounded lifecycle/timing evidence;
+hidden or cancelled runs cannot pass. These checks do not test network denial,
+GPU behavior or full application acceptance. Historical window-based security
+probes do not become evidence for workers merely by running against this build.
+
+Actual affected Android/iOS runs under deployed policy are still required before
+PP-I04 acceptance. Public custom-shader gates remain off. No AWS changes have
+been deployed for this local implementation.
+
+Local evidence on October 4, 2026: all 11 fixed checks passed in the Codex in-app
+browser on Windows (reported Chromium 154.0.0.0). The finite-loop worker was
+terminated after 2,004.4 ms; the maximum parent timer gap was 63.3 ms. The normal
+Home featured player also rendered through the new compiler path. The saved
+report is `.local/pp-i04-worker-iab.json`; this evidence does not cover physical
+mobile devices. The application suite passed 1,873 tests, and both the app and
+renderer builds and the actual local HTTP policy verification passed.
 
 ## Hosting boundary
 
@@ -401,7 +461,7 @@ Also run the browser isolation checks from the actual deployed parent: headers a
 
 Rendering happens in the visitor's browser. Hosting charges come from CloudFront data transfer, requests and the request-validation function, plus S3 storage and requests. S3 versioning also retains prior file versions for rollback. No renderer compute instance, domain registration, Route 53 zone or custom certificate is needed for this plan.
 
-The measured local bundle is about 16.95 MB, excluding any transfer compression. At that size, a conservative decimal 1 TB budget corresponds to roughly 59,000 complete downloads; budgeting around 50,000 leaves room for other requests and estimation differences. The bundle is shared across scenes and has an immutable URL, allowing browser caching when supported. Builds, cache eviction and browser cache partitioning affect actual repeat downloads.
+The PP-I04 local bundle is about 17.70 MB, including about 665 KB of embedded compiler-worker code, before transfer compression. At that size, a conservative decimal 1 TB budget corresponds to roughly 56,000 complete downloads; budgeting around 50,000 leaves room for other requests and estimation differences. The worker runs on the visitor's device and adds no server compute service. The bundle is shared across scenes and has an immutable URL, allowing browser caching when supported. Builds, cache eviction and browser cache partitioning affect actual repeat downloads.
 
 The pay-as-you-go 1 TB allowance discussed for this plan is **account-wide**, not reserved for this distribution and not a hard spending cap. It does not stop delivery at 1 TB. Verify the account's plan and current [CloudFront pricing](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/) and [S3 pricing](https://aws.amazon.com/s3/pricing/); monitor billed usage and set billing notifications appropriate to the account. This deployment template does not create a budget, spending cutoff or usage monitor.
 

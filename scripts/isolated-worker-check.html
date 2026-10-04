@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>MAGE fixed compiler worker check</title><link rel="stylesheet" href="./isolated-security-check.css"></head>
+<body><main><h1>Compiler worker check</h1>
+<p>This local PP-I04 fixture checks the disposable compiler worker inside the opaque, separate renderer. It uses only fixed sources and never enables custom playback or accesses account data.</p>
+<p>Keep this page visible. The check includes finite three-second loops in compiler workers with the unchanged two-second compiler deadline. It checks failures, active cancellation and fresh workers for repeated jobs. A separate timer control demonstrates callback delivery; the actual compiler must close and be terminated before its delayed callback.</p>
+<div class="actions"><button id="start">Run fixed worker checks</button><button id="stop">Stop checks</button></div>
+<div id="player" aria-label="Opaque worker check frame"></div><p id="status" role="status">Ready.</p>
+<table><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody id="results"></tbody></table>
+<p id="summary"></p><h2>Save the results</h2><p id="saved-runs"></p>
+<div class="actions"><button id="download" disabled>Download results JSON</button><button id="show-report" disabled>Show report JSON</button></div><pre id="report-json" hidden tabindex="0"></pre>
+<p>This report records fixed outcomes, browser information, bounded timing and worker lifecycle events. It contains no source, raw errors, account or storage values. Network requests, WebGL rendering, the full application and browser release approval are outside this fixture. The earlier security-check reports remain separate.</p>
+</main><script type="module" src="./isolated-worker-check.ts"></script></body></html>
