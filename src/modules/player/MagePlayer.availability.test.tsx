@@ -73,6 +73,119 @@ afterEach(() => {
 })
 
 describe('MagePlayer live availability', () => {
+  it.each(['permission-check', 'compilation'] as const)('allows an immediate music pause during %s and does not resume it on completion', async pendingReason => {
+    const scene = buildMagePlayerSceneBlob()
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
+    permission(930, allowed)
+    const tracks = [buildMagePlayerTrack()]
+    const view = render(<MagePlayer sceneBlob={scene} sceneKey={930} playlistTracks={tracks} selectedTrackId="track-1" />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeEnabled())
+    const compiling = deferred<void>()
+    if (pendingReason === 'permission-check') permission(930, checking)
+    else {
+      vi.mocked(controller.loadSceneBlob).mockReturnValueOnce(compiling.promise)
+      view.rerender(<MagePlayer sceneBlob={buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.5);' } })}
+        sceneKey={930} playlistTracks={tracks} selectedTrackId="track-1" />)
+      await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    }
+    const pause = screen.getByRole('button', { name: 'Pause scene and audio playback' })
+    expect(pause).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeDisabled()
+    fireEvent.click(pause)
+    expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
+    expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeDisabled()
+    vi.mocked(controller.setPlaybackState).mockClear()
+    if (pendingReason === 'permission-check') permission(930, allowed)
+    else await act(async () => { compiling.resolve() })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeEnabled())
+    expect(controller.setPlaybackState).not.toHaveBeenCalledWith('playing')
+    expect(controller.loadAudio).toHaveBeenCalledOnce()
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+  })
+
+  it('aborts pending startup as soon as navigation removes the player', async () => {
+    const creation = deferred<MagePlayerController>()
+    vi.mocked(createMagePlayer).mockReturnValueOnce(creation.promise)
+    permission(931, allowed)
+    const scene = buildMagePlayerSceneBlob()
+    const key = remember(scene, 931)
+    const view = render(<MagePlayer sceneBlob={scene} sceneKey={931} />)
+    await waitFor(() => expect(createMagePlayer).toHaveBeenCalledOnce())
+    const signal = vi.mocked(createMagePlayer).mock.calls[0][1]?.signal
+    expect(signal?.aborted).toBe(false)
+    view.unmount()
+    expect(signal?.aborted).toBe(true)
+    await act(async () => { creation.reject(new DOMException('Cancelled', 'AbortError')) })
+    expect(sceneRecovery.getBlock(key)).toBeNull()
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+  })
+
+  it('suspends previous visuals while a different scene target is checked without pausing its music', async () => {
+    const scene = buildMagePlayerSceneBlob()
+    const setRenderingSuspended = vi.fn()
+    const controller = buildMagePlayerController({ setRenderingSuspended })
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
+    permission(932, allowed)
+    permission(933, checking)
+    const tracks = [buildMagePlayerTrack()]
+    const view = render(<MagePlayer sceneBlob={scene} sceneKey={932} playlistTracks={tracks} selectedTrackId="track-1" />)
+    await waitFor(() => expect(controller.loadAudio).toHaveBeenCalledOnce())
+    vi.mocked(controller.setPlaybackState).mockClear()
+    const replacement = buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.5);' } })
+    view.rerender(<MagePlayer sceneBlob={replacement} sceneKey={933} playlistTracks={tracks} selectedTrackId="track-1" />)
+    expect(setRenderingSuspended).toHaveBeenLastCalledWith(true)
+    expect(controller.setPlaybackState).not.toHaveBeenCalledWith('paused')
+    expect(controller.loadSceneBlob).toHaveBeenCalledOnce()
+    expect(controller.loadAudio).toHaveBeenCalledOnce()
+    expect(controller.dispose).not.toHaveBeenCalled()
+    permission(933, allowed)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(replacement, { sceneKey: 933 }))
+    expect(setRenderingSuspended).toHaveBeenLastCalledWith(false)
+    expect(controller.loadAudio).toHaveBeenCalledOnce()
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+  })
+
+  it('replaces a failed older compilation only for the newly permitted scene and leaves the failed version blocked', async () => {
+    const first = buildMagePlayerSceneBlob()
+    const compilingScene = buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.5);' } })
+    const nextScene = buildMagePlayerSceneBlob({ visualizer: { shader: 'sphere(0.2);' } })
+    const failedKey = remember(compilingScene, 934)
+    remember(first, 934)
+    remember(nextScene, 935)
+    const compile = deferred<void>()
+    let stopped = false
+    const retired = buildMagePlayerController({
+      getStoppedRecoveryKey: () => stopped ? failedKey : null,
+      setRenderingSuspended: vi.fn(() => { if (stopped) throw new Error('This preview has stopped.') }),
+      loadSceneBlob: vi.fn<MagePlayerController['loadSceneBlob']>().mockReturnValueOnce(undefined).mockReturnValueOnce(compile.promise),
+    })
+    const fresh = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(retired).mockResolvedValueOnce(fresh)
+    permission(934, allowed)
+    permission(935, checking)
+    const view = render(<MagePlayer sceneBlob={first} sceneKey={934} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeEnabled())
+    view.rerender(<MagePlayer sceneBlob={compilingScene} sceneKey={934} />)
+    await waitFor(() => expect(retired.loadSceneBlob).toHaveBeenCalledTimes(2))
+    view.rerender(<MagePlayer sceneBlob={nextScene} sceneKey={935} />)
+    await act(async () => {
+      stopped = true
+      sceneRecovery.block(failedKey, 'compile')
+      compile.reject(new Error('Isolated player stopped.'))
+    })
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+    expect(screen.getByText(checking.message)).toBeInTheDocument()
+    permission(935, allowed)
+    await waitFor(() => expect(fresh.loadSceneBlob).toHaveBeenCalledWith(nextScene, { sceneKey: 935 }))
+    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(retired.loadSceneBlob).toHaveBeenCalledTimes(2)
+    expect(sceneRecovery.getBlock(failedKey)?.reason).toBe('compile')
+    view.rerender(<MagePlayer sceneBlob={compilingScene} sceneKey={934} />)
+    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeInTheDocument()
+    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+  })
+
   it.each(['playing', 'paused'] as const)('retains the authorized renderer, playlist, position, and %s choice through a permission recheck', async initialPlayback => {
     const scene = buildMagePlayerSceneBlob()
     const controller = buildMagePlayerController()

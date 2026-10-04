@@ -13,6 +13,7 @@ import { PlaybackOptions } from './recovery/PlaybackOptions'
 
 type MagePlayerControlsProps = {
   disabled?: boolean
+  allowPause?: boolean
   activeAudioAction: 'add' | 'load' | null
   audioError: string | null
   audioProgressPercent: string
@@ -36,6 +37,7 @@ type MagePlayerControlsProps = {
 
 export function MagePlayerControls({
   disabled = false,
+  allowPause = false,
   activeAudioAction,
   audioError,
   audioProgressPercent,
@@ -70,7 +72,7 @@ export function MagePlayerControls({
           aria-label={`${playbackLabel} scene and audio playback`}
           aria-pressed={playbackState === 'playing'}
           className="mage-player__control-button mage-player__control-button--playback"
-          disabled={controlsBusy}
+          disabled={controlsBusy && !(allowPause && playbackState === 'playing')}
           onClick={onTogglePlayback}
           title={`${playbackLabel} scene and audio playback`}
           type="button"

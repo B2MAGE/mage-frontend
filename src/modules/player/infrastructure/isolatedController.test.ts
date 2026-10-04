@@ -50,7 +50,7 @@ function bridge() {
     play: vi.fn(async () => { state.playing = true }), pause: vi.fn(() => { state.playing = false }),
     seek: vi.fn((time: number) => { state.time = Math.min(60, time) }), setVolume: vi.fn((volume: number) => { state.volume = volume }),
     clearAudio: vi.fn(() => { state.loaded = false; state.duration = 0; state.time = 0 }),
-    reset: vi.fn(() => { state.time = 0; state.playing = false }), setSynthetic: vi.fn(),
+    reset: vi.fn(() => { state.time = 0; state.playing = false }), setSynthetic: vi.fn(), setRenderingSuspended: vi.fn(),
     setAudioResponse: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
     getAudioState: () => ({ ...state }), capture: vi.fn<(request?: unknown) => Promise<Blob>>(async () => new Blob(['verified-raster'], { type: 'image/png' })),
     dispose: vi.fn(), state }
@@ -139,9 +139,11 @@ describe('isolated controller guards', () => {
     await player.loadAudio({ sourcePath: 'blob:http://localhost/music', sourceLabel: 'Music' })
     playerBridge.loadScene.mockClear(); playerBridge.play.mockClear()
     setAvailability('custom', 'CHECKING')
-    expect(playerBridge.pause).toHaveBeenCalled()
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(true)
+    expect(playerBridge.pause).not.toHaveBeenCalled()
     expect(player.getPlaybackState()).toBe('playing')
     setAvailability('custom', 'ALLOWED')
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
     expect(playerBridge.play).toHaveBeenCalledOnce()
     expect(playerBridge.loadScene).not.toHaveBeenCalled()
     expect(playerBridge.clearAudio).not.toHaveBeenCalled()
@@ -153,6 +155,27 @@ describe('isolated controller guards', () => {
     player.setPlaybackState('paused'); playerBridge.play.mockClear()
     setAvailability('custom', 'CHECKING'); setAvailability('custom', 'ALLOWED')
     expect(playerBridge.play).not.toHaveBeenCalled()
+  })
+
+  it.each(['view-first', 'permission-first'])('keeps independent visual suspension causes active until both release, %s', async order => {
+    const player = await loaded(custom)
+    await player.loadAudio({ sourcePath: 'blob:music' })
+    playerBridge.play.mockClear()
+    player.setRenderingSuspended!(true)
+    setAvailability('custom', 'CHECKING')
+    if (order === 'view-first') player.setRenderingSuspended!(false)
+    else setAvailability('custom', 'ALLOWED')
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(true)
+    expect(playerBridge.play).not.toHaveBeenCalled()
+    expect(playerBridge.pause).not.toHaveBeenCalled()
+    mocks.create.mock.calls[0][0].onHealthy()
+    expect(mocks.leases[0].confirmHealthy).not.toHaveBeenCalled()
+    if (order === 'view-first') setAvailability('custom', 'ALLOWED')
+    else player.setRenderingSuspended!(false)
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
+    expect(playerBridge.play).toHaveBeenCalledOnce()
+    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+    expect(playerBridge.loadAudio).toHaveBeenCalledOnce()
   })
 
   it('disposes on actual revocation and withdraws retry permission', async () => {
@@ -216,6 +239,9 @@ describe('isolated controller guards', () => {
   it('coalesces rapid editor changes into one latest pending source without tripping the protocol limit', async () => {
     vi.useFakeTimers()
     const player = await loaded()
+    await player.loadAudio({ sourcePath: 'blob:http://localhost/music', sourceLabel: 'Music' })
+    player.seekAudio(42)
+    player.setAudioVolume(0.4)
     const attempts: Array<Promise<unknown>> = []
     for (let index = 0; index < 12; index++) {
       attempts.push(Promise.resolve(player.loadSceneBlob({ visualizer: { shader: `sphere(${index / 20 + 0.1});` } })).catch(error => error))
@@ -232,6 +258,33 @@ describe('isolated controller guards', () => {
     expect(mocks.begin).toHaveBeenCalledTimes(2)
     expect(playerBridge.dispose).not.toHaveBeenCalled()
     expect(mocks.leases.every(lease => lease.fail.mock.calls.length === 0)).toBe(true)
+    expect(playerBridge.pause).not.toHaveBeenCalled()
+    expect(playerBridge.loadAudio).toHaveBeenCalledOnce()
+    expect(player.getAudioState()).toMatchObject({ currentTime: 42, volume: 0.4 })
+    expect(playerBridge.state.playing).toBe(true)
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
+  })
+
+  it('keeps music running while a scene compiles and respects a user pause before completion', async () => {
+    vi.useFakeTimers()
+    const player = await loaded(custom)
+    await player.loadAudio({ sourcePath: 'blob:http://localhost/music' })
+    player.seekAudio(42)
+    const compilation = deferred<void>()
+    playerBridge.loadScene.mockReturnValueOnce(compilation.promise)
+    const loading = player.loadSceneBlob({ visualizer: { shader: 'box(0.5);' } })
+    await vi.advanceTimersByTimeAsync(350)
+    expect(playerBridge.loadScene).toHaveBeenCalledTimes(2)
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(true)
+    expect(playerBridge.pause).not.toHaveBeenCalled()
+    expect(playerBridge.state).toMatchObject({ playing: true, time: 42 })
+    player.setPlaybackState('paused')
+    playerBridge.play.mockClear()
+    compilation.resolve(); await loading
+    expect(playerBridge.play).not.toHaveBeenCalled()
+    expect(playerBridge.state).toMatchObject({ playing: false, time: 42 })
+    expect(player.getPlaybackState()).toBe('paused')
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
   })
 
   it('cancels a queued editor change on disposal before sending its source', async () => {
@@ -271,6 +324,7 @@ describe('isolated controller guards', () => {
     work.reject(new Error('Isolated player stopped.'))
     await rejected
     expect(mocks.leases[0].fail).toHaveBeenCalledExactlyOnceWith('compile')
+    expect(player.getStoppedRecoveryKey?.()).toBe(sceneRecoveryKey(custom))
     expect(playerBridge.dispose).toHaveBeenCalledOnce()
     expect(playerBridge.play).not.toHaveBeenCalled()
   })
@@ -473,5 +527,21 @@ describe('isolated controls and media', () => {
     await player.loadSceneBlob(custom)
     work.resolve(new Blob(['verified-raster'], { type: 'image/png' }))
     await expect(pending).resolves.toBeNull()
+  })
+
+  it('does not allocate a capture while a replacement view waits for permission, including an earlier pending check', async () => {
+    const player = await loaded()
+    const permission = deferred<{ allowed: boolean; code: string }>()
+    mocks.check.mockReturnValueOnce(permission.promise)
+    const pending = player.captureFramePreview!()
+    await flush()
+    player.setRenderingSuspended!(true)
+    permission.resolve({ allowed: true, code: 'ALLOWED' })
+    await expect(pending).resolves.toBeNull()
+    await expect(player.captureFramePreview!()).resolves.toBeNull()
+    expect(playerBridge.capture).not.toHaveBeenCalled()
+    player.setRenderingSuspended!(false)
+    await expect(player.captureFramePreview!()).resolves.toMatch(/^data:image\/png;base64,/)
+    expect(playerBridge.capture).toHaveBeenCalledOnce()
   })
 })

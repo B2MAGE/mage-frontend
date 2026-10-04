@@ -328,7 +328,7 @@ describe('DiscoverySceneCard animated preview', () => {
     renderCard()
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
-    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement), { sceneKey: scene.sceneId, renderProfile: 'preview', initialSceneBlob: scene.sceneData })
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement), { sceneKey: scene.sceneId, renderProfile: 'preview', initialSceneBlob: scene.sceneData, signal: expect.any(AbortSignal) })
     await act(async () => blockAvailability())
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
@@ -340,7 +340,9 @@ describe('DiscoverySceneCard animated preview', () => {
     renderCard()
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
+    const signal = engineMocks.createMagePlayer.mock.calls[0][1].signal as AbortSignal
     await act(async () => blockAvailability())
+    expect(signal.aborted).toBe(true)
     await act(async () => pending.resolve(controller))
     expect(controller.loadSceneBlob).not.toHaveBeenCalled()
     expect(controller.dispose).toHaveBeenCalledTimes(1)
@@ -613,9 +615,12 @@ describe('DiscoverySceneCard animated preview', () => {
     const firstLink = screen.getByRole('link', { name: /signal bloom/i })
     fireEvent.pointerEnter(firstLink, { pointerType: 'mouse' })
     await finishActivation()
+    const firstSignal = engineMocks.createMagePlayer.mock.calls[0][1].signal as AbortSignal
     fireEvent.pointerLeave(firstLink, { pointerType: 'mouse' })
+    expect(firstSignal.aborted).toBe(true)
     fireEvent.pointerEnter(screen.getByRole('link', { name: /second signal/i }), { pointerType: 'mouse' })
     await finishActivation()
+    expect(engineMocks.createMagePlayer.mock.calls[1][1].signal.aborted).toBe(false)
     await act(async () => { firstCreation.resolve(firstController) })
 
     expect(firstController.dispose).toHaveBeenCalledTimes(1)
@@ -693,8 +698,10 @@ describe('DiscoverySceneCard animated preview', () => {
     renderCard()
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
+    const signal = engineMocks.createMagePlayer.mock.calls[0][1].signal as AbortSignal
     await act(async () => {
       pageTransition('pagehide')
+      expect(signal.aborted).toBe(true)
       pageTransition('pageshow')
     })
     await finishActivation()
@@ -704,5 +711,21 @@ describe('DiscoverySceneCard animated preview', () => {
     expect(stale.loadSceneBlob).not.toHaveBeenCalled()
     expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene.sceneData, { sceneKey: scene.sceneId })
     expect(restored.dispose).not.toHaveBeenCalled()
+  })
+
+  it('aborts pending creation on unmount before permission or renderer readiness completes', async () => {
+    const pending = deferred<MagePlayerController>()
+    const stale = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockReturnValueOnce(pending.promise)
+    const view = renderCard()
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    const [host, options] = engineMocks.createMagePlayer.mock.calls[0]
+    view.unmount()
+    expect(options.signal.aborted).toBe(true)
+    expect(host.isConnected).toBe(false)
+    await act(async () => { pending.resolve(stale) })
+    expect(stale.dispose).toHaveBeenCalledOnce()
+    expect(stale.loadSceneBlob).not.toHaveBeenCalled()
   })
 })

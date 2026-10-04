@@ -101,14 +101,19 @@ type SessionAudioProps = {
   audioSelection: ReturnType<typeof useMagePlayerAudioSelection>
 }
 
+type SessionPlaybackIntent = { playback: MagePlayerPlaybackState; initialPlayback: MagePlayerPlaybackState; sceneKey: MageSceneKey | undefined }
+
 function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
+  const defaultPlayback = props.initialPlayback ?? 'playing'
+  const playbackIntentRef = useRef<SessionPlaybackIntent>({ playback: defaultPlayback, initialPlayback: defaultPlayback, sceneKey: props.sceneKey })
   const validationError = useMemo(() => {
     if (!props.sceneBlob) return null
     try { validateSceneForPlayback(props.sceneBlob); return null }
     catch (error) { return readMagePlayerErrorMessage(error) }
   }, [props.sceneBlob])
-  useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
+  const recoveryRevision = useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const [rendererInstance, setRendererInstance] = useState(0)
+  const replaceRetiredRenderer = useCallback(() => setRendererInstance(value => value + 1), [])
   const { playlist, audioSelection } = props
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
   const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
@@ -211,8 +216,11 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   }
 
   return <MagePlayerRenderer key={rendererInstance} {...props}
+    playbackIntentRef={playbackIntentRef}
     availabilityPending={availabilityPending}
     onRendererReady={onRendererReady}
+    onReplaceRetiredRenderer={replaceRetiredRenderer}
+    recoveryRevision={recoveryRevision}
     playlist={playlist}
     audioSelection={audioSelection}
     onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
@@ -242,7 +250,11 @@ function MagePlayerRenderer({
   audioSelection,
   availabilityPending,
   onRendererReady,
-}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; availabilityPending: boolean; onRendererReady: () => void } & SessionAudioProps) {
+  playbackIntentRef,
+  onReplaceRetiredRenderer,
+  recoveryRevision,
+}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; availabilityPending: boolean; onRendererReady: () => void;
+  playbackIntentRef: { current: SessionPlaybackIntent }; onReplaceRetiredRenderer: () => void; recoveryRevision: number } & SessionAudioProps) {
   const renderHostRef = useRef<HTMLDivElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MagePlayerController | null>(null)
@@ -250,7 +262,9 @@ function MagePlayerRenderer({
   const diagnosticsCallbackRef = useRef(onEngineDiagnosticsChange)
   const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
   const latestSceneKeyRef = useRef(sceneKey)
-  const requestedPlaybackRef = useRef<MagePlayerPlaybackState>(initialPlayback)
+  // The viewing session owns user intent even when pause-all, recovery or a
+  // cached-page return replaces this renderer and its audio resources.
+  const requestedPlaybackRef = playbackIntentRef
   const loadedTrackIdRef = useRef<string | null>(null)
   const completedTrackIdRef = useRef<string | null>(null)
   const hasConfiguredSimulatedBeatRef = useRef(false)
@@ -310,27 +324,41 @@ function MagePlayerRenderer({
   }, [sceneBlob])
 
   useEffect(() => {
-    requestedPlaybackRef.current = initialPlayback
-    setPlaybackState(initialPlayback)
+    if (requestedPlaybackRef.current.initialPlayback !== initialPlayback || requestedPlaybackRef.current.sceneKey !== sceneKey) {
+      requestedPlaybackRef.current = { playback: initialPlayback, initialPlayback, sceneKey }
+    }
+    const requested = requestedPlaybackRef.current.playback
+    setPlaybackState(requested)
 
     const player = playerRef.current
 
-    if (!player || (initialPlayback === 'playing'
+    if (!player || player.getStoppedRecoveryKey?.() || (requested === 'playing'
       && !sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, latestSceneBlobRef.current)))) {
       return
     }
 
-    setPlaybackState(player.setPlaybackState(initialPlayback))
+    setPlaybackState(player.setPlaybackState(requested))
     setAudioState(player.getAudioState())
-  }, [initialPlayback, sceneKey])
+  }, [initialPlayback, requestedPlaybackRef, sceneKey])
 
   useEffect(() => {
+    // The retained controller may still watch the previous scene's permission
+    // while the replacement is being checked. Suspend only its visual output.
     const player = playerRef.current
-    if (player) {
-      const next = availabilityPending ? 'paused' : requestedPlaybackRef.current
-      if (player.getPlaybackState() !== next) setPlaybackState(player.setPlaybackState(next))
+    if (!player) return
+    const stoppedKey = player.getStoppedRecoveryKey?.()
+    if (stoppedKey) {
+      const requestedKey = sceneRecoveryKey(recoverySceneBlob ?? sceneBlob, sceneKey)
+      // An older in-flight scene can fail after selection moves elsewhere.
+      // Replace that retired renderer only for a separately allowed revision;
+      // the failed revision's recovery record still requires deliberate Retry.
+      if (requestedKey && requestedKey !== stoppedKey && !availabilityPending
+        && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, sceneBlob))
+        && !sceneRecovery.isSafeMode() && !sceneRecovery.getBlock(requestedKey)) onReplaceRetiredRenderer()
+      return
     }
-  }, [availabilityPending])
+    player.setRenderingSuspended?.(availabilityPending)
+  }, [availabilityPending, onReplaceRetiredRenderer, playerVersion, recoveryRevision, recoverySceneBlob, sceneBlob, sceneKey])
 
   useEffect(() => {
     const canvas = renderHostRef.current
@@ -342,6 +370,7 @@ function MagePlayerRenderer({
     let nextPlayer: MagePlayerController | null = null
     let isDisposed = false
     let animationFrameId = 0
+    const startup = new AbortController()
     const disposePlayer = () => {
       try { nextPlayer?.dispose() } catch {
         // The adapter retains its marker when cleanup fails. Recovery controls
@@ -353,7 +382,7 @@ function MagePlayerRenderer({
       void (async () => {
         try {
           const initialSceneKey = latestSceneKeyRef.current
-          nextPlayer = await createMagePlayer(canvas, { log, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(initialSceneKey === undefined ? {} : { sceneKey: initialSceneKey }) })
+          nextPlayer = await createMagePlayer(canvas, { signal: startup.signal, log, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(initialSceneKey === undefined ? {} : { sceneKey: initialSceneKey }) })
 
           if (isDisposed) {
             disposePlayer()
@@ -365,7 +394,7 @@ function MagePlayerRenderer({
           loadedTrackIdRef.current = null
           completedTrackIdRef.current = null
           pendingAudioRef.current = null
-          setPlaybackState(nextPlayer.setPlaybackState(requestedPlaybackRef.current))
+          setPlaybackState(nextPlayer.setPlaybackState(requestedPlaybackRef.current.playback))
           setAudioState(nextPlayer.getAudioState())
           setPlayerVersion((currentVersion) => currentVersion + 1)
         } catch (error) {
@@ -387,13 +416,14 @@ function MagePlayerRenderer({
 
     return () => {
       isDisposed = true
+      startup.abort()
       window.cancelAnimationFrame(animationFrameId)
       playerRef.current = null
       capabilitiesCallbackRef.current?.(null)
       diagnosticsCallbackRef.current?.(null)
       disposePlayer()
     }
-  }, [hasScene, log, renderProfile])
+  }, [hasScene, log, renderProfile, requestedPlaybackRef])
 
   useEffect(() => {
     if (availabilityPending) return
@@ -406,7 +436,7 @@ function MagePlayerRenderer({
 
     const player = playerRef.current
 
-    if (!player) {
+    if (!player || player.getStoppedRecoveryKey?.()) {
       return
     }
     if (appliedSceneRef.current?.player === player && appliedSceneRef.current.identity === playbackIdentity && appliedSceneRef.current.sceneBlob === sceneBlob
@@ -454,7 +484,7 @@ function MagePlayerRenderer({
             identity: playbackIdentity,
             snapshot: capabilities ? { sceneBlob, capabilities } : null,
           })
-          requestedPlaybackRef.current = nextPlaybackState
+          requestedPlaybackRef.current.playback = nextPlaybackState
           setLoadError(null)
           setLoadedSceneIdentity(playbackIdentity)
           setLoadedPlayerVersion(playerVersion)
@@ -484,7 +514,7 @@ function MagePlayerRenderer({
     return () => {
       isCancelled = true
     }
-  }, [availabilityPending, onRendererReady, playbackIdentity, playerVersion, recoverySceneBlob, sceneBlob, sceneKey])
+  }, [availabilityPending, onRendererReady, playbackIdentity, playerVersion, recoverySceneBlob, requestedPlaybackRef, sceneBlob, sceneKey])
 
   const status: MagePlayerStatus =
     availabilityPending
@@ -625,7 +655,7 @@ function MagePlayerRenderer({
   useEffect(() => {
     const player = playerRef.current
 
-    if (!player || status !== 'ready') {
+    if (!player || (status !== 'ready' && loadedPlayerVersion === null)) {
       return
     }
 
@@ -639,7 +669,7 @@ function MagePlayerRenderer({
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [playerVersion, status])
+  }, [loadedPlayerVersion, playerVersion, status])
 
   useEffect(() => {
     if (!isVolumeOpen) {
@@ -689,7 +719,7 @@ function MagePlayerRenderer({
     if (tracks.length === 0) {
       try {
         if (loadedTrackIdRef.current !== null && player.getPlaybackState() !== 'paused') {
-          requestedPlaybackRef.current = 'paused'
+          requestedPlaybackRef.current.playback = 'paused'
           setPlaybackState(player.setPlaybackState('paused'))
         }
 
@@ -748,7 +778,7 @@ function MagePlayerRenderer({
     return () => {
       isCancelled = true
     }
-  }, [commitTrackDuration, currentTrack, playerVersion, status, trackLoadVersion, tracks.length])
+  }, [commitTrackDuration, currentTrack, playerVersion, requestedPlaybackRef, status, trackLoadVersion, tracks.length])
 
   useEffect(() => {
     if (availabilityPending) return
@@ -827,12 +857,13 @@ function MagePlayerRenderer({
   function handleTogglePlayback(event: ReactMouseEvent<HTMLButtonElement>) {
     const player = playerRef.current
 
-    if (!player || status !== 'ready' || controlsBusy) {
-      return
-    }
+    if (!player) return
 
     const nextPlaybackState = playbackState === 'playing' ? 'paused' : 'playing'
-    requestedPlaybackRef.current = nextPlaybackState
+    // Stopping audio never needs permission to render. A new Play request still
+    // waits for the current scene and fresh availability.
+    if (nextPlaybackState === 'playing' && (status !== 'ready' || controlsBusy)) return
+    requestedPlaybackRef.current.playback = nextPlaybackState
     setPlaybackState(player.setPlaybackState(nextPlaybackState))
     setAudioState(player.getAudioState())
     setAudioError(null)
@@ -917,9 +948,10 @@ function MagePlayerRenderer({
           </div>
         ) : null}
       </div>
-        {status === 'ready' || availabilityPending ? (
+        {status === 'ready' || availabilityPending || (status === 'loading' && loadedPlayerVersion !== null) ? (
           <MagePlayerControls
-            disabled={availabilityPending}
+            disabled={status !== 'ready'}
+            allowPause
             activeAudioAction={audioSelection.adding ? 'add' : activeAudioAction}
             audioError={audioSelection.error ?? audioError}
             audioProgressPercent={audioProgressPercent}

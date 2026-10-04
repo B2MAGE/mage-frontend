@@ -22,7 +22,7 @@ function fakeBridge() {
   return { ready: Promise.resolve(), loadScene: vi.fn(async () => {}),
     loadAudio: vi.fn(async () => { state.loaded = true; state.duration = 120 }),
     getAudioState: () => ({ ...state }), play: vi.fn(async () => { state.playing = true }),
-    pause: vi.fn(() => { state.playing = false }), clearAudio: vi.fn(),
+    pause: vi.fn(() => { state.playing = false }), setRenderingSuspended: vi.fn(), clearAudio: vi.fn(),
     seek: vi.fn((value: number) => { state.time = value }), reset: vi.fn(), setVolume: vi.fn(),
     setSynthetic: vi.fn(), setAudioResponse: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
     capture: vi.fn(async () => new Blob(['verified'], { type: 'image/png' })), dispose: vi.fn(), state }
@@ -194,7 +194,9 @@ describe('isolated controller with the real availability polling store', () => {
       ? json({ enabled: true, code: 'AVAILABLE' }) : pending.promise)
     bridges[0].pause.mockClear(); bridges[0].play.mockClear()
     window.dispatchEvent(new Event('focus'))
-    expect(bridges[0].pause).toHaveBeenCalledOnce()
+    expect(bridges[0].pause).not.toHaveBeenCalled()
+    expect(bridges[0].setRenderingSuspended).toHaveBeenLastCalledWith(true)
+    expect(bridges[0].state.playing).toBe(true)
     expect(bridges[0].dispose).not.toHaveBeenCalled()
     expect(player.getPlaybackState()).toBe('playing')
     expect(() => player.resetPlayback()).toThrow()
@@ -203,6 +205,7 @@ describe('isolated controller with the real availability polling store', () => {
     expect(bridges[0].loadScene).toHaveBeenCalledOnce()
     expect(bridges[0].loadAudio).toHaveBeenCalledOnce()
     expect(bridges[0].play).toHaveBeenCalledOnce()
+    expect(bridges[0].setRenderingSuspended).toHaveBeenLastCalledWith(false)
     expect(player.getAudioState()).toMatchObject({ currentTime: 42, isLoaded: true, sourcePath: 'Current track' })
   })
 

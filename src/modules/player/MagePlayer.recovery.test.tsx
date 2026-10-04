@@ -150,6 +150,33 @@ describe('MagePlayer recovery', () => {
     expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 
+  it.each(['pause-all', 'cached-return', 'retry'] as const)('retains a manual pause when %s replaces the renderer', async transition => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 832)
+    const first = controllerWithLease(key)
+    const restored = controllerWithLease(key)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
+    render(<MagePlayer sceneBlob={scene} sceneKey={832} playlistTracks={[buildMagePlayerTrack()]} selectedTrackId="track-1" />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Pause scene and audio playback' }))
+    expect(first.setPlaybackState).toHaveBeenLastCalledWith('paused')
+    if (transition === 'pause-all') {
+      fireEvent.click(screen.getByRole('button', { name: 'Playback options' }))
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+    } else if (transition === 'cached-return') {
+      act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+    } else {
+      act(() => sceneRecovery.block(key, 'context-lost'))
+      fireEvent.click(screen.getByRole('button', { name: 'Retry scene' }))
+    }
+    await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledOnce())
+    expect(first.dispose).toHaveBeenCalledOnce()
+    expect(restored.setPlaybackState).toHaveBeenCalledWith('paused')
+    expect(restored.setPlaybackState).not.toHaveBeenCalledWith('playing')
+    expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeEnabled()
+  })
+
   it('does not resume if a newer failure arrives while an accepted retry is globally paused', async () => {
     const scene = buildMagePlayerSceneBlob()
     const key = identity(scene, 809)
