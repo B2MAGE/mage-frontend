@@ -5,6 +5,9 @@ import engineSource from '@notrac/mage?raw'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
 import { AudioAnalysisSession } from '@notrac/mage/audio-analysis'
 import { AudioResponseMapper, SyntheticAudioFrames } from '@notrac/mage/audio-mapping'
+import { compileShader } from '@notrac/mage/compiler'
+import type { CompilerWorker } from './compiler/client'
+import type { CompileRequest } from './compiler/protocol'
 
 type ResponseHarness = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const engineClass = engineSource.slice(engineSource.indexOf('var MAGEEngine = class MAGEEngine {'))
@@ -23,7 +26,7 @@ const { initMAGE, compileInWorker, compiledArtifact } = vi.hoisted(() => ({ init
 vi.mock('@notrac/mage', () => ({ initMAGE }))
 vi.mock('./compiler/client', () => ({ compileInWorker }))
 beforeEach(() => { initMAGE.mockReset(); compileInWorker.mockReset().mockResolvedValue(compiledArtifact) })
-function fixture() {
+function fixture(profile: 'full' | 'preview' = 'preview') {
   const response: ResponseHarness = { audioAnalysis: null, transientAudio: null, syntheticPreviewSeed: 0, syntheticPreviewTempoScale: 1 }
   for (const name of ['setAudioResponseMode', 'setAudioResponseConfig', 'getAudioResponseConfig']) response[name] = responseMethod(name).bind(response)
   const png = new Uint8Array(33)
@@ -49,7 +52,7 @@ function fixture() {
   initMAGE.mockReturnValue(engine)
   const abort = new AbortController(), canvas = document.createElement('canvas'), onError = vi.fn(), onFrame = vi.fn()
   const load = (scene: unknown = { visualizer: { shader: 'sphere(1);' } }) => loadPlaybackEngine({ canvas, signal: abort.signal, scene,
-    profile: 'preview', onError, onFrame })
+    profile, onError, onFrame })
   const ready = async (scene?: unknown) => { const loading = load(scene); await vi.waitFor(() => expect(engine.loadCompiledPreset).toHaveBeenCalledOnce()); listener?.({ type: 'frame' }); return loading }
   return { engine, response, abort, canvas, onError, onFrame, load, ready, emit: (type: 'frame' | 'error') => listener?.({ type }) }
 }
@@ -61,7 +64,7 @@ describe('isolated playback engine', () => {
     compileInWorker.mockReturnValue(new Promise(resolve => { compiled = resolve }))
     const loading = f.load()
     expect(initMAGE).not.toHaveBeenCalled()
-    expect(compileInWorker).toHaveBeenCalledWith('sphere(1);', { signal: f.abort.signal, maxRaymarchIterations: 200 })
+    expect(compileInWorker).toHaveBeenCalledWith('sphere(1);', { signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200 })
     compiled(compiledArtifact)
     await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     expect(f.engine.loadCompiledPreset.mock.calls[0][1]).toEqual(compiledArtifact)
@@ -77,6 +80,33 @@ describe('isolated playback engine', () => {
     await expect(f.load()).rejects.toThrow()
     expect(initMAGE).not.toHaveBeenCalled()
   })
+
+  it.each(['invalid-version', 'commented-limit', 'changed-vertex', 'sparse-uniforms'])(
+    'rejects %s through the real worker receiver before allocating graphics', async kind => {
+      const { compileInWorker: receiveCompiled } = await vi.importActual<typeof import('./compiler/client')>('./compiler/client')
+      const artifact = compileShader('sphere(1);')
+      if (kind === 'invalid-version') Object.assign(artifact, { version: 2 })
+      if (kind === 'commented-limit') artifact.frag = '// const int MAX_ITERATIONS = 200;\nvoid main() {}'
+      if (kind === 'changed-vertex') artifact.vert = 'void main() { gl_Position = vec4(0.); }'
+      if (kind === 'sparse-uniforms') artifact.uniforms.length++
+      const terminate = vi.fn(), release = vi.fn()
+      const worker: CompilerWorker = { onmessage: null, onerror: null, onmessageerror: null, terminate,
+        postMessage: vi.fn((request: CompileRequest) => {
+          const reply = (type: string, extra: object = {}) => worker.onmessage?.call(worker as Worker,
+            new MessageEvent('message', { data: { protocol: request.protocol, version: request.version,
+              jobId: request.jobId, channelId: request.channelId, sceneRevision: request.sceneRevision, type, ...extra } }))
+          reply('started')
+          reply('compiled', { artifact })
+        }) }
+      compileInWorker.mockImplementation((source, options) => receiveCompiled(source, options,
+        { createWorker: () => ({ worker, release }) }))
+      const f = fixture()
+      await expect(f.load()).rejects.toMatchObject({ code: 'invalid-output' })
+      expect(terminate).toHaveBeenCalledOnce()
+      expect(release).toHaveBeenCalledOnce()
+      expect(initMAGE).not.toHaveBeenCalled()
+      expect(f.engine.loadCompiledPreset).not.toHaveBeenCalled()
+    })
 
   it('preserves saved selective settings and mapper history when the parent replays them after loading', async () => {
     const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 0.3,
@@ -214,6 +244,7 @@ describe('isolated playback engine', () => {
     const f = fixture(), control = await f.ready()
     const request = { width: 640, height: 640, type: 'image/png' as const, quality: 0.8 }
     const result = await control.capture(request)
+    expect(f.engine.captureFramePreview).toHaveBeenCalledWith({ ...request, width: 480, height: 480 })
     expect(result.width * result.height).toBeLessThanOrEqual(230400)
     expect(result.width).toBe(10); expect(result.height).toBe(10)
     expect(new Uint8Array(result.bytes).slice(0, 4)).toEqual(new Uint8Array([137, 80, 78, 71]))
@@ -225,6 +256,24 @@ describe('isolated playback engine', () => {
     f.engine.captureFramePreview.mockReturnValue(new Promise(resolve => { complete = resolve }))
     const pending = control.capture(request); f.abort.abort(); complete('data:image/png;base64,AQID')
     await expect(pending).rejects.toThrow()
+  })
+
+  it.each(['full', 'preview'] as const)('retains the host %s allocation budget and preview capture ceiling after compilation', async profile => {
+    const f = fixture(profile), control = await f.ready()
+    expect(initMAGE).toHaveBeenCalledWith(expect.objectContaining({ pixelRatio: 1,
+      renderBudget: { maxRenderPixels: profile === 'full' ? 2073600 : 230400,
+        maxLongestEdge: profile === 'full' ? 1920 : 640, maxDevicePixelRatio: 1.5,
+        maxFramesPerSecond: profile === 'full' ? 60 : 30, maxRaymarchIterations: 200 } }))
+    control.resize({ width: 8192, height: 8192, pixelRatio: 1.5 })
+    await control.capture({ width: 100000, height: 100000, type: 'image/png', quality: 1 })
+    const [capture] = f.engine.captureFramePreview.mock.calls.at(-1)!
+    expect(capture).toMatchObject({ type: 'image/png', quality: 1 })
+    expect(capture.width).toBeGreaterThan(0)
+    expect(capture.width).toBeLessThanOrEqual(480)
+    expect(capture.height).toBe(capture.width)
+    expect(capture.width * capture.height).toBeLessThanOrEqual(230400)
+    expect(compileInWorker).toHaveBeenCalledOnce()
+    control.dispose()
   })
 
   it('rejects failed compilation and synchronous startup failure, releasing resources', async () => {
