@@ -17,6 +17,28 @@ test('deployed reports identify fixed-fixture evidence without granting release 
   assert.throws(() => createSecurityReport({ mode: 'approved' }), /Unknown/)
 })
 
+test('retains the fixed compile reason without raw compiler data or new verification claims', () => {
+  const report = createSecurityReport({ mode: 'deployed' }), id = report.start('stall')
+  const diagnostic = { type: 'failure', phase: 'stall-startup', atMs: 80, reason: 'compile' }
+  const observation = { elapsedMs: 80, maxParentGapMs: 51, failureReason: 'compile', failureCallbackAtMs: 80,
+    iframeConnected: false, markerQueued: false, markerScheduled: false, markerStarted: false, markerEnded: false }
+  report.diagnostic(id, { ...diagnostic, rawError: 'private compiler diagnostic' })
+  report.observeStall(id, 'observation', { ...observation, source: 'private shader source' })
+  assert.equal(report.snapshot(metadata).runs[0].stall.observation, null)
+  report.diagnostic(id, diagnostic)
+  report.observeStall(id, 'observation', observation)
+  report.finish(id)
+  const snapshot = report.snapshot(metadata), run = snapshot.runs[0]
+  assert.deepEqual(run.diagnostics.events, [diagnostic])
+  assert.equal(run.diagnostics.rejectedEvents, 1)
+  assert.deepEqual(run.stall.observation, observation)
+  assert.equal(run.status, 'failed')
+  assert.deepEqual(snapshot.expectedChecks, { boundary: 17, failures: 8, stall: 2 })
+  assert.equal(snapshot.testVersion, 'fixed-security-2')
+  assert.match(snapshot.scope, /Not full application verification or release approval\./)
+  assert(!JSON.stringify(snapshot).includes('private'))
+})
+
 test('stall diagnostic timeline rejects unknown fields and values, bounds numbers, and reports truncation', () => {
   const report = createSecurityReport(), id = report.start('stall')
   const valid = { type: 'watchdog', phase: 'stall', atMs: 3700, deltaMs: 3500, silenceMs: 0, progressAgeMs: 3600, resetReason: 'parent-gap' }
