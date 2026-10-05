@@ -129,13 +129,15 @@ describe('MagePlayerControls single song', () => {
     expect(props.onTrackSummaryClick).not.toHaveBeenCalled()
   })
 
-  it('retains the current name during replacement and exposes replacement errors beside it', () => {
+  it('temporarily replaces the current name with loading text and restores it afterward', () => {
     const props = { ...createProps(), audioMode: 'single' as const, currentTrack: track, currentTrackIndex: 1, tracksCount: 1 }
     const { rerender } = render(<MagePlayerControls {...props} activeAudioAction="add" />)
-    expect(screen.getByText('MAGE - Midnight')).toBeInTheDocument()
+    expect(screen.queryByText('MAGE - Midnight')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Replace song' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Replace song' })).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('status')).toHaveTextContent('Loading song…')
+    expect(screen.getByRole('status')).toHaveClass('mage-player__audio-label')
+    expect(screen.getByRole('status').parentElement?.children).toHaveLength(1)
     expect(screen.getByRole('status').parentElement).toHaveAttribute('aria-busy', 'true')
 
     rerender(<MagePlayerControls {...props} audioError="This song could not be loaded. Try another audio file." />)

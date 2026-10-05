@@ -62,10 +62,9 @@ export function MagePlayerControls({
 }: MagePlayerControlsProps) {
   const controlsBusy = disabled || activeAudioAction !== null
   const isAddingAudio = activeAudioAction === 'add'
-  const isLoadingTrack = activeAudioAction === 'load'
   const playbackLabel = playbackState === 'playing' ? 'Pause' : 'Play'
   const isSingleSong = audioMode === 'single'
-  const showLoadingStatus = isLoadingTrack || (isSingleSong && isAddingAudio)
+  const showLoadingStatus = activeAudioAction !== null
   const audioPickerLabel = isSingleSong ? (currentTrack ? 'Replace song' : 'Add song') : 'Add audio tracks'
   const trackSummaryLabel = isSingleSong
     ? currentTrack ? readPlaylistTrackSummaryName(currentTrack) : 'No song selected'
@@ -90,19 +89,18 @@ export function MagePlayerControls({
         </button>
       <div className="mage-player__controls-main">
         <div aria-busy={showLoadingStatus} className={`mage-player__control-meta${isSingleSong ? ' mage-player__control-meta--single' : ''}`}>
-          {!isSingleSong && tracksCount > 0 ? (
+          {showLoadingStatus ? (
+            <span className="mage-player__audio-label" role="status">
+              {isSingleSong ? 'Loading song…' : 'Loading track…'}
+            </span>
+          ) : !isSingleSong && tracksCount > 0 ? (
             <button className="mage-player__track-summary" onClick={onTrackSummaryClick} type="button">
               {trackSummaryLabel}
             </button>
           ) : (
             <span className="mage-player__audio-label" title={isSingleSong ? trackSummaryLabel : undefined}>{trackSummaryLabel}</span>
           )}
-          {showLoadingStatus ? (
-            <span className="mage-player__control-feedback mage-player__track-loading-status" role="status">
-              <span aria-hidden="true" className="pending-button-label__spinner" />
-              {isSingleSong ? 'Loading song…' : 'Loading track…'}
-            </span>
-          ) : audioError ? (
+          {!showLoadingStatus && audioError ? (
             <span className="mage-player__control-feedback" role="alert">
               {audioError}
             </span>
