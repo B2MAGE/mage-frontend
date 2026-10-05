@@ -2,7 +2,30 @@
 
 ## Status — October 5, 2026 UTC
 
-Normal player and availability integration is merged and deployed. PP-I03 remains **To Verify** for outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
+**Release approved; production custom playback is enabled.** After the recorded browser reports, live template walkthrough and controlled custom walkthrough, the release owner explicitly instructed "okay deploy it". The backend release approval and separate saved playback control are now on, and the production playback/disable/re-enable walkthrough passed. The approved evidence retains its recorded browser/device scope and limitations; it does not establish untested combinations.
+
+The rollout is complete. Reconciliation and merge of `pp-i03-worker-release-verification` remain pending; this deployment did not merge the branch or close PP-I03. No additional browser tests or repeat of the passing walkthroughs are requested.
+
+## Approved production rollout — October 5, 2026 UTC
+
+The owner approved enabling the tested release after confirming the local toggle worked. Coolify deployment `i12134zusc3mvlu1qv3t0z7u` finished for the existing backend commit `ae03e7399a8364bb0068c90197908b7a80e12aa2`; the new backend reported Started at **04:06:20Z**. `MAGE_CUSTOM_RENDERING_RELEASE_APPROVED` changed from false to true. The saved global setting remained Off until it was explicitly enabled through the normal administrator UI.
+
+| Production observation | Result |
+| --- | --- |
+| Explicit enable | At **04:07:40Z**, the administrator enabled **Allow custom shader playback** and saved the change. Public `/api/rendering-status` subsequently returned `enabled: true`, `code: AVAILABLE`, `message: null`, with `Cache-Control: no-store`. |
+| Custom scene authoring and playback | Dedicated [scene18, Custom shader release verification](https://mage.peterbucci.com/scenes/18), saved as `custom-v1` with a captured thumbnail. Its normal Watch player rendered through the CloudFront iframe with `sandbox="allow-scripts"`; selected local test audio advanced to **24.9 seconds**. |
+| Global disable | Saved Off at **04:09:53Z**. A follow-up snapshot showed the unavailable state within **22 seconds of Save**. The first tooling wait timed out early, so this is an observation bound including save/polling/tool time, **not an exact renderer-stop latency**. A later inspection confirmed zero iframes. Reload remained denied, scene18's public `sceneData` was null, and template15 remained available. |
+| Restore | Saved On at **04:10:51Z**. Scene18's iframe and normal playback controls returned. Production custom playback was left enabled. |
+| Final verification | Public verification passed at **04:11:53Z**. The final browser inspection at **04:12:06Z** confirmed the backend deployment was Finished, the administrator page showed Saved On, and scene18 had one restored iframe with normal controls. |
+| Unchanged artifacts | Normal frontend, check service and renderer remain on the previously verified `5f5295e` implementation/artifact set. This rollout changed backend configuration and the saved administrator control; it made no AWS or implementation change. |
+
+Evidence is retained under `.local/deployments/pp-i03-custom-release-20261005/`, including the approval record, public status observations, saved-scene metadata, disable observation and screenshots. User-reported browser results remain user-reported; unspecified device/version details and unobserved combinations have not been relabelled as independently verified.
+
+Rollback remains available through **Moderation → Custom shaders**: save Off first, verify public denial and foreground renderer removal, and if needed restore backend release approval to false and redeploy the same backend. Preserve scene data, individual blocks and owner repair/export.
+
+## Earlier implementation and verification record
+
+The dated sections below retain the states and limits observed before this rollout. Their statements that production was locked or release approval remained outstanding describe those earlier stages; the approved rollout above is the current state.
 
 PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232) at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222) is **Done**. The owner accepted user-reported worker-test passes on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; collecting them remains in PP-I03 release verification. No independent mobile run is claimed.
 
@@ -32,7 +55,7 @@ Frozen files, HTTP reports, screenshots and browser exports are under `.local/de
 
 After receiving instructions to run the current worker checks and current renderer recovery group, the owner reported: "okay so they pass in all the browsers we tested last time". Record both current groups as **user-reported PASS on the previously tested browser/device set**. Previous conversation records identify desktop Chrome/Edge/Firefox, Pixel/Chrome/Android 17, and Apple/Safari/iOS. This statement does not establish additional operating-system/browser combinations or a new independent test run. No new JSON exports or exact version/device details accompanied it; retain those details as unspecified rather than copying versions from older reports.
 
-These reported passes satisfy the current fixed-page checks for that tested set. The owner subsequently reported the six-step normal-app walkthrough below passing, and the controlled local custom/global-control walkthrough also passed as recorded below. Reuse these results and the recorded automated evidence; no repeat of passing fixture groups or the same walkthrough is requested by this record. Production playback controls remain unchanged, and I03 stays **To Verify** for the release decision and rollout verification.
+These reported passes satisfy the current fixed-page checks for that tested set. The owner subsequently reported the six-step normal-app walkthrough below passing, and the controlled local custom/global-control walkthrough also passed as recorded below. Reuse these results and the recorded automated evidence; no repeat of passing fixture groups or the same walkthrough is requested by this record. Production controls were still unchanged at this stage; the approved rollout above records their later enablement.
 
 ### Owner-reported normal-app walkthrough
 
@@ -49,7 +72,7 @@ The owner reported "these all passed" for the six-step walkthrough on normal liv
 
 Browser, device, OS, scene ID and explicit attribution of the mobile-only actions were not supplied with this report; clarification was requested. Do not infer this walkthrough ran on every browser in the separate fixture report. No new screenshot/export or independent execution is claimed.
 
-This completes the supplied live template walkthrough as reported. It does not claim a production custom-source/global-switch test: that portion was explicitly excluded because public custom playback is still locked. The next functional verification is the controlled custom-source/global disable/re-enable and recovery walkthrough, using the existing automated contract/authorization evidence alongside it. Production release approval and both playback controls remain unchanged.
+This completes the supplied live template walkthrough as reported. It does not claim a production custom-source/global-switch test: that portion was explicitly excluded while public custom playback was locked. The subsequent controlled custom-source/global walkthrough and approved production rollout are recorded separately, alongside the existing automated contract/authorization evidence.
 
 The separate usability follow-ups are #236 (compatible live setting updates), #237 (single-song preview/featured players), and #238 (Clear music). They do not invalidate these reported results or expand this isolation release walkthrough.
 
@@ -73,7 +96,11 @@ One initial global re-enable attempt reported that its result could not be verif
 
 Evidence: `.local/i03-custom-walkthrough/` (screenshots, both exported documents and `result.json`); backend setup/state/rollback helpers: `../mage-backend-submission-limits/.local/pp-i03-local-custom/`. The local test database uses temporary memory-backed storage and must remain running for continued testing. The rollback helper restores the exact original backend and validates owned resource identities before removing the disposable database/network. The dedicated test thumbnail prefix is retained.
 
-This completes the focused controlled custom/global-control browser walkthrough. It is local Windows in-app-browser evidence, separate from the owner's reported live/browser passes. No production enablement, merge, deployment, new mobile observation or untested browser combination is implied. The release owner still needs to approve the recorded scope/artifacts before the production release setting and separate administrator switch are enabled and rollout is verified.
+This completes the focused controlled custom/global-control browser walkthrough. It is local Windows in-app-browser evidence, separate from the owner's reported live/browser passes. This local run did not itself enable production, merge or deploy code, or establish a new mobile observation or untested browser combination. The later owner approval and production enablement are recorded above.
+
+### Owner confirmation of the local custom-playback toggle
+
+The owner subsequently reported: "so the toggle worked locally". Record this as **user-reported PASS for the local custom-playback toggle**, in addition to the controlled walkthrough above. No new browser/device details, exact timing, final switch state or independent observation were supplied. This confirmed the owner's local check; it did not by itself authorize production enablement. The owner's later "okay deploy it" instruction authorized the separate production rollout recorded above; do not repeat the passing checks.
 
 ### Local preparation — October 4, 2026
 
@@ -84,7 +111,7 @@ This completes the focused controlled custom/global-control browser walkthrough.
 - Full frontend regression: **1,945 tests /142 files passed**, plus **43 worker fixture tests**, **27 recovery/UI tests**, **23 report/HTTP policy tests**, and **eight hosting tests**. Lint, TypeScript/application, production renderer, and all three check-page builds passed. The music-page build allowlist was updated for the exact new fixed-recovery protocol dependency; no directory-wide exception was added.
 - Independent source review found no confirmed blocker in fixed activation, envelopes, attempted-call/positive-control evidence, denial classifications or hosting restrictions.
 
-Reports and screenshots: `.local/pp-i03-worker-acceptance/`. Backend evidence: `../mage-backend-submission-limits/.local/pp-i03-backend-verification-20261005/`. The exact requested Chrome/Edge/Firefox/Safari and mobile matrix, remaining controlled custom/global-disable walkthrough, and final release decision remain **NOT COMPLETE / NOT APPROVED**. Local or deployed in-app Chromium results do not approve the other browsers. Both public release controls remain unchanged.
+Reports and screenshots: `.local/pp-i03-worker-acceptance/`. Backend evidence: `../mage-backend-submission-limits/.local/pp-i03-backend-verification-20261005/`. At this preparation stage the wider browser reports, controlled custom/global-disable walkthrough and release decision were still outstanding, and both public controls remained unchanged. Later sections above record the received evidence, owner approval and production rollout without promoting local in-app Chromium results into observations on other browsers.
 
 ## Release verification — October 4, 2026
 
