@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -32,8 +32,9 @@ import {
 } from "./ui/SceneEditorLayout";
 import { SceneEditorStepper } from "./ui/SceneEditorStepper";
 import { TemplateSceneControls } from "./ui/TemplateSceneControls";
+import { BuilderSceneControls } from "./ui/BuilderSceneControls";
 import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEditorFieldValidation";
-import { templateControlLocation } from "./ui/sceneEditorFieldErrors";
+import { builderControlLocation, templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
@@ -81,6 +82,7 @@ export function SceneEditorShell({
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
   const [replacementTemplateId, setReplacementTemplateId] = useState(() => listSceneTemplates()[0].templateId);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
+  const [selectedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
   const replacementTriggerRef = useRef<HTMLButtonElement | null>(null);
   const replacementCancelRef = useRef<HTMLButtonElement | null>(null);
   const importCancelRef = useRef<HTMLButtonElement | null>(null);
@@ -100,6 +102,12 @@ export function SceneEditorShell({
     handleAudioResponseReset,
     handleCreateTag,
     handleFormatJson,
+    handleAddBuilderObject,
+    handleDuplicateBuilderObject,
+    handleRemoveBuilderObject,
+    handleSwitchBuilderToCustom,
+    handleSwitchToBuilder,
+    handleUpdateBuilderObject,
     handleMotionAdvancedToggle,
     handleNameChange,
     handleRawSceneDataChange,
@@ -147,12 +155,15 @@ export function SceneEditorShell({
     toggleTagSelection,
     updateBranch,
     isTemplate,
+    isBuilder,
     templateDocument,
+    builderDocument,
     templateFieldErrors,
     editorAudioResponseMode,
     editorAudioResponseConfig,
     handleTemplateSelection,
     updateTemplateValue,
+    updateBuilderValue,
     editorSections,
     pendingTemplateImport,
     confirmTemplateImport,
@@ -162,6 +173,14 @@ export function SceneEditorShell({
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
   });
+  useEffect(() => {
+    if (!builderDocument) {
+      setSelectedBuilderObjectId(null);
+      return;
+    }
+    if (selectedBuilderObjectId && builderDocument.objects.some(object => object.id === selectedBuilderObjectId)) return;
+    setSelectedBuilderObjectId(builderDocument.objects[0]?.id ?? null);
+  }, [builderDocument, selectedBuilderObjectId]);
   const availabilityTarget = useMemo(() => getSceneAvailabilityTarget(mode.type === 'edit' ? mode.sceneId : undefined, sceneData), [mode, sceneData]);
   const availability = useSceneAvailability(availabilityTarget);
   useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
@@ -175,16 +194,19 @@ export function SceneEditorShell({
     requestAnimationFrame(() => replacementTriggerRef.current?.focus());
   }
   useEffect(() => {
-    if (!isTemplate || !errors.fields) return;
-    const location = Object.keys(errors.fields).map(templateControlLocation).find(value => value !== null);
+    if ((!isTemplate && !isBuilder) || !errors.fields) return;
+    const location = Object.keys(errors.fields).map(path => isBuilder ? builderControlLocation(path) : templateControlLocation(path)).find(value => value !== null);
     if (!location) return;
+    if (isBuilder && 'objectIndex' in location && typeof location.objectIndex === 'number') {
+      setSelectedBuilderObjectId(builderDocument?.objects[location.objectIndex]?.id ?? null);
+    }
     handleSectionJump(location.section);
     const frame = requestAnimationFrame(() => {
       const input = document.getElementById(`${location.id}-number`) ?? document.getElementById(location.id);
       input?.focus();
     });
     return () => cancelAnimationFrame(frame);
-  }, [errors.fields, handleSectionJump, isTemplate]);
+  }, [builderDocument, errors.fields, handleSectionJump, isBuilder, isTemplate]);
   useEffect(() => {
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
   }, [sectionMenuValue]);
@@ -409,7 +431,7 @@ export function SceneEditorShell({
               label="Scene Data JSON"
             />
             <p className="field-hint">
-              {isTemplate ? 'Raw scene data stays available here. While the JSON is invalid, the preview keeps the last valid template.'
+              {isTemplate || isBuilder ? `Raw scene data stays available here. While the JSON is invalid, the preview keeps the last valid ${isBuilder ? 'Builder scene' : 'template'}.`
                 : 'Your custom code and settings stay available here for editing or download. Valid changes are previewed in the separate player when playback is available.'}
             </p>
           </div>
@@ -520,7 +542,8 @@ export function SceneEditorShell({
     thumbnailFile,
   });
 
-  const isAdvancedCreation = !isTemplate || isTemplateSourceVisible;
+  const isCustomCreation = !isTemplate && !isBuilder;
+  const isCustomCodeVisible = isCustomCreation || isTemplateSourceVisible;
   const shaderEditor = (
     <div className="field-group">
       <FieldGroupLabel
@@ -536,27 +559,37 @@ export function SceneEditorShell({
     <section className="scene-creation-mode" aria-labelledby="scene-creation-mode-title">
       <h3 className="scene-effects-category__title" id="scene-creation-mode-title">Creation mode</h3>
       <div className="scene-creation-mode__options" role="group" aria-labelledby="scene-creation-mode-title">
-        <button className="scene-secondary-button" type="button" aria-pressed={!isAdvancedCreation} ref={replacementTriggerRef}
-          onClick={() => { if (!isTemplate) setIsReplacementPending(true); else setIsTemplateSourceVisible(false); }}>Basic</button>
-        <button className="scene-secondary-button" type="button" aria-pressed={isAdvancedCreation}
-          onClick={() => setIsTemplateSourceVisible(true)} aria-describedby="advanced-creation-hint">Advanced</button>
+        <button className="scene-secondary-button" type="button" aria-pressed={isBuilder} ref={replacementTriggerRef}
+          onClick={() => {
+            if (isBuilder) return;
+            if (isTemplate && isTemplateSourceVisible) setIsTemplateSourceVisible(false);
+            else if (isTemplate) handleSwitchToBuilder();
+            else setIsReplacementPending(true);
+          }}>Builder</button>
+        <button className="scene-secondary-button" type="button" aria-pressed={isCustomCreation || isTemplateSourceVisible}
+          onClick={() => {
+            if (isBuilder) handleSwitchBuilderToCustom();
+            else setIsTemplateSourceVisible(true);
+          }} aria-describedby="advanced-creation-hint">Custom Code</button>
       </div>
-      <p className="field-hint" id="advanced-creation-hint">{isTemplate ? 'Basic uses a template. Advanced lets you edit its shader code.'
-        : 'This scene uses custom shader code. Switching to Basic replaces it with a template.'}</p>
-      {!isTemplate && isReplacementPending ? (
+      <p className="field-hint" id="advanced-creation-hint">{isBuilder
+        ? 'Builder keeps shapes and scene settings editable. Custom Code replaces the objects with generated shader source.'
+        : isTemplate ? 'Choose Builder to turn this template into editable objects, or Custom Code to edit its shader source.'
+          : 'This scene uses custom shader code. Switching to Builder replaces the code with editable objects.'}</p>
+      {isCustomCreation && isReplacementPending ? (
         <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
           onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
-          <h3 id="replace-custom-title">Replace this custom scene?</h3>
-          <p className="field-hint" id="replace-custom-description">This replaces your custom code and settings with the selected template. Your name, description, and tags stay. Cancel to keep your current draft.</p>
+          <h3 id="replace-custom-title">Replace this custom code?</h3>
+          <p className="field-hint" id="replace-custom-description">This replaces the shader code with an editable Builder object and the selected starting style. Your name, description, and tags stay.</p>
           <SelectField id="replacement-template" label="Start from a template" value={replacementTemplateId}
             options={listSceneTemplates().map(template => ({ value: template.templateId, label: template.label }))}
             onChange={setReplacementTemplateId} />
           <div className="auth-actions">
             <button className="scene-secondary-button" type="button" onClick={() => {
-              handleTemplateSelection(replacementTemplateId, true);
+              handleSwitchToBuilder(replacementTemplateId as TemplateId);
               setIsReplacementPending(false);
               setIsTemplateSourceVisible(false);
-            }}>Replace custom scene</button>
+            }}>Replace with Builder</button>
             <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
           </div>
         </section>
@@ -605,7 +638,7 @@ export function SceneEditorShell({
             </div>
           </aside>
 
-          <SceneEditorFieldErrorsProvider fields={isTemplate ? { ...templateFieldErrors, ...errors.fields } : {}}>
+          <SceneEditorFieldErrorsProvider fields={isTemplate || isBuilder ? { ...templateFieldErrors, ...errors.fields } : {}} mode={isBuilder ? 'builder' : 'template'}>
           <div className="scene-editor-main" ref={editorScrollRef}>
             {errors.form ? (
               <div className="form-alert" id={formErrorId} role="alert">
@@ -615,6 +648,19 @@ export function SceneEditorShell({
 
             {isTemplate && templateDocument ? <TemplateSceneControls section={sectionMenuValue} document={templateDocument}
               creationMode={creationMode} fields={{ ...templateFieldErrors, ...errors.fields }} onTemplateChange={handleTemplateSelection} onChange={updateTemplateValue} /> : null}
+
+            {sectionMenuValue === "scene" && isBuilder && builderDocument ? <BuilderSceneControls
+              creationMode={creationMode}
+              document={builderDocument}
+              selectedObjectId={selectedBuilderObjectId}
+              onSelectObject={setSelectedBuilderObjectId}
+              onAddObject={handleAddBuilderObject}
+              onApplyTemplate={templateId => handleTemplateSelection(templateId)}
+              onChange={updateBuilderValue}
+              onDuplicateObject={handleDuplicateBuilderObject}
+              onRemoveObject={handleRemoveBuilderObject}
+              onUpdateObject={handleUpdateBuilderObject}
+            /> : null}
 
             {sectionMenuValue === "details" ? (
               <SceneEditorDetailsSection
@@ -656,7 +702,7 @@ export function SceneEditorShell({
               />
             ) : null}
 
-            {sectionMenuValue === "scene" && !isTemplate ? (
+            {sectionMenuValue === "scene" && isCustomCreation ? (
               <SceneSection
                 description="Choose a bundled shader, environment, and overall scale. Editing the source makes this a custom shader."
                 title="Scene"
@@ -713,7 +759,7 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
 
-            {sectionMenuValue === "scene" && isAdvancedCreation ? shaderEditor : null}
+            {sectionMenuValue === "scene" && isCustomCodeVisible ? shaderEditor : null}
 
             {sectionMenuValue === "camera" ? (
               <SceneSection
@@ -1383,8 +1429,10 @@ export function SceneEditorShell({
 
                     <ConfirmSummarySection title="Visual Setup">
                       <ConfirmSummaryItem
-                        label={isTemplate ? "Template" : "Shader"}
-                        value={isTemplate ? listSceneTemplates().find(template => template.templateId === templateDocument?.templateId)?.label ?? "Template" : selectedShaderScene?.label ?? "Custom Shader"}
+                        label={isBuilder ? "Builder" : isTemplate ? "Template" : "Shader"}
+                        value={isBuilder ? `${builderDocument?.objects.length ?? 0} object${builderDocument?.objects.length === 1 ? '' : 's'}`
+                          : isTemplate ? listSceneTemplates().find(template => template.templateId === templateDocument?.templateId)?.label ?? "Template"
+                            : selectedShaderScene?.label ?? "Custom Shader"}
                       />
                       <ConfirmSummaryItem
                         label="Skybox"

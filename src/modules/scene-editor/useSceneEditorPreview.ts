@@ -3,6 +3,7 @@ import { getSceneEditorModel, TONE_MAPPING_OPTIONS, type SceneData } from './sce
 import { buildEffectiveSceneData, buildShaderOptions, buildToneMappingOptions } from './utils'
 import { describeSceneValidationError } from './sceneValidation'
 import { getTemplateEditorModel, isTemplateEditorDocument } from './templateEditor'
+import { getBuilderEditorModel, isBuilderEditorDocument } from './builderEditor'
 
 type UseSceneEditorPreviewArgs = {
   sceneData: SceneData
@@ -12,7 +13,8 @@ export function useSceneEditorPreview({
   sceneData,
 }: UseSceneEditorPreviewArgs) {
   const sceneModel = useMemo(() => isTemplateEditorDocument(sceneData)
-    ? getTemplateEditorModel(sceneData) : getSceneEditorModel(sceneData), [sceneData])
+    ? getTemplateEditorModel(sceneData)
+    : isBuilderEditorDocument(sceneData) ? getBuilderEditorModel(sceneData) : getSceneEditorModel(sceneData), [sceneData])
   const validation = useMemo(() => {
     try { return { source: buildEffectiveSceneData(sceneData), error: null } }
     catch (error) { return { source: null, error: describeSceneValidationError(error) } }

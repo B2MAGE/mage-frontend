@@ -63,6 +63,42 @@ export function templateControlLocation(rawPath: string): { path: string; id: st
   return { path, id, section }
 }
 
+const builderObjectControlIds: Record<string, string> = {
+  name: 'builder-object-name',
+  'operation.type': 'builder-object-shape',
+  'operation.radius': 'builder-radius',
+  'operation.width': 'builder-width',
+  'operation.height': 'builder-height',
+  'operation.depth': 'builder-depth',
+  'operation.tube': 'builder-tube',
+  'transform.position.x': 'builder-position-x',
+  'transform.position.y': 'builder-position-y',
+  'transform.position.z': 'builder-position-z',
+  'transform.rotation.x': 'builder-rotation-x',
+  'transform.rotation.y': 'builder-rotation-y',
+  'transform.rotation.z': 'builder-rotation-z',
+  'transform.scale.x': 'builder-scale-x',
+  'transform.scale.y': 'builder-scale-y',
+  'transform.scale.z': 'builder-scale-z',
+  'material.color': 'builder-color',
+  'material.metalness': 'builder-metalness',
+  'material.shininess': 'builder-shininess',
+}
+
+export function builderControlLocation(rawPath: string): { path: string; id: string; objectIndex?: number; section: EditorSectionId } | null {
+  const path = rawPath.replace(/^sceneData\./, '').replace(/^scene\./, '')
+  const objectMatch = /^objects(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(path)
+  if (objectMatch) {
+    const objectIndex = Number(objectMatch[1] ?? objectMatch[2])
+    const id = builderObjectControlIds[objectMatch[3] ?? ''] ?? 'builder-object-list'
+    return { path, id, objectIndex, section: 'scene' }
+  }
+  if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }
+  if (path === 'parameters.scale') return { path, id: 'builder-scene-scale', section: 'scene' }
+  if (path === 'settings.skybox') return { path, id: 'builder-skybox', section: 'scene' }
+  return templateControlLocation(path)
+}
+
 export function useSceneEditorFieldErrors() { return useContext(FieldErrorsContext) }
 export function useSceneEditorFieldIssue(id: string) {
   const issue = useSceneEditorFieldErrors()[id]

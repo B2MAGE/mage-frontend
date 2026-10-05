@@ -1,6 +1,8 @@
 import { listSceneTemplates, parseSceneDocument, type TemplateSceneDocument } from '@modules/player'
 import { getSceneEditorModel, type SceneData, type SceneEditorModel } from './sceneEditor'
 
+export type AuthoredSceneSettings = Pick<TemplateSceneDocument, 'parameters' | 'settings'>
+
 export type TemplateFieldPath =
   | 'parameters.scale' | 'parameters.speed'
   | 'settings.skybox'
@@ -63,10 +65,12 @@ export function templateModelFieldPath(path: string): string {
     .replace(/^settings\.audioResponse/, 'audioResponse')
 }
 
-export function changedTemplateFields(before: TemplateSceneDocument, after: TemplateSceneDocument): string[] {
+export function changedAuthoredFields(before: AuthoredSceneSettings, after: AuthoredSceneSettings): string[] {
   const paths = [...Object.values(modelFields), 'settings.controls', 'settings.audioResponse', 'settings.audioResponseConfig']
   return paths.filter(path => JSON.stringify(readPath(before, path)) !== JSON.stringify(readPath(after, path)))
 }
+
+export const changedTemplateFields = changedAuthoredFields
 
 export function createTemplateScene(templateId = 'embedded-scene-0'): TemplateSceneDocument {
   if (!templateIds.has(templateId)) throw new Error('Choose a template from the library.')
@@ -92,7 +96,7 @@ export function changeTemplateSelection(current: SceneData, templateId: string, 
   return { ...current, templateId: templateId as TemplateSceneDocument['templateId'] }
 }
 
-export function changeTemplateValue(document: TemplateSceneDocument, path: TemplateFieldPath, value: number | string | boolean): TemplateSceneDocument {
+export function changeAuthoredValue<T extends AuthoredSceneSettings>(document: T, path: TemplateFieldPath, value: number | string | boolean): T {
   if (!editablePaths.has(path)) throw new Error('This template setting is not supported.')
   // Retain invalid drafts for field feedback. Validation, not the control,
   // decides whether the resulting document can be saved or previewed.
@@ -105,7 +109,7 @@ export function changeTemplateValue(document: TemplateSceneDocument, path: Templ
 }
 
 /** A display model only; never resolve or serialize a template's platform source. */
-export function getTemplateEditorModel(document: TemplateSceneDocument) {
+export function getTemplateEditorModel(document: AuthoredSceneSettings) {
   // The engine appends omitted passes and pins Output last. Reflect that in
   // the editor without expanding the authored array until the user reorders it.
   const model = getSceneEditorModel({ fx: { passOrder: document.settings.effects?.passOrder } })
@@ -134,7 +138,7 @@ export function getTemplateEditorModel(document: TemplateSceneDocument) {
 }
 
 /** Source-free display data for shared music helpers; never used as a saved document. */
-export function getTemplateEditorSceneData(document: TemplateSceneDocument): SceneData {
+export function getTemplateEditorSceneData(document: AuthoredSceneSettings): SceneData {
   return { ...getTemplateEditorModel(document),
     ...(Object.hasOwn(document.settings, 'audioResponse') ? { audioResponse: document.settings.audioResponse } : {}),
     ...(Object.hasOwn(document.settings, 'audioResponseConfig') ? { audioResponseConfig: document.settings.audioResponseConfig } : {}),
@@ -142,7 +146,7 @@ export function getTemplateEditorSceneData(document: TemplateSceneDocument): Sce
 }
 
 /** Write only changed allowlisted values. No shader or runtime source is copied. */
-export function changeTemplateBranch<K extends keyof SceneEditorModel>(document: TemplateSceneDocument, branch: K, value: SceneEditorModel[K]): TemplateSceneDocument {
+export function changeAuthoredBranch<T extends AuthoredSceneSettings, K extends keyof SceneEditorModel>(document: T, branch: K, value: SceneEditorModel[K]): T {
   const before = getTemplateEditorModel(document)
   const after = { ...before, [branch]: value }
   const next = structuredClone(document)
@@ -162,13 +166,25 @@ export function changeTemplateBranch<K extends keyof SceneEditorModel>(document:
   return next
 }
 
-export function changeTemplateMusicSettings(document: TemplateSceneDocument, data: SceneData): TemplateSceneDocument {
+export function changeTemplateValue(document: TemplateSceneDocument, path: TemplateFieldPath, value: number | string | boolean): TemplateSceneDocument {
+  return changeAuthoredValue(document, path, value)
+}
+
+export function changeTemplateBranch<K extends keyof SceneEditorModel>(document: TemplateSceneDocument, branch: K, value: SceneEditorModel[K]): TemplateSceneDocument {
+  return changeAuthoredBranch(document, branch, value)
+}
+
+export function changeAuthoredMusicSettings<T extends AuthoredSceneSettings>(document: T, data: SceneData): T {
   const model = getSceneEditorModel(data)
-  let next = changeTemplateBranch(document, 'intent', model.intent)
-  next = changeTemplateBranch(next, 'state', model.state)
+  let next = changeAuthoredBranch(document, 'intent', model.intent)
+  next = changeAuthoredBranch(next, 'state', model.state)
   delete next.settings.audioResponse
   delete next.settings.audioResponseConfig
   if (Object.hasOwn(data, 'audioResponse')) next.settings.audioResponse = data.audioResponse as NonNullable<TemplateSceneDocument['settings']['audioResponse']>
   if (Object.hasOwn(data, 'audioResponseConfig')) next.settings.audioResponseConfig = structuredClone(data.audioResponseConfig) as NonNullable<TemplateSceneDocument['settings']['audioResponseConfig']>
   return next
+}
+
+export function changeTemplateMusicSettings(document: TemplateSceneDocument, data: SceneData): TemplateSceneDocument {
+  return changeAuthoredMusicSettings(document, data)
 }
