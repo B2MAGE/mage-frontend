@@ -57,8 +57,8 @@ export type BuilderSceneDocument = {
   parameters: TemplateSceneDocument['parameters']
   settings: TemplateSceneDocument['settings']
 }
-export type PlayableSceneDocument = TemplateSceneDocument | CustomSceneDocument
-export type SceneDocument = PlayableSceneDocument | BuilderSceneDocument
+export type PlayableSceneDocument = TemplateSceneDocument | CustomSceneDocument | BuilderSceneDocument
+export type SceneDocument = PlayableSceneDocument
 
 export class SceneContractError extends Error {
   constructor(message: string) {

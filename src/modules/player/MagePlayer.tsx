@@ -34,6 +34,7 @@ import { useSceneAvailability } from './availability/useSceneAvailability'
 import { SceneAvailabilityPanel } from './availability/SceneAvailabilityPanel'
 import { validateSceneForPlayback } from './policy/sceneValidation'
 import { boundCaptureSize, type RenderProfile } from './policy/renderBudget'
+import { resolveSceneForPlayback } from './templates/resolveScene'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -537,7 +538,7 @@ function MagePlayerRenderer({
           player.updateSceneSettings(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
         } else if (isLiveUpdate) {
           const validated = validateSceneForPlayback(sceneBlob)
-          const response = validated.kind === 'template' ? validated.settings : validated.scene
+          const response = resolveSceneForPlayback(validated).engineScene
           player.setAudioResponseSettings(
             Object.hasOwn(response, 'audioResponse') ? normalizeAudioResponseMode(response.audioResponse) : undefined,
             response.audioResponseConfig,

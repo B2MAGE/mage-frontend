@@ -35,10 +35,11 @@ describe('builder storage and playback boundaries', () => {
     expect(JSON.stringify(builder)).toBe(before)
   })
 
-  it('rejects builders at every rendering handoff and never discovers embedded audio', () => {
-    for (const resolve of [validateSceneForPlayback, resolveSceneForPlayback, sceneForBridge]) {
-      expect(() => resolve(builder)).toThrow('Builder scene playback is not available yet')
-    }
+  it('validates builders at every rendering handoff without discovering embedded audio', () => {
+    expect(validateSceneForPlayback(builder)).toMatchObject({ kind: 'builder' })
+    expect(resolveSceneForPlayback(builder)).toMatchObject({ kind: 'builder', trust: 'platform-owned',
+      builderCompilation: { compilerVersion: 1, workload: { expandedPrimitives: 1, liveUniforms: 1 } } })
+    expect(sceneForBridge(builder)).toMatchObject({ kind: 'builder', objects: [{ id: 'ball' }] })
     expect(buildScenePlaylistTrack(builder)).toBeNull()
     expect(buildScenePlaylistTrack({ ...builder, audioPath: 'https://example.com/untrusted.mp3' })).toBeNull()
   })

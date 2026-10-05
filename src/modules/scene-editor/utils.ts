@@ -202,7 +202,7 @@ export function buildSceneSubmissionDocument(sceneData: SceneData): SceneDocumen
 export function buildEffectiveSceneData(sceneData: SceneData): SceneData {
   // Validate the original first: defaults must not hide malformed imported data.
   const document = validateSceneForPlayback(sceneData)
-  if (document.kind === 'template') return document
+  if (document.kind === 'template' || document.kind === 'builder') return document
   return sanitizeSceneData(readEditableSceneData(document))
 }
 

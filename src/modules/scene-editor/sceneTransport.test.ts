@@ -50,7 +50,7 @@ describe('versioned scene transport compatibility', () => {
     expect(JSON.parse(prettyPrintEditorSceneData(template))).toEqual(parseSceneDocument(template))
   })
 
-  it('preserves builder objects for storage and export while rejecting the legacy editor and preview', () => {
+  it('preserves builder objects for storage, export and preview while rejecting legacy control editing', () => {
     const builder = { schemaVersion: 1, kind: 'builder', builderVersion: 1,
       objects: [{ id: 'ball', operation: { type: 'sphere', radius: 0.7 } }] }
     const normalized = parseSceneDocument(builder)
@@ -58,7 +58,7 @@ describe('versioned scene transport compatibility', () => {
     expect(readEditableSceneData(builder)).toEqual(normalized)
     expect(JSON.parse(prettyPrintEditorSceneData(builder))).toEqual(normalized)
     expect(validateForm('Builder', JSON.stringify(builder)).errors.sceneData).toContain('cannot be edited here yet')
-    expect(() => buildEffectiveSceneData(builder)).toThrow('Builder scene playback is not available yet')
+    expect(buildEffectiveSceneData(builder)).toEqual(normalized)
   })
 
   it.each([

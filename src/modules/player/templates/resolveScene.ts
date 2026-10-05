@@ -1,21 +1,21 @@
-import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type TemplateSceneDocument } from './sceneContract'
+import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type BuilderSceneDocument, type TemplateSceneDocument } from './sceneContract'
+import { compileBuilderDocument, type BuilderCompilation } from './builderCompiler'
 import { getTemplateDefinition } from './templateRegistry'
 
 export type ResolvedPlaybackScene = {
-  kind: 'template' | 'custom'
+  kind: 'template' | 'builder' | 'custom'
   trust: 'platform-owned' | 'untrusted'
   engineScene: Record<string, unknown>
+  builderCompilation?: BuilderCompilation
 }
 
 // Version 1's engine defaults are part of its saved appearance. Changes to these
 // defaults or the source must ship as a new template version.
-function buildVersionOnePayload(document: TemplateSceneDocument): Record<string, unknown> {
-  const definition = getTemplateDefinition(document.templateId, document.templateVersion)
-  if (!definition) throw new SceneContractError('Unknown template ID or version.')
+function buildVersionOnePayload(document: Pick<TemplateSceneDocument, 'parameters' | 'settings'>, shader: string): Record<string, unknown> {
   const { parameters, settings } = document
   return {
     visualizer: {
-      shader: definition.shader,
+      shader,
       scale: parameters.scale,
       skyboxPreset: settings.skybox,
     },
@@ -80,9 +80,15 @@ export function resolveSceneForPlayback(value: unknown): ResolvedPlaybackScene {
   if (hasSceneDocumentMarkers(value)) {
     const document = parseSceneDocument(value)
     if (document.kind === 'template') {
-      return { kind: 'template', trust: 'platform-owned', engineScene: buildVersionOnePayload(document) }
+      const definition = getTemplateDefinition(document.templateId, document.templateVersion)
+      if (!definition) throw new SceneContractError('Unknown template ID or version.')
+      return { kind: 'template', trust: 'platform-owned', engineScene: buildVersionOnePayload(document, definition.shader) }
     }
-    if (document.kind === 'builder') throw new SceneContractError('Builder scene playback is not available yet.')
+    if (document.kind === 'builder') {
+      const builderCompilation = compileBuilderDocument(document as BuilderSceneDocument)
+      return { kind: 'builder', trust: 'platform-owned',
+        engineScene: buildVersionOnePayload(document, builderCompilation.shader), builderCompilation }
+    }
     return { kind: 'custom', trust: 'untrusted', engineScene: document.scene }
   }
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {

@@ -140,6 +140,25 @@ describe('isolated playback engine', () => {
     f.emit('frame'); (await loading).dispose()
   })
 
+  it('compiles validated Builder objects only after they reach the isolated renderer', async () => {
+    const builder = { schemaVersion: 1, kind: 'builder', builderVersion: 1, objects: [{
+      id: 'safe-id', name: 'sphere(999); throw new Error("must stay data")',
+      operation: { type: 'sphere', radius: 0.7 },
+      transform: { position: { x: 1 } },
+      bindings: [{ target: 'position.x', source: 'bass-level' }],
+    }] }
+    const f = fixture(), loading = f.load(builder)
+    await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
+    const generated = compileInWorker.mock.calls[0][0] as string
+    expect(generated).toContain('extractSDF(sphere)(0.7)')
+    expect(generated).toContain('builder_o0_position_x=input(1,-100,100)')
+    expect(generated).not.toContain(builder.objects[0].name)
+    expect(compileInWorker).toHaveBeenCalledWith(generated,
+      { signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200 })
+    expect(f.engine.loadCompiledPreset.mock.calls[0][0]).toMatchObject({ visualizer: { shader: generated, scale: 10 } })
+    f.emit('frame'); (await loading).dispose()
+  })
+
   it('does not allocate a renderer or fall back when worker compilation fails or is cancelled', async () => {
     const f = fixture()
     compileInWorker.mockRejectedValue(new Error('Worker unavailable'))

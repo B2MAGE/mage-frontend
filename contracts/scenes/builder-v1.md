@@ -124,15 +124,23 @@ parsed or executed to validate a Builder document. Both API create/update and
 offline import inspection validate before persistence or associated side
 effects. Frontend import/submission uses the same contract and budgets.
 
-SB-02 must additionally enforce whole-scene expanded rendering budgets and the
-existing runtime quality/resolution ceilings. Contract validity alone does not
-grant playback permission.
+The version-one compiler applies `builder-rendering.v1.json` after object
+expansion: at most 16 primitives, 15 union operations, 80 transform operations,
+48 material operations, 64 live property uniforms, four optional effects and
+32 KiB of generated trusted source. Copies, nesting, effects and future
+components must add their expanded costs before compilation. The existing
+runtime quality, resolution, frame-rate, capture and raymarch ceilings still
+apply independently.
 
 ## Delivery boundary
 
-SB-01 assigns validated writes the server-owned `builder-v1` classification.
-Rendering reports `BUILDER_RENDERING_UNAVAILABLE` until SB-02 supplies trusted
-compilation; there is no execution fallback. Individual scene blocks and owner
+Validated writes use the server-owned `builder-v1` classification. The normal
+player now compiles only the closed operation catalog inside its existing
+isolated renderer and compiler worker; there is no custom-source fallback.
+Object IDs, names and binding source labels are never interpolated into source.
+Each declared bound property receives a stable object-index/property uniform,
+so later time, music and pointer updates can change values without regenerating
+or evaluating source on every frame. Individual scene blocks and owner
 authorization remain effective. The normal editor retains its repair/export
 path for Builder data until SB-03 provides object editing. Raw JSON import must
 not silently replace Builder data with legacy control defaults. The data-level
