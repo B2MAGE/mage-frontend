@@ -14,7 +14,7 @@
     "postinstall": "npm run engine:prepare",
     "pretest": "npm run engine:prepare && npm run test:compiled-output && npm run test:isolation-security && npm run test:retired-checks && npm run worker-check:test",
     "test": "vitest run",
-    "test:compiled-output": "node --test scripts/engine-compiled-artifact.test.mjs",
+    "test:compiled-output": "node --test scripts/engine-compiled-artifact.test.mjs scripts/engine-live-settings.test.mjs",
     "test:retired-checks": "node --test scripts/manual-check-routes.test.mjs deployment/isolated-renderer/player-check-server.test.mjs",
     "test:isolation-security": "node --test scripts/isolated-security-imports.test.mjs scripts/isolated-security-server.test.mjs scripts/isolated-security-probes.test.mjs scripts/isolated-security-report.test.mjs",
     "preview": "vite preview",
