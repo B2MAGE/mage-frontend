@@ -17,6 +17,7 @@ const allowedModules = new Set([
   'src/modules/player/isolation/parentAudio.ts',
   'src/modules/player/isolation/playbackHost.ts',
   'src/modules/player/isolation/playbackProtocol.ts',
+  'src/modules/player/isolation/fixedRecoveryProtocol.ts',
   'src/modules/player/isolation/rendererHost.ts',
   'src/modules/player/isolation/protocol.ts',
   'src/modules/player/isolation/capture.ts',

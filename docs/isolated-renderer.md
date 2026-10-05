@@ -1,8 +1,8 @@
 # Isolated renderer (PP-I01 / PP-I02 / PP-I03 / PP-I04 / PP-I05)
 
-PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The public custom-rendering release gate remains off while the broader browser/device release matrix is unfinished.
+PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The owner-approved production rollout enabled custom playback on October 5, 2026 UTC and verified the global disable/re-enable controls.
 
-See [the PP-I03 release record](isolated-renderer-release.md) for actual deployment evidence, remaining verification, deployment order, rollback, and owner repair/export behavior, and the [browser release checklist](custom-shader-release-checklist.md) for repeatable desktop/mobile testing. Historical deployment results below describe their named artifacts only.
+See [the PP-I03 release record](isolated-renderer-release.md) for the approved deployment evidence, recorded scope and limits, deployment order, rollback, and owner repair/export behavior, and the [browser release checklist](custom-shader-release-checklist.md) for reusable verification procedures. [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks release-branch integration and closure. Historical deployment results below describe their named artifacts only; they are not new requests to repeat passing tests.
 
 ## PP-I03 application boundary
 
@@ -103,19 +103,24 @@ The same fixture checks thrown source, invalid syntax, cancellation after actual
 loop entry, and fresh globals across repeated compilation jobs. Run its automated
 checks with `npm run worker-check:test`; these also run before `npm test`.
 Reports retain exact browser information and bounded lifecycle/timing evidence;
-hidden or cancelled runs cannot pass. These checks do not test network denial,
-GPU behavior or full application acceptance. Historical window-based security
-probes do not become evidence for workers merely by running against this build.
+hidden or cancelled runs cannot pass. The original 11-check `fixed-worker-1`
+fixture did not test network denial. The deployed I03 `fixed-worker-2` update
+adds eight boundary observations, separating compiler probes from a fixed 600 ms
+policy worker and requiring independent canary positive controls. CacheStorage
+`NOT_EXPOSED` records an absent API, not a denied opening. See the [current
+deployment evidence](isolated-renderer-release.md#i03-verification-fixture-deployment--october-5-2026-utc).
+Neither version establishes GPU behavior or full application acceptance;
+historical window-based security probes remain historical.
 
-Public custom-shader gates remain off. PP-I04 merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232)
+At the PP-I04 acceptance stage, public custom-shader gates were still off. PP-I04 merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232)
 at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222)
 is **Done**. The owner accepted the user's reported passing worker checks on a
 Pixel using Chrome / Android 17 and an Apple device using Safari / iOS
 (described as the latest iOS; exact version unspecified). Exact hardware models,
-browser versions and exported mobile reports were not supplied; collecting that
-metadata remains part of PP-I03 release verification. These are user-reported
-passes, not independent mobile runs, and story acceptance does not enable the
-public custom-rendering release gate.
+browser versions and exported mobile reports were not supplied; that metadata
+remains unspecified in the evidence. These are user-reported passes, not independent
+mobile runs. PP-I04 acceptance did not itself enable the public gate; the later
+owner-approved production rollout is recorded in the [release record](isolated-renderer-release.md).
 
 Local evidence on October 4, 2026: all 11 fixed checks passed in the Codex in-app
 browser on Windows (reported Chromium 154.0.0.0). The finite-loop worker was
@@ -245,11 +250,13 @@ Screenshot: `.local/pp-i05-home-smoke.png`. These are local smoke checks, not th
 full PP-I06 application matrix or new mobile evidence. The local renderer is
 `assets/renderer-CGVMJh26.js`.
 
-PP-I05 is **To Verify**, committed locally but not pushed, merged or deployed.
+At this local verification stage, PP-I05 was **To Verify**, committed locally but
+not yet pushed, merged or deployed. Its subsequent merge/deployment and the later
+approved production rollout are recorded in the [release record](isolated-renderer-release.md).
 The policy bounds accepted output and supported
 engine work; it is not a complete GLSL type checker or a general guarantee
 against GPU-driver failures, slow finite expressions or worker memory exhaustion.
-The deployed PP-I04 artifact and historical evidence above remain unchanged.
+The PP-I04 artifact and observations above remain preserved as historical evidence.
 
 ## Hosting boundary
 
@@ -426,7 +433,8 @@ self-navigation; use the separate security check below for those probes.
 
 `npm run security-check:build` builds the fixed security page into
 `dist-player-check/security/`. Build the music page first: its build replaces the
-parent output directory. The check Dockerfile builds them in that order.
+parent output directory. The check Dockerfile builds music, security and worker
+pages in that order.
 
 The production entry is fixed to
 `https://mage.peterbucci.com/player-check/security/`, with no query string or
@@ -441,10 +449,10 @@ stylesheet, both with integrity metadata. Its strict parent CSP allows the exact
 renderer entry and only the same-origin canary registration/results endpoints.
 It does not enable inline scripts, dynamic evaluation, workers, broad network
 access or additional renderer sandbox flags. Account, API client and rendering
-engine modules cannot enter its build. The production renderer artifact and its
-allowed parent remain unchanged.
+engine modules cannot enter its build. The matching renderer includes trusted
+fixed recovery actions; its allowed parent and sandbox restrictions remain unchanged.
 
-The check service loads the two bounded build manifests, verifies every served
+The check service loads the three bounded build manifests, verifies every served
 file and HTML integrity reference at startup, and serves only their exact paths.
 No request path reaches the filesystem. The security fixture's dummy canary is
 limited to `/player-check/__isolated-security/`; registration requires the exact
@@ -455,8 +463,12 @@ record cookies, tokens, request bodies, scene source or account data, and it has
 no backend credentials or account API calls. HTTP response policies include
 `no-store`, `noindex`, `nosniff`, `no-referrer` and denied frame ancestors.
 
-Run **Check browser boundaries**, **Check failure recovery**, then the separately
-selected **Check a bounded CPU stall**. Expected result counts are 17, 8 and 2.
+Run **Check current renderer recovery**: seven checks in
+`fixed-security-3` / schema 3, identified as `fixed-renderer-recovery-1` and
+`current-renderer-recovery`. The old boundary, failure and finite-stall groups
+(17, 8 and 2 checks) remain historical; use `/player-check/worker/` for current
+worker lifetime and boundary evidence. An unsupported context-loss action is
+non-passing.
 Reports retain the latest 24 runs in this page's memory, recording cancelled and
 hidden runs without accepting them as passing. **Download results JSON** saves
 the sanitized report; **Show report JSON** provides selectable text when browser
@@ -468,8 +480,9 @@ Before updating the existing Coolify check application, preserve its old image,
 deployment reference and built artifact. Keep its existing `/player-check/` path
 routing; do not change the normal app, backend or CloudFront configuration.
 Validate with `npm run security-check:test`, `npm run test:isolation-security`,
-both check builds and the check container's HTTP smoke tests. After deployment,
-inspect actual response headers and run all three groups in a real browser.
+all three check builds and the check container's HTTP smoke tests. After deployment,
+inspect actual response headers and run the current recovery and worker groups
+in the recorded browser/device.
 Confirm the original music check and normal MAGE pages still work. If the helper
 fails, restore the previous check image; the public custom-release gate stays
 off throughout. Record the observed helper deployment and browser results in the

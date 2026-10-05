@@ -50,7 +50,9 @@ test('page contains fixed opt-in controls and integrity-protected external asset
   for (const id of ['boundary', 'failures', 'stall', 'stop', 'player', 'status', 'results', 'summary', 'saved-runs', 'download', 'show-report', 'report-json']) {
     assert.equal(html.split(`id="${id}"`).length - 1, 1, id)
   }
-  assert(html.includes('id="stall" disabled>Check a bounded CPU stall'))
+  assert(html.includes('id="stall" disabled>Historical CPU stall'))
+  assert(html.includes('id="failures" disabled>Check current renderer recovery'))
+  assert(html.includes('Unsupported context-loss support is not a pass'))
   assert(html.includes('three seconds'))
   assert(html.includes('does not replace testing normal MAGE pages'))
   assert(html.includes('href="/player-check/worker/"'))

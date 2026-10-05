@@ -6,6 +6,8 @@ export const SECURITY_CHECK_ALLOWED_MODULES = Object.freeze([
   'scripts/isolated-security-config.mjs',
   'scripts/isolated-security-probes.mjs',
   'scripts/isolated-security-report.mjs',
+  'scripts/fixed-recovery-runner.ts',
+  'src/modules/player/isolation/fixedRecoveryProtocol.ts',
   'src/modules/player/isolation/playbackHost.ts',
   'src/modules/player/isolation/playbackProtocol.ts',
   'src/modules/player/isolation/rendererHost.ts',

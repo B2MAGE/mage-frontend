@@ -14,7 +14,7 @@ const MAX_URL_BYTES = 2048
 const MAX_SESSIONS = 32
 const SESSION_MS = 300000
 const NONCE = /^[a-f0-9]{32}$/
-const KINDS = ['fetch', 'xhr', 'beacon', 'image', 'socket', 'self-navigation', 'parent-navigation', 'popup', 'form']
+const KINDS = ['fetch', 'xhr', 'beacon', 'image', 'socket', 'self-navigation', 'parent-navigation', 'popup', 'form', 'import-script']
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' }
 const integrityOf = body => `sha384-${createHash('sha384').update(body).digest('base64')}`
 const exactKeys = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value)

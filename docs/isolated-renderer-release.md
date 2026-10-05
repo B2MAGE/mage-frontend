@@ -1,18 +1,137 @@
 # PP-I03 integration and release record
 
-## Status — October 4, 2026
+## Status — October 5, 2026 UTC
 
-Normal player and availability integration is merged and deployed. PP-I03 has been reopened for the outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
+**Release approved; production custom playback is enabled.** After the recorded browser reports, live template walkthrough and controlled custom walkthrough, the release owner explicitly instructed "okay deploy it". The backend release approval and separate saved playback control are now on, and the production playback/disable/re-enable walkthrough passed. The approved evidence retains its recorded browser/device scope and limitations; it does not establish untested combinations.
+
+The rollout is complete. [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks integration of the release branch and issue/project closeout separately from the deployed artifact record. No additional browser tests or repeat of the passing walkthroughs are requested.
+
+## Approved production rollout — October 5, 2026 UTC
+
+The owner approved enabling the tested release after confirming the local toggle worked. Coolify deployment `i12134zusc3mvlu1qv3t0z7u` finished for the existing backend commit `ae03e7399a8364bb0068c90197908b7a80e12aa2`; the new backend reported Started at **04:06:20Z**. `MAGE_CUSTOM_RENDERING_RELEASE_APPROVED` changed from false to true. The saved global setting remained Off until it was explicitly enabled through the normal administrator UI.
+
+| Production observation | Result |
+| --- | --- |
+| Explicit enable | At **04:07:40Z**, the administrator enabled **Allow custom shader playback** and saved the change. Public `/api/rendering-status` subsequently returned `enabled: true`, `code: AVAILABLE`, `message: null`, with `Cache-Control: no-store`. |
+| Custom scene authoring and playback | Dedicated [scene18, Custom shader release verification](https://mage.peterbucci.com/scenes/18), saved as `custom-v1` with a captured thumbnail. Its normal Watch player rendered through the CloudFront iframe with `sandbox="allow-scripts"`; selected local test audio advanced to **24.9 seconds**. |
+| Global disable | Saved Off at **04:09:53Z**. A follow-up snapshot showed the unavailable state within **22 seconds of Save**. The first tooling wait timed out early, so this is an observation bound including save/polling/tool time, **not an exact renderer-stop latency**. A later inspection confirmed zero iframes. Reload remained denied, scene18's public `sceneData` was null, and template15 remained available. |
+| Restore | Saved On at **04:10:51Z**. Scene18's iframe and normal playback controls returned. Production custom playback was left enabled. |
+| Final verification | Public verification passed at **04:11:53Z**. The final browser inspection at **04:12:06Z** confirmed the backend deployment was Finished, the administrator page showed Saved On, and scene18 had one restored iframe with normal controls. |
+| Unchanged artifacts | Normal frontend, check service and renderer remain on the previously verified `5f5295e` implementation/artifact set. This rollout changed backend configuration and the saved administrator control; it made no AWS or implementation change. |
+
+Evidence is retained under `.local/deployments/pp-i03-custom-release-20261005/`, including the approval record, public status observations, saved-scene metadata, disable observation and screenshots. User-reported browser results remain user-reported; unspecified device/version details and unobserved combinations have not been relabelled as independently verified.
+
+Rollback remains available through **Moderation → Custom shaders**: save Off first, verify public denial and foreground renderer removal, and if needed restore backend release approval to false and redeploy the same backend. Preserve scene data, individual blocks and owner repair/export.
+
+## Earlier implementation and verification record
+
+The dated sections below retain the states and limits observed before this rollout. Their statements that production was locked or release approval remained outstanding describe those earlier stages; the approved rollout above is the current state.
 
 PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232) at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222) is **Done**. The owner accepted user-reported worker-test passes on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; collecting them remains in PP-I03 release verification. No independent mobile run is claimed.
 
-PP-I05 is merged through [PR #233](https://github.com/B2MAGE/mage-frontend/pull/233) and the fixed-report compatibility follow-up [PR #234](https://github.com/B2MAGE/mage-frontend/pull/234). The renderer, check service and normal frontend deployed from `9f1d50bc2886136999a963cb78770d035fdfeb08`; [issue #223](https://github.com/B2MAGE/mage-frontend/issues/223) is **Done**. The deployment evidence below supersedes I04 artifacts. Public custom rendering remains disabled. PP-I06 continues the player lifecycle work; PP-I03 retains the wider release decision.
+PP-I05 is merged through [PR #233](https://github.com/B2MAGE/mage-frontend/pull/233) and the fixed-report compatibility follow-up [PR #234](https://github.com/B2MAGE/mage-frontend/pull/234). The renderer, check service and normal frontend deployed from `9f1d50bc2886136999a963cb78770d035fdfeb08`; [issue #223](https://github.com/B2MAGE/mage-frontend/issues/223) is **Done**. The deployment evidence below supersedes I04 artifacts. Public custom rendering remains disabled. PP-I06 is now merged and deployed as recorded below; PP-I03 retains the wider release decision.
 
 Use the [browser/device checklist](custom-shader-release-checklist.md) and [result template](custom-shader-release-result.template.json) for the remaining runs. The recovery epic is complete; its closure does not approve arbitrary-source playback.
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
 
+## I03 verification fixture deployment — October 5, 2026 UTC
+
+The renderer, check service and normal frontend now serve `5f5295eb42c95f3aa119454118cec9bd01c9b25c` from `pp-i03-worker-release-verification`. The existing worker and security pages contain the current boundary and trusted recovery fixtures. No public path or AWS resource was added. No backend was deployed; both custom-playback controls remain unchanged and public rendering status confirms `enabled: false`.
+
+| Artifact or check | Evidence |
+| --- | --- |
+| Renderer | `assets/renderer-CUTFEClb.js`, 17,775,923 bytes; SHA-256 `3a76393485a059001acc423b20a6369d0bde50d308daaee38bb5ef060ac03677`. |
+| Hosting rollout | Old/new-hash transition, document switch and final single-hash stack update reached `UPDATE_COMPLETE`; previous-parent scene15 playback passed before parent deployment. AWS final verification confirmed exact headers/hashes, entry document and forbidden paths. The matching frozen production HTTP verifier passed at `2026-10-05T02:11:04Z`. |
+| Check service | Coolify `j13c10tq2szw9ygcyqzun3la`, Finished and healthy at `2026-10-05T02:02:16Z`. All **31 exact deployed HTTP checks passed**, including current files/headers, restricted routes and fetch/XHR/import-script canary positive controls. The reviewed LF Docker image is `sha256:b078de238e84b426c6380dc29dc3fd7658cd711c743405bb6d73f8b96b1b1dbf`; its separate offline HTTP smoke also passed 31/31. |
+| Normal frontend | Coolify `hr4nqk5zyc2eou5wav27nwbw`, Finished; rolling update completed at `2026-10-05T02:03:43Z`. Live HTML references `/assets/index-BLl5gpEc.js` and `/assets/index-DrNYC_gP.css`; response `frame-src` is exactly `https://d2wwpgc7sgvmnm.cloudfront.net/index.html`. Watch scene15 rendered with the updated parent and child. |
+| Live worker fixture | Windows in-app Chromium 154: **19/19 passed**, schema 2 / `fixed-worker-2`, maximum parent gap 62.9ms. Positive-control counters recorded three requests; worker counters recorded zero. CacheStorage was explicitly `NOT_EXPOSED`, not an observed denied opening. |
+| Live recovery fixture | Same browser: **7/7 passed**, schema 3 / `fixed-security-3`, `fixed-renderer-recovery-1`, coverage `current-renderer-recovery`. Actual context loss passed; no case was unsupported. Historical security groups remain historical. |
+| Live fixed music | Selective scene switching preserved advancing audio from 17.1 to 17.4 seconds; Original reload preserved the paused 25.8-second position. A 320 × 180 capture succeeded, Resume advanced to 25.9 seconds, and Stop cleared audio and the frame. |
+
+Frozen files, HTTP reports, screenshots and browser exports are under `.local/deployments/pp-i03-worker-verification-5f5295e/`, including `live-worker-report.json`, `live-recovery-report.json`, `production-final-http-verification.json` and `aws-final-verification.txt`. These are deployed fixture and focused Watch observations, not the full browser/device or normal-application matrix. **PP-I03 remains To Verify; public release is NOT APPROVED.**
+
+### Owner-reported current browser passes — October 5, 2026 UTC
+
+After receiving instructions to run the current worker checks and current renderer recovery group, the owner reported: "okay so they pass in all the browsers we tested last time". Record both current groups as **user-reported PASS on the previously tested browser/device set**. Previous conversation records identify desktop Chrome/Edge/Firefox, Pixel/Chrome/Android 17, and Apple/Safari/iOS. This statement does not establish additional operating-system/browser combinations or a new independent test run. No new JSON exports or exact version/device details accompanied it; retain those details as unspecified rather than copying versions from older reports.
+
+These reported passes satisfy the current fixed-page checks for that tested set. The owner subsequently reported the six-step normal-app walkthrough below passing, and the controlled local custom/global-control walkthrough also passed as recorded below. Reuse these results and the recorded automated evidence; no repeat of passing fixture groups or the same walkthrough is requested by this record. Production controls were still unchanged at this stage; the approved rollout above records their later enablement.
+
+### Owner-reported normal-app walkthrough
+
+The owner reported "these all passed" for the six-step walkthrough on normal live MAGE using a new template test scene. Record each step as **user-reported PASS**, separate from an independently observed run:
+
+| Step | Reported passing behavior |
+| --- | --- |
+| 1. Create and edit | Template rendering, local music, effects, Selective response and template switching work; music continues and the page remains responsive. |
+| 2. Capture and save | Thumbnail capture and scene creation succeed; saved-scene audio, play/pause, seeking, volume, dragging and zooming work. |
+| 3. Pause and return | Pause-all restores playback; deliberately stopped scenes stay stopped across reload until resumed. The supplied walkthrough also includes mobile rotation and background/return. |
+| 4. Block the test scene | A scene block stops foreground playback within the stated 30-second bound; refresh cannot bypass it and scene details remain visible. No exact elapsed time was supplied. |
+| 5. Edit and export while blocked | Owner settings and thumbnail survive; description updates and JSON export work without clearing the block. |
+| 6. Restore playback | Unblocking and reloading or deliberately resuming restores playback. |
+
+Browser, device, OS, scene ID and explicit attribution of the mobile-only actions were not supplied with this report; clarification was requested. Do not infer this walkthrough ran on every browser in the separate fixture report. No new screenshot/export or independent execution is claimed.
+
+This completes the supplied live template walkthrough as reported. It does not claim a production custom-source/global-switch test: that portion was explicitly excluded while public custom playback was locked. The subsequent controlled custom-source/global walkthrough and approved production rollout are recorded separately, alongside the existing automated contract/authorization evidence.
+
+The separate usability follow-ups are #236 (compatible live setting updates), #237 (single-song preview/featured players), and #238 (Clear music). They do not invalidate these reported results or expand this isolation release walkthrough.
+
+### Controlled local custom walkthrough — October 4, 2026, America/New_York
+
+The normal local app at `http://127.0.0.1:5178` was exercised in the Windows in-app browser using Ari's copied administrator session. The exact existing backend image/JAR was reused with local-only release approval, a disposable copy of the local database, and a dedicated local MinIO upload prefix. The original backend is preserved stopped; its database and existing thumbnails were not modified. Production public status was checked afterward and still reports `CUSTOM_RENDERING_DISABLED`.
+
+The frontend checkout was `848851d` (documentation changes after the deployed `5f5295e` implementation). The verified local renderer is `assets/renderer-UqVVcV7s.js`; its exact document/assets/headers/routes passed the existing renderer verifier before the walkthrough. Backend image: `sha256:e95aa33310a94f3b77ae82e792e1e4f2ff82b32e9659a7909eed910a51b935f5`; JAR SHA-256: `89128b7e07dd22b41e95c9d27fce2dfeb643ccb43b1406eed81466fd34497421`.
+
+| Check | Observed result |
+| --- | --- |
+| Local approval and normal administrator UI | Release approval unlocked the switch without enabling its saved state. Explicit switch/reason/Save change enabled custom playback. |
+| Custom import, capture, save and Watch | Imported a bounded colored sphere with explicit camera settings through Confirm / Raw JSON. Preview rendered; scene29 saved as `custom-v1` with a thumbnail in the test prefix and rendered in Watch. |
+| Compile-rejected draft | A finite deliberate syntax error paused rendering. Name, description, camera/settings and saved thumbnail survived. The actual downloaded JSON retained the rejected source. Explicit Retry failed safely again. |
+| Global disable | Saved Off through the normal administrator page. The active saved custom scene displayed unavailable and had zero iframes **2,582 ms after the Save click**. This includes the save and observation time; it is one local observation, not a universal latency guarantee. Refresh remained denied with no renderer/retry bypass, while template28 continued rendering. |
+| Global restore and retained local failure | Saved On restored the healthy saved custom scene. The rejected editor draft still had no iframe and required Retry; permission restoration did not erase its failure. Restoring valid source recovered the preview. |
+| Individual custom block and owner repair | Blocked scene29, reloaded its owner editor, retained source/settings/thumbnail, downloaded JSON, changed its description and saved. Public scene data remained withheld with `SCENE_DISABLED`; saving did not clear the block. |
+| Cleanup | Restored scene29's original source/description and individual permission. Restored the global saved switch Off, leaving local release approval true for the owner's testing. Production remains locked. |
+
+One initial global re-enable attempt reported that its result could not be verified. Check current status confirmed saved Off before a deliberate retry succeeded. No cause was established; the page failed closed and did not claim success. The download event observer timed out, but the actual browser-created files `scene-29.json` and `scene-29 (1).json` were found, parsed and copied as evidence; this was a tooling observation failure, not a failed export.
+
+Evidence: `.local/i03-custom-walkthrough/` (screenshots, both exported documents and `result.json`); backend setup/state/rollback helpers: `../mage-backend-submission-limits/.local/pp-i03-local-custom/`. The local test database uses temporary memory-backed storage and must remain running for continued testing. The rollback helper restores the exact original backend and validates owned resource identities before removing the disposable database/network. The dedicated test thumbnail prefix is retained.
+
+This completes the focused controlled custom/global-control browser walkthrough. It is local Windows in-app-browser evidence, separate from the owner's reported live/browser passes. This local run did not itself enable production, merge or deploy code, or establish a new mobile observation or untested browser combination. The later owner approval and production enablement are recorded above.
+
+### Owner confirmation of the local custom-playback toggle
+
+The owner subsequently reported: "so the toggle worked locally". Record this as **user-reported PASS for the local custom-playback toggle**, in addition to the controlled walkthrough above. No new browser/device details, exact timing, final switch state or independent observation were supplied. This confirmed the owner's local check; it did not by itself authorize production enablement. The owner's later "okay deploy it" instruction authorized the separate production rollout recorded above; do not repeat the passing checks.
+
+### Local preparation — October 4, 2026
+
+- Local in-app Chromium 154 / Windows: **19/19 worker checks passed**, maximum parent timer gap 62.8ms. Independent canary control was observed, fetch/XHR/importScripts requests were denied with zero canary requests, IndexedDB opening was denied, and CacheStorage was explicitly `NOT_EXPOSED`. That last observation is not a denied-open claim. An earlier 17/19 report is preserved; it exposed that the fixture failed to distinguish absent CacheStorage from an unusable exposed API.
+- Current trusted recovery: **7/7 passed**, including actual context-loss event, private-port rejection/flood removal, ignored window spoof with continued progress, missing readiness, observed iframe reload and a fresh healthy retry. Report schema3/`fixed-security-3`, group `recovery`, coverage `current-renderer-recovery`; historical groups remain historical.
+- Dedicated local template scene28: block removed playback; owner fields and saved thumbnail survived; owner JSON downloaded and parsed; saving while blocked succeeded; original description and playback permission were restored. This does not measure the foreground polling bound or exercise global custom enablement.
+- Current backend `ae03e7399a8364bb0068c90197908b7a80e12aa2`: **275 targeted release tests /17 classes passed**, no skips/failures/errors, using disposable test databases and stubbed storage. Mode/limits/moderation/release interlock/owner-repair coverage is automated evidence, separate from browser walkthroughs.
+- Full frontend regression: **1,945 tests /142 files passed**, plus **43 worker fixture tests**, **27 recovery/UI tests**, **23 report/HTTP policy tests**, and **eight hosting tests**. Lint, TypeScript/application, production renderer, and all three check-page builds passed. The music-page build allowlist was updated for the exact new fixed-recovery protocol dependency; no directory-wide exception was added.
+- Independent source review found no confirmed blocker in fixed activation, envelopes, attempted-call/positive-control evidence, denial classifications or hosting restrictions.
+
+Reports and screenshots: `.local/pp-i03-worker-acceptance/`. Backend evidence: `../mage-backend-submission-limits/.local/pp-i03-backend-verification-20261005/`. At this preparation stage the wider browser reports, controlled custom/global-disable walkthrough and release decision were still outstanding, and both public controls remained unchanged. Later sections above record the received evidence, owner approval and production rollout without promoting local in-app Chromium results into observations on other browsers.
+
 ## Release verification — October 4, 2026
+
+### PP-I06 lifecycle deployment
+
+PR #235 merged at `e9a1649c8404d622b6278226b3d0f69ffec66716`; issue #224 is closed and Done. The parent and fixed-check service both deploy this exact commit. Public `/api/rendering-status` remains `CUSTOM_RENDERING_DISABLED`.
+
+| Artifact or check | Evidence |
+| --- | --- |
+| Renderer | `assets/renderer-B-hwXhYk.js`, 17,766,557 bytes; SHA-256 `a80024e47f8397872f0ba29da17cfc0f00085db85b8dd197d6f4efe334dfe08c` |
+| Hosting rollout | Existing stack completed old/new transition, compatible previous-parent check, new document switch and final single-asset configuration. Exact bytes, headers, paths/methods and parent frame policy passed. Old immutable artifacts retained for rollback; no additional AWS resource. |
+| Parent | Coolify `du6ejvta3fg8r0gt4e6z4z85`, finished at 2026-10-05 00:42Z; live entry `/assets/index-CaTn6c0-.js` verified. |
+| Fixed-check service | Coolify `p6nszckhrekb4a8bzelx49v6`, healthy at 00:40Z; all 31 exact HTTP checks passed. |
+| Worker smoke | Deployed fixed-worker-1: 11/11 passed, foreground, maximum parent gap 63.6ms, finite-loop termination 2004.2ms. |
+| Normal app/music | Live Watch scene15 loaded a local test rhythm and resumed the same track after pause-all. Fixed music page switched/captured, later stopped safely in the in-app browser; retry restored playback and capture, then deliberate Stop released the player. Cause of that one interruption is unconfirmed and retained for I03. |
+| Regression | 1,936 tests / 141 files; lint, TypeScript/app, renderer and all three check-page builds passed before merge. |
+
+Evidence directory: `.local/deployments/pp-i06-player-lifecycle-e9a1649/`, including frozen approved files, final HTTP reports, worker JSON and screenshots. These are focused deployment checks, not the complete I03 browser/device and normal-app acceptance matrix. No backend was deployed and custom execution remains locked.
+
+
 
 ### PP-I04 compiler-worker deployment
 

@@ -5,6 +5,7 @@ import { fixedWorkerSource, isCheckEvent, isSummary, isWorkerCheckConnection, is
   workerCheckConfig, workerCheckVerdicts, WORKER_CHECK_PROTOCOL, type WorkerCheckSummary } from './worker-check-fixture'
 import { runFixedWorkerChecks } from './worker-check-runner'
 import type { compileInWorker } from '../src/isolated-renderer/compiler/client'
+import { BOUNDARY_PROBES, emptyBoundaryEvidence, type BoundaryProbe } from './worker-boundary'
 
 const nonce = 'a'.repeat(32)
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers() })
@@ -12,7 +13,13 @@ const summary: WorkerCheckSummary = { controlDelayed: true, scopeVerified: true,
   normalStarted: true, normalCompiled: true, normalTerminated: true, completionScheduled: true, completionCompiled: true,
   completionTerminated: true, completionDelayed: false, stallStarted: true, stallEntered: true, stallEnded: false,
   stallTimedOut: true, throwStarted: true, throwRejected: true, throwTerminated: true, syntaxStarted: true, syntaxRejected: true, syntaxTerminated: true,
-  abortStarted: true, abortEntered: true, abortCancelled: true, stallDurationMs: 2001, completionObservationMs: 600, abortDurationMs: 50, repeatedJobs: 2 }
+  abortStarted: true, abortEntered: true, abortCancelled: true, stallDurationMs: 2001, completionObservationMs: 600, abortDurationMs: 50, repeatedJobs: 2,
+  boundary: { started: true, compiled: true, terminated: true, production: emptyBoundaryEvidence(), policy: emptyBoundaryEvidence(), policyObservationMs: 600 } }
+for (const probe of BOUNDARY_PROBES) {
+  summary.boundary.production.probes[probe] = { attempted: true, returned: true, outcome: 'pending' }
+  summary.boundary.policy.probes[probe] = { attempted: true, returned: true, outcome: 'denied' }
+}
+summary.boundary.policy.observationTimer = true
 
 describe('fixed compiler-worker fixture evidence', () => {
   it('binds live and local pages to their exact fixed addresses', () => {
@@ -43,7 +50,7 @@ describe('fixed compiler-worker fixture evidence', () => {
   })
 
   it('does not infer success from missing callback, missing source-entry, late termination or parent delay', () => {
-    expect(workerCheckVerdicts(summary, 50).every(row => row.passed)).toBe(true)
+    expect(workerCheckVerdicts(summary, 50, { requests: 0, kinds: { fetch: 0, xhr: 0, 'import-script': 0 } }, true).every(row => row.passed)).toBe(true)
     expect(workerCheckVerdicts({ ...summary, controlDelayed: false }, 50)[3].passed).toBe(false)
     expect(workerCheckVerdicts({ ...summary, completionScheduled: false }, 50)[3].passed).toBe(false)
     expect(workerCheckVerdicts({ ...summary, completionDelayed: true }, 50)[3].passed).toBe(false)
@@ -95,11 +102,22 @@ class TestWorker extends EventTarget {
   terminate() { this.terminated = true; if (!this.survive) this.timers.forEach(clearTimeout) }
   marker(marker: string) { this.dispatchEvent(new MessageEvent('message', { data: { type: 'mage-worker-check-marker', nonce, marker } })) }
   later(marker: string) { this.timers.push(setTimeout(() => this.marker(marker), 250)) }
+  boundary(probe: BoundaryProbe | 'observation', outcome: string) {
+    this.dispatchEvent(new MessageEvent('message', { data: { type: 'mage-worker-boundary-marker', nonce, probe, outcome } }))
+  }
 }
 function dependencies(survive = false) {
   const workers: TestWorker[] = []
   return { workers,
-    createControl() { const worker = new TestWorker(); workers.push(worker); worker.later('delayed'); return { worker: worker as unknown as Worker, release() {} } },
+    createControl(source: string) {
+      const worker = new TestWorker(); workers.push(worker)
+      if (source.includes('mage-worker-boundary-marker')) worker.timers.push(setTimeout(() => {
+        for (const probe of BOUNDARY_PROBES) { worker.boundary(probe, 'attempted'); worker.boundary(probe, 'returned'); worker.boundary(probe, 'denied') }
+        worker.boundary('observation', 'timer')
+      }, 100))
+      else worker.later('delayed')
+      return { worker: worker as unknown as Worker, release() {} }
+    },
     createCompiler() { const worker = new TestWorker(survive); workers.push(worker); return { worker: worker as unknown as Worker, release() {} } },
     compile: ((source, options, hooks) => {
       const { worker } = hooks!.createWorker!(), native = worker as unknown as TestWorker
@@ -114,6 +132,9 @@ function dependencies(survive = false) {
         return new Promise((_resolve, reject) => setTimeout(() => { worker.terminate(); hooks!.observe?.({ type: 'terminated', reason: 'timeout' }); reject(new Error('Fixed timeout')) }, 2000))
       }
       if (source.includes('setTimeout')) { native.marker('delay-scheduled'); native.later('delayed') }
+      if (source.includes('mage-worker-boundary-marker')) for (const probe of BOUNDARY_PROBES) {
+        native.boundary(probe, 'attempted'); native.boundary(probe, 'returned')
+      }
       hooks!.observe?.({ type: 'validated' }); worker.terminate(); hooks!.observe?.({ type: 'terminated', reason: 'complete' })
       return Promise.resolve({})
     }) as typeof compileInWorker,
@@ -125,7 +146,7 @@ describe('worker fixture lifecycle', () => {
     vi.useFakeTimers()
     const deps = dependencies(survive), events: unknown[] = []
     const result = runFixedWorkerChecks({ signal: new AbortController().signal, nonce, emit: event => events.push(event) }, deps)
-    await vi.advanceTimersByTimeAsync(3200)
+    await vi.advanceTimersByTimeAsync(3800)
     const observed = await result
     expect(observed.controlDelayed).toBe(true)
     expect(observed.completionCompiled).toBe(true)

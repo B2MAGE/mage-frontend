@@ -1,12 +1,13 @@
 # PP-I06 player surfaces and lifecycle evidence
 
 This inventory accompanies [PP-I06](https://github.com/B2MAGE/mage-frontend/issues/224).
-It describes source routing and local regression coverage, not a production release
-approval. PP-I06 deployment and the complete browser/device matrix are not verified
-by this document. Keep the production custom-rendering release approval and saved
-global custom-rendering switch off. [Release evidence](isolated-renderer-release.md)
-records deployments separately; the remaining public release decision belongs to
-PP-I03.
+It describes source routing and local regression coverage; the
+[release record](isolated-renderer-release.md) separately records deployment,
+browser/device evidence and the owner-approved production rollout. Custom playback
+is enabled, with live disable/re-enable verification recorded on October 5, 2026 UTC.
+This inventory does not imply observations on untested browsers or devices.
+[PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks release-branch
+integration and closure.
 
 ## Rendering surfaces
 
@@ -101,10 +102,7 @@ thumbnail, resuming, and changing Selective frequency focus/amount succeeded.
 These were unsaved local editor changes; no scene was published or altered in the
 database. This walkthrough is narrower than the full device/release matrix.
 
-The compatible PP-I06 production renderer build is
-`assets/renderer-B-hwXhYk.js`; it has **not** replaced the deployed PP-I05 renderer
-`assets/renderer-C_SgAeRr.js`. No hosting, backend or release-gate change is part of
-the local I06 implementation.
+PP-I06 merged through PR #235 at `e9a1649c8404d622b6278226b3d0f69ffec66716`. The normal frontend, fixed-check service and compatible renderer `assets/renderer-B-hwXhYk.js` are deployed. The final single-asset hosting policy passed exact-byte/header/route verification. No backend or public release-gate change was made. See the [release record](isolated-renderer-release.md).
 
 ## Remaining verification
 

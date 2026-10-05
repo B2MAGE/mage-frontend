@@ -9,6 +9,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const outDir = resolve(root, '.local/worker-check-renderer')
 const compiler = await buildCompilerWorker(root)
 const allowed = new Set(['scripts/worker-check-local.ts', 'scripts/worker-check-child.ts', 'scripts/worker-check-runner.ts', 'scripts/worker-check-fixture.ts',
+  'scripts/worker-boundary.ts',
   'src/isolated-renderer/compiler/client.ts', 'src/isolated-renderer/compiler/protocol.ts', 'src/isolated-renderer/boundary.ts',
   'src/isolated-renderer/compiler/errors.ts', 'node_modules/@notrac/mage/dist/compiled-shader.js',
   'node_modules/@notrac/mage/dist/compiled-shader-shell.generated.js'])
@@ -32,6 +33,6 @@ const bundlePath = `assets/${assets[0]}`, bundle = await readFile(resolve(outDir
 const manifest = createHostingManifest({ bundlePath, bundle, parentOrigins: ['http://127.0.0.1:5178'] })
 await writeFile(resolve(outDir, 'index.html'), renderDocument(manifest))
 await writeFile(resolve(outDir, 'hosting-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-await writeFile(resolve(outDir, 'build-audit.json'), `${JSON.stringify({ fixtureVersion: 'fixed-worker-1', sourceModules: modules,
+await writeFile(resolve(outDir, 'build-audit.json'), `${JSON.stringify({ fixtureVersion: 'fixed-worker-2', sourceModules: modules,
   compilerWorker: { sourceIntegrity: integrityOf(compiler.source), sourceBytes: Buffer.byteLength(compiler.source), sourceModules: compiler.modules } }, null, 2)}\n`)
 console.log(`Fixed worker child built at ${outDir}`)

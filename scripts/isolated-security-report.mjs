@@ -1,6 +1,6 @@
-export const SECURITY_GROUP_CHECK_COUNTS = Object.freeze({ boundary: 17, failures: 8, stall: 2 })
+export const SECURITY_GROUP_CHECK_COUNTS = Object.freeze({ boundary: 17, failures: 8, stall: 2, recovery: 7 })
 export const SECURITY_DIAGNOSTIC_LIMIT = 256
-export const SECURITY_TEST_VERSION = 'fixed-security-2'
+export const SECURITY_TEST_VERSION = 'fixed-security-3'
 const MAX_RUNS = 24
 const MAX_CHECKS = 32
 const bounded = (value, limit) => typeof value === 'string' ? value.slice(0, limit) : ''
@@ -50,6 +50,8 @@ export function createSecurityReport({ now = () => new Date().toISOString(), mod
     start(group) {
       if (typeof group !== 'string' || !Object.hasOwn(SECURITY_GROUP_CHECK_COUNTS, group)) throw new Error('Unknown security check group.')
       const run = { id: ++nextId, group, startedAt: now(), finishedAt: null, status: 'running', checks: [], interruptedByHiddenPage: false,
+        fixtureVersion: group === 'recovery' ? 'fixed-renderer-recovery-1' : 'historical-window-source-2',
+        coverage: group === 'recovery' ? 'current-renderer-recovery' : 'historical-window-source',
         ...(group === 'stall' ? { diagnostics: { eventLimit: SECURITY_DIAGNOSTIC_LIMIT, events: [], truncated: false, droppedEvents: 0, rejectedEvents: 0 },
           stall: { baseline: null, observation: null, recovery: null, beforeCleanup: null } } : {}) }
       runs.push(run)
@@ -58,7 +60,7 @@ export function createSecurityReport({ now = () => new Date().toISOString(), mod
     },
     add(id, { name, outcome, evidence }) {
       const run = current(id)
-      if (!run || !['PASS', 'FAIL', 'PENDING'].includes(outcome) || run.checks.length >= MAX_CHECKS) return
+      if (!run || !['PASS', 'FAIL', 'PENDING', 'UNSUPPORTED'].includes(outcome) || run.checks.length >= MAX_CHECKS) return
       run.checks.push({ name: bounded(name, 120), outcome, evidence: bounded(evidence, 512) })
     },
     markHidden(id) {
@@ -92,7 +94,7 @@ export function createSecurityReport({ now = () => new Date().toISOString(), mod
       // Locations are reduced to origins and the fixed entry path; query/fragment data is never exported.
       const safeOrigin = value => { try { return new URL(value).origin } catch { return 'unknown' } }
       return {
-        version: 2,
+        version: 3,
         testVersion: SECURITY_TEST_VERSION,
         scope: mode === 'deployed' ? 'Deployed fixed-fixture checks only. Not full application verification or release approval.'
           : 'Local fixed-fixture checks only. Not production verification or release approval.',
@@ -102,6 +104,9 @@ export function createSecurityReport({ now = () => new Date().toISOString(), mod
         rendererUrl: `${safeOrigin(rendererUrl)}/index.html`,
         retainedRunLimit: MAX_RUNS,
         expectedChecks: { ...SECURITY_GROUP_CHECK_COUNTS },
+        recoveryParameters: { fixtureVersion: 'fixed-renderer-recovery-1', missingReplyTimeoutMs: mode === 'deployed' ? 15000 : 5000,
+          actionDelayMs: 150, boundedFloodMessages: 50, progressTimeoutMs: 5000, observationMs: 4000,
+          source: 'Fixed trusted actions only; no submitted code or URL controls.' },
         stallParameters: { baselineObservationMs: 1200, stallObservationMs: 3600, recoveryObservationMs: 1200,
           childDelayMs: 150, childLoopMs: 3000, parentTimerIntervalMs: 50, parentResponsivenessLimitMs: 1000,
           fixtureProgressTimeoutMs: 1000, fixtureStartupTimeoutMs: mode === 'deployed' ? 15000 : 1200,

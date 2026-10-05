@@ -1,7 +1,8 @@
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostDiagnostic } from '../src/modules/player/isolation/playbackHost'
-import { boundedStallSource, portAttackSource, readStallMarker, reportProbeSource as reportSource, THROW_PROBE_SOURCE, type StallMarker } from './isolated-security-probes.mjs'
+import { boundedStallSource, readStallMarker, reportProbeSource as reportSource, type StallMarker } from './isolated-security-probes.mjs'
 import { createSecurityReport, SECURITY_TEST_VERSION, type DiagnosticPhase, type SecurityDiagnostic, type StallObservation } from './isolated-security-report.mjs'
 import { fixedSecurityCheckConfig, isSecurityCheckLocation, securityCanaryUrl, type SecurityCheckMode } from './isolated-security-config.mjs'
+import { runFixedRecoveryChecks } from './fixed-recovery-runner'
 
 export function mountIsolatedSecurityCheck(mode: SecurityCheckMode) {
 const config = fixedSecurityCheckConfig(mode)
@@ -9,14 +10,14 @@ const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as
 const container = el('player'), results = el<HTMLTableSectionElement>('results'), status = el('status')
 const allowed = isSecurityCheckLocation(mode, window.location.href, import.meta.env.DEV)
 const renderer = config.rendererUrl
-type Outcome = 'PASS' | 'FAIL' | 'PENDING'
+type Outcome = 'PASS' | 'FAIL' | 'PENDING' | 'UNSUPPORTED'
 let run = 0, host: IsolatedPlaybackHost | null = null, activeCleanup: (() => void) | null = null
 const report = createSecurityReport({ mode })
 let reportRun: number | null = null
 const reportSnapshot = () => report.snapshot({ userAgent: navigator.userAgent, parentOrigin: location.origin, rendererUrl: renderer })
 function updateSavedRuns() {
   const saved = reportSnapshot().runs
-  el('saved-runs').textContent = `Test ${SECURITY_TEST_VERSION}; report schema 2. This tab retains ${saved.length} check run(s), up to the latest 24, including cancelled or incomplete runs. Fixed-fixture results do not approve release.`
+  el('saved-runs').textContent = `Test ${SECURITY_TEST_VERSION}; report schema 3. This tab retains ${saved.length} check run(s), up to the latest 24, including cancelled or incomplete runs. Current recovery and historical window-source groups are identified separately. Fixed-fixture results do not approve release.`
   el<HTMLButtonElement>('download').disabled = saved.length === 0
   el<HTMLButtonElement>('show-report').disabled = saved.length === 0
   if (!el('report-json').hidden) el('report-json').textContent = JSON.stringify(reportSnapshot(), null, 2)
@@ -29,7 +30,7 @@ function row(token: number, name: string, outcome: Outcome, evidence: string, ex
   const tr = results.insertRow()
   for (const text of [name, outcome, evidence]) tr.insertCell().textContent = text
   tr.cells[1].dataset.result = outcome
-  el('summary').textContent = `${rows.filter(value => value.outcome === 'PASS').length} passed; ${rows.filter(value => value.outcome === 'FAIL').length} failed. Browser: ${navigator.userAgent}`
+  el('summary').textContent = `${rows.filter(value => value.outcome === 'PASS').length} passed; ${rows.filter(value => value.outcome === 'FAIL').length} failed; ${rows.filter(value => value.outcome === 'UNSUPPORTED').length} unsupported. Browser: ${navigator.userAgent}`
 }
 function stop() {
   activeCleanup?.(); activeCleanup = null
@@ -38,7 +39,7 @@ function stop() {
   status.textContent = 'Checks stopped. The test player was removed.'
   for (const id of ['boundary', 'failures', 'stall']) el<HTMLButtonElement>(id).disabled = !allowed
 }
-function begin(group: 'boundary' | 'failures' | 'stall') {
+function begin(group: 'boundary' | 'recovery' | 'stall') {
   stop(); rows.length = 0; results.replaceChildren(); el('summary').textContent = ''
   reportRun = report.start(group)
   if (document.visibilityState !== 'visible') report.markHidden(reportRun)
@@ -165,45 +166,15 @@ async function navigationCheck(token: number) {
     row(token, 'Navigation is blocked or the child is retired', stopped || (remainedAlive && counts.requests === 0) ? 'PASS' : 'FAIL', stopped ? 'The host removed the changed document.' : 'The original document reported continued execution after the blocked attempt.')
   } finally { probe.cancel(); p.instance.dispose() }
 }
-async function expectedFailure(token: number, name: string, code: string | ((nonce: string) => string), timeout = 6500, requireProof = true) {
-  const p = await player(token)
-  const nonce = newNonce(), probe = diagnostics(p.frame, nonce, token)
-  let executed = false
-  void probe.promise.then(checks => { executed = checks['probe-executed'] === true }, () => {})
-  const started = performance.now()
+async function recoveryChecks(token: number) {
+  const controller = new AbortController()
+  const cleanup = () => controller.abort()
+  activeCleanup = cleanup
   try {
-    const source = typeof code === 'function' ? code(nonce) : `${requireProof ? reportSource(nonce, "{'probe-executed':true}") : ''}${code}`
-    void p.instance.loadScene(scene(source), 'preview').catch(() => {})
-    while (!p.failed() && performance.now() - started < timeout) { await sleep(50); assertCurrent(token) }
-    await sleep(50)
-    row(token, name, p.failed() && !p.frame.isConnected && (!requireProof || executed) ? 'PASS' : 'FAIL', `Probe evidence: ${requireProof ? executed : 'fixed rejected source; no runtime-delivery claim'}; child removed: ${!p.frame.isConnected}; failure recorded: ${p.failed()}.`)
-  } finally { probe.cancel(); p.instance.dispose() }
-}
-async function failureChecks(token: number) {
-  const windowSpoof = await player(token)
-  const nonce = newNonce(), proof = diagnostics(windowSpoof.frame, nonce, token)
-  try {
-    await windowSpoof.instance.loadScene(scene(portAttackSource('window', nonce)), 'preview')
-    const checks = await proof.promise
-    await sleep(400); assertCurrent(token)
-    row(token, 'Window-message spoof cannot use the private port', checks['probe-executed'] && !windowSpoof.failed() && windowSpoof.frame.isConnected ? 'PASS' : 'FAIL', 'A proven valid-session error sent through window.postMessage is ignored by the production host.')
-  } finally { proof.cancel(); windowSpoof.instance.dispose() }
-  await expectedFailure(token, 'Thrown scene source is rejected safely', THROW_PROBE_SOURCE, 6500, false)
-  await expectedFailure(token, 'Invalid source stops safely', 'this is deliberately invalid shader source;', 6500, false)
-  await expectedFailure(token, 'Unrecognized child instruction is rejected', nonce => portAttackSource('spoof', nonce))
-  await expectedFailure(token, 'Bounded output flood is rejected', nonce => portAttackSource('flood', nonce))
-  await expectedFailure(token, 'Lost WebGL context stops safely', nonce => `setTimeout(()=>{const canvas=document.querySelector('canvas');const gl=canvas.getContext('webgl2')||canvas.getContext('webgl');const extension=gl&&gl.getExtension('WEBGL_lose_context');if(extension){${reportSource(nonce, "{'probe-executed':true}")}setTimeout(()=>extension.loseContext(),150)}},150);`)
-  await expectedFailure(token, 'Child reload stops safely', nonce => `setTimeout(()=>{${reportSource(nonce, "{'probe-executed':true}")}setTimeout(()=>globalThis.location.reload(),150)},100);`)
-  assertCurrent(token)
-  const missing = createIsolatedPlaybackHost({ container, rendererUrl: renderer, startupTimeoutMs: 1200, useInlineFrameStyles: false })
-  host = missing
-  const frame = container.querySelector('iframe')!
-  // Removing the real frame before its initial load produces a genuine missing response.
-  frame.remove()
-  let rejected = false
-  try { await missing.ready } catch { rejected = true }
-  row(token, 'Missing child response expires', rejected ? 'PASS' : 'FAIL', 'Readiness rejected within the bounded startup deadline.')
-  missing.dispose(); assertCurrent(token)
+    await runFixedRecoveryChecks({ container, rendererUrl: renderer, signal: controller.signal,
+      startupTimeoutMs: mode === 'deployed' ? 15000 : 5000,
+      result(value) { row(token, value.name, value.outcome, value.evidence) } })
+  } finally { cleanup(); if (activeCleanup === cleanup) activeCleanup = null }
 }
 async function boundedStall(token: number) {
   const reportId = reportRun!, origin = performance.now(), nonce = newNonce()
@@ -301,12 +272,12 @@ async function boundedStall(token: number) {
     report.observeStall(reportId, 'recovery', observation())
   } finally { cleanup() }
 }
-async function execute(group: 'boundary' | 'failures' | 'stall') {
+async function execute(group: 'boundary' | 'recovery' | 'stall') {
   if (!allowed) return
   const token = begin(group)
   try {
     if (group === 'boundary') { await boundaryChecks(token); await networkChecks(token); await navigationCheck(token) }
-    else if (group === 'failures') await failureChecks(token)
+    else if (group === 'recovery') await recoveryChecks(token)
     else await boundedStall(token)
     assertCurrent(token)
     status.textContent = 'Checks finished. Review every failed result before enabling custom playback.'
@@ -324,7 +295,8 @@ async function execute(group: 'boundary' | 'failures' | 'stall') {
     }
   }
 }
-for (const group of ['boundary', 'failures', 'stall'] as const) el<HTMLButtonElement>(group).onclick = () => void execute(group)
+for (const group of ['boundary', 'stall'] as const) el<HTMLButtonElement>(group).onclick = () => void execute(group)
+el<HTMLButtonElement>('failures').onclick = () => void execute('recovery')
 el<HTMLButtonElement>('stop').onclick = stop
 el<HTMLButtonElement>('download').onclick = () => {
   const snapshot = reportSnapshot()

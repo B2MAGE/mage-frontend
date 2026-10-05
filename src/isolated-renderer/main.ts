@@ -7,6 +7,8 @@ import { isPlaybackMessage } from '../modules/player/isolation/playbackProtocol'
 import { isRendererMessage } from '../modules/player/isolation/protocol'
 import { installFixedWorkerCheck } from '../../scripts/worker-check-child'
 import { isWorkerCheckConnection } from '../../scripts/worker-check-fixture'
+import { isFixedRecoveryConnection } from '../modules/player/isolation/fixedRecoveryProtocol'
+import { installFixedRecoveryCheck } from '../../scripts/fixed-recovery-child'
 
 declare const __MAGE_RENDERER_PARENT_ORIGINS__: readonly string[]
 
@@ -20,11 +22,13 @@ if (verifyOpaqueSandbox(window)) {
     if (event.source !== window.parent || !__MAGE_RENDERER_PARENT_ORIGINS__.includes(event.origin) || event.ports.length !== 1) return
     const playback = isPlaybackMessage(event.data, ['connect'])
     const workerCheck = isWorkerCheckConnection(event.data)
-    if (!playback && !workerCheck && !isRendererMessage(event.data, ['connect'])) return
+    const recoveryCheck = isFixedRecoveryConnection(event.data)
+    if (!playback && !workerCheck && !recoveryCheck && !isRendererMessage(event.data, ['connect'])) return
     window.removeEventListener('message', select)
     window.removeEventListener('pagehide', stopSelecting)
     const shared = { canvas, statusElement, allowedParentOrigins: __MAGE_RENDERER_PARENT_ORIGINS__, initialConnection: event }
-    if (workerCheck) installFixedWorkerCheck(shared)
+    if (recoveryCheck) installFixedRecoveryCheck(shared)
+    else if (workerCheck) installFixedWorkerCheck(shared)
     else if (playback) installPlaybackRuntime({ ...shared, loadScene: loadPlaybackEngine })
     else installRendererRuntime({ ...shared, loadSample: loadKnownSample })
   }

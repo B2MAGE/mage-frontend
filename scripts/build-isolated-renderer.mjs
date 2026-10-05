@@ -17,6 +17,7 @@ const allowedSharedFiles = new Set([
   `${sourcePrefix}modules/player/isolation/protocol.ts`,
   `${sourcePrefix}modules/player/isolation/playbackProtocol.ts`,
   `${sourcePrefix}modules/player/isolation/capture.ts`,
+  `${sourcePrefix}modules/player/isolation/fixedRecoveryProtocol.ts`,
   `${sourcePrefix}modules/player/infrastructure/viewerPointerDeformation.ts`,
   `${sourcePrefix}modules/player/policy/renderBudget.ts`,
   `${sourcePrefix}modules/player/policy/sceneValidation.ts`,
@@ -29,6 +30,8 @@ const allowedSharedFiles = new Set([
   `${rootPrefix}scripts/worker-check-child.ts`,
   `${rootPrefix}scripts/worker-check-runner.ts`,
   `${rootPrefix}scripts/worker-check-fixture.ts`,
+  `${rootPrefix}scripts/worker-boundary.ts`,
+  `${rootPrefix}scripts/fixed-recovery-child.ts`,
 ])
 let bundledModules = []
 // Inline the separately audited worker in the integrity-pinned renderer. An
