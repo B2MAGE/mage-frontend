@@ -6,6 +6,7 @@ export type { IsolatedPlayer, IsolatedPlayerOptions } from './isolation/isolated
 export { scenePlaybackIdentity } from './scenePlaybackIdentity'
 export { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 export { listSceneTemplates } from './templates/templateRegistry'
+export { readTemplateShaderSource, createCustomSceneFromTemplate } from './templates/templateSource'
 export type { SceneTemplate } from './templates/templateRegistry'
 export { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError } from './templates/sceneContract'
 export type { SceneDocument, TemplateSceneDocument, CustomSceneDocument } from './templates/sceneContract'

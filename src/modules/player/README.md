@@ -174,7 +174,7 @@ separate renderer. It supports scene switching without replacing the audio sessi
 play/pause/reset/seek/volume, simulated beats, response mappings in scene settings,
 resize, numeric pointer/orbit/optional wheel zoom, validated raster capture and bounded
 live response settings/capability queries.
-The local integration page is `/scripts/isolated-playback-check.html`.
+The local integration page is `/scripts/isolated-playback-check.html`, available only through `npm run manual-checks:dev`. Normal application servers retire all manual check paths; see [test tools](../../../docs/test-tools-cleanup.md).
 
 This lower-level API does not itself authorize saved or custom content. Normal
 players use `isolatedController.ts` through `createMagePlayer()` with the existing

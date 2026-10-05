@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, sceneAvailabilityStore, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -72,6 +72,7 @@ export function SceneEditorShell({
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+  const [isTemplateSourceVisible, setIsTemplateSourceVisible] = useState(false);
   const [isBeatSimulated, setIsBeatSimulated] = useState(false);
   const [previewBpm, setPreviewBpm] = useState(120);
   const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
@@ -102,6 +103,7 @@ export function SceneEditorShell({
     handleNameChange,
     handleRawSceneDataChange,
     handleShaderSelection,
+    handleShaderSourceChange,
     handleSectionJump,
     handleTagSearchChange,
     handleThumbnailCapture,
@@ -519,17 +521,29 @@ export function SceneEditorShell({
     thumbnailFile,
   });
 
+  const isAdvancedCreation = !isTemplate || isTemplateSourceVisible;
+  const shaderEditor = (
+    <div className="field-group">
+      <FieldGroupLabel
+        description={isTemplate ? "Edit this template's shader code to make a custom scene. Your effects, camera, and music settings stay."
+          : "Edit the scene's shader source directly. Changes switch the selection to Custom Shader."}
+        htmlFor="shader-source" label="Custom Shader" />
+      <textarea className="scene-textarea" id="shader-source" rows={12}
+        onChange={event => handleShaderSourceChange(event.currentTarget.value)}
+        value={templateDocument ? readTemplateShaderSource(templateDocument) : sceneModel.visualizer.shader} />
+    </div>
+  );
   const creationMode = (
     <section className="scene-creation-mode" aria-labelledby="scene-creation-mode-title">
       <h3 className="scene-effects-category__title" id="scene-creation-mode-title">Creation mode</h3>
       <div className="scene-creation-mode__options" role="group" aria-labelledby="scene-creation-mode-title">
-        <button className="scene-secondary-button" type="button" aria-pressed={isTemplate} ref={replacementTriggerRef}
-          onClick={() => { if (!isTemplate) setIsReplacementPending(true); }}>Basic</button>
-        <button className="scene-secondary-button" type="button" aria-pressed={!isTemplate} disabled
-          aria-describedby="advanced-creation-hint">Advanced</button>
+        <button className="scene-secondary-button" type="button" aria-pressed={!isAdvancedCreation} ref={replacementTriggerRef}
+          onClick={() => { if (!isTemplate) setIsReplacementPending(true); else setIsTemplateSourceVisible(false); }}>Basic</button>
+        <button className="scene-secondary-button" type="button" aria-pressed={isAdvancedCreation}
+          onClick={() => setIsTemplateSourceVisible(true)} aria-describedby="advanced-creation-hint">Advanced</button>
       </div>
-      <p className="field-hint" id="advanced-creation-hint">{isTemplate ? 'Advanced creation is not available yet.'
-        : 'Your custom scene is open for repair. Playback is checked before the separate preview starts.'}</p>
+      <p className="field-hint" id="advanced-creation-hint">{isTemplate ? 'Basic uses a template. Advanced lets you edit its shader code.'
+        : 'This scene uses custom shader code. Switching to Basic replaces it with a template.'}</p>
       {!isTemplate && isReplacementPending ? (
         <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
           onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
@@ -542,6 +556,7 @@ export function SceneEditorShell({
             <button className="scene-secondary-button" type="button" onClick={() => {
               handleTemplateSelection(replacementTemplateId, true);
               setIsReplacementPending(false);
+              setIsTemplateSourceVisible(false);
             }}>Replace custom scene</button>
             <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
           </div>
@@ -696,27 +711,10 @@ export function SceneEditorShell({
                   />
                 </div>
 
-                <div className="field-group">
-                  <FieldGroupLabel
-                    description="Edit the scene's shader source directly. Changes switch the selection to Custom Shader."
-                    htmlFor="shader-source"
-                    label="Custom Shader"
-                  />
-                  <textarea
-                    className="scene-textarea"
-                    id="shader-source"
-                    onChange={(event) =>
-                      updateBranch("visualizer", (currentVisualizer) => ({
-                        ...currentVisualizer,
-                        shader: event.currentTarget.value,
-                      }))
-                    }
-                    rows={12}
-                    value={sceneModel.visualizer.shader}
-                  />
-                </div>
               </SceneSection>
             ) : null}
+
+            {sectionMenuValue === "scene" && isAdvancedCreation ? shaderEditor : null}
 
             {sectionMenuValue === "camera" ? (
               <SceneSection

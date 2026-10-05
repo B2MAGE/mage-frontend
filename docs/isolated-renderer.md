@@ -1,8 +1,10 @@
 # Isolated renderer (PP-I01 / PP-I02 / PP-I03 / PP-I04 / PP-I05)
 
-PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The owner-approved production rollout enabled custom playback on October 5, 2026 UTC and verified the global disable/re-enable controls.
+PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with manual checks now separated from normal application services by [cleanup story #241](test-tools-cleanup.md). The owner-approved production rollout enabled custom playback on October 5, 2026 UTC and verified the global disable/re-enable controls.
 
 See [the PP-I03 release record](isolated-renderer-release.md) for the approved deployment evidence, recorded scope and limits, deployment order, rollback, and owner repair/export behavior, and the [browser release checklist](custom-shader-release-checklist.md) for reusable verification procedures. [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks release-branch integration and closure. Historical deployment results below describe their named artifacts only; they are not new requests to repeat passing tests.
+
+> Current tooling: normal builds accept playback only. Public check routes are retired by the cleanup deployment; all manual pages require the explicit local harness. See [test tools and retirement instructions](test-tools-cleanup.md). Dated results below remain historical evidence.
 
 ## PP-I03 application boundary
 
@@ -18,9 +20,9 @@ Audio response edits use a bounded `audio-response` message, preserving the pare
 
 ## PP-I02 playback bridge
 
-Open `http://127.0.0.1:5178/scripts/isolated-playback-check.html` with the local renderer on `http://localhost:5181`. Start the player, use **Play test rhythm** or select a local audio file, then switch scenes, pause/resume, seek, toggle simulated beat, choose Original/Selective response, drag, zoom, and capture a frame. The fixture uses the exported `createIsolatedPlayer` boundary. It is not a production custom-code authoring surface.
+Start `npm run manual-checks:dev` instead of the normal Vite server, then open `http://127.0.0.1:5178/scripts/isolated-playback-check.html` with the local renderer on `http://localhost:5181`. Start the player, use **Play test rhythm** or select a local audio file, then switch scenes, pause/resume, seek, toggle simulated beat, choose Original/Selective response, drag, zoom, and capture a frame. The fixture uses the exported `createIsolatedPlayer` boundary. It is not a production custom-code authoring surface.
 
-- Protocol v2 uses a fresh session, monotonic request IDs, and a new generation for each scene. The child chooses v1 fixed-sample or v2 playback once from the first authorized bootstrap. The parent transfers a private MessagePort to the exact iframe window. The sole `targetOrigin='*'` is this payload-free opaque-origin bootstrap; the child checks the exact parent source and allowed origin. Window messages are not accepted as playback replies.
+- Protocol v2 uses a fresh session, monotonic request IDs, and a new generation for each scene. The default child accepts only the v2 playback bootstrap; the old v1 sample belongs to the explicit diagnostics build. The parent transfers a private MessagePort to the exact iframe window. The sole `targetOrigin='*'` is this payload-free opaque-origin bootstrap; the child checks the exact parent source and allowed origin. Window messages are not accepted as playback replies.
 - Load data is bounded and validated with the shared submission/resource policy in both parent and child. Template source is resolved from the immutable library inside the child. No bearer tokens, cookies, profile objects, file contents, media addresses, or fetch instructions appear in protocol messages. Unknown fields and command types are rejected.
 - Parent Web Audio owns decoding, transport, volume, seek, and analysis. The same session survives scene replacement. A source is at most 64 MiB; URL fetches omit credentials/referrers and reject redirects. The worklet receives parent audio; only numeric levels, up to 16 hits, the legacy FFT64 bin-2 amplitude, and bounded clocks reach the renderer. Real playing audio takes precedence over simulated beats.
 - Inputs are coalesced at roughly 30 Hz, retaining intervening hits. Limits are 90 commands/s, 45 child replies/s, 4 loads/s and 2 captures/s. Resize, pointer and zoom have one pending value each. Diagnostics are fixed codes, displayed as text. There is one current scene load, one capture, and one parent image decode. Stale work cannot complete a newer generation.
@@ -55,7 +57,7 @@ npm run renderer:serve
 npm run renderer:verify
 ```
 
-The local server retains a verified build in memory; restart it after rebuilding. Parent and child must both contain protocol v2 before using the music check. The original local v1 sample remains supported; the dedicated live `/player-check/` service now uses v2.
+The local server retains a verified build in memory; restart it after rebuilding. Parent and child must both contain protocol v2 before using the music check. The original v1 sample is available only in the explicit diagnostic child. The former public `/player-check/` service is retired by the cleanup deployment.
 
 Browser verification on October 3, 2026 used Chromium with the real response-header sandbox and CSP on the local cross-site pair. Verified visible rendering, real parent Web Audio from a generated WAV, music time continuing across a scene switch (0.2 to 0.4 seconds), pause preservation across a switch (0.6 seconds), resume/seek, both response modes, simulated beats, pointer/zoom interaction, a decoded PNG preview, and removal of the iframe on Stop. Scene replacement uses a new canvas after disposing the old engine so delayed WebGL context loss cannot stop the new scene. Production verification is recorded below; the full multi-browser/public-source release checks remain ahead.
 
@@ -85,7 +87,7 @@ Workers do not guarantee GPU hang containment or prevent all memory pressure.
 
 ### Fixed local worker checks
 
-With the app running at `http://127.0.0.1:5178`, build and start the fixed child:
+With `npm run manual-checks:dev` running at `http://127.0.0.1:5178`, build and start the fixed child:
 
 ```powershell
 npm run engine:prepare
@@ -331,167 +333,15 @@ npm run renderer:verify
 npm run renderer:test
 ```
 
-Open `http://127.0.0.1:5178/scripts/isolated-renderer-check.html`. Start the sample, stop it, and try the unavailable-player case. A failed host must leave a retryable error with no main-page engine fallback. This developer fixture is not bundled into the main application.
+Open normal MAGE at `http://127.0.0.1:5178` to inspect the playback-only renderer. To run the old sample or fixed recovery faults, stop these servers and follow the [explicit diagnostics workflow](test-tools-cleanup.md#retained-development-checks); those protocols are deliberately absent from normal builds.
 
-The renderer build defaults to allowing parent origins `http://127.0.0.1:5178` and `http://localhost:5178`. The normal application uses the opposite hostname on renderer port 5181 over HTTP. The fixed-sample host also supports a matching HTTPS pair for the optional fixture below. Changing normal application addresses requires coordinated changes to `rendererConfig.ts`, host URL validation, parent CSP, the child origin build input and the server port; `VITE_ISOLATED_RENDERER_URL` is only a developer-fixture input, not a production redirect mechanism. Wildcards, credentials, paths and query strings are rejected as parent origins.
+The renderer build defaults to allowing parent origins `http://127.0.0.1:5178` and `http://localhost:5178`. The normal application uses the opposite hostname on renderer port 5181 over HTTP. The fixed-sample and recovery fixtures use the explicit HTTP-only diagnostic child. Changing normal application addresses requires coordinated changes to `rendererConfig.ts`, host URL validation, parent CSP, the child origin build input and the server port; `VITE_ISOLATED_RENDERER_URL` is only a developer-fixture input, not a production redirect mechanism. Wildcards, credentials, paths and query strings are rejected as parent origins.
 
-### Optional HTTPS parity check
+## Retired public verification pages
 
-For an HTTPS test, use an existing locally trusted development certificate covering **both** `127.0.0.1` and `localhost`. Store its key outside tracked files (for example `.local/certs/`). A tool such as `mkcert` can prepare one, but installing a local certificate authority is a separate machine setup step; these scripts do not install trust or bypass certificate verification.
+The old `/player-check/`, `/player-check/security/` and `/player-check/worker/` pages are no longer part of the deployment contract. The check-service Dockerfile now builds a small 410 responder, and normal renderer artifacts exclude sample, worker-check and recovery-fault entry points. See [cleanup and deployment retirement](test-tools-cleanup.md) for the retained local tools and the required deployment sequence.
 
-Stop the HTTP development servers before reusing their ports. In the renderer terminal:
-
-```powershell
-$env:MAGE_RENDERER_PARENT_ORIGINS = 'https://127.0.0.1:5178,https://localhost:5178'
-$env:MAGE_RENDERER_TLS_CERT = 'C:\path\to\local-cert.pem'
-$env:MAGE_RENDERER_TLS_KEY = 'C:\path\to\local-key.pem'
-npm run renderer:build
-npm run renderer:serve
-```
-
-In the app terminal:
-
-```powershell
-$env:MAGE_PARENT_TLS_CERT = 'C:\path\to\local-cert.pem'
-$env:MAGE_PARENT_TLS_KEY = 'C:\path\to\local-key.pem'
-$env:VITE_ISOLATED_RENDERER_URL = 'https://localhost:5181/index.html'
-npx vite --config deployment/isolated-renderer/local-https.vite.config.mjs
-```
-
-Then open `https://127.0.0.1:5178/scripts/isolated-renderer-check.html`. This setup covers the fixed-sample fixture, not the normal application's HTTP-only development resolver or the HTTP-only security canary. The companion configuration changes only the local HTTPS server and developer fixture's frame policy. For command-line verification, set `MAGE_RENDERER_VERIFY_ORIGIN=https://localhost:5181` and supply the local CA to Node via `NODE_EXTRA_CA_CERTS` if it is not already trusted; never disable TLS verification. Clear these session environment variables before returning to the default HTTP workflow.
-
-## Live parent verification page
-
-The fixed PP-I04 compiler checks are built with `npm run worker-check:page:build`
-into `dist-player-check/worker/` and served at
-`https://mage.peterbucci.com/player-check/worker/` by the existing verification
-service. Build music first, then security and worker pages; the music build clears
-the root output directory. The Dockerfile performs all three builds in that order.
-Its startup verifier requires and checks the three exact HTML/script/style
-manifests, and rejects worker-page metadata, source parameters and unbuilt files.
-
-The worker-check parent contains no engine, compiler or probe runner. Its CSP
-allows only the exact CloudFront renderer frame and same-origin static assets;
-network requests, parent workers and dynamic evaluation are denied. Production
-addresses and the trailing-slash page path are fixed at build time. The child
-accepts a separate fixed-check protocol that cannot accept source, worker URLs,
-credentials or configurable test programs. Deploy the matching renderer before
-this check page. An older renderer ignores the new protocol and the check times
-out safely; existing music/security routes keep their separate protocols.
-
-This public page records only its fixed compiler capability and lifetime checks.
-It does not approve network isolation, GPU behavior, normal app flows or the full
-browser/device release matrix. Its report explicitly preserves those limits.
-
-`npm run player-check:build` builds a separate music-check parent page into
-`dist-player-check/`, including a three-file integrity manifest. Its exact module allowlist admits the test UI, parent-boundary
-check, playback controller, protocol, shared scene policy and lightweight audio
-analysis. It cannot import the rendering engine, account code or API clients.
-The production parent and CloudFront URL are fixed at build time.
-The page refuses to start outside `https://mage.peterbucci.com`.
-
-The dedicated `deployment/isolated-renderer/Dockerfile.player-check` builds both
-this page and the fixed HTTPS security check described below, then serves the verified
-artifacts through a small Node service. The earlier nginx configuration remains a
-record of the music-only deployment. Deploy the updated check service as a
-separate Coolify application with repository root `/`, container port `80`, and
-domain `https://mage.peterbucci.com/player-check`. Preserve the path prefix.
-Coolify generates a StripPrefix middleware for a domain containing a path. For
-this service, disable read-only labels, remove that middleware's definition and
-router reference, and restrict both routers to this rule:
-
-```text
-Host(`mage.peterbucci.com`) && (Path(`/player-check`) || PathPrefix(`/player-check/`))
-```
-
-Keep HTTPS and port 80 routing. If using Caddy instead, use `handle` rather than `handle_path` and omit
-the generated SPA `try_files` fallback. Do not apply these labels to the main app.
-Only that prefix routes to this container; the existing MAGE frontend/backend
-resources and versions remain unchanged. This is a verification service, not the
-renderer host or a replacement for normal app players.
-
-The page has external integrity-checked assets, no arbitrary renderer address or
-shader input, no API requests, `no-store` and `noindex` responses, and a CSP which
-permits frames only from the deployed CloudFront origin. Blob scripts/workers
-support the parent AudioWorklet; Blob images display validated frame captures.
-Network requests remain blocked by `connect-src 'none'`. Audio comes only from
-the generated test rhythm or a local file, which is decoded in the parent and
-never uploaded. Missing files return 404 rather than the application's SPA
-fallback. The parent has no response sandbox and does not permit `unsafe-eval`
-or inline styles/scripts. External CSS sizes the iframe.
-
-After deployment, open `https://mage.peterbucci.com/player-check/`: start the
-player, play the test rhythm or choose local music, and switch scenes while the
-music clock continues. Check pause/resume, seek, volume, response modes, pointer
-controls and frame capture. Stop it, then test the unavailable player and retry.
-Successful child startup also requires its
-cookie, local-storage and parent-document access checks to throw `SecurityError`.
-The check does not exercise child-initiated network requests or
-self-navigation; use the separate security check below for those probes.
-
-### Fixed HTTPS browser safety check
-
-`npm run security-check:build` builds the fixed security page into
-`dist-player-check/security/`. Build the music page first: its build replaces the
-parent output directory. The check Dockerfile builds music, security and worker
-pages in that order.
-
-The production entry is fixed to
-`https://mage.peterbucci.com/player-check/security/`, with no query string or
-fragment, and the exact existing CloudFront `/index.html` renderer. It has no
-arbitrary source, renderer address or account input. Desktop and mobile testers
-can open the same HTTPS page after the check service is deployed. The local page
-at `http://127.0.0.1:5178/scripts/isolated-security-check.html` retains its existing
-loopback-only development boundary.
-
-The security page has one self-contained allowlisted script and one external
-stylesheet, both with integrity metadata. Its strict parent CSP allows the exact
-renderer entry and only the same-origin canary registration/results endpoints.
-It does not enable inline scripts, dynamic evaluation, workers, broad network
-access or additional renderer sandbox flags. Account, API client and rendering
-engine modules cannot enter its build. The matching renderer includes trusted
-fixed recovery actions; its allowed parent and sandbox restrictions remain unchanged.
-
-The check service loads the three bounded build manifests, verifies every served
-file and HTML integrity reference at startup, and serves only their exact paths.
-No request path reaches the filesystem. The security fixture's dummy canary is
-limited to `/player-check/__isolated-security/`; registration requires the exact
-parent origin. Requests use fresh 32-hex nonces, reject bodies and unknown fields,
-expire after five minutes, hold at most 32 sessions and saturate each count at
-1,000. A WebSocket attempt is counted and rejected. The service does not read or
-record cookies, tokens, request bodies, scene source or account data, and it has
-no backend credentials or account API calls. HTTP response policies include
-`no-store`, `noindex`, `nosniff`, `no-referrer` and denied frame ancestors.
-
-Run **Check current renderer recovery**: seven checks in
-`fixed-security-3` / schema 3, identified as `fixed-renderer-recovery-1` and
-`current-renderer-recovery`. The old boundary, failure and finite-stall groups
-(17, 8 and 2 checks) remain historical; use `/player-check/worker/` for current
-worker lifetime and boundary evidence. An unsupported context-loss action is
-non-passing.
-Reports retain the latest 24 runs in this page's memory, recording cancelled and
-hidden runs without accepting them as passing. **Download results JSON** saves
-the sanitized report; **Show report JSON** provides selectable text when browser
-downloads are unavailable. Reloading clears that history. A deployed report is
-labelled “Deployed fixed-fixture checks”; it does not approve release or claim
-normal application/owner recovery testing.
-
-Before updating the existing Coolify check application, preserve its old image,
-deployment reference and built artifact. Keep its existing `/player-check/` path
-routing; do not change the normal app, backend or CloudFront configuration.
-Validate with `npm run security-check:test`, `npm run test:isolation-security`,
-all three check builds and the check container's HTTP smoke tests. After deployment,
-inspect actual response headers and run the current recovery and worker groups
-in the recorded browser/device.
-Confirm the original music check and normal MAGE pages still work. If the helper
-fails, restore the previous check image; the public custom-release gate stays
-off throughout. Record the observed helper deployment and browser results in the
-[release record](isolated-renderer-release.md), separately from implementation.
-
-Follow the [release checklist](custom-shader-release-checklist.md) for the
-remaining normal-app, permission, recovery and actual device checks. A passing
-in-app Chromium report does not cover untested Chrome, Edge, Firefox, Safari or
-mobile devices, and a finite CPU stall is not a GPU or unlimited-resource guarantee.
+The following dated records describe previous deployments. They do not instruct operators to recreate the public check service or run the retired routes.
 
 ### PP-I02 deployment and live verification — October 3, 2026
 

@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { readFile } from 'node:fs/promises'
 import { loadRendererBuild } from './serve-isolated-renderer.mjs'
 import { assertNonCredentialedResponse, integrityOf } from '../deployment/isolated-renderer/hosting-policy.mjs'
+import { assertPlaybackOnlyRenderer } from '../deployment/isolated-renderer/runtime-build-policy.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const production = process.argv.includes('--production')
-const { manifest } = await loadRendererBuild(resolve(root, production ? 'dist-isolated-renderer-production' : 'dist-isolated-renderer'))
+const directory = resolve(root, production ? 'dist-isolated-renderer-production' : 'dist-isolated-renderer')
+const audit = JSON.parse(await readFile(resolve(directory, 'build-audit.json'), 'utf8'))
+assert.equal(audit.diagnostics, false, 'The renderer verification command never verifies diagnostic builds for deployment.')
+assertPlaybackOnlyRenderer(audit.sourceModules)
+const { manifest } = await loadRendererBuild(directory)
 assert.equal(manifest.production, production, 'Verification mode must match the renderer build.')
 if (production) assert(process.env.MAGE_RENDERER_VERIFY_ORIGIN, 'Set the deployed renderer origin before production verification.')
 const base = new URL(process.env.MAGE_RENDERER_VERIFY_ORIGIN ?? 'http://localhost:5181')

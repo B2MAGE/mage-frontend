@@ -25,6 +25,8 @@ The frontend repo includes:
 - a production `Dockerfile`
 - an nginx config with SPA fallback
 
+The retired `/player-check` prefix returns 410 and is excluded from SPA fallback. See [the check-service retirement sequence](test-tools-cleanup.md#deployment-retirement).
+
 SPA fallback is required because the app uses `BrowserRouter`, so direct loads of routes like `/login` and `/register` must return `index.html`.
 
 ## Reverse Proxy Expectations
@@ -58,11 +60,7 @@ the app container's SPA fallback, proxy its execution through `/api`, or publish
 deployment metadata with its HTML and hashed script. Production allows only the
 parent origin `https://mage.peterbucci.com`.
 
-Its production deployment and browser verification must be completed before the
-later PP-I03 release gate can enable custom scenes. PP-I01's developer check does
-not yet replace the app's normal scene players; that connection remains in the
-following integration stories. CloudFront/S3 usage charges are separate from the
-existing server, and any account-wide transfer allowance is not a spending cap.
+The separate renderer and normal app integration are deployed; the approved custom-playback rollout is recorded in [the release record](isolated-renderer-release.md). CloudFront/S3 usage charges remain separate from the existing server. The manual verification service is being retired by #241; it is not required for playback.
 
 ## Local Development
 

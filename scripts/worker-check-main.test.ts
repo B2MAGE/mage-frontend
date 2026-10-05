@@ -14,7 +14,7 @@ vi.mock('./worker-check-child', () => ({ installFixedWorkerCheck: mocks.fixed })
 let dom: JSDOM | null = null
 afterEach(() => { dom?.window.close(); dom = null; vi.unstubAllGlobals(); vi.clearAllMocks() })
 
-describe('renderer protocol selection remains compatible', () => {
+describe('published renderer accepts ordinary playback only', () => {
   const nonce = 'a'.repeat(32), origin = 'https://mage.peterbucci.com'
   const fixed = { protocol: WORKER_CHECK_PROTOCOL, version: 1, type: 'connect', nonce }
   async function open() {
@@ -31,26 +31,23 @@ describe('renderer protocol selection remains compatible', () => {
     }
   }
 
-  it.each([
-    ['sample', rendererMessage('connect', nonce)],
-    ['playback', playbackMessage('connect', nonce, 0, 0, null)],
-    ['fixed', fixed],
-  ] as const)('selects %s once and does not run another protocol in that frame', async (kind, message) => {
+  it('ignores retired sample and diagnostic connections, then accepts playback once', async () => {
     const send = await open()
-    expect(mocks.sample).not.toHaveBeenCalled(); expect(mocks.playback).not.toHaveBeenCalled(); expect(mocks.fixed).not.toHaveBeenCalled()
-    send(message)
-    expect(mocks[kind]).toHaveBeenCalledOnce()
-    send(fixed); send(rendererMessage('connect', nonce)); send(playbackMessage('connect', nonce, 0, 0, null))
+    send(fixed); send(rendererMessage('connect', nonce))
+    send({ protocol: 'mage-fixed-renderer-recovery', version: 1, type: 'connect', session: nonce, nonce, case: 'context-loss' })
+    expect(Object.values(mocks).every(mock => mock.mock.calls.length === 0)).toBe(true)
+    send(playbackMessage('connect', nonce, 0, 0, null))
+    expect(mocks.playback).toHaveBeenCalledOnce()
+    send(playbackMessage('connect', nonce, 0, 0, null)); send(fixed)
     expect(Object.values(mocks).reduce((count, mock) => count + mock.mock.calls.length, 0)).toBe(1)
   })
 
-  it('does not select the fixed protocol for another origin, another window, missing port or arbitrary source', async () => {
-    const send = await open()
-    send(fixed, 'https://other.example'); send(fixed, origin, {})
-    send(fixed, origin, dom!.window.parent, [])
-    send({ ...fixed, source: 'sphere(1)' })
-    expect(mocks.fixed).not.toHaveBeenCalled()
-    send(fixed)
-    expect(mocks.fixed).toHaveBeenCalledOnce()
+  it('requires the configured parent, exact playback payload and one private port', async () => {
+    const send = await open(), message = playbackMessage('connect', nonce, 0, 0, null)
+    send(message, 'https://other.example'); send(message, origin, {})
+    send(message, origin, dom!.window.parent, []); send({ ...message, source: 'sphere(1)' })
+    expect(mocks.playback).not.toHaveBeenCalled()
+    send(message)
+    expect(mocks.playback).toHaveBeenCalledOnce()
   })
 })
