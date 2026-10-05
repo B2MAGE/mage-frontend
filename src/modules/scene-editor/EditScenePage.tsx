@@ -11,6 +11,7 @@ type EditableScene = Omit<SceneListResponse, 'sceneData'> & {
   sceneData: Record<string, unknown>
   tagNames: string[]
   unsupportedDocument?: boolean
+  builderDocument?: boolean
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -124,8 +125,11 @@ export function EditScenePage() {
         }
 
         let unsupportedDocument = false
+        let builderDocument = false
         try {
           const document = hasSceneDocumentMarkers(sceneData) ? parseSceneDocument(sceneData) : null
+          builderDocument = document?.kind === 'builder'
+          unsupportedDocument = builderDocument
           // Keep the original document as the editor's authority. Valid template
           // settings are editable; unsupported versions remain export-only.
           if (document?.kind !== 'template') readEditableSceneData(sceneData)
@@ -141,6 +145,7 @@ export function EditScenePage() {
             sceneData,
             tagNames: normalizeSceneTagNames(payload),
             ...(unsupportedDocument ? { unsupportedDocument: true } : {}),
+            ...(builderDocument ? { builderDocument: true } : {}),
           })
         }
       } catch (error) {
@@ -206,8 +211,10 @@ export function EditScenePage() {
       URL.revokeObjectURL(url)
     }
     return <EditSceneState
-      title="This scene’s format is not supported"
-      description="Download the saved scene data to repair it. This editor will not run or replace an unsupported format.">
+      title={scene.builderDocument ? 'Builder editing is not available yet' : 'This scene’s format is not supported'}
+      description={scene.builderDocument
+        ? 'Your saved builder scene is unchanged. You can download its scene data while the builder editor is being added.'
+        : 'Download the saved scene data to repair it. This editor will not run or replace an unsupported format.'}>
       <div className="auth-actions">
         <Link className="demo-link" to={`/scenes/${scene.sceneId}`}>View scene</Link>
         <Link className="secondary-link" to="/my-scenes">Back to My Scenes</Link>

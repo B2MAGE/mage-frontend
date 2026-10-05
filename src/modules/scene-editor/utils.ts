@@ -1,5 +1,5 @@
 import { fetchAvailableTags, type TagResponse } from '@shared/lib'
-import { hasSceneDocumentMarkers, parseSceneDocument, parseSceneImport, validateSceneForPlayback, SceneContractError, type SceneDocument } from '@modules/player'
+import { hasSceneDocumentMarkers, parseSceneDocument, parseSceneImport, validateSceneForStorage, validateSceneForPlayback, SceneContractError, type SceneDocument } from '@modules/player'
 import {
   getSceneEditorModel,
   sanitizeSceneData,
@@ -14,6 +14,7 @@ import { describeSceneValidationError } from './sceneValidation'
 
 const CAPTURED_THUMBNAIL_CONTENT_TYPE = 'image/png'
 const CAPTURED_THUMBNAIL_FILENAME = 'scene-preview-thumbnail.png'
+export const BUILDER_EDITING_UNAVAILABLE = 'Builder scenes cannot be edited here yet. Your current scene has not been replaced.'
 
 export function normalizeTagName(name: string) {
   return name.trim().toLowerCase()
@@ -138,6 +139,7 @@ export function validateForm(name: string, sceneDataText: string) {
   if (sceneDataError) {
     errors.sceneData = sceneDataError
   }
+  if (parsedSceneData?.kind === 'builder') errors.sceneData = BUILDER_EDITING_UNAVAILABLE
 
   return {
     errors,
@@ -179,11 +181,11 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
   })
 }
 
-/** Preserve template transport; unwrap custom data without normalizing owner repair values. */
+/** Preserve data-only documents; unwrap custom data without normalizing owner repair values. */
 export function readEditableSceneData(sceneData: SceneData): SceneData {
   const document = parseSceneDocument(hasSceneDocumentMarkers(sceneData)
     ? sceneData : { schemaVersion: 1, kind: 'custom', scene: sceneData })
-  if (document.kind === 'template') {
+  if (document.kind !== 'custom') {
     return document
   }
   if (hasSceneDocumentMarkers(document.scene)) {
@@ -194,7 +196,7 @@ export function readEditableSceneData(sceneData: SceneData): SceneData {
 
 /** Every new API write declares its format, without guessing trust from a preset shader. */
 export function buildSceneSubmissionDocument(sceneData: SceneData): SceneDocument {
-  return validateSceneForPlayback(sceneData)
+  return validateSceneForStorage(sceneData)
 }
 
 export function buildEffectiveSceneData(sceneData: SceneData): SceneData {

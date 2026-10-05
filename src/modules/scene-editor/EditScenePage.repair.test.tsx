@@ -45,6 +45,33 @@ beforeEach(() => {
 })
 
 describe('owner repair loading', () => {
+  it('retains builder repair data for export without starting the legacy editor', async () => {
+    const builder = { schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'ball', operation: { type: 'sphere', radius: 0.7 } }] }
+    const status = { ...availability, code: 'BUILDER_RENDERING_UNAVAILABLE', message: 'Builder scene playback is not available yet.' }
+    mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
+      ? { ...repair, sceneData: builder, availability: status } : { ...metadata, sceneMode: 'builder-v1', availability: status })))
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:builder-export')
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    try {
+      render(page())
+      expect(await screen.findByRole('heading', { name: 'Builder editing is not available yet' })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Download scene JSON' }))
+      const file = createUrl.mock.calls[0][0] as Blob
+      const text = await new Promise<string>(resolve => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.readAsText(file)
+      })
+      expect(JSON.parse(text)).toEqual(builder)
+      expect(mocks.editor).not.toHaveBeenCalled()
+      expect(revokeUrl).toHaveBeenCalledWith('blob:builder-export')
+    } finally {
+      createUrl.mockRestore(); revokeUrl.mockRestore(); click.mockRestore()
+    }
+  })
+
   it('loads withheld source for its owner while preserving metadata and the saved scene ID', async () => {
     render(page())
     expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(source))
