@@ -4,7 +4,6 @@ import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBAC
 import { validateRasterCapture } from './capture'
 import { boundCaptureSize, type RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
-import { fixedRecoveryConnection, isFixedRecoveryCheck, isFixedRecoveryMarker, type FixedRecoveryCheck, type FixedRecoveryMarker } from './fixedRecoveryProtocol'
 
 type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout>; id: number; generation: number }
 export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed'
@@ -21,12 +20,7 @@ export function createIsolatedPlaybackHost(options: {
   onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void
   decodeCapture?: typeof createImageBitmap
   useInlineFrameStyles?: boolean
-  /** Fixed diagnostic page only. No source, URL or general action is accepted. */
-  fixedRecoveryCheck?: FixedRecoveryCheck
-  onFixedRecoveryMarker?: (marker: FixedRecoveryMarker) => void
 }) {
-  if (options.fixedRecoveryCheck !== undefined && !isFixedRecoveryCheck(options.fixedRecoveryCheck)) throw new Error('Invalid fixed recovery check.')
-  const fixedCheck = options.fixedRecoveryCheck ? { ...options.fixedRecoveryCheck } : null
   const url = validateRendererUrl(options.rendererUrl)
   const startupMs = options.startupTimeoutMs ?? 15000, progressMs = options.progressTimeoutMs ?? 10000
   if (![startupMs, progressMs].every(v => Number.isFinite(v) && v >= 10 && v <= 30000)) throw new Error('Invalid renderer timeout.')
@@ -118,11 +112,6 @@ export function createIsolatedPlaybackHost(options: {
   function receive(event: MessageEvent<unknown>) {
     if (closed) return
     if (!outputAllowed()) return dispose('runtime')
-    if (fixedCheck && isFixedRecoveryMarker(event.data) && event.data.session === session
-      && event.data.nonce === fixedCheck.nonce && event.data.case === fixedCheck.case) {
-      try { options.onFixedRecoveryMarker?.(event.data) } catch { /* Diagnostics cannot alter playback cleanup. */ }
-      return
-    }
     if (!isPlaybackMessage(event.data, PLAYBACK_RESPONSES)) return dispose('runtime')
     const message = event.data
     if (message.session !== session) return
@@ -180,8 +169,7 @@ export function createIsolatedPlaybackHost(options: {
     try {
       // Opaque child cannot be addressed by an origin. Send only a fresh session and
       // private port to this exact frame; scene/audio data follows through the port.
-      frame.contentWindow.postMessage(fixedCheck ? fixedRecoveryConnection(session, fixedCheck)
-        : playbackMessage('connect', session, 0, 0, null), '*', [channel.port2])
+      frame.contentWindow.postMessage(playbackMessage('connect', session, 0, 0, null), '*', [channel.port2])
     } catch { channel.port2.close(); dispose('runtime') }
   }
   const startupTimer = setTimeout(() => dispose('startup-timeout'), startupMs)

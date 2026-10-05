@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
 import { runFixedRecoveryChecks, type RecoveryCheckResult } from './fixed-recovery-runner'
-import type { createIsolatedPlaybackHost } from '../src/modules/player/isolation/playbackHost'
+import type { createFixedRecoveryHost as createIsolatedPlaybackHost } from './fixed-recovery-host'
 import { FIXED_RECOVERY_PROTOCOL, fixedRecoveryScene, type FixedRecoveryMarker } from '../src/modules/player/isolation/fixedRecoveryProtocol'
 
 const releases: (() => void)[] = []

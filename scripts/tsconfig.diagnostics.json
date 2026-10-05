@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": { "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.diagnostics.tsbuildinfo" },
+  "include": ["./diagnostics-renderer-main.ts", "./fixed-recovery-host.ts"]
+}

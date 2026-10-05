@@ -1,4 +1,4 @@
-import { createIsolatedPlaybackHost } from '../src/modules/player/isolation/playbackHost'
+import { createFixedRecoveryHost } from './fixed-recovery-host'
 import { fixedRecoveryScene, type FixedRecoveryCase, type FixedRecoveryMarker } from '../src/modules/player/isolation/fixedRecoveryProtocol'
 import type { RenderFailure } from '../src/modules/player/recovery/renderRecoveryMonitor'
 
@@ -10,7 +10,7 @@ const cancelled = () => new DOMException('Checks stopped.', 'AbortError')
 export async function runFixedRecoveryChecks(options: {
   container: HTMLElement; rendererUrl: string; signal: AbortSignal; startupTimeoutMs: number
   result: (value: RecoveryCheckResult) => void
-}, createHost = createIsolatedPlaybackHost) {
+}, createHost = createFixedRecoveryHost) {
   let current: ReturnType<typeof createHost> | null = null
   const live = () => { if (options.signal.aborted) throw cancelled() }
   const stop = () => { current?.dispose(); current = null }
