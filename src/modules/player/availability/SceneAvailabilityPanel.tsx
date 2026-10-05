@@ -1,12 +1,14 @@
 import { useId } from 'react'
 import { buildMagePlayerClassName } from '../magePlayerUtils'
+import { PlaybackOptions } from '../recovery/PlaybackOptions'
 
-export function SceneAvailabilityPanel({ className, posterUrl, message, checking = false, onCheck }: {
+export function SceneAvailabilityPanel({ className, posterUrl, message, checking = false, onCheck, onClearMusic }: {
   className?: string
   posterUrl?: string | null
   message: string
   checking?: boolean
   onCheck?: () => void
+  onClearMusic?: () => void
 }) {
   const titleId = useId(), messageId = useId()
   return <section className={buildMagePlayerClassName('mage-player', className)} data-state="unavailable" aria-labelledby={titleId} aria-describedby={messageId}>
@@ -22,5 +24,8 @@ export function SceneAvailabilityPanel({ className, posterUrl, message, checking
         </div> : null}
       </div>
     </div>
+    {onClearMusic ? <div className="mage-player__controls mage-player__controls--recovery-only">
+      <PlaybackOptions onClearMusic={onClearMusic} />
+    </div> : null}
   </section>
 }

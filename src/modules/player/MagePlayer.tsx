@@ -54,6 +54,8 @@ export type MagePlayerProps = {
     captureFramePreview: (() => Promise<string | null>) | null,
   ) => void
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
+  /** Notify a route-owned playlist to reset its local ordering/preferences. */
+  onClearMusic?: () => void
   onRequestPlaylistOpen?: () => void
   onSelectedTrackChange?: (trackId: string | null) => void
   onTrackDurationChange?: (trackId: string, duration: number) => void
@@ -85,6 +87,7 @@ function blurMouseActivatedControl(control: HTMLButtonElement, clickCount: numbe
 /** Keep recovery controls and editor state outside the renderer's lifetime. */
 export function MagePlayer(props: MagePlayerProps) {
   const audioInputRef = useRef<HTMLInputElement>(null)
+  const rendererAudioClearRef = useRef<(() => void) | null>(null)
   const playlist = useMagePlayerPlaylist(props)
   const audioSelection = useMagePlayerAudioSelection({
     inputRef: audioInputRef,
@@ -93,16 +96,27 @@ export function MagePlayer(props: MagePlayerProps) {
     audioMode: props.audioMode,
     onRequestPlaylistOpen: props.onRequestPlaylistOpen,
   })
+  function clearMusic() {
+    audioSelection.clear()
+    // Retire the current transport before publishing an empty queue, so the
+    // normal remove-last-track effect cannot change scene play/pause intent.
+    rendererAudioClearRef.current?.()
+    playlist.clear()
+    props.onClearMusic?.()
+  }
   return <>
     <input accept="audio/*" className="mage-player__audio-input" hidden multiple={props.audioMode !== 'single'}
       onChange={event => { void audioSelection.select(event) }} ref={audioInputRef} type="file" />
-    <MagePlayerSession {...props} playlist={playlist} audioSelection={audioSelection} />
+    <MagePlayerSession {...props} playlist={playlist} audioSelection={audioSelection}
+      clearMusic={clearMusic} rendererAudioClearRef={rendererAudioClearRef} />
   </>
 }
 
 type SessionAudioProps = {
   playlist: ReturnType<typeof useMagePlayerPlaylist>
   audioSelection: ReturnType<typeof useMagePlayerAudioSelection>
+  clearMusic: () => void
+  rendererAudioClearRef: { current: (() => void) | null }
 }
 
 type SessionPlaybackIntent = { playback: MagePlayerPlaybackState; initialPlayback: MagePlayerPlaybackState; sceneKey: MageSceneKey | undefined }
@@ -200,6 +214,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
 
   if (requiresAvailability && ((!availability.allowed && !availabilityPending) || !props.sceneBlob)) {
     return <SceneAvailabilityPanel className={props.className} posterUrl={props.posterUrl}
+      onClearMusic={props.clearMusic}
       message={!availability.allowed ? availability.message : sourceError
         ? 'This scene could not be loaded. You can check again.' : canRestoreSource
           ? 'Loading this scene…' : 'This scene is temporarily unavailable.'}
@@ -211,6 +226,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
 
   if (props.sceneBlob && (block || safeMode)) {
     return <SceneRecoveryPanel
+      onClearMusic={props.clearMusic}
       className={props.className}
       posterUrl={props.posterUrl}
       block={block}
@@ -230,6 +246,9 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
         <div className="mage-player__overlay" role="alert">
           <div className="mage-player__overlay-copy"><strong>This scene needs changes.</strong><p>{validationError}</p></div>
         </div>
+      </div>
+      <div className="mage-player__controls mage-player__controls--recovery-only">
+        <PlaybackOptions onClearMusic={props.clearMusic} />
       </div>
     </section>
   }
@@ -268,6 +287,8 @@ function MagePlayerRenderer({
   onSafeMode,
   playlist,
   audioSelection,
+  clearMusic,
+  rendererAudioClearRef,
   availabilityPending,
   onRendererReady,
   playbackIntentRef,
@@ -290,6 +311,8 @@ function MagePlayerRenderer({
   const hasConfiguredSimulatedBeatRef = useRef(false)
   const appliedSceneRef = useRef<{ player: MagePlayerController; identity: string | null; sceneBlob: MageSceneBlob; recoverySceneBlob?: MageSceneBlob } | null>(null)
   const pendingAudioRef = useRef<{ player: MagePlayerController; trackId: string; result: Promise<MagePlayerAudioState> } | null>(null)
+  const audioGenerationRef = useRef(0)
+  const playlistLoadAbortRef = useRef<AbortController | null>(null)
   const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
   const hasScene = Boolean(sceneBlob)
 
@@ -323,6 +346,37 @@ function MagePlayerRenderer({
   // A stopped/disposed renderer cannot finish a file selection after Resume.
   // Permission rechecks retain this renderer and do not cancel the selection.
   useEffect(() => () => cancelAudioSelection(), [cancelAudioSelection])
+
+  const invalidateAudioLoads = useCallback(() => {
+    audioGenerationRef.current++
+    playlistLoadAbortRef.current?.abort()
+    playlistLoadAbortRef.current = null
+    pendingAudioRef.current = null
+  }, [])
+
+  const clearRenderedMusic = useCallback(() => {
+    invalidateAudioLoads()
+    loadedTrackIdRef.current = null
+    completedTrackIdRef.current = null
+    setActiveAudioAction(null)
+    setIsVolumeOpen(false)
+    setAudioError(null)
+    try {
+      const player = playerRef.current
+      setAudioState(player ? player.clearAudio() : EMPTY_AUDIO_STATE)
+    } catch (error) {
+      setAudioState(EMPTY_AUDIO_STATE)
+      setAudioError(readMagePlayerErrorMessage(error))
+    }
+  }, [invalidateAudioLoads])
+
+  useEffect(() => {
+    rendererAudioClearRef.current = clearRenderedMusic
+    return () => {
+      if (rendererAudioClearRef.current === clearRenderedMusic) rendererAudioClearRef.current = null
+      invalidateAudioLoads()
+    }
+  }, [clearRenderedMusic, invalidateAudioLoads, rendererAudioClearRef])
 
   useEffect(() => {
     capabilitiesCallbackRef.current = onAudioResponseCapabilitiesChange
@@ -747,6 +801,8 @@ function MagePlayerRenderer({
     }
 
     let isCancelled = false
+    const generation = audioGenerationRef.current
+    const isCurrent = () => !isCancelled && generation === audioGenerationRef.current && playerRef.current === player
 
     if (audioCandidate) {
       const candidate = audioCandidate
@@ -758,7 +814,7 @@ function MagePlayerRenderer({
             }) }
           }
           const nextAudioState = await pendingAudioRef.current.result
-          if (isCancelled || candidate.signal.aborted || playerRef.current !== player) return
+          if (!isCurrent() || candidate.signal.aborted) return
           // Mark the decoded song before publishing it to the playlist so the
           // next effect does not unload and decode this same song again.
           loadedTrackIdRef.current = candidate.track.id
@@ -768,7 +824,7 @@ function MagePlayerRenderer({
           setAudioError(null)
           acceptAudioCandidate(candidate, nextAudioState.duration)
         } catch (error) {
-          if (isCancelled || candidate.signal.aborted || playerRef.current !== player) return
+          if (!isCurrent() || candidate.signal.aborted) return
           pendingAudioRef.current = null
           setAudioState(player.getAudioState())
           rejectAudioCandidate(candidate, error)
@@ -808,14 +864,18 @@ function MagePlayerRenderer({
         // A decode already in progress belongs to this controller/track. A
         // benign permission check must not unload and decode the same file.
         if (pendingAudioRef.current?.player !== player || pendingAudioRef.current.trackId !== currentTrack.id) {
+          playlistLoadAbortRef.current?.abort()
+          const controller = new AbortController()
+          playlistLoadAbortRef.current = controller
           pendingAudioRef.current = { player, trackId: currentTrack.id, result: player.loadAudio({
             sourceLabel: currentTrack.title?.trim() || currentTrack.name,
             sourcePath: currentTrack.sourcePath,
+            signal: controller.signal,
           }) }
         }
         const nextAudioState = await pendingAudioRef.current.result
 
-        if (isCancelled) {
+        if (!isCurrent()) {
           return
         }
 
@@ -824,13 +884,13 @@ function MagePlayerRenderer({
         setAudioState(nextAudioState)
         commitTrackDuration(currentTrack.id, nextAudioState.duration)
       } catch (error) {
-        if (!isCancelled) {
+        if (isCurrent()) {
           pendingAudioRef.current = null
           loadedTrackIdRef.current = null
           setAudioError(readMagePlayerErrorMessage(error))
         }
       } finally {
-        if (!isCancelled) {
+        if (isCurrent()) {
           setActiveAudioAction(null)
         }
       }
@@ -1031,13 +1091,14 @@ function MagePlayerRenderer({
             onVolumeChange={handleVolumeChange}
             onStopScene={onStopRendering}
             onPauseAllScenes={onSafeMode}
+            onClearMusic={clearMusic}
             playbackState={playbackState}
             showPlaylistButton={Boolean(onRequestPlaylistOpen)}
             tracksCount={tracks.length}
             volumeControlRef={volumeControlRef}
           />
         ) : sceneBlob ? <div className="mage-player__controls mage-player__controls--recovery-only">
-          <PlaybackOptions onStopScene={onStopRendering} onPauseAllScenes={onSafeMode} />
+          <PlaybackOptions onStopScene={onStopRendering} onPauseAllScenes={onSafeMode} onClearMusic={clearMusic} />
         </div> : null}
     </section>
   )

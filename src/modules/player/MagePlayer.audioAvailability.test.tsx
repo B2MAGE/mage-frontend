@@ -69,7 +69,9 @@ describe('saved template audio picker during native dialog focus changes', () =>
     await act(async () => recheck.resolve(available()))
     await waitFor(() => expect(original.loadAudio).toHaveBeenCalledWith({
       sourceLabel: 'selected-song.mp3', sourcePath: expect.stringMatching(/^blob:/),
+      signal: expect.any(AbortSignal),
     }))
+    expect(vi.mocked(original.loadAudio).mock.calls.at(-1)![0]?.signal?.aborted).toBe(false)
     expect(createMagePlayer).toHaveBeenCalledOnce()
     expect(original.loadSceneBlob).toHaveBeenCalledOnce()
     expect(view.container.querySelector('.mage-player__render-host')).toBe(canvas)

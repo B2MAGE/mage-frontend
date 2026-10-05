@@ -56,8 +56,9 @@ export function createPlaylistTrackId() {
   return `track-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-export function readAudioFileDuration(sourcePath: string) {
+export function readAudioFileDuration(sourcePath: string, signal?: AbortSignal) {
   return new Promise<number>((resolve) => {
+    if (signal?.aborted) { resolve(0); return }
     const probe = document.createElement('audio')
     let timeoutId = 0
 
@@ -65,6 +66,7 @@ export function readAudioFileDuration(sourcePath: string) {
       window.clearTimeout(timeoutId)
       probe.removeEventListener('loadedmetadata', handleLoadedMetadata)
       probe.removeEventListener('error', handleError)
+      signal?.removeEventListener('abort', handleError)
       probe.src = ''
     }
 
@@ -82,6 +84,7 @@ export function readAudioFileDuration(sourcePath: string) {
     probe.preload = 'metadata'
     probe.addEventListener('loadedmetadata', handleLoadedMetadata)
     probe.addEventListener('error', handleError)
+    signal?.addEventListener('abort', handleError, { once: true })
     timeoutId = window.setTimeout(handleError, 300)
     probe.src = sourcePath
   })

@@ -42,6 +42,7 @@ describe('MagePlayer playlist behavior', () => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
         sourceLabel: 'track-one.mp3',
         sourcePath: 'blob:track-one',
+        signal: expect.any(AbortSignal),
       })
     })
 
@@ -157,6 +158,7 @@ describe('MagePlayer playlist behavior', () => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
         sourceLabel: 'track-one.mp3',
         sourcePath: 'blob:track-one',
+        signal: expect.any(AbortSignal),
       })
     })
 
@@ -254,6 +256,7 @@ describe('MagePlayer playlist behavior', () => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
         sourceLabel: 'track-two.mp3',
         sourcePath: 'blob:track-two',
+        signal: expect.any(AbortSignal),
       })
     })
 
@@ -357,6 +360,7 @@ describe('MagePlayer playlist behavior', () => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
         sourceLabel: 'track-one.mp3',
         sourcePath: 'blob:track-one',
+        signal: expect.any(AbortSignal),
       })
     })
 
