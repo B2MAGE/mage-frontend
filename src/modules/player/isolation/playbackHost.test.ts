@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlaybackHost, type PlaybackHostDiagnostic } from './playbackHost'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from './playbackProtocol'
+import { extractLiveSceneSettings } from '../liveSceneSettings'
 const SESSION='ec40c660-205d-4b63-b6b3-ac3888f8c9aa'
 class Port {
   onmessage: ((e: MessageEvent)=>void)|null=null; onmessageerror:(()=>void)|null=null
@@ -34,6 +35,49 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('coalesces complete settings, snapshots their data, and rejects invalid edits without changing the queue',async()=>{
+    const s=setup();await s.load()
+    const settings=extractLiveSceneSettings({visualizer:{shader:'sphere(1);'}})
+    for(let i=0;i<100;i++)s.host.setSceneSettings({...settings,intent:{...settings.intent,fov:40+i/2}})
+    const latest={...settings,intent:{...settings.intent,fov:90}}
+    s.host.setSceneSettings(latest);latest.intent.fov=100
+    expect(()=>s.host.setSceneSettings({...settings,visualizer:{...settings.visualizer,shader:'sphere(2);'}} as typeof settings)).toThrow()
+    await vi.advanceTimersByTimeAsync(34)
+    const sent=s.port.postMessage.mock.calls.filter(([m])=>m.type==='scene-settings')
+    expect(sent).toHaveLength(1);expect(sent[0][0].payload.intent.fov).toBe(90)
+    s.host.setSceneSettings(sent[0][0].payload);await vi.advanceTimersByTimeAsync(68)
+    expect(s.port.postMessage.mock.calls.filter(([m])=>m.type==='scene-settings')).toHaveLength(1)
+    s.host.dispose()
+  })
+  it('discards pending settings on replacement and flushes current settings before capture',async()=>{
+    const s=setup();await s.load()
+    const settings=extractLiveSceneSettings({visualizer:{shader:'sphere(1);'}})
+    s.host.setSceneSettings(settings);await s.load();await vi.advanceTimersByTimeAsync(68)
+    expect(s.port.postMessage.mock.calls.filter(([m])=>m.type==='scene-settings')).toHaveLength(0)
+    s.host.setSceneSettings(settings)
+    const capture=s.host.capture(),rejected=expect(capture).rejects.toThrow(/stopped/)
+    expect(s.port.postMessage.mock.calls.slice(-2).map(([m])=>m.type)).toEqual(['scene-settings','capture'])
+    s.host.dispose();await rejected
+  })
+  it('fairly drains simultaneous continuous edits within the existing command limit while paused',async()=>{
+    const s=setup();await s.load();s.host.setPlayback(false)
+    const settings=extractLiveSceneSettings({visualizer:{shader:'sphere(1);'}})
+    const audio={frame:null,legacyAmplitude:0,audioTime:0,playing:false,loaded:false}
+    for(let i=0;i<50;i++){
+      s.host.setSceneSettings({...settings,intent:{...settings.intent,fov:40+i}})
+      s.host.setAudioResponse({mode:'mapped-v1',config:{version:1,sensitivity:1+i/100,mappings:[]}})
+      s.host.update({time:i,audio,pointer:{x:0,y:0,down:false}})
+      s.host.resize(400+i,300);s.host.setZoom(1+i/100)
+      await vi.advanceTimersByTimeAsync(20)
+    }
+    await vi.advanceTimersByTimeAsync(102)
+    expect(s.failure).not.toHaveBeenCalled()
+    const messages=s.port.postMessage.mock.calls.map(([m])=>m)
+    for(const type of ['scene-settings','audio-response','input','resize','zoom'])expect(messages.filter(m=>m.type===type).length).toBeGreaterThan(5)
+    expect(messages.filter(m=>m.type==='scene-settings').at(-1).payload.intent.fov).toBe(89)
+    expect(messages.filter(m=>m.type==='playback').at(-1).payload.playing).toBe(false)
+    s.host.dispose()
+  })
   it('removes a compiler-rejected frame and reports the fixed actionable reason without retrying',async()=>{
     const s=setup()
     const promise=s.host.loadScene({visualizer:{shader:'sphere(0.5);'}})

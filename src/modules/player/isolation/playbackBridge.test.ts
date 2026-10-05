@@ -3,6 +3,7 @@ import { createIsolatedPlaybackHost } from './playbackHost'
 import { installPlaybackRuntime } from '../../../isolated-renderer/playbackRuntime'
 import type { PlaybackEngine, PlaybackLoader } from '../../../isolated-renderer/playbackEngine'
 import type { CaptureRequest, PlaybackMessage, PlaybackPayloads } from './playbackProtocol'
+import { extractLiveSceneSettings } from '../liveSceneSettings'
 
 /** Both production endpoints run here; only the browser's port transport and GPU are fake. */
 class LinkedPort {
@@ -47,6 +48,7 @@ function makeEngine() {
     dispose: vi.fn(), playback: vi.fn<PlaybackEngine['playback']>(), resize: vi.fn<PlaybackEngine['resize']>(),
     input: vi.fn<PlaybackEngine['input']>(), synthetic: vi.fn<PlaybackEngine['synthetic']>(),
     zoom: vi.fn<PlaybackEngine['zoom']>(),
+    sceneSettings: vi.fn<PlaybackEngine['sceneSettings']>(),
     audioResponse: vi.fn<PlaybackEngine['audioResponse']>(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
     capture: vi.fn<PlaybackEngine['capture']>().mockImplementation(async () => raster()),
   }
@@ -101,6 +103,18 @@ afterEach(() => {
 })
 
 describe('production parent and child playback bridge together', () => {
+  it('delivers the latest live settings before capturing a paused scene without reloading', async () => {
+    const f = fixture(); await f.host.ready; await f.host.loadScene(scene); await flushMessages()
+    const engine = f.engines[0], settings = extractLiveSceneSettings(scene)
+    f.host.setPlayback(false); await flushMessages(); engine.playback.mockClear()
+    for (let i = 0; i < 100; i++) f.host.setSceneSettings({ ...settings, intent: { ...settings.intent, fov: 40 + i / 2 } })
+    const capture = f.host.capture(captureRequest); await flushMessages(); await capture
+    expect(engine.sceneSettings).toHaveBeenCalledOnce()
+    expect(engine.sceneSettings.mock.calls[0][0].intent.fov).toBe(89.5)
+    expect(engine.sceneSettings.mock.invocationCallOrder[0]).toBeLessThan(engine.capture.mock.invocationCallOrder[0])
+    expect(engine.playback).not.toHaveBeenCalled(); expect(f.loadScene).toHaveBeenCalledOnce()
+    expect(f.failure).not.toHaveBeenCalled()
+  })
   it('bootstraps the exact frame, loads a scene and actually starts default playback', async () => {
     const f = fixture()
     await f.host.ready

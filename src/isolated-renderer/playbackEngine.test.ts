@@ -8,6 +8,7 @@ import { AudioResponseMapper, SyntheticAudioFrames } from '@notrac/mage/audio-ma
 import { compileShader } from '@notrac/mage/compiler'
 import type { CompilerWorker } from './compiler/client'
 import type { CompileRequest } from './compiler/protocol'
+import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 
 type ResponseHarness = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const engineClass = engineSource.slice(engineSource.indexOf('var MAGEEngine = class MAGEEngine {'))
@@ -35,6 +36,7 @@ function fixture(profile: 'full' | 'preview' = 'preview') {
   const pngUrl = `data:image/png;base64,${btoa(String.fromCharCode(...png))}`
   let listener: ((event: { type: 'frame' | 'error' }) => void) | undefined
   const engine = { start: vi.fn(), play: vi.fn(), pause: vi.fn(), dispose: vi.fn(), setInputState: vi.fn(),
+    updateSettings: vi.fn(() => true),
     setExternalAudioFrame: vi.fn(), setExternalClock: vi.fn(), getEngineTime: vi.fn(() => 2), setSyntheticPreview: vi.fn(),
     setAudioResponseMode: vi.fn((mode: unknown) => response.setAudioResponseMode(mode)),
     setAudioResponseConfig: vi.fn((config: unknown) => response.setAudioResponseConfig(config)),
@@ -58,6 +60,73 @@ function fixture(profile: 'full' | 'preview' = 'preview') {
 }
 
 describe('isolated playback engine', () => {
+  it('keeps cumulative wheel zoom continuous through camera setting edits', async () => {
+    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, settings = extractLiveSceneSettings(scene)
+    const fields = f.engine.getEngineFields()
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const control = await f.ready(scene)
+    control.zoom(2); expect(fields.camera.position.z).toBeCloseTo(10)
+    control.sceneSettings({ ...settings, controls: { ...settings.controls, zoom0: 1.2 } })
+    control.zoom(2.01)
+    expect(fields.camera.position.z).toBeCloseTo(10.05)
+    control.dispose()
+  })
+  it('applies only changed live data without reloading, resuming, or resetting music sessions', async () => {
+    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, control = await f.ready(scene)
+    const settings = extractLiveSceneSettings(scene)
+    control.playback(false); vi.clearAllMocks()
+    const next = { ...settings, intent: { ...settings.intent, fov: 80 }, fx: { ...settings.fx,
+      bloom: { ...settings.fx.bloom, strength: 1.6 } } }
+    control.sceneSettings(next)
+    expect(f.engine.updateSettings).toHaveBeenCalledExactlyOnceWith({ intent: { fov: 80 }, fx: { bloom: { strength: 1.6 } } })
+    control.sceneSettings(next); expect(f.engine.updateSettings).toHaveBeenCalledOnce()
+    expect(f.engine.play).not.toHaveBeenCalled(); expect(f.engine.pause).not.toHaveBeenCalled()
+    expect(f.engine.loadCompiledPreset).not.toHaveBeenCalled(); expect(compileInWorker).not.toHaveBeenCalled()
+    expect(f.engine.setExternalAudioFrame).not.toHaveBeenCalled(); expect(f.engine.setAudioResponseMode).not.toHaveBeenCalled()
+    expect(f.engine.setSyntheticPreview).not.toHaveBeenCalled()
+    control.dispose(); control.sceneSettings(settings); expect(f.engine.updateSettings).toHaveBeenCalledOnce()
+  })
+  it('validates the complete direct settings update before mutating engine or saved settings', async () => {
+    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, control = await f.ready(scene)
+    const settings = extractLiveSceneSettings(scene)
+    const next = { ...settings, intent: { ...settings.intent, fov: 80 } }
+    for (const invalid of [
+      { ...next, visualizer: { ...next.visualizer, shader: 'sphere(2);' } },
+      { ...next, state: { ...next.state, volume_multiplier: Infinity } },
+      { ...next, controls: { ...next.controls, zoom0: -1 } },
+    ]) expect(() => control.sceneSettings(invalid as typeof settings)).toThrow()
+    expect(f.engine.updateSettings).not.toHaveBeenCalled()
+    control.sceneSettings(next)
+    expect(f.engine.updateSettings).toHaveBeenCalledExactlyOnceWith({ intent: { fov: 80 } })
+    control.dispose()
+  })
+  it('does not advance the applied settings or clock when the engine rejects an update', async () => {
+    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, control = await f.ready(scene)
+    const settings = extractLiveSceneSettings(scene), next = { ...settings, intent: { ...settings.intent, time_multiplier: 2 } }
+    f.engine.setExternalClock.mockClear(); f.engine.updateSettings.mockReturnValueOnce(false)
+    expect(() => control.sceneSettings(next)).toThrow(/stopped/)
+    expect(f.engine.setExternalClock).not.toHaveBeenCalled()
+    control.sceneSettings(next)
+    expect(f.engine.updateSettings).toHaveBeenNthCalledWith(2, { intent: { time_multiplier: 2 } })
+    expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 2, rate: 2, playing: true })
+    control.dispose()
+  })
+  it('anchors live speed edits without jumping elapsed time and preserves pause and reset semantics', async () => {
+    const scene = { visualizer: { shader: 'sphere(1);' }, intent: { time_multiplier: 0.5 }, state: { time: 3 } }
+    const f = fixture(), control = await f.ready(scene), settings = extractLiveSceneSettings(scene)
+    const input = { time: 10, audio: { frame: null, legacyAmplitude: 0, audioTime: 0, loaded: false, playing: false }, pointer: { x: 0, y: 0, down: false } }
+    control.input(input); f.engine.getEngineTime.mockReturnValue(8)
+    control.playback(false)
+    control.sceneSettings({ ...settings, intent: { ...settings.intent, time_multiplier: 2 } })
+    expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 8, rate: 2, playing: false })
+    control.input(input)
+    expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 8, rate: 2, playing: false })
+    control.playback(true); control.input({ ...input, time: 11 })
+    expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 10, rate: 2, playing: true })
+    control.playback(false); control.input({ ...input, time: 0 })
+    expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 3, rate: 2, playing: false })
+    control.dispose()
+  })
   it('compiles before creating graphics and passes only the resulting artifact to the compiled loader', async () => {
     const f = fixture()
     let compiled!: (artifact: unknown) => void

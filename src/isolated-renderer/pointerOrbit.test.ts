@@ -11,6 +11,16 @@ function fixture(up = { x: 0, y: 1, z: 0 }) {
 }
 
 describe('isolated numeric pointer orbit', () => {
+  it('rebases edited camera fields without applying the existing cumulative wheel factor twice', () => {
+    const f = fixture(); f.orbit.zoom(2)
+    expect(f.distance()).toBeCloseTo(10)
+    f.orbit.dispose()
+    const rebased = createPointerOrbit(f.fields, 2)
+    rebased.zoom(2.01)
+    expect(f.distance()).toBeCloseTo(10.05)
+    rebased.zoom(1)
+    expect(f.distance()).toBeCloseTo(5)
+  })
   it('rotates only during consecutive down inputs while keeping target and camera distance', () => {
     const f = fixture()
     f.drag(0, 0, false); f.drag(0, 0); expect(f.fields.controls.update).not.toHaveBeenCalled()

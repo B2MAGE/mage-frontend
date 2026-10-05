@@ -3,6 +3,7 @@ import { installPlaybackRuntime } from './playbackRuntime'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
 import type { PlaybackLoader } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
+import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 
 const origin = 'https://mage.peterbucci.com', session = '4b50667d-27d8-4634-93e8-3a795e110123'
 const scene = { visualizer: { shader: 'sphere(1);' } }
@@ -12,7 +13,7 @@ afterEach(() => { releases.splice(0).forEach(fn => fn()); vi.restoreAllMocks(); 
 function fixture() {
   const target = Object.assign(new EventTarget(), { parent: {} }) as unknown as Window
   const engine = { dispose: vi.fn(), resize: vi.fn(), input: vi.fn(), playback: vi.fn(), synthetic: vi.fn(), zoom: vi.fn(),
-    audioResponse: vi.fn(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
+    audioResponse: vi.fn(), sceneSettings: vi.fn(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
     capture: vi.fn().mockResolvedValue({ bytes: new ArrayBuffer(12), type: 'image/png', width: 10, height: 10 }) }
   const loadScene = vi.fn<PlaybackLoader>().mockResolvedValue(engine)
   const statusElement = document.createElement('p')
@@ -34,6 +35,40 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('retains the latest startup settings and preserves desired pause without reloading', async () => {
+    const f = fixture(), settings = extractLiveSceneSettings(scene)
+    let complete!: (engine: typeof f.engine) => void
+    f.loadScene.mockReturnValueOnce(new Promise(resolve => { complete = resolve }))
+    f.bootstrap(); f.load()
+    f.send('scene-settings', settings)
+    const latest = { ...settings, intent: { ...settings.intent, fov: 80 } }
+    f.send('scene-settings', latest); f.send('playback', { playing: false })
+    expect(f.engine.sceneSettings).not.toHaveBeenCalled()
+    complete(f.engine); await Promise.resolve()
+    expect(f.engine.sceneSettings).toHaveBeenCalledExactlyOnceWith(latest)
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    f.send('scene-settings', settings)
+    expect(f.engine.sceneSettings).toHaveBeenLastCalledWith(settings)
+    expect(f.engine.playback).toHaveBeenCalledOnce(); expect(f.loadScene).toHaveBeenCalledOnce()
+  })
+  it('drops pending settings when a scene is replaced and ignores late old-generation edits', async () => {
+    const f = fixture(), settings = extractLiveSceneSettings(scene)
+    f.loadScene.mockReturnValueOnce(new Promise(() => {}))
+    f.bootstrap(); f.load(); f.send('scene-settings', settings)
+    f.load(2); await Promise.resolve()
+    f.send('scene-settings', settings, 1)
+    expect(f.engine.sceneSettings).not.toHaveBeenCalled()
+    f.send('scene-settings', settings, 2)
+    expect(f.engine.sceneSettings).toHaveBeenCalledExactlyOnceWith(settings)
+  })
+  it('rejects malformed settings before any engine mutation', async () => {
+    const f = fixture(), settings = extractLiveSceneSettings(scene)
+    f.bootstrap(); f.load(); await Promise.resolve()
+    f.send('scene-settings', { ...settings, visualizer: { ...settings.visualizer, shader: 'sphere(2);' } } as typeof settings)
+    expect(f.engine.sceneSettings).not.toHaveBeenCalled()
+    expect(f.responses('error').at(-1).payload).toEqual({ code: 'protocol' })
+    expect(f.port.close).toHaveBeenCalledOnce()
+  })
   it('reports only the fixed compile code and closes after a compiler-policy rejection', async () => {
     const f = fixture()
     const rejected = new ShaderCompilationError()

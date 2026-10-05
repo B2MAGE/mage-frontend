@@ -29,6 +29,7 @@ vi.mock('../recovery/sceneRecovery', async importActual => ({ ...await importAct
 } }))
 import { createIsolatedMageController } from './isolatedController'
 import { sceneRecoveryKey } from '../recovery/sceneRecovery'
+import { extractLiveSceneSettings } from '../liveSceneSettings'
 
 const template = { schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1 }
 const custom = { visualizer: { shader: 'sphere(0.5);' } }
@@ -51,7 +52,7 @@ function bridge() {
     seek: vi.fn((time: number) => { state.time = Math.min(60, time) }), setVolume: vi.fn((volume: number) => { state.volume = volume }),
     clearAudio: vi.fn(() => { state.loaded = false; state.duration = 0; state.time = 0 }),
     reset: vi.fn(() => { state.time = 0; state.playing = false }), setSynthetic: vi.fn(), setRenderingSuspended: vi.fn(),
-    setAudioResponse: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
+    setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
     getAudioState: () => ({ ...state }), capture: vi.fn<(request?: unknown) => Promise<Blob>>(async () => new Blob(['verified-raster'], { type: 'image/png' })),
     dispose: vi.fn(), state }
 }
@@ -543,5 +544,182 @@ describe('isolated controls and media', () => {
     player.setRenderingSuspended!(false)
     await expect(player.captureFramePreview!()).resolves.toMatch(/^data:image\/png;base64,/)
     expect(playerBridge.capture).toHaveBeenCalledOnce()
+  })
+})
+
+describe('isolated live scene settings', () => {
+  const cameraAndEffects = {
+    ...custom,
+    visualizer: { ...custom.visualizer, scale: 120 },
+    controls: { position0: { x: 1, y: 2, z: 6 }, target0: { x: 0, y: 1, z: 0 }, zoom0: 1.2 },
+    intent: { fov: 96, autoRotate: false, camTilt: 0.3, time_multiplier: 1.2 },
+    fx: { bloom: { enabled: true, strength: 0.4 }, passes: { rgbShift: true }, params: { rgbShift: { amount: 0.02 } } },
+    state: { volume_multiplier: 0.8 },
+  }
+
+  it.each([
+    { name: 'legacy custom', initial: custom, next: cameraAndEffects },
+    { name: 'versioned custom', initial: { schemaVersion: 1, kind: 'custom', scene: custom },
+      next: { schemaVersion: 1, kind: 'custom', scene: cameraAndEffects } },
+    { name: 'template', initial: template, next: { ...template, parameters: { speed: 1.3, scale: 90 },
+      settings: { camera: { fov: 96, autoRotate: false }, bloom: { enabled: true, strength: 0.4 } } } },
+  ])('updates camera and effects for $name while music and playback keep their state', async ({ initial, next }) => {
+    const player = await loaded(initial, 7)
+    await player.loadAudio({ sourcePath: 'blob:music', sourceLabel: 'Music' })
+    player.seekAudio(23); player.setAudioVolume(0.4)
+    playerBridge.loadScene.mockClear(); playerBridge.loadAudio.mockClear(); playerBridge.play.mockClear()
+    playerBridge.seek.mockClear(); playerBridge.setVolume.mockClear(); playerBridge.setRenderingSuspended.mockClear()
+    player.updateSceneSettings!(next, { sceneKey: 7 })
+    expect(playerBridge.setSceneSettings).toHaveBeenCalledExactlyOnceWith(extractLiveSceneSettings(next))
+    expect(playerBridge.loadScene).not.toHaveBeenCalled()
+    expect(playerBridge.loadAudio).not.toHaveBeenCalled()
+    expect(playerBridge.clearAudio).not.toHaveBeenCalled()
+    expect(playerBridge.play).not.toHaveBeenCalled()
+    expect(playerBridge.pause).not.toHaveBeenCalled()
+    expect(playerBridge.reset).not.toHaveBeenCalled()
+    expect(playerBridge.seek).not.toHaveBeenCalled()
+    expect(playerBridge.setVolume).not.toHaveBeenCalled()
+    expect(playerBridge.setRenderingSuspended).not.toHaveBeenCalled()
+    expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
+    expect(player.getPlaybackState()).toBe('playing')
+    expect(player.getAudioState()).toMatchObject({ currentTime: 23, volume: 0.4, sourcePath: 'Music', isLoaded: true })
+    expect(mocks.begin).toHaveBeenLastCalledWith(sceneRecoveryKey(next, 7))
+    expect(mocks.leases[0].dispose).toHaveBeenCalledOnce()
+    expect(mocks.check).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps rapid updates current for response state, capture and failure recovery', async () => {
+    const player = await loaded(custom)
+    let next = custom as Record<string, unknown>
+    for (let index = 0; index < 20; index++) {
+      next = { ...custom, intent: { fov: 70 + index }, audioResponse: 'mapped-v1',
+        audioResponseConfig: normalizeAudioResponseConfig({ version: 1, sensitivity: 0.5 + index / 20 }).config }
+      player.updateSceneSettings!(next)
+    }
+    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+    expect(playerBridge.setSceneSettings).toHaveBeenCalledTimes(20)
+    expect(playerBridge.setSceneSettings).toHaveBeenLastCalledWith(extractLiveSceneSettings(next))
+    expect(player.getAudioResponseState().savedConfig?.sensitivity).toBe(1.45)
+    expect(mocks.leases.slice(0, -1).every(lease => lease.dispose.mock.calls.length === 1)).toBe(true)
+    const capture = await player.captureFramePreview!()
+    expect(capture).toMatch(/^data:image\/png;base64,/)
+    expect(playerBridge.setSceneSettings.mock.invocationCallOrder.at(-1)).toBeLessThan(playerBridge.capture.mock.invocationCallOrder[0])
+    mocks.create.mock.calls[0][0].onFailure('runtime')
+    expect(player.getStoppedRecoveryKey!()).toBe(sceneRecoveryKey(next))
+    expect(mocks.leases.at(-1)?.fail).toHaveBeenCalledExactlyOnceWith('runtime')
+  })
+
+  it('preserves an override while saving the next response and only forwards effective response changes', async () => {
+    const player = await loaded(custom)
+    const override = normalizeAudioResponseConfig({ version: 1, sensitivity: 1.8 }).config
+    player.setAudioResponseOverride(override)
+    playerBridge.setAudioResponse.mockClear()
+    const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 0.6 }).config
+    player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'mapped-v1', audioResponseConfig: config })
+    expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'mapped-v1', savedConfig: config, override, effectiveConfig: override })
+    expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
+    player.setAudioResponseOverride(null)
+    expect(playerBridge.setAudioResponse).toHaveBeenCalledExactlyOnceWith('mapped-v1', config)
+    playerBridge.setAudioResponse.mockClear()
+    player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'mapped-v1', audioResponseConfig: config, intent: { fov: 100 } })
+    expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
+    player.updateSceneSettings!(cameraAndEffects)
+    expect(playerBridge.setAudioResponse).toHaveBeenCalledExactlyOnceWith('legacy', undefined)
+    expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'legacy', savedConfig: null, override: null })
+  })
+
+  it('preserves user pause and independent view suspension while editing', async () => {
+    const player = await loaded(custom)
+    player.setPlaybackState('paused')
+    player.setRenderingSuspended!(true)
+    playerBridge.play.mockClear(); playerBridge.pause.mockClear(); playerBridge.setRenderingSuspended.mockClear()
+    player.updateSceneSettings!(cameraAndEffects)
+    expect(player.getPlaybackState()).toBe('paused')
+    expect(playerBridge.play).not.toHaveBeenCalled()
+    expect(playerBridge.pause).not.toHaveBeenCalled()
+    expect(playerBridge.setRenderingSuspended).not.toHaveBeenCalled()
+    expect(await player.captureFramePreview!()).toBeNull()
+  })
+
+  it.each([
+    { name: 'invalid camera', scene: { ...custom, intent: { fov: 400 } } },
+    { name: 'forbidden nested field', scene: { ...cameraAndEffects, fx: { bloom: { enabled: true, shader: 'box(1);' } } } },
+    { name: 'new source', scene: { visualizer: { shader: 'box(1);' } } },
+    { name: 'new skybox', scene: { ...custom, visualizer: { ...custom.visualizer, skyboxPreset: 2 } } },
+    { name: 'runtime time', scene: { ...custom, state: { time: 12 } } },
+    { name: 'new template', scene: template },
+    { name: 'route identity', scene: cameraAndEffects, key: 8 },
+  ])('rejects $name before changing the live scene, audio response or recovery lease', async ({ scene, key }) => {
+    const player = await loaded(custom, 7)
+    const before = player.getAudioResponseState()
+    expect(() => player.updateSceneSettings!(scene, { sceneKey: key ?? 7 })).toThrow()
+    expect(playerBridge.setSceneSettings).not.toHaveBeenCalled()
+    expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
+    expect(player.getAudioResponseState()).toEqual(before)
+    expect(mocks.begin).toHaveBeenCalledOnce()
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+    player.updateSceneSettings!(cameraAndEffects, { sceneKey: 7 })
+    expect(playerBridge.setSceneSettings).toHaveBeenCalledOnce()
+  })
+
+  it.each(['CHECKING', 'CUSTOM_RENDERING_DISABLED', 'stopped', 'disposed', 'safe-mode'])('blocks live edits while %s', async status => {
+    const player = await loaded(custom)
+    if (status === 'stopped') player.stopRendering!()
+    else if (status === 'disposed') player.dispose()
+    else if (status === 'safe-mode') mocks.safeMode = true
+    else setAvailability('custom', status)
+    expect(() => player.updateSceneSettings!(cameraAndEffects)).toThrow()
+    expect(playerBridge.setSceneSettings).not.toHaveBeenCalled()
+    expect(mocks.begin).toHaveBeenCalledOnce()
+  })
+
+  it('refuses a blocked next recovery revision without changing the permitted scene', async () => {
+    const player = await loaded(custom)
+    mocks.begin.mockReturnValueOnce(null)
+    expect(() => player.updateSceneSettings!(cameraAndEffects)).toThrow(/Automatic rendering is paused/)
+    expect(playerBridge.setSceneSettings).not.toHaveBeenCalled()
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(player.getAudioResponseState().savedMode).toBe('legacy')
+    player.updateSceneSettings!(cameraAndEffects)
+    expect(playerBridge.setSceneSettings).toHaveBeenCalledOnce()
+  })
+
+  it('rejects updates before scene load and rolls back a rejected bridge enqueue', async () => {
+    const player = await create(custom)
+    expect(() => player.updateSceneSettings!(cameraAndEffects)).toThrow(/Load a scene/)
+    await player.loadSceneBlob(custom)
+    playerBridge.setSceneSettings.mockImplementationOnce(() => { throw new Error('Cannot enqueue') })
+    expect(() => player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'transient-v1' })).toThrow('Cannot enqueue')
+    expect(player.getAudioResponseState().savedMode).toBe('legacy')
+    expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[1].dispose).toHaveBeenCalledOnce()
+    player.stopRendering!()
+    expect(player.getStoppedRecoveryKey!()).toBe(sceneRecoveryKey(custom))
+  })
+
+  it('keeps the saved document recovery identity when preview defaults change under the same key', async () => {
+    const player = await loaded(custom)
+    player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'transient-v1' }, { recoverySceneBlob: custom })
+    expect(mocks.begin).toHaveBeenCalledOnce()
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(player.getAudioResponseState().savedMode).toBe('transient-v1')
+    player.setAudioResponseSettings('mapped-v1')
+    player.updateRecoveryIdentity!(cameraAndEffects, { recoverySceneBlob: custom })
+    expect(mocks.begin).toHaveBeenCalledOnce()
+    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a captured frame when a newer settings update arrives during capture', async () => {
+    const player = await loaded(custom)
+    const capture = deferred<Blob>()
+    playerBridge.capture.mockReturnValueOnce(capture.promise)
+    const pending = player.captureFramePreview!()
+    await flush()
+    player.updateSceneSettings!(cameraAndEffects)
+    capture.resolve(new Blob(['old-settings'], { type: 'image/png' }))
+    expect(await pending).toBeNull()
   })
 })

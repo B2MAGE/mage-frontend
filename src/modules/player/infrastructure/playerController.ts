@@ -63,6 +63,8 @@ export type MagePlayerController = {
   getEngineDiagnostics?: () => MageEngineDiagnostics | null
   loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void | Promise<void>
+  /** Apply supported settings to the loaded scene without changing its playback or audio transport. */
+  updateSceneSettings?: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void
   updateRecoveryIdentity?: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void
   resetPlayback: () => MagePlayerPlaybackState
   seekAudio: (time: number) => MagePlayerAudioState

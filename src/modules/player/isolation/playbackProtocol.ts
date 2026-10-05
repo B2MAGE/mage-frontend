@@ -3,6 +3,7 @@ import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, type AudioResponseMode,
 import { validateSceneForPlayback, SCENE_LIMITS } from '../policy/sceneValidation'
 import { isSessionId, RENDERER_PROTOCOL } from './protocol'
 import { getRenderBudget } from '../policy/renderBudget'
+import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 
 export const PLAYBACK_VERSION = 2
 export const CAPTURE_BUDGET = getRenderBudget('preview')
@@ -20,6 +21,7 @@ export type PlaybackPayloads = {
   input: { time: number; audio: AudioInput; pointer: { x: number; y: number; down: boolean; inside?: boolean } }
   synthetic: { enabled: boolean; seed: number; tempoScale: number }
   'audio-response': { mode: AudioResponseMode; config: AudioResponseConfig | null }
+  'scene-settings': SceneLiveSettings
   capabilities: null
   'capabilities-result': { supportedTargets: AudioResponseTarget[] }
   capture: CaptureRequest
@@ -32,7 +34,7 @@ export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends P
   protocol: typeof RENDERER_PROTOCOL; version: typeof PLAYBACK_VERSION; session: string
   generation: number; requestId: number; type: T; payload: PlaybackPayloads[T]
 } : never
-export const PLAYBACK_COMMANDS = ['load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'capabilities', 'capture', 'dispose'] as const
+export const PLAYBACK_COMMANDS = ['load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'capture', 'dispose'] as const
 export const PLAYBACK_RESPONSES = ['ready', 'loaded', 'captured', 'capabilities-result', 'progress', 'error'] as const
 export function playbackMessage<T extends PlaybackType>(type: T, session: string, generation: number,
   requestId: number, payload: PlaybackPayloads[T]): PlaybackMessage<T> {
@@ -91,6 +93,8 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     case 'connect': case 'ready': return p === null && value.generation === 0 && value.requestId === 0
     case 'dispose': case 'loaded': case 'capabilities': return p === null
     case 'audio-response': return isAudioResponseSettings(p)
+    case 'scene-settings':
+      try { validateLiveSceneSettings(p); return true } catch { return false }
     case 'capabilities-result': return record(p, ['supportedTargets']) && Array.isArray(p.supportedTargets)
       && p.supportedTargets.length <= 6 && new Set(p.supportedTargets).size === p.supportedTargets.length
       && p.supportedTargets.every(target => AUDIO_RESPONSE_TARGETS.includes(target as AudioResponseTarget))

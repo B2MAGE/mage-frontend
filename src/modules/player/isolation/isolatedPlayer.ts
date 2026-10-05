@@ -6,6 +6,7 @@ import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
 import { createParentAudioSession, type ParentAudioSession } from './parentAudio'
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus } from './playbackHost'
 import { BRIDGE_LIMITS, isAudioResponseSettings, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'
+import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 
 export type IsolatedPlayerOptions = {
   container: HTMLElement
@@ -328,6 +329,12 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       response = structuredClone(next)
       audio.setSensitivity(response.config?.sensitivity ?? 1)
       if (available && sceneLoaded) host!.setAudioResponse(response)
+    },
+    setSceneSettings(value: SceneLiveSettings) {
+      assertActive()
+      const next = validateLiveSceneSettings(value)
+      if (!available || !sceneLoaded) throw new Error('Load a scene before changing its settings.')
+      host!.setSceneSettings(next)
     },
     getAudioResponseCapabilities() {
       if (!supportedTargets) return null

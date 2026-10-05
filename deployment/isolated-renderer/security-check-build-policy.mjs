@@ -11,6 +11,7 @@ export const SECURITY_CHECK_ALLOWED_MODULES = Object.freeze([
   'src/modules/player/isolation/fixedRecoveryProtocol.ts',
   'src/modules/player/isolation/playbackHost.ts',
   'src/modules/player/isolation/playbackProtocol.ts',
+  'src/modules/player/liveSceneSettings.ts',
   'src/modules/player/isolation/rendererHost.ts',
   'src/modules/player/isolation/protocol.ts',
   'src/modules/player/isolation/capture.ts',
