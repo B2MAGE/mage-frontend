@@ -75,6 +75,8 @@ Before running the frontend locally, make sure you have:
    http://localhost:5173
    ```
 
+Manual browser fixtures are separate from the app. Use [the explicit local test workflow](docs/test-tools-cleanup.md) when needed; normal `npm run dev` does not serve check pages or canaries.
+
 ## Configuration
 
 The frontend supports optional environment variables:

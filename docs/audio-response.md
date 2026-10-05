@@ -62,7 +62,7 @@ The engine routes each declared shader input independently. `size` keeps a 0.006
 
 Shaders may also declare `audioTime`, `bassHitTime`, `midHitTime`, `trebleHitTime`, `audioHitTime`, and the corresponding `HitStrength` inputs. Times share the `audioTime` clock; a hit time of -1 means no retained hit. These describe the latest event per band. Scenes needing multiple simultaneous event lifetimes can consume the bounded `getAudioResponseEvents(afterId)` history. Actual playing audio takes priority over the silent preview; both use the same mapping and envelope path.
 
-For a native browser check, open `/scripts/audio-response-browser-check.html` on the development server. Its generated tones remain silent, and its rendering check verifies real WebGL uniform delivery for bass-only and mixed-input shaders. The optional `?minified=1` check expects a separately bundled ESM copy of the analysis module at `.local/audio-analysis-built.js`.
+For a native browser check, open `/scripts/audio-response-browser-check.html` on the explicit `npm run manual-checks:dev` server (see [test tools](test-tools-cleanup.md)). Its generated tones remain silent, and its rendering check verifies real WebGL uniform delivery for bass-only and mixed-input shaders. The optional `?minified=1` check expects a separately bundled ESM copy of the analysis module at `.local/audio-analysis-built.js`.
 
 ## Creator music controls
 
@@ -114,7 +114,7 @@ Live configuration changes keep the player, song, playback position, playback vo
 
 `MagePlayer` accepts an optional `sceneKey`. Route surfaces pass their scene ID, and the editor uses a stable edit/create identity. An identity change reloads even two identical scene documents. With the same identity, a new document whose only changes are `audioResponse` and `audioResponseConfig` updates live. Structural comparison ignores JSON object-key order. The component and both playlist owners preserve device tracks and their object URLs during these edits. Without an explicit key, identical content is treated as the same scene; callers switching between distinct identical scenes must provide a key.
 
-Regression coverage includes adapter behavior and asynchronous audio races, live component changes with loaded and pending songs, scene-key transitions, route-owned playlists, and mocked HTTP create/update/reopen contract tests. The HTTP tests exercise frontend payload and response normalization; they do not claim a live backend roundtrip. `/scripts/audio-response-player-check.html` provides the real-browser adapter check against the installed engine.
+Regression coverage includes adapter behavior and asynchronous audio races, live component changes with loaded and pending songs, scene-key transitions, route-owned playlists, and mocked HTTP create/update/reopen contract tests. The HTTP tests exercise frontend payload and response normalization; they do not claim a live backend roundtrip. With `npm run manual-checks:dev`, `/scripts/audio-response-player-check.html` provides the real-browser adapter check against the installed engine.
 
 AR05 verification also exercised the local backend with a temporary scene: create, read, update, and read preserved the exact mapped configuration and unrelated nested fields. Deleting that scene returned success, the next read returned not found, and the original scene inventory was restored. This complements the mocked editor workflow tests with a real API persistence check.
 

@@ -9,6 +9,8 @@ This inventory does not imply observations on untested browsers or devices.
 [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks release-branch
 integration and closure.
 
+> Manual fixture paths in this evidence map require the [explicit local harness](test-tools-cleanup.md). Public check routes are retired by the cleanup deployment. Dated evidence remains unchanged.
+
 ## Rendering surfaces
 
 Submitted scenes share this route: `MagePlayer` or a hover owner calls

@@ -58,7 +58,7 @@ invalid saved data, scene switches, high-DPI and large buffers, small/portrait b
 effect counts, capture size/restoration, and source iteration caps. Tests verify unchanged authored
 template iteration settings and rejection before any custom compilation.
 
-For a repeatable browser check, start Vite and open `/scripts/render-budget-check.html`, then select
+For a repeatable browser check, start `npm run manual-checks:dev` and open `/scripts/render-budget-check.html`, then select
 **Run render checks**. It only runs a fixed platform template; it never loads submitted source or account
 data. The page measures actual engine frame events, compiled iterations, canvas sizes, oversized
 captures, and a resize to 7680 × 4320. Its displayed JSON is suitable for saving with review evidence.
