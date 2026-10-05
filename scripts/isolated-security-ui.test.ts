@@ -4,8 +4,10 @@ import { JSDOM } from 'jsdom'
 import { renderSecurityCheckDocument } from '../deployment/isolated-renderer/security-check-page.mjs'
 import { mountIsolatedSecurityCheck } from './isolated-security-ui'
 import { createIsolatedPlaybackHost } from '../src/modules/player/isolation/playbackHost'
+import { runFixedRecoveryChecks } from './fixed-recovery-runner'
 
 vi.mock('../src/modules/player/isolation/playbackHost', () => ({ createIsolatedPlaybackHost: vi.fn() }))
+vi.mock('./fixed-recovery-runner', () => ({ runFixedRecoveryChecks: vi.fn() }))
 
 let dom: JSDOM | undefined
 afterEach(() => { dom?.window.document?.getElementById('stop')?.click(); dom?.window.close(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.clearAllMocks() })
@@ -34,6 +36,44 @@ describe('fixed deployed security page initialization', () => {
       expect(page.querySelector('iframe')).toBeNull()
       dom?.window.close()
     }
+  })
+})
+
+describe('current renderer recovery UI', () => {
+  const snapshot = (page: Document) => {
+    page.getElementById('show-report')!.click()
+    return JSON.parse(page.getElementById('report-json')!.textContent!)
+  }
+  it('runs the fixed suite from the existing button and labels its evidence separately', async () => {
+    vi.mocked(runFixedRecoveryChecks).mockImplementation(async options => {
+      for (let index = 0; index < 7; index++) options.result({ name: `Fixed recovery ${index}`, outcome: 'PASS', evidence: 'Observed before cleanup.' })
+    })
+    const page = open()
+    page.getElementById('failures')!.click()
+    await vi.waitFor(() => expect(page.getElementById('status')!.textContent).toContain('Checks finished'))
+    expect(runFixedRecoveryChecks).toHaveBeenCalledOnce()
+    expect(vi.mocked(runFixedRecoveryChecks).mock.calls[0][0]).toMatchObject({ rendererUrl: 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html', startupTimeoutMs: 15000 })
+    const report = snapshot(page)
+    expect(report.version).toBe(3)
+    expect(report.runs[0]).toMatchObject({ group: 'recovery', fixtureVersion: 'fixed-renderer-recovery-1', coverage: 'current-renderer-recovery', status: 'passed' })
+  })
+  it('Stop aborts the current fixed suite and cannot accept results from its cancelled run', async () => {
+    let complete!: () => void
+    let pending!: Parameters<typeof runFixedRecoveryChecks>[0]
+    vi.mocked(runFixedRecoveryChecks).mockImplementation(options => {
+      pending = options
+      return new Promise(resolve => { complete = resolve })
+    })
+    const page = open()
+    page.getElementById('failures')!.click()
+    page.getElementById('stop')!.click()
+    expect(pending.signal.aborted).toBe(true)
+    pending.result({ name: 'Late result', outcome: 'PASS', evidence: 'Must not enter report.' })
+    complete(); await Promise.resolve(); await Promise.resolve()
+    const report = snapshot(page)
+    expect(report.runs[0].status).toBe('cancelled')
+    expect(report.runs[0].checks).toEqual([])
+    expect(page.getElementById('status')!.textContent).toContain('Checks stopped')
   })
 })
 

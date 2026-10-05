@@ -1,5 +1,7 @@
 import { exact, isCheckEvent, isSummary, isWorkerCheckLocation, time, workerCheckConfig, WORKER_CHECK_PROTOCOL,
   WORKER_CHECK_VERSION, workerCheckVerdicts, type WorkerCheckEvent, type WorkerCheckSummary } from './worker-check-fixture'
+import { prepareWorkerCanary, readWorkerCanary } from './worker-check-canary'
+import type { WorkerCanaryCounts } from './worker-boundary'
 
 declare const __MAGE_WORKER_CHECK_SCOPE__: string
 declare const __MAGE_WORKER_CHECK_PARENT__: string
@@ -8,6 +10,7 @@ declare const __MAGE_WORKER_CHECK_CHILD__: string
 
 type CheckRun = { id: number; startedAt: string; finishedAt: string | null; status: 'running' | 'passed' | 'failed' | 'cancelled';
   interruptedByHiddenPage: boolean; opaqueFrameVerified: boolean; parentStallMaxGapMs: number; diagnosticsTruncated: boolean;
+  canaryControl: WorkerCanaryCounts | null; canaryObserved: WorkerCanaryCounts | null;
   events: WorkerCheckEvent[]; worker: WorkerCheckSummary | null; checks: Array<{ name: string; outcome: 'PASS' | 'FAIL' }> }
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const runs: CheckRun[] = []
@@ -20,11 +23,11 @@ const configured = scope === 'local' || (scope === 'production'
   && typeof __MAGE_WORKER_CHECK_PATH__ !== 'undefined' && __MAGE_WORKER_CHECK_PATH__ === config.path
   && typeof __MAGE_WORKER_CHECK_CHILD__ !== 'undefined' && __MAGE_WORKER_CHECK_CHILD__ === config.rendererUrl)
 const allowed = configured && isWorkerCheckLocation(scope === 'production' ? 'production' : 'local', location.href, import.meta.env.DEV)
-const snapshot = () => ({ version: 1, testVersion: WORKER_CHECK_VERSION, exportedAt: new Date().toISOString(),
-  scope: `${scope === 'production' ? 'Deployed' : 'Local'} fixed compiler-worker capability and lifetime checks only. Network, GPU, application and release verification are not performed.`,
+const snapshot = () => ({ version: 2, testVersion: WORKER_CHECK_VERSION, exportedAt: new Date().toISOString(),
+  scope: `${scope === 'production' ? 'Deployed' : 'Local'} fixed compiler capability/lifetime and API probes, plus a separate 600ms policy observation worker in the same opaque child CSP. CacheStorage not-exposed means the browser does not expose that API, not a denied opening. Network counters include an independent positive control. GPU, application and release verification are not performed.`,
   browserUserAgent: navigator.userAgent.slice(0, 512), parentOrigin: config.parentOrigin, rendererUrl: config.rendererUrl,
   parameters: { compilerDeadlineMs: 2000, finiteLoopMs: 3000, delayedCallbackMs: 250, callbackObservationMs: 600, parentTimerIntervalMs: 50, parentResponsivenessLimitMs: 1000 },
-  expectedChecks: 11, eventLimit: 128, retainedRunLimit: 12, runs: structuredClone(runs) })
+  expectedChecks: 19, eventLimit: 128, retainedRunLimit: 12, runs: structuredClone(runs) })
 function saved() {
   element('saved-runs').textContent = `${WORKER_CHECK_VERSION}; ${runs.length} run(s) retained, up to the latest 12. Reloading clears this history.`
   element<HTMLButtonElement>('download').disabled = runs.length === 0
@@ -44,12 +47,14 @@ function start() {
   stop(); element('results').replaceChildren(); element('summary').textContent = ''
   const current: CheckRun = { id: ++sequence, startedAt: new Date().toISOString(), finishedAt: null, status: 'running',
     interruptedByHiddenPage: document.visibilityState !== 'visible', opaqueFrameVerified: false, parentStallMaxGapMs: 0,
+    canaryControl: null, canaryObserved: null,
     diagnosticsTruncated: false, events: [], worker: null, checks: [] }
   active = current; runs.push(current); if (runs.length > 12) runs.shift()
   saved(); element<HTMLButtonElement>('start').disabled = true
-  const nonce = crypto.randomUUID().replaceAll('-', ''), frame = document.createElement('iframe')
+  const nonce = crypto.randomUUID().replaceAll('-', ''), controlNonce = crypto.randomUUID().replaceAll('-', '')
+  const requests = new AbortController(), frame = document.createElement('iframe')
   frame.title = 'Fixed compiler worker fixture'; frame.setAttribute('sandbox', 'allow-scripts'); frame.setAttribute('referrerpolicy', 'no-referrer'); frame.setAttribute('credentialless', '')
-  let port: MessagePort | null = null, connected = false, ready = false, stall = false, previous = performance.now()
+  let port: MessagePort | null = null, connected = false, ready = false, completing = false, stall = false, previous = performance.now()
   const isActive = () => active === current && current.status === 'running'
   function sample() {
     const next = performance.now()
@@ -63,6 +68,7 @@ function start() {
     if (!isActive()) return
     const value = event.data
     if (!value || value.nonce !== nonce) return
+    if (completing) return fail()
     if (exact(value, ['type', 'nonce']) && value.type === 'ready' && !ready) { ready = true; element('status').textContent = 'Worker checks started.'; return }
     if (!ready) return fail()
     if (exact(value, ['type', 'nonce', 'event']) && value.type === 'event' && isCheckEvent(value.event)) {
@@ -71,15 +77,22 @@ function start() {
       return
     }
     if (exact(value, ['type', 'nonce', 'summary']) && value.type === 'complete' && isSummary(value.summary)) {
-      sample(); current.worker = value.summary
-      current.checks = [{ name: 'Separate child has an opaque origin', passed: current.opaqueFrameVerified }, ...workerCheckVerdicts(value.summary, current.parentStallMaxGapMs)]
-        .map(check => ({ name: check.name, outcome: check.passed ? 'PASS' : 'FAIL' }))
-      for (const check of current.checks) { const row = element<HTMLTableSectionElement>('results').insertRow(); row.insertCell().textContent = check.name; const result = row.insertCell(); result.textContent = check.outcome; result.dataset.result = check.outcome }
-      const passed = current.checks.filter(check => check.outcome === 'PASS').length
-      element('summary').textContent = `${passed} passed; ${current.checks.length - passed} failed. Maximum parent gap during stall: ${Math.round(current.parentStallMaxGapMs)}ms.`
-      const accepted = passed === current.checks.length && !current.interruptedByHiddenPage
-      element('status').textContent = current.interruptedByHiddenPage ? 'Page hidden during this run; results are not accepted. Rerun visibly.' : 'Fixed worker checks finished. This does not approve browser release.'
-      finish(accepted ? 'passed' : 'failed'); return
+      const summary = value.summary
+      completing = true
+      sample(); stall = false; current.worker = summary
+      void readWorkerCanary(scope === 'production' ? 'production' : 'local', nonce, requests.signal).then(counts => {
+        if (!isActive()) return
+        current.canaryObserved = counts
+        current.checks = [{ name: 'Separate child has an opaque origin', passed: current.opaqueFrameVerified }, ...workerCheckVerdicts(summary, current.parentStallMaxGapMs, counts, current.canaryControl !== null)]
+          .map(check => ({ name: check.name, outcome: check.passed ? 'PASS' : 'FAIL' }))
+        for (const check of current.checks) { const row = element<HTMLTableSectionElement>('results').insertRow(); row.insertCell().textContent = check.name; const result = row.insertCell(); result.textContent = check.outcome; result.dataset.result = check.outcome }
+        const passed = current.checks.filter(check => check.outcome === 'PASS').length
+        element('summary').textContent = `${passed} passed; ${current.checks.length - passed} failed. Maximum parent gap during stall: ${Math.round(current.parentStallMaxGapMs)}ms.`
+        const accepted = passed === current.checks.length && !current.interruptedByHiddenPage
+        element('status').textContent = current.interruptedByHiddenPage ? 'Page hidden during this run; results are not accepted. Rerun visibly.' : 'Fixed worker checks finished. This does not approve browser release.'
+        finish(accepted ? 'passed' : 'failed')
+      }).catch(fail)
+      return
     }
     fail()
   }
@@ -92,13 +105,19 @@ function start() {
     frame.contentWindow.postMessage({ protocol: WORKER_CHECK_PROTOCOL, version: 1, type: 'connect', nonce }, '*', [channel.port2])
   }
   dispose = () => {
+    requests.abort()
     clearTimeout(deadline); clearInterval(heartbeat)
     try { port?.postMessage({ type: 'stop', nonce }) } catch { /* Removing the owner document is final. */ }
     port?.close(); port = null; frame.removeEventListener('load', load); frame.remove()
   }
   frame.addEventListener('load', load); frame.addEventListener('error', fail, { once: true })
-  frame.src = config.rendererUrl; element('player').append(frame)
-  element('status').textContent = 'Starting the opaque child…'
+  element('status').textContent = 'Verifying the fixed network counters…'
+  void prepareWorkerCanary(scope === 'production' ? 'production' : 'local', controlNonce, nonce, requests.signal).then(control => {
+    if (!isActive()) return
+    current.canaryControl = control
+    frame.src = config.rendererUrl; element('player').append(frame)
+    element('status').textContent = 'Starting the opaque child…'
+  }).catch(fail)
 }
 element('start').onclick = start; element('stop').onclick = stop
 element('show-report').onclick = () => { const output = element('report-json'); output.hidden = !output.hidden; output.textContent = output.hidden ? '' : JSON.stringify(snapshot(), null, 2) }

@@ -40,6 +40,39 @@ test('canary rejects remote hosts, forged registrations, bodies, duplicate and u
   assert.equal(f.call(`/__isolated-security/canary?nonce=${nonce}&kind=secret`).status, 400)
   assert.equal(f.call('/__isolated-security/results?nonce=broken').status, 400)
 })
+
+test('worker controls count fixed kinds and reject extra paths, credentials, bodies and values', () => {
+  const f = fixture(), registration = `/__isolated-security/register?nonce=${nonce}`
+  for (const headers of [{ cookie: 'never-retained' }, { authorization: 'never-retained' }, { 'sec-fetch-site': 'cross-site' }]) {
+    assert.equal(f.call(registration, { method: 'POST', headers }).status, 403)
+  }
+  assert.equal(f.register().status, 200)
+  for (const kind of ['fetch', 'xhr', 'import-script']) assert.equal(f.call(`/__isolated-security/canary?nonce=${nonce}&kind=${kind}`).status, 200)
+  const childNonce = 'b'.repeat(32)
+  assert.equal(f.register(childNonce).status, 200)
+  assert.equal(f.call(`/__isolated-security/canary?nonce=${childNonce}&kind=import-script`, { headers: { origin: 'null' } }).status, 200)
+  const counts = f.call(`/__isolated-security/results?nonce=${nonce}`).body
+  assert.equal(counts.requests, 3)
+  for (const kind of ['fetch', 'xhr', 'import-script']) assert.equal(counts.kinds[kind], 1)
+  assert.equal(f.call(`/__isolated-security/results?nonce=${childNonce}`).body.requests, 1)
+  for (const path of [`/__isolated-security/import-script?nonce=${nonce}`, `/__isolated-security/canary/import-script?nonce=${nonce}`,
+    `/__isolated-security/canary?nonce=${nonce}&kind=importScripts`, `/__isolated-security/canary?nonce=${nonce}&kind=import-script&source=ignored`,
+    `/__isolated-security/%63anary?nonce=${nonce}&kind=import-script`, `/__isolated-security/other/../canary?nonce=${nonce}&kind=import-script`]) {
+    assert(f.call(path).status >= 400, path)
+  }
+  for (const headers of [{ cookie: 'never-retained' }, { authorization: 'never-retained' }, { origin: 'null' }, { 'sec-fetch-site': 'cross-site' }]) {
+    assert.equal(f.call(`/__isolated-security/results?nonce=${nonce}`, { headers }).status, 403)
+  }
+  const path = `/__isolated-security/canary?nonce=${nonce}&kind=import-script`
+  assert.equal(f.call(path, { headers: { cookie: 'never-retained' } }).status, 403)
+  for (const headers of [{ 'content-length': '1' }, { 'content-length': '00' }, { 'transfer-encoding': '' }]) assert.equal(f.call(path, { method: 'POST', headers }).status, 413)
+  const evidence = f.call(`/__isolated-security/results?nonce=${nonce}`)
+  assert.equal(evidence.body.kinds['import-script'], 2)
+  assert.equal(evidence.body.requests, 4)
+  assert(!JSON.stringify(evidence.body).includes('never-retained'))
+  assert.equal(evidence.headers['Set-Cookie'], undefined)
+  assert.equal(evidence.headers['Access-Control-Allow-Origin'], undefined)
+})
 test('sessions expire and session count is capped', () => {
   const f = fixture()
   for (let i = 0; i < 32; i++) assert.equal(f.register(i.toString(16).padStart(32, '0')).status, 200)

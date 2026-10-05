@@ -7,17 +7,23 @@ import { assertWorkerCheckBundle, WORKER_CHECK_ALLOWED_MODULES, WORKER_CHECK_PAR
 const fixture = { scriptPath: 'assets/worker-abc123.js', stylePath: 'assets/worker-def456.css',
   scriptIntegrity: `sha384-${'A'.repeat(64)}`, styleIntegrity: `sha384-${'B'.repeat(64)}` }
 
-test('fixed live worker parent permits only its exact child and no parent compiler or requests', () => {
+test('fixed live worker parent permits only its exact child and existing bounded counter endpoints', () => {
   assert.equal(WORKER_CHECK_PARENT_ORIGIN, 'https://mage.peterbucci.com')
   assert.equal(WORKER_CHECK_RENDERER_URL, 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html')
   assert.equal(WORKER_CHECK_PATH, '/player-check/worker/')
   const directives = WORKER_CHECK_CSP.split('; ')
   assert(directives.includes(`frame-src ${WORKER_CHECK_RENDERER_URL}`))
-  for (const resource of ['connect', 'worker', 'object', 'base-uri', 'form-action']) {
+  for (const resource of ['worker', 'object', 'base-uri', 'form-action']) {
     assert(directives.includes(`${resource}${resource.includes('-') ? '' : '-src'} 'none'`))
   }
   assert(directives.includes("script-src 'self'"))
   assert(directives.includes("style-src 'self'"))
+  assert.deepEqual(directives.find(value => value.startsWith('connect-src ')).split(' '), [
+    'connect-src',
+    'https://mage.peterbucci.com/player-check/__isolated-security/register',
+    'https://mage.peterbucci.com/player-check/__isolated-security/results',
+    'https://mage.peterbucci.com/player-check/__isolated-security/canary',
+  ])
   assert(!/unsafe-eval|unsafe-inline|blob:|https:\*|http:/.test(WORKER_CHECK_CSP))
 })
 
@@ -32,7 +38,13 @@ test('worker parent document has fixed buttons and exactly two integrity-pinned 
     assert(html.includes(`id="${id}"`))
   }
   assert(!/<input\b|<textarea\b|<form\b|\son\w+=/.test(html))
-  assert(html.includes('Network requests, GPU behavior, normal app flows and full browser release approval require their separate checks.'))
+  assert(html.includes('actual compiler-worker checks record attempted calls and worker lifetime'))
+  assert(html.includes('separate fixed policy observation worker runs for 600 milliseconds under the same opaque child Content Security Policy'))
+  assert(html.includes('It does not run through the compiler.'))
+  assert(html.includes('credential-free positive control'))
+  assert(html.includes('CacheStorage NOT_EXPOSED means the browser does not expose that API; it does not claim an opening was denied.'))
+  assert(html.includes('They exclude scene source, raw errors, account data and storage values.'))
+  assert(html.includes('These fixed network checks do not establish GPU safety, normal app behavior or full browser release approval.'))
   for (const change of [{ scriptPath: 'https://other.invalid/main.js' }, { scriptPath: 'assets/worker-abc123.css' },
     { stylePath: 'assets/worker-abc123.js' }, { stylePath: '../secret' }, { scriptIntegrity: 'missing' }]) {
     assert.throws(() => renderWorkerCheckDocument({ ...fixture, ...change }))

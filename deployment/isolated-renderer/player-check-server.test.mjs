@@ -145,15 +145,44 @@ test('canary accepts only bounded credential-free registrations and exact reques
   assert.equal(request(handler, `/${'x'.repeat(2048)}`).status, 400)
 })
 
+test('worker positive control counts exactly the fixed request kinds using existing routes', () => {
+  const handler = createPlayerCheckHandler(new Map())
+  assert.equal(register(handler).status, 200)
+  for (const kind of ['fetch', 'xhr', 'import-script']) {
+    const result = request(handler, `${PREFIX}canary?nonce=${nonce}&kind=${kind}`, { headers: { origin: LIVE_CHECK_PARENT_ORIGIN } })
+    assert.equal(result.status, 200)
+    assert.equal(result.headers['content-type'], 'application/json; charset=utf-8')
+    assert.equal(result.headers['x-content-type-options'], 'nosniff')
+  }
+  const childNonce = '2'.repeat(32)
+  assert.equal(register(handler, childNonce).status, 200)
+  assert.equal(request(handler, `${PREFIX}canary?nonce=${childNonce}&kind=import-script`, { headers: { origin: 'null' } }).status, 200)
+  const counts = results(handler)
+  assert.equal(counts.requests, 3)
+  for (const kind of ['fetch', 'xhr', 'import-script']) assert.equal(counts.kinds[kind], 1)
+  assert.equal(results(handler, childNonce).requests, 1)
+  for (const url of [`${PREFIX}import-script?nonce=${nonce}`, `${PREFIX}canary/import-script?nonce=${nonce}`,
+    `${PREFIX}canary?nonce=${nonce}&kind=importScripts`, `${PREFIX}canary?nonce=${nonce}&kind=import-script&source=ignored`,
+    `${PREFIX}%63anary?nonce=${nonce}&kind=import-script`, `${PREFIX}other/../canary?nonce=${nonce}&kind=import-script`]) {
+    assert(request(handler, url).status >= 400, url)
+  }
+  assert.equal(results(handler).requests, 3)
+  assert.equal(request(handler, `${PREFIX}canary?nonce=${nonce}&kind=import-script`, { headers: { authorization: 'never-retained' } }).status, 403)
+  assert.equal(request(handler, `${PREFIX}canary?nonce=${nonce}&kind=import-script`, { method: 'POST', headers: { 'content-length': '1' } }).status, 413)
+  const evidence = request(handler, `${PREFIX}results?nonce=${nonce}`).body
+  assert.equal(JSON.parse(evidence).kinds['import-script'], 2)
+  assert(!evidence.includes('never-retained'))
+})
+
 test('sessions expire, registration is capped, and all probe counters saturate', () => {
   let now = 0
   const handler = createPlayerCheckHandler(new Map(), { now: () => now })
   for (let i = 0; i < 32; i++) assert.equal(register(handler, i.toString(16).padStart(32, '0')).status, 200)
   assert.equal(register(handler).status, 429)
   const id = '0'.repeat(32)
-  for (let i = 0; i < 1100; i++) request(handler, `${PREFIX}canary?nonce=${id}&kind=image`)
+  for (let i = 0; i < 1100; i++) request(handler, `${PREFIX}canary?nonce=${id}&kind=import-script`)
   assert.equal(results(handler, id).requests, 1000)
-  assert.equal(results(handler, id).kinds.image, 1000)
+  assert.equal(results(handler, id).kinds['import-script'], 1000)
   now = 300000
   assert.equal(request(handler, `${PREFIX}results?nonce=${id}`).status, 404)
   assert.equal(register(handler).status, 200)

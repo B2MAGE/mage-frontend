@@ -1,6 +1,6 @@
 import { verifyOpaqueSandbox } from '../src/isolated-renderer/boundary'
 import { runFixedWorkerChecks } from './worker-check-runner'
-import { exact, isWorkerCheckConnection } from './worker-check-fixture'
+import { exact, isWorkerCheckConnection, WORKER_CHECK_PARENT, WORKER_CHECK_PRODUCTION_PARENT } from './worker-check-fixture'
 
 /** Separate fixed protocol: a parent can start this suite, never select or submit source. */
 export function installFixedWorkerCheck(options: {
@@ -17,6 +17,8 @@ export function installFixedWorkerCheck(options: {
     const value = event.data
     if (closed || active || target.parent === target || event.source !== target.parent
       || !options.allowedParentOrigins.includes(event.origin) || event.ports.length !== 1 || !isWorkerCheckConnection(value)) return
+    const scope = event.origin === WORKER_CHECK_PRODUCTION_PARENT ? 'production' : event.origin === WORKER_CHECK_PARENT ? 'local' : null
+    if (!scope) return
     target.removeEventListener('message', connect)
     const nonce = value.nonce, controller = new AbortController()
     active = controller; port = event.ports[0]
@@ -29,7 +31,7 @@ export function installFixedWorkerCheck(options: {
     const live = () => !closed && active === controller && !controller.signal.aborted
     const send = (message: object) => { if (live()) port?.postMessage({ ...message, nonce }) }
     send({ type: 'ready' })
-    void runChecks({ signal: controller.signal, nonce, emit(event) {
+    void runChecks({ signal: controller.signal, nonce, scope, emit(event) {
       if (!live()) return
       status.textContent = `Fixed worker check: ${event.phase}.`
       send({ type: 'event', event })
