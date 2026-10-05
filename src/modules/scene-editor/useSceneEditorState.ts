@@ -26,7 +26,7 @@ import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
 import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
-import { parseSceneImport, SceneValidationError, validateSceneDocument, type TemplateSceneDocument } from '@modules/player'
+import { createCustomSceneFromTemplate, readTemplateShaderSource, parseSceneImport, SceneValidationError, validateSceneDocument, type TemplateSceneDocument } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateBranch, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 
@@ -261,6 +261,25 @@ export function useSceneEditorState({
     }))
   }
 
+  function handleShaderSourceChange(shader: string) {
+    if (!templateDocument) {
+      updateBranch('visualizer', current => ({ ...current, shader }))
+      return
+    }
+    if (shader === readTemplateShaderSource(templateDocument)) return
+    // Do not discard a raw draft or convert invalid settings behind its feedback.
+    if (confirmSectionIssueMessage) {
+      setErrors(current => ({ ...current, sceneData: confirmSectionIssueMessage,
+        form: 'Fix the scene settings or Scene Data JSON before editing the shader. Your draft has been kept.' }))
+      return
+    }
+    try {
+      applySceneData(readEditableSceneData(createCustomSceneFromTemplate(templateDocument, shader)))
+    } catch (error) {
+      setErrors(current => ({ ...current, sceneData: describeSceneValidationError(error) }))
+    }
+  }
+
   function handleMotionAdvancedToggle(nextValue: boolean) {
     setIsMotionAdvancedEnabled(nextValue)
   }
@@ -369,6 +388,7 @@ export function useSceneEditorState({
     handleNameChange,
     handleRawSceneDataChange,
     handleShaderSelection,
+    handleShaderSourceChange,
     handleTemplateSelection,
     handleSectionJump,
     handleTagSearchChange,

@@ -58,7 +58,7 @@ describe('Basic template editor controls', () => {
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     const mode = within(screen.getByRole('group', { name: 'Creation mode' }))
     expect(mode.getByRole('button', { name: 'Basic' })).toHaveAttribute('aria-pressed', 'true')
-    expect(mode.getByRole('button', { name: 'Advanced' })).toBeDisabled()
+    expect(mode.getByRole('button', { name: 'Advanced' })).toBeEnabled()
     const selector = screen.getByRole('combobox', { name: 'Template' })
     expect(selector).toHaveValue('embedded-scene-0')
     expect(screen.queryByLabelText(/^shader$/i)).not.toBeInTheDocument()
@@ -242,6 +242,36 @@ describe('Basic template editor controls', () => {
 })
 
 describe('custom repair and explicit template replacement', () => {
+  it('reveals template code without changing scene type, and preserves typing focus when code becomes custom', async () => {
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    const original = previewDocument()
+    await user.click(screen.getByRole('button', { name: 'Advanced' }))
+    let source = screen.getByLabelText('Custom Shader') as HTMLTextAreaElement
+    expect(source.value.length).toBeGreaterThan(0)
+    expect(previewDocument()).toEqual(original)
+    await user.click(screen.getByRole('button', { name: 'Basic' }))
+    expect(screen.queryByLabelText('Custom Shader')).not.toBeInTheDocument()
+    expect(previewDocument()).toEqual(original)
+    await user.click(screen.getByRole('button', { name: 'Advanced' }))
+    source = screen.getByLabelText('Custom Shader') as HTMLTextAreaElement
+    const code = source.value
+    await user.click(source)
+    await user.keyboard('{Control>}{End}{/Control} // custom')
+    expect(screen.getByLabelText('Custom Shader')).toBe(source)
+    expect(source).toHaveFocus()
+    expect(source).toHaveValue(`${code} // custom`)
+    expect(previewDocument()).not.toHaveProperty('kind', 'template')
+    expect(previewDocument().visualizer.shader).toBe(`${code} // custom`)
+    await user.click(screen.getByRole('button', { name: 'Basic' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+    expect(source).toHaveValue(`${code} // custom`)
+    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('routes valid custom source to the isolated player and requires acceptance before replacing source', async () => {
     const user = userEvent.setup()
     const source = await customEditor()

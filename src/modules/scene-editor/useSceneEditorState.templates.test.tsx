@@ -5,6 +5,8 @@ import { createTemplateScene } from './templateEditor'
 import { useSceneEditorState } from './useSceneEditorState'
 import { useSceneEditorPreview } from './useSceneEditorPreview'
 import type { SceneEditorInitialState } from './types'
+import { createCustomSceneFromTemplate, readTemplateShaderSource } from '@modules/player'
+import { buildSceneSubmissionDocument } from './utils'
 
 vi.mock('@shared/lib', async original => ({
   ...await original<typeof import('@shared/lib')>(),
@@ -18,6 +20,49 @@ async function state(initialState?: SceneEditorInitialState) {
 }
 
 describe('template editor state and preview', () => {
+  it('converts only a shader change and preserves authored settings and scene details in the custom submission', async () => {
+    const template = createTemplateScene('reaction-rings-v1')
+    template.parameters = { scale: 42, speed: 2 }
+    template.settings.camera.fov = 80
+    template.settings.bloom.strength = 1.2
+    template.settings.effects = { passes: { rgbShift: true }, params: { rgbShift: { amount: 0.02, angle: 0.3 } } }
+    template.settings.audioResponse = 'mapped-v1'
+    template.settings.audioResponseConfig = { version: 1, sensitivity: 0.4, mappings: [{ target: 'size', source: 'bass-hit', amount: 0.2, attack: 0.03, release: 0.4 }] }
+    const { result } = await state({ sceneData: template, name: 'My scene', description: 'Keep this', tagNames: ['ambient'], thumbnailPreviewUrl: '/saved.png' })
+    const source = readTemplateShaderSource(template)
+    act(() => result.current.handleShaderSourceChange(source))
+    expect(result.current.sceneData).toEqual(template)
+    expect(buildSceneSubmissionDocument(result.current.sceneData).kind).toBe('template')
+    const changedSource = `${source}\n// My change`
+    act(() => result.current.handleShaderSourceChange(changedSource))
+    const custom = createCustomSceneFromTemplate(template, changedSource)
+    expect(result.current.isTemplate).toBe(false)
+    expect(result.current.sceneData).toEqual(custom.scene)
+    expect(buildSceneSubmissionDocument(result.current.sceneData)).toEqual(custom)
+    expect(JSON.parse(result.current.sceneDataText)).toEqual(custom.scene)
+    expect(result.current.name).toBe('My scene')
+    expect(result.current.description).toBe('Keep this')
+    expect(result.current.selectedTagIds).toEqual([3])
+    expect(result.current.thumbnailPreviewUrl).toBe('/saved.png')
+    expect(result.current.canResetAudioResponse).toBe(false)
+  })
+
+  it('keeps invalid imported JSON and invalid template settings when shader editing is attempted', async () => {
+    const { result } = await state()
+    const original = result.current.sceneData
+    const invalid = '{"kind":"template","schemaVersion":99}'
+    act(() => result.current.handleRawSceneDataChange(invalid))
+    act(() => result.current.handleShaderSourceChange('sphere(0.8)'))
+    expect(result.current.sceneDataText).toBe(invalid)
+    expect(result.current.sceneData).toEqual(original)
+    act(() => result.current.handleRawSceneDataChange(JSON.stringify(original)))
+    act(() => result.current.updateTemplateValue('settings.camera.fov', 200))
+    act(() => result.current.handleShaderSourceChange('sphere(0.8)'))
+    expect(result.current.isTemplate).toBe(true)
+    expect(result.current.templateDocument?.settings.camera.fov).toBe(200)
+    expect(result.current.errors.form).toContain('Fix the scene settings')
+  })
+
   it('starts basic with every safe section and prevents shader modification', async () => {
     const { result } = await state()
     expect(result.current.isTemplate).toBe(true)
