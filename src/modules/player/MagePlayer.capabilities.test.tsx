@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer, type MagePlayerAudioResponseCapabilitiesSnapshot } from './MagePlayer'
 import {
@@ -9,6 +9,8 @@ import {
   type MagePlayerController,
 } from './infrastructure/engineAdapter'
 import { buildMagePlayerController, buildMagePlayerSceneBlob, buildMagePlayerTrack } from './test-fixtures'
+import { sceneAvailabilityStore } from './availability/sceneAvailability'
+import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 
 vi.mock('./infrastructure/engineAdapter', () => ({ createMagePlayer: vi.fn() }))
 
@@ -16,9 +18,16 @@ function capabilities(target: 'size' | 'bass'): MageAudioResponseCapabilities {
   return { mode: 'mapped-v1', signals: ['bass-hit'], targets: ['size', 'bass'], supportedTargets: [target], unsupportedTargets: [], warnings: [] }
 }
 
+const recoveryKeys = new Set<string>()
+
 describe('player audio-response capabilities bridge', () => {
   beforeEach(() => vi.clearAllMocks())
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    cleanup()
+    for (const key of recoveryKeys) sceneRecovery.clear(key)
+    recoveryKeys.clear()
+    vi.restoreAllMocks()
+  })
 
   it('publishes the exact loaded document with adapter capabilities, then clears on removal and disposal', async () => {
     const compiled = capabilities('size')
@@ -57,6 +66,98 @@ describe('player audio-response capabilities bridge', () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: second, capabilities: capabilities('bass') }))
     expect(onChange.mock.calls.every(([snapshot]) => snapshot === null || snapshot.sceneBlob === second && snapshot.capabilities.supportedTargets[0] === 'bass')).toBe(true)
     expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['resolves', 'rejects'] as const)('ignores an old shader compilation that %s after the current shader is ready', async completion => {
+    const first = buildMagePlayerSceneBlob({ visualizer: { shader: 'input("size", 0); sphere(1);' } })
+    const second = buildMagePlayerSceneBlob({ visualizer: { shader: 'input("bass", 0); sphere(1);' } })
+    let finishOld!: () => void
+    let rejectOld!: (reason: Error) => void
+    const oldCompilation = new Promise<void>((resolve, reject) => { finishOld = resolve; rejectOld = reject })
+    const controller = buildMagePlayerController({
+      loadSceneBlob: vi.fn(scene => scene === first ? oldCompilation : undefined),
+      getAudioResponseCapabilities: vi.fn(() => capabilities('bass')),
+    })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const onChange = vi.fn()
+    const { rerender } = render(<MagePlayer sceneBlob={first} onAudioResponseCapabilitiesChange={onChange} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(first))
+    expect(controller.getAudioResponseCapabilities).not.toHaveBeenCalled()
+    rerender(<MagePlayer sceneBlob={second} onAudioResponseCapabilitiesChange={onChange} />)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: second, capabilities: capabilities('bass') }))
+    onChange.mockClear()
+
+    await act(async () => {
+      if (completion === 'resolves') finishOld()
+      else rejectOld(new Error('The old source failed to compile.'))
+    })
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(controller.getAudioResponseCapabilities).toHaveBeenCalledOnce()
+    expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeEnabled()
+  })
+
+  it.each(['stopped', 'blocked'] as const)('does not discover capabilities from a pending compilation after the scene is %s', async reason => {
+    const sceneKey = 239
+    const first = buildMagePlayerSceneBlob()
+    const second = buildMagePlayerSceneBlob({ visualizer: { shader: 'input("bass", 0); sphere(1);' } })
+    const changedSettings = { ...second, audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } }
+    for (const scene of [first, second, changedSettings]) recoveryKeys.add(sceneRecoveryKey(scene, sceneKey)!)
+    let finishCompilation!: () => void
+    const pendingCompilation = new Promise<void>(resolve => { finishCompilation = resolve })
+    const controller = buildMagePlayerController({
+      loadSceneBlob: vi.fn(scene => scene === second ? pendingCompilation : undefined),
+      getAudioResponseCapabilities: vi.fn(() => capabilities('size')),
+    })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const onChange = vi.fn()
+    const { rerender } = render(<MagePlayer sceneBlob={first} sceneKey={sceneKey} onAudioResponseCapabilitiesChange={onChange} />)
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: first, capabilities: capabilities('size') }))
+    rerender(<MagePlayer sceneBlob={second} sceneKey={sceneKey} onAudioResponseCapabilitiesChange={onChange} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    if (reason === 'stopped') {
+      fireEvent.click(screen.getByRole('button', { name: 'Playback options' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Stop this scene' }))
+    } else {
+      vi.spyOn(sceneAvailabilityStore, 'getSnapshot').mockReturnValue({
+        allowed: false, code: 'SCENE_DISABLED', message: 'This scene is temporarily unavailable.', checkedAt: 1,
+      })
+      vi.spyOn(sceneAvailabilityStore, 'isAllowed').mockReturnValue(false)
+      rerender(<MagePlayer sceneBlob={second} sceneKey={sceneKey} onAudioResponseCapabilitiesChange={onChange} />)
+    }
+    expect(controller.dispose).toHaveBeenCalledOnce()
+    expect(onChange).toHaveBeenLastCalledWith(null)
+    onChange.mockClear()
+
+    await act(async () => finishCompilation())
+    rerender(<MagePlayer sceneBlob={changedSettings} sceneKey={sceneKey} onAudioResponseCapabilitiesChange={onChange} />)
+
+    expect(onChange.mock.calls.every(([snapshot]) => snapshot === null)).toBe(true)
+    expect(controller.getAudioResponseCapabilities).toHaveBeenCalledOnce()
+    expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2)
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+    if (reason === 'stopped') expect(screen.getByRole('button', { name: 'Resume scene' })).toBeEnabled()
+    else expect(screen.getByText('This scene is temporarily unavailable.')).toBeInTheDocument()
+  })
+
+  it('does not create a renderer or discover capabilities for an initially blocked scene', () => {
+    vi.spyOn(sceneAvailabilityStore, 'getSnapshot').mockReturnValue({
+      allowed: false, code: 'SCENE_DISABLED', message: 'This scene is temporarily unavailable.', checkedAt: 1,
+    })
+    vi.spyOn(sceneAvailabilityStore, 'isAllowed').mockReturnValue(false)
+    const controller = buildMagePlayerController({ getAudioResponseCapabilities: vi.fn(() => capabilities('size')) })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const onChange = vi.fn()
+    const { container } = render(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} sceneKey={239} onAudioResponseCapabilitiesChange={onChange} />)
+
+    expect(screen.getByText('This scene is temporarily unavailable.')).toBeInTheDocument()
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(controller.loadSceneBlob).not.toHaveBeenCalled()
+    expect(controller.getAudioResponseCapabilities).not.toHaveBeenCalled()
+    expect(container.querySelector('iframe, canvas')).toBeNull()
+    expect(onChange.mock.calls.every(([snapshot]) => snapshot === null)).toBe(true)
   })
 
   it('updates response capabilities while an existing track keeps loading without rebuilding the scene', async () => {

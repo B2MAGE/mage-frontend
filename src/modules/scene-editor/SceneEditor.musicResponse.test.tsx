@@ -57,10 +57,10 @@ describe('creator music response workflow', () => {
     expect(screen.queryByRole('option', { name: 'Automatic beats' })).not.toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Input gain' })).toBeEnabled()
     const originalInputGain = getSceneEditorModel(draftScene()).intent.minimizing_factor
-    const untouchedMappings = normalizeAudioResponseConfig(draftScene().audioResponseConfig).config.mappings.slice(1)
     fireEvent.change(screen.getByRole('slider', { name: 'Input gain' }), { target: { value: '0.77' } })
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed' }), { target: { value: '0.6' } })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'mapped-v1')
+    expect(normalizeAudioResponseConfig(draftScene().audioResponseConfig).config.mappings.map(mapping => mapping.target)).toEqual(['size'])
     await user.selectOptions(await screen.findByRole('combobox', { name: 'Frequency focus' }), 'bass')
     fireEvent.change(screen.getByRole('slider', { name: 'Hit sensitivity' }), { target: { value: '1.7' } })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Follow' }), 'level')
@@ -69,14 +69,13 @@ describe('creator music response workflow', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response style' }), 'flowing')
     expect(draftScene()).toMatchObject({
       audioResponse: 'mapped-v1',
-      audioResponseConfig: { version: 1, sensitivity: 1.7, mappings: [{ target: 'size', source: 'bass-level', amount: 2.4, attack: 0.2, release: 1 }, ...untouchedMappings] },
+      audioResponseConfig: { version: 1, sensitivity: 1.7, mappings: [{ target: 'size', source: 'bass-level', amount: 2.4, attack: 0.2, release: 1 }] },
     })
     expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
     const edited = draftScene().audioResponseConfig
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Amount numeric value' }), { target: { value: '0' } })
     expect(draftScene().audioResponseConfig).toMatchObject({ mappings: [
       { target: 'size', source: 'bass-level', amount: 0, attack: 0.2, release: 1 },
-      ...untouchedMappings,
     ] })
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.click(screen.getByRole('button', { name: 'Motion' }))

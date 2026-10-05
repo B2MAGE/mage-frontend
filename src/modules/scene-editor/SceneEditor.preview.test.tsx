@@ -20,16 +20,17 @@ vi.mock('@modules/player', async (importOriginal) => {
   const capture = async () => 'data:image/png;base64,cHJldmlldw=='
   return {
     ...actual,
-    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, audioMode }: {
-      sceneBlob: unknown
-      audioMode?: string
-      simulatedBeat?: { enabled: boolean; bpm: number }
-      onCaptureFramePreviewChange?: (capture: (() => Promise<string | null>) | null) => void
-    }) => {
+    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, onAudioResponseCapabilitiesChange, audioMode }: import('@modules/player').MagePlayerProps) => {
       React.useEffect(() => {
         onCaptureFramePreviewChange?.(capture)
         return () => onCaptureFramePreviewChange?.(null)
       }, [onCaptureFramePreviewChange])
+      React.useEffect(() => {
+        onAudioResponseCapabilitiesChange?.(sceneBlob ? {
+          sceneBlob,
+          capabilities: { mode: 'mapped-v1', signals: ['bass-hit', 'mid-level'], targets: ['size'], supportedTargets: ['size'], unsupportedTargets: [], warnings: [] },
+        } : null)
+      }, [sceneBlob, onAudioResponseCapabilitiesChange])
       return <div data-testid="scene-preview" data-audio-mode={audioMode} data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
     },
   }
