@@ -6,13 +6,31 @@ Normal player and availability integration is merged and deployed. PP-I03 has be
 
 PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232) at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222) is **Done**. The owner accepted user-reported worker-test passes on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; collecting them remains in PP-I03 release verification. No independent mobile run is claimed.
 
-PP-I05 is merged through [PR #233](https://github.com/B2MAGE/mage-frontend/pull/233) and the fixed-report compatibility follow-up [PR #234](https://github.com/B2MAGE/mage-frontend/pull/234). The renderer, check service and normal frontend deployed from `9f1d50bc2886136999a963cb78770d035fdfeb08`; [issue #223](https://github.com/B2MAGE/mage-frontend/issues/223) is **Done**. The deployment evidence below supersedes I04 artifacts. Public custom rendering remains disabled. PP-I06 continues the player lifecycle work; PP-I03 retains the wider release decision.
+PP-I05 is merged through [PR #233](https://github.com/B2MAGE/mage-frontend/pull/233) and the fixed-report compatibility follow-up [PR #234](https://github.com/B2MAGE/mage-frontend/pull/234). The renderer, check service and normal frontend deployed from `9f1d50bc2886136999a963cb78770d035fdfeb08`; [issue #223](https://github.com/B2MAGE/mage-frontend/issues/223) is **Done**. The deployment evidence below supersedes I04 artifacts. Public custom rendering remains disabled. PP-I06 is now merged and deployed as recorded below; PP-I03 retains the wider release decision.
 
 Use the [browser/device checklist](custom-shader-release-checklist.md) and [result template](custom-shader-release-result.template.json) for the remaining runs. The recovery epic is complete; its closure does not approve arbitrary-source playback.
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
 
 ## Release verification — October 4, 2026
+
+### PP-I06 lifecycle deployment
+
+PR #235 merged at `e9a1649c8404d622b6278226b3d0f69ffec66716`; issue #224 is closed and Done. The parent and fixed-check service both deploy this exact commit. Public `/api/rendering-status` remains `CUSTOM_RENDERING_DISABLED`.
+
+| Artifact or check | Evidence |
+| --- | --- |
+| Renderer | `assets/renderer-B-hwXhYk.js`, 17,766,557 bytes; SHA-256 `a80024e47f8397872f0ba29da17cfc0f00085db85b8dd197d6f4efe334dfe08c` |
+| Hosting rollout | Existing stack completed old/new transition, compatible previous-parent check, new document switch and final single-asset configuration. Exact bytes, headers, paths/methods and parent frame policy passed. Old immutable artifacts retained for rollback; no additional AWS resource. |
+| Parent | Coolify `du6ejvta3fg8r0gt4e6z4z85`, finished at 2026-10-05 00:42Z; live entry `/assets/index-CaTn6c0-.js` verified. |
+| Fixed-check service | Coolify `p6nszckhrekb4a8bzelx49v6`, healthy at 00:40Z; all 31 exact HTTP checks passed. |
+| Worker smoke | Deployed fixed-worker-1: 11/11 passed, foreground, maximum parent gap 63.6ms, finite-loop termination 2004.2ms. |
+| Normal app/music | Live Watch scene15 loaded a local test rhythm and resumed the same track after pause-all. Fixed music page switched/captured, later stopped safely in the in-app browser; retry restored playback and capture, then deliberate Stop released the player. Cause of that one interruption is unconfirmed and retained for I03. |
+| Regression | 1,936 tests / 141 files; lint, TypeScript/app, renderer and all three check-page builds passed before merge. |
+
+Evidence directory: `.local/deployments/pp-i06-player-lifecycle-e9a1649/`, including frozen approved files, final HTTP reports, worker JSON and screenshots. These are focused deployment checks, not the complete I03 browser/device and normal-app acceptance matrix. No backend was deployed and custom execution remains locked.
+
+
 
 ### PP-I04 compiler-worker deployment
 

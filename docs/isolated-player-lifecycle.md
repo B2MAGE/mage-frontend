@@ -101,10 +101,7 @@ thumbnail, resuming, and changing Selective frequency focus/amount succeeded.
 These were unsaved local editor changes; no scene was published or altered in the
 database. This walkthrough is narrower than the full device/release matrix.
 
-The compatible PP-I06 production renderer build is
-`assets/renderer-B-hwXhYk.js`; it has **not** replaced the deployed PP-I05 renderer
-`assets/renderer-C_SgAeRr.js`. No hosting, backend or release-gate change is part of
-the local I06 implementation.
+PP-I06 merged through PR #235 at `e9a1649c8404d622b6278226b3d0f69ffec66716`. The normal frontend, fixed-check service and compatible renderer `assets/renderer-B-hwXhYk.js` are deployed. The final single-asset hosting policy passed exact-byte/header/route verification. No backend or public release-gate change was made. See the [release record](isolated-renderer-release.md).
 
 ## Remaining verification
 
