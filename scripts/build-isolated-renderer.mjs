@@ -104,6 +104,6 @@ export async function buildIsolatedRenderer({ production = false, diagnostics = 
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  if (process.argv.some(argument => argument.includes('diagnostic'))) throw new Error('Use the separate local diagnostics build.')
+  if (process.argv.slice(2).some(argument => argument !== '--production')) throw new Error('Unknown renderer build option. Local diagnostics use a separate build.')
   await buildIsolatedRenderer({ production: process.argv.includes('--production') })
 }
