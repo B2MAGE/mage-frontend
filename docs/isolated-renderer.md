@@ -103,9 +103,14 @@ The same fixture checks thrown source, invalid syntax, cancellation after actual
 loop entry, and fresh globals across repeated compilation jobs. Run its automated
 checks with `npm run worker-check:test`; these also run before `npm test`.
 Reports retain exact browser information and bounded lifecycle/timing evidence;
-hidden or cancelled runs cannot pass. These checks do not test network denial,
-GPU behavior or full application acceptance. Historical window-based security
-probes do not become evidence for workers merely by running against this build.
+hidden or cancelled runs cannot pass. The original 11-check `fixed-worker-1`
+fixture did not test network denial. The deployed I03 `fixed-worker-2` update
+adds eight boundary observations, separating compiler probes from a fixed 600 ms
+policy worker and requiring independent canary positive controls. CacheStorage
+`NOT_EXPOSED` records an absent API, not a denied opening. See the [current
+deployment evidence](isolated-renderer-release.md#i03-verification-fixture-deployment--october-5-2026-utc).
+Neither version establishes GPU behavior or full application acceptance;
+historical window-based security probes remain historical.
 
 Public custom-shader gates remain off. PP-I04 merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232)
 at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222)
@@ -426,7 +431,8 @@ self-navigation; use the separate security check below for those probes.
 
 `npm run security-check:build` builds the fixed security page into
 `dist-player-check/security/`. Build the music page first: its build replaces the
-parent output directory. The check Dockerfile builds them in that order.
+parent output directory. The check Dockerfile builds music, security and worker
+pages in that order.
 
 The production entry is fixed to
 `https://mage.peterbucci.com/player-check/security/`, with no query string or
@@ -441,10 +447,10 @@ stylesheet, both with integrity metadata. Its strict parent CSP allows the exact
 renderer entry and only the same-origin canary registration/results endpoints.
 It does not enable inline scripts, dynamic evaluation, workers, broad network
 access or additional renderer sandbox flags. Account, API client and rendering
-engine modules cannot enter its build. The production renderer artifact and its
-allowed parent remain unchanged.
+engine modules cannot enter its build. The matching renderer includes trusted
+fixed recovery actions; its allowed parent and sandbox restrictions remain unchanged.
 
-The check service loads the two bounded build manifests, verifies every served
+The check service loads the three bounded build manifests, verifies every served
 file and HTML integrity reference at startup, and serves only their exact paths.
 No request path reaches the filesystem. The security fixture's dummy canary is
 limited to `/player-check/__isolated-security/`; registration requires the exact
@@ -455,8 +461,12 @@ record cookies, tokens, request bodies, scene source or account data, and it has
 no backend credentials or account API calls. HTTP response policies include
 `no-store`, `noindex`, `nosniff`, `no-referrer` and denied frame ancestors.
 
-Run **Check browser boundaries**, **Check failure recovery**, then the separately
-selected **Check a bounded CPU stall**. Expected result counts are 17, 8 and 2.
+Run **Check current renderer recovery**: seven checks in
+`fixed-security-3` / schema 3, identified as `fixed-renderer-recovery-1` and
+`current-renderer-recovery`. The old boundary, failure and finite-stall groups
+(17, 8 and 2 checks) remain historical; use `/player-check/worker/` for current
+worker lifetime and boundary evidence. An unsupported context-loss action is
+non-passing.
 Reports retain the latest 24 runs in this page's memory, recording cancelled and
 hidden runs without accepting them as passing. **Download results JSON** saves
 the sanitized report; **Show report JSON** provides selectable text when browser
@@ -468,8 +478,9 @@ Before updating the existing Coolify check application, preserve its old image,
 deployment reference and built artifact. Keep its existing `/player-check/` path
 routing; do not change the normal app, backend or CloudFront configuration.
 Validate with `npm run security-check:test`, `npm run test:isolation-security`,
-both check builds and the check container's HTTP smoke tests. After deployment,
-inspect actual response headers and run all three groups in a real browser.
+all three check builds and the check container's HTTP smoke tests. After deployment,
+inspect actual response headers and run the current recovery and worker groups
+in the recorded browser/device.
 Confirm the original music check and normal MAGE pages still work. If the helper
 fails, restore the previous check image; the public custom-release gate stays
 off throughout. Record the observed helper deployment and browser results in the

@@ -1,8 +1,8 @@
 # PP-I03 integration and release record
 
-## Status — October 4, 2026
+## Status — October 5, 2026 UTC
 
-Normal player and availability integration is merged and deployed. PP-I03 has been reopened for the outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
+Normal player and availability integration is merged and deployed. PP-I03 remains **To Verify** for outstanding public release verification. The requested support target is Chrome, Edge, Firefox and Safari, including mobile. The production custom-rendering release gate and saved playback control remain **off**; neither completed implementation nor fixed-fixture checks approve untested browsers or normal-app paths.
 
 PP-I04's worker renderer and fixed verification page are deployed from `eede2567b455bd7cf9931d7c4718ed7dd5f7a893`; final deployment verification passed. The story merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232) at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222) is **Done**. The owner accepted user-reported worker-test passes on Pixel / Chrome / Android 17 and Apple / Safari / iOS (described as the latest iOS, exact version unspecified). Exact hardware models, browser versions and mobile JSON were not supplied; collecting them remains in PP-I03 release verification. No independent mobile run is claimed.
 
@@ -12,9 +12,23 @@ Use the [browser/device checklist](custom-shader-release-checklist.md) and [resu
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
 
-## Current I03 verification work — October 4, 2026
+## I03 verification fixture deployment — October 5, 2026 UTC
 
-Branch `pp-i03-worker-release-verification` adds current worker-boundary checks and trusted renderer-recovery checks to the existing two check pages. These additions are local and have **not** replaced the deployed fixed-worker-1/security pages. No public path or AWS resource was added.
+The renderer, check service and normal frontend now serve `5f5295eb42c95f3aa119454118cec9bd01c9b25c` from `pp-i03-worker-release-verification`. The existing worker and security pages contain the current boundary and trusted recovery fixtures. No public path or AWS resource was added. No backend was deployed; both custom-playback controls remain unchanged and public rendering status confirms `enabled: false`.
+
+| Artifact or check | Evidence |
+| --- | --- |
+| Renderer | `assets/renderer-CUTFEClb.js`, 17,775,923 bytes; SHA-256 `3a76393485a059001acc423b20a6369d0bde50d308daaee38bb5ef060ac03677`. |
+| Hosting rollout | Old/new-hash transition, document switch and final single-hash stack update reached `UPDATE_COMPLETE`; previous-parent scene15 playback passed before parent deployment. AWS final verification confirmed exact headers/hashes, entry document and forbidden paths. The matching frozen production HTTP verifier passed at `2026-10-05T02:11:04Z`. |
+| Check service | Coolify `j13c10tq2szw9ygcyqzun3la`, Finished and healthy at `2026-10-05T02:02:16Z`. All **31 exact deployed HTTP checks passed**, including current files/headers, restricted routes and fetch/XHR/import-script canary positive controls. The reviewed LF Docker image is `sha256:b078de238e84b426c6380dc29dc3fd7658cd711c743405bb6d73f8b96b1b1dbf`; its separate offline HTTP smoke also passed 31/31. |
+| Normal frontend | Coolify `hr4nqk5zyc2eou5wav27nwbw`, Finished; rolling update completed at `2026-10-05T02:03:43Z`. Live HTML references `/assets/index-BLl5gpEc.js` and `/assets/index-DrNYC_gP.css`; response `frame-src` is exactly `https://d2wwpgc7sgvmnm.cloudfront.net/index.html`. Watch scene15 rendered with the updated parent and child. |
+| Live worker fixture | Windows in-app Chromium 154: **19/19 passed**, schema 2 / `fixed-worker-2`, maximum parent gap 62.9ms. Positive-control counters recorded three requests; worker counters recorded zero. CacheStorage was explicitly `NOT_EXPOSED`, not an observed denied opening. |
+| Live recovery fixture | Same browser: **7/7 passed**, schema 3 / `fixed-security-3`, `fixed-renderer-recovery-1`, coverage `current-renderer-recovery`. Actual context loss passed; no case was unsupported. Historical security groups remain historical. |
+| Live fixed music | Selective scene switching preserved advancing audio from 17.1 to 17.4 seconds; Original reload preserved the paused 25.8-second position. A 320 × 180 capture succeeded, Resume advanced to 25.9 seconds, and Stop cleared audio and the frame. |
+
+Frozen files, HTTP reports, screenshots and browser exports are under `.local/deployments/pp-i03-worker-verification-5f5295e/`, including `live-worker-report.json`, `live-recovery-report.json`, `production-final-http-verification.json` and `aws-final-verification.txt`. These are deployed fixture and focused Watch observations, not the full browser/device or normal-application matrix. **PP-I03 remains To Verify; public release is NOT APPROVED.**
+
+### Local preparation — October 4, 2026
 
 - Local in-app Chromium 154 / Windows: **19/19 worker checks passed**, maximum parent timer gap 62.8ms. Independent canary control was observed, fetch/XHR/importScripts requests were denied with zero canary requests, IndexedDB opening was denied, and CacheStorage was explicitly `NOT_EXPOSED`. That last observation is not a denied-open claim. An earlier 17/19 report is preserved; it exposed that the fixture failed to distinguish absent CacheStorage from an unusable exposed API.
 - Current trusted recovery: **7/7 passed**, including actual context-loss event, private-port rejection/flood removal, ignored window spoof with continued progress, missing readiness, observed iframe reload and a fresh healthy retry. Report schema3/`fixed-security-3`, group `recovery`, coverage `current-renderer-recovery`; historical groups remain historical.
@@ -23,7 +37,7 @@ Branch `pp-i03-worker-release-verification` adds current worker-boundary checks 
 - Full frontend regression: **1,945 tests /142 files passed**, plus **43 worker fixture tests**, **27 recovery/UI tests**, **23 report/HTTP policy tests**, and **eight hosting tests**. Lint, TypeScript/application, production renderer, and all three check-page builds passed. The music-page build allowlist was updated for the exact new fixed-recovery protocol dependency; no directory-wide exception was added.
 - Independent source review found no confirmed blocker in fixed activation, envelopes, attempted-call/positive-control evidence, denial classifications or hosting restrictions.
 
-Reports and screenshots: `.local/pp-i03-worker-acceptance/`. Backend evidence: `../mage-backend-submission-limits/.local/pp-i03-backend-verification-20261005/`. The exact requested Chrome/Edge/Firefox/Safari and mobile matrix, remaining controlled custom/global-disable walkthrough, deployment of these new fixtures, and final release decision remain **NOT COMPLETE / NOT APPROVED**. A local in-app Chromium result does not approve the other browsers. Both public release controls remain unchanged.
+Reports and screenshots: `.local/pp-i03-worker-acceptance/`. Backend evidence: `../mage-backend-submission-limits/.local/pp-i03-backend-verification-20261005/`. The exact requested Chrome/Edge/Firefox/Safari and mobile matrix, remaining controlled custom/global-disable walkthrough, and final release decision remain **NOT COMPLETE / NOT APPROVED**. Local or deployed in-app Chromium results do not approve the other browsers. Both public release controls remain unchanged.
 
 ## Release verification — October 4, 2026
 
