@@ -17,6 +17,7 @@ describe('Builder editor document helpers', () => {
     expect(parseSceneDocument(document)).toEqual(document)
     expect(document).toMatchObject({
       kind: 'builder',
+      parameters: { scale: 1 },
       objects: [{ id: 'object-1', name: 'Sphere 1', operation: { type: 'sphere', radius: 1 } }],
     })
     expect(JSON.stringify(document)).not.toContain('shader')
@@ -38,13 +39,13 @@ describe('Builder editor document helpers', () => {
   })
 
   it('keeps objects while applying a starting style and scene-wide controls', () => {
-    const original = updateBuilderObject(createBuilderScene(), 'object-1', object => ({ ...object, name: 'Hero' }))
+    const original = { ...updateBuilderObject(createBuilderScene(), 'object-1', object => ({ ...object, name: 'Hero' })), parameters: { scale: 3, speed: 1 } }
     const styled = applyBuilderTemplate(original, 'reaction-rings-v1')
     const model = getBuilderEditorModel(styled)
     const changed = changeBuilderBranch(styled, 'intent', { ...model.intent, autoRotate: false, fov: 90 })
     expect(changed.objects).toEqual(original.objects)
+    expect(changed.parameters.scale).toBe(3)
     expect(changed.settings.camera).toMatchObject({ autoRotate: false, fov: 90 })
     expect(changed.kind).toBe('builder')
   })
 })
-

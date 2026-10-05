@@ -59,6 +59,15 @@ describe('Scene Builder object editor', () => {
     await user.click(screen.getByRole('button', { name: 'Camera' }))
     fireEvent.change(screen.getByLabelText('Camera Position X'), { target: { value: '8' } })
     expect(preview()).toMatchObject({ kind: 'builder', settings: { controls: { position0: { x: 8 } } } })
+
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    const beforeCustomCode = preview()
+    await user.click(screen.getByRole('button', { name: 'Custom Code' }))
+    expect(screen.getByLabelText('Custom Shader')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(preview()).toEqual(beforeCustomCode)
+    expect(screen.getByText('Backdrop')).toBeInTheDocument()
   })
 
   it('opens a saved Builder document directly and retains it in raw JSON', async () => {

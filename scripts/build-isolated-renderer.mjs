@@ -24,11 +24,15 @@ export async function buildIsolatedRenderer({ production = false, diagnostics = 
     `${sourcePrefix}modules/player/policy/renderBudget.ts`,
     `${sourcePrefix}modules/player/policy/sceneValidation.ts`,
     `${sourcePrefix}modules/player/templates/resolveScene.ts`,
+    `${sourcePrefix}modules/player/templates/builderCompiler.ts`,
+    `${sourcePrefix}modules/player/templates/builderSchema.ts`,
     `${sourcePrefix}modules/player/templates/sceneContract.ts`,
     `${sourcePrefix}modules/player/templates/templateSettings.ts`,
     `${sourcePrefix}modules/player/templates/templateRegistry.ts`,
     `${sourcePrefix}modules/player/templates/versions/v1/definitions.ts`,
     `${rootPrefix}contracts/scenes/scene-limits.v1.json`,
+    `${rootPrefix}contracts/scenes/scene-v1.schema.json`,
+    `${rootPrefix}contracts/scenes/builder-rendering.v1.json`,
   ])
   const diagnosticFiles = [
     `${sourcePrefix}modules/player/isolation/fixedRecoveryProtocol.ts`,

@@ -105,6 +105,7 @@ export function SceneEditorShell({
     handleAddBuilderObject,
     handleDuplicateBuilderObject,
     handleRemoveBuilderObject,
+    handleRestoreBuilder,
     handleSwitchBuilderToCustom,
     handleSwitchToBuilder,
     handleUpdateBuilderObject,
@@ -564,7 +565,7 @@ export function SceneEditorShell({
             if (isBuilder) return;
             if (isTemplate && isTemplateSourceVisible) setIsTemplateSourceVisible(false);
             else if (isTemplate) handleSwitchToBuilder();
-            else setIsReplacementPending(true);
+            else if (!handleRestoreBuilder()) setIsReplacementPending(true);
           }}>Builder</button>
         <button className="scene-secondary-button" type="button" aria-pressed={isCustomCreation || isTemplateSourceVisible}
           onClick={() => {
@@ -573,14 +574,14 @@ export function SceneEditorShell({
           }} aria-describedby="advanced-creation-hint">Custom Code</button>
       </div>
       <p className="field-hint" id="advanced-creation-hint">{isBuilder
-        ? 'Builder keeps shapes and scene settings editable. Custom Code replaces the objects with generated shader source.'
+        ? 'Builder keeps shapes and scene settings editable. Custom Code generates editable shader source; switching straight back restores these objects.'
         : isTemplate ? 'Choose Builder to turn this template into editable objects, or Custom Code to edit its shader source.'
           : 'This scene uses custom shader code. Switching to Builder replaces the code with editable objects.'}</p>
       {isCustomCreation && isReplacementPending ? (
         <section role="alertdialog" aria-modal="false" aria-labelledby="replace-custom-title" aria-describedby="replace-custom-description"
           onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); } }}>
-          <h3 id="replace-custom-title">Replace this custom code?</h3>
-          <p className="field-hint" id="replace-custom-description">This replaces the shader code with an editable Builder object and the selected starting style. Your name, description, and tags stay.</p>
+          <h3 id="replace-custom-title">Replace custom code with Builder?</h3>
+          <p className="field-hint" id="replace-custom-description">Choose a starting style for a new editable Builder scene. This removes the current shader code. Your name, description, and tags stay.</p>
           <SelectField id="replacement-template" label="Start from a template" value={replacementTemplateId}
             options={listSceneTemplates().map(template => ({ value: template.templateId, label: template.label }))}
             onChange={setReplacementTemplateId} />
@@ -589,7 +590,7 @@ export function SceneEditorShell({
               handleSwitchToBuilder(replacementTemplateId as TemplateId);
               setIsReplacementPending(false);
               setIsTemplateSourceVisible(false);
-            }}>Replace with Builder</button>
+            }}>Create Builder scene</button>
             <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
           </div>
         </section>

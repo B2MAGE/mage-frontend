@@ -67,7 +67,7 @@ export function createBuilderScene(templateId: TemplateId = 'embedded-scene-0'):
     kind: 'builder',
     builderVersion: 1,
     objects: [createBuilderObject('sphere')],
-    parameters: template.parameters,
+    parameters: { ...template.parameters, scale: 1 },
     settings: template.settings,
   })
   if (document.kind !== 'builder') throw new Error('A Builder scene is required.')
@@ -80,7 +80,7 @@ export function createBuilderSceneFromSettings(source: Pick<BuilderSceneDocument
     kind: 'builder',
     builderVersion: 1,
     objects: [createBuilderObject('sphere')],
-    parameters: source.parameters,
+    parameters: { ...source.parameters, scale: 1 },
     settings: source.settings,
   })
   if (document.kind !== 'builder') throw new Error('A Builder scene is required.')
@@ -120,7 +120,7 @@ export function changeBuilderValue(document: BuilderSceneDocument, path: Templat
 
 export function applyBuilderTemplate(document: BuilderSceneDocument, templateId: TemplateId) {
   const template = createTemplateScene(templateId)
-  return { ...document, parameters: template.parameters, settings: template.settings }
+  return { ...document, parameters: { ...template.parameters, scale: document.parameters.scale }, settings: template.settings }
 }
 
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape) {

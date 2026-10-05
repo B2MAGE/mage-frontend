@@ -26,7 +26,7 @@ import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
 import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
-import { createCustomSceneFromTemplate, readTemplateShaderSource, parseSceneImport, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderObject, type TemplateId, type TemplateSceneDocument } from '@modules/player'
+import { createCustomSceneFromTemplate, readTemplateShaderSource, parseSceneImport, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderObject, type BuilderSceneDocument, type TemplateId, type TemplateSceneDocument } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateBranch, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { addBuilderObject, applyBuilderTemplate, changeBuilderBranch, changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, createBuilderSceneFromSettings, duplicateBuilderObject, getBuilderEditorModel, getBuilderEditorSceneData, isBuilderEditorDocument, removeBuilderObject, updateBuilderObject, type BuilderShape } from './builderEditor'
@@ -71,6 +71,7 @@ export function useSceneEditorState({
     prettyPrintEditorSceneData(initialState?.sceneData ?? createTemplateScene()),
   )
   const [pendingImport, setPendingImport] = useState<{ document: TemplateSceneDocument; previousText: string } | null>(null)
+  const builderRoundTripRef = useRef<{ document: BuilderSceneDocument; customSignature: string } | null>(null)
   // A temporarily invalid template draft must not replace the custom text that
   // Cancel restores when that draft becomes valid again.
   const templateImportPreviousTextRef = useRef<string | null>(null)
@@ -305,11 +306,23 @@ export function useSceneEditorState({
     setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
   }
 
+  function handleRestoreBuilder() {
+    const roundTrip = builderRoundTripRef.current
+    if (!roundTrip || isTemplate || isBuilder || roundTrip.customSignature !== JSON.stringify(sceneData)) return false
+    const next = structuredClone(roundTrip.document)
+    builderRoundTripRef.current = null
+    applySceneData(next, true)
+    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
+    return true
+  }
+
   function handleSwitchBuilderToCustom() {
     if (!builderDocument) return
     try {
       const compiled = resolveSceneForPlayback(builderDocument).engineScene
-      applySceneData(readEditableSceneData({ schemaVersion: 1, kind: 'custom', scene: compiled }), true)
+      const custom = readEditableSceneData({ schemaVersion: 1, kind: 'custom', scene: compiled })
+      builderRoundTripRef.current = { document: structuredClone(builderDocument), customSignature: JSON.stringify(custom) }
+      applySceneData(custom, true)
     } catch (error) {
       setErrors(current => ({ ...current, sceneData: describeSceneValidationError(error),
         form: 'Fix the Builder scene before switching to Custom Code.' }))
@@ -457,6 +470,7 @@ export function useSceneEditorState({
     handleAddBuilderObject,
     handleDuplicateBuilderObject,
     handleRemoveBuilderObject,
+    handleRestoreBuilder,
     handleSwitchBuilderToCustom,
     handleSwitchToBuilder,
     handleUpdateBuilderObject,

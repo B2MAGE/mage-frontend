@@ -38,7 +38,7 @@ describe('MagePlayer', () => {
     expect(screen.getByText('Loading scene preview.')).toBeInTheDocument()
     completeSecond()
     await waitFor(() => expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument())
-    expect(captureChanged).toHaveBeenCalledWith(expect.any(Function))
+    await waitFor(() => expect(captureChanged).toHaveBeenCalledWith(expect.any(Function)))
     expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 

@@ -297,7 +297,7 @@ describe('custom repair and explicit template replacement', () => {
     expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.click(screen.getByRole('button', { name: 'Builder' }))
-    await user.click(screen.getByRole('button', { name: 'Replace with Builder' }))
+    await user.click(screen.getByRole('button', { name: 'Create Builder scene' }))
     expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('Sphere 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()

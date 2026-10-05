@@ -311,6 +311,7 @@ function MagePlayerRenderer({
   const completedTrackIdRef = useRef<string | null>(null)
   const hasConfiguredSimulatedBeatRef = useRef(false)
   const appliedSceneRef = useRef<{ player: MagePlayerController; identity: string | null; sceneBlob: MageSceneBlob; recoverySceneBlob?: MageSceneBlob } | null>(null)
+  const pendingSceneLoadRef = useRef<{ player: MagePlayerController; sceneBlob: MageSceneBlob } | null>(null)
   const pendingAudioRef = useRef<{ player: MagePlayerController; trackId: string; result: Promise<MagePlayerAudioState> } | null>(null)
   const audioGenerationRef = useRef(0)
   const playlistLoadAbortRef = useRef<AbortController | null>(null)
@@ -471,6 +472,7 @@ function MagePlayerRenderer({
 
           playerRef.current = nextPlayer
           appliedSceneRef.current = null
+          pendingSceneLoadRef.current = null
           loadedTrackIdRef.current = null
           completedTrackIdRef.current = null
           pendingAudioRef.current = null
@@ -499,6 +501,7 @@ function MagePlayerRenderer({
       startup.abort()
       window.cancelAnimationFrame(animationFrameId)
       playerRef.current = null
+      pendingSceneLoadRef.current = null
       capabilitiesCallbackRef.current?.(null)
       diagnosticsCallbackRef.current?.(null)
       disposePlayer()
@@ -509,6 +512,7 @@ function MagePlayerRenderer({
     if (availabilityPending) return
     if (!sceneBlob) {
       appliedSceneRef.current = null
+      pendingSceneLoadRef.current = null
       loadedTrackIdRef.current = null
       completedTrackIdRef.current = null
       return
@@ -519,7 +523,8 @@ function MagePlayerRenderer({
     if (!player || player.getStoppedRecoveryKey?.()) {
       return
     }
-    if (appliedSceneRef.current?.player === player && appliedSceneRef.current.identity === playbackIdentity && appliedSceneRef.current.sceneBlob === sceneBlob
+    if (pendingSceneLoadRef.current?.player !== player
+      && appliedSceneRef.current?.player === player && appliedSceneRef.current.identity === playbackIdentity && appliedSceneRef.current.sceneBlob === sceneBlob
       && appliedSceneRef.current.recoverySceneBlob === recoverySceneBlob) return
 
     let isCancelled = false
@@ -531,7 +536,7 @@ function MagePlayerRenderer({
           && appliedSceneRef.current.identity === playbackIdentity
         // Older artwork-only adapters retain the response API. They may reuse a
         // scene only for response edits, never silently ignore another setting.
-        const isLiveUpdate = sameStructure && (typeof player.updateSceneSettings === 'function'
+        const isLiveUpdate = pendingSceneLoadRef.current?.player !== player && sameStructure && (typeof player.updateSceneSettings === 'function'
           || JSON.stringify(extractLiveSceneSettings(appliedSceneRef.current!.sceneBlob))
             === JSON.stringify(extractLiveSceneSettings(sceneBlob)))
         if (isLiveUpdate && player.updateSceneSettings) {
@@ -545,9 +550,15 @@ function MagePlayerRenderer({
           )
           player.updateRecoveryIdentity?.(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
         } else {
-          if (recoverySceneBlob !== undefined) await player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
-          else if (sceneKey === undefined) await player.loadSceneBlob(sceneBlob)
-          else await player.loadSceneBlob(sceneBlob, { sceneKey })
+          const pendingSceneLoad = { player, sceneBlob }
+          pendingSceneLoadRef.current = pendingSceneLoad
+          try {
+            if (recoverySceneBlob !== undefined) await player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
+            else if (sceneKey === undefined) await player.loadSceneBlob(sceneBlob)
+            else await player.loadSceneBlob(sceneBlob, { sceneKey })
+          } finally {
+            if (pendingSceneLoadRef.current === pendingSceneLoad) pendingSceneLoadRef.current = null
+          }
         }
         if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) return
         appliedSceneRef.current = { player, identity: playbackIdentity, sceneBlob, recoverySceneBlob }
