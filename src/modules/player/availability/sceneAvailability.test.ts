@@ -103,10 +103,9 @@ describe('shared live scene availability', () => {
     expect(store.isAllowed('template:47')).toBe(false)
   })
 
-  it('keeps builder drafts unavailable even with custom playback enabled', async () => {
+  it('allows validated builder drafts without consulting the custom playback switch', async () => {
     store.subscribe('draft-builder', vi.fn())
-    expect(await store.check('draft-builder')).toMatchObject({ allowed: false, code: 'BUILDER_RENDERING_UNAVAILABLE',
-      message: 'Builder scene playback is not available yet.' })
+    expect(await store.check('draft-builder')).toMatchObject({ allowed: true, code: 'AVAILABLE', message: '' })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

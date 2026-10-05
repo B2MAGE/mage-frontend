@@ -73,7 +73,7 @@ test('normalizer rejects malformed output and independently clamps supplied comp
     { ...artifact, frag: artifact.frag.replace('MAX_ITERATIONS = 200', 'MAX_ITERATIONS = limit') },
     { ...artifact, frag: artifact.frag + '\nconst int MAX_ITERATIONS = 999;' },
     { ...artifact, vert: 'x'.repeat(65537) },
-    { ...artifact, uniforms: Array(65).fill(artifact.uniforms[0]) },
+    { ...artifact, uniforms: Array(81).fill(artifact.uniforms[0]) },
   ]
   for (const value of invalid) assert.throws(() => normalizeCompiledShader(value), /Invalid compiled/)
   let reads = 0

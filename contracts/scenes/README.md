@@ -5,7 +5,9 @@
 SB-01 adds `kind: "builder"` with explicit `builderVersion: 1`. See
 [the Builder format](builder-v1.md) for stable object IDs, the closed operation
 catalog, transforms, materials, property bindings, limits, version policy and
-the storage-versus-rendering delivery boundary. The same shared schema and
+the storage-versus-rendering delivery boundary. SB-02 adds the versioned
+`builder-rendering.v1.json` workload policy and trusted compilation inside the
+isolated player. The same shared schema and
 fixtures cover Builder, template and custom documents; a Builder document is
 never treated as custom source.
 

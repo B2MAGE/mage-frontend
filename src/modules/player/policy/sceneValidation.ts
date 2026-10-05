@@ -224,9 +224,7 @@ export function validateSceneForStorage(value: unknown, options: { allowLegacyRa
 
 /** A storable format is not necessarily supported by the current renderer. */
 export function validateSceneForPlayback(value: unknown, options: { allowLegacyRaw?: boolean } = {}): PlayableSceneDocument {
-  const document = validateSceneForStorage(value, options)
-  if (document.kind === 'builder') invalid('sceneData.kind', 'Builder scene playback is not available yet.')
-  return document
+  return validateSceneForStorage(value, options)
 }
 
 /** A small bounded JSON reader retains duplicate-key detection that JSON.parse loses. */

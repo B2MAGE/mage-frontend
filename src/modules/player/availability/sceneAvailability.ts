@@ -40,7 +40,7 @@ const snapshot = (code: SceneAvailabilityCode, checkedAt: number | null = null):
 const checking = snapshot('CHECKING')
 const unavailable = snapshot('STATUS_UNAVAILABLE')
 const localTemplate = snapshot('AVAILABLE')
-const localBuilder = snapshot('BUILDER_RENDERING_UNAVAILABLE')
+const localBuilder = snapshot('AVAILABLE')
 
 function sceneId(target: SceneAvailabilityTarget): number | null {
   const id = typeof target === 'number' ? target
