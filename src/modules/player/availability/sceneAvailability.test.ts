@@ -103,7 +103,14 @@ describe('shared live scene availability', () => {
     expect(store.isAllowed('template:47')).toBe(false)
   })
 
-  it.each(['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'SCENE_UPGRADE_REQUIRED', 'CUSTOM_RENDERING_DISABLED'])('respects saved template denial %s without upgrading draft replacements', async code => {
+  it('keeps builder drafts unavailable even with custom playback enabled', async () => {
+    store.subscribe('draft-builder', vi.fn())
+    expect(await store.check('draft-builder')).toMatchObject({ allowed: false, code: 'BUILDER_RENDERING_UNAVAILABLE',
+      message: 'Builder scene playback is not available yet.' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'SCENE_UPGRADE_REQUIRED', 'BUILDER_RENDERING_UNAVAILABLE', 'CUSTOM_RENDERING_DISABLED'])('respects saved template denial %s without upgrading draft replacements', async code => {
     fetchMock.mockResolvedValue(json([scene(47, code)]))
     expect(await store.check('template:47')).toMatchObject({ allowed: false, code })
     expect(fetchMock).toHaveBeenCalledTimes(1)

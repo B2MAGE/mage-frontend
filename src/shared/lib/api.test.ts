@@ -65,6 +65,14 @@ describe('scene availability', () => {
     createdAt: '2026-10-03T00:00:00Z', thumbnailRef: '/signal.png', description: 'Soft movement.',
   }
 
+  it('retains builder identity and a clear unavailable status without synthesizing source', () => {
+    expect(normalizeSceneListItem({ ...scene, sceneMode: 'builder-v1', sceneData: null,
+      availability: { ...availability, code: 'BUILDER_RENDERING_UNAVAILABLE', message: 'Internal reason' } }))
+      .toMatchObject({ sceneMode: 'builder-v1', sceneData: null, availability: {
+        available: false, code: 'BUILDER_RENDERING_UNAVAILABLE', message: 'Builder scene playback is not available yet.',
+      } })
+  })
+
   it('keeps disabled scene metadata without manufacturing playable source', () => {
     expect(normalizeSceneListItem({ ...scene, sceneData: null, availability })).toMatchObject({
       ...scene, sceneData: null, availability,

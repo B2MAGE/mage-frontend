@@ -5,6 +5,13 @@ import { resolveSceneForPlayback } from '../templates/resolveScene'
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 
 describe('validated scene availability targets', () => {
+  it('keeps builder drafts unavailable and saved builders on status checks without custom permission', () => {
+    const builder = { schemaVersion: 1, kind: 'builder', builderVersion: 1, objects: [] }
+    expect(availabilityTarget(undefined, builder)).toBe('draft-builder')
+    expect(availabilityTarget(47, builder)).toBe('status:47')
+    expect(() => resolveSceneForPlayback(builder)).toThrow('Builder scene playback is not available yet')
+  })
+
   it('recognizes only a complete valid template contract and a host-supplied saved ID', () => {
     expect(availabilityTarget(undefined, template)).toBe('draft-template')
     expect(availabilityTarget('47', template)).toBe('template:47')

@@ -1,5 +1,5 @@
 import policy from '../../../../contracts/scenes/scene-limits.v1.json'
-import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type JsonRecord, type JsonValue, type SceneDocument } from '../templates/sceneContract'
+import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type JsonRecord, type JsonValue, type SceneDocument, type PlayableSceneDocument } from '../templates/sceneContract'
 
 /** Exact PP-V01 policy copy; bounds apply to data, never establish source trust. */
 type Immutable<T> = T extends object ? { readonly [K in keyof T]: Immutable<T[K]> } : T
@@ -201,7 +201,7 @@ export function validateSceneDocument(value: unknown): SceneDocument {
     const safe = /^scene(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])*$/.test(path)
     invalid(safe ? `sceneData${path.slice(5)}` : 'sceneData', delimiter >= 0 ? error.message.slice(delimiter + 2) : 'Unsupported scene document.')
   }
-  boundedJson(document) // Template defaults also count toward the stored budget.
+  boundedJson(document) // Materialized defaults also count toward the stored budget.
   if (document.kind === 'custom') {
     const path = 'sceneData.scene'
     boundedJson(document.scene, { ...sceneBudget, path })
@@ -216,10 +216,17 @@ export function validateSceneDocument(value: unknown): SceneDocument {
 }
 
 /** Legacy acceptance is compatibility only; the resulting custom label grants no execution permission. */
-export function validateSceneForPlayback(value: unknown, options: { allowLegacyRaw?: boolean } = {}): SceneDocument {
+export function validateSceneForStorage(value: unknown, options: { allowLegacyRaw?: boolean } = {}): SceneDocument {
   const original = boundedJson(value)
   return validateSceneDocument(hasSceneDocumentMarkers(original) || options.allowLegacyRaw === false
     ? original : { schemaVersion: 1, kind: 'custom', scene: original })
+}
+
+/** A storable format is not necessarily supported by the current renderer. */
+export function validateSceneForPlayback(value: unknown, options: { allowLegacyRaw?: boolean } = {}): PlayableSceneDocument {
+  const document = validateSceneForStorage(value, options)
+  if (document.kind === 'builder') invalid('sceneData.kind', 'Builder scene playback is not available yet.')
+  return document
 }
 
 /** A small bounded JSON reader retains duplicate-key detection that JSON.parse loses. */
@@ -294,7 +301,7 @@ export function parseSceneImport(text: string): SceneDocument {
   if (typeof text !== 'string' || text.length > SCENE_LIMITS.requestBytes || encoder.encode(text).length > SCENE_LIMITS.requestBytes) {
     invalid('sceneData', `Scene JSON must not exceed ${SCENE_LIMITS.requestBytes} UTF-8 bytes.`)
   }
-  return validateSceneForPlayback(parseImportJson(text))
+  return validateSceneForStorage(parseImportJson(text))
 }
 
 /** Check the final POST/PUT body, including metadata, without invoking user hooks. */

@@ -1,5 +1,5 @@
 import type { SceneAvailabilityTarget } from './sceneAvailability'
-import { validateSceneForPlayback } from '../policy/sceneValidation'
+import { validateSceneForStorage } from '../policy/sceneValidation'
 
 function savedSceneId(sceneKey?: string | number) {
   const id = typeof sceneKey === 'number' ? sceneKey : /^\d+$/.test(sceneKey ?? '') ? Number(sceneKey) : NaN
@@ -12,7 +12,9 @@ export function availabilityTarget(sceneKey?: string | number, sceneBlob?: unkno
   try {
     // A kind label, preset name, source fingerprint, or recovery identity is
     // never enough. The strict catalog contract must validate the whole input.
-    if (validateSceneForPlayback(sceneBlob).kind === 'template') {
+    const document = validateSceneForStorage(sceneBlob)
+    if (document.kind === 'builder') return savedId === null ? 'draft-builder' : `status:${savedId}`
+    if (document.kind === 'template') {
       return savedId === null ? 'draft-template' : `template:${savedId}`
     }
   } catch {
