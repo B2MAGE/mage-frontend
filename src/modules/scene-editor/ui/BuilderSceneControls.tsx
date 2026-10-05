@@ -53,6 +53,7 @@ export function BuilderSceneControls({
   selectedObjectId,
 }: Props) {
   const [newShape, setNewShape] = useState<BuilderShape>('sphere')
+  const [appliedStyle, setAppliedStyle] = useState<string | null>(null)
   const selected = document.objects.find(object => object.id === selectedObjectId) ?? null
   const update = (recipe: (object: BuilderObject) => BuilderObject) => {
     if (selected) onUpdateObject(selected.id, recipe)
@@ -65,8 +66,14 @@ export function BuilderSceneControls({
 
     <div className="scene-editor-grid">
       <SelectField id="builder-starting-style" label="Starting style"
-        description="Apply a template's environment and scene-wide settings. Your objects stay in place."
-        value="" onChange={value => onApplyTemplate(value as TemplateId)}
+        description={appliedStyle ? `${appliedStyle} applied to every object.`
+          : 'Apply a template-inspired color and material finish. Shapes and placement stay the same.'}
+        value="" onChange={value => {
+          const template = listSceneTemplates().find(item => item.templateId === value)
+          if (!template) return
+          onApplyTemplate(value as TemplateId)
+          setAppliedStyle(template.label)
+        }}
         options={[{ value: '', label: 'Choose a starting style' }, ...listSceneTemplates().map(template => ({ value: template.templateId, label: template.label }))]} />
       <SelectField id="builder-skybox" label="Skybox" value={String(document.settings.skybox)}
         options={SKYBOX_OPTIONS.map(option => ({ value: String(option.value), label: option.label }))}

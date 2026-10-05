@@ -39,11 +39,17 @@ describe('Builder editor document helpers', () => {
   })
 
   it('keeps objects while applying a starting style and scene-wide controls', () => {
-    const original = { ...updateBuilderObject(createBuilderScene(), 'object-1', object => ({ ...object, name: 'Hero' })), parameters: { scale: 3, speed: 1 } }
+    const withHero = updateBuilderObject(createBuilderScene(), 'object-1', object => ({ ...object, name: 'Hero' }))
+    const original = { ...addBuilderObject(withHero, 'box'), parameters: { scale: 3, speed: 1 } }
     const styled = applyBuilderTemplate(original, 'reaction-rings-v1')
     const model = getBuilderEditorModel(styled)
     const changed = changeBuilderBranch(styled, 'intent', { ...model.intent, autoRotate: false, fov: 90 })
-    expect(changed.objects).toEqual(original.objects)
+    expect(changed.objects.map(object => ({ name: object.name, operation: object.operation, transform: object.transform })))
+      .toEqual(original.objects.map(object => ({ name: object.name, operation: object.operation, transform: object.transform })))
+    expect(changed.objects.map(object => object.material)).toEqual([
+      { color: '#7a42f2', metalness: 0, shininess: 0.9 },
+      { color: '#14a693', metalness: 0, shininess: 0.9 },
+    ])
     expect(changed.parameters.scale).toBe(3)
     expect(changed.settings.camera).toMatchObject({ autoRotate: false, fov: 90 })
     expect(changed.kind).toBe('builder')

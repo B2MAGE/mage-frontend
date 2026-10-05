@@ -30,6 +30,43 @@ export const BUILDER_SHAPES = (Object.keys(shapeLabels) as BuilderShape[]).map(v
   value,
 }))
 
+type BuilderStartingStyle = Readonly<{
+  colors: readonly string[]
+  metalness: number
+  shininess: number
+}>
+
+const BUILDER_STARTING_STYLES = {
+  'embedded-scene-0': { colors: ['#8066ff', '#55d6ff', '#f4f0ff'], metalness: 0.5, shininess: 0.8 },
+  'embedded-scene-1': { colors: ['#6e7e7b', '#b5c2bf', '#3a4543'], metalness: 0.59, shininess: 0.67 },
+  'embedded-scene-2': { colors: ['#15c7c3', '#6bf3dd', '#0d7186'], metalness: 0.57, shininess: 0.37 },
+  'embedded-scene-3': { colors: ['#267910', '#70d45a', '#b5ff80'], metalness: 0.64, shininess: 0.34 },
+  'embedded-scene-4': { colors: ['#e42743', '#ff7a5c', '#8d1027'], metalness: 0.51, shininess: 0.48 },
+  'embedded-scene-5': { colors: ['#3d4437', '#9da89a', '#d8dfd3'], metalness: 0.63, shininess: 0.62 },
+  'embedded-scene-6': { colors: ['#f31b00', '#ff8a00', '#6b0800'], metalness: 0.55, shininess: 0.5 },
+  'embedded-scene-7': { colors: ['#1d0277', '#6d45ff', '#bf77ff'], metalness: 0.57, shininess: 0.56 },
+  'embedded-scene-8': { colors: ['#67c673', '#b5f7ae', '#2a7668'], metalness: 0.66, shininess: 0.66 },
+  'embedded-scene-9': { colors: ['#ff4d00', '#ffb13b', '#8c1e00'], metalness: 0.48, shininess: 0.49 },
+  'embedded-scene-10': { colors: ['#32e93f', '#a7ff62', '#087f42'], metalness: 0.32, shininess: 0.38 },
+  'embedded-scene-11': { colors: ['#55aaff', '#ff5bd6', '#58ffd5'], metalness: 0.1, shininess: 0.6 },
+  'embedded-scene-12': { colors: ['#ff5bd6', '#6b5cff', '#40e8ff'], metalness: 0.2, shininess: 0.7 },
+  'embedded-scene-13': { colors: ['#be3f9c', '#ff85c8', '#7235bb'], metalness: 0.64, shininess: 0.41 },
+  'reaction-rings-v1': { colors: ['#7a42f2', '#14a693', '#f24d80', '#a67aff'], metalness: 0, shininess: 0.9 },
+  'reaction-lantern-v1': { colors: ['#2e5cd9', '#b838d9', '#29b39f'], metalness: 0.15, shininess: 0.8 },
+} satisfies Record<TemplateId, BuilderStartingStyle>
+
+function applyStartingStyle(objects: readonly BuilderObject[], templateId: TemplateId): BuilderObject[] {
+  const style = BUILDER_STARTING_STYLES[templateId]
+  return objects.map((object, index) => ({
+    ...object,
+    material: {
+      color: style.colors[index % style.colors.length],
+      metalness: style.metalness,
+      shininess: style.shininess,
+    },
+  }))
+}
+
 export function createBuilderOperation(type: BuilderShape): BuilderOperation {
   if (type === 'box') return { type, width: 1, height: 1, depth: 1 }
   if (type === 'torus') return { type, radius: 1, tube: 0.25 }
@@ -62,11 +99,12 @@ export function createBuilderObject(type: BuilderShape, objects: readonly Builde
 
 export function createBuilderScene(templateId: TemplateId = 'embedded-scene-0'): BuilderSceneDocument {
   const template = createTemplateScene(templateId)
+  const objects = applyStartingStyle([createBuilderObject('sphere')], templateId)
   const document = parseSceneDocument({
     schemaVersion: 1,
     kind: 'builder',
     builderVersion: 1,
-    objects: [createBuilderObject('sphere')],
+    objects,
     parameters: { ...template.parameters, scale: 1 },
     settings: template.settings,
   })
@@ -74,12 +112,15 @@ export function createBuilderScene(templateId: TemplateId = 'embedded-scene-0'):
   return document
 }
 
-export function createBuilderSceneFromSettings(source: Pick<BuilderSceneDocument, 'parameters' | 'settings'>): BuilderSceneDocument {
+export function createBuilderSceneFromSettings(
+  source: Pick<BuilderSceneDocument, 'parameters' | 'settings'>,
+  templateId: TemplateId = 'embedded-scene-0',
+): BuilderSceneDocument {
   const document = parseSceneDocument({
     schemaVersion: 1,
     kind: 'builder',
     builderVersion: 1,
-    objects: [createBuilderObject('sphere')],
+    objects: applyStartingStyle([createBuilderObject('sphere')], templateId),
     parameters: { ...source.parameters, scale: 1 },
     settings: source.settings,
   })
@@ -119,8 +160,7 @@ export function changeBuilderValue(document: BuilderSceneDocument, path: Templat
 }
 
 export function applyBuilderTemplate(document: BuilderSceneDocument, templateId: TemplateId) {
-  const template = createTemplateScene(templateId)
-  return { ...document, parameters: { ...template.parameters, scale: document.parameters.scale }, settings: template.settings }
+  return { ...document, objects: applyStartingStyle(document.objects, templateId) }
 }
 
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape) {

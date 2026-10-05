@@ -301,7 +301,7 @@ export function useSceneEditorState({
   }
 
   function handleSwitchToBuilder(templateId: TemplateId = 'embedded-scene-0') {
-    const next = templateDocument ? createBuilderSceneFromSettings(templateDocument) : createBuilderScene(templateId)
+    const next = templateDocument ? createBuilderSceneFromSettings(templateDocument, templateDocument.templateId) : createBuilderScene(templateId)
     applySceneData(next, true)
     setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
   }

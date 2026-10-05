@@ -25,6 +25,25 @@ afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 const preview = () => JSON.parse(screen.getByTestId('builder-preview').getAttribute('data-scene')!)
 
 describe('Scene Builder object editor', () => {
+  it('applies a visible starting palette without replacing editable objects', async () => {
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    await user.selectOptions(screen.getByLabelText('Shape', { selector: '#builder-add-shape' }), 'box')
+    await user.click(screen.getByRole('button', { name: 'Add object' }))
+
+    const before = preview()
+    await user.selectOptions(screen.getByLabelText('Starting style'), 'embedded-scene-9')
+
+    expect(preview().objects.map((object: { material: { color: string } }) => object.material.color))
+      .toEqual(['#ff4d00', '#ffb13b'])
+    expect(preview().objects.map((object: { operation: unknown; transform: unknown }) => ({ operation: object.operation, transform: object.transform })))
+      .toEqual(before.objects.map((object: { operation: unknown; transform: unknown }) => ({ operation: object.operation, transform: object.transform })))
+    expect(screen.getByText('Ember Grid applied to every object.')).toBeInTheDocument()
+  })
+
   it('converts a template starting point and edits objects without hiding scene-wide controls', async () => {
     const user = userEvent.setup()
     renderCreateScenePage()
