@@ -15,6 +15,7 @@ import type {
   SceneEditorInitialState,
 } from './types'
 import {
+  BUILDER_EDITING_UNAVAILABLE,
   moveVisiblePass,
   prettyPrintEditorSceneData,
   readEditableSceneData,
@@ -306,6 +307,7 @@ export function useSceneEditorState({
 
     try {
       const document = parseSceneImport(nextValue)
+      if (document.kind === 'builder') throw new Error(BUILDER_EDITING_UNAVAILABLE)
       if (!isTemplate && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= sceneDataText
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
@@ -321,6 +323,7 @@ export function useSceneEditorState({
   function handleFormatJson() {
     try {
       const document = parseSceneImport(sceneDataText)
+      if (document.kind === 'builder') throw new Error(BUILDER_EDITING_UNAVAILABLE)
       if (!isTemplate && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= prettyPrintEditorSceneData(sceneData)
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })

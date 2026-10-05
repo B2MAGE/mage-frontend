@@ -1,12 +1,13 @@
 import { buildApiUrl } from '@shared/lib/api'
 
-export type SceneAvailabilityTarget = number | 'custom' | 'draft-template' | `template:${number}` | `status:${number}`
+export type SceneAvailabilityTarget = number | 'custom' | 'draft-template' | 'draft-builder' | `template:${number}` | `status:${number}`
 export type SceneAvailabilityCode =
   | 'CHECKING'
   | 'AVAILABLE'
   | 'SCENE_DISABLED'
   | 'SCENE_NOT_FOUND'
   | 'SCENE_UPGRADE_REQUIRED'
+  | 'BUILDER_RENDERING_UNAVAILABLE'
   | 'CUSTOM_RENDERING_DISABLED'
   | 'STATUS_UNAVAILABLE'
 
@@ -28,6 +29,7 @@ const messages: Record<SceneAvailabilityCode, string> = {
   SCENE_DISABLED: 'This scene is currently unavailable.',
   SCENE_NOT_FOUND: 'This scene is no longer available.',
   SCENE_UPGRADE_REQUIRED: 'This scene needs an update from its creator before it can play.',
+  BUILDER_RENDERING_UNAVAILABLE: 'Builder scene playback is not available yet.',
   CUSTOM_RENDERING_DISABLED: 'Scene playback is temporarily disabled.',
   STATUS_UNAVAILABLE: 'Playback is paused until scene availability can be checked.',
 }
@@ -38,6 +40,7 @@ const snapshot = (code: SceneAvailabilityCode, checkedAt: number | null = null):
 const checking = snapshot('CHECKING')
 const unavailable = snapshot('STATUS_UNAVAILABLE')
 const localTemplate = snapshot('AVAILABLE')
+const localBuilder = snapshot('BUILDER_RENDERING_UNAVAILABLE')
 
 function sceneId(target: SceneAvailabilityTarget): number | null {
   const id = typeof target === 'number' ? target
@@ -46,7 +49,7 @@ function sceneId(target: SceneAvailabilityTarget): number | null {
 }
 
 function isTarget(target: SceneAvailabilityTarget) {
-  return target === 'custom' || target === 'draft-template' || sceneId(target) !== null
+  return target === 'custom' || target === 'draft-template' || target === 'draft-builder' || sceneId(target) !== null
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -69,7 +72,7 @@ function sceneCodes(value: unknown, ids: number[]) {
       throw new Error('Invalid availability response')
     }
     if (item.available === true && item.code === 'AVAILABLE') result.set(item.sceneId, 'AVAILABLE')
-    else if (item.available === false && ['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'SCENE_UPGRADE_REQUIRED', 'CUSTOM_RENDERING_DISABLED'].includes(String(item.code))) {
+    else if (item.available === false && ['SCENE_DISABLED', 'SCENE_NOT_FOUND', 'SCENE_UPGRADE_REQUIRED', 'BUILDER_RENDERING_UNAVAILABLE', 'CUSTOM_RENDERING_DISABLED'].includes(String(item.code))) {
       result.set(item.sceneId, item.code as SceneAvailabilityCode)
     } else throw new Error('Invalid availability response')
   }
@@ -103,6 +106,7 @@ export function createSceneAvailabilityStore() {
     // fresh visible-page check. Offline/navigation failures still revoke them.
     else if (document.visibilityState === 'hidden') result = checking
     else if (target === 'draft-template') result = localTemplate
+    else if (target === 'draft-builder') result = localBuilder
     else if (typeof target === 'string' && (target.startsWith('template:') || target.startsWith('status:'))) {
       const scene = scenes.get(sceneId(target)!)
       result = !scene ? checking : !fresh(scene) ? unavailable : scene
@@ -199,7 +203,7 @@ export function createSceneAvailabilityStore() {
 
   function queue(targets: Iterable<SceneAvailabilityTarget>): Promise<void> {
     if (!reachable()) return Promise.resolve()
-    for (const target of targets) if (target !== 'draft-template' && isTarget(target) && !activeTargets.has(target)) pending.add(target)
+    for (const target of targets) if (target !== 'draft-template' && target !== 'draft-builder' && isTarget(target) && !activeTargets.has(target)) pending.add(target)
     if (!work) {
       work = Promise.resolve().then(async () => {
         while (pending.size && reachable()) {

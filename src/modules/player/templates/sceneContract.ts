@@ -1,4 +1,5 @@
 import { parseTemplateSettingsExtensions, TEMPLATE_EXTENSION_KEYS, templateOptionalEffectCount, type TemplateSettingsExtensions } from './templateSettings'
+import { normalizeBuilderDocument } from './builderSchema'
 
 /** The transport contract is also checked in under contracts/scenes for the Java API. */
 export const TEMPLATE_IDS = [
@@ -33,7 +34,31 @@ export type CustomSceneDocument = {
   scene: JsonRecord
 }
 
-export type SceneDocument = TemplateSceneDocument | CustomSceneDocument
+export type BuilderOperation =
+  | { type: 'sphere'; radius: number }
+  | { type: 'box'; width: number; height: number; depth: number }
+  | { type: 'torus'; radius: number; tube: number }
+  | { type: 'cylinder'; radius: number; height: number }
+export type BuilderVector = { x: number; y: number; z: number }
+export type BuilderBinding = {
+  target: `${'position' | 'rotation' | 'scale'}.${'x' | 'y' | 'z'}` | 'material.metalness' | 'material.shininess'
+  source: `${'bass' | 'mid' | 'treble' | 'overall'}-${'level' | 'hit'}` | 'pointer-x' | 'pointer-y' | 'pointer-down'
+  mode: 'add' | 'replace'
+  amount: number; offset: number; attack: number; release: number
+}
+export type BuilderObject = {
+  id: string; name: string; operation: BuilderOperation
+  transform: { position: BuilderVector; rotation: BuilderVector; scale: BuilderVector }
+  material: { color: string; metalness: number; shininess: number }
+  bindings: BuilderBinding[]
+}
+export type BuilderSceneDocument = {
+  schemaVersion: 1; kind: 'builder'; builderVersion: 1; objects: BuilderObject[]
+  parameters: TemplateSceneDocument['parameters']
+  settings: TemplateSceneDocument['settings']
+}
+export type PlayableSceneDocument = TemplateSceneDocument | CustomSceneDocument
+export type SceneDocument = PlayableSceneDocument | BuilderSceneDocument
 
 export class SceneContractError extends Error {
   constructor(message: string) {
@@ -43,7 +68,7 @@ export class SceneContractError extends Error {
 }
 
 const forbiddenKeys = new Set(['__proto__', 'prototype', 'constructor'])
-const documentMarkers = ['schemaVersion', 'kind', 'templateId', 'templateVersion']
+const documentMarkers = ['schemaVersion', 'kind', 'templateId', 'templateVersion', 'builderVersion']
 
 /** Do not read values here: even malformed envelopes must enter strict validation. */
 export function hasSceneDocumentMarkers(value: unknown): boolean {
@@ -131,7 +156,8 @@ export function parseSceneDocument(value: unknown): SceneDocument {
     }
     return { schemaVersion: 1, kind: 'custom', scene: custom.scene }
   }
-  if (cloned.kind !== 'template') return fail('scene.kind', 'expected template or custom')
+  if (cloned.kind === 'builder') return normalizeBuilderDocument(cloned, fail) as BuilderSceneDocument
+  if (cloned.kind !== 'template') return fail('scene.kind', 'expected template, builder, or custom')
   const template = object(cloned, 'scene', [
     'schemaVersion', 'kind', 'templateId', 'templateVersion', 'parameters', 'settings',
   ])

@@ -1907,6 +1907,2186 @@
           }
         }
       }
+    },
+    {
+      "name": "builder: minimal sphere",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: empty editable scene",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": []
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: all shapes and independent bindings",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "name": "Music sphere",
+            "transform": {
+              "position": {
+                "x": 2
+              },
+              "scale": {
+                "y": 1.5
+              }
+            },
+            "material": {
+              "color": "#AB12ef",
+              "metalness": 0.25
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "amount": 0.8,
+                "attack": 0.13,
+                "release": 0.71
+              },
+              {
+                "target": "rotation.y",
+                "source": "pointer-x",
+                "mode": "replace",
+                "amount": 2,
+                "offset": -0.5
+              }
+            ]
+          },
+          {
+            "id": "box-2",
+            "operation": {
+              "type": "box",
+              "width": 2,
+              "height": 1,
+              "depth": 0.5
+            }
+          },
+          {
+            "id": "ring-3",
+            "operation": {
+              "type": "torus",
+              "radius": 2,
+              "tube": 0.25
+            }
+          },
+          {
+            "id": "tube-4",
+            "operation": {
+              "type": "cylinder",
+              "radius": 0.5,
+              "height": 2
+            }
+          }
+        ],
+        "parameters": {
+          "scale": 3,
+          "speed": 0.5
+        },
+        "settings": {
+          "camera": {
+            "autoRotate": false
+          },
+          "bloom": {
+            "enabled": true,
+            "strength": 0.4
+          },
+          "effects": {
+            "passes": {
+              "rgbShift": true
+            }
+          },
+          "audioResponse": "mapped-v1"
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "name": "Music sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 2,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1.5,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#AB12ef",
+              "metalness": 0.25,
+              "shininess": 0.5
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "mode": "add",
+                "amount": 0.8,
+                "offset": 0,
+                "attack": 0.13,
+                "release": 0.71
+              },
+              {
+                "target": "rotation.y",
+                "source": "pointer-x",
+                "mode": "replace",
+                "amount": 2,
+                "offset": -0.5,
+                "attack": 0.04,
+                "release": 0.35
+              }
+            ]
+          },
+          {
+            "id": "box-2",
+            "name": "Object",
+            "operation": {
+              "type": "box",
+              "width": 2,
+              "height": 1,
+              "depth": 0.5
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "ring-3",
+            "name": "Object",
+            "operation": {
+              "type": "torus",
+              "radius": 2,
+              "tube": 0.25
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "tube-4",
+            "name": "Object",
+            "operation": {
+              "type": "cylinder",
+              "radius": 0.5,
+              "height": 2
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 3,
+          "speed": 0.5
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": false,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": true,
+            "strength": 0.4,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          },
+          "effects": {
+            "passes": {
+              "rgbShift": true
+            }
+          },
+          "audioResponse": "mapped-v1"
+        }
+      }
+    },
+    {
+      "name": "builder: sixteen objects",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "object-0",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-1",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-2",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-3",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-4",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-5",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-6",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-7",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-8",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-9",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-10",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-11",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-12",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-13",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-14",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "object-15",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "object-0",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-1",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-2",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-3",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-4",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-5",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-6",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-7",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-8",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-9",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-10",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-11",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-12",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-13",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-14",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          },
+          {
+            "id": "object-15",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: numeric boundaries",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "boundary",
+            "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "operation": {
+              "type": "box",
+              "width": 0.01,
+              "height": 10,
+              "depth": 10
+            },
+            "transform": {
+              "position": {
+                "x": -100,
+                "y": 100,
+                "z": 0
+              },
+              "rotation": {
+                "x": -6.283185307179586,
+                "y": 6.283185307179586
+              },
+              "scale": {
+                "x": 0.01,
+                "y": 20
+              }
+            },
+            "material": {
+              "metalness": 1,
+              "shininess": 0
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "overall-level",
+                "mode": "replace",
+                "amount": -4,
+                "offset": 4,
+                "attack": 2,
+                "release": 5
+              }
+            ]
+          }
+        ]
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "boundary",
+            "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "operation": {
+              "type": "box",
+              "width": 0.01,
+              "height": 10,
+              "depth": 10
+            },
+            "transform": {
+              "position": {
+                "x": -100,
+                "y": 100,
+                "z": 0
+              },
+              "rotation": {
+                "x": -6.283185307179586,
+                "y": 6.283185307179586,
+                "z": 0
+              },
+              "scale": {
+                "x": 0.01,
+                "y": 20,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 1,
+              "shininess": 0
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "overall-level",
+                "mode": "replace",
+                "amount": -4,
+                "offset": 4,
+                "attack": 2,
+                "release": 5
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: unknown schema version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 2,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: unknown builder version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 2,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: missing builder version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: unknown root field source",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "source": "sphere(1)"
+      }
+    },
+    {
+      "name": "builder: caller compiled artifact",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "compiledArtifact": {
+          "source": "sphere(1)"
+        }
+      }
+    },
+    {
+      "name": "builder: custom scene smuggled in",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "scene": {
+          "visualizer": {
+            "shader": "sphere(1)"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: unknown operation",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "code",
+              "source": "sphere(1)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: operation source field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere",
+              "shader": "sphere(1)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: operation formula",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere",
+              "radius": "sin(time)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: operation null",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: operation below minimum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere",
+              "radius": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: operation above maximum",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere",
+              "radius": 10.01
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: wrong shape parameter",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere",
+              "width": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: missing stable id",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: invalid stable id",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "x(); sphere(9)",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: duplicate ids",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "name": "Second"
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: too many objects",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "obj-0",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-1",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-2",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-3",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-4",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-5",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-6",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-7",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-8",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-9",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-10",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-11",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-12",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-13",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-14",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-15",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "obj-16",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: object URL",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "url": "https://example.com/asset"
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: nested objects not in catalog",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: component reference not in catalog",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "componentId": "external"
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: transform formula",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "transform": {
+              "position": {
+                "x": "time * 2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: transform out of range",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "transform": {
+              "position": {
+                "x": 101
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: negative scale",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "transform": {
+              "scale": {
+                "x": -1
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: rotation degrees not radians",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "transform": {
+              "rotation": {
+                "x": 360
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: material texture URL",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "material": {
+              "texture": "https://example.com/texture"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: material unknown color",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "material": {
+              "color": "red"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: material numeric range",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "material": {
+              "metalness": 1.1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: name too long",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: binding source formula",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "Math.sin(time)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: binding unknown target",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "shader",
+                "source": "bass-hit"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: binding callback",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "callback": "sphere(1)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: binding unknown mode",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "mode": "multiply"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: binding amount range",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "amount": 4.1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: binding timing range",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "release": 6
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: duplicate property bindings",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit"
+              },
+              {
+                "target": "scale.x",
+                "source": "pointer-down"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: too many bindings",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "position.x",
+                "source": "bass-hit"
+              },
+              {
+                "target": "position.y",
+                "source": "bass-hit"
+              },
+              {
+                "target": "position.z",
+                "source": "bass-hit"
+              },
+              {
+                "target": "rotation.x",
+                "source": "bass-hit"
+              },
+              {
+                "target": "rotation.y",
+                "source": "bass-hit"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: unknown scene setting",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "settings": {
+          "shader": "sphere(1)"
+        }
+      }
+    },
+    {
+      "name": "builder: scene render ceiling override",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "settings": {
+          "renderer": {
+            "pixelRatio": 10
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: too many scene effects",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "settings": {
+          "bloom": {
+            "enabled": true
+          },
+          "tint": {
+            "enabled": true
+          },
+          "effects": {
+            "passes": {
+              "rgbShift": true,
+              "dot": true,
+              "glitch": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: prototype property",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "__proto__": {
+              "source": "bad"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: Unicode name at code-point limit",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "name": "🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌"
+          }
+        ]
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "name": "🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder: Unicode name over code-point limit",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1",
+            "operation": {
+              "type": "sphere"
+            },
+            "name": "🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌🌌"
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: ID with trailing newline",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb-1\n",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      }
     }
   ]
 }

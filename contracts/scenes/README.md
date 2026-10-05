@@ -1,5 +1,14 @@
 # Scene document contract
 
+## Scene Builder
+
+SB-01 adds `kind: "builder"` with explicit `builderVersion: 1`. See
+[the Builder format](builder-v1.md) for stable object IDs, the closed operation
+catalog, transforms, materials, property bindings, limits, version policy and
+the storage-versus-rendering delivery boundary. The same shared schema and
+fixtures cover Builder, template and custom documents; a Builder document is
+never treated as custom source.
+
 `scene-v1.schema.json` is the shared JSON Schema 2020-12 contract for the frontend and Java API. `fixtures.json` supplies named valid and invalid examples; its optional `normalized` values specify the result after defaults are filled in. `template-catalog.v1.json` identifies the platform-owned template versions and their source checksums.
 
 This contract is independent of the engine's internal scene format. The player validates a template document, looks up its exact ID and version in the bundled registry, and constructs a new engine payload. Template documents never contain shader source, expressions, imports, or user-selected asset URLs.

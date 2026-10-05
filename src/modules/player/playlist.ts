@@ -31,7 +31,7 @@ function readAudioSource(sceneBlob: MageSceneBlob | null | undefined) {
   if (hasSceneDocumentMarkers(sceneBlob)) {
     try {
       const document = parseSceneDocument(sceneBlob)
-      if (document.kind === 'template') return null
+      if (document.kind !== 'custom') return null
       sceneBlob = document.scene
     } catch {
       return null

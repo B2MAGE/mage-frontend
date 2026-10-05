@@ -54,6 +54,16 @@ describe('shared scene contract fixtures', () => {
     expect(schema.$defs.template.properties.templateId.enum).toEqual(TEMPLATE_IDS)
   })
 
+  it('keeps builder scene-wide settings identical to the existing template contract', () => {
+    expect(schema.$defs.builder.properties.settings).toEqual(schema.$defs.template.properties.settings)
+    expect(schema.$defs.builder.properties.parameters).toEqual(schema.$defs.template.properties.parameters)
+    const builderCases = fixtureSet.cases.filter(fixture => fixture.document.kind === 'builder')
+    expect(builderCases.length).toBeGreaterThanOrEqual(48)
+    const operations = builderCases.flatMap(fixture => fixture.valid && 'objects' in fixture.document
+      ? (fixture.document.objects ?? []).flatMap(object => 'operation' in object && object.operation ? [object.operation.type] : []) : [])
+    expect(new Set(operations)).toEqual(new Set(['sphere', 'box', 'torus', 'cylinder']))
+  })
+
   it('materializes exactly the defaults published for other contract consumers', () => {
     const materializeDefaults = contractValidator(true).compile(schema.$defs.template)
     for (const fixture of fixtureSet.cases) {

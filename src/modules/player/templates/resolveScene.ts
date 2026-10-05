@@ -82,6 +82,7 @@ export function resolveSceneForPlayback(value: unknown): ResolvedPlaybackScene {
     if (document.kind === 'template') {
       return { kind: 'template', trust: 'platform-owned', engineScene: buildVersionOnePayload(document) }
     }
+    if (document.kind === 'builder') throw new SceneContractError('Builder scene playback is not available yet.')
     return { kind: 'custom', trust: 'untrusted', engineScene: document.scene }
   }
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {

@@ -35,10 +35,10 @@ export type SceneAvailability = {
   message: string
 }
 
-export type SceneMode = 'legacy-custom' | 'custom-v1' | 'template-v1'
+export type SceneMode = 'legacy-custom' | 'custom-v1' | 'template-v1' | 'builder-v1'
 
 export function normalizeSceneMode(value: unknown): SceneMode | null {
-  return value === 'legacy-custom' || value === 'custom-v1' || value === 'template-v1' ? value : null
+  return value === 'legacy-custom' || value === 'custom-v1' || value === 'template-v1' || value === 'builder-v1' ? value : null
 }
 
 export type SceneListResponse = {
@@ -95,7 +95,8 @@ export function normalizeSceneAvailability(value: unknown, sceneId: number): Sce
   if (typeof value.message !== 'string' && !(available && value.message === null)) return null
 
   const message = value.code === 'SCENE_UPGRADE_REQUIRED'
-    ? 'This scene needs an update from its creator before it can play.' : value.message as string
+    ? 'This scene needs an update from its creator before it can play.'
+    : value.code === 'BUILDER_RENDERING_UNAVAILABLE' ? 'Builder scene playback is not available yet.' : value.message as string
   return { sceneId, available: value.available, code: value.code, message: available ? '' : message }
 }
 
