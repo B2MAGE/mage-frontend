@@ -1,10 +1,10 @@
 import type { PropsWithChildren } from 'react'
-import { FieldErrorsContext, templateControlLocation, useSceneEditorFieldIssue, type FieldIssues } from './sceneEditorFieldErrors'
+import { builderControlLocation, FieldErrorsContext, templateControlLocation, useSceneEditorFieldIssue, type FieldIssues } from './sceneEditorFieldErrors'
 
-export function SceneEditorFieldErrorsProvider({ fields, children }: PropsWithChildren<{ fields: Record<string, string> }>) {
+export function SceneEditorFieldErrorsProvider({ fields, mode = 'template', children }: PropsWithChildren<{ fields: Record<string, string>; mode?: 'template' | 'builder' }>) {
   const issues: FieldIssues = {}
   for (const [path, message] of Object.entries(fields)) {
-    const location = templateControlLocation(path)
+    const location = mode === 'builder' ? builderControlLocation(path) : templateControlLocation(path)
     if (location) issues[location.id] = { path: location.path, message }
   }
   return <FieldErrorsContext.Provider value={issues}>{children}</FieldErrorsContext.Provider>

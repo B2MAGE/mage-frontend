@@ -8,6 +8,10 @@ import { createTemplateScene } from './templateEditor'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
 
 const renderedPlayer = vi.fn()
+const availabilityMocks = vi.hoisted(() => ({
+  customEnabled: true,
+  listeners: new Set<() => void>(),
+}))
 vi.mock('@modules/player', async original => {
   const actual = await original<typeof import('@modules/player')>()
   const React = await import('react')
@@ -24,11 +28,27 @@ vi.mock('@modules/player', async original => {
   } }
 })
 vi.mock('@modules/player/availability/sceneAvailability', async () => {
-  const { allowedSceneAvailability } = await import('@shared/test/sceneAvailability')
-  return { sceneAvailabilityStore: allowedSceneAvailability }
+  const available = Object.freeze({ allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 })
+  const disabled = Object.freeze({ allowed: false, code: 'CUSTOM_RENDERING_DISABLED', message: 'Scene playback is temporarily disabled.', checkedAt: 1 })
+  const getSnapshot = (target: unknown) => target === 'custom' && !availabilityMocks.customEnabled ? disabled : available
+  return { sceneAvailabilityStore: {
+    getSnapshot,
+    isAllowed: (target: unknown) => getSnapshot(target).allowed,
+    check: async (target: unknown) => getSnapshot(target),
+    subscribe: (target: unknown, listener: () => void) => {
+      if (target !== 'custom') return () => {}
+      availabilityMocks.listeners.add(listener)
+      return () => availabilityMocks.listeners.delete(listener)
+    },
+  } }
 })
 
-beforeEach(() => { renderedPlayer.mockClear(); storeSceneEditorSession() })
+beforeEach(() => {
+  availabilityMocks.customEnabled = true
+  availabilityMocks.listeners.clear()
+  renderedPlayer.mockClear()
+  storeSceneEditorSession()
+})
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 
 const previewDocument = () => JSON.parse(screen.getByTestId('template-preview').getAttribute('data-scene')!)
@@ -48,6 +68,50 @@ async function customEditor() {
 }
 
 describe('Basic template editor controls', () => {
+  it('keeps Custom Code unavailable when the site-wide setting is disabled', async () => {
+    availabilityMocks.customEnabled = false
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+
+    const customCode = screen.getByRole('button', { name: 'Custom Code' })
+    const builder = screen.getByRole('button', { name: 'Builder' })
+    expect(customCode).toBeDisabled()
+    expect(customCode).toHaveAttribute('aria-pressed', 'false')
+    expect(builder).toBeEnabled()
+    expect(screen.getByText('Custom Code is disabled for MAGE. Use a template or Builder.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Custom Shader')).not.toBeInTheDocument()
+
+    await user.click(builder)
+    expect(builder).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Sphere 1')).toBeInTheDocument()
+  })
+
+  it('preserves a saved custom scene as locked source until its owner chooses Builder', async () => {
+    availabilityMocks.customEnabled = false
+    const user = userEvent.setup()
+    const source = await customEditor()
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+
+    const customCode = screen.getByRole('button', { name: 'Custom Code' })
+    const shader = screen.getByLabelText('Custom Shader')
+    expect(customCode).toBeDisabled()
+    expect(customCode).toHaveAttribute('aria-pressed', 'true')
+    expect(shader).toHaveAttribute('readonly')
+    expect(shader).toHaveValue(source.visualizer.shader)
+    expect(screen.getByLabelText('Template')).toBeDisabled()
+    expect(previewDocument()).toMatchObject(source)
+    expect(screen.getByText(/this scene’s code is preserved but locked/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(/custom shader code.*will be replaced/i)
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
+    expect(previewDocument()).toMatchObject(source)
+    expect(shader).toHaveValue(source.visualizer.shader)
+  })
+
   it.each(['classic-facebook', 'mage-pulse'] as const)('starts with a source-free template in the %s theme', async theme => {
     mockCreateScenePageFetch()
     const user = userEvent.setup()
@@ -57,8 +121,8 @@ describe('Basic template editor controls', () => {
     expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     const mode = within(screen.getByRole('group', { name: 'Creation mode' }))
-    expect(mode.getByRole('button', { name: 'Basic' })).toHaveAttribute('aria-pressed', 'true')
-    expect(mode.getByRole('button', { name: 'Advanced' })).toBeEnabled()
+    expect(mode.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'false')
+    expect(mode.getByRole('button', { name: 'Custom Code' })).toBeEnabled()
     const selector = screen.getByRole('combobox', { name: 'Template' })
     expect(selector).toHaveValue('embedded-scene-0')
     expect(screen.queryByLabelText(/^shader$/i)).not.toBeInTheDocument()
@@ -249,14 +313,14 @@ describe('custom repair and explicit template replacement', () => {
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     const original = previewDocument()
-    await user.click(screen.getByRole('button', { name: 'Advanced' }))
+    await user.click(screen.getByRole('button', { name: 'Custom Code' }))
     let source = screen.getByLabelText('Custom Shader') as HTMLTextAreaElement
     expect(source.value.length).toBeGreaterThan(0)
     expect(previewDocument()).toEqual(original)
-    await user.click(screen.getByRole('button', { name: 'Basic' }))
+    await user.click(screen.getByRole('button', { name: 'Custom Code' }))
     expect(screen.queryByLabelText('Custom Shader')).not.toBeInTheDocument()
     expect(previewDocument()).toEqual(original)
-    await user.click(screen.getByRole('button', { name: 'Advanced' }))
+    await user.click(screen.getByRole('button', { name: 'Custom Code' }))
     source = screen.getByLabelText('Custom Shader') as HTMLTextAreaElement
     const code = source.value
     await user.click(source)
@@ -266,10 +330,11 @@ describe('custom repair and explicit template replacement', () => {
     expect(source).toHaveValue(`${code} // custom`)
     expect(previewDocument()).not.toHaveProperty('kind', 'template')
     expect(previewDocument().visualizer.shader).toBe(`${code} // custom`)
-    await user.click(screen.getByRole('button', { name: 'Basic' }))
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
     expect(source).toHaveValue(`${code} // custom`)
-    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Custom Code' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('Template')).toBeEnabled()
   })
 
   it('routes valid custom source to the isolated player and requires acceptance before replacing source', async () => {
@@ -281,26 +346,27 @@ describe('custom repair and explicit template replacement', () => {
     let raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-pressed', 'true')
-    await user.click(screen.getByRole('button', { name: 'Basic' }))
-    await user.selectOptions(screen.getByLabelText('Start from a template'), 'reaction-rings-v1')
+    expect(screen.getByRole('button', { name: 'Custom Code' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
     const dialog = screen.getByRole('alertdialog')
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Basic' })).toHaveFocus())
-    await user.click(screen.getByRole('button', { name: 'Basic' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Builder' })).toHaveFocus())
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
     expect(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' })).toHaveFocus()
     await user.keyboard('{Escape}')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Basic' })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Builder' })).toHaveFocus())
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
     expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    await user.click(screen.getByRole('button', { name: 'Basic' }))
-    await user.click(screen.getByRole('button', { name: 'Replace custom scene' }))
-    expect(screen.getByRole('combobox', { name: 'Template' })).toHaveValue('reaction-rings-v1')
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    await user.click(screen.getByRole('button', { name: 'Switch to Builder' }))
+    expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Sphere 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
-    expect(previewDocument()).toEqual(createTemplateScene('reaction-rings-v1'))
+    expect(previewDocument()).toMatchObject({ kind: 'builder', objects: [{ operation: { type: 'sphere' } }],
+      settings: createTemplateScene().settings })
     await user.click(screen.getByRole('button', { name: 'Details' }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Aurora Drift')
   })

@@ -20,19 +20,19 @@ async function state(initialState?: SceneEditorInitialState) {
 }
 
 describe('template editor state and preview', () => {
-  it('retains the current draft when builder JSON is imported or formatted', async () => {
+  it('imports and formats Builder JSON without changing scene details', async () => {
     const { result } = await state({ name: 'Keep my draft' })
-    const original = result.current.sceneData
     const builder = JSON.stringify({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
       objects: [{ id: 'ball', operation: { type: 'sphere' } }] })
     act(() => result.current.handleRawSceneDataChange(builder))
-    expect(result.current.sceneData).toEqual(original)
+    expect(result.current.sceneData).toMatchObject({ kind: 'builder', objects: [{ id: 'ball' }] })
     expect(result.current.sceneDataText).toBe(builder)
-    expect(result.current.errors.sceneData).toContain('cannot be edited here yet')
+    expect(result.current.errors.sceneData).toBeUndefined()
     act(() => result.current.handleFormatJson())
-    expect(result.current.sceneData).toEqual(original)
+    expect(result.current.sceneData).toMatchObject({ kind: 'builder', objects: [{ id: 'ball' }] })
+    expect(JSON.parse(result.current.sceneDataText)).toEqual(result.current.sceneData)
     expect(result.current.name).toBe('Keep my draft')
-    expect(result.current.errors.sceneData).toContain('cannot be edited here yet')
+    expect(result.current.errors.sceneData).toBeUndefined()
   })
 
   it('converts only a shader change and preserves authored settings and scene details in the custom submission', async () => {
@@ -99,7 +99,11 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     act(() => result.current.handleSectionJump('pass-order'))
     act(() => result.current.handleTemplateSelection('embedded-scene-1'))
-    expect(result.current.sceneData).toEqual(custom)
+    expect(result.current.sceneData).toMatchObject({
+      audioResponse: 'mapped-v1',
+      intent: custom.intent,
+      visualizer: { shader: readTemplateShaderSource(createTemplateScene('embedded-scene-1')) },
+    })
     expect(result.current.currentSection.id).toBe('pass-order')
     act(() => result.current.handleTemplateSelection('embedded-scene-1', true))
     expect(result.current.sceneData).toEqual(createTemplateScene('embedded-scene-1'))
@@ -185,7 +189,9 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     expect(result.current.editorSections.some(section => section.id === 'pass-order')).toBe(true)
     act(() => result.current.handleTemplateSelection('embedded-scene-0'))
-    expect(result.current.sceneData).toEqual(custom.scene)
+    expect(result.current.sceneData).toMatchObject({ visualizer: {
+      shader: readTemplateShaderSource(createTemplateScene('embedded-scene-0')),
+    } })
   })
 
   it('restores exact custom text after an imported template passes through invalid edits', async () => {

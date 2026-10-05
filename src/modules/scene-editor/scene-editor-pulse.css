@@ -142,11 +142,124 @@ html[data-theme] .scene-editor-page :is(.scene-secondary-button, .scene-editor-c
 html[data-theme] .scene-editor-page :is(.scene-secondary-button, .scene-editor-collapsible__toggle):disabled { opacity: .55; cursor: default; }
 .scene-creation-mode { display: grid; gap: 8px; }
 .scene-creation-mode > :is(h3, p) { margin: 0; }
+.scene-settings-group { display: grid; gap: 14px; }
+.scene-settings-group > h3 { margin: 0; }
 .scene-creation-mode__options { display: flex; width: fit-content; max-width: 100%; }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button { min-width: 100px; width: auto; min-height: 38px; border-radius: 0; }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:first-child { border-radius: var(--editor-button-radius) 0 0 var(--editor-button-radius); }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:last-child { margin-left: -1px; border-radius: 0 var(--editor-button-radius) var(--editor-button-radius) 0; }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button[aria-pressed="true"] { position: relative; border-color: var(--studio-accent-border); background: var(--studio-accent-fill); color: var(--studio-accent); opacity: 1; }
+html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 4px; }
+html[data-theme] .scene-editor-page .scene-setup-controls__scale { grid-column: 1 / -1; }
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] { display: flex; min-width: 0; flex-direction: column; }
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] > .scene-field { flex: 1; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell {
+  padding: 18px;
+  gap: 14px;
+  border: 1px solid var(--studio-border);
+  border-radius: 12px;
+  background: var(--studio-field);
+}
+html[data-theme] .scene-editor-modal-backdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .68); }
+html[data-theme] .scene-editor-modal { box-sizing: border-box; width: min(520px, 100%); padding: 24px; border: 1px solid var(--studio-border-strong); border-radius: 16px; background: var(--studio-panel); color: var(--studio-text); box-shadow: 0 24px 80px rgba(0, 0, 0, .42); }
+html[data-theme] .scene-editor-modal h2 { margin: 0 0 10px; font-size: 22px; }
+html[data-theme] .scene-editor-modal p { margin: 0 0 22px; color: var(--studio-muted); line-height: 1.55; }
+
+.builder-object-section,
+.builder-object-editor { display: grid; gap: 16px; padding-top: 8px; border-top: 1px solid var(--studio-border); }
+.builder-workspace { display: grid; gap: 18px; margin-left: 4px; padding-left: 18px; border-left: 1px solid var(--studio-border-strong); }
+.builder-object-section__heading,
+.builder-object-editor__heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.builder-object-section__heading :is(h3, p),
+.builder-object-editor__heading h3,
+.builder-object-editor__subheading { margin: 0; }
+.builder-object-section__title,
+.builder-object-editor__title { color: var(--studio-text); font-size: 16px; line-height: 1.35; }
+.builder-object-section { padding: 18px; border: 1px solid var(--studio-border); border-radius: 12px; background: var(--studio-field); }
+.builder-object-section__add { display: grid; grid-template-columns: minmax(120px, 180px) auto; align-items: stretch; gap: 8px; }
+html[data-theme] .scene-editor-page .builder-object-section__add .scene-secondary-button { min-height: 42px; }
+.builder-object-list { display: grid; gap: 4px; margin-inline: -18px; }
+html[data-theme] .scene-editor-page .builder-object-list__item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 42px;
+  padding: 8px 18px; border: 0; background: transparent; color: var(--studio-text);
+  text-align: left; cursor: pointer;
+}
+html[data-theme] .scene-editor-page .builder-object-list__item:hover { background: var(--studio-control); }
+html[data-theme] .scene-editor-page .builder-object-list__item[aria-pressed="true"] { background: var(--studio-accent-fill); }
+.builder-object-list__item span:last-child { color: var(--studio-muted); font-size: 11px; }
+.builder-object-empty { margin: 0; color: var(--studio-muted); }
+.builder-object-editor__subheading { padding-top: 4px; color: var(--studio-muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.builder-object-identity { display: grid; gap: 18px; }
+.builder-size-controls { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--studio-border); border-radius: 12px; background: var(--studio-field); }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .builder-shape-field .scene-field__shell {
+  padding: 18px;
+  gap: 14px;
+  border: 1px solid var(--studio-border);
+  border-radius: 12px;
+  background: var(--studio-field);
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .builder-size-controls .scene-field__shell {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.builder-color-field { grid-column: 1 / -1; }
+html[data-theme] .scene-editor-page .scene-field-validation:has(.builder-color-field),
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Camera"] .scene-field-validation:has(#zoom) { grid-column: 1 / -1; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .builder-color-field .scene-field__shell {
+  padding: 18px;
+  gap: 14px;
+  border: 1px solid var(--studio-border);
+  border-radius: 12px;
+  background: var(--studio-field);
+}
+.builder-object-actions { position: relative; flex: 0 0 auto; }
+html[data-theme] .scene-editor-page .builder-object-actions__trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+.builder-object-actions__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 6;
+  width: 152px;
+  padding: 6px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 10px;
+  background: var(--studio-panel);
+  box-shadow: 0 14px 34px var(--studio-menu-shadow);
+}
+html[data-theme] .scene-editor-page .builder-object-actions__menu > button {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--studio-text);
+  text-align: left;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+html[data-theme] .scene-editor-page .builder-object-actions__menu > button:hover,
+html[data-theme] .scene-editor-page .builder-object-actions__menu > button:focus-visible { background: var(--studio-control-hover); }
+html[data-theme] .scene-editor-page .builder-object-actions__menu > button:disabled { opacity: .45; cursor: default; }
+html[data-theme] .scene-editor-page .builder-object-actions__menu > .builder-object-actions__remove { color: var(--studio-error); }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .builder-transform-controls .scene-field__shell {
+  padding: 18px;
+  gap: 14px;
+  border: 1px solid var(--studio-border);
+  border-radius: 12px;
+  background: var(--studio-field);
+}
+html[data-theme] .scene-editor-page .scene-text-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--studio-border-strong); border-radius: 8px; background: var(--studio-control); color: var(--studio-text); }
+html[data-theme] .scene-editor-page .scene-color-input { width: 100%; min-height: 42px; padding: 5px; border: 1px solid var(--studio-border-strong); border-radius: 8px; background: var(--studio-control); }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 14px; padding: 13px; border: 1px solid var(--studio-border); border-radius: 12px; background: var(--studio-field); }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { display: grid; place-items: center; position: relative; aspect-ratio: 16/10; overflow: hidden; border-radius: 9px; background: #090a0f; }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
@@ -253,9 +366,11 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
   html[data-theme] .scene-editor-page .scene-editor-grid,
   html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack,
   html[data-theme] .scene-editor-page .scene-confirm-summary { grid-template-columns: 1fr; }
+  html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container editor (max-width: 430px) {
   html[data-theme] .scene-editor-page .scene-editor-thumbnail { grid-template-columns: 1fr; }
+  html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: 1fr; }
 }
 @media (max-width: 1360px) and (min-width: 961px) {
     html[data-theme] .scene-editor-page .scene-editor-layout { grid-template-columns: 68px minmax(0,1fr) minmax(340px,36vw); }
@@ -290,6 +405,8 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
     html[data-theme] .scene-editor-page .scene-editor-main { order: 3; flex: 1 1 0; min-height: 0; padding: 26px 24px 28px; }
 }
 @media (max-width: 700px) {
+  .builder-object-section__heading { align-items: stretch; flex-direction: column; }
+  .builder-object-section__add { grid-template-columns: minmax(0, 1fr) auto; width: 100%; }
   html[data-theme]:has(.scene-editor-page) .nav-inner { width: calc(100% - 20px); }
   html[data-theme]:has(.scene-editor-page) .pulse-footer { width: calc(100% - 20px); min-height: 48px; }
   html[data-theme]:has(.scene-editor-page) .pulse-footer__inner { min-height: 48px; padding: 11px 0; flex-direction: row; }

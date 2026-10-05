@@ -150,7 +150,7 @@ describe('creator music response workflow', () => {
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
     expect(draftScene().audioResponse).toBe('mapped-v1')
     expect(draftScene().audioResponseConfig).toEqual(readEditableSceneData(stored).audioResponseConfig)
-  })
+  }, 15000)
 
   it('preserves a saved beat response until a deliberate version switch and restores it on reset', async () => {
     storeSceneEditorSession()

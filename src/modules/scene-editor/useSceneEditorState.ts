@@ -15,7 +15,6 @@ import type {
   SceneEditorInitialState,
 } from './types'
 import {
-  BUILDER_EDITING_UNAVAILABLE,
   moveVisiblePass,
   prettyPrintEditorSceneData,
   readEditableSceneData,
@@ -27,9 +26,10 @@ import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
 import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
-import { createCustomSceneFromTemplate, readTemplateShaderSource, parseSceneImport, SceneValidationError, validateSceneDocument, type TemplateSceneDocument } from '@modules/player'
+import { createCustomSceneFromTemplate, readTemplateShaderSource, parseSceneImport, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderObject, type BuilderSceneDocument, type TemplateId, type TemplateSceneDocument } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateBranch, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
+import { addBuilderObject, changeBuilderBranch, changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, duplicateBuilderObject, getBuilderEditorModel, getBuilderEditorSceneData, isBuilderEditorDocument, removeBuilderObject, updateBuilderObject, type BuilderShape } from './builderEditor'
 
 /** Apply only the user's changed fields, retaining unsupported repair values. */
 function mergeChangedValues(original: unknown, before: unknown, after: unknown): unknown {
@@ -71,16 +71,23 @@ export function useSceneEditorState({
     prettyPrintEditorSceneData(initialState?.sceneData ?? createTemplateScene()),
   )
   const [pendingImport, setPendingImport] = useState<{ document: TemplateSceneDocument; previousText: string } | null>(null)
+  const builderRoundTripRef = useRef<{ document: BuilderSceneDocument; customSignature: string } | null>(null)
   // A temporarily invalid template draft must not replace the custom text that
   // Cancel restores when that draft becomes valid again.
   const templateImportPreviousTextRef = useRef<string | null>(null)
   const [musicResponseDefaults, setMusicResponseDefaults] = useState(() => readMusicResponseDefaults(
-    isTemplateEditorDocument(sceneData) ? getTemplateEditorSceneData(sceneData) : sceneData))
+    isTemplateEditorDocument(sceneData) ? getTemplateEditorSceneData(sceneData)
+      : isBuilderEditorDocument(sceneData) ? getBuilderEditorSceneData(sceneData) : sceneData))
   const isTemplate = isTemplateEditorDocument(sceneData)
   const templateDocument = isTemplate ? sceneData : null
-  const templateFieldErrors = useMemo(() => {
-    if (templateDocument) {
-      try { validateSceneDocument(templateDocument) }
+  const isBuilder = isBuilderEditorDocument(sceneData)
+  const builderDocument = isBuilder ? sceneData : null
+  const isUnmodifiedBuilderCustom = !isTemplate && !isBuilder
+    && builderRoundTripRef.current?.customSignature === JSON.stringify(sceneData)
+  const authoredFieldErrors = useMemo(() => {
+    const document = templateDocument ?? builderDocument
+    if (document) {
+      try { validateSceneDocument(document) }
       catch (error) {
         if (error instanceof SceneValidationError) return Object.fromEntries(
           Object.entries(error.details).map(([path, message]) => [path.replace(/^sceneData\./, ''), message]),
@@ -88,8 +95,10 @@ export function useSceneEditorState({
       }
     }
     return {} as Record<string, string>
-  }, [templateDocument])
-  const editorSceneData = useMemo(() => templateDocument ? getTemplateEditorSceneData(templateDocument) : sceneData, [templateDocument, sceneData])
+  }, [builderDocument, templateDocument])
+  const templateFieldErrors = authoredFieldErrors
+  const editorSceneData = useMemo(() => templateDocument ? getTemplateEditorSceneData(templateDocument)
+    : builderDocument ? getBuilderEditorSceneData(builderDocument) : sceneData, [builderDocument, templateDocument, sceneData])
   const editorAudioResponseMode = normalizeAudioResponseMode(editorSceneData.audioResponse)
   const editorAudioResponseConfig = normalizeAudioResponseConfig(editorSceneData.audioResponseConfig).config
   const editorSections = EDITOR_SECTIONS
@@ -176,6 +185,8 @@ export function useSceneEditorState({
     const nextText = JSON.stringify(nextSceneData, null, 2)
     if (replaceRawDraft && !isTemplate && isTemplateEditorDocument(nextSceneData)) {
       setMusicResponseDefaults(readMusicResponseDefaults(getTemplateEditorSceneData(nextSceneData)))
+    } else if (replaceRawDraft && !isBuilder && isBuilderEditorDocument(nextSceneData)) {
+      setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(nextSceneData)))
     }
     templateImportPreviousTextRef.current = null
     setPendingImport(null)
@@ -193,11 +204,17 @@ export function useSceneEditorState({
     branch: K,
     recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
   ) {
-    const currentModel = templateDocument ? getTemplateEditorModel(templateDocument) : getSceneEditorModel(sceneData)
+    const currentModel = templateDocument ? getTemplateEditorModel(templateDocument)
+      : builderDocument ? getBuilderEditorModel(builderDocument) : getSceneEditorModel(sceneData)
     const nextBranch = recipe(currentModel[branch])
     if (templateDocument) {
       const next = changeTemplateBranch(templateDocument, branch, nextBranch)
       applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
+    if (builderDocument) {
+      const next = changeBuilderBranch(builderDocument, branch, nextBranch)
+      applySceneData(next, false)
       return
     }
     applySceneData({ ...sceneData, [branch]: mergeChangedValues(sceneData[branch], currentModel[branch], nextBranch) })
@@ -207,6 +224,10 @@ export function useSceneEditorState({
     if (templateDocument) {
       const next = changeTemplateMusicSettings(templateDocument, changeMusicResponseMode(editorSceneData, mode, supportedTargets))
       applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
+    if (builderDocument) {
+      applySceneData(changeBuilderMusicSettings(builderDocument, changeMusicResponseMode(editorSceneData, mode, supportedTargets)))
       return
     }
     applySceneData(changeMusicResponseMode(sceneData, mode, supportedTargets))
@@ -219,6 +240,11 @@ export function useSceneEditorState({
       applySceneData(next, false, changedTemplateFields(templateDocument, next))
       return
     }
+    if (builderDocument) {
+      applySceneData(changeBuilderMusicSettings(builderDocument, { ...editorSceneData, audioResponseConfig: mergeChangedValues(
+        editorSceneData.audioResponseConfig, editorAudioResponseConfig, config) }))
+      return
+    }
     applySceneData({ ...sceneData, audioResponseConfig: mergeChangedValues(sceneData.audioResponseConfig,
       normalizeAudioResponseConfig(sceneData.audioResponseConfig).config, config) })
   }
@@ -227,6 +253,10 @@ export function useSceneEditorState({
     if (templateDocument) {
       const next = changeTemplateMusicSettings(templateDocument, restoreMusicResponseDefaults(editorSceneData, musicResponseDefaults))
       applySceneData(next, false, changedTemplateFields(templateDocument, next))
+      return
+    }
+    if (builderDocument) {
+      applySceneData(changeBuilderMusicSettings(builderDocument, restoreMusicResponseDefaults(editorSceneData, musicResponseDefaults)))
       return
     }
     const next = restoreMusicResponseDefaults(sceneData, musicResponseDefaults)
@@ -240,12 +270,79 @@ export function useSceneEditorState({
   const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(editorSceneData)) !== JSON.stringify(musicResponseDefaults)
 
   function handleTemplateSelection(templateId: string, replaceCustom = false) {
+    if (builderDocument) return
+    if (!templateDocument) {
+      if (replaceCustom) {
+        applySceneData(createTemplateScene(templateId), true, 'templateId')
+        return
+      }
+      const template = createTemplateScene(templateId)
+      const shader = readTemplateShaderSource(template)
+      updateBranch('visualizer', current => ({ ...current, shader }))
+      return
+    }
     const next = changeTemplateSelection(sceneData, templateId, replaceCustom)
     if (next !== sceneData) applySceneData(next, !isTemplate && replaceCustom, 'templateId')
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {
     if (templateDocument) applySceneData(changeTemplateValue(templateDocument, path, value), false, path)
+  }
+
+  function updateBuilderValue(path: TemplateFieldPath, value: number | string | boolean) {
+    if (builderDocument) applySceneData(changeBuilderValue(builderDocument, path, value), false, path)
+  }
+
+  function handleAddBuilderObject(shape: BuilderShape) {
+    if (builderDocument) applySceneData(addBuilderObject(builderDocument, shape), false, 'objects')
+  }
+
+  function handleUpdateBuilderObject(objectId: string, recipe: (object: BuilderObject) => BuilderObject) {
+    if (builderDocument) applySceneData(updateBuilderObject(builderDocument, objectId, recipe), false, 'objects')
+  }
+
+  function handleDuplicateBuilderObject(objectId: string) {
+    if (builderDocument) applySceneData(duplicateBuilderObject(builderDocument, objectId), false, 'objects')
+  }
+
+  function handleRemoveBuilderObject(objectId: string) {
+    if (builderDocument) applySceneData(removeBuilderObject(builderDocument, objectId), false, 'objects')
+  }
+
+  function handleSwitchToBuilder() {
+    const next = createBuilderScene()
+    applySceneData(next, true)
+    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
+  }
+
+  function handleSwitchToTemplate(templateId: TemplateId = 'embedded-scene-0') {
+    const next = createTemplateScene(templateId)
+    builderRoundTripRef.current = null
+    applySceneData(next, true)
+    setMusicResponseDefaults(readMusicResponseDefaults(getTemplateEditorSceneData(next)))
+  }
+
+  function handleRestoreBuilder() {
+    const roundTrip = builderRoundTripRef.current
+    if (!roundTrip || isTemplate || isBuilder || roundTrip.customSignature !== JSON.stringify(sceneData)) return false
+    const next = structuredClone(roundTrip.document)
+    builderRoundTripRef.current = null
+    applySceneData(next, true)
+    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
+    return true
+  }
+
+  function handleSwitchBuilderToCustom() {
+    if (!builderDocument) return
+    try {
+      const compiled = resolveSceneForPlayback(builderDocument).engineScene
+      const custom = readEditableSceneData({ schemaVersion: 1, kind: 'custom', scene: compiled })
+      builderRoundTripRef.current = { document: structuredClone(builderDocument), customSignature: JSON.stringify(custom) }
+      applySceneData(custom, true)
+    } catch (error) {
+      setErrors(current => ({ ...current, sceneData: describeSceneValidationError(error),
+        form: 'Fix the Builder scene before switching to Custom Code.' }))
+    }
   }
 
   function handleCameraAdvancedToggle(nextValue: boolean) {
@@ -263,6 +360,7 @@ export function useSceneEditorState({
   }
 
   function handleShaderSourceChange(shader: string) {
+    if (builderDocument) return
     if (!templateDocument) {
       updateBranch('visualizer', current => ({ ...current, shader }))
       return
@@ -307,7 +405,6 @@ export function useSceneEditorState({
 
     try {
       const document = parseSceneImport(nextValue)
-      if (document.kind === 'builder') throw new Error(BUILDER_EDITING_UNAVAILABLE)
       if (!isTemplate && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= sceneDataText
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
@@ -323,7 +420,6 @@ export function useSceneEditorState({
   function handleFormatJson() {
     try {
       const document = parseSceneImport(sceneDataText)
-      if (document.kind === 'builder') throw new Error(BUILDER_EDITING_UNAVAILABLE)
       if (!isTemplate && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= prettyPrintEditorSceneData(sceneData)
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
@@ -387,6 +483,14 @@ export function useSceneEditorState({
     handleAudioResponseReset,
     handleCreateTag,
     handleFormatJson,
+    handleAddBuilderObject,
+    handleDuplicateBuilderObject,
+    handleRemoveBuilderObject,
+    handleRestoreBuilder,
+    handleSwitchBuilderToCustom,
+    handleSwitchToBuilder,
+    handleSwitchToTemplate,
+    handleUpdateBuilderObject,
     handleMotionAdvancedToggle,
     handleNameChange,
     handleRawSceneDataChange,
@@ -403,6 +507,8 @@ export function useSceneEditorState({
     isMotionAdvancedEnabled,
     isSubmitting,
     isTemplate,
+    isBuilder,
+    isUnmodifiedBuilderCustom,
     isTagDropdownOpen,
     movePass,
     name,
@@ -434,10 +540,12 @@ export function useSceneEditorState({
     thumbnailFile,
     thumbnailPreviewUrl,
     templateDocument,
+    builderDocument,
     templateFieldErrors,
     titleId,
     toggleTagSelection,
     updateBranch,
     updateTemplateValue,
+    updateBuilderValue,
   }
 }

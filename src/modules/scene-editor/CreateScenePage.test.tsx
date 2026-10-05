@@ -259,7 +259,7 @@ describe('CreateScenePage workflow', () => {
     expect(screen.queryByLabelText(/custom shader/i)).not.toBeInTheDocument()
   })
 
-  it('switches the shader select to Custom Shader when the source no longer matches a built-in shader', async () => {
+  it('switches the shared template select to Custom shader when source no longer matches a template', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
 
@@ -270,13 +270,13 @@ describe('CreateScenePage workflow', () => {
 
     await user.click(screen.getByRole('button', { name: /^scene$/i }))
 
-    const shaderSelect = screen.getByLabelText(/^shader$/i)
+    const templateSelect = screen.getByLabelText(/^template$/i)
     const shaderSource = screen.getByLabelText(/custom shader/i)
 
     await user.clear(shaderSource)
     await user.type(shaderSource, 'let customSize = input()')
 
-    expect(shaderSelect).toHaveValue('custom')
+    expect(templateSelect).toHaveValue('custom')
     expect(screen.getByRole('option', { name: /^custom shader$/i })).toBeInTheDocument()
   })
 

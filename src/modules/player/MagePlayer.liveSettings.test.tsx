@@ -102,6 +102,31 @@ describe('MagePlayer live scene settings', () => {
       .toBeLessThan(vi.mocked(controller.captureFramePreview!).mock.invocationCallOrder[0])
   })
 
+  it('fully reloads a restored scene while a replacement scene is still loading', async () => {
+    let finishReplacement!: () => void
+    const replacement = buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.5);' } })
+    const controller = buildMagePlayerController({
+      updateSceneSettings: vi.fn(() => { throw new Error('Load a scene before updating its settings.') }),
+      loadSceneBlob: vi.fn(scene => scene === replacement
+        ? new Promise<void>(resolve => { finishReplacement = resolve })
+        : undefined),
+    })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const view = render(<MagePlayer sceneBlob={custom} sceneKey="editor" />)
+    await waitFor(() => expect(view.container.querySelector('.mage-player')).toHaveAttribute('data-state', 'ready'))
+
+    view.rerender(<MagePlayer sceneBlob={replacement} sceneKey="editor" />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    view.rerender(<MagePlayer sceneBlob={custom} sceneKey="editor" />)
+
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(3))
+    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(custom, { sceneKey: 'editor' })
+    expect(controller.updateSceneSettings).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await act(async () => finishReplacement())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it.each([
     { name: 'shader source', next: buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.5);' } }), nextKey: 'editor' },
     { name: 'skybox', next: buildMagePlayerSceneBlob({ visualizer: { skyboxPreset: 2 } }), nextKey: 'editor' },

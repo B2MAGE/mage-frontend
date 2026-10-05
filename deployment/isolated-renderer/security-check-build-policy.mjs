@@ -20,9 +20,13 @@ export const SECURITY_CHECK_ALLOWED_MODULES = Object.freeze([
   'src/modules/player/templates/sceneContract.ts',
   'src/modules/player/templates/templateSettings.ts',
   'src/modules/player/templates/resolveScene.ts',
+  'src/modules/player/templates/builderCompiler.ts',
+  'src/modules/player/templates/builderSchema.ts',
   'src/modules/player/templates/templateRegistry.ts',
   'src/modules/player/templates/versions/v1/definitions.ts',
   'contracts/scenes/scene-limits.v1.json',
+  'contracts/scenes/scene-v1.schema.json',
+  'contracts/scenes/builder-rendering.v1.json',
   'node_modules/@notrac/mage/dist/audio-response.js',
 ])
 
