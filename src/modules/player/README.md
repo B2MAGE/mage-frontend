@@ -2,6 +2,10 @@
 
 This directory is the frontend-owned boundary for scene playback.
 
+See [live scene settings](../../../docs/player-live-settings.md) for #236's audited
+camera, motion, scale and effect updates that preserve the current player, plus
+the settings that still require a complete scene load.
+
 See [scene availability](../../../docs/scene-availability.md) for PP-R03's polling bounds, operator workflow, and remaining isolation release dependency.
 See [render budgets](../../../docs/render-budgets.md) for PP-V02's shared validation policy, preview profiles, and runtime ceilings.
 See [isolated renderer](../../../docs/isolated-renderer.md) for the separate host,

@@ -23,6 +23,7 @@ import {
 import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
 import { useMagePlayerAudioSelection } from './useMagePlayerAudioSelection'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
+import { extractLiveSceneSettings } from './liveSceneSettings'
 import { normalizeAudioResponseMode } from '@shared/lib'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
@@ -116,7 +117,22 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   const replaceRetiredRenderer = useCallback(() => setRendererInstance(value => value + 1), [])
   const { playlist, audioSelection } = props
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
-  const block = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null
+  const structuralIdentity = scenePlaybackIdentity(props.sceneBlob, props.sceneKey)
+  const [previousRecovery, setPreviousRecovery] = useState({ identity: structuralIdentity, key: recoveryKey })
+  // Editing live controls must not restart a stopped or failed scene. A stop
+  // during a retry can retain its original failure reason, so preserve any block
+  // until an explicit Resume/Retry while the editable draft continues to update.
+  const retainedBlock = structuralIdentity !== null && previousRecovery.identity === structuralIdentity
+    && previousRecovery.key && sceneRecovery.getBlock(previousRecovery.key)
+    ? previousRecovery.key : null
+  const blockedRecoveryKey = retainedBlock ?? recoveryKey
+  // An invalid intermediate draft is not a new renderable scene. Keep the last
+  // blocked identity so correcting a numeric field cannot implicitly resume it.
+  if (structuralIdentity !== null
+    && (previousRecovery.identity !== structuralIdentity || previousRecovery.key !== blockedRecoveryKey)) {
+    setPreviousRecovery({ identity: structuralIdentity, key: blockedRecoveryKey })
+  }
+  const block = blockedRecoveryKey ? sceneRecovery.getBlock(blockedRecoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
   const target = useMemo(() => props.sceneBlob ? availabilityTarget(props.sceneKey, props.sceneBlob)
     : availabilityStatusTarget(props.sceneKey), [props.sceneKey, props.sceneBlob])
@@ -197,9 +213,9 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
       block={block}
       safeMode={safeMode}
       onRetry={() => {
-        if (!recoveryKey || !sceneAvailabilityStore.isAllowed(target)) return
-        if (block?.reason === 'stopped') sceneRecovery.resumeStoppedScene(recoveryKey, block.at)
-        else sceneRecovery.retry(recoveryKey)
+        if (!blockedRecoveryKey || !sceneAvailabilityStore.isAllowed(target)) return
+        if (block?.reason === 'stopped') sceneRecovery.resumeStoppedScene(blockedRecoveryKey, block.at)
+        else sceneRecovery.retry(blockedRecoveryKey)
       }}
       onSafeModeChange={sceneRecovery.setSafeMode}
     />
@@ -446,10 +462,17 @@ function MagePlayerRenderer({
 
     void (async () => {
       try {
-        const isResponseUpdate = playbackIdentity !== null
+        const sameStructure = playbackIdentity !== null
           && appliedSceneRef.current?.player === player
           && appliedSceneRef.current.identity === playbackIdentity
-        if (isResponseUpdate) {
+        // Older artwork-only adapters retain the response API. They may reuse a
+        // scene only for response edits, never silently ignore another setting.
+        const isLiveUpdate = sameStructure && (typeof player.updateSceneSettings === 'function'
+          || JSON.stringify(extractLiveSceneSettings(appliedSceneRef.current!.sceneBlob))
+            === JSON.stringify(extractLiveSceneSettings(sceneBlob)))
+        if (isLiveUpdate && player.updateSceneSettings) {
+          player.updateSceneSettings(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
+        } else if (isLiveUpdate) {
           const validated = validateSceneForPlayback(sceneBlob)
           const response = validated.kind === 'template' ? validated.settings : validated.scene
           player.setAudioResponseSettings(
@@ -491,7 +514,7 @@ function MagePlayerRenderer({
           setPlaybackState(nextPlaybackState)
           setAudioState(player.getAudioState())
           onRendererReady()
-          if (!isResponseUpdate) {
+          if (!isLiveUpdate) {
             setAudioError(null)
             setActiveAudioAction(null)
           }
@@ -534,7 +557,7 @@ function MagePlayerRenderer({
     const matchesCompiledPlayer = status === 'ready'
       && capabilitiesResult?.player === playerRef.current
       && capabilitiesResult?.identity === playbackIdentity
-    // Response-only edits keep the same compiled shader. Retain its published
+    // Live edits keep the same compiled shader. Retain its published
     // capabilities until the exact updated document is ready, so editor
     // controls do not unmount during a slider drag or keyboard adjustment.
     if (matchesCompiledPlayer && capabilitiesResult.snapshot
