@@ -772,7 +772,7 @@ index 0000000..a7aa44a
 +export type CompiledShaderOptions = { maxRaymarchIterations?: number };
 +export declare const COMPILED_SHADER_LIMITS: Readonly<{
 +  fragBytes: 524288; vertBytes: 65536; geometryBytes: 262144; colorBytes: 262144;
-+  totalShaderBytes: 786432; uniforms: 64; uniformMagnitude: 1000000;
++  totalShaderBytes: 786432; uniforms: 80; uniformMagnitude: 1000000;
 +  maxIterations: 200; maxReflections: 2; minStepSize: 0.005; maxStepSize: 1;
 +}>;
 +export type CompiledVector2 = { x: number; y: number };
@@ -795,7 +795,7 @@ index 0000000..a16df8f
 +
 +export const COMPILED_SHADER_LIMITS = Object.freeze({
 +  fragBytes: 524288, vertBytes: 65536, geometryBytes: 262144, colorBytes: 262144,
-+  totalShaderBytes: 786432, uniforms: 64, uniformMagnitude: 1000000,
++  totalShaderBytes: 786432, uniforms: 80, uniformMagnitude: 1000000,
 +  maxIterations: 200, maxReflections: 2, minStepSize: 0.005, maxStepSize: 1,
 +});
 +const COMPONENTS = ['x', 'y', 'z', 'w'];
