@@ -4,7 +4,7 @@
 
 **Release approved; production custom playback is enabled.** After the recorded browser reports, live template walkthrough and controlled custom walkthrough, the release owner explicitly instructed "okay deploy it". The backend release approval and separate saved playback control are now on, and the production playback/disable/re-enable walkthrough passed. The approved evidence retains its recorded browser/device scope and limitations; it does not establish untested combinations.
 
-The rollout is complete. Reconciliation and merge of `pp-i03-worker-release-verification` remain pending; this deployment did not merge the branch or close PP-I03. No additional browser tests or repeat of the passing walkthroughs are requested.
+The rollout is complete. [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks integration of the release branch and issue/project closeout separately from the deployed artifact record. No additional browser tests or repeat of the passing walkthroughs are requested.
 
 ## Approved production rollout — October 5, 2026 UTC
 

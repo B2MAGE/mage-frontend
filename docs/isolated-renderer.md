@@ -1,8 +1,8 @@
 # Isolated renderer (PP-I01 / PP-I02 / PP-I03 / PP-I04 / PP-I05)
 
-PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The public custom-rendering release gate remains off while the broader browser/device release matrix is unfinished.
+PP-I01 provides a separately built, hosted player. PP-I02 adds a versioned playback bridge and local/live music checks. PP-I03 connects normal application players to that bridge; the normal app integration and later moderation controls have been merged and deployed. The renderer is hosted on the existing CloudFront site, with a fixed music check at `https://mage.peterbucci.com/player-check/`. The owner-approved production rollout enabled custom playback on October 5, 2026 UTC and verified the global disable/re-enable controls.
 
-See [the PP-I03 release record](isolated-renderer-release.md) for actual deployment evidence, remaining verification, deployment order, rollback, and owner repair/export behavior, and the [browser release checklist](custom-shader-release-checklist.md) for repeatable desktop/mobile testing. Historical deployment results below describe their named artifacts only.
+See [the PP-I03 release record](isolated-renderer-release.md) for the approved deployment evidence, recorded scope and limits, deployment order, rollback, and owner repair/export behavior, and the [browser release checklist](custom-shader-release-checklist.md) for reusable verification procedures. [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204) tracks release-branch integration and closure. Historical deployment results below describe their named artifacts only; they are not new requests to repeat passing tests.
 
 ## PP-I03 application boundary
 
@@ -112,15 +112,15 @@ deployment evidence](isolated-renderer-release.md#i03-verification-fixture-deplo
 Neither version establishes GPU behavior or full application acceptance;
 historical window-based security probes remain historical.
 
-Public custom-shader gates remain off. PP-I04 merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232)
+At the PP-I04 acceptance stage, public custom-shader gates were still off. PP-I04 merged through [PR #232](https://github.com/B2MAGE/mage-frontend/pull/232)
 at `a34c7e9a5dc3d48e28ce16af9b031bfa150c60a1`, and [issue #222](https://github.com/B2MAGE/mage-frontend/issues/222)
 is **Done**. The owner accepted the user's reported passing worker checks on a
 Pixel using Chrome / Android 17 and an Apple device using Safari / iOS
 (described as the latest iOS; exact version unspecified). Exact hardware models,
-browser versions and exported mobile reports were not supplied; collecting that
-metadata remains part of PP-I03 release verification. These are user-reported
-passes, not independent mobile runs, and story acceptance does not enable the
-public custom-rendering release gate.
+browser versions and exported mobile reports were not supplied; that metadata
+remains unspecified in the evidence. These are user-reported passes, not independent
+mobile runs. PP-I04 acceptance did not itself enable the public gate; the later
+owner-approved production rollout is recorded in the [release record](isolated-renderer-release.md).
 
 Local evidence on October 4, 2026: all 11 fixed checks passed in the Codex in-app
 browser on Windows (reported Chromium 154.0.0.0). The finite-loop worker was
@@ -250,11 +250,13 @@ Screenshot: `.local/pp-i05-home-smoke.png`. These are local smoke checks, not th
 full PP-I06 application matrix or new mobile evidence. The local renderer is
 `assets/renderer-CGVMJh26.js`.
 
-PP-I05 is **To Verify**, committed locally but not pushed, merged or deployed.
+At this local verification stage, PP-I05 was **To Verify**, committed locally but
+not yet pushed, merged or deployed. Its subsequent merge/deployment and the later
+approved production rollout are recorded in the [release record](isolated-renderer-release.md).
 The policy bounds accepted output and supported
 engine work; it is not a complete GLSL type checker or a general guarantee
 against GPU-driver failures, slow finite expressions or worker memory exhaustion.
-The deployed PP-I04 artifact and historical evidence above remain unchanged.
+The PP-I04 artifact and observations above remain preserved as historical evidence.
 
 ## Hosting boundary
 
