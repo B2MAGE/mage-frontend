@@ -261,14 +261,13 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       resize()
       update()
     },
-    async loadAudio(source: Blob | string): Promise<void> {
+    async loadAudio(source: Blob | string, signal?: AbortSignal, beforeCommit?: () => Promise<void>): Promise<void> {
       assertActive()
+      if (signal?.aborted) throw new DOMException('Audio loading was cancelled.', 'AbortError')
       const current = ++audioGeneration
-      await audio.load(source)
+      await audio.load(source, signal, { beforeCommit, shouldPlay: () => playing })
       assertActive()
-      if (current !== audioGeneration) throw new Error('Audio changed.')
-      if (playing) await audio.play()
-      assertActive()
+      if (signal?.aborted) throw new DOMException('Audio loading was cancelled.', 'AbortError')
       if (current !== audioGeneration) throw new Error('Audio changed.')
     },
     async play(): Promise<void> {

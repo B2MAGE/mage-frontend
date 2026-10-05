@@ -21,7 +21,11 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
   vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(new DOMRect(10, 20, 400, 200))
   const state = { loaded: false, playing: false, time: 0, duration: 120, volume: 1 }
   const audio = {
-    load: vi.fn<ParentAudioSession['load']>(async () => { state.loaded = true }),
+    load: vi.fn<ParentAudioSession['load']>(async (_source, _signal, options) => {
+      await options?.beforeCommit?.()
+      state.loaded = true
+      state.playing = options?.shouldPlay?.() ?? state.playing
+    }),
     play: vi.fn<ParentAudioSession['play']>(async () => { state.playing = state.loaded }),
     pause: vi.fn(() => { state.playing = false }),
     seek: vi.fn((time: number) => { state.time = time }),
@@ -81,6 +85,44 @@ afterEach(() => {
 })
 
 describe('isolated player parent integration', () => {
+  it('stages replacement with its cancellation and permission gate, using playback intent at commit', async () => {
+    const f = fixture()
+    await f.start()
+    await f.player.loadAudio(new Blob(['original']))
+    f.player.seek(23); f.player.setVolume(0.4)
+    const work = deferred<void>()
+    const beforeCommit = vi.fn(async () => {})
+    const abort = new AbortController()
+    f.audio.load.mockImplementationOnce(async (_source, signal, options) => {
+      await work.promise
+      await options?.beforeCommit?.()
+      if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError')
+      f.state.playing = options?.shouldPlay?.() ?? false
+      f.state.time = 0
+    })
+    const candidate = new Blob(['replacement'])
+    const loading = f.player.loadAudio(candidate, abort.signal, beforeCommit)
+    expect(f.audio.load).toHaveBeenLastCalledWith(candidate, abort.signal, { beforeCommit, shouldPlay: expect.any(Function) })
+    expect(f.player.getAudioState()).toMatchObject({ time: 23, playing: true, volume: 0.4 })
+    f.player.pause()
+    work.resolve(); await loading
+    expect(beforeCommit).toHaveBeenCalledOnce()
+    expect(f.player.getAudioState()).toMatchObject({ time: 0, playing: false, volume: 0.4 })
+    expect(f.audio.play).not.toHaveBeenCalled()
+    expect(f.host.loadScene).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a pre-cancelled candidate before touching the original audio', async () => {
+    const f = fixture()
+    await f.start(); await f.player.loadAudio(new Blob(['original']))
+    f.player.seek(23)
+    const abort = new AbortController(); abort.abort()
+    await expect(f.player.loadAudio(new Blob(['replacement']), abort.signal)).rejects.toMatchObject({ name: 'AbortError' })
+    expect(f.audio.load).toHaveBeenCalledOnce()
+    expect(f.player.getAudioState()).toMatchObject({ time: 23, playing: true })
+    expect(f.audio.clear).not.toHaveBeenCalled()
+  })
+
   it('forwards validated live settings without transport or audio changes and rejects edits during scene replacement', async () => {
     const f = fixture(); await f.start(); f.player.pause()
     const settings = extractLiveSceneSettings(scene)
@@ -161,7 +203,7 @@ describe('isolated player parent integration', () => {
       settings: { audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } } })
     expect(f.createAudio).toHaveBeenCalledOnce()
     expect(f.createHost).toHaveBeenCalledOnce()
-    expect(f.audio.load).toHaveBeenCalledExactlyOnceWith(file)
+    expect(f.audio.load).toHaveBeenCalledExactlyOnceWith(file, undefined, { beforeCommit: undefined, shouldPlay: expect.any(Function) })
     expect(f.audio.pause).not.toHaveBeenCalled()
     expect(f.audio.play).not.toHaveBeenCalled()
     expect(f.audio.seek).not.toHaveBeenCalled()

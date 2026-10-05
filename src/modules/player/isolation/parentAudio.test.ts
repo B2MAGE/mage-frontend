@@ -70,7 +70,7 @@ describe('parent-owned audio transport', () => {
     await f.session.load(new Blob(['replacement']))
     expect(f.createContext).toHaveBeenCalledOnce()
     expect(f.analysis.connect).toHaveBeenCalledOnce()
-    expect(f.session.getState()).toMatchObject({ time: 0, loaded: true, playing: false, volume: 0.4 })
+    expect(f.session.getState()).toMatchObject({ time: 0, loaded: true, playing: true, volume: 0.4 })
   })
 
   it('finishes naturally and restarts from the beginning', async () => {
@@ -116,6 +116,152 @@ describe('parent-owned audio transport', () => {
     await cancelled
     expect(f.session.getState().duration).toBe(90)
     expect(f.createContext).toHaveBeenCalledOnce()
+  })
+
+  it.each([true, false])('retains the usable track while a replacement fails, playing=%s', async playing => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(23)
+    f.session.setVolume(0.35)
+    if (playing) await f.session.play()
+    const work = deferred<AudioBuffer>()
+    f.context.decodeAudioData.mockReturnValueOnce(work.promise)
+    const loading = f.session.load(new Blob(['broken replacement']))
+    const rejected = expect(loading).rejects.toThrow('Unsupported audio')
+    await vi.waitFor(() => expect(f.context.decodeAudioData).toHaveBeenCalledTimes(2))
+    f.context.currentTime = 2
+    expect(f.session.getState()).toEqual({ loaded: true, playing, time: playing ? 25 : 23, duration: 90, volume: 0.35 })
+    work.reject(new Error('Unsupported audio'))
+    await rejected
+    expect(f.session.getState()).toEqual({ loaded: true, playing, time: playing ? 25 : 23, duration: 90, volume: 0.35 })
+    expect(f.sources.every(source => source.stop.mock.calls.length === 0)).toBe(true)
+    if (!playing) await f.session.play()
+    expect(f.session.getState().playing).toBe(true)
+  })
+
+  it('commits replacement only when ready and respects a pause and volume change made during decoding', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    await f.session.play()
+    const work = deferred<AudioBuffer>()
+    f.context.decodeAudioData.mockReturnValueOnce(work.promise)
+    const loading = f.session.load(new Blob(['replacement']))
+    await vi.waitFor(() => expect(f.context.decodeAudioData).toHaveBeenCalledTimes(2))
+    f.context.currentTime = 9
+    f.session.pause()
+    f.session.setVolume(0.2)
+    expect(f.session.getState()).toMatchObject({ time: 9, duration: 90, playing: false })
+    work.resolve({ duration: 30 } as AudioBuffer)
+    await loading
+    expect(f.session.getState()).toEqual({ time: 0, duration: 30, loaded: true, playing: false, volume: 0.2 })
+    expect(f.sources).toHaveLength(1)
+  })
+
+  it('cancels decoding promptly without clearing the current song or accepting the late decoded result', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(23)
+    await f.session.play()
+    const work = deferred<AudioBuffer>()
+    f.context.decodeAudioData.mockReturnValueOnce(work.promise)
+    const controller = new AbortController()
+    const loading = f.session.load(new Blob(['cancelled']), controller.signal)
+    const cancelled = expect(loading).rejects.toMatchObject({ name: 'AbortError' })
+    await vi.waitFor(() => expect(f.context.decodeAudioData).toHaveBeenCalledTimes(2))
+    controller.abort()
+    await cancelled
+    expect(f.session.getState()).toMatchObject({ time: 23, duration: 90, playing: true })
+    work.resolve({ duration: 5 } as AudioBuffer)
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.session.getState()).toMatchObject({ time: 23, duration: 90, playing: true })
+    expect(f.sources[0].stop).not.toHaveBeenCalled()
+  })
+
+  it('keeps the original when the decoded replacement is empty or its source cannot start', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(17)
+    await f.session.play()
+    f.context.decodeAudioData.mockResolvedValueOnce({ duration: 0 } as AudioBuffer)
+    await expect(f.session.load(new Blob(['empty']))).rejects.toThrow('empty')
+    const badSource = { ...f.sources[0], start: vi.fn(() => { throw new Error('Cannot start') }), disconnect: vi.fn() }
+    f.context.createBufferSource.mockReturnValueOnce(badSource)
+    await expect(f.session.load(new Blob(['replacement']))).rejects.toThrow('Cannot start')
+    expect(f.session.getState()).toMatchObject({ time: 17, duration: 90, playing: true })
+    expect(f.sources[0].stop).not.toHaveBeenCalled()
+    expect(badSource.disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the old song through a cancelled permission gate after decoding', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(17); await f.session.play()
+    const permission = deferred<void>()
+    const beforeCommit = vi.fn(() => permission.promise)
+    const abort = new AbortController()
+    const loading = f.session.load(new Blob(['replacement']), abort.signal, { beforeCommit, shouldPlay: () => true })
+    const cancelled = expect(loading).rejects.toMatchObject({ name: 'AbortError' })
+    await vi.waitFor(() => expect(beforeCommit).toHaveBeenCalledOnce())
+    expect(f.session.getState()).toMatchObject({ time: 17, duration: 90, playing: true })
+    abort.abort()
+    await cancelled
+    permission.resolve()
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.sources).toHaveLength(1)
+    expect(f.sources[0].stop).not.toHaveBeenCalled()
+    expect(f.session.getState()).toMatchObject({ time: 17, duration: 90, playing: true })
+  })
+
+  it('does not swap the paused original when resuming a prepared replacement fails', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(17)
+    f.context.resume.mockRejectedValueOnce(new DOMException('Playback needs a gesture.', 'NotAllowedError'))
+    await expect(f.session.load(new Blob(['replacement']), undefined, { shouldPlay: () => true }))
+      .rejects.toMatchObject({ name: 'NotAllowedError' })
+    expect(f.session.getState()).toMatchObject({ time: 17, duration: 90, loaded: true, playing: false })
+    expect(f.sources).toHaveLength(0)
+  })
+
+  it('keeps a pause made during browser resume and checks permission before committing', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(17)
+    const resume = deferred<void>()
+    f.context.resume.mockReturnValueOnce(resume.promise)
+    let playing = true
+    const beforeCommit = vi.fn(async () => {})
+    const loading = f.session.load(new Blob(['replacement']), undefined, { shouldPlay: () => playing, beforeCommit })
+    await vi.waitFor(() => expect(f.context.resume).toHaveBeenCalledOnce())
+    expect(beforeCommit).not.toHaveBeenCalled()
+    playing = false; f.session.pause()
+    resume.resolve()
+    await loading
+    expect(beforeCommit).toHaveBeenCalledOnce()
+    expect(f.session.getState()).toMatchObject({ time: 0, loaded: true, playing: false })
+    expect(f.sources).toHaveLength(0)
+  })
+
+  it('allows only the newest candidate to commit while the original plays through a superseded decode', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['original']))
+    f.session.seek(23)
+    await f.session.play()
+    const work = deferred<AudioBuffer>()
+    f.context.decodeAudioData.mockReturnValueOnce(work.promise)
+    const first = f.session.load(new Blob(['stale']))
+    const cancelled = expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    await vi.waitFor(() => expect(f.context.decodeAudioData).toHaveBeenCalledTimes(2))
+    f.context.decodeAudioData.mockResolvedValueOnce({ duration: 33 } as AudioBuffer)
+    const newest = f.session.load(new Blob(['newest']))
+    await cancelled
+    expect(f.session.getState()).toMatchObject({ time: 23, duration: 90, playing: true })
+    expect(f.context.decodeAudioData).toHaveBeenCalledTimes(2)
+    work.resolve({ duration: 5 } as AudioBuffer)
+    await newest
+    expect(f.session.getState()).toMatchObject({ time: 0, duration: 33, playing: true })
+    expect(f.sources[0].stop).toHaveBeenCalledOnce()
+    expect(f.sources).toHaveLength(2)
   })
 
   it('runs at most one native decoder and retains only the latest waiting source', async () => {
