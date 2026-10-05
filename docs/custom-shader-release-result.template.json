@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "releaseDecision": "NOT_APPROVED",
   "checkedAt": null,
   "tester": "",
@@ -7,8 +7,12 @@
     "kind": "UNRECORDED",
     "frontendCommitOrImage": "",
     "backendCommitOrImage": "",
+    "checkServiceCommitOrImage": "",
     "rendererBundlePath": "",
     "rendererIntegrity": "",
+    "embeddedCompilerWorkerIntegrity": "",
+    "compilerProtocolVersion": null,
+    "compiledArtifactVersion": null,
     "parentOrigin": "",
     "rendererOrigin": "",
     "releaseApproved": null,
@@ -23,19 +27,86 @@
     "osVersion": "",
     "device": "",
     "physicalDevice": null,
-    "emulationUsed": null
+    "emulationUsed": null,
+    "remoteDeviceService": "",
+    "sanitizedSessionReference": ""
   },
+  "fixtureReports": {
+    "worker": {
+      "testVersion": "fixed-worker-2",
+      "reportSchemaVersion": 2,
+      "expectedChecks": 19,
+      "evidenceFile": "",
+      "sha256": "",
+      "scope": "UNRECORDED",
+      "status": "NOT_RUN"
+    },
+    "rendererRecovery": {
+      "testVersion": "fixed-security-3",
+      "reportSchemaVersion": 3,
+      "group": "recovery",
+      "fixtureVersion": "fixed-renderer-recovery-1",
+      "expectedChecks": 7,
+      "evidenceFile": "",
+      "sha256": "",
+      "status": "NOT_RUN",
+      "coverage": "current-renderer-recovery"
+    },
+    "other": []
+  },
+  "historicalEvidence": [],
   "checks": {
-    "browserBoundariesAndServerCanary": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "failureRecoveryAndFiniteStall": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "deployedFixedPlaybackAndAudio": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "normalAppEntryPointsAndCapture": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "templateAndCustomContractValidation": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "localRecoveryAndRetry": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "sceneAndGlobalRevocation": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" },
-    "ownerRepairExportAndAccountChanges": { "status": "NOT_RUN", "evidenceFiles": [], "notes": "" }
+    "workerCapabilityLifetimeAndFiniteStall": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "workerNetworkStorageAndServerCanary": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "rendererBoundariesTransportAndFailures": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "deployedFixedPlaybackAndAudio": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "normalAppEntryPointsAndCapture": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "templateAndCustomContractValidation": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "localRecoveryAndRetry": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "sceneAndGlobalRevocation": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    },
+    "ownerRepairExportAndAccountChanges": {
+      "status": "NOT_RUN",
+      "evidenceFiles": [],
+      "notes": ""
+    }
   },
-  "restoration": { "testPlayersStopped": null, "testDataAndControlsRestored": null, "notes": "" },
+  "restoration": {
+    "testPlayersStopped": null,
+    "testDataAndControlsRestored": null,
+    "notes": ""
+  },
   "blockers": [],
-  "evidenceRules": "Reference sanitized local files only. Do not include tokens, passwords, storage contents, private reasons or scene source. PASS requires observations for the named artifacts and actual browser/device; NOT_APPLICABLE needs a reason. Local, emulated or fixed-sample results cannot be promoted to untested deployed/device coverage."
+  "evidenceRules": "Reference sanitized local files only. Do not include tokens, passwords, storage contents, private reasons or scene source. Prefilled fixture versions/counts identify intended checks, not observed runs; verify them against each exported report. Record each fixture's own schema/version separately from this release-record schema. Keep prior-build reports and user-reported results in historicalEvidence with original scope, artifacts and missing metadata. PASS requires observations for the named current artifacts and actual browser/device; PARTIAL, FAIL, UNSUPPORTED and NOT_RUN remain incomplete. NOT_APPLICABLE requires a reason and cannot silently remove a requested platform. Historical window-thread probes do not establish current worker behavior; an 11-check fixed-worker-1 report does not establish network/storage/canary coverage. Distinguish actual compiler-worker attempts from the fixed observation worker's CSP results. Only the recovery group with current-renderer-recovery scope is current in fixed-security-3; boundary/failures/stall remain historical. Local, emulated or fixed-sample results cannot be promoted to untested deployed/device or normal-app coverage."
 }

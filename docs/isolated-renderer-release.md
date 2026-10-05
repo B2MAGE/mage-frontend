@@ -12,6 +12,19 @@ Use the [browser/device checklist](custom-shader-release-checklist.md) and [resu
 
 See [isolated renderer architecture and hosting](isolated-renderer.md) for protocol limits, immutable artifacts, AWS resources and the previous deployment evidence. This record separates current branch verification from those historical results.
 
+## Current I03 verification work — October 4, 2026
+
+Branch `pp-i03-worker-release-verification` adds current worker-boundary checks and trusted renderer-recovery checks to the existing two check pages. These additions are local and have **not** replaced the deployed fixed-worker-1/security pages. No public path or AWS resource was added.
+
+- Local in-app Chromium 154 / Windows: **19/19 worker checks passed**, maximum parent timer gap 62.8ms. Independent canary control was observed, fetch/XHR/importScripts requests were denied with zero canary requests, IndexedDB opening was denied, and CacheStorage was explicitly `NOT_EXPOSED`. That last observation is not a denied-open claim. An earlier 17/19 report is preserved; it exposed that the fixture failed to distinguish absent CacheStorage from an unusable exposed API.
+- Current trusted recovery: **7/7 passed**, including actual context-loss event, private-port rejection/flood removal, ignored window spoof with continued progress, missing readiness, observed iframe reload and a fresh healthy retry. Report schema3/`fixed-security-3`, group `recovery`, coverage `current-renderer-recovery`; historical groups remain historical.
+- Dedicated local template scene28: block removed playback; owner fields and saved thumbnail survived; owner JSON downloaded and parsed; saving while blocked succeeded; original description and playback permission were restored. This does not measure the foreground polling bound or exercise global custom enablement.
+- Current backend `ae03e7399a8364bb0068c90197908b7a80e12aa2`: **275 targeted release tests /17 classes passed**, no skips/failures/errors, using disposable test databases and stubbed storage. Mode/limits/moderation/release interlock/owner-repair coverage is automated evidence, separate from browser walkthroughs.
+- Full frontend regression: **1,945 tests /142 files passed**, plus **43 worker fixture tests**, **27 recovery/UI tests**, **23 report/HTTP policy tests**, and **eight hosting tests**. Lint, TypeScript/application, production renderer, and all three check-page builds passed. The music-page build allowlist was updated for the exact new fixed-recovery protocol dependency; no directory-wide exception was added.
+- Independent source review found no confirmed blocker in fixed activation, envelopes, attempted-call/positive-control evidence, denial classifications or hosting restrictions.
+
+Reports and screenshots: `.local/pp-i03-worker-acceptance/`. Backend evidence: `../mage-backend-submission-limits/.local/pp-i03-backend-verification-20261005/`. The exact requested Chrome/Edge/Firefox/Safari and mobile matrix, remaining controlled custom/global-disable walkthrough, deployment of these new fixtures, and final release decision remain **NOT COMPLETE / NOT APPROVED**. A local in-app Chromium result does not approve the other browsers. Both public release controls remain unchanged.
+
 ## Release verification — October 4, 2026
 
 ### PP-I06 lifecycle deployment
