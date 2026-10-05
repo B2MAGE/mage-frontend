@@ -32,7 +32,7 @@ Frozen files, HTTP reports, screenshots and browser exports are under `.local/de
 
 After receiving instructions to run the current worker checks and current renderer recovery group, the owner reported: "okay so they pass in all the browsers we tested last time". Record both current groups as **user-reported PASS on the previously tested browser/device set**. Previous conversation records identify desktop Chrome/Edge/Firefox, Pixel/Chrome/Android 17, and Apple/Safari/iOS. This statement does not establish additional operating-system/browser combinations or a new independent test run. No new JSON exports or exact version/device details accompanied it; retain those details as unspecified rather than copying versions from older reports.
 
-These reported passes satisfy the current fixed-page checks for that tested set. The owner subsequently reported the six-step normal-app walkthrough below passing. Reuse these results and the recorded automated evidence; no repeat of passing fixture groups or the same walkthrough is requested by this record. Public release approval and both playback controls remain unchanged, and I03 stays **To Verify** for controlled custom/global-control acceptance and the rollout decision.
+These reported passes satisfy the current fixed-page checks for that tested set. The owner subsequently reported the six-step normal-app walkthrough below passing, and the controlled local custom/global-control walkthrough also passed as recorded below. Reuse these results and the recorded automated evidence; no repeat of passing fixture groups or the same walkthrough is requested by this record. Production playback controls remain unchanged, and I03 stays **To Verify** for the release decision and rollout verification.
 
 ### Owner-reported normal-app walkthrough
 
@@ -52,6 +52,28 @@ Browser, device, OS, scene ID and explicit attribution of the mobile-only action
 This completes the supplied live template walkthrough as reported. It does not claim a production custom-source/global-switch test: that portion was explicitly excluded because public custom playback is still locked. The next functional verification is the controlled custom-source/global disable/re-enable and recovery walkthrough, using the existing automated contract/authorization evidence alongside it. Production release approval and both playback controls remain unchanged.
 
 The separate usability follow-ups are #236 (compatible live setting updates), #237 (single-song preview/featured players), and #238 (Clear music). They do not invalidate these reported results or expand this isolation release walkthrough.
+
+### Controlled local custom walkthrough — October 4, 2026, America/New_York
+
+The normal local app at `http://127.0.0.1:5178` was exercised in the Windows in-app browser using Ari's copied administrator session. The exact existing backend image/JAR was reused with local-only release approval, a disposable copy of the local database, and a dedicated local MinIO upload prefix. The original backend is preserved stopped; its database and existing thumbnails were not modified. Production public status was checked afterward and still reports `CUSTOM_RENDERING_DISABLED`.
+
+The frontend checkout was `848851d` (documentation changes after the deployed `5f5295e` implementation). The verified local renderer is `assets/renderer-UqVVcV7s.js`; its exact document/assets/headers/routes passed the existing renderer verifier before the walkthrough. Backend image: `sha256:e95aa33310a94f3b77ae82e792e1e4f2ff82b32e9659a7909eed910a51b935f5`; JAR SHA-256: `89128b7e07dd22b41e95c9d27fce2dfeb643ccb43b1406eed81466fd34497421`.
+
+| Check | Observed result |
+| --- | --- |
+| Local approval and normal administrator UI | Release approval unlocked the switch without enabling its saved state. Explicit switch/reason/Save change enabled custom playback. |
+| Custom import, capture, save and Watch | Imported a bounded colored sphere with explicit camera settings through Confirm / Raw JSON. Preview rendered; scene29 saved as `custom-v1` with a thumbnail in the test prefix and rendered in Watch. |
+| Compile-rejected draft | A finite deliberate syntax error paused rendering. Name, description, camera/settings and saved thumbnail survived. The actual downloaded JSON retained the rejected source. Explicit Retry failed safely again. |
+| Global disable | Saved Off through the normal administrator page. The active saved custom scene displayed unavailable and had zero iframes **2,582 ms after the Save click**. This includes the save and observation time; it is one local observation, not a universal latency guarantee. Refresh remained denied with no renderer/retry bypass, while template28 continued rendering. |
+| Global restore and retained local failure | Saved On restored the healthy saved custom scene. The rejected editor draft still had no iframe and required Retry; permission restoration did not erase its failure. Restoring valid source recovered the preview. |
+| Individual custom block and owner repair | Blocked scene29, reloaded its owner editor, retained source/settings/thumbnail, downloaded JSON, changed its description and saved. Public scene data remained withheld with `SCENE_DISABLED`; saving did not clear the block. |
+| Cleanup | Restored scene29's original source/description and individual permission. Restored the global saved switch Off, leaving local release approval true for the owner's testing. Production remains locked. |
+
+One initial global re-enable attempt reported that its result could not be verified. Check current status confirmed saved Off before a deliberate retry succeeded. No cause was established; the page failed closed and did not claim success. The download event observer timed out, but the actual browser-created files `scene-29.json` and `scene-29 (1).json` were found, parsed and copied as evidence; this was a tooling observation failure, not a failed export.
+
+Evidence: `.local/i03-custom-walkthrough/` (screenshots, both exported documents and `result.json`); backend setup/state/rollback helpers: `../mage-backend-submission-limits/.local/pp-i03-local-custom/`. The local test database uses temporary memory-backed storage and must remain running for continued testing. The rollback helper restores the exact original backend and validates owned resource identities before removing the disposable database/network. The dedicated test thumbnail prefix is retained.
+
+This completes the focused controlled custom/global-control browser walkthrough. It is local Windows in-app-browser evidence, separate from the owner's reported live/browser passes. No production enablement, merge, deployment, new mobile observation or untested browser combination is implied. The release owner still needs to approve the recorded scope/artifacts before the production release setting and separate administrator switch are enabled and rollout is verified.
 
 ### Local preparation — October 4, 2026
 
