@@ -32,7 +32,26 @@ Frozen files, HTTP reports, screenshots and browser exports are under `.local/de
 
 After receiving instructions to run the current worker checks and current renderer recovery group, the owner reported: "okay so they pass in all the browsers we tested last time". Record both current groups as **user-reported PASS on the previously tested browser/device set**. Previous conversation records identify desktop Chrome/Edge/Firefox, Pixel/Chrome/Android 17, and Apple/Safari/iOS. This statement does not establish additional operating-system/browser combinations or a new independent test run. No new JSON exports or exact version/device details accompanied it; retain those details as unspecified rather than copying versions from older reports.
 
-These reported passes satisfy the current fixed-page checks for that tested set. The next work is the focused normal-app playback/input/lifecycle walkthrough, controlled custom scene/global moderation and owner repair/export verification. Reuse the recorded automated and template walkthrough evidence; no repeat of passing fixture groups is requested by this record. Public release approval and both playback controls remain unchanged, and I03 stays **To Verify** until the remaining application acceptance and rollout decision are completed.
+These reported passes satisfy the current fixed-page checks for that tested set. The owner subsequently reported the six-step normal-app walkthrough below passing. Reuse these results and the recorded automated evidence; no repeat of passing fixture groups or the same walkthrough is requested by this record. Public release approval and both playback controls remain unchanged, and I03 stays **To Verify** for controlled custom/global-control acceptance and the rollout decision.
+
+### Owner-reported normal-app walkthrough
+
+The owner reported "these all passed" for the six-step walkthrough on normal live MAGE using a new template test scene. Record each step as **user-reported PASS**, separate from an independently observed run:
+
+| Step | Reported passing behavior |
+| --- | --- |
+| 1. Create and edit | Template rendering, local music, effects, Selective response and template switching work; music continues and the page remains responsive. |
+| 2. Capture and save | Thumbnail capture and scene creation succeed; saved-scene audio, play/pause, seeking, volume, dragging and zooming work. |
+| 3. Pause and return | Pause-all restores playback; deliberately stopped scenes stay stopped across reload until resumed. The supplied walkthrough also includes mobile rotation and background/return. |
+| 4. Block the test scene | A scene block stops foreground playback within the stated 30-second bound; refresh cannot bypass it and scene details remain visible. No exact elapsed time was supplied. |
+| 5. Edit and export while blocked | Owner settings and thumbnail survive; description updates and JSON export work without clearing the block. |
+| 6. Restore playback | Unblocking and reloading or deliberately resuming restores playback. |
+
+Browser, device, OS, scene ID and explicit attribution of the mobile-only actions were not supplied with this report; clarification was requested. Do not infer this walkthrough ran on every browser in the separate fixture report. No new screenshot/export or independent execution is claimed.
+
+This completes the supplied live template walkthrough as reported. It does not claim a production custom-source/global-switch test: that portion was explicitly excluded because public custom playback is still locked. The next functional verification is the controlled custom-source/global disable/re-enable and recovery walkthrough, using the existing automated contract/authorization evidence alongside it. Production release approval and both playback controls remain unchanged.
+
+The separate usability follow-ups are #236 (compatible live setting updates), #237 (single-song preview/featured players), and #238 (Clear music). They do not invalidate these reported results or expand this isolation release walkthrough.
 
 ### Local preparation — October 4, 2026
 
