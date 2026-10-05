@@ -12,6 +12,7 @@ import { availabilityTarget } from '../availability/availabilityTarget'
 import { BRAND_SCENE } from '../templates/platformBrandScene'
 import { SCENE_POLICY, validateSceneForPlayback } from '../policy/sceneValidation'
 import { boundCaptureSize, getRenderBudget, type RenderBudget } from '../policy/renderBudget'
+import { playerStartupCancelled, waitForPlayerStartup } from './playerStartup'
 
 const SCENE_BLOB_KEYS = [
   'audio',
@@ -257,6 +258,7 @@ async function loadMageEngineModule() {
 
 /** Every user scene, including templates, crosses the isolated renderer boundary. */
 export async function createMagePlayer(target: HTMLElement, options: MagePlayerOptions = {}): Promise<MagePlayerController> {
+  if (options.signal?.aborted) throw playerStartupCancelled()
   if (pageSuspended) throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
   if (options.platformArtwork === 'brand') {
     if (!(target instanceof HTMLCanvasElement) || options.sceneKey !== undefined
@@ -306,7 +308,8 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
   try {
     if (!platformArtwork && !(await sceneAvailabilityStore.check(target)).allowed) assertAvailability()
     availabilityArmed = true
-    const { initMAGE } = await loadMageEngineModule()
+    const { initMAGE } = await waitForPlayerStartup(loadMageEngineModule(), options.signal)
+    if (options.signal?.aborted) throw playerStartupCancelled()
     assertAvailability()
     if (pageSuspended || creationGeneration !== pageLifecycleGeneration) {
       throw new MagePlayerAdapterError('Player creation was interrupted by page navigation.')
@@ -405,6 +408,11 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
     window.removeEventListener('pageshow', onPageShow, { capture: true })
   }
 
+  function onAbort() {
+    detachPageLifecycle()
+    try { clearLeaseAfterDisposal() } catch { rememberFailedDisposal() }
+  }
+
   function clearLeaseAfterDisposal() {
     disposeEngine()
     // A failed disposal keeps its marker even when dispose() is called again.
@@ -443,10 +451,13 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
 
   window.addEventListener('pagehide', onPageHide)
   window.addEventListener('pageshow', onPageShow, { capture: true })
+  options.signal?.addEventListener('abort', onAbort, { once: true })
+  if (options.signal?.aborted) { onAbort(); throw playerStartupCancelled() }
 
   function disposeEngine() {
     if (disposed) return
     disposed = true
+    options.signal?.removeEventListener('abort', onAbort)
     releaseAvailability()
     sceneGeneration += 1
     audioLoadGeneration += 1

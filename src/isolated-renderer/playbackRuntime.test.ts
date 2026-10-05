@@ -202,6 +202,42 @@ describe('isolated playback runtime', () => {
     expect(f.port.close).toHaveBeenCalledOnce()
   })
 
+  it('captures a replacement scene without waiting for an abandoned capture to finish', async () => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    f.engine.capture.mockReturnValueOnce(new Promise(() => {}))
+    const request = { width: 10, height: 10, quality: 0.8, type: 'image/png' as const }
+    f.send('capture', request)
+    f.load(2); await Promise.resolve()
+    f.send('capture', request, 2)
+    await Promise.resolve()
+    expect(f.engine.capture).toHaveBeenCalledTimes(2)
+    expect(f.responses('captured').map(message => message.generation)).toEqual([2])
+    expect(f.responses('error')).toEqual([])
+    expect(f.port.close).not.toHaveBeenCalled()
+  })
+
+  it('does not let stale capture completion release or cancel the current capture', async () => {
+    vi.useFakeTimers()
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    let completeOld!: (value: PlaybackPayloads['captured']) => void
+    f.engine.capture.mockReturnValueOnce(new Promise(resolve => { completeOld = resolve }))
+    const request = { width: 10, height: 10, quality: 0.8, type: 'image/png' as const }
+    f.send('capture', request)
+    await vi.advanceTimersByTimeAsync(1001)
+    f.load(2); await Promise.resolve()
+    f.engine.capture.mockReturnValueOnce(new Promise(() => {}))
+    f.send('capture', request, 2)
+    completeOld({ bytes: new ArrayBuffer(12), type: 'image/png', width: 10, height: 10 })
+    await Promise.resolve()
+    f.send('capture', request, 2)
+    expect(f.engine.capture).toHaveBeenCalledTimes(2)
+    expect(f.responses('captured')).toEqual([])
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }])
+    await vi.advanceTimersByTimeAsync(5001)
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }, { code: 'render' }])
+    expect(f.port.close).toHaveBeenCalledOnce()
+  })
+
   it('fails closed on malformed and excessive scene commands', async () => {
     const f = fixture(); f.bootstrap()
     f.send('load', { scene: { ...scene, audioPath: 'https://example.com/song.mp3' }, profile: 'full' })

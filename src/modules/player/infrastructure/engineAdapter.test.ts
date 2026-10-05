@@ -67,4 +67,25 @@ describe('createMagePlayer execution boundary', () => {
     await expect(createMagePlayer(document.createElement('div'), { initialSceneBlob: legacy })).rejects.toThrow(/navigation/)
     expect(mocks.isolated).not.toHaveBeenCalled()
   })
+
+  it('rejects cancelled creation before choosing either rendering path', async () => {
+    const abort = new AbortController(); abort.abort()
+    await expect(createMagePlayer(document.createElement('div'), { initialSceneBlob: legacy, signal: abort.signal }))
+      .rejects.toMatchObject({ name: 'AbortError' })
+    await expect(createMagePlayer(document.createElement('canvas'), { platformArtwork: 'brand', signal: abort.signal }))
+      .rejects.toMatchObject({ name: 'AbortError' })
+    expect(mocks.isolated).not.toHaveBeenCalled()
+    expect(mocks.initMAGE).not.toHaveBeenCalled()
+  })
+
+  it('passes ownership cancellation to isolated creation and disposes fixed brand resources on abort', async () => {
+    const abort = new AbortController(), target = document.createElement('div')
+    await createMagePlayer(target, { initialSceneBlob: legacy, signal: abort.signal })
+    expect(mocks.isolated).toHaveBeenCalledWith(target, { initialSceneBlob: legacy, signal: abort.signal })
+    const brand = await createMagePlayer(document.createElement('canvas'), { platformArtwork: 'brand', signal: abort.signal })
+    abort.abort()
+    expect(mocks.dispose).toHaveBeenCalledOnce()
+    brand.dispose()
+    expect(mocks.dispose).toHaveBeenCalledOnce()
+  })
 })

@@ -69,6 +69,7 @@ describe('MagePlayer', () => {
       expect(createMagePlayer).toHaveBeenCalledTimes(1)
       expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement), {
         log: false, renderProfile: 'full', initialSceneBlob: sceneBlob, mouseInteractions: true, mouseWheelZoom: true,
+        signal: expect.any(AbortSignal),
       })
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')

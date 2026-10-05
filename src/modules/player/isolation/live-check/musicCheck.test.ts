@@ -17,7 +17,7 @@ function fixture(parentOrigin = window.location.origin, boundary = true) {
   const player = {
     setAudioResponse: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
     ready: Promise.resolve(), loadScene: vi.fn(async () => {}), loadAudio: vi.fn<ReturnType<typeof createIsolatedPlayer>['loadAudio']>(async () => {}),
-    play: vi.fn(async () => {}), pause: vi.fn(), seek: vi.fn(), reset: vi.fn(), clearAudio: vi.fn(),
+    play: vi.fn(async () => {}), pause: vi.fn(), setRenderingSuspended: vi.fn(), seek: vi.fn(), reset: vi.fn(), clearAudio: vi.fn(),
     setVolume: vi.fn(), setSynthetic: vi.fn(), getAudioState: vi.fn(() => ({ loaded: true, playing: true, time: 12, duration: 30, volume: 0.4 })),
     capture: vi.fn(async () => new Blob(['raster'], { type: 'image/png' })), dispose: vi.fn(),
   }

@@ -8,6 +8,7 @@ import { validateSceneForPlayback } from '../policy/sceneValidation'
 import { sceneRecovery, sceneRecoveryKey, type RecoveryLease, type RecoveryReason } from '../recovery/sceneRecovery'
 import { resolveSceneForPlayback } from '../templates/resolveScene'
 import { MagePlayerAdapterError, type MageAudioResponseState, type MagePlayerAudioState, type MagePlayerController, type MagePlayerOptions, type MagePlayerPlaybackState, type MageSceneBlob } from './playerController'
+import { playerStartupCancelled, waitForPlayerStartup } from './playerStartup'
 
 const changed = () => new MagePlayerAdapterError('The scene changed before playback was ready.')
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -46,11 +47,13 @@ function blobDataUrl(blob: Blob) {
 
 /** Availability and recovery stay in the parent; submitted source never reaches its engine. */
 export async function createIsolatedMageController(container: HTMLElement, options: MagePlayerOptions): Promise<MagePlayerController> {
+  if (options.signal?.aborted) throw playerStartupCancelled()
   if (options.initialSceneBlob === undefined) throw new MagePlayerAdapterError('Supply a valid initial scene before creating a player.')
   const initial = validateSceneForPlayback(options.initialSceneBlob)
   let target: SceneAvailabilityTarget = availabilityTarget(options.sceneKey, initial)
   let sceneKey = options.sceneKey
   let disposed = false, cleanlyDisposed = false, suspended = false, denied = false
+  let viewSuspended = false
   let sceneGeneration = 0, captureGeneration = 0, audioGeneration = 0
   let transportGeneration = 0
   let lastSceneStartedAt = -Infinity
@@ -104,6 +107,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     permissionWaiters.clear()
     releaseAvailability()
     releaseRecovery()
+    options.signal?.removeEventListener('abort', onAbort)
     window.removeEventListener('pagehide', onPageHide)
     bridge?.dispose()
     cleanlyDisposed = true
@@ -128,6 +132,9 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   }
 
   function onPageHide() { dispose() }
+  function onAbort() {
+    try { dispose() } catch { /* The existing cleanup marker records failed disposal. */ }
+  }
 
   function assertUsable() {
     if (disposed) throw new MagePlayerAdapterError('This preview has stopped. Retry to create a new player.')
@@ -142,7 +149,9 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   }
 
   function resume() {
-    if (!bridge || !loaded || playback !== 'playing') return
+    if (!bridge || !loaded || suspended || viewSuspended) return
+    bridge.setRenderingSuspended(false)
+    if (playback !== 'playing') return
     const generation = ++transportGeneration
     void bridge.play().catch(error => {
       if (disposed || generation !== transportGeneration) return
@@ -156,6 +165,11 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   function pause() {
     transportGeneration++
     bridge?.pause()
+  }
+
+  function suspendRendering() {
+    transportGeneration++
+    bridge?.setRenderingSuspended(true)
   }
 
   async function waitForPermission(kind: 'scene' | 'audio') {
@@ -181,7 +195,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
         dispose()
       } else if (!suspended) {
         suspended = true
-        try { pause() } catch { fail('runtime') }
+        try { suspendRendering() } catch { fail('runtime') }
       }
       return
     }
@@ -199,13 +213,15 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     releaseAvailability = sceneAvailabilityStore.subscribe(target, updateAvailability)
   }
 
+  options.signal?.addEventListener('abort', onAbort, { once: true })
   window.addEventListener('pagehide', onPageHide)
   watch(target)
   releaseRecovery = sceneRecovery.subscribe(() => {
     if (!disposed && (sceneRecovery.isSafeMode() || (currentRecoveryKey && sceneRecovery.getBlock(currentRecoveryKey)))) dispose()
   })
   try {
-    await sceneAvailabilityStore.check(target)
+    if (options.signal?.aborted) throw playerStartupCancelled()
+    await waitForPlayerStartup(sceneAvailabilityStore.check(target), options.signal)
     updateAvailability()
     assertAllowed()
     bridge = createIsolatedPlayer({
@@ -214,7 +230,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       pointerInteractions: options.mouseInteractions === true,
       onFailure: fail,
       onHealthy() {
-        if (disposed || !loaded || suspended || denied || playback !== 'playing') return
+        if (disposed || !loaded || suspended || viewSuspended || denied || playback !== 'playing') return
         if (!sceneAvailabilityStore.isAllowed(target) || sceneRecovery.isSafeMode()) return
         // Only this active retry can retire its original warning. The lease
         // keeps its unfinished-render marker and rejects a newer failure.
@@ -222,11 +238,16 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       },
       onStatus: status => { if (status === 'disposed' && !disposed) dispose() },
     })
-    await bridge.ready
+    // A synchronous observer may cancel while the bridge constructor is running.
+    if (disposed || options.signal?.aborted) {
+      bridge.dispose()
+      if (options.signal?.aborted) throw playerStartupCancelled()
+    }
+    await waitForPlayerStartup(bridge.ready, options.signal)
     assertAllowed()
   } catch (error) {
     dispose()
-    throw error
+    throw options.signal?.aborted ? playerStartupCancelled() : error
   }
 
   function getAudioState(): MagePlayerAudioState {
@@ -268,7 +289,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       permissionWaiters.delete('scene')
       captureGeneration++
       loaded = false
-      pause()
+      suspendRendering()
       if (nextTarget !== target) { suspended = true; watch(nextTarget) }
       await sceneAvailabilityStore.check(nextTarget)
       assertUsable()
@@ -301,7 +322,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
         if (generation !== sceneGeneration) throw changed()
         loaded = true
         releaseRetired()
-        if (playback === 'playing') resume()
+        resume()
       } catch (error) {
         if (!disposed && generation === sceneGeneration) fail('load')
         throw error
@@ -328,6 +349,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     },
     getAudioState,
     getPlaybackState: () => playback,
+    getStoppedRecoveryKey: () => disposed ? currentRecoveryKey : null,
     getAudioResponseState,
     getAudioResponseCapabilities: () => loaded ? bridge!.getAudioResponseCapabilities() : null,
     getAudioResponseDiagnostics: () => null,
@@ -391,6 +413,13 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       else resume()
       return playback
     },
+    setRenderingSuspended(next) {
+      assertUsable()
+      if (viewSuspended === next) return
+      viewSuspended = next
+      if (next) { captureGeneration++; suspendRendering() }
+      else resume()
+    },
     resetPlayback() {
       assertAllowed()
       if (!loaded) throw new MagePlayerAdapterError('Load a scene before resetting playback.')
@@ -405,6 +434,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     setSyntheticPreview(enabled, seed, tempoScale) { assertAllowed(); bridge!.setSynthetic(enabled, seed, tempoScale) },
     async captureFramePreview(capture = {}) {
       assertAllowed()
+      if (viewSuspended) return null
       if (!loaded) throw new MagePlayerAdapterError('Load a scene before capturing a thumbnail.')
       if (capturing) throw new MagePlayerAdapterError('A preview capture is already in progress.')
       capturing = true
@@ -413,6 +443,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
         await sceneAvailabilityStore.check(target)
         updateAvailability()
         assertAllowed()
+        if (viewSuspended) return null
         if (requestedScene !== sceneGeneration) return null
         const generation = captureGeneration
         const bounds = container.getBoundingClientRect()
@@ -421,10 +452,10 @@ export async function createIsolatedMageController(container: HTMLElement, optio
         if (!['image/png', 'image/jpeg', 'image/webp'].includes(type)) throw new MagePlayerAdapterError('The preview image type is unavailable.')
         const image = await bridge!.capture({ ...size, type: type as 'image/png' | 'image/jpeg' | 'image/webp', quality: capture.quality ?? 0.92 })
         assertAllowed()
-        if (generation !== captureGeneration) return null
+        if (viewSuspended || generation !== captureGeneration) return null
         const data = await blobDataUrl(image)
         assertAllowed()
-        return generation === captureGeneration ? data : null
+        return !viewSuspended && generation === captureGeneration ? data : null
       } finally { capturing = false }
     },
     stopRendering: () => fail('stopped'),

@@ -26,6 +26,7 @@ type ActivePreview = {
   id: PreviewRegistrationId
   canvas: HTMLDivElement
   controller: MagePlayerController | null
+  startup: AbortController
 }
 
 function nextAnimationFrame() {
@@ -111,6 +112,7 @@ class SceneHoverPreviewCoordinator {
   private readonly handlePageHide = () => {
     this.pageSuspended = true
     this.cancelPendingActivation()
+    this.stopActivePreview(false)
   }
 
   private readonly handlePageShow = (event: PageTransitionEvent) => {
@@ -142,12 +144,12 @@ class SceneHoverPreviewCoordinator {
     canvas.className = 'scene-card__preview-canvas'
     canvas.setAttribute('aria-hidden', 'true')
     canvas.tabIndex = -1
-    const activation: ActivePreview = { id, canvas, controller: null }
+    const activation: ActivePreview = { id, canvas, controller: null, startup: new AbortController() }
     this.active = activation
     registration.target.append(canvas)
 
     try {
-      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId, renderProfile: 'preview', initialSceneBlob: registration.sceneBlob })
+      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId, renderProfile: 'preview', initialSceneBlob: registration.sceneBlob, signal: activation.startup.signal })
       if (this.active !== activation || !this.canPreview(id)) {
         controller.dispose()
         if (this.active === activation) this.stopActivePreview(false)
@@ -180,6 +182,7 @@ class SceneHoverPreviewCoordinator {
     const activation = this.active
     if (!activation) return
     this.active = null
+    activation.startup.abort()
     activation.canvas.classList.remove('is-visible')
     if (activation.controller) {
       try {

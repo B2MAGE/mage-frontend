@@ -32,7 +32,8 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   const previousUserSelect = options.container.style.userSelect
   if (options.pointerInteractions !== false) options.container.style.userSelect = 'none'
   let disposed = false, failed = false, available = false, sceneLoaded = false
-  let playing = true, elapsed = 0, previousTick = now()
+  let playing = true, renderingSuspended = false, elapsed = 0, previousTick = now()
+  const visualsSuspended = () => renderingSuspended || document.visibilityState === 'hidden'
   let sceneGeneration = 0, audioGeneration = 0
   let timer: ReturnType<typeof setInterval> | null = null
   let observer: ResizeObserver | null = null
@@ -71,7 +72,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   }
 
   function onPointerDown(event: PointerEvent) {
-    if (disposed || failed || event.button !== 0 || event.isPrimary === false || activePointer !== null) return
+    if (disposed || failed || visualsSuspended() || event.button !== 0 || event.isPrimary === false || activePointer !== null) return
     event.preventDefault()
     activePointer = event.pointerId
     pointer = { ...pointerPosition(event), down: true, inside: true }
@@ -79,12 +80,12 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   }
 
   function onPointerMove(event: PointerEvent) {
-    if (disposed || failed || (activePointer !== null && event.pointerId !== activePointer)) return
+    if (disposed || failed || visualsSuspended() || (activePointer !== null && event.pointerId !== activePointer)) return
     pointer = { ...pointer, ...pointerPosition(event), inside: true }
   }
 
   function onWheel(event: WheelEvent) {
-    if (!options.wheelZoom || disposed || failed || !sceneLoaded || event.ctrlKey || event.metaKey) return
+    if (!options.wheelZoom || disposed || failed || visualsSuspended() || !sceneLoaded || event.ctrlKey || event.metaKey) return
     event.preventDefault()
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? options.container.getBoundingClientRect().height : 1
     const delta = Math.max(-200, Math.min(200, event.deltaY * unit))
@@ -98,8 +99,16 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   }
 
   function onVisibilityChange() {
+    if (disposed || failed) return
     previousTick = now()
     if (document.visibilityState === 'hidden') leavePointer()
+    try {
+      if (available && sceneLoaded) host!.setPlayback(playing && !visualsSuspended())
+      update()
+    } catch {
+      fail('runtime')
+      host?.dispose()
+    }
   }
 
   function resize() {
@@ -158,7 +167,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   function update() {
     if (disposed || failed || !available || !sceneLoaded || !host) return
     const current = now()
-    if (playing) elapsed = Math.min(BRIDGE_LIMITS.maxTime, elapsed + Math.max(0, Math.min(0.25, (current - previousTick) / 1000)))
+    if (playing && !visualsSuspended()) elapsed = Math.min(BRIDGE_LIMITS.maxTime, elapsed + Math.max(0, Math.min(0.25, (current - previousTick) / 1000)))
     previousTick = current
     try {
       host.update({ time: elapsed, audio: audio.sample(), pointer: { ...pointer } })
@@ -177,7 +186,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       },
       onFailure: fail,
       onHealthy() {
-        if (disposed || failed || !available || !sceneLoaded || !playing) return
+        if (disposed || failed || !available || !sceneLoaded || !playing || visualsSuspended()) return
         try { options.onHealthy?.() } catch { /* Recovery observers cannot disrupt playback. */ }
       },
     })
@@ -245,7 +254,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       previousTick = now()
       audio.setSensitivity(response.config?.sensitivity ?? 1)
       host!.setAudioResponse(response)
-      host!.setPlayback(playing)
+      host!.setPlayback(playing && !visualsSuspended())
       host!.setZoom(zoom)
       host!.setSynthetic(synthetic.enabled, synthetic.seed, synthetic.tempoScale)
       resize()
@@ -265,8 +274,21 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       assertActive()
       playing = true
       previousTick = now()
-      if (available && sceneLoaded) host!.setPlayback(true)
+      if (available && sceneLoaded) host!.setPlayback(!visualsSuspended())
       await audio.play()
+    },
+    setRenderingSuspended(suspended: boolean) {
+      assertActive()
+      if (typeof suspended !== 'boolean') throw new Error('Invalid renderer suspension.')
+      if (suspended === renderingSuspended) return
+      update()
+      renderingSuspended = suspended
+      previousTick = now()
+      // A hold cannot survive a hidden/checking/loading interval and activate
+      // a different scene. Parent-owned music keeps its source and position.
+      if (suspended) leavePointer()
+      if (available) host!.setPlayback(playing && !visualsSuspended())
+      update()
     },
     pause() {
       assertActive()

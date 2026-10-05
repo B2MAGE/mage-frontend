@@ -58,6 +58,8 @@ export type MagePlayerController = {
   getAudioResponseDiagnostics: () => MageAudioResponseDiagnostics | null
   getAudioResponseEvents: (afterId?: number) => MageAudioResponseEvent[]
   getPlaybackState: () => MagePlayerPlaybackState
+  /** Identity of a stopped renderer, so a different permitted revision can get a fresh instance. */
+  getStoppedRecoveryKey?: () => string | null
   getEngineDiagnostics?: () => MageEngineDiagnostics | null
   loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void | Promise<void>
@@ -68,6 +70,8 @@ export type MagePlayerController = {
   setAudioResponseSettings: (mode: SceneAudioResponseMode | undefined, config?: unknown) => MageAudioResponseState
   setAudioResponseOverride: (config: unknown | null) => MageAudioResponseState
   setPlaybackState: (playbackState: MagePlayerPlaybackState) => MagePlayerPlaybackState
+  /** Suspend visuals while a replacement is checked, preserving parent audio and user playback intent. */
+  setRenderingSuspended?: (suspended: boolean) => void
   setSyntheticPreview: (enabled: boolean, seed?: number, tempoScale?: number) => void
   stopRendering?: () => void
 }
@@ -85,4 +89,6 @@ export class MagePlayerAdapterError extends Error {
 export type MagePlayerOptions = {
   log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean;
   sceneKey?: string | number; platformArtwork?: 'brand'; renderProfile?: RenderProfile; initialSceneBlob?: unknown;
+  /** Cancels pending creation and disposes this player's resources on abort. */
+  signal?: AbortSignal;
 }
