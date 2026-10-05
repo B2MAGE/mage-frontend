@@ -20,19 +20,19 @@ async function state(initialState?: SceneEditorInitialState) {
 }
 
 describe('template editor state and preview', () => {
-  it('retains the current draft when builder JSON is imported or formatted', async () => {
+  it('imports and formats Builder JSON without changing scene details', async () => {
     const { result } = await state({ name: 'Keep my draft' })
-    const original = result.current.sceneData
     const builder = JSON.stringify({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
       objects: [{ id: 'ball', operation: { type: 'sphere' } }] })
     act(() => result.current.handleRawSceneDataChange(builder))
-    expect(result.current.sceneData).toEqual(original)
+    expect(result.current.sceneData).toMatchObject({ kind: 'builder', objects: [{ id: 'ball' }] })
     expect(result.current.sceneDataText).toBe(builder)
-    expect(result.current.errors.sceneData).toContain('cannot be edited here yet')
+    expect(result.current.errors.sceneData).toBeUndefined()
     act(() => result.current.handleFormatJson())
-    expect(result.current.sceneData).toEqual(original)
+    expect(result.current.sceneData).toMatchObject({ kind: 'builder', objects: [{ id: 'ball' }] })
+    expect(JSON.parse(result.current.sceneDataText)).toEqual(result.current.sceneData)
     expect(result.current.name).toBe('Keep my draft')
-    expect(result.current.errors.sceneData).toContain('cannot be edited here yet')
+    expect(result.current.errors.sceneData).toBeUndefined()
   })
 
   it('converts only a shader change and preserves authored settings and scene details in the custom submission', async () => {
