@@ -405,7 +405,7 @@ describe('MusicResponseControls', () => {
     expect(onClassicSettingChange).not.toHaveBeenCalled()
   })
 
-  it('falls back immediately when capabilities change and distinguishes waiting from unavailable', async () => {
+  it('keeps a confirmed fallback selection across unknown and empty capabilities without rewriting saved mappings', async () => {
     const onChange = vi.fn()
     const props = { onChange, supportedTargets: ['size', 'bass'] as MusicResponseControlsProps['supportedTargets'] }
     const { rerender } = render(<ControlledControls {...props} />)
@@ -415,11 +415,16 @@ describe('MusicResponseControls', () => {
     expect(screen.getByRole('combobox', { name: 'Frequency focus' })).toHaveValue('treble')
     expect(screen.queryByRole('combobox', { name: 'Response target' })).not.toBeInTheDocument()
     rerender(<ControlledControls {...props} supportedTargets={null} />)
-    expect(screen.getByRole('status')).toHaveTextContent(/waiting for the preview/i)
+    expect(screen.getByRole('status')).toHaveTextContent('Available inputs will appear when this preview can run.')
     expect(screen.queryByRole('checkbox', { name: 'React to music' })).not.toBeInTheDocument()
     rerender(<ControlledControls {...props} supportedTargets={[]} />)
-    expect(screen.getByRole('status')).toHaveTextContent(/no movements available/i)
+    expect(screen.getByRole('status')).toHaveTextContent('This shader has no supported music-response inputs.')
     expect(screen.queryByRole('slider', { name: 'Amount' })).not.toBeInTheDocument()
+    rerender(<ControlledControls {...props} supportedTargets={['bass', 'treble']} />)
+    expect(screen.getByRole('combobox', { name: 'Response target' })).toHaveValue('treble')
+    expect(screen.getByRole('spinbutton', { name: 'Amount numeric value' })).toHaveValue(0.6)
+    expect(screen.getByRole('combobox', { name: 'Frequency focus' })).toHaveValue('treble')
+    expect(screen.getByRole('combobox', { name: 'Response style' })).toHaveValue('custom')
     expect(onChange).not.toHaveBeenCalled()
   })
 

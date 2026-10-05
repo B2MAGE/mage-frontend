@@ -39,6 +39,7 @@ import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
+import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
 import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
@@ -216,11 +217,9 @@ export function SceneEditorShell({
   const audioResponseConfig = editorAudioResponseConfig;
   // Keep controls steady through response edits, but never display the prior
   // shader's movement list while a different shader is compiling.
-  const supportedAudioTargets = !isTemplate ? audioResponseConfig.mappings.map(mapping => mapping.target) : audioResponseCapabilities
-    && audioResponseCapabilities.sceneBlob.kind === 'template'
-    && audioResponseCapabilities.sceneBlob.templateId === templateDocument?.templateId
-    && audioResponseCapabilities.sceneBlob.templateVersion === templateDocument?.templateVersion
-    ? audioResponseCapabilities.capabilities.supportedTargets : null;
+  const supportedAudioTargets = useMemo(() => supportedPreviewAudioTargets(
+    audioResponseCapabilities, previewSceneData, sceneData,
+  ), [audioResponseCapabilities, previewSceneData, sceneData]);
   const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
     null,
   );

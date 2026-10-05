@@ -72,6 +72,9 @@ export function MusicResponseControls({
   const invalidTarget = invalidMappingIndex ? config.mappings[Number(invalidMappingIndex[1] ?? invalidMappingIndex[2])]?.target : undefined
   const customTimings = customTimingDrafts ?? internalCustomTiming
   const targets = [...new Set(supportedTargets ?? [])]
+  // Remember a confirmed fallback, but retain the choice while discovery is
+  // unavailable so an audio-only edit does not move the controls unexpectedly.
+  if (targets.length > 0 && !targets.includes(preferredTarget)) setPreferredTarget(targets[0])
   const requestedTarget = invalidTarget ?? preferredTarget
   const target = targets.includes(requestedTarget) ? requestedTarget : targets[0]
   const savedMapping = config.mappings.find((mapping) => mapping.target === target)
@@ -185,9 +188,9 @@ export function MusicResponseControls({
           </CollapsibleEditorGroup>
         </fieldset>
       ) : mode === 'transient-v1' ? null : supportedTargets === null ? (
-        <p className="music-response-controls__message" role="status">Waiting for the preview to show which movements can react to music.</p>
+        <p className="music-response-controls__message" role="status">Available inputs will appear when this preview can run.</p>
       ) : !mapping ? (
-        <p className="music-response-controls__message" role="status">This scene has no movements available for selective music response. Choose another scene or response mode.</p>
+        <p className="music-response-controls__message" role="status">This shader has no supported music-response inputs.</p>
       ) : (
         <>
           {targets.length > 1 ? (
