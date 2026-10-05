@@ -21,9 +21,12 @@ test('the live fixture binds to the deployed parent and exact separate player si
   assert(!LIVE_CHECK_CSP.includes('unsafe-eval'))
 })
 
-test('the HTTP policy matches the document policy and restricts frame ancestors', () => {
+test('the legacy static-host configuration retires every check path', () => {
   const nginx = readFileSync(new URL('./nginx.player-check.conf', import.meta.url), 'utf8')
-  assert(nginx.includes(`Content-Security-Policy "${LIVE_CHECK_CSP}; frame-ancestors 'none'"`))
+  assert(nginx.includes("default-src 'none'; sandbox; frame-ancestors 'none'"))
+  assert(nginx.includes('location = /player-check { return 410; }'))
+  assert(nginx.includes('location ^~ /player-check/ { return 410; }'))
+  assert(!nginx.includes('try_files'))
   assert(nginx.includes('location / { return 404; }'))
   assert(nginx.includes('Cache-Control "no-store"'))
 })
