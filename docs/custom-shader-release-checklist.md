@@ -31,6 +31,8 @@ Every cell below means **current release matrix NOT COMPLETE**. Recorded narrowe
 
 Safari on Windows or Android is not a release target. A browser brand on one OS does not establish its behavior on another. Leave individual unrun checks `NOT_RUN`, failed checks `FAIL`, and record unavailable platforms as blockers; do not silently narrow this scope. Viewport or user-agent emulation is not a physical-device result. For remote-device services, record the service, actual device/OS and sanitized session reference, and distinguish a real device from an emulator.
 
+The owner subsequently reported both current fixed-page groups passing on the previously tested browser/device set. This satisfies those fixture groups as user-reported evidence; the table above still tracks the full application release, not just those two tests. See the current report below before requesting repeat runs.
+
 ### Evidence already received
 
 | Evidence | Established result | Remaining limits |
@@ -42,6 +44,7 @@ Safari on Windows or Android is not a release target. A browser brand on one OS 
 | PP-I05 deployed fixed checks | Windows in-app Chromium passed worker 11/11; recorded music checks exercised playback, switching, seek, pause/resume, capture and cleanup. | Fixed-fixture evidence for the recorded I05 artifacts, not a new Chrome/Edge/Firefox/Safari matrix. |
 | PP-I06 local lifecycle evidence | Automated coverage and a focused local in-app browser walkthrough cover cancellation, switching/audio, pause preservation and editor capture. | See the lifecycle evidence map for exact scope and the release record for subsequent deployment status. Remaining real-device/application checks below are not implied to have passed. |
 | I03 deployed fixtures, October 5, 2026 UTC | `5f5295e`: Windows in-app Chromium 154 passed worker 19/19 and current recovery 7/7, including actual context loss. Canary positive control recorded three requests and worker probes zero; CacheStorage was `NOT_EXPOSED`. Fixed music/capture/cleanup and Watch scene15 smoke passed. | Current-artifact fixture evidence only; not independent Chrome/Edge/Firefox/Safari or mobile approval. PP-I03 remains To Verify and public release NOT APPROVED. |
+| Owner report after current I03 deployment | Both current worker and recovery groups passed in "all the browsers we tested last time": the previously discussed desktop Chrome/Edge/Firefox, Pixel/Chrome/Android 17 and Apple/Safari/iOS set. | User-reported PASS; no new exports or exact version/device details supplied. Do not infer additional platform combinations, independent verification or completion of the remaining normal-app walkthrough. |
 
 Original browser exports and hashes remain under `.local/deployments/pp-i03-release-verification/user-browser-reports-20261004/` and are recorded in [PP-I03](https://github.com/B2MAGE/mage-frontend/issues/204). Keep historical files unchanged. Link a new result to its own artifacts instead of relabelling an old result.
 

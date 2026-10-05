@@ -28,6 +28,12 @@ The renderer, check service and normal frontend now serve `5f5295eb42c95f3aa1194
 
 Frozen files, HTTP reports, screenshots and browser exports are under `.local/deployments/pp-i03-worker-verification-5f5295e/`, including `live-worker-report.json`, `live-recovery-report.json`, `production-final-http-verification.json` and `aws-final-verification.txt`. These are deployed fixture and focused Watch observations, not the full browser/device or normal-application matrix. **PP-I03 remains To Verify; public release is NOT APPROVED.**
 
+### Owner-reported current browser passes — October 5, 2026 UTC
+
+After receiving instructions to run the current worker checks and current renderer recovery group, the owner reported: "okay so they pass in all the browsers we tested last time". Record both current groups as **user-reported PASS on the previously tested browser/device set**. Previous conversation records identify desktop Chrome/Edge/Firefox, Pixel/Chrome/Android 17, and Apple/Safari/iOS. This statement does not establish additional operating-system/browser combinations or a new independent test run. No new JSON exports or exact version/device details accompanied it; retain those details as unspecified rather than copying versions from older reports.
+
+These reported passes satisfy the current fixed-page checks for that tested set. The next work is the focused normal-app playback/input/lifecycle walkthrough, controlled custom scene/global moderation and owner repair/export verification. Reuse the recorded automated and template walkthrough evidence; no repeat of passing fixture groups is requested by this record. Public release approval and both playback controls remain unchanged, and I03 stays **To Verify** until the remaining application acceptance and rollout decision are completed.
+
 ### Local preparation — October 4, 2026
 
 - Local in-app Chromium 154 / Windows: **19/19 worker checks passed**, maximum parent timer gap 62.8ms. Independent canary control was observed, fetch/XHR/importScripts requests were denied with zero canary requests, IndexedDB opening was denied, and CacheStorage was explicitly `NOT_EXPOSED`. That last observation is not a denied-open claim. An earlier 17/19 report is preserved; it exposed that the fixture failed to distinguish absent CacheStorage from an unusable exposed API.
