@@ -21,7 +21,7 @@ afterEach(() => {
 })
 
 describe('scene editor recovery', () => {
-  it('preserves unsaved template settings and details through failure, safe editing, and resume', async () => {
+  it('preserves unsaved template settings and details through failure, safe editing, and explicit retry', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const first = buildMagePlayerController()
@@ -52,10 +52,16 @@ describe('scene editor recovery', () => {
     expect(screen.getByRole('button', { name: 'Resume scene' })).toBeDisabled()
     expect(createMagePlayer).toHaveBeenCalledTimes(1)
     await user.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
+    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeEnabled()
+    expect(screen.getByText(/playback error/i)).toBeInTheDocument()
+    expect(sceneRecovery.getBlock(key)?.reason).toBe('runtime')
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(resumed.loadSceneBlob).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Retry scene' }))
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'template', parameters: expect.objectContaining({ scale: 6 }),
     }), expect.any(Object)))
-    expect(sceneRecovery.getBlock(key)?.reason).toBe('runtime')
+    expect(sceneRecovery.getAutomaticBlock(key)?.reason).toBe('runtime')
     expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveValue(6)
     await user.click(screen.getByRole('button', { name: /^Details$/ }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('My unfinished scene')

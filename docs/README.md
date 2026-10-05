@@ -19,6 +19,9 @@ README covers setup, scripts, and the high-level project overview.
 - [engine-integration.md](./engine-integration.md)  
   Published engine bridge, frontend adapter responsibilities, and package caveats.
 
+- [player-live-settings.md](./player-live-settings.md)
+  Audited live editor controls, structural reloads, and isolated update guarantees.
+
 - [theme-system.md](./theme-system.md)  
   Theme registry, provider, CSS structure, and how to add additional themes safely.
 

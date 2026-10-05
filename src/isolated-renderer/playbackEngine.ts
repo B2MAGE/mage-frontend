@@ -9,6 +9,7 @@ import { attachViewerPointerDeformation, type ViewerPointerMesh } from '../modul
 import { createPointerOrbit, type OrbitFields } from './pointerOrbit'
 import { compileInWorker } from './compiler/client'
 import type { CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
+import { diffLiveSceneSettings, extractLiveSceneSettings, validateLiveSceneSettings, type SceneLiveSettingsPatch } from '../modules/player/liveSceneSettings'
 
 export type PlaybackEngine = {
   dispose: () => void
@@ -17,6 +18,7 @@ export type PlaybackEngine = {
   playback: (playing: boolean) => void
   synthetic: (value: PlaybackPayloads['synthetic']) => void
   audioResponse: (value: PlaybackPayloads['audio-response']) => void
+  sceneSettings: (value: PlaybackPayloads['scene-settings']) => void
   capabilities: () => PlaybackPayloads['capabilities-result']
   zoom: (factor: number) => void
   capture: (value: CaptureRequest) => Promise<PlaybackPayloads['captured']>
@@ -27,7 +29,8 @@ export type PlaybackLoader = (options: {
   onError: () => void; onFrame: () => void
 }) => Promise<PlaybackEngine>
 
-type Engine = Omit<MAGEEngineAPI, 'loadPreset' | 'loadCompiledPreset'> & {
+type Engine = Omit<MAGEEngineAPI, 'loadPreset' | 'loadCompiledPreset' | 'updateSettings'> & {
+  updateSettings: (value: SceneLiveSettingsPatch) => boolean
   loadCompiledPreset: (preset: MAGEPreset, artifact: CompiledShaderArtifact) => unknown
   setExternalClock: (value: { time: number; rate: number; playing: boolean } | null) => void
   getEngineFields: () => OrbitFields & { controlSettings: { active: boolean; integrated: boolean }; controls: { enabled: boolean };
@@ -43,6 +46,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   validateSceneForPlayback(resolved)
   // Defense in depth for callers other than the protocol validator.
   if (Object.hasOwn(resolved, 'audio') || Object.hasOwn(resolved, 'audioPath')) throw new Error('Media is parent-owned.')
+  let appliedSettings = extractLiveSceneSettings(resolved)
   const renderBudget = getRenderBudget(profile)
   const shader = (resolved.visualizer as { shader: string }).shader
   // Finish and retire submitted JavaScript before allocating the renderer. An
@@ -61,12 +65,15 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   let deformation: ReturnType<typeof attachViewerPointerDeformation> | null = null
   const intent = resolved.intent as Record<string, unknown> | undefined
   const state = resolved.state as Record<string, unknown> | undefined
-  const speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
+  let speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
   const initialTime = typeof state?.time === 'number' ? state.time : 0
+  let parentTime = 0, clockAnchorParent = 0, clockAnchorScene = initialTime
+  const boundTime = (time: number) => Math.min(BRIDGE_LIMITS.maxTime, Math.max(0, time))
   let appliedResponseMode = normalizeAudioResponseMode(resolved.audioResponse)
   let appliedResponseConfig = appliedResponseMode === 'mapped-v1'
     ? JSON.stringify(normalizeAudioResponseConfig(resolved.audioResponseConfig).config) : null
   let playing = true
+  let currentZoom = 1
   function onContextLost() {
     if (disposed) return
     try { onError() } finally { dispose() }
@@ -133,7 +140,11 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       },
       input(value) {
         if (disposed) return
-        engine.setExternalClock({ time: Math.min(BRIDGE_LIMITS.maxTime, Math.max(0, initialTime + value.time * speed)), rate: speed, playing })
+        // Reset keeps its established authored starting time. Other clock input
+        // advances from the most recent speed edit instead of rescaling history.
+        if (value.time < parentTime) { clockAnchorParent = 0; clockAnchorScene = initialTime }
+        parentTime = value.time
+        engine.setExternalClock({ time: boundTime(clockAnchorScene + (parentTime - clockAnchorParent) * speed), rate: speed, playing })
         engine.setExternalAudioFrame(value.audio)
         const rect = canvas.getBoundingClientRect()
         const inside = value.pointer.inside ?? true
@@ -158,8 +169,31 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         appliedResponseMode = value.mode
         appliedResponseConfig = configKey
       },
+      sceneSettings(value) {
+        if (disposed) return
+        // Direct engine clients receive the same atomic validation as the port.
+        const next = validateLiveSceneSettings(value)
+        const delta = diffLiveSceneSettings(appliedSettings, next)
+        if (!Object.keys(delta).length) return
+        const nextSpeed = next.intent.time_multiplier
+        const currentTime = nextSpeed === speed ? null : boundTime(engine.getEngineTime())
+        if (!engine.updateSettings(delta)) throw new Error('Rendering stopped.')
+        if (currentTime !== null) {
+          clockAnchorParent = parentTime; clockAnchorScene = currentTime; speed = nextSpeed
+          engine.setExternalClock({ time: currentTime, rate: speed, playing })
+        }
+        if (delta.controls) {
+          orbit?.dispose()
+          orbit = createPointerOrbit(engine.getEngineFields(), currentZoom)
+        }
+        appliedSettings = next
+      },
       capabilities() { return { supportedTargets: engine.getAudioResponseCapabilities().supportedTargets } },
-      zoom(factor) { if (!disposed) orbit?.zoom(factor) },
+      zoom(factor) {
+        if (disposed || !Number.isFinite(factor)) return
+        currentZoom = Math.min(2.5, Math.max(0.4, factor))
+        orbit?.zoom(currentZoom)
+      },
       async capture(value) {
         if (disposed || capturePending) throw new Error('Capture is unavailable.')
         capturePending = true

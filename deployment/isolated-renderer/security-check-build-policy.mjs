@@ -11,6 +11,7 @@ export const SECURITY_CHECK_ALLOWED_MODULES = Object.freeze([
   'src/modules/player/isolation/fixedRecoveryProtocol.ts',
   'src/modules/player/isolation/playbackHost.ts',
   'src/modules/player/isolation/playbackProtocol.ts',
+  'src/modules/player/liveSceneSettings.ts',
   'src/modules/player/isolation/rendererHost.ts',
   'src/modules/player/isolation/protocol.ts',
   'src/modules/player/isolation/capture.ts',
@@ -18,6 +19,9 @@ export const SECURITY_CHECK_ALLOWED_MODULES = Object.freeze([
   'src/modules/player/policy/renderBudget.ts',
   'src/modules/player/templates/sceneContract.ts',
   'src/modules/player/templates/templateSettings.ts',
+  'src/modules/player/templates/resolveScene.ts',
+  'src/modules/player/templates/templateRegistry.ts',
+  'src/modules/player/templates/versions/v1/definitions.ts',
   'contracts/scenes/scene-limits.v1.json',
   'node_modules/@notrac/mage/dist/audio-response.js',
 ])

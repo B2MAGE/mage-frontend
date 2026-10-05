@@ -4,6 +4,7 @@ import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBAC
 import { validateRasterCapture } from './capture'
 import { boundCaptureSize, type RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
+import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 
 type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout>; id: number; generation: number }
 export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed'
@@ -38,6 +39,8 @@ export function createIsolatedPlaybackHost(options: {
   let pendingLoad: Pending<void> | null = null
   let pendingCapabilities: Pending<PlaybackPayloads['capabilities-result']> | null = null
   let queuedAudioResponse: PlaybackPayloads['audio-response'] | null = null
+  let queuedSceneSettings: SceneLiveSettings | null = null
+  let lastAudioResponseKey: string | null = null, lastSceneSettingsKey: string | null = null
   let pendingCapture: (Pending<Blob> & { request: CaptureRequest; decoding: boolean }) | null = null
   let decoderBusy = false
   let queuedInput: PlaybackPayloads['input'] | null = null
@@ -74,7 +77,7 @@ export function createIsolatedPlaybackHost(options: {
     window.removeEventListener('pagehide', onPageHide)
     try { port?.postMessage(playbackMessage('dispose', session, generation, ++sequence, null)) } catch { /* Removed frame is final boundary. */ }
     if (port) { port.onmessage = null; port.onmessageerror = null; port.close(); port = null }
-    frame.remove(); queuedInput = null; queuedResize = null; queuedZoom = null
+    frame.remove(); queuedInput = null; queuedResize = null; queuedZoom = null; queuedAudioResponse = null; queuedSceneSettings = null
     rejectReady(new Error('Isolated player stopped.')); rejectWork('Isolated player stopped.')
     report(failure ? 'error' : 'disposed')
     if (failure) {
@@ -173,13 +176,37 @@ export function createIsolatedPlaybackHost(options: {
     } catch { channel.port2.close(); dispose('runtime') }
   }
   const startupTimer = setTimeout(() => dispose('startup-timeout'), startupMs)
+  function flushSceneSettings() {
+    if (!queuedSceneSettings) return false
+    send('scene-settings', queuedSceneSettings)
+    lastSceneSettingsKey = JSON.stringify(queuedSceneSettings); queuedSceneSettings = null
+    return true
+  }
+  function flushAudioResponse() {
+    if (!queuedAudioResponse) return false
+    send('audio-response', queuedAudioResponse)
+    lastAudioResponseKey = JSON.stringify(queuedAudioResponse); queuedAudioResponse = null
+    return true
+  }
+  // All continuously changing controls share two sends per tick. Fair rotation
+  // leaves capacity for transport/capture while retaining one latest snapshot.
+  let nextQueuedCommand = 0
+  const flushQueued = [
+    () => { if (!queuedInput) return false; send('input', queuedInput); queuedInput = null; return true },
+    flushSceneSettings,
+    flushAudioResponse,
+    () => { if (!queuedResize) return false; send('resize', queuedResize); queuedResize = null; return true },
+    () => { if (queuedZoom === null) return false; send('zoom', { factor: queuedZoom }); queuedZoom = null; return true },
+  ]
   const inputTimer = setInterval(() => {
     if (closed || !loaded) return
     try {
-      if (queuedResize) { send('resize', queuedResize); queuedResize = null }
-      if (queuedZoom !== null) { send('zoom', { factor: queuedZoom }); queuedZoom = null }
-      if (queuedAudioResponse) { send('audio-response', queuedAudioResponse); queuedAudioResponse = null }
-      if (queuedInput) { send('input', queuedInput); queuedInput = null }
+      let sent = 0
+      for (let checked = 0; checked < flushQueued.length && sent < 2; checked++) {
+        const flush = flushQueued[nextQueuedCommand]
+        nextQueuedCommand = (nextQueuedCommand + 1) % flushQueued.length
+        if (flush()) sent++
+      }
     } catch { dispose('runtime') }
   }, 34)
   const progressTimer = setInterval(() => {
@@ -208,7 +235,8 @@ export function createIsolatedPlaybackHost(options: {
       if (!loadAllowed()) throw new Error('Scene changes are too frequent.')
       // Increment before waiting so only the latest load can cross the bootstrap.
       const next = ++generation
-      rejectWork('Scene changed.'); loaded = false; lastFrame = -1; queuedInput = null; queuedAudioResponse = null
+      rejectWork('Scene changed.'); loaded = false; lastFrame = -1; queuedInput = null; queuedAudioResponse = null; queuedSceneSettings = null
+      lastAudioResponseKey = lastSceneSettingsKey = null; nextQueuedCommand = 0
       resetHealthyProgress()
       await ready
       if (closed || next !== generation) throw new Error('Scene changed.')
@@ -226,7 +254,11 @@ export function createIsolatedPlaybackHost(options: {
     setSynthetic(enabled: boolean, seed = 1, tempoScale = 1) { synthetic = { enabled, seed, tempoScale }; send('synthetic', synthetic) },
     setAudioResponse(value: PlaybackPayloads['audio-response']) {
       if (!isPlaybackMessage(playbackMessage('audio-response', session, generation, 1, value), ['audio-response'])) throw new Error('Invalid music response settings.')
-      if (!closed) queuedAudioResponse = structuredClone(value)
+      if (!closed) queuedAudioResponse = JSON.stringify(value) === lastAudioResponseKey ? null : structuredClone(value)
+    },
+    setSceneSettings(value: SceneLiveSettings) {
+      const next = validateLiveSceneSettings(value)
+      if (!closed) queuedSceneSettings = JSON.stringify(next) === lastSceneSettingsKey ? null : next
     },
     getCapabilities(): Promise<PlaybackPayloads['capabilities-result']> {
       if (closed || !loaded || pendingCapabilities) return Promise.reject(new Error('Capabilities are unavailable.'))
@@ -267,6 +299,8 @@ export function createIsolatedPlaybackHost(options: {
       const size = boundCaptureSize(options.width ?? 640, options.height ?? 360)
       const request: CaptureRequest = { ...size, type: options.type ?? 'image/png', quality: options.quality ?? 0.9 }
       return new Promise<Blob>((resolve, reject) => {
+        // MessagePort order makes the capture observe the latest authored settings.
+        try { flushSceneSettings(); flushAudioResponse() } catch (error) { reject(error); return }
         const id = sequence + 1
         pendingCapture = { id, generation, request, decoding: false, resolve, reject, timer: setTimeout(() => {
           if (pendingCapture?.id !== id) return

@@ -1,10 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { isPlaybackMessage, playbackMessage, sceneForBridge, messageRate, type PlaybackPayloads } from './playbackProtocol'
+import { extractLiveSceneSettings } from '../liveSceneSettings'
 const session = 'ec40c660-205d-4b63-b6b3-ac3888f8c9aa'
 const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down: false },
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('accepts only bounded data-only complete live settings', () => {
+    const settings = extractLiveSceneSettings({ visualizer: { shader: 'sphere(1);' } })
+    const message = playbackMessage('scene-settings', session, 1, 2, settings)
+    expect(isPlaybackMessage(message, ['scene-settings'])).toBe(true)
+    const getter = { ...settings }
+    Object.defineProperty(getter, 'intent', { get: () => { throw new Error('Getter must not run') } })
+    for (const payload of [
+      { ...settings, source: 'sphere(2);' }, { ...settings, audioPath: 'https://example.test/music' },
+      { ...settings, visualizer: { ...settings.visualizer, shader: 'sphere(2);' } },
+      { ...settings, state: { ...settings.state, time: 20 } },
+      { ...settings, intent: { ...settings.intent, fov: Infinity } },
+      { ...settings, controls: { ...settings.controls, zoom0: 1000 } },
+      { ...settings, fx: { ...settings.fx, url: 'https://example.test/asset' } },
+      Object.assign(Object.create({ inherited: true }), settings), getter,
+    ]) expect(isPlaybackMessage({ ...message, payload }, ['scene-settings'])).toBe(false)
+  })
   it('accepts only a fixed compile failure code without arbitrary compiler text or source', () => {
     const message = playbackMessage('error', session, 1, 2, { code: 'compile' })
     expect(message.version).toBe(2)

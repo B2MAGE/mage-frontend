@@ -17,7 +17,7 @@ describe('versioned scene playback identity', () => {
     expect(getter).not.toHaveBeenCalled()
   })
 
-  it('ignores only fully validated template response settings and does not mutate their document', () => {
+  it('omits validated live settings while retaining template/resource and initial state changes', () => {
     const document = { ...template, settings: { audioResponse: 'mapped-v1', audioResponseConfig: {
       version: 1, sensitivity: 0.4, mappings: [{ target: 'size', source: 'bass-hit', amount: 0.2 }],
     } } }
@@ -26,10 +26,14 @@ describe('versioned scene playback identity', () => {
     expect(document).toEqual(before)
     expect(scenePlaybackIdentity(document, 25)).not.toBe(scenePlaybackIdentity(document, 24))
     for (const changed of [
-      { ...document, templateId: 'embedded-scene-1' },
       { ...document, parameters: { scale: 11 } },
       { ...document, settings: { ...document.settings, camera: { fov: 90 } } },
       { ...document, settings: { ...document.settings, motion: { minimizing_factor: 0.3 } } },
+      { ...document, settings: { ...document.settings, effects: { passes: { rgbShift: true } } } },
+    ]) expect(scenePlaybackIdentity(changed, 24)).toBe(scenePlaybackIdentity(document, 24))
+    for (const changed of [
+      { ...document, templateId: 'embedded-scene-1' },
+      { ...document, settings: { ...document.settings, skybox: 2 } },
       { ...document, settings: { ...document.settings, state: { time: 12 } } },
     ]) expect(scenePlaybackIdentity(changed, 24)).not.toBe(scenePlaybackIdentity(document, 24))
   })

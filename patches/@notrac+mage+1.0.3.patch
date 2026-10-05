@@ -1096,7 +1096,7 @@ index 0000000..b5fa57c
 +    geoGLSL: generated.geoGLSL, colorGLSL: generated.colorGLSL }, options);
 +}
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.d.ts b/node_modules/@notrac/mage/dist/mage-engine.d.ts
-index 7e71e8c..5831e41 100644
+index 7e71e8c..3829da7 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.d.ts
 +++ b/node_modules/@notrac/mage/dist/mage-engine.d.ts
 @@ -1,3 +1,7 @@
@@ -1156,10 +1156,44 @@ index 7e71e8c..5831e41 100644
  }
  
  /** 
-@@ -211,10 +236,20 @@ export interface MAGEFxAPI {
+@@ -210,11 +235,54 @@ export interface MAGEFxAPI {
+  * console.log('Captured thumbnail:', thumbnail);
   * engine.dispose();
   */
++/** Only listed settings may be changed live. Omitted fields retain their values. */
++export interface MAGESettingsPatch {
++  visualizer?: { scale?: number };
++  controls?: {
++    position0?: Partial<{ x: number; y: number; z: number }>;
++    target0?: Partial<{ x: number; y: number; z: number }>;
++    zoom0?: number;
++  };
++  intent?: {
++    time_multiplier?: number; minimizing_factor?: number; power_factor?: number;
++    pointerDownMultiplier?: number; base_speed?: number; easing_speed?: number;
++    camTilt?: number; camOrientationMode?: number; camOrientationSpeed?: number;
++    autoRotate?: boolean; autoRotateSpeed?: number; fov?: number;
++  };
++  state?: { volume_multiplier?: number };
++  fx?: {
++    passOrder?: Array<MAGEFxPass | 'outputPass'>;
++    bloom?: { enabled?: boolean; strength?: number; radius?: number; threshold?: number };
++    toneMapping?: { method?: number; exposure?: number };
++    passes?: Partial<Record<'rgbShift' | 'dot' | 'technicolor' | 'luminosity' | 'afterImage' |
++      'sobel' | 'glitch' | 'colorify' | 'halftone' | 'gammaCorrection' | 'kaleid' |
++      'bleachBypass' | 'toon' | 'outputPass', boolean>>;
++    params?: {
++      rgbShift?: { amount?: number; angle?: number }; afterImage?: { damp?: number };
++      colorify?: { color?: string }; kaleid?: { sides?: number; angle?: number };
++    };
++  };
++}
++
  export interface MAGEEngineAPI {
++  /** Validates the entire delta before applying it. Throws TypeError for invalid input;
++   * returns false after disposal. Retains the scene, effects, playback and camera state,
++   * changing only supplied fields. A paused engine draws one frame without resuming. */
++  updateSettings(patch: MAGESettingsPatch): boolean;
 +  /** Validates and copies bounded numeric input. Null detaches and resets the external session. */
 +  setExternalAudioFrame(value: MAGEExternalAudioFrame | null): void;
 +  /** Replaces the animation clock with a bounded host clock; null restores normal animation. */
@@ -1177,7 +1211,7 @@ index 7e71e8c..5831e41 100644
    /**
     * Returns the total duration of the loaded audio in seconds. If no audio is loaded, it returns 0.
     */
-@@ -223,6 +258,10 @@ export interface MAGEEngineAPI {
+@@ -223,6 +291,10 @@ export interface MAGEEngineAPI {
     * Returns the current playback time of the audio in seconds. If no audio is loaded, it returns 0.
     */
    getAudioTime(): number;
@@ -1188,7 +1222,7 @@ index 7e71e8c..5831e41 100644
    /**
     * Seeks to a specific time in the audio playback.
     * @param time 
-@@ -251,11 +290,41 @@ export interface MAGEEngineAPI {
+@@ -251,11 +323,41 @@ export interface MAGEEngineAPI {
     * (URL must support CORS so things like YouTube will not work). 
     */
    loadAudio(path?: string | URL): void;
@@ -1230,7 +1264,7 @@ index 7e71e8c..5831e41 100644
    /**
     * Swaps the current rendering canvas with a new HTMLCanvasElement. This allows users to change the output canvas dynamically, which can be useful for 
     * integrating the MAGE engine into different parts of a web application or for implementing features like picture-in-picture or multi-view setups.
-@@ -344,9 +413,21 @@ export interface MAGEEngineAPI {
+@@ -344,9 +446,21 @@ export interface MAGEEngineAPI {
  /**
   * Configuration options for the MAGE Engine.
   */
@@ -1253,18 +1287,19 @@ index 7e71e8c..5831e41 100644
    log?: boolean;
    /** Configuration for UI and input controls. */
 diff --git a/node_modules/@notrac/mage/dist/mage-engine.js b/node_modules/@notrac/mage/dist/mage-engine.js
-index 7e32237..c55ddf2 100644
+index 7e32237..cb56b96 100644
 --- a/node_modules/@notrac/mage/dist/mage-engine.js
 +++ b/node_modules/@notrac/mage/dist/mage-engine.js
-@@ -1,3 +1,7 @@
+@@ -1,3 +1,8 @@
 +import { AudioResponseMapper, SyntheticAudioFrames } from "./audio-mapping.js";
 +import { AudioAnalysisSession } from "./audio-analysis.js";
++import { normalizeLiveSettings, validateLiveEffectBudget } from "./live-settings.js";
 +import { normalizeCompiledShader } from "./compiled-shader.js";
 +import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig, normalizeAudioResponseMode } from "./audio-response.js";
  //#region \0rolldown/runtime.js
  var __commonJSMin = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
  //#endregion
-@@ -71862,7 +71866,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -71862,7 +71867,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  			replaceSliderInput(tree);
  			return escodegen$1.generate(tree);
  		}
@@ -1273,7 +1308,7 @@ index 7e32237..c55ddf2 100644
  			var PI = Math.PI;
  			var TWO_PI = Math.PI * 2;
  			var TAU = TWO_PI;
-@@ -71881,7 +71885,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -71881,7 +71886,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  			var stateStack = [];
  			var uniforms = baseUniforms();
  			var stepSizeConstant = .85;
@@ -1283,7 +1318,7 @@ index 7e32237..c55ddf2 100644
  			var maxReflections = 0;
  			var dimsMapping = {
  				float: 1,
-@@ -72104,8 +72109,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72104,8 +72110,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				stepSizeConstant = 1 - .01 * val * .995;
  			}
  			function setMaxIterations(val) {
@@ -1294,7 +1329,7 @@ index 7e32237..c55ddf2 100644
  			}
  			function setMaxReflections(val) {
  				if (typeof val !== "number" || val < 0) compileError("reflections accepts only a constant int >= 0. Was given: '" + val.type + "'");
-@@ -72787,6 +72792,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72787,6 +72793,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				rotateX,
  				rotateY,
  				rotateZ,
@@ -1302,7 +1337,7 @@ index 7e32237..c55ddf2 100644
  				mirrorX,
  				mirrorY,
  				mirrorZ,
-@@ -72818,6 +72824,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -72818,6 +72825,8 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				extrude2D,
  				getSpherical,
  				mirrorN,
@@ -1311,7 +1346,7 @@ index 7e32237..c55ddf2 100644
  				grid,
  				repeatLinear,
  				repeatRadial,
-@@ -99977,7 +99985,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -99977,7 +99986,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  		function glslToThreeJSShaderSource(source) {
  			return {
  				uniforms: baseUniforms(),
@@ -1320,7 +1355,7 @@ index 7e32237..c55ddf2 100644
  				vert: threeJSVertexSource
  			};
  		}
-@@ -99988,8 +99996,11 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -99988,8 +99997,11 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  		function glslToThreeJSMesh(source, payload) {
  			return makeBasicMesh(glslToThreeJSMaterial(source, payload));
  		}
@@ -1334,7 +1369,7 @@ index 7e32237..c55ddf2 100644
  			if (src.error) console.log(src.error);
  			var frg = threeHeader + usePBRHeader + useHemisphereLight + uniformsToGLSL(src.uniforms) + "const float STEP_SIZE_CONSTANT = " + src.stepSizeConstant + ";\nconst int MAX_ITERATIONS = " + src.maxIterations + ";\n#define MAX_REFLECTIONS " + src.maxReflections + "\n" + sculptureStarterCode + src.geoGLSL + "\n" + src.colorGLSL + "\n" + fragFooter;
  			return {
-@@ -100001,10 +100012,10 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100001,10 +100013,10 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				colorGLSL: src.colorGLSL
  			};
  		}
@@ -1347,7 +1382,7 @@ index 7e32237..c55ddf2 100644
  			var material = makeMaterial(src.uniforms, src.vert, src.frag, payload);
  			material.uniformDescriptions = src.uniforms;
  			return material;
-@@ -100038,7 +100049,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100038,7 +100050,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				var segments = "segments" in params ? params.segments : 8;
  				geometry = new SphereGeometry(radius, segments, segments);
  			}
@@ -1356,7 +1391,7 @@ index 7e32237..c55ddf2 100644
  			material.uniforms["opacity"].value = 1;
  			material.uniforms["mouse"].value = new Vector3();
  			material.uniforms["_scale"].value = radius;
-@@ -100048,7 +100059,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100048,7 +100060,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  				if (!(_typeof(uniformsToUpdate) === "object")) throw "createSculpture takes, (source, uniformCallback, params) the uniformCallback must be a function that returns a dictionary of uniforms to update";
  				for (var _i = 0, _Object$entries = Object.entries(uniformsToUpdate); _i < _Object$entries.length; _i++) {
  					var _Object$entries$_i = _slicedToArray(_Object$entries[_i], 2), uniform = _Object$entries$_i[0], value = _Object$entries$_i[1];
@@ -1365,7 +1400,7 @@ index 7e32237..c55ddf2 100644
  				}
  			};
  			return mesh;
-@@ -100109,7 +100120,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100109,7 +100121,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  			return cppHeader + glslToGLM("const float STEP_SIZE_CONSTANT = " + src.stepSizeConstant + "f;\nconst int MAX_ITERATIONS = " + src.maxIterations + ";\n#define MAX_REFLECTIONS " + src.maxReflections + "\n" + sculptureStarterCode + src.geoGLSL + src.colorGLSL) + cppFooter;
  		}
  		function glslToMinimalRenderer(canvas, source, updateUniforms) {
@@ -1374,7 +1409,7 @@ index 7e32237..c55ddf2 100644
  		}
  		function sculptToFullGLSLSource(source) {
  			if (typeof source === "function") {
-@@ -100336,7 +100347,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
+@@ -100336,7 +100348,7 @@ var require_shader_park_core_umd = /* @__PURE__ */ __commonJSMin(((exports, modu
  		function glslToTouchDesignerShaderSource(source) {
  			return {
  				uniforms: baseUniforms(),
@@ -1383,7 +1418,7 @@ index 7e32237..c55ddf2 100644
  				vert: minimalVertexSource
  			};
  		}
-@@ -100403,6 +100414,7 @@ var MAGEVisualizer = class {
+@@ -100403,6 +100415,7 @@ var MAGEVisualizer = class {
  		this.shaders = [];
  		this.skyboxPreset = null;
  		this.mesh = null;
@@ -1391,7 +1426,7 @@ index 7e32237..c55ddf2 100644
  		this.scale = 10;
  		this.intersected = false;
  		this.clickable = false;
-@@ -100451,17 +100463,28 @@ var MAGEVisualizer = class {
+@@ -100451,17 +100464,28 @@ var MAGEVisualizer = class {
  		if (engine.log) console.log("Loaded visualizer with shader:", finalShaderCode);
  		this.createMesh(finalShaderCode);
  	}
@@ -1422,7 +1457,7 @@ index 7e32237..c55ddf2 100644
  	}
  	getActiveShader() {
  		if (this.shaderIndex >= 0 && this.shaderIndex < this.shaders.length) return this.shaders[this.shaderIndex].shader;
-@@ -100477,10 +100500,8 @@ var MAGEVisualizer = class {
+@@ -100477,10 +100501,8 @@ var MAGEVisualizer = class {
  			nextShader = this.shaders[this.shaderIndex - 1];
  			this.shaderIndex--;
  		}
@@ -1435,7 +1470,7 @@ index 7e32237..c55ddf2 100644
  		this.engine.showViewportMessage(`Loading previous visualizer...`, 25);
  	}
  	nextShader() {
-@@ -100493,17 +100514,15 @@ var MAGEVisualizer = class {
+@@ -100493,17 +100515,15 @@ var MAGEVisualizer = class {
  			nextShader = this.shaders[this.shaderIndex + 1];
  			this.shaderIndex++;
  		}
@@ -1456,7 +1491,7 @@ index 7e32237..c55ddf2 100644
  		this.controls = controls;
  		this.settings = settings;
  		this.state = state;
-@@ -100511,6 +100530,8 @@ var MAGEPreset = class MAGEPreset {
+@@ -100511,6 +100531,8 @@ var MAGEPreset = class MAGEPreset {
  		this.fx = fx;
  		this.visualizer = visualizer;
  		this.audioPath = audioPath;
@@ -1465,7 +1500,7 @@ index 7e32237..c55ddf2 100644
  	}
  	static from(input) {
  		if (!input) return null;
-@@ -100529,7 +100550,9 @@ var MAGEPreset = class MAGEPreset {
+@@ -100529,7 +100551,9 @@ var MAGEPreset = class MAGEPreset {
  			intent: data.intent ?? null,
  			fx: data.fx ?? null,
  			visualizer: data.visualizer ?? null,
@@ -1476,7 +1511,7 @@ index 7e32237..c55ddf2 100644
  		});
  	}
  };
-@@ -102001,11 +102024,11 @@ var AfterimagePass = class extends Pass {
+@@ -102001,11 +102025,11 @@ var AfterimagePass = class extends Pass {
  			depthTest: false,
  			depthWrite: false
  		});
@@ -1490,7 +1525,7 @@ index 7e32237..c55ddf2 100644
  			magFilter: NearestFilter,
  			type: HalfFloatType
  		});
-@@ -103584,6 +103607,43 @@ var BleachBypassShader = {
+@@ -103584,6 +103608,43 @@ var BleachBypassShader = {
  };
  //#endregion
  //#region js/MAGEFx.js
@@ -1534,7 +1569,7 @@ index 7e32237..c55ddf2 100644
  /**
  * Full-screen textured quad shader
  */
-@@ -103736,11 +103796,10 @@ var MAGEEffects = class {
+@@ -103736,11 +103797,10 @@ var MAGEEffects = class {
  		};
  		/** @type {any} */
  		this.toonShader = {
@@ -1549,7 +1584,7 @@ index 7e32237..c55ddf2 100644
  			}
  		};
  		this.copyShader = {
-@@ -103762,10 +103821,10 @@ var MAGEEffects = class {
+@@ -103762,10 +103822,10 @@ var MAGEEffects = class {
  				radius: .2,
  				threshold: .1
  			},
@@ -1562,7 +1597,7 @@ index 7e32237..c55ddf2 100644
  				if (renderer && renderer.getDrawingBufferSize) renderer.getDrawingBufferSize(resolution);
  				this.shader?.dispose();
  				this.shader = new UnrealBloomPass(resolution, this.settings.strength, this.settings.radius, this.settings.threshold);
-@@ -103957,15 +104016,17 @@ var MAGEEffects = class {
+@@ -103957,15 +104017,17 @@ var MAGEEffects = class {
  		return true;
  	}
  	applyPostProcessing(scene, renderer, camera, composer) {
@@ -1582,7 +1617,7 @@ index 7e32237..c55ddf2 100644
  			newComposer.addPass(passConfig.shader);
  		});
  		return newComposer;
-@@ -107066,10 +107127,106 @@ var MAGE_VERSION = "1.0.3";
+@@ -107066,10 +107128,106 @@ var MAGE_VERSION = "1.0.3";
  * @property {EngineControlSettings} [withControls={ active: true, integrated: false }] - Enable scene controls and specify their layout
  * @property {boolean} [autoStart=false] - Automatically start rendering
  */
@@ -1689,7 +1724,7 @@ index 7e32237..c55ddf2 100644
  	#scene = null;
  	#renderer = null;
  	#composer = null;
-@@ -107079,14 +107236,43 @@ var MAGEEngine = class MAGEEngine {
+@@ -107079,14 +107237,43 @@ var MAGEEngine = class MAGEEngine {
  	#rtCamera = null;
  	#controls = null;
  	#clock = null;
@@ -1733,7 +1768,7 @@ index 7e32237..c55ddf2 100644
  	#visualizer = null;
  	#inputs = null;
  	#state = null;
-@@ -107094,6 +107280,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107094,6 +107281,7 @@ var MAGEEngine = class MAGEEngine {
  	#screenShake = null;
  	#currentPreset = null;
  	#onAfterFrame = null;
@@ -1741,7 +1776,7 @@ index 7e32237..c55ddf2 100644
  	#onPresetLoaded = null;
  	#cameraUpdateHook = null;
  	#importSettingsState = null;
-@@ -107127,13 +107314,16 @@ var MAGEEngine = class MAGEEngine {
+@@ -107127,13 +107315,16 @@ var MAGEEngine = class MAGEEngine {
  	#previewFrameCount = 0;
  	#previewFramesTarget = 0;
  	#isLowQualityMode = false;
@@ -1759,7 +1794,7 @@ index 7e32237..c55ddf2 100644
  		this.#controlSettings = {
  			active: Boolean(active),
  			integrated: Boolean(integrated)
-@@ -107156,6 +107346,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107156,6 +107347,10 @@ var MAGEEngine = class MAGEEngine {
  		this.#audioBuffer = null;
  		this.#playbackTime = 0;
  		this.#isReversed = false;
@@ -1770,7 +1805,7 @@ index 7e32237..c55ddf2 100644
  		this.#visualizer = new MAGEVisualizer(this);
  		this.#inputs = {
  			currMouse: new Vector3(),
-@@ -107277,12 +107471,28 @@ var MAGEEngine = class MAGEEngine {
+@@ -107277,12 +107472,28 @@ var MAGEEngine = class MAGEEngine {
  			this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera);
  			this.#_syncSobelResolution();
  		}
@@ -1799,7 +1834,7 @@ index 7e32237..c55ddf2 100644
  	/**
  	* Returns the duration of the currently loaded audio in seconds. If no audio is loaded, returns 0.
  	* @return {number} Duration of the currently loaded audio in seconds, or 0 if no audio is loaded.
-@@ -107297,16 +107507,40 @@ var MAGEEngine = class MAGEEngine {
+@@ -107297,16 +107508,40 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {number} Current playback time of the audio in seconds, or 0 if no audio is loaded.
  	*/
  	getAudioTime() {
@@ -1841,7 +1876,7 @@ index 7e32237..c55ddf2 100644
  		const clampedTime = Math.max(0, Math.min(time, duration));
  		this.#playbackTime = clampedTime;
  		const forwardWasPlaying = Boolean(this.#audio.isPlaying);
-@@ -107318,6 +107552,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107318,6 +107553,8 @@ var MAGEEngine = class MAGEEngine {
  		}
  		if (forwardWasPlaying) this.#audio.stop();
  		if (reverseWasPlaying && this.#reversedAudio) this.#reversedAudio.stop();
@@ -1850,7 +1885,7 @@ index 7e32237..c55ddf2 100644
  		if (forwardWasPlaying && reverseWasPlaying) if (this.#isReversed && this.#reversedAudio?.buffer) this.#reversedAudio.play();
  		else this.#audio.play();
  		else if (forwardWasPlaying) this.#audio.play();
-@@ -107333,20 +107569,306 @@ var MAGEEngine = class MAGEEngine {
+@@ -107333,20 +107570,306 @@ var MAGEEngine = class MAGEEngine {
  		return this.seek(time);
  	}
  	/**
@@ -2157,7 +2192,7 @@ index 7e32237..c55ddf2 100644
  	}
  	/**
  	* Returns whether audio is currently loaded in the engine. This checks for the presence of an audio buffer in either the forward or reversed audio sources, 
-@@ -107362,6 +107884,13 @@ var MAGEEngine = class MAGEEngine {
+@@ -107362,6 +107885,13 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	loadAudio(filePath) {
@@ -2171,7 +2206,7 @@ index 7e32237..c55ddf2 100644
  		const previousVolume = this.#audio?.getVolume();
  		this.#audio?.pause();
  		this.#reversedAudio?.pause();
-@@ -107371,39 +107900,94 @@ var MAGEEngine = class MAGEEngine {
+@@ -107371,39 +107901,157 @@ var MAGEEngine = class MAGEEngine {
  		this.#reversedAudio = new Audio(this.#listener);
  		this.#reversedAudio.setVolume(previousVolume || 1);
  		this.#reversedAudio.setLoop(false);
@@ -2268,6 +2303,69 @@ index 7e32237..c55ddf2 100644
  	* @returns {MAGEPreset} The loaded preset.
  	*/
 -	loadPreset(presetInput) {
++	/** Apply a bounded settings delta without replacing the active scene or playback. */
++	updateSettings(input) {
++		if (this.#isDisposed) return false;
++		const patch = normalizeLiveSettings(input);
++		validateLiveEffectBudget(patch, this.fx);
++		if (Object.keys(patch).length === 0) return true;
++		const controls = patch.controls;
++		if (controls && this.#controls && this.#camera) {
++			if (controls.position0) {
++				Object.assign(this.#controls.position0, controls.position0);
++				Object.assign(this.#camera.position, controls.position0);
++			}
++			if (controls.target0) {
++				Object.assign(this.#controls.target0, controls.target0);
++				Object.assign(this.#controls.target, controls.target0);
++			}
++			if (controls.zoom0 !== void 0) {
++				this.#controls.zoom0 = controls.zoom0;
++				this.#camera.zoom = controls.zoom0;
++				this.#camera.updateProjectionMatrix();
++			}
++		}
++		if (patch.intent) this.#_applyCompactIntent(patch.intent);
++		if ((controls?.position0 || controls?.target0 || patch.intent?.camTilt !== void 0) && this.#camera && this.#controls) {
++			this.#camera.lookAt(this.#controls.target);
++			this.#camera?.updateMatrixWorld();
++		}
++		if (patch.visualizer) this.#visualizer.scale = patch.visualizer.scale;
++		if (patch.state) this.#state.volume_multiplier = patch.state.volume_multiplier;
++		if (patch.fx) {
++			const oldPasses = this.#composer?.passes;
++			this.#_applyCompactFx(patch.fx, false);
++			Object.assign(this.fx.bloom.shader, this.fx.bloom.settings);
++			this.fx.colorifyShader.update();
++			if (patch.fx.toneMapping?.exposure !== void 0) this.fx.toneMapping.exposure = patch.fx.toneMapping.exposure;
++			if (oldPasses && (patch.fx.passOrder || patch.fx.bloom?.enabled !== void 0 || patch.fx.passes)) {
++				// Retain the render pass, composer and every effect's GPU resources.
++				// Only a newly enabled pass needs to adopt the current render size.
++				const nextPasses = [oldPasses[0]];
++				for (const passId of this.fx.getPassOrder()) {
++					const pass = this.fx[passId];
++					if (!pass?.enabled) continue;
++					if (!oldPasses.includes(pass.shader)) pass.shader.setSize(this.#composer._width * this.#composer._pixelRatio, this.#composer._height * this.#composer._pixelRatio);
++					nextPasses.push(pass.shader);
++				}
++				this.#composer.passes = nextPasses;
++			}
++			this.#_syncSobelResolution();
++		}
++		// A paused editor still shows the updated frame, without advancing the
++		// visual/audio clocks, synthetic beat phase, input easing or orbit camera.
++		if (!this.#isRunning && this.#renderer && this.#scene && this.#camera) {
++			try {
++				if (this.#composer) this.#composer.render(0);
++				else this.#renderer.render(this.#scene, this.#camera);
++			} catch (error) {
++				this.#_notifyRenderLifecycle("error");
++				throw error;
++			}
++			this.#_notifyRenderLifecycle("frame");
++		}
++		return true;
++	}
 +	loadCompiledPreset(presetInput, compiledArtifact) {
 +		if (this.#isDisposed) throw new Error("Rendering stopped.");
 +		const artifact = normalizeCompiledShader(compiledArtifact, { maxRaymarchIterations: this.#renderBudget.maxRaymarchIterations });
@@ -2281,7 +2379,7 @@ index 7e32237..c55ddf2 100644
  		const preset = MAGEPreset.from(presetInput);
  		if (!preset) {
  			const message = "Invalid preset input: must be a JSON string, object literal, or MAGEPreset instance.";
-@@ -107411,6 +107995,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107411,6 +108059,8 @@ var MAGEEngine = class MAGEEngine {
  			return;
  		}
  		this.#currentPreset = preset;
@@ -2290,7 +2388,7 @@ index 7e32237..c55ddf2 100644
  		if (preset.controls) this.#_loadControls(preset.controls);
  		if (preset.visualizer) {
  			if (preset.visualizer.skyboxPreset !== void 0 && preset.visualizer.skyboxPreset !== null) {
-@@ -107418,11 +108004,15 @@ var MAGEEngine = class MAGEEngine {
+@@ -107418,11 +108068,15 @@ var MAGEEngine = class MAGEEngine {
  				if (normalizedSkybox) this.#_loadSkybox(normalizedSkybox);
  				else if (this.log) console.warn("[MAGEEngine.loadPreset] Invalid skyboxPreset input; expected preset id, preset path, or { type, presetId }", { input: preset.visualizer.skyboxPreset });
  			}
@@ -2311,7 +2409,7 @@ index 7e32237..c55ddf2 100644
  			if (typeof preset.visualizer.scale === "number") this.#visualizer.scale = preset.visualizer.scale;
  		}
  		if (preset.state) this.#_applyStatePatch(preset.state, {
-@@ -107431,6 +108021,10 @@ var MAGEEngine = class MAGEEngine {
+@@ -107431,6 +108085,10 @@ var MAGEEngine = class MAGEEngine {
  		});
  		if (typeof this.#importSettingsState === "function" && preset.settings) this.#importSettingsState(preset.settings);
  		if (preset.intent) this.#_applyCompactIntent(preset.intent);
@@ -2322,7 +2420,7 @@ index 7e32237..c55ddf2 100644
  		if (preset.fx) this.#_applyCompactFx(preset.fx);
  		this.#_syncPostProcessingFromState();
  		this.#_syncSobelResolution();
-@@ -107479,6 +108073,34 @@ var MAGEEngine = class MAGEEngine {
+@@ -107479,6 +108137,34 @@ var MAGEEngine = class MAGEEngine {
  	getEngineTime() {
  		return this.#state.time;
  	}
@@ -2357,7 +2455,7 @@ index 7e32237..c55ddf2 100644
  	/**
  	* Exports the current engine configuration as a preset object. The exported preset can include the current state, custom settings, and visualizer configuration, 
  	* depending on the specified options.
-@@ -107488,7 +108110,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107488,7 +108174,7 @@ var MAGEEngine = class MAGEEngine {
  		const preset = {
  			version: MAGE_VERSION,
  			visualizer: {
@@ -2366,7 +2464,7 @@ index 7e32237..c55ddf2 100644
  				skyboxPreset: this.#visualizer.skyboxPreset,
  				scale: this.#visualizer.scale
  			},
-@@ -107535,6 +108157,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107535,6 +108221,8 @@ var MAGEEngine = class MAGEEngine {
  					halftone: this.fx.halftonePass.enabled,
  					gammaCorrection: this.fx.gammaCorrectionShader.enabled,
  					kaleid: this.fx.kaleidoShader.enabled,
@@ -2375,7 +2473,7 @@ index 7e32237..c55ddf2 100644
  					outputPass: this.fx.outputPass.enabled
  				},
  				params: {
-@@ -107552,6 +108176,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107552,6 +108240,8 @@ var MAGEEngine = class MAGEEngine {
  			}
  		};
  		preset.state = { ...this.#state };
@@ -2384,7 +2482,7 @@ index 7e32237..c55ddf2 100644
  		if (this.log) console.log("Generated preset from current state:", preset);
  		return preset;
  	}
-@@ -107633,13 +108259,17 @@ var MAGEEngine = class MAGEEngine {
+@@ -107633,13 +108323,17 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {Promise<string|null>} A data URL representing the captured thumbnail, or null if the capture failed.
  	*/
  	async captureThumbnail(presetInput, { width = 224, height = 224, settleFrames = 2, quality = .84, type = "image/png" } = {}) {
@@ -2403,7 +2501,7 @@ index 7e32237..c55ddf2 100644
  	}
  	/**
  	* Captures a thumbnail for a given preset without requiring an instance of MAGEEngine.
-@@ -107650,20 +108280,20 @@ var MAGEEngine = class MAGEEngine {
+@@ -107650,20 +108344,20 @@ var MAGEEngine = class MAGEEngine {
  	* It creates a temporary offscreen canvas and a new MAGEEngine instance to load the preset, render it for a few frames to allow for stabilization, 
  	* and capture the resulting image as a data URL. This is useful for generating thumbnails for presets without affecting the current state of an existing engine instance.
  	*/
@@ -2428,7 +2526,7 @@ index 7e32237..c55ddf2 100644
  			thumbnailEngine.#_syncViewport(true);
  			thumbnailEngine.#composer = thumbnailEngine.fx.applyPostProcessing(thumbnailEngine.#scene, thumbnailEngine.#renderer, thumbnailEngine.#camera);
  			thumbnailEngine.#_syncSobelResolution();
-@@ -107671,14 +108301,16 @@ var MAGEEngine = class MAGEEngine {
+@@ -107671,14 +108365,16 @@ var MAGEEngine = class MAGEEngine {
  				thumbnailEngine.#controls.enabled = false;
  				thumbnailEngine.#controls.autoRotate = false;
  			}
@@ -2447,7 +2545,7 @@ index 7e32237..c55ddf2 100644
  			for (let i = 0; i < frames; i += 1) thumbnailEngine.#_renderSingleFrame();
  			return thumbnailEngine.#_captureFramePreviewDataUrlSync({
  				width: w,
-@@ -107702,10 +108334,19 @@ var MAGEEngine = class MAGEEngine {
+@@ -107702,10 +108398,19 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	dispose() {
@@ -2468,7 +2566,7 @@ index 7e32237..c55ddf2 100644
  		if (this.#animationFrameId !== null) {
  			cancelAnimationFrame(this.#animationFrameId);
  			this.#animationFrameId = null;
-@@ -107766,6 +108407,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107766,6 +108471,7 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#audioAnalyser) this.#audioAnalyser = null;
  		if (this.#visualizer) {
  			this.#visualizer.mesh = null;
@@ -2476,7 +2574,7 @@ index 7e32237..c55ddf2 100644
  			this.#visualizer.shader = null;
  			this.#visualizer.shaders = [];
  		}
-@@ -107990,19 +108632,25 @@ var MAGEEngine = class MAGEEngine {
+@@ -107990,19 +108696,25 @@ var MAGEEngine = class MAGEEngine {
  	* @property {number} [settleFrames = 2] - Number of frames to render after loading preset before capturing thumbnail, to allow for any async loading and shader stabilization (default: 2)
  	*/
  	async #_captureFramePreviewBlob({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
@@ -2510,7 +2608,7 @@ index 7e32237..c55ddf2 100644
  	}
  	#_waitForPendingSkyboxLoad(timeoutMs = 2e3) {
  		if (!this.#_pendingSkyboxLoad) return Promise.resolve();
-@@ -108017,9 +108665,12 @@ var MAGEEngine = class MAGEEngine {
+@@ -108017,9 +108729,12 @@ var MAGEEngine = class MAGEEngine {
  			reader.readAsDataURL(blob);
  		});
  	}
@@ -2526,7 +2624,7 @@ index 7e32237..c55ddf2 100644
  		this.#_syncSobelResolution();
  		if (this.#composer) this.#composer.render(this.#scene, this.#camera);
  		else this.#renderer.render(this.#scene, this.#camera);
-@@ -108038,26 +108689,20 @@ var MAGEEngine = class MAGEEngine {
+@@ -108038,26 +108753,20 @@ var MAGEEngine = class MAGEEngine {
  		this.#_syncSobelResolution();
  	}
  	#_syncSobelResolution() {
@@ -2562,7 +2660,16 @@ index 7e32237..c55ddf2 100644
  		} catch {
  			return null;
  		}
-@@ -108120,6 +108765,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108092,7 +108801,7 @@ var MAGEEngine = class MAGEEngine {
+ 		}
+ 		if (typeof intent.camTilt === "number" && Number.isFinite(intent.camTilt) && this.#camera) this.#_setCameraUpFromTilt(intent.camTilt);
+ 	}
+-	#_applyCompactFx(fx) {
++	#_applyCompactFx(fx, refresh = true) {
+ 		if (!fx || typeof fx !== "object") return;
+ 		if (Array.isArray(fx.passOrder)) this.fx.setPassOrder(fx.passOrder);
+ 		if (fx.bloom && typeof fx.bloom === "object") {
+@@ -108120,6 +108829,8 @@ var MAGEEngine = class MAGEEngine {
  			if (typeof fx.passes.halftone === "boolean") this.fx.halftonePass.enabled = fx.passes.halftone;
  			if (typeof fx.passes.gammaCorrection === "boolean") this.fx.gammaCorrectionShader.enabled = fx.passes.gammaCorrection;
  			if (typeof fx.passes.kaleid === "boolean") this.fx.kaleidoShader.enabled = fx.passes.kaleid;
@@ -2571,7 +2678,16 @@ index 7e32237..c55ddf2 100644
  			if (typeof fx.passes.outputPass === "boolean") this.fx.outputPass.enabled = fx.passes.outputPass;
  		}
  		if (fx.params && typeof fx.params === "object") {
-@@ -108276,31 +108923,38 @@ var MAGEEngine = class MAGEEngine {
+@@ -108141,7 +108852,7 @@ var MAGEEngine = class MAGEEngine {
+ 				} catch {}
+ 			}
+ 		}
+-		if (this.#composer) this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera, this.#composer);
++		if (refresh && this.#composer) this.#composer = this.fx.applyPostProcessing(this.#scene, this.#renderer, this.#camera, this.#composer);
+ 	}
+ 	#_coercePresetInput(presetInput, report) {
+ 		if (presetInput instanceof MAGEPreset) return presetInput;
+@@ -108276,31 +108987,38 @@ var MAGEEngine = class MAGEEngine {
  		};
  	}
  	#_getViewportSize() {
@@ -2624,7 +2740,7 @@ index 7e32237..c55ddf2 100644
  		this.#_syncSobelResolution();
  	}
  	#_ensureViewportToast() {
-@@ -108353,15 +109007,23 @@ var MAGEEngine = class MAGEEngine {
+@@ -108353,15 +109071,23 @@ var MAGEEngine = class MAGEEngine {
  		this.#viewportToast.el = null;
  	}
  	#_createRenderer() {
@@ -2654,7 +2770,7 @@ index 7e32237..c55ddf2 100644
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
  		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
  		this.#renderer.outputColorSpace = SRGBColorSpace;
-@@ -108471,10 +109133,34 @@ var MAGEEngine = class MAGEEngine {
+@@ -108471,10 +109197,34 @@ var MAGEEngine = class MAGEEngine {
  		}
  	}
  	#_updateVisualizer() {
@@ -2691,7 +2807,7 @@ index 7e32237..c55ddf2 100644
  			format: RGBAFormat,
  			type: UnsignedByteType
  		});
-@@ -108484,25 +109170,72 @@ var MAGEEngine = class MAGEEngine {
+@@ -108484,25 +109234,72 @@ var MAGEEngine = class MAGEEngine {
  		if (this.log) console.log("Visualizer Loaded!");
  	}
  	#_render = () => {
@@ -2770,7 +2886,7 @@ index 7e32237..c55ddf2 100644
  		else {
  			const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
  			this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;
-@@ -108533,6 +109266,15 @@ var MAGEEngine = class MAGEEngine {
+@@ -108533,6 +109330,15 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#cameraUpdateHook) this.#cameraUpdateHook(this);
  		if (this.#composer) this.#composer.render(this.#scene, this.#camera);
  		else this.#renderer.render(this.#scene, this.#camera);
@@ -2786,7 +2902,7 @@ index 7e32237..c55ddf2 100644
  	};
  	#_growVisualizer() {
  		this.#state.size += .035 * (1 - this.#state.easing_speed + .01);
-@@ -108787,9 +109529,11 @@ var MAGEEngine = class MAGEEngine {
+@@ -108787,9 +109593,11 @@ var MAGEEngine = class MAGEEngine {
  };
  //#endregion
  //#region js/mage-lib.js
@@ -2830,3 +2946,94 @@ index 14e895a..46180b2 100644
      }
    },
    "files": [
+diff --git a/node_modules/@notrac/mage/dist/live-settings.js b/node_modules/@notrac/mage/dist/live-settings.js
+new file mode 100644
+--- /dev/null
++++ b/node_modules/@notrac/mage/dist/live-settings.js
+@@ -0,0 +1,86 @@
++// Data-only runtime settings. Structural presets and playback state have no path
++// through this API. Bounds mirror the frontend's version-1 scene policy.
++const number = (min, max, integer = false) => ({ min, max, integer });
++const angle = number(-Math.PI * 2, Math.PI * 2);
++const vector = { x: number(-1000, 1000), y: number(-1000, 1000), z: number(-1000, 1000) };
++export const LIVE_EFFECT_PASSES = Object.freeze({
++  rgbShift: 'RGBShift', dot: 'dotShader', technicolor: 'technicolorShader',
++  luminosity: 'luminosityShader', afterImage: 'afterImagePass', sobel: 'sobelShader',
++  glitch: 'glitchPass', colorify: 'colorifyShader', halftone: 'halftonePass',
++  gammaCorrection: 'gammaCorrectionShader', kaleid: 'kaleidoShader',
++  bleachBypass: 'bleachBypassShader', toon: 'toonShader', outputPass: 'outputPass',
++});
++const passNames = new Set([...Object.values(LIVE_EFFECT_PASSES), 'bloom', 'copyShader']);
++const schema = {
++  visualizer: { scale: number(1, 200) },
++  controls: { position0: vector, target0: vector, zoom0: number(.01, 100) },
++  intent: {
++    time_multiplier: number(0, 10), minimizing_factor: number(.01, 2),
++    power_factor: number(1, 10), pointerDownMultiplier: number(0, 10),
++    base_speed: number(0, 1), easing_speed: number(0, 1), camTilt: angle,
++    camOrientationMode: number(0, 2, true), camOrientationSpeed: number(0, 10),
++    autoRotate: 'boolean', autoRotateSpeed: number(-50, 50), fov: number(1, 179),
++  },
++  state: { volume_multiplier: number(0, 10) },
++  fx: {
++    passOrder: 'passOrder',
++    bloom: { enabled: 'boolean', strength: number(0, 10), radius: number(-10, 10), threshold: number(0, 10) },
++    toneMapping: { method: 'toneMapping', exposure: number(0, 10) },
++    passes: Object.fromEntries(Object.keys(LIVE_EFFECT_PASSES).map(key => [key, 'boolean'])),
++    params: {
++      rgbShift: { amount: number(0, .1), angle }, afterImage: { damp: number(0, 1) },
++      colorify: { color: 'color' }, kaleid: { sides: number(1, 24, true), angle },
++    },
++  },
++};
++
++/** Clone and validate the complete delta before touching engine state. */
++export function normalizeLiveSettings(input) {
++  const invalid = () => { throw new TypeError('Invalid live settings patch.'); };
++  const visit = (value, rule) => {
++    if (rule === 'boolean') { if (typeof value !== 'boolean') invalid(); return value; }
++    if (rule === 'color') { if (typeof value !== 'string' || !/^#[\da-f]{6}$/i.test(value)) invalid(); return value; }
++    if (rule === 'toneMapping') { if (![0, 1, 2, 3, 4, 6, 7].includes(value)) invalid(); return value; }
++    if (rule === 'passOrder') {
++      if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) invalid();
++      const length = Object.getOwnPropertyDescriptor(value, 'length')?.value;
++      if (!Number.isInteger(length) || length > 16 || Reflect.ownKeys(value).length !== length + 1) invalid();
++      const result = [];
++      for (let index = 0; index < length; index++) {
++        const entry = Object.getOwnPropertyDescriptor(value, String(index));
++        if (!entry?.enumerable || !Object.hasOwn(entry, 'value') || !passNames.has(entry.value) || result.includes(entry.value)) invalid();
++        result.push(entry.value);
++      }
++      return result;
++    }
++    if (Object.hasOwn(rule, 'min')) {
++      if (typeof value !== 'number' || !Number.isFinite(value) || value < rule.min || value > rule.max || rule.integer && !Number.isInteger(value)) invalid();
++      return value;
++    }
++    if (!value || typeof value !== 'object' || Array.isArray(value)) invalid();
++    const prototype = Object.getPrototypeOf(value);
++    if (prototype !== Object.prototype && prototype !== null) invalid();
++    const keys = Reflect.ownKeys(value);
++    if (keys.length > Object.keys(rule).length) invalid();
++    const result = {};
++    for (const key of keys) {
++      if (typeof key !== 'string' || !Object.hasOwn(rule, key)) invalid();
++      const entry = Object.getOwnPropertyDescriptor(value, key);
++      if (!entry?.enumerable || !Object.hasOwn(entry, 'value')) invalid();
++      const copy = visit(entry.value, rule[key]);
++      if (typeof copy !== 'object' || Array.isArray(copy) || Object.keys(copy).length) result[key] = copy;
++    }
++    return result;
++  };
++  return visit(input, schema);
++}
++
++/** Enforce the aggregate limit against the resulting configuration, not delta size. */
++export function validateLiveEffectBudget(patch, effects) {
++  const fx = patch.fx;
++  let count = (fx?.bloom?.enabled ?? effects.bloom.enabled) ? 1 : 0;
++  for (const [key, pass] of Object.entries(LIVE_EFFECT_PASSES)) {
++    if (key !== 'outputPass' && (fx?.passes?.[key] ?? effects[pass].enabled)) count++;
++  }
++  if (count > 4) throw new TypeError('Live settings exceed the optional effect limit.');
++}

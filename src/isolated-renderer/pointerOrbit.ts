@@ -13,8 +13,10 @@ const offset = (fields: OrbitFields): Point => ({ x: fields.camera.position.x - 
   y: fields.camera.position.y - fields.controls.target.y, z: fields.camera.position.z - fields.controls.target.z })
 
 /** Numeric viewer input only: no synthetic DOM events or engine editor shortcuts. */
-export function createPointerOrbit(fields: OrbitFields) {
-  const initialDistance = norm(offset(fields))
+export function createPointerOrbit(fields: OrbitFields, currentZoom = 1) {
+  // A camera edit rebases around the current view while the parent keeps its
+  // cumulative wheel factor. Remove that factor from the new baseline.
+  const initialDistance = norm(offset(fields)) / (Number.isFinite(currentZoom) ? clamp(currentZoom, 0.4, 2.5) : 1)
   let previous: Pointer | null = null, disposed = false
   function apply(value: Point) {
     const { position } = fields.camera, { target } = fields.controls

@@ -3,11 +3,13 @@ import { sceneAvailabilityStore, type SceneAvailabilityTarget } from '../availab
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { createIsolatedPlayer, type IsolatedPlayer } from '../isolation/isolatedPlayer'
 import { getIsolatedRendererUrl } from '../isolation/rendererConfig'
+import { extractLiveSceneSettings } from '../liveSceneSettings'
 import { boundCaptureSize } from '../policy/renderBudget'
 import { validateSceneForPlayback } from '../policy/sceneValidation'
 import { sceneRecovery, sceneRecoveryKey, type RecoveryLease, type RecoveryReason } from '../recovery/sceneRecovery'
+import { scenePlaybackIdentity } from '../scenePlaybackIdentity'
 import { resolveSceneForPlayback } from '../templates/resolveScene'
-import { MagePlayerAdapterError, type MageAudioResponseState, type MagePlayerAudioState, type MagePlayerController, type MagePlayerOptions, type MagePlayerPlaybackState, type MageSceneBlob } from './playerController'
+import { MagePlayerAdapterError, type MageAudioResponseState, type MagePlayerAudioState, type MagePlayerController, type MagePlayerOptions, type MagePlayerPlaybackState, type MageSceneBlob, type MageSceneLoadOptions } from './playerController'
 import { playerStartupCancelled, waitForPlayerStartup } from './playerStartup'
 
 const changed = () => new MagePlayerAdapterError('The scene changed before playback was ready.')
@@ -16,13 +18,6 @@ const volume = (value: number) => Number.isFinite(value) ? Math.min(1, Math.max(
 
 function responseSource(scene: MageSceneBlob) {
   return resolveSceneForPlayback(scene).engineScene
-}
-
-function withoutResponse(scene: MageSceneBlob) {
-  const copy = { ...responseSource(scene) }
-  delete copy.audioResponse
-  delete copy.audioResponseConfig
-  return copy
 }
 
 function changedResponse(scene: MageSceneBlob, mode: SceneAudioResponseMode | undefined, config: unknown) {
@@ -263,15 +258,53 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       effectiveConfig: mode === 'mapped-v1' ? normalizeAudioResponseConfig(override ?? savedConfig).config : null }
   }
 
-  function readResponse(scene: MageSceneBlob) {
+  function responseSettings(scene: MageSceneBlob) {
     const source = responseSource(scene)
-    savedMode = normalizeAudioResponseMode(source.audioResponse)
-    savedConfig = Object.hasOwn(source, 'audioResponseConfig') ? normalizeAudioResponseConfig(source.audioResponseConfig).config : null
+    return {
+      mode: normalizeAudioResponseMode(source.audioResponse),
+      config: Object.hasOwn(source, 'audioResponseConfig') ? normalizeAudioResponseConfig(source.audioResponseConfig).config : null,
+    }
+  }
+
+  function readResponse(scene: MageSceneBlob) {
+    const response = responseSettings(scene)
+    savedMode = response.mode
+    savedConfig = response.config
   }
 
   function applyResponse() {
     const response = getAudioResponseState()
     bridge!.setAudioResponse(response.effectiveMode, response.effectiveConfig ?? undefined)
+  }
+
+  function prepareSettingsUpdate(submitted: unknown, loadOptions: MageSceneLoadOptions) {
+    assertAllowed()
+    if (!currentScene || !lease || !loaded) throw new MagePlayerAdapterError('Load a scene before updating its settings.')
+    const next = validateSceneForPlayback(submitted) as unknown as MageSceneBlob
+    const nextKey = Object.hasOwn(loadOptions, 'sceneKey') ? loadOptions.sceneKey : sceneKey
+    const identity = scenePlaybackIdentity(next, nextKey)
+    if (!identity || availabilityTarget(nextKey, next) !== target || identity !== scenePlaybackIdentity(currentScene, sceneKey)) {
+      throw new MagePlayerAdapterError('Changed scene content requires a complete scene load.')
+    }
+    const key = sceneRecoveryKey(Object.hasOwn(loadOptions, 'recoverySceneBlob') ? loadOptions.recoverySceneBlob : submitted, nextKey)
+    if (!key) throw new MagePlayerAdapterError('Scene data cannot be safely identified for playback.')
+    return { next, nextKey, key }
+  }
+
+  function nextRecoveryLease(key: string) {
+    if (key === currentRecoveryKey) return lease!
+    const nextLease = sceneRecovery.begin(key)
+    if (!nextLease) throw new MagePlayerAdapterError('Automatic rendering is paused for this scene. Choose Retry to try it again.')
+    return nextLease
+  }
+
+  function commitSettingsIdentity(next: MageSceneBlob, nextKey: string | number | undefined, key: string, nextLease: RecoveryLease) {
+    const previous = lease
+    lease = nextLease
+    currentRecoveryKey = key
+    currentScene = next
+    sceneKey = nextKey
+    if (previous !== nextLease) previous?.dispose()
   }
 
   return {
@@ -328,24 +361,31 @@ export async function createIsolatedMageController(container: HTMLElement, optio
         throw error
       }
     },
-    updateRecoveryIdentity(submitted, loadOptions = {}) {
-      assertAllowed()
-      if (!currentScene || !lease || !loaded) throw new MagePlayerAdapterError('Load a scene before updating its recovery identity.')
-      const next = validateSceneForPlayback(submitted) as unknown as MageSceneBlob
-      const nextKey = Object.hasOwn(loadOptions, 'sceneKey') ? loadOptions.sceneKey : sceneKey
-      if (availabilityTarget(nextKey, next) !== target || sceneRecoveryKey(withoutResponse(next)) !== sceneRecoveryKey(withoutResponse(currentScene))) {
-        throw new MagePlayerAdapterError('Changed scene content requires a complete scene load.')
+    updateSceneSettings(submitted, loadOptions = {}) {
+      const { next, nextKey, key } = prepareSettingsUpdate(submitted, loadOptions)
+      const settings = extractLiveSceneSettings(next)
+      const response = responseSettings(next)
+      const effectiveMode = override ? 'mapped-v1' : response.mode
+      const effectiveConfig = effectiveMode === 'mapped-v1' ? normalizeAudioResponseConfig(override ?? response.config).config : null
+      const previousResponse = getAudioResponseState()
+      const responseChanged = effectiveMode !== previousResponse.effectiveMode
+        || JSON.stringify(effectiveConfig) !== JSON.stringify(previousResponse.effectiveConfig)
+      const nextLease = nextRecoveryLease(key)
+      try {
+        bridge!.setSceneSettings(settings)
+        if (responseChanged) bridge!.setAudioResponse(effectiveMode, effectiveConfig ?? undefined)
+      } catch (error) {
+        if (nextLease !== lease) nextLease.dispose()
+        throw error
       }
-      const key = sceneRecoveryKey(Object.hasOwn(loadOptions, 'recoverySceneBlob') ? loadOptions.recoverySceneBlob : submitted, nextKey)
-      if (!key) throw new MagePlayerAdapterError('Scene data cannot be safely identified for playback.')
-      if (key === currentRecoveryKey) return
-      const nextLease = sceneRecovery.begin(key)
-      if (!nextLease) { dispose(); throw new MagePlayerAdapterError('Automatic rendering is paused for this scene. Choose Retry to try it again.') }
-      lease.dispose()
-      lease = nextLease
-      currentRecoveryKey = key
-      currentScene = next
-      sceneKey = nextKey
+      savedMode = response.mode
+      savedConfig = response.config
+      captureGeneration++
+      commitSettingsIdentity(next, nextKey, key, nextLease)
+    },
+    updateRecoveryIdentity(submitted, loadOptions = {}) {
+      const { next, nextKey, key } = prepareSettingsUpdate(submitted, loadOptions)
+      commitSettingsIdentity(next, nextKey, key, nextRecoveryLease(key))
     },
     getAudioState,
     getPlaybackState: () => playback,

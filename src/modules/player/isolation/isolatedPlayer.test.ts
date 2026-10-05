@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlayer, type IsolatedPlayer } from './isolatedPlayer'
 import type { ParentAudioSession } from './parentAudio'
 import type { createIsolatedPlaybackHost } from './playbackHost'
+import { extractLiveSceneSettings } from '../liveSceneSettings'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -34,7 +35,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
   const boot = deferred<void>()
   const host = {
     ready: boot.promise,
-    setAudioResponse: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
+    setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
     loadScene: vi.fn(async () => {}), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }
@@ -80,6 +81,22 @@ afterEach(() => {
 })
 
 describe('isolated player parent integration', () => {
+  it('forwards validated live settings without transport or audio changes and rejects edits during scene replacement', async () => {
+    const f = fixture(); await f.start(); f.player.pause()
+    const settings = extractLiveSceneSettings(scene)
+    vi.clearAllMocks()
+    f.player.setSceneSettings(settings)
+    expect(f.host.setSceneSettings).toHaveBeenCalledExactlyOnceWith(settings)
+    expect(f.host.setPlayback).not.toHaveBeenCalled(); expect(f.host.loadScene).not.toHaveBeenCalled()
+    expect(f.audio.play).not.toHaveBeenCalled(); expect(f.audio.seek).not.toHaveBeenCalled()
+    expect(() => f.player.setSceneSettings({ ...settings, intent: { ...settings.intent, fov: NaN } })).toThrow()
+    expect(f.host.setSceneSettings).toHaveBeenCalledOnce()
+    const replacement = deferred<void>(); f.host.loadScene.mockReturnValueOnce(replacement.promise)
+    const loading = f.player.loadScene(scene)
+    expect(() => f.player.setSceneSettings(settings)).toThrow(/Load a scene/)
+    replacement.resolve(); await loading
+    f.player.dispose(); expect(() => f.player.setSceneSettings(settings)).toThrow(/stopped/)
+  })
   it.each(['dispose', 'failure'] as const)('forwards healthy playback only while the current scene is loaded and playing, ending on %s', async ending => {
     const f = fixture()
     f.hostOptions.onHealthy?.()

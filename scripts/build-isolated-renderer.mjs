@@ -18,6 +18,7 @@ export async function buildIsolatedRenderer({ production = false, diagnostics = 
   const allowedSharedFiles = new Set([
     `${sourcePrefix}modules/player/isolation/protocol.ts`,
     `${sourcePrefix}modules/player/isolation/playbackProtocol.ts`,
+    `${sourcePrefix}modules/player/liveSceneSettings.ts`,
     `${sourcePrefix}modules/player/isolation/capture.ts`,
     `${sourcePrefix}modules/player/infrastructure/viewerPointerDeformation.ts`,
     `${sourcePrefix}modules/player/policy/renderBudget.ts`,
