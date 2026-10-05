@@ -1536,6 +1536,7 @@ export function SceneEditorShell({
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
               {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {canPreviewScene ? 'The preview shows your last valid settings.' : 'Fix these settings before continuing.'}</p> : null}
               {canPreviewScene ? <MagePlayer
+                audioMode="single"
                 renderProfile="preview"
                 className="scene-editor-preview__player"
                 initialPlayback="playing"

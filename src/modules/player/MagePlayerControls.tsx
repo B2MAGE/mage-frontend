@@ -12,6 +12,7 @@ import { formatAudioTime } from './magePlayerUtils'
 import { PlaybackOptions } from './recovery/PlaybackOptions'
 
 type MagePlayerControlsProps = {
+  audioMode?: 'single' | 'playlist'
   disabled?: boolean
   allowPause?: boolean
   activeAudioAction: 'add' | 'load' | null
@@ -36,6 +37,7 @@ type MagePlayerControlsProps = {
 }
 
 export function MagePlayerControls({
+  audioMode = 'playlist',
   disabled = false,
   allowPause = false,
   activeAudioAction,
@@ -62,12 +64,17 @@ export function MagePlayerControls({
   const isAddingAudio = activeAudioAction === 'add'
   const isLoadingTrack = activeAudioAction === 'load'
   const playbackLabel = playbackState === 'playing' ? 'Pause' : 'Play'
-  const trackSummaryLabel = currentTrack
+  const isSingleSong = audioMode === 'single'
+  const showLoadingStatus = isLoadingTrack || (isSingleSong && isAddingAudio)
+  const audioPickerLabel = isSingleSong ? (currentTrack ? 'Replace song' : 'Add song') : 'Add audio tracks'
+  const trackSummaryLabel = isSingleSong
+    ? currentTrack ? readPlaylistTrackSummaryName(currentTrack) : 'No song selected'
+    : currentTrack
     ? `Track ${currentTrackIndex}/${tracksCount}: ${readPlaylistTrackSummaryName(currentTrack)}`
     : 'Track 0/0: No track selected'
 
   return (
-    <div className="mage-player__controls">
+    <div className={`mage-player__controls${isSingleSong ? ' mage-player__controls--single' : ''}`}>
         <button
           aria-label={`${playbackLabel} scene and audio playback`}
           aria-pressed={playbackState === 'playing'}
@@ -82,18 +89,18 @@ export function MagePlayerControls({
           </span>
         </button>
       <div className="mage-player__controls-main">
-        <div aria-busy={isLoadingTrack} className="mage-player__control-meta">
-          {tracksCount > 0 ? (
+        <div aria-busy={showLoadingStatus} className={`mage-player__control-meta${isSingleSong ? ' mage-player__control-meta--single' : ''}`}>
+          {!isSingleSong && tracksCount > 0 ? (
             <button className="mage-player__track-summary" onClick={onTrackSummaryClick} type="button">
               {trackSummaryLabel}
             </button>
           ) : (
-            <span className="mage-player__audio-label">{trackSummaryLabel}</span>
+            <span className="mage-player__audio-label" title={isSingleSong ? trackSummaryLabel : undefined}>{trackSummaryLabel}</span>
           )}
-          {isLoadingTrack ? (
+          {showLoadingStatus ? (
             <span className="mage-player__control-feedback mage-player__track-loading-status" role="status">
               <span aria-hidden="true" className="pending-button-label__spinner" />
-              Loading track…
+              {isSingleSong ? 'Loading song…' : 'Loading track…'}
             </span>
           ) : audioError ? (
             <span className="mage-player__control-feedback" role="alert">
@@ -126,16 +133,16 @@ export function MagePlayerControls({
       <div className="mage-player__control-actions">
         <button
           aria-busy={isAddingAudio}
-          aria-label="Add audio tracks"
+          aria-label={audioPickerLabel}
           className="mage-player__control-button mage-player__control-button--text"
           disabled={controlsBusy}
           onClick={onOpenAudioPicker}
-          title="Add audio tracks from your device."
+          title={isSingleSong ? `${audioPickerLabel} from your device.` : 'Add audio tracks from your device.'}
           type="button"
         >
           <span className="mage-player__add-audio-label">
-            <PendingButtonLabel pending={isAddingAudio} pendingLabel="Adding...">
-              Add
+            <PendingButtonLabel pending={isAddingAudio} pendingLabel={isSingleSong && currentTrack ? 'Replacing...' : 'Adding...'}>
+              {isSingleSong ? audioPickerLabel : 'Add'}
             </PendingButtonLabel>
           </span>
           <span className="mage-player__control-icon mage-player__add-audio-icon"><AppIcon name="plus" size={22} /></span>
@@ -183,7 +190,7 @@ export function MagePlayerControls({
 
         <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
         <PlaybackOptions onStopScene={onStopScene} onPauseAllScenes={onPauseAllScenes} />
-        {showPlaylistButton && (
+        {!isSingleSong && showPlaylistButton && (
           <button
             className="mage-player__control-button mage-player__control-button--playlist"
             type="button"
