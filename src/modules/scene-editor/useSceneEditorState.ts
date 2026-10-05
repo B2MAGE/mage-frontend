@@ -29,7 +29,7 @@ import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicRespons
 import { createCustomSceneFromTemplate, readTemplateShaderSource, parseSceneImport, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderObject, type BuilderSceneDocument, type TemplateId, type TemplateSceneDocument } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateBranch, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
-import { addBuilderObject, applyBuilderTemplate, changeBuilderBranch, changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, createBuilderSceneFromSettings, duplicateBuilderObject, getBuilderEditorModel, getBuilderEditorSceneData, isBuilderEditorDocument, removeBuilderObject, updateBuilderObject, type BuilderShape } from './builderEditor'
+import { addBuilderObject, changeBuilderBranch, changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, duplicateBuilderObject, getBuilderEditorModel, getBuilderEditorSceneData, isBuilderEditorDocument, removeBuilderObject, updateBuilderObject, type BuilderShape } from './builderEditor'
 
 /** Apply only the user's changed fields, retaining unsupported repair values. */
 function mergeChangedValues(original: unknown, before: unknown, after: unknown): unknown {
@@ -82,6 +82,8 @@ export function useSceneEditorState({
   const templateDocument = isTemplate ? sceneData : null
   const isBuilder = isBuilderEditorDocument(sceneData)
   const builderDocument = isBuilder ? sceneData : null
+  const isUnmodifiedBuilderCustom = !isTemplate && !isBuilder
+    && builderRoundTripRef.current?.customSignature === JSON.stringify(sceneData)
   const authoredFieldErrors = useMemo(() => {
     const document = templateDocument ?? builderDocument
     if (document) {
@@ -268,8 +270,15 @@ export function useSceneEditorState({
   const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(editorSceneData)) !== JSON.stringify(musicResponseDefaults)
 
   function handleTemplateSelection(templateId: string, replaceCustom = false) {
-    if (builderDocument) {
-      applySceneData(applyBuilderTemplate(builderDocument, templateId as TemplateId), false)
+    if (builderDocument) return
+    if (!templateDocument) {
+      if (replaceCustom) {
+        applySceneData(createTemplateScene(templateId), true, 'templateId')
+        return
+      }
+      const template = createTemplateScene(templateId)
+      const shader = readTemplateShaderSource(template)
+      updateBranch('visualizer', current => ({ ...current, shader }))
       return
     }
     const next = changeTemplateSelection(sceneData, templateId, replaceCustom)
@@ -300,10 +309,17 @@ export function useSceneEditorState({
     if (builderDocument) applySceneData(removeBuilderObject(builderDocument, objectId), false, 'objects')
   }
 
-  function handleSwitchToBuilder(templateId: TemplateId = 'embedded-scene-0') {
-    const next = templateDocument ? createBuilderSceneFromSettings(templateDocument, templateDocument.templateId) : createBuilderScene(templateId)
+  function handleSwitchToBuilder() {
+    const next = createBuilderScene()
     applySceneData(next, true)
     setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
+  }
+
+  function handleSwitchToTemplate(templateId: TemplateId = 'embedded-scene-0') {
+    const next = createTemplateScene(templateId)
+    builderRoundTripRef.current = null
+    applySceneData(next, true)
+    setMusicResponseDefaults(readMusicResponseDefaults(getTemplateEditorSceneData(next)))
   }
 
   function handleRestoreBuilder() {
@@ -473,6 +489,7 @@ export function useSceneEditorState({
     handleRestoreBuilder,
     handleSwitchBuilderToCustom,
     handleSwitchToBuilder,
+    handleSwitchToTemplate,
     handleUpdateBuilderObject,
     handleMotionAdvancedToggle,
     handleNameChange,
@@ -491,6 +508,7 @@ export function useSceneEditorState({
     isSubmitting,
     isTemplate,
     isBuilder,
+    isUnmodifiedBuilderCustom,
     isTagDropdownOpen,
     movePass,
     name,

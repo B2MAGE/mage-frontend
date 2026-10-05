@@ -99,7 +99,11 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     act(() => result.current.handleSectionJump('pass-order'))
     act(() => result.current.handleTemplateSelection('embedded-scene-1'))
-    expect(result.current.sceneData).toEqual(custom)
+    expect(result.current.sceneData).toMatchObject({
+      audioResponse: 'mapped-v1',
+      intent: custom.intent,
+      visualizer: { shader: readTemplateShaderSource(createTemplateScene('embedded-scene-1')) },
+    })
     expect(result.current.currentSection.id).toBe('pass-order')
     act(() => result.current.handleTemplateSelection('embedded-scene-1', true))
     expect(result.current.sceneData).toEqual(createTemplateScene('embedded-scene-1'))
@@ -185,7 +189,9 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     expect(result.current.editorSections.some(section => section.id === 'pass-order')).toBe(true)
     act(() => result.current.handleTemplateSelection('embedded-scene-0'))
-    expect(result.current.sceneData).toEqual(custom.scene)
+    expect(result.current.sceneData).toMatchObject({ visualizer: {
+      shader: readTemplateShaderSource(createTemplateScene('embedded-scene-0')),
+    } })
   })
 
   it('restores exact custom text after an imported template passes through invalid edits', async () => {
