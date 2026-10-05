@@ -21,12 +21,14 @@ vi.mock('@modules/player', async (importOriginal) => {
       audioMode,
       className,
       initialPlayback,
+      onClearMusic,
       sceneBlob,
     }: {
       ariaLabel?: string
       audioMode?: string
       className?: string
       initialPlayback?: string
+      onClearMusic?: () => void
       sceneBlob: unknown
     }) => (
       <div
@@ -34,6 +36,7 @@ vi.mock('@modules/player', async (importOriginal) => {
         data-audio-mode={audioMode}
         className={className}
         data-playback={initialPlayback}
+        data-clears-route-playlist={typeof onClearMusic === 'function'}
         data-testid="mage-player"
       >
         {sceneBlob ? 'player-ready' : 'no-scene'}
@@ -180,6 +183,7 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
     expect(screen.getByTestId('mage-player')).toHaveAttribute('data-audio-mode', 'playlist')
+    expect(screen.getByTestId('mage-player')).toHaveAttribute('data-clears-route-playlist', 'true')
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show more$/i })).toBeInTheDocument()

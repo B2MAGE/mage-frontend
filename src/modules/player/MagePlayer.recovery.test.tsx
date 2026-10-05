@@ -90,7 +90,7 @@ describe('MagePlayer recovery', () => {
     expect(screen.queryByRole('button', { name: 'Add audio tracks' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 802 }))
-    await waitFor(() => expect(resumed.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one' }))
+    await waitFor(() => expect(resumed.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one', signal: expect.any(AbortSignal) }))
   })
 
   it.each([
@@ -132,7 +132,7 @@ describe('MagePlayer recovery', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
 
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(edits.at(-1), { sceneKey: 839 }))
-    await waitFor(() => expect(resumed.loadAudio).toHaveBeenCalledExactlyOnceWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one' }))
+    await waitFor(() => expect(resumed.loadAudio).toHaveBeenCalledExactlyOnceWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one', signal: expect.any(AbortSignal) }))
     expect(createMagePlayer).toHaveBeenCalledTimes(2)
     expect(resumed.updateSceneSettings).not.toHaveBeenCalled()
     expect(sceneRecovery.getBlock(originalKey)).toBeNull()
@@ -345,7 +345,7 @@ describe('MagePlayer recovery', () => {
 
     act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
     await waitFor(() => expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 811 }))
-    await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one' }))
+    await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one', signal: expect.any(AbortSignal) }))
     expect(first.dispose).toHaveBeenCalledOnce()
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
   })

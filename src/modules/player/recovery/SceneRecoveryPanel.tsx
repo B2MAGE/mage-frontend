@@ -1,6 +1,7 @@
 import { useId } from 'react'
 import { buildMagePlayerClassName } from '../magePlayerUtils'
 import { PauseAllScenesToggle } from './PauseAllScenesToggle'
+import { PlaybackOptions } from './PlaybackOptions'
 import type { RecoveryBlock } from './sceneRecovery'
 
 type Props = {
@@ -10,9 +11,10 @@ type Props = {
   safeMode: boolean
   onRetry: () => void
   onSafeModeChange: (enabled: boolean) => void
+  onClearMusic?: () => void
 }
 
-export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRetry, onSafeModeChange }: Props) {
+export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRetry, onSafeModeChange, onClearMusic }: Props) {
   const messageId = useId()
   const interrupted = block?.reason === 'interrupted'
   const stopped = block?.reason === 'stopped'
@@ -39,5 +41,8 @@ export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRe
         </div>
       </div>
     </div>
+    {onClearMusic ? <div className="mage-player__controls mage-player__controls--recovery-only">
+      <PlaybackOptions onClearMusic={onClearMusic} />
+    </div> : null}
   </section>
 }

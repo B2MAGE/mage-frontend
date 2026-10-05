@@ -112,7 +112,22 @@ releases a pending candidate. Compatible live edits and temporary permission
 checks retain the player and its pending selection.
 
 This is parent-side player behavior and requires no engine patch or renderer
-protocol change. Clear music is tracked separately in #238.
+protocol change.
+
+### Clear music (#238)
+
+Every player exposes Clear music in its existing Playback options cogwheel,
+including stopped, blocked and loading players. It unloads the current audio,
+empties the session queue, resets the title and seek bar, and cancels pending file
+selection, metadata reads and decoding. Stale results cannot restore music after
+clearing. The same file can be selected again immediately.
+
+Scene detail also resets its original/shuffled order, selection and repeat state,
+closes the playlist, and releases removed device URLs once. Clearing does not edit
+saved scene or account data, recreate the renderer, change visual play/pause intent,
+or bypass recovery/moderation. Simulated beat settings and volume are retained.
+The existing audio unload bridge resets the music response. This change requires
+only the frontend deployment; it adds no engine patch or renderer protocol message.
 
 ## Package Patch Notes
 

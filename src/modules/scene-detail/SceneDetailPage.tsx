@@ -129,6 +129,7 @@ export function SceneDetailPage() {
   const recommendationOwnerUserId = scene?.ownerUserId ?? null
   const recommendationSceneTags = scene?.tags ?? EMPTY_RECOMMENDATION_TAGS
   const {
+    handleClearMusic,
     handlePlaylistChange,
     handleRemoveTrack,
     handleReorderTracks,
@@ -602,6 +603,7 @@ export function SceneDetailPage() {
                 className="scene-detail-player"
                 initialPlayback="playing"
                 onAvailabilityRestored={reloadSceneSource}
+                onClearMusic={handleClearMusic}
                 onPlaylistChange={handlePlaylistChange}
                 onRequestPlaylistOpen={() => {
                   setIsPlaylistOpen(true)

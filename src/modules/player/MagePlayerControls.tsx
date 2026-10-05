@@ -29,6 +29,7 @@ type MagePlayerControlsProps = {
   onTrackSummaryClick: (event: ReactMouseEvent<HTMLButtonElement>) => void
   onVolumeChange: (event: ChangeEvent<HTMLInputElement>) => void
   onStopScene?: () => void
+  onClearMusic?: () => void
   onPauseAllScenes: () => void
   playbackState: MagePlayerPlaybackState
   showPlaylistButton: boolean
@@ -54,6 +55,7 @@ export function MagePlayerControls({
   onTrackSummaryClick,
   onVolumeChange,
   onStopScene,
+  onClearMusic,
   onPauseAllScenes,
   playbackState,
   showPlaylistButton,
@@ -187,7 +189,7 @@ export function MagePlayerControls({
 
 
         <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
-        <PlaybackOptions onStopScene={onStopScene} onPauseAllScenes={onPauseAllScenes} />
+        <PlaybackOptions onStopScene={onStopScene} onClearMusic={onClearMusic} onPauseAllScenes={onPauseAllScenes} />
         {!isSingleSong && showPlaylistButton && (
           <button
             className="mage-player__control-button mage-player__control-button--playlist"

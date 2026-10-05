@@ -34,4 +34,22 @@ describe('scene availability presentation', () => {
     await userEvent.keyboard('{Enter}')
     expect(onCheck).toHaveBeenCalledTimes(1)
   })
+
+  it.each([false, true])('can clear local music while playback is unavailable or checking (%s)', async checking => {
+    const onClearMusic = vi.fn()
+    const onCheck = vi.fn()
+    render(<SceneAvailabilityPanel message="This scene is currently unavailable." checking={checking}
+      onCheck={onCheck} onClearMusic={onClearMusic} />)
+    const user = userEvent.setup()
+    const trigger = screen.getByRole('button', { name: 'Playback options' })
+    expect(trigger.closest('.mage-player__controls--recovery-only')).toBeInTheDocument()
+    await user.click(trigger)
+    expect(screen.getByRole('button', { name: 'Clear music' })).toBeEnabled()
+    expect(screen.queryByRole('checkbox', { name: 'Pause all scenes' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Clear music' }))
+    expect(onClearMusic).toHaveBeenCalledOnce()
+    expect(onCheck).not.toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent('This scene is currently unavailable.')
+    expect(trigger).toHaveFocus()
+  })
 })

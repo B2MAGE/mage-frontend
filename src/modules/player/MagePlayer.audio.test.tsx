@@ -36,6 +36,7 @@ describe('MagePlayer audio controls', () => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
         sourceLabel: 'crimson-reactor.mp3',
         sourcePath: '/audio/crimson-reactor.mp3',
+        signal: expect.any(AbortSignal),
       })
     })
 
@@ -121,6 +122,7 @@ describe('MagePlayer audio controls', () => {
       expect(controller.loadAudio).toHaveBeenLastCalledWith({
         sourceLabel: 'device-track.mp3',
         sourcePath: expect.stringMatching(/^blob:/),
+        signal: expect.any(AbortSignal),
       })
     })
 

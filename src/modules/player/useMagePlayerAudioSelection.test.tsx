@@ -18,6 +18,7 @@ function deferred<T>() {
 }
 function buildPlaylist(): ReturnType<typeof useMagePlayerPlaylist> {
   return {
+    clear: vi.fn(),
     activeSelectedTrackId: null, tracks: [], currentTrack: null, currentTrackIndex: 0,
     commitPlaylistTracks: vi.fn(), commitSelectedTrackId: vi.fn(), commitTrackDuration: vi.fn(),
   }

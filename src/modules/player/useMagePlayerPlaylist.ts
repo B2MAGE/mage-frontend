@@ -42,8 +42,9 @@ export function useMagePlayerPlaylist({
   const previousSceneIdentity = useRef<string | null | undefined>(undefined)
   const previousSceneKey = useRef(sceneKey)
   const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
+  const clearedScene = useRef<{ key: MageSceneKey | undefined; identity: string | null } | null>(null)
 
-  const activeSelectedTrackId = selectedTrackId ?? internalSelectedTrackId
+  const activeSelectedTrackId = selectedTrackId !== undefined ? selectedTrackId : internalSelectedTrackId
   const suppliedTracks = playlistTracks ?? internalPlaylistTracks
   const tracks = useMemo(() => {
     if (audioMode !== 'single' || suppliedTracks.length <= 1) return suppliedTracks
@@ -71,6 +72,12 @@ export function useMagePlayerPlaylist({
 
     onSelectedTrackChange?.(nextTrackId)
   }, [isSelectionControlled, onSelectedTrackChange])
+
+  const clear = useCallback(() => {
+    clearedScene.current = { key: sceneKey, identity: playbackIdentity }
+    commitPlaylistTracks([])
+    commitSelectedTrackId(null)
+  }, [commitPlaylistTracks, commitSelectedTrackId, playbackIdentity, sceneKey])
 
   const commitTrackDuration = useCallback((trackId: string, duration: number) => {
     if (!Number.isFinite(duration) || duration <= 0) {
@@ -108,6 +115,10 @@ export function useMagePlayerPlaylist({
     if (isPlaylistControlled) {
       return
     }
+    const isClearedScene = () => clearedScene.current !== null && (sceneKey !== undefined
+      ? clearedScene.current.key === sceneKey : clearedScene.current.identity === playbackIdentity)
+    if (isClearedScene()) return
+    clearedScene.current = null
     if (playbackIdentity !== null && previousSceneIdentity.current === playbackIdentity) return
     // Local music belongs to this viewing/editor session, not a shader revision.
     if (previousSceneIdentity.current !== undefined && previousSceneKey.current === sceneKey
@@ -121,7 +132,7 @@ export function useMagePlayerPlaylist({
     const nextSelectedTrackId = sceneTrack?.id ?? null
 
     queueMicrotask(() => {
-      if (isCancelled) {
+      if (isCancelled || isClearedScene()) {
         return
       }
       previousSceneIdentity.current = playbackIdentity
@@ -169,6 +180,7 @@ export function useMagePlayerPlaylist({
   }, [activeSelectedTrackId, commitSelectedTrackId, currentTrack, tracks])
 
   return {
+    clear,
     activeSelectedTrackId,
     commitPlaylistTracks,
     commitSelectedTrackId,

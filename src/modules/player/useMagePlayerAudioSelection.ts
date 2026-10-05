@@ -34,6 +34,15 @@ export function useMagePlayerAudioSelection({ inputRef, playlist, sceneIdentity,
     setState(current => ({ ...current, adding: false }))
   }, [])
 
+  const clear = useCallback(() => {
+    // Keep the cancelled request until its native chooser returns. A subsequent
+    // explicit open starts a new request and may choose the same file again.
+    if (pickerRequest.current) pickerRequest.current.cancelled = true
+    cancelPending()
+    if (inputRef.current) inputRef.current.value = ''
+    setState(current => ({ ...current, error: null }))
+  }, [cancelPending, inputRef])
+
   const settleCandidate = useCallback((value: SingleSongCandidate, result: { ok: true; duration: number } | { ok: false; error: unknown }) => {
     const selection = [...pending.current].find(item => item.candidate === value)
     if (!selection || selection.cancelled || value.signal.aborted) return
@@ -111,7 +120,7 @@ export function useMagePlayerAudioSelection({ inputRef, playlist, sceneIdentity,
         const sourcePath = URL.createObjectURL(file)
         selection.sourcePaths.push(sourcePath)
         return {
-          duration: await readAudioFileDuration(sourcePath),
+          duration: await readAudioFileDuration(sourcePath, selection.abort.signal),
           id: createPlaylistTrackId(), name: file.name, sourcePath, sourceType: 'device' as const,
         }
       }))
@@ -139,7 +148,7 @@ export function useMagePlayerAudioSelection({ inputRef, playlist, sceneIdentity,
   }
 
   return {
-    open, select, accept, reject, cancelPending,
+    open, select, accept, reject, cancelPending, clear,
     candidate: candidate?.signal.aborted ? null : candidate,
     adding: state.sceneIdentity === sceneIdentity && state.adding,
     error: state.sceneIdentity === sceneIdentity ? state.error : null,

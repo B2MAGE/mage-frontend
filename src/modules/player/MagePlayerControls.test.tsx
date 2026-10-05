@@ -20,6 +20,7 @@ function createProps(): ComponentProps<typeof MagePlayerControls> {
     onTrackSummaryClick: vi.fn(),
     onVolumeChange: vi.fn(),
     onStopScene: vi.fn(),
+    onClearMusic: vi.fn(),
     onPauseAllScenes: vi.fn(),
     playbackState: 'playing',
     showPlaylistButton: true,
@@ -95,9 +96,36 @@ describe('MagePlayerControls library icons', () => {
     expect(screen.queryByRole('group', { name: 'Playback options' })).not.toBeInTheDocument()
     expect(props.onStopScene).not.toHaveBeenCalled()
     expect(props.onPauseAllScenes).not.toHaveBeenCalled()
+    expect(props.onClearMusic).not.toHaveBeenCalled()
     fireEvent.click(trigger)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
     expect(props.onPauseAllScenes).toHaveBeenCalledOnce()
+  })
+
+  it.each(['single', 'playlist'] as const)('keeps Clear music available for an empty or busy %s player without changing playback', async audioMode => {
+    const props = createProps()
+    const user = userEvent.setup()
+    const { rerender } = render(<MagePlayerControls {...props} audioMode={audioMode} />)
+    const trigger = screen.getByRole('button', { name: 'Playback options' })
+    await user.click(trigger)
+    const clear = screen.getByRole('button', { name: 'Clear music' })
+    expect(clear).toBeEnabled()
+    expect(clear).toHaveAccessibleDescription('Remove all songs loaded in this player without changing your saved scenes.')
+    clear.focus()
+    await user.keyboard('{Enter}')
+    expect(props.onClearMusic).toHaveBeenCalledOnce()
+    expect(trigger).toHaveFocus()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    rerender(<MagePlayerControls {...props} audioMode={audioMode} disabled activeAudioAction="add" />)
+    await user.click(trigger)
+    expect(screen.getByRole('button', { name: 'Clear music' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Clear music' }))
+    expect(props.onClearMusic).toHaveBeenCalledTimes(2)
+    expect(trigger).toHaveFocus()
+    expect(props.onTogglePlayback).not.toHaveBeenCalled()
+    expect(props.onStopScene).not.toHaveBeenCalled()
+    expect(props.onPauseAllScenes).not.toHaveBeenCalled()
   })
 })
 

@@ -2,9 +2,10 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { AppIcon } from '@shared/ui'
 import { PauseAllScenesToggle } from './PauseAllScenesToggle'
 
-export function PlaybackOptions({ onStopScene, onPauseAllScenes }: {
+export function PlaybackOptions({ onStopScene, onClearMusic, onPauseAllScenes }: {
   onStopScene?: () => void
-  onPauseAllScenes: () => void
+  onClearMusic?: () => void
+  onPauseAllScenes?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const id = useId()
@@ -41,7 +42,10 @@ export function PlaybackOptions({ onStopScene, onPauseAllScenes }: {
     </button>
     {open ? <div className="mage-player__options-panel" id={id} role="group" aria-label="Playback options">
       {onStopScene ? <button type="button" onClick={() => { setOpen(false); onStopScene() }}>Stop this scene</button> : null}
-      <PauseAllScenesToggle checked={false} onChange={() => { setOpen(false); onPauseAllScenes() }} />
+      {onClearMusic ? <button type="button"
+        title="Remove all songs loaded in this player without changing your saved scenes."
+        onClick={() => { setOpen(false); trigger.current?.focus(); onClearMusic() }}>Clear music</button> : null}
+      {onPauseAllScenes ? <PauseAllScenesToggle checked={false} onChange={() => { setOpen(false); onPauseAllScenes() }} /> : null}
     </div> : null}
   </div>
 }

@@ -272,7 +272,7 @@ describe('MagePlayer live availability', () => {
     expect(createMagePlayer).toHaveBeenCalledOnce()
     permission(922, allowed)
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(second, { sceneKey: 922 }))
-    await waitFor(() => expect(controller.loadAudio).toHaveBeenLastCalledWith({ sourceLabel: 'next.mp3', sourcePath: '/next.mp3' }))
+    await waitFor(() => expect(controller.loadAudio).toHaveBeenLastCalledWith({ sourceLabel: 'next.mp3', sourcePath: '/next.mp3', signal: expect.any(AbortSignal) }))
     expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 
@@ -291,7 +291,7 @@ describe('MagePlayer live availability', () => {
     expect(controller.loadAudio).toHaveBeenCalledOnce()
     expect(controller.dispose).not.toHaveBeenCalled()
     permission(924, allowed)
-    await waitFor(() => expect(controller.loadAudio).toHaveBeenLastCalledWith({ sourceLabel: 'next.mp3', sourcePath: '/next.mp3' }))
+    await waitFor(() => expect(controller.loadAudio).toHaveBeenLastCalledWith({ sourceLabel: 'next.mp3', sourcePath: '/next.mp3', signal: expect.any(AbortSignal) }))
     expect(controller.loadSceneBlob).toHaveBeenCalledTimes(sourceLoads)
     expect(controller.loadAudio).toHaveBeenCalledTimes(2)
     expect(createMagePlayer).toHaveBeenCalledOnce()
@@ -501,7 +501,7 @@ describe('MagePlayer live availability', () => {
 
     permission(907, allowed)
     await waitFor(() => expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 907, recoverySceneBlob: saved }))
-    await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledWith({ sourceLabel: track.name, sourcePath: track.sourcePath }))
+    await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledWith({ sourceLabel: track.name, sourcePath: track.sourcePath, signal: expect.any(AbortSignal) }))
     expect(restored.setSyntheticPreview).toHaveBeenCalledWith(true, 24, 1.25)
     expect(createMagePlayer).toHaveBeenCalledTimes(2)
   })
