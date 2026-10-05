@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MagePlayerController } from './playerController'
+import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
 import { normalizeAudioResponseConfig } from '@shared/lib'
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), check: vi.fn(), begin: vi.fn(), block: vi.fn(), revokeRetry: vi.fn(),
@@ -47,7 +48,10 @@ function setAvailability(target: unknown, code: string) {
 function bridge() {
   const state = { time: 0, duration: 0, loaded: false, playing: false, volume: 1 }
   return { ready: Promise.resolve(), loadScene: vi.fn<(scene: unknown, profile?: unknown) => Promise<void>>(async () => {}),
-    loadAudio: vi.fn(async () => { state.loaded = true; state.duration = 60 }),
+    loadAudio: vi.fn<IsolatedPlayer['loadAudio']>(async (_source, _signal, beforeCommit) => {
+      await beforeCommit?.()
+      state.loaded = true; state.duration = 60
+    }),
     play: vi.fn(async () => { state.playing = true }), pause: vi.fn(() => { state.playing = false }),
     seek: vi.fn((time: number) => { state.time = Math.min(60, time) }), setVolume: vi.fn((volume: number) => { state.volume = volume }),
     clearAudio: vi.fn(() => { state.loaded = false; state.duration = 0; state.time = 0 }),
@@ -461,6 +465,90 @@ describe('isolated controls and media', () => {
     await expect(player.loadAudio({ sourcePath: 'blob:http://localhost/music' })).rejects.toThrow('Unsupported audio')
     expect(mocks.leases[0].fail).not.toHaveBeenCalled()
     expect(playerBridge.dispose).not.toHaveBeenCalled()
+  })
+
+  it('keeps the previous label, time and volume while a replacement decodes or fails', async () => {
+    const player = await loaded()
+    await player.loadAudio({ sourcePath: 'blob:original', sourceLabel: 'Original' })
+    player.seekAudio(23); player.setAudioVolume(0.4)
+    const work = deferred<void>()
+    playerBridge.loadAudio.mockReturnValueOnce(work.promise)
+    const loading = player.loadAudio({ sourcePath: 'blob:replacement', sourceLabel: 'Replacement' })
+    const rejected = expect(loading).rejects.toThrow('Unsupported audio')
+    await flush()
+    expect(player.getAudioState()).toMatchObject({ sourcePath: 'Original', currentTime: 23, volume: 0.4, isLoaded: true })
+    work.reject(new Error('Unsupported audio'))
+    await rejected
+    expect(player.getAudioState()).toMatchObject({ sourcePath: 'Original', currentTime: 23, volume: 0.4, isLoaded: true })
+    expect(playerBridge.clearAudio).not.toHaveBeenCalled()
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+  })
+
+  it('aborts the in-flight bridge candidate when another selection is awaiting permission', async () => {
+    const player = await loaded()
+    await player.loadAudio({ sourcePath: 'blob:original', sourceLabel: 'Original' })
+    const work = deferred<void>()
+    playerBridge.loadAudio.mockReturnValueOnce(work.promise)
+    const pending = player.loadAudio({ sourcePath: 'blob:stale', sourceLabel: 'Stale' })
+    const cancelled = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    await vi.waitFor(() => expect(playerBridge.loadAudio).toHaveBeenCalledTimes(2))
+    const staleSignal = playerBridge.loadAudio.mock.calls[1][1]!
+    const permission = deferred<{ allowed: boolean; code: string }>()
+    mocks.check.mockReturnValueOnce(permission.promise)
+    const latest = player.loadAudio({ sourcePath: 'blob:latest', sourceLabel: 'Latest' })
+    await cancelled
+    expect(staleSignal.aborted).toBe(true)
+    work.resolve()
+    await flush()
+    expect(player.getAudioState().sourcePath).toBe('Original')
+    permission.resolve({ allowed: true, code: 'ALLOWED' })
+    await latest
+    expect(player.getAudioState().sourcePath).toBe('Latest')
+  })
+
+  it.each(['permission', 'decode', 'final-permission'])('cancels a candidate during %s and keeps the original label', async phase => {
+    const player = await loaded(custom)
+    await player.loadAudio({ sourcePath: 'blob:original', sourceLabel: 'Original' })
+    const permission = deferred<{ allowed: boolean; code: string }>()
+    const work = deferred<void>()
+    if (phase === 'permission') mocks.check.mockReturnValueOnce(permission.promise)
+    else playerBridge.loadAudio.mockImplementationOnce(async (_source, signal, beforeCommit) => {
+      await work.promise
+      await beforeCommit?.()
+      if (!signal?.aborted) playerBridge.state.duration = 10
+    })
+    const abort = new AbortController()
+    const pending = player.loadAudio({ sourcePath: 'blob:replacement', sourceLabel: 'Replacement', signal: abort.signal })
+    const cancelled = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    if (phase !== 'permission') await vi.waitFor(() => expect(playerBridge.loadAudio).toHaveBeenCalledTimes(2))
+    if (phase === 'final-permission') { setAvailability('custom', 'CHECKING'); work.resolve(); await flush() }
+    abort.abort()
+    await cancelled
+    work.resolve(); permission.resolve({ allowed: true, code: 'ALLOWED' })
+    setAvailability('custom', 'ALLOWED')
+    await flush()
+    expect(player.getAudioState()).toMatchObject({ sourcePath: 'Original', duration: 60, isLoaded: true })
+    expect(playerBridge.clearAudio).not.toHaveBeenCalled()
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+  })
+
+  it('holds the replacement before commit until a new permission check finishes', async () => {
+    const player = await loaded(custom)
+    await player.loadAudio({ sourcePath: 'blob:original', sourceLabel: 'Original' })
+    const work = deferred<void>()
+    playerBridge.loadAudio.mockImplementationOnce(async (_source, _signal, beforeCommit) => {
+      await work.promise
+      await beforeCommit?.()
+      playerBridge.state.duration = 10
+    })
+    const loading = player.loadAudio({ sourcePath: 'blob:replacement', sourceLabel: 'Replacement' })
+    await vi.waitFor(() => expect(playerBridge.loadAudio).toHaveBeenCalledTimes(2))
+    setAvailability('custom', 'CHECKING')
+    work.resolve(); await flush()
+    expect(player.getAudioState()).toMatchObject({ sourcePath: 'Original', duration: 60 })
+    setAvailability('custom', 'ALLOWED')
+    await loading
+    expect(player.getAudioState()).toMatchObject({ sourcePath: 'Replacement', duration: 10 })
   })
 
   it('does not let an earlier play rejection quarantine a later deliberate pause', async () => {

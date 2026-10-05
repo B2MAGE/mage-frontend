@@ -1,5 +1,6 @@
 import { createRef, type ComponentProps } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { MagePlayerControls } from './MagePlayerControls'
 
@@ -97,5 +98,62 @@ describe('MagePlayerControls library icons', () => {
     fireEvent.click(trigger)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
     expect(props.onPauseAllScenes).toHaveBeenCalledOnce()
+  })
+})
+
+describe('MagePlayerControls single song', () => {
+  const track = { id: 'local-song', name: 'song.wav', title: 'Midnight', artist: 'MAGE', duration: 60, sourcePath: 'blob:song', sourceType: 'device' as const }
+
+  it('offers one song without a track count or playlist control', () => {
+    render(<MagePlayerControls {...createProps()} audioMode="single" />)
+
+    expect(screen.getByText('No song selected')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add song' })).toHaveAttribute('title', 'Add song from your device.')
+    expect(screen.queryByRole('button', { name: 'Open playlist' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Track \d/)).not.toBeInTheDocument()
+  })
+
+  it('shows the current name as text and supports replacing it from the keyboard', async () => {
+    const props = createProps()
+    render(<MagePlayerControls {...props} audioMode="single" currentTrack={track} currentTrackIndex={1} tracksCount={1} />)
+    const summary = screen.getByText('MAGE - Midnight')
+    expect(summary.tagName).toBe('SPAN')
+    expect(summary).toHaveAttribute('title', 'MAGE - Midnight')
+    expect(summary).not.toHaveAttribute('tabindex')
+    expect(screen.queryByRole('button', { name: /Midnight|playlist/ })).not.toBeInTheDocument()
+    const replace = screen.getByRole('button', { name: 'Replace song' })
+    expect(replace).toHaveAttribute('title', 'Replace song from your device.')
+    replace.focus()
+    await userEvent.setup().keyboard('{Enter}')
+    expect(props.onOpenAudioPicker).toHaveBeenCalledOnce()
+    expect(props.onTrackSummaryClick).not.toHaveBeenCalled()
+  })
+
+  it('temporarily replaces the current name with loading text and restores it afterward', () => {
+    const props = { ...createProps(), audioMode: 'single' as const, currentTrack: track, currentTrackIndex: 1, tracksCount: 1 }
+    const { rerender } = render(<MagePlayerControls {...props} activeAudioAction="add" />)
+    expect(screen.queryByText('MAGE - Midnight')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Replace song' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Replace song' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('Loading song…')
+    expect(screen.getByRole('status')).toHaveClass('mage-player__audio-label')
+    expect(screen.getByRole('status').parentElement?.children).toHaveLength(1)
+    expect(screen.getByRole('status').parentElement).toHaveAttribute('aria-busy', 'true')
+
+    rerender(<MagePlayerControls {...props} audioError="This song could not be loaded. Try another audio file." />)
+    expect(screen.getByText('MAGE - Midnight')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('This song could not be loaded. Try another audio file.')
+    expect(screen.getByRole('alert').parentElement).toHaveClass('mage-player__control-meta--single')
+    expect(screen.getByRole('button', { name: 'Replace song' })).toBeEnabled()
+    expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toBeEnabled()
+  })
+
+  it('preserves playlist summaries and controls for the full player', () => {
+    render(<MagePlayerControls {...createProps()} audioMode="playlist" currentTrack={track} currentTrackIndex={2} tracksCount={3} />)
+    expect(screen.getByRole('button', { name: 'Track 2/3: MAGE - Midnight' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open playlist' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Replace song' })).not.toBeInTheDocument()
   })
 })

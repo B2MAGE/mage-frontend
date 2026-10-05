@@ -15,6 +15,23 @@ import { playerStartupCancelled, waitForPlayerStartup } from './playerStartup'
 const changed = () => new MagePlayerAdapterError('The scene changed before playback was ready.')
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
 const volume = (value: number) => Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1
+const audioChanged = () => new DOMException('Audio changed.', 'AbortError')
+
+function waitForAudio<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(audioChanged())
+    signal.addEventListener('abort', abort, { once: true })
+    void work.then(value => {
+      signal.removeEventListener('abort', abort)
+      if (signal.aborted) reject(audioChanged())
+      else resolve(value)
+    }, error => {
+      signal.removeEventListener('abort', abort)
+      reject(signal.aborted ? audioChanged() : error)
+    })
+    if (signal.aborted) abort()
+  })
+}
 
 function responseSource(scene: MageSceneBlob) {
   return resolveSceneForPlayback(scene).engineScene
@@ -65,6 +82,8 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   let loaded = false
   let capturing = false
   let audioLabel: string | null = null
+  let audioLoadAbort: AbortController | null = null
+  let audioLoadUsesScene = false
   let savedMode: SceneAudioResponseMode = 'legacy'
   let savedConfig: AudioResponseConfig | null = null
   let override: AudioResponseConfig | null = null
@@ -96,6 +115,8 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     sceneGeneration++
     captureGeneration++
     audioGeneration++
+    audioLoadAbort?.abort()
+    audioLoadAbort = null
     transportGeneration++
     cancelQueuedScene()
     for (const pending of permissionWaiters.values()) pending.reject(new MagePlayerAdapterError('This preview has stopped.'))
@@ -317,6 +338,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       const key = sceneRecoveryKey(recoverySource, nextSceneKey)
       if (!key) throw new MagePlayerAdapterError('Scene data cannot be safely identified for playback.')
       const generation = ++sceneGeneration
+      if (audioLoadUsesScene) audioLoadAbort?.abort()
       cancelQueuedScene()
       permissionWaiters.get('scene')?.reject(changed())
       permissionWaiters.delete('scene')
@@ -412,6 +434,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     },
     async loadAudio(audioOptions = {}) {
       assertAllowed()
+      if (audioOptions.signal?.aborted) throw audioChanged()
       if (!loaded || !currentScene) throw new MagePlayerAdapterError('Load a scene before loading audio.')
       const source = responseSource(currentScene)
       const saved = typeof source.audioPath === 'string' ? source.audioPath : typeof source.audio === 'string' ? source.audio
@@ -419,24 +442,47 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       const path = audioOptions.sourcePath ?? saved
       if (typeof path !== 'string' || !path) throw new MagePlayerAdapterError('Choose an audio file before loading audio.')
       const generation = ++audioGeneration
+      audioLoadAbort?.abort()
+      const controller = new AbortController()
+      audioLoadAbort = controller
+      audioLoadUsesScene = audioOptions.sourcePath === undefined
+      const abort = () => controller.abort()
+      audioOptions.signal?.addEventListener('abort', abort, { once: true })
       permissionWaiters.get('audio')?.reject(new MagePlayerAdapterError('Audio changed.'))
       permissionWaiters.delete('audio')
       const requestedScene = sceneGeneration
-      await sceneAvailabilityStore.check(target)
-      updateAvailability()
-      if (generation !== audioGeneration || (audioOptions.sourcePath === undefined && requestedScene !== sceneGeneration)) throw new MagePlayerAdapterError('Audio changed.')
-      await waitForPermission('audio')
-      if (generation !== audioGeneration || (audioOptions.sourcePath === undefined && requestedScene !== sceneGeneration)) throw new MagePlayerAdapterError('Audio changed.')
-      audioLabel = null
-      await bridge!.loadAudio(path)
-      if (generation !== audioGeneration || (audioOptions.sourcePath === undefined && requestedScene !== sceneGeneration)) throw new MagePlayerAdapterError('Audio changed.')
-      await waitForPermission('audio')
-      if (generation !== audioGeneration || (audioOptions.sourcePath === undefined && requestedScene !== sceneGeneration)) throw new MagePlayerAdapterError('Audio changed.')
-      audioLabel = audioOptions.sourceLabel ?? path
-      return getAudioState()
+      const assertCurrent = () => {
+        if (controller.signal.aborted || generation !== audioGeneration
+          || (audioOptions.sourcePath === undefined && requestedScene !== sceneGeneration)) throw audioChanged()
+      }
+      try {
+        await waitForAudio(sceneAvailabilityStore.check(target), controller.signal)
+        updateAvailability()
+        assertCurrent()
+        await waitForAudio(waitForPermission('audio'), controller.signal)
+        assertCurrent()
+        await waitForAudio(bridge!.loadAudio(path, controller.signal, async () => {
+          await waitForAudio(waitForPermission('audio'), controller.signal)
+          assertCurrent()
+        }), controller.signal)
+        assertCurrent()
+        audioLabel = audioOptions.sourceLabel ?? path
+        return getAudioState()
+      } finally {
+        audioOptions.signal?.removeEventListener('abort', abort)
+        if (audioLoadAbort === controller) {
+          audioLoadAbort = null
+          audioLoadUsesScene = false
+          permissionWaiters.get('audio')?.reject(audioChanged())
+          permissionWaiters.delete('audio')
+        }
+      }
     },
     clearAudio() {
       audioGeneration++
+      audioLoadAbort?.abort()
+      audioLoadAbort = null
+      audioLoadUsesScene = false
       permissionWaiters.get('audio')?.reject(new MagePlayerAdapterError('Audio changed.'))
       permissionWaiters.delete('audio')
       audioLabel = null

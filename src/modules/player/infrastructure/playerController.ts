@@ -61,7 +61,7 @@ export type MagePlayerController = {
   /** Identity of a stopped renderer, so a different permitted revision can get a fresh instance. */
   getStoppedRecoveryKey?: () => string | null
   getEngineDiagnostics?: () => MageEngineDiagnostics | null
-  loadAudio: (options?: { sourceLabel?: string; sourcePath?: string }) => Promise<MagePlayerAudioState>
+  loadAudio: (options?: { sourceLabel?: string; sourcePath?: string; signal?: AbortSignal }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void | Promise<void>
   /** Apply supported settings to the loaded scene without changing its playback or audio transport. */
   updateSceneSettings?: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void

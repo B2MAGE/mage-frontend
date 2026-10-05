@@ -20,8 +20,9 @@ vi.mock('@modules/player', async (importOriginal) => {
   const capture = async () => 'data:image/png;base64,cHJldmlldw=='
   return {
     ...actual,
-    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange }: {
+    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, audioMode }: {
       sceneBlob: unknown
+      audioMode?: string
       simulatedBeat?: { enabled: boolean; bpm: number }
       onCaptureFramePreviewChange?: (capture: (() => Promise<string | null>) | null) => void
     }) => {
@@ -29,7 +30,7 @@ vi.mock('@modules/player', async (importOriginal) => {
         onCaptureFramePreviewChange?.(capture)
         return () => onCaptureFramePreviewChange?.(null)
       }, [onCaptureFramePreviewChange])
-      return <div data-testid="scene-preview" data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
+      return <div data-testid="scene-preview" data-audio-mode={audioMode} data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
     },
   }
 })
@@ -70,6 +71,15 @@ function expectRetiredControlsAbsent() {
 }
 
 describe('scene editor presets and beat preview', () => {
+  it.each(['create', 'edit'] as const)('uses one replaceable song in the %s preview', async mode => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
+      ? jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] })) : undefined)
+    if (mode === 'create') renderCreateScenePage('mage-pulse')
+    else renderEditScenePage(undefined, 'mage-pulse')
+    expect(await screen.findByTestId('scene-preview')).toHaveAttribute('data-audio-mode', 'single')
+  })
+
   it('explains beat detection, hides only bypassed controls, and preserves legacy settings when saving', async () => {
     storeSceneEditorSession()
     const defaults = createDefaultSceneData()

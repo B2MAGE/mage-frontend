@@ -51,7 +51,7 @@ describe('MagePlayer audio controls', () => {
     expect(onRequestPlaylistOpen).toHaveBeenCalledTimes(1)
   })
 
-  it('shows selected-track loading beside the track while leaving the Add action copy unchanged', async () => {
+  it('shows loading in place of the track title while leaving the Add action copy unchanged', async () => {
     let finishLoadingTrack: (() => void) | undefined
     const loadedAudioState: MagePlayerAudioState = {
       currentTime: 0,
@@ -81,6 +81,8 @@ describe('MagePlayer audio controls', () => {
     const addButton = screen.getByRole('button', { name: /add audio tracks/i })
 
     expect(loadingStatus).toHaveTextContent('Loading track…')
+    expect(loadingStatus).toHaveClass('mage-player__audio-label')
+    expect(loadingStatus.parentElement?.children).toHaveLength(1)
     expect(loadingStatus.closest('.mage-player__control-meta')).toHaveAttribute('aria-busy', 'true')
     expect(addButton).toBeDisabled()
     expect(addButton).toHaveAttribute('aria-busy', 'false')

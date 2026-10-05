@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   buildScenePlaylistTrack,
   revokePlaylistTrackSources,
@@ -8,6 +8,7 @@ import type { MageSceneBlob } from './infrastructure/engineAdapter'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 
 type UseMagePlayerPlaylistArgs = {
+  audioMode?: 'single' | 'playlist'
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
   onSelectedTrackChange?: (trackId: string | null) => void
   onTrackDurationChange?: (trackId: string, duration: number) => void
@@ -18,6 +19,7 @@ type UseMagePlayerPlaylistArgs = {
 }
 
 export function useMagePlayerPlaylist({
+  audioMode = 'playlist',
   onPlaylistChange,
   onSelectedTrackChange,
   onTrackDurationChange,
@@ -41,18 +43,26 @@ export function useMagePlayerPlaylist({
   const previousSceneKey = useRef(sceneKey)
   const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
 
-  const tracks = playlistTracks ?? internalPlaylistTracks
   const activeSelectedTrackId = selectedTrackId ?? internalSelectedTrackId
+  const suppliedTracks = playlistTracks ?? internalPlaylistTracks
+  const tracks = useMemo(() => {
+    if (audioMode !== 'single' || suppliedTracks.length <= 1) return suppliedTracks
+    return [suppliedTracks.find(track => track.id === activeSelectedTrackId) ?? suppliedTracks[0]]
+  }, [activeSelectedTrackId, audioMode, suppliedTracks])
   const currentTrack = tracks.find((track) => track.id === activeSelectedTrackId) ?? null
   const currentTrackIndex = currentTrack ? tracks.findIndex((track) => track.id === currentTrack.id) + 1 : 0
 
   const commitPlaylistTracks = useCallback((nextTracks: MagePlayerPlaylistTrack[]) => {
+    if (audioMode === 'single') nextTracks = nextTracks.slice(0, 1)
     if (!isPlaylistControlled) {
+      const retainedSources = new Set(nextTracks.map(track => track.sourcePath))
+      revokePlaylistTrackSources(internalPlaylistTracksRef.current.filter(track => !retainedSources.has(track.sourcePath)))
+      internalPlaylistTracksRef.current = nextTracks
       setInternalPlaylistTracks(nextTracks)
     }
 
     onPlaylistChange?.(nextTracks)
-  }, [isPlaylistControlled, onPlaylistChange])
+  }, [audioMode, isPlaylistControlled, onPlaylistChange])
 
   const commitSelectedTrackId = useCallback((nextTrackId: string | null) => {
     if (!isSelectionControlled) {
@@ -79,6 +89,14 @@ export function useMagePlayerPlaylist({
   useEffect(() => {
     internalPlaylistTracksRef.current = internalPlaylistTracks
   }, [internalPlaylistTracks])
+
+  useEffect(() => {
+    let cancelled = false
+    if (audioMode === 'single' && !isPlaylistControlled && internalPlaylistTracks.length > 1) {
+      queueMicrotask(() => { if (!cancelled) commitPlaylistTracks(tracks) })
+    }
+    return () => { cancelled = true }
+  }, [audioMode, commitPlaylistTracks, internalPlaylistTracks.length, isPlaylistControlled, tracks])
 
   useEffect(() => {
     return () => {
@@ -109,10 +127,9 @@ export function useMagePlayerPlaylist({
       previousSceneIdentity.current = playbackIdentity
       previousSceneKey.current = sceneKey
 
-      setInternalPlaylistTracks((currentTracks) => {
-        revokePlaylistTrackSources(currentTracks)
-        return sceneTrack ? [sceneTrack] : []
-      })
+      revokePlaylistTrackSources(internalPlaylistTracksRef.current)
+      internalPlaylistTracksRef.current = sceneTrack ? [sceneTrack] : []
+      setInternalPlaylistTracks(internalPlaylistTracksRef.current)
       setInternalSelectedTrackId(nextSelectedTrackId)
     })
 

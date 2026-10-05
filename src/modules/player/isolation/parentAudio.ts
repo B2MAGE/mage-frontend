@@ -32,6 +32,13 @@ export type ParentAudioSample = {
   loaded: boolean
 }
 
+export type ParentAudioLoadOptions = {
+  /** Permission must still allow committing after asynchronous decode/resume. */
+  beforeCommit?: () => Promise<void>
+  /** Read at commit so pausing while a replacement loads remains effective. */
+  shouldPlay?: () => boolean
+}
+
 const aborted = () => new DOMException('Audio loading was cancelled.', 'AbortError')
 
 type DecodeRequest = {
@@ -216,13 +223,10 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
     previous.disconnect()
   }
 
-  function startSource() {
-    if (!graph || !buffer) return
-    resetAnalysis()
-    const next = graph.context.createBufferSource()
-    next.buffer = buffer
-    next.connect(graph.input)
-    startedAt = graph.context.currentTime
+  function prepareSource(nextBuffer: AudioBuffer, nextOffset: number) {
+    const next = graph!.context.createBufferSource()
+    next.buffer = nextBuffer
+    next.connect(graph!.input)
     next.onended = () => {
       if (source !== next) return
       offset = buffer?.duration ?? 0
@@ -231,18 +235,34 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
       next.disconnect()
       resetAnalysis()
     }
-    source = next
-    try { next.start(0, offset) } catch (error) { stopSource(); throw error }
+    try { next.start(0, nextOffset) } catch (error) {
+      next.onended = null
+      next.disconnect()
+      throw error
+    }
+    return next
   }
 
-  function clear() {
+  function startSource() {
+    if (!graph || !buffer) return
+    const next = prepareSource(buffer, offset)
+    resetAnalysis()
+    startedAt = graph.context.currentTime
+    source = next
+  }
+
+  function cancelLoad() {
     generation++
-    transport++
     abortLoad?.abort()
     abortLoad = null
     cancelRequest(activeDecode)
     cancelRequest(queuedDecode)
     queuedDecode = null
+  }
+
+  function clear() {
+    cancelLoad()
+    transport++
     stopSource()
     buffer = null
     offset = 0
@@ -250,14 +270,19 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
   }
 
   return {
-    async load(audio: Blob | string): Promise<void> {
+    async load(audio: Blob | string, signal?: AbortSignal, options: ParentAudioLoadOptions = {}): Promise<void> {
       assertActive()
-      clear()
+      if (signal?.aborted) throw aborted()
+      // Preparing a replacement must not discard a usable current song. Native
+      // decoding stays bounded to one active job and the newest waiting job.
+      cancelLoad()
       const current = generation
       const controller = new AbortController()
       abortLoad = controller
+      const onAbort = () => { if (abortLoad === controller) cancelLoad() }
+      signal?.addEventListener('abort', onAbort, { once: true })
       try {
-        let bytes: ArrayBuffer | null = await readAudio(audio, controller.signal, dependencies.fetchSource ?? fetch)
+        let bytes: ArrayBuffer | null = await waitWhileActive(readAudio(audio, controller.signal, dependencies.fetchSource ?? fetch), controller.signal)
         if (disposed || current !== generation) throw aborted()
         graph ??= createGraph()
         const activeGraph = graph
@@ -268,9 +293,30 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
         await waitWhileActive(activeGraph.ready, controller.signal)
         if (disposed || current !== generation) throw aborted()
         if (!Number.isFinite(decoded.duration) || decoded.duration <= 0) throw new Error('The audio file is empty.')
+        const shouldPlay = () => options.shouldPlay?.() ?? !!source
+        let resumed = !!source
+        do {
+          // Browser resume can reject or take time. Complete it before retiring
+          // the previous buffer, and recheck permission after every such wait.
+          if (shouldPlay() && !resumed) {
+            await waitWhileActive(activeGraph.context.resume(), controller.signal)
+            resumed = true
+          }
+          if (options.beforeCommit) await waitWhileActive(options.beforeCommit(), controller.signal)
+          if (disposed || current !== generation) throw aborted()
+        } while (shouldPlay() && !resumed)
+        // Start the prepared source before retiring the old one so a browser
+        // source-start error also leaves the previous song usable.
+        const nextSource = shouldPlay() ? prepareSource(decoded, 0) : null
+        transport++
+        stopSource()
         buffer = decoded
+        offset = 0
+        startedAt = activeGraph.context.currentTime
+        source = nextSource
         resetAnalysis()
       } finally {
+        signal?.removeEventListener('abort', onAbort)
         if (abortLoad === controller) abortLoad = null
       }
     },

@@ -597,6 +597,7 @@ export function SceneDetailPage() {
               style={{ '--scene-accent': '#63f0d6' } as CSSProperties}
             >
               <MagePlayer
+                audioMode="playlist"
                 ariaLabel={`${scene.name} live render`}
                 className="scene-detail-player"
                 initialPlayback="playing"

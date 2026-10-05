@@ -12,7 +12,7 @@ let authState = { isAuthenticated:false, isRestoringSession:false, authenticated
 vi.mock('@auth',()=>({useAuth:()=>authState}))
 vi.mock('@shared/lib',async original=>({ ...await original<typeof import('@shared/lib')>(), fetchScenes:vi.fn(), fetchTags:vi.fn() }))
 vi.mock('../scene-detail/loaders',async original=>({ ...await original<typeof import('../scene-detail/loaders')>(), fetchSceneDetail:vi.fn(),updateSceneVote:vi.fn(),clearSceneVote:vi.fn(),updateSceneSave:vi.fn()}))
-vi.mock('@modules/player',async original=>({ ...await original<typeof import('@modules/player')>(), MagePlayer:({sceneBlob,posterUrl,onAvailabilityRestored}:{sceneBlob:unknown;posterUrl?:string|null;onAvailabilityRestored?:()=>Promise<void>})=> <div>
+vi.mock('@modules/player',async original=>({ ...await original<typeof import('@modules/player')>(), MagePlayer:({sceneBlob,posterUrl,onAvailabilityRestored,audioMode}:{sceneBlob:unknown;posterUrl?:string|null;onAvailabilityRestored?:()=>Promise<void>;audioMode?:string})=> <div data-testid="featured-player" data-audio-mode={audioMode}>
  {sceneBlob ? 'Live featured player' : <><span>Playback temporarily unavailable</span>{posterUrl && <img src={posterUrl} alt="Featured scene poster"/>}</>}
  <button type="button" onClick={()=>void onAvailabilityRestored?.()}>Restore verified playback</button>
 </div>}))
@@ -35,6 +35,11 @@ describe('Homepage mockup behavior',()=>{
   vi.mocked(fetchScenes).mockResolvedValue([scene,{...scene,sceneId:2,name:'Newest scene',createdAt:'2026-09-28T00:00:00Z'}])
   vi.mocked(fetchTags).mockResolvedValue([{tagId:1,name:'Ambient',sceneCount:3}])
   vi.mocked(fetchSceneDetail).mockResolvedValue({...scene,id:1,tags:['Ambient'],sceneData:{}})
+ })
+ it.each(['mage-pulse','classic-facebook'] as const)('uses one replaceable song in the %s featured player',async themeId=>{
+  show(themeId)
+  await screen.findByText('Live featured player')
+  expect(screen.getByTestId('featured-player')).toHaveAttribute('data-audio-mode','single')
  })
  it('uses layout skeletons for featured, filters, and recent scenes',()=>{
   vi.mocked(fetchScenes).mockImplementation(()=>new Promise(()=>{}))

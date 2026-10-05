@@ -245,7 +245,8 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscree
 html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__viewport::after { display: none; }
 html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__canvas { width: 100%; height: 100%; }
 html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__controls { min-height: 60px; height: 60px; gap: 10px; padding-inline: 14px; }
-html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta { flex-basis: 130px; width: 130px; }
+html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta:not(.mage-player__control-meta--single) { flex-basis: 130px; width: 130px; }
+html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__controls.mage-player__controls--single { height: auto; }
 html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__overlay { aspect-ratio: 16/9; inset: 0 0 auto; min-height: 0; background: #090a0d; }
 html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__overlay-copy { padding: 16px; font-size: 12px; }
 @container editor (max-width: 570px) {
@@ -263,7 +264,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
     html[data-theme] .scene-editor-page .scene-editor-stepper__button { min-height: 42px; padding: 8px 5px; grid-template-columns: 1fr; justify-items: center; }
     html[data-theme] .scene-editor-page .scene-editor-stepper__number { width: 24px; height: 24px; }
     html[data-theme] .scene-editor-page .scene-editor-main { padding-inline: 24px; }
-    html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta { display: none; }
+    html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta:not(.mage-player__control-meta--single) { display: none; }
 }
 @media (max-width: 960px) {
   html[data-theme] .scene-editor-page {
@@ -305,7 +306,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
     html[data-theme] .scene-editor-page .scene-editor-stepper__button { grid-template-columns: 24px; padding-inline: 8px; }
     html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport { width: min(100%, calc(24dvh * 16 / 9)); }
     html[data-theme] .scene-editor-page .scene-editor-main { padding-inline: 18px; }
-    html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta, html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__time-label { display: none; }
+    html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta:not(.mage-player__control-meta--single), html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__time-label { display: none; }
     html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__timeline { grid-template-columns: 1fr; }
 }
 

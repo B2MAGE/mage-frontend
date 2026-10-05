@@ -41,6 +41,8 @@ export type MagePlayerAudioResponseCapabilitiesSnapshot = {
 }
 
 export type MagePlayerProps = {
+  /** Players without a playlist replace their only song after it loads. */
+  audioMode?: 'single' | 'playlist'
   ariaLabel?: string
   className?: string
   initialPlayback?: MagePlayerPlaybackState
@@ -88,10 +90,11 @@ export function MagePlayer(props: MagePlayerProps) {
     inputRef: audioInputRef,
     playlist,
     sceneIdentity: scenePlaybackIdentity(props.sceneBlob, props.sceneKey),
+    audioMode: props.audioMode,
     onRequestPlaylistOpen: props.onRequestPlaylistOpen,
   })
   return <>
-    <input accept="audio/*" className="mage-player__audio-input" hidden multiple
+    <input accept="audio/*" className="mage-player__audio-input" hidden multiple={props.audioMode !== 'single'}
       onChange={event => { void audioSelection.select(event) }} ref={audioInputRef} type="file" />
     <MagePlayerSession {...props} playlist={playlist} audioSelection={audioSelection} />
   </>
@@ -245,6 +248,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
 }
 
 function MagePlayerRenderer({
+  audioMode = 'playlist',
   ariaLabel = 'MAGE scene preview',
   className,
   initialPlayback = 'playing',
@@ -314,6 +318,11 @@ function MagePlayerRenderer({
     identity: string | null
     snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null
   } | null>(null)
+
+  const { candidate: audioCandidate, accept: acceptAudioCandidate, reject: rejectAudioCandidate, cancelPending: cancelAudioSelection } = audioSelection
+  // A stopped/disposed renderer cannot finish a file selection after Resume.
+  // Permission rechecks retain this renderer and do not cancel the selection.
+  useEffect(() => () => cancelAudioSelection(), [cancelAudioSelection])
 
   useEffect(() => {
     capabilitiesCallbackRef.current = onAudioResponseCapabilitiesChange
@@ -739,6 +748,35 @@ function MagePlayerRenderer({
 
     let isCancelled = false
 
+    if (audioCandidate) {
+      const candidate = audioCandidate
+      void (async () => {
+        try {
+          if (pendingAudioRef.current?.player !== player || pendingAudioRef.current.trackId !== candidate.track.id) {
+            pendingAudioRef.current = { player, trackId: candidate.track.id, result: player.loadAudio({
+              sourceLabel: candidate.track.name, sourcePath: candidate.track.sourcePath, signal: candidate.signal,
+            }) }
+          }
+          const nextAudioState = await pendingAudioRef.current.result
+          if (isCancelled || candidate.signal.aborted || playerRef.current !== player) return
+          // Mark the decoded song before publishing it to the playlist so the
+          // next effect does not unload and decode this same song again.
+          loadedTrackIdRef.current = candidate.track.id
+          completedTrackIdRef.current = null
+          pendingAudioRef.current = null
+          setAudioState(nextAudioState)
+          setAudioError(null)
+          acceptAudioCandidate(candidate, nextAudioState.duration)
+        } catch (error) {
+          if (isCancelled || candidate.signal.aborted || playerRef.current !== player) return
+          pendingAudioRef.current = null
+          setAudioState(player.getAudioState())
+          rejectAudioCandidate(candidate, error)
+        }
+      })()
+      return () => { isCancelled = true }
+    }
+
     if (tracks.length === 0) {
       try {
         if (loadedTrackIdRef.current !== null && player.getPlaybackState() !== 'paused') {
@@ -801,10 +839,10 @@ function MagePlayerRenderer({
     return () => {
       isCancelled = true
     }
-  }, [commitTrackDuration, currentTrack, playerVersion, requestedPlaybackRef, status, trackLoadVersion, tracks.length])
+  }, [acceptAudioCandidate, audioCandidate, commitTrackDuration, currentTrack, playerVersion, rejectAudioCandidate, requestedPlaybackRef, status, trackLoadVersion, tracks.length])
 
   useEffect(() => {
-    if (availabilityPending) return
+    if (availabilityPending || audioMode === 'single' || audioCandidate) return
     if (!currentTrack) {
       completedTrackIdRef.current = null
       return
@@ -859,6 +897,8 @@ function MagePlayerRenderer({
     commitSelectedTrackId(nextTrack.id)
   }, [
     availabilityPending,
+    audioMode,
+    audioCandidate,
     audioState.currentTime,
     audioState.duration,
     audioState.isLoaded,
@@ -973,6 +1013,7 @@ function MagePlayerRenderer({
       </div>
         {status === 'ready' || availabilityPending || (status === 'loading' && loadedPlayerVersion !== null) ? (
           <MagePlayerControls
+            audioMode={audioMode}
             disabled={status !== 'ready'}
             allowPause
             activeAudioAction={audioSelection.adding ? 'add' : activeAudioAction}

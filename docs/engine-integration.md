@@ -94,6 +94,26 @@ The frontend player uses that bridge to support:
 - synchronized scene/audio play-pause
 - scrubber + volume controls
 
+### Audio selection by surface (#237)
+
+`MagePlayer.audioMode` is explicit at the main call sites: Create/Edit previews
+and Home featured use `single`; the scene detail player uses `playlist` (also the
+default for compatibility). Single-song players show the current filename and
+Add song / Replace song, accept one file, and never auto-advance or repeat a
+hidden queue. Scene detail retains multi-file selection and playlist navigation.
+
+A replacement remains a candidate until Web Audio decoding, playback readiness,
+and the final availability check succeed. The old song, position and volume stay
+usable on failure or cancellation. Success starts the new song at zero and keeps
+the user's current play/pause choice. Cancelled or superseded loads cannot commit;
+decoding remains bounded to one active job and the newest queued job. Committing
+a replacement retires the old local object URL; stopping or leaving cancels and
+releases a pending candidate. Compatible live edits and temporary permission
+checks retain the player and its pending selection.
+
+This is parent-side player behavior and requires no engine patch or renderer
+protocol change. Clear music is tracked separately in #238.
+
 ## Package Patch Notes
 
 The frontend currently patches `@notrac/mage@1.0.3` with `patch-package`.

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MagePlayerController, MagePlayerOptions } from './playerController'
+import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), begin: vi.fn(), disposeLease: vi.fn(), fail: vi.fn(), block: vi.fn(), revokeRetry: vi.fn() }))
 vi.mock('../isolation/isolatedPlayer', () => ({ createIsolatedPlayer: mocks.create }))
@@ -20,7 +21,10 @@ const deferred = <T,>() => {
 function fakeBridge() {
   const state = { time: 0, duration: 0, volume: 1, loaded: false, playing: false }
   return { ready: Promise.resolve(), loadScene: vi.fn(async () => {}),
-    loadAudio: vi.fn(async () => { state.loaded = true; state.duration = 120 }),
+    loadAudio: vi.fn<IsolatedPlayer['loadAudio']>(async (_source, _signal, beforeCommit) => {
+      await beforeCommit?.()
+      state.loaded = true; state.duration = 120
+    }),
     getAudioState: () => ({ ...state }), play: vi.fn(async () => { state.playing = true }),
     pause: vi.fn(() => { state.playing = false }), setRenderingSuspended: vi.fn(), clearAudio: vi.fn(),
     seek: vi.fn((value: number) => { state.time = value }), reset: vi.fn(), setVolume: vi.fn(),
@@ -229,7 +233,10 @@ describe('isolated controller with the real availability polling store', () => {
   it('holds decoded hidden audio until a successful visible-page recheck', async () => {
     const player = await loaded({ sceneKey: 47, initialSceneBlob: template })
     const work = deferred<void>(), completed = vi.fn()
-    bridges[0].loadAudio.mockReturnValueOnce(work.promise)
+    bridges[0].loadAudio.mockImplementationOnce(async (_source, _signal, beforeCommit) => {
+      await work.promise
+      await beforeCommit?.()
+    })
     const loading = player.loadAudio({ sourcePath: 'blob:http://localhost/music' }).then(completed)
     await vi.advanceTimersByTimeAsync(0)
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')

@@ -18,17 +18,20 @@ vi.mock('@modules/player', async (importOriginal) => {
     ...actual,
     MagePlayer: ({
       ariaLabel,
+      audioMode,
       className,
       initialPlayback,
       sceneBlob,
     }: {
       ariaLabel?: string
+      audioMode?: string
       className?: string
       initialPlayback?: string
       sceneBlob: unknown
     }) => (
       <div
         aria-label={ariaLabel}
+        data-audio-mode={audioMode}
         className={className}
         data-playback={initialPlayback}
         data-testid="mage-player"
@@ -176,6 +179,7 @@ describe('SceneDetailPage route states', () => {
     expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
+    expect(screen.getByTestId('mage-player')).toHaveAttribute('data-audio-mode', 'playlist')
     expect(screen.getByRole('heading', { name: /comments/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show more$/i })).toBeInTheDocument()
