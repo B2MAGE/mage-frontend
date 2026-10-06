@@ -85,6 +85,7 @@ export function SceneEditorShell({
       : false
   ));
   const [previewPlaybackStatus, setPreviewPlaybackStatus] = useState<MagePlayerPlaybackStatus>("paused");
+  const [isMusicAdvancedOpen, setIsMusicAdvancedOpen] = useState(false);
   const previewHideButtonRef = useRef<HTMLButtonElement | null>(null);
   const previewRestoreButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isTemplateSourceVisible, setIsTemplateSourceVisible] = useState(() => {
@@ -1019,29 +1020,33 @@ export function SceneEditorShell({
 
             {sectionMenuValue === "motion" ? (
               <SceneSection description="Set the animation, then choose how it responds to music." title="Motion">
-                <div className="scene-editor-stack">
-                  <section className="scene-effects-category" aria-labelledby="animation-title">
-                    <h3 className="scene-effects-category__title" id="animation-title">Animation</h3>
-                    <NumberField
-                      id="time-multiplier" label="Animation speed" step={0.05}
-                      min={0} max={10}
-                      description="Speed up or slow down the scene’s animation. Music playback stays at its original speed."
-                      value={sceneModel.intent.time_multiplier}
-                      onChange={value => updateBranch("intent", current => ({ ...current, time_multiplier: value }))}
-                    />
-                    <CollapsibleEditorGroup
-                      id="animation-advanced-options" isOpen={isMotionAdvancedEnabled}
-                      showLabel="Show advanced animation controls" hideLabel="Hide advanced animation controls"
-                      onToggle={() => handleMotionAdvancedToggle(!isMotionAdvancedEnabled)}
-                    >
+                <div className="motion-controls">
+                  <section className="motion-controls__group motion-controls__animation" aria-labelledby="animation-title">
+                    <div className="motion-controls__group-heading">
+                      <h3 id="animation-title">Animation</h3>
+                    </div>
+                    <div className="motion-controls__surface">
                       <NumberField
-                        id="state-time" label="Starting animation time" step={0.01}
-                        min={0} max={86400}
-                        description="Choose where in its animation the scene begins."
-                        value={sceneModel.state.time}
-                        onChange={value => updateBranch("state", current => ({ ...current, time: value }))}
+                        id="time-multiplier" label="Animation speed" step={0.05}
+                        min={0} max={10}
+                        description="Speed up or slow down the scene’s animation. Music playback stays at its original speed."
+                        value={sceneModel.intent.time_multiplier}
+                        onChange={value => updateBranch("intent", current => ({ ...current, time_multiplier: value }))}
                       />
-                    </CollapsibleEditorGroup>
+                      <CollapsibleEditorGroup
+                        id="animation-advanced-options" isOpen={isMotionAdvancedEnabled}
+                        showLabel="Show advanced animation controls" hideLabel="Hide advanced animation controls"
+                        onToggle={() => handleMotionAdvancedToggle(!isMotionAdvancedEnabled)}
+                      >
+                        <NumberField
+                          id="state-time" label="Starting animation time" step={0.01}
+                          min={0} max={86400}
+                          description="Choose where in its animation the scene begins."
+                          value={sceneModel.state.time}
+                          onChange={value => updateBranch("state", current => ({ ...current, time: value }))}
+                        />
+                      </CollapsibleEditorGroup>
+                    </div>
                   </section>
                   <MusicResponseControls
                     mode={editorAudioResponseMode}
@@ -1052,20 +1057,22 @@ export function SceneEditorShell({
                     onConfigChange={handleAudioResponseConfigChange}
                     onReset={handleAudioResponseReset}
                     canReset={canResetAudioResponse}
+                    isAdvancedOpen={isMusicAdvancedOpen}
+                    onAdvancedToggle={() => setIsMusicAdvancedOpen(open => !open)}
                     customTimingDrafts={customTimingDrafts}
                     onCustomTimingDraftsChange={setCustomTimingDrafts}
                     classicSettings={{ inputGain: sceneModel.intent.minimizing_factor, peakEmphasis: sceneModel.intent.power_factor,
                       restingResponse: sceneModel.intent.base_speed, smoothing: sceneModel.intent.easing_speed,
                       responseOffset: sceneModel.state.volume_multiplier }}
                     onClassicSettingChange={handleClassicSettingChange}
-                    previewTools={
-                      <section className="scene-effects-category" aria-labelledby="preview-tools-title">
-                        <h3 className="scene-effects-category__title" id="preview-tools-title">Preview tools</h3>
-                        <BeatPreviewControls enabled={isBeatSimulated} bpm={previewBpm}
-                          onEnabledChange={setIsBeatSimulated} onBpmChange={setPreviewBpm} />
-                      </section>
-                    }
                   />
+                  <section className="motion-controls__group motion-controls__preview" aria-labelledby="preview-tools-title">
+                    <div className="motion-controls__group-heading">
+                      <h3 id="preview-tools-title">Preview tools</h3>
+                    </div>
+                    <BeatPreviewControls enabled={isBeatSimulated} bpm={previewBpm}
+                      onEnabledChange={setIsBeatSimulated} onBpmChange={setPreviewBpm} />
+                  </section>
                 </div>
               </SceneSection>
             ) : null}

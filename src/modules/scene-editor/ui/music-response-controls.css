@@ -1,26 +1,56 @@
 .music-response-controls {
   display: grid;
-  grid-column: 1 / -1;
-  gap: 14px;
+  gap: 9px;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--studio-text, inherit);
 }
 
-.music-response-controls__message,
-.music-response-controls__reset p {
-  margin: 5px 0 0;
+.music-response-controls__surface {
+  display: grid;
+  min-width: 0;
+}
+
+.music-response-controls__message {
+  margin: 0;
+  padding: 14px 15px;
+  border-top: 1px solid var(--studio-border, var(--editor-field-border));
   color: var(--studio-muted, inherit);
   font-size: 11px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
+.music-response-controls__surface > .scene-field-validation:first-child .scene-field__shell {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  min-height: 68px;
+  padding: 13px 15px;
+  border: 0;
+  border-radius: 0;
+  background: var(--studio-panel);
+}
+
+.music-response-controls__surface > .scene-field-validation:first-child :is(.scene-field__top, .scene-field__copy),
+.music-response-controls__group .scene-field__shell :is(.scene-field__top, .scene-field__copy) {
+  display: block;
+}
+
+.music-response-controls__surface > .scene-field-validation:first-child .scene-field__control,
+.music-response-controls__group .scene-field__control {
+  order: initial;
+  min-width: 0;
+}
+
+.music-response-controls__surface > .scene-field-validation:first-child .scene-field__description,
+.music-response-controls__group .scene-field__shell .scene-field__description {
+  margin-top: 3px;
+  padding: 0;
+}
+
 .music-response-controls__mapping {
   display: grid;
-  gap: 16px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -29,24 +59,29 @@
 
 .music-response-controls__group {
   display: grid;
-  gap: 12px;
   min-width: 0;
   margin: 0;
-  padding: 12px 0 0;
+  padding: 0;
   border: 0;
+  border-top: 1px solid var(--studio-border, var(--editor-field-border));
 }
 
 .music-response-controls__group legend {
-  padding: 0 8px 0 0;
-  color: var(--studio-text, inherit);
-  font-size: 12px;
-  font-weight: 650;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--studio-border, var(--editor-field-border));
+  background: rgba(255,255,255,.008);
+  color: var(--studio-muted, inherit);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
 }
 
 .music-response-controls__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   min-width: 0;
 }
 
@@ -56,15 +91,135 @@
   max-width: 100%;
 }
 
-.music-response-controls__reset {
-  display: grid;
-  justify-items: start;
-  gap: 3px;
-  padding-top: 12px;
+.music-response-controls__grid > .scene-field-validation + .scene-field-validation,
+.music-response-controls__timing {
   border-top: 1px solid var(--studio-border, var(--editor-field-border));
 }
 
-@media (max-width: 640px) {
-  .music-response-controls__grid { grid-template-columns: minmax(0, 1fr); }
+.music-response-controls__group .scene-field__shell {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  height: auto;
+  min-height: 62px;
+  padding: 12px 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.music-response-controls__group .scene-slider {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 12px;
+  height: auto;
+  min-height: 58px;
+  padding: 10px 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.music-response-controls__group :is(.scene-slider__top, .scene-slider__copy) {
+  display: block;
+  min-width: 0;
+}
+
+.music-response-controls__group .scene-slider__copy .scene-field__description {
+  margin-top: 2px;
+  padding: 0;
+}
+
+.music-response-controls__group .scene-slider__value { display: none; }
+
+.music-response-controls__group .scene-slider__controls {
+  grid-column: 2 / 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 12px;
+  order: initial;
+}
+
+.music-response-controls__group input.scene-slider__number { height: 36px; }
+
+.music-response-controls__group .scene-editor-collapsible {
+  display: grid;
+  border-top: 1px solid var(--studio-border, var(--editor-field-border));
+}
+
+.music-response-controls__group .scene-editor-collapsible__toggle {
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255,255,255,.008);
+  color: var(--studio-muted);
+  text-align: left;
+}
+
+.music-response-controls__group .scene-editor-collapsible__toggle::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .16s ease;
+}
+
+.music-response-controls__group .scene-editor-collapsible__toggle[aria-expanded="true"]::after {
+  transform: rotate(225deg) translate(-2px, -1px);
+}
+
+.music-response-controls__group .scene-editor-collapsible__toggle:hover {
+  border: 0;
+  background: rgba(255,255,255,.018);
+  color: var(--studio-text);
+}
+
+.music-response-controls__group .scene-editor-collapsible__content {
+  border-top: 1px solid var(--studio-border, var(--editor-field-border));
+}
+
+.music-response-controls__group .scene-editor-collapsible__content .scene-field__shell {
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.music-response-controls__reset {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 12px 15px 14px;
+  border-top: 1px solid var(--studio-border, var(--editor-field-border));
+  background: rgba(255,255,255,.008);
+}
+
+.music-response-controls__reset p {
+  margin: 0;
+  color: var(--studio-muted, inherit);
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+@container editor (max-width: 570px) {
+  .music-response-controls__surface > .scene-field-validation:first-child .scene-field__shell,
+  .music-response-controls__group .scene-field__shell,
+  .music-response-controls__group .scene-slider,
+  .music-response-controls__group .scene-editor-collapsible__content .scene-field__shell {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .music-response-controls__group .scene-slider__controls { grid-column: 1; }
   .music-response-controls__reset .scene-secondary-button { width: 100%; }
 }
