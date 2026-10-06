@@ -916,6 +916,200 @@ html[data-theme] .scene-editor-page .motion-controls .music-response-controls__g
   border-radius: 0;
   background: rgba(255,255,255,.008);
 }
+
+/* Effects are grouped into category surfaces so the catalog scans as rows
+   while enabled controls keep their existing persistence and validation. */
+html[data-theme] .scene-editor-page .scene-effects-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 11px;
+  border: 1px solid var(--studio-border);
+  border-radius: 9px;
+  background: rgba(255,255,255,.012);
+  color: var(--studio-subtle);
+  font-size: 9px;
+  line-height: 1.45;
+}
+html[data-theme] .scene-editor-page .scene-effects-status strong {
+  flex: 0 0 auto;
+  color: var(--studio-accent);
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+html[data-theme] .scene-editor-page .scene-effects-limit {
+  margin: -9px 0 0;
+  color: var(--studio-accent);
+  font-size: 9px;
+  line-height: 1.45;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .scene-effects-grid { gap: 22px; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .scene-effects-category { gap: 9px; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .scene-effects-category__title {
+  color: var(--studio-muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .scene-effects-category__grid {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--studio-border);
+  border-radius: 12px;
+  background: var(--studio-group);
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card-group {
+  gap: 0;
+  overflow: visible;
+  border: 0;
+  border-bottom: 1px solid var(--studio-border);
+  border-radius: 0;
+  background: transparent;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card-group:last-child { border-bottom: 0; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card {
+  min-height: 56px;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card-group.is-enabled > .effect-card {
+  background: var(--studio-accent-fill);
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__header > div:first-child { min-width: 0; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__header h3 {
+  margin: 0;
+  color: var(--studio-text);
+  font-size: 10px;
+  line-height: 1.35;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__header p {
+  margin: 2px 0 0;
+  color: var(--studio-subtle);
+  font-size: 8px;
+  line-height: 1.45;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  color: var(--studio-accent);
+  font-size: 8px;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__note::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__toggle .scene-toggle__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__toggle .scene-toggle--compact .scene-toggle__copy {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__toggle .scene-toggle__label {
+  display: block;
+  min-width: 20px;
+  color: var(--studio-subtle);
+  font-size: 8px;
+  font-weight: 400;
+  text-align: right;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--studio-border);
+  background: var(--studio-panel);
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content { gap: 0; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content > .scene-editor-grid {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content > .scene-editor-grid > .scene-field-validation + .scene-field-validation {
+  border-top: 1px solid var(--studio-border);
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details :is(.scene-field__shell, .scene-slider) {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  height: auto;
+  min-height: 58px;
+  padding: 11px 14px 11px 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details :is(.scene-field__top, .scene-field__copy, .scene-slider__top, .scene-slider__copy) {
+  display: block;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details .scene-field__control {
+  order: initial;
+  min-width: 0;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details .scene-field__description {
+  margin-top: 2px;
+  padding: 0;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details .scene-slider__value { display: none; }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details .scene-slider__controls {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 10px;
+  order: initial;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details input.scene-slider__number {
+  height: 36px;
+  min-height: 36px;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content > .scene-field-validation > .scene-field:not(.scene-field--slider) {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 16px;
+  min-height: 58px;
+  padding: 11px 14px 11px 28px;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content > .scene-field-validation > .scene-field:not(.scene-field--slider) .scene-field__description {
+  grid-column: 1;
+  margin: 0;
+}
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content .scene-color-field {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 100%;
+}
 html[data-theme] .scene-editor-page .scene-pass-order { gap: 8px; }
 html[data-theme] .scene-editor-page .scene-pass-order__item { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; padding: 11px 12px; align-items: center; gap: 10px; border: 1px solid var(--studio-border); border-radius: 9px; background: var(--studio-field); }
 html[data-theme] .scene-editor-page .scene-pass-order__grip { display: inline-flex; align-items: center; justify-content: center; color: var(--studio-subtle); }
@@ -992,6 +1186,23 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
   html[data-theme] .scene-editor-page .motion-controls__animation .scene-field__control { width: 100%; }
   html[data-theme] .scene-editor-page .motion-controls__preview .scene-slider__controls,
   html[data-theme] .scene-editor-page .motion-controls .music-response-controls__group .scene-slider__controls { grid-column: 1; }
+
+  html[data-theme] .scene-editor-page .scene-effects-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details :is(.scene-field__shell, .scene-slider),
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content > .scene-field-validation > .scene-field:not(.scene-field--slider) {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-left: 14px;
+  }
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__details .scene-slider__controls,
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content > .scene-field-validation > .scene-field:not(.scene-field--slider) .scene-field__description,
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content .scene-color-field {
+    grid-column: 1;
+  }
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__content .scene-color-field { grid-row: auto; }
 }
 @container editor (max-width: 430px) {
   html[data-theme] .scene-editor-page .scene-editor-details__thumbnail-row { grid-template-columns: 1fr; }

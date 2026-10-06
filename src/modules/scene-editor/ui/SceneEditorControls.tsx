@@ -78,6 +78,7 @@ type EffectCardProps = PropsWithChildren<{
   description: string
   enabled?: boolean
   footer?: ReactNode
+  note?: ReactNode
   onToggle?: (enabled: boolean) => void
   title: string
   toggleLabel?: string
@@ -346,6 +347,7 @@ export function EffectCard({
   description,
   enabled,
   footer,
+  note,
   onToggle,
   title,
   toggleLabel,
@@ -362,23 +364,26 @@ export function EffectCard({
   const hasHiddenError = childIds[title]?.some(id => Boolean(issues[id]))
 
   return (
-    <section className={joinClassNames('effect-card-group', !isEnabled && 'is-disabled')}>
+    <section className={joinClassNames('effect-card-group', isEnabled ? 'is-enabled' : 'is-disabled')}>
       <SurfaceCard as="div" className="effect-card" tone="nested">
         <div className="effect-card__header">
           <div>
             <h3>{title}</h3>
             <p>{description}</p>
+            {note ? <span className="effect-card__note">{note}</span> : null}
           </div>
           {onToggle ? (
-            <ToggleField
-              ariaLabel={toggleLabel ?? title}
-              checked={isEnabled}
-              disabled={toggleDisabled}
-              compact
-              id={toggleId}
-              label={isEnabled ? 'On' : 'Off'}
-              onChange={onToggle}
-            />
+            <div className="effect-card__toggle">
+              <ToggleField
+                ariaLabel={toggleLabel ?? title}
+                checked={isEnabled}
+                disabled={toggleDisabled}
+                compact
+                id={toggleId}
+                label={isEnabled ? 'On' : 'Off'}
+                onChange={onToggle}
+              />
+            </div>
           ) : null}
         </div>
       </SurfaceCard>

@@ -134,6 +134,36 @@ describe('editor effect persistence', () => {
 })
 
 describe('editor Toon and Bleach Bypass controls', () => {
+  it.each(['mage-pulse', 'classic-facebook'] as const)(
+    'excludes Output from the optional-effect budget and restores its saved controls in %s', async (theme) => {
+      storeSceneEditorSession()
+      mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
+        ? jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] })) : undefined)
+      const user = userEvent.setup()
+      renderEditScenePage(undefined, theme)
+      await screen.findByLabelText(/scene name/i)
+      await user.click(screen.getByRole('button', { name: 'Effects' }))
+
+      const output = effectToggle('Output Pass')
+      expect(output).toBeChecked()
+      expect(screen.getByText('0/4 enabled')).toBeInTheDocument()
+      await user.selectOptions(screen.getByLabelText('Tone Mapping'), '2')
+      fireEvent.change(screen.getByLabelText('Exposure numeric value'), { target: { value: '2.4' } })
+      await user.click(output)
+      expect(screen.queryByLabelText('Tone Mapping')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Exposure numeric value')).not.toBeInTheDocument()
+      expect(screen.getByText('0/4 enabled')).toBeInTheDocument()
+
+      for (const label of ['Bloom', 'Toon', 'Bleach Bypass', 'RGB Shift']) await user.click(effectToggle(label))
+      expect(screen.getByText('4/4 enabled')).toBeInTheDocument()
+      expect(output).toBeEnabled()
+      await user.click(output)
+      expect(screen.getByLabelText('Tone Mapping')).toHaveValue('2')
+      expect(screen.getByLabelText('Exposure numeric value')).toHaveValue(2.4)
+      expect(screen.getByText('4/4 enabled')).toBeInTheDocument()
+    },
+  )
+
   it('updates custom source, pass status, and confirmation without playback when either card changes', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
