@@ -152,16 +152,59 @@ html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-seconda
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:first-child { border-radius: var(--editor-button-radius) 0 0 var(--editor-button-radius); }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:last-child { margin-left: -1px; border-radius: 0 var(--editor-button-radius) var(--editor-button-radius) 0; }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button[aria-pressed="true"] { position: relative; border-color: var(--studio-accent-border); background: var(--studio-accent-fill); color: var(--studio-accent); opacity: 1; }
-html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 4px; }
-html[data-theme] .scene-editor-page .scene-setup-controls__scale { grid-column: 1 / -1; }
-html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] { display: flex; min-width: 0; flex-direction: column; }
-html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] > .scene-field { flex: 1; }
-html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell {
-  padding: 18px;
-  gap: 14px;
+html[data-theme] .scene-editor-page .scene-setup-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-bottom: 4px;
+  overflow: hidden;
   border: 1px solid var(--studio-border);
   border-radius: 12px;
-  background: var(--studio-field);
+  background: var(--studio-panel);
+}
+html[data-theme] .scene-editor-page .scene-setup-controls__scale { grid-column: auto; }
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] {
+  display: block;
+  min-width: 0;
+  padding: 13px 15px;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] + [data-template-field] { border-top: 1px solid var(--studio-border); }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-field__shell .scene-field__description {
+  order: initial;
+  margin: 0;
+  padding: 0;
+  font-size: 9px;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-field__control { order: initial; }
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider__value { display: none; }
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider__controls { grid-column: auto; order: initial; }
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider .scene-field__description {
+  grid-column: auto;
+  order: initial;
+  padding: 0;
+  font-size: 9px;
 }
 html[data-theme] .scene-editor-modal-backdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .68); }
 html[data-theme] .scene-editor-modal { box-sizing: border-box; width: min(520px, 100%); padding: 24px; border: 1px solid var(--studio-border-strong); border-radius: 16px; background: var(--studio-panel); color: var(--studio-text); box-shadow: 0 24px 80px rgba(0, 0, 0, .42); }
@@ -449,7 +492,7 @@ html[data-theme] .scene-editor-page .scene-field__control { order: 2; }
 html[data-theme] .scene-editor-page .scene-slider { height: 100%; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px 10px; align-content: start; }
 html[data-theme] .scene-editor-page .scene-slider__top, html[data-theme] .scene-editor-page .scene-slider__copy { display: contents; }
 html[data-theme] .scene-editor-page .scene-slider__value { align-self: center; padding: 0; min-width: 0; border: 0; background: none; color: var(--studio-muted); font-size: 10px; }
-html[data-theme] .scene-editor-page .scene-slider__controls { grid-column: 1 / -1; order: 1; grid-template-columns: minmax(0,1fr) 70px; gap: 10px; }
+html[data-theme] .scene-editor-page .scene-slider__controls { grid-column: 1 / -1; order: 1; grid-template-columns: minmax(0,1fr) 70px; gap: 10px; align-items: center; }
 html[data-theme] .scene-editor-page .scene-slider .scene-field__description { grid-column: 1 / -1; order: 2; padding-top: 3px; }
 html[data-theme] .scene-editor-page input.scene-slider__number { height: 34px; padding: 0 8px; text-align: center; font-size: 11px; }
 html[data-theme] .scene-editor-page .scene-slider__range { height: 4px; cursor: pointer; }
@@ -529,13 +572,12 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
   html[data-theme] .scene-editor-page .scene-editor-grid,
   html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack,
   html[data-theme] .scene-editor-page .scene-confirm-summary { grid-template-columns: 1fr; }
-  html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container editor (max-width: 430px) {
   html[data-theme] .scene-editor-page .scene-editor-details__thumbnail-row { grid-template-columns: 1fr; }
   html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { width: min(180px, 100%); }
   html[data-theme] .scene-editor-page .scene-editor-details__field-row .scene-field__label-row { align-items: flex-start; flex-direction: column; gap: 3px; }
-  html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: 1fr; }
+  html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] { padding: 12px; }
 }
 @media (max-width: 1360px) and (min-width: 961px) {
     html[data-theme] .scene-editor-page .scene-editor-layout { grid-template-columns: 68px minmax(0,1fr) minmax(340px,36vw); }
@@ -862,6 +904,23 @@ html[data-theme] .scene-editor-page .scene-editor-preview__card { overflow: clip
 /* Validation follows the existing field layout without adding a visual container. */
 .scene-editor-page .scene-field-validation { min-width: 0; }
 .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-field-validation:has(> .scene-field--slider) { grid-column: 1 / -1; }
+
+/* Scene settings use one flat surface with compact label/control rows. */
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__top,
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__copy,
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-slider__top,
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-slider__copy {
+  display: grid;
+  gap: 3px;
+}
+
+@container editor (max-width: 570px) {
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell,
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-slider {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
 
 /* Keep Builder navigation and the selected object's controls in one workspace. */
 html[data-theme] .scene-editor-page .builder-workspace {
@@ -1335,6 +1394,18 @@ html[data-theme] .scene-editor-page .builder-color-control > input.builder-color
   html[data-theme] .scene-editor-page .builder-object-section__add .scene-secondary-button { width: auto; }
 }
 
+@container editor (max-width: 570px) {
+  .builder-workspace__header,
+  html[data-theme] .scene-editor-page .builder-object-editor__heading { padding-inline: 10px; }
+  .builder-object-rail__header { padding-inline: 10px; }
+  .builder-object-inspector__body { gap: 10px; padding: 8px; }
+  .builder-inspector-section > summary { padding-inline: 9px; }
+  .builder-inspector-section__content { padding-inline: 8px; }
+  .builder-control-stage__header { padding-inline: 8px; }
+  .builder-control-stage__content,
+  .builder-control-stage--unnumbered .builder-control-stage__content { padding: 2px 8px 14px; }
+}
+
 @container editor (max-width: 460px) {
   .builder-object-identity,
   .builder-appearance-controls,
@@ -1490,7 +1561,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
 
 @media (max-width: 960px) {
   html[data-theme] .scene-editor-page {
-    width: min(calc(100% - 24px), 900px);
+    width: min(calc(100% - 16px), 900px);
     padding-top: 18px;
   }
 
@@ -1607,15 +1678,15 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
     order: 3;
     flex: 1 1 0;
     min-height: 0;
-    padding: 22px 14px 28px;
+    padding: 22px 12px 28px;
   }
 }
 
 @media (max-width: 640px) {
   html[data-theme]:has(.scene-editor-page) { --nav-height: 56px; }
-  html[data-theme]:has(.scene-editor-page) .nav-inner { width: calc(100% - 12px); }
+  html[data-theme]:has(.scene-editor-page) .nav-inner { width: calc(100% - 8px); }
   html[data-theme]:has(.scene-editor-page) :is(.nav-create, .nav-signin, .nav-profile-trigger) { min-height: 38px; }
-  html[data-theme]:has(.scene-editor-page) .pulse-footer { width: calc(100% - 12px); min-height: 36px; }
+  html[data-theme]:has(.scene-editor-page) .pulse-footer { width: calc(100% - 8px); min-height: 36px; }
   html[data-theme]:has(.scene-editor-page) .pulse-footer__inner {
     min-height: 36px;
     gap: 12px;
@@ -1625,7 +1696,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
   html[data-theme]:has(.scene-editor-page) .pulse-footer__nav { gap: 14px; }
 
   html[data-theme] .scene-editor-page {
-    width: calc(100% - 12px);
+    width: calc(100% - 8px);
     padding-top: 8px;
     padding-bottom: 6px;
   }
@@ -1649,5 +1720,48 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
     padding-inline: 8px;
   }
 
-  html[data-theme] .scene-editor-page .scene-editor-main { padding: 16px 10px 22px; }
+  html[data-theme] .scene-editor-page .scene-editor-main { padding: 16px 8px 22px; }
+}
+
+/* Scene keeps the studio's dark foundation while interactive surfaces carry
+   the contrast needed for quick scanning. */
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] :is(
+  select.mage-select,
+  input.scene-text-input,
+  input.scene-number-input,
+  input.scene-slider__number,
+  textarea.scene-textarea
+) {
+  border-color: var(--studio-border-strong);
+  background-color: var(--studio-control);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] :is(
+  select.mage-select,
+  input.scene-text-input,
+  input.scene-number-input,
+  input.scene-slider__number,
+  textarea.scene-textarea
+):not(:disabled):hover {
+  border-color: var(--studio-accent-border);
+  background-color: var(--studio-control-hover);
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field],
+html[data-theme] .scene-editor-page .builder-inspector-section > summary,
+html[data-theme] .scene-editor-page .builder-control-stage__header {
+  transition: background-color .16s ease;
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field]:hover,
+html[data-theme] .scene-editor-page .builder-inspector-section > summary:hover,
+html[data-theme] .scene-editor-page .builder-control-stage__header:hover {
+  background: rgba(255, 255, 255, .018);
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] + [data-template-field],
+html[data-theme] .scene-editor-page .builder-object-editor__heading,
+html[data-theme] .scene-editor-page .builder-inspector-section,
+html[data-theme] .scene-editor-page .builder-control-stage {
+  border-color: rgba(255, 255, 255, .11);
 }

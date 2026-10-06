@@ -2,6 +2,8 @@ import { listSceneTemplates } from '@modules/player'
 import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import { SKYBOX_OPTIONS } from '../sceneEditor'
 
+export const BUILDER_SHADER_TEMPLATE_VALUE = '__builder-shader__'
+
 type Props = {
   fields?: Record<string, string>
   isBuilder: boolean
@@ -56,19 +58,22 @@ export function SceneSetupControls({
       <EditorFieldShell
         htmlFor={fieldId('templateId')}
         label="Template"
-        description={isBuilder || isTemplateDisabled
-          ? templateDisabledDescription ?? 'Turn off Builder to choose a template.'
-          : 'Choose the visual to use as-is or open in Custom Code.'}
+        description={isBuilder
+          ? 'Builder Shader is generated from the objects in this workspace.'
+          : isTemplateDisabled
+            ? templateDisabledDescription
+            : 'Choose the visual to use as-is or open in Custom Code.'}
       >
         <select
           aria-describedby={describedBy('templateId')}
           aria-invalid={Boolean(error('templateId'))}
           className="mage-select"
-          disabled={isBuilder || isTemplateDisabled}
+          disabled={isTemplateDisabled}
           id={fieldId('templateId')}
           onChange={event => onTemplateChange(event.currentTarget.value)}
           value={templateId}
         >
+          {isBuilder ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>Builder Shader</option> : null}
           {templateId === 'custom' ? <option value="custom" disabled>Custom shader</option> : null}
           {listSceneTemplates().map(template => <option
             key={`${template.templateId}:${template.templateVersion}`}
@@ -80,7 +85,7 @@ export function SceneSetupControls({
     </div>
 
     <div data-template-field="settings.skybox">
-      <EditorFieldShell htmlFor={fieldId('settings.skybox')} label="Skybox">
+      <EditorFieldShell description="Set the surrounding environment for the scene." htmlFor={fieldId('settings.skybox')} label="Skybox">
         <select
           aria-describedby={describedBy('settings.skybox')}
           aria-invalid={Boolean(error('settings.skybox'))}
@@ -96,7 +101,7 @@ export function SceneSetupControls({
     </div>
 
     <div className="scene-setup-controls__scale" data-template-field="parameters.scale">
-      <SliderFieldShell htmlFor={fieldId('parameters.scale')} label="Scene Scale" valueLabel={String(scale)}>
+      <SliderFieldShell description="Change the scene-wide size without editing each object." htmlFor={fieldId('parameters.scale')} label="Scene Scale" valueLabel={String(scale)}>
         <input
           aria-describedby={describedBy('parameters.scale')}
           aria-invalid={Boolean(error('parameters.scale'))}
