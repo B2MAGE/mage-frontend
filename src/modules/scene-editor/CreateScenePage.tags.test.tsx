@@ -40,8 +40,8 @@ describe('CreateScenePage tags', () => {
 
     expect(screen.queryByLabelText(/create a new tag/i)).not.toBeInTheDocument()
     expect(screen.getByText(/^selected tags$/i)).toBeInTheDocument()
-    const ambientTag = screen.getByRole('button', { name: /^ambient$/i })
-    const focusFriendlyTag = screen.getByRole('button', { name: /^focus-friendly$/i })
+    const ambientTag = screen.getByRole('button', { name: /^remove ambient$/i })
+    const focusFriendlyTag = screen.getByRole('button', { name: /^remove focus-friendly$/i })
     expect(ambientTag).toHaveClass('tag-pill', 'tag-pill--active')
     expect(focusFriendlyTag).toHaveClass('tag-pill')
   })
@@ -68,7 +68,7 @@ describe('CreateScenePage tags', () => {
     await addTagFromSearch(user, 'Late Night')
 
     expect(createTagBody).toEqual({ name: 'late night' })
-    expect(screen.getByRole('button', { name: /^late night$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^remove late night$/i })).toBeInTheDocument()
   })
 
   it('selects the existing tag when create-tag returns a duplicate-name conflict', async () => {
@@ -119,7 +119,7 @@ describe('CreateScenePage tags', () => {
 
     await addTagFromSearch(user, 'Late Night')
 
-    expect(await screen.findByRole('button', { name: /^late night$/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^remove late night$/i })).toBeInTheDocument()
   })
 
   it('clicking a selected tag pill removes it from the scene', async () => {
@@ -131,7 +131,7 @@ describe('CreateScenePage tags', () => {
     renderCreateScenePage()
 
     await selectExistingTag(user, 'ambient')
-    await user.click(screen.getByRole('button', { name: /^ambient$/i }))
+    await user.click(screen.getByRole('button', { name: /^remove ambient$/i }))
 
     expect(screen.getByText(/no tags selected yet\./i)).toBeInTheDocument()
   })

@@ -121,9 +121,30 @@ describe('CreateScenePage workflow', () => {
       screen.getByAltText(/captured thumbnail preview/i),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: /capture again/i }),
+      screen.getByRole('button', { name: /recapture thumbnail/i }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /a\/b testing/i })).not.toBeInTheDocument()
+  })
+
+  it('groups Details into scene information, thumbnail, and discovery with live feedback', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+
+    renderCreateScenePage()
+
+    const sceneInformation = screen.getByRole('region', { name: 'Scene information' })
+    const thumbnail = screen.getByRole('region', { name: 'Thumbnail' })
+    const discovery = screen.getByRole('region', { name: 'Discovery' })
+    const nameInput = within(sceneInformation).getByLabelText('Scene Name')
+
+    expect(sceneInformation).toHaveClass('scene-editor-details__group')
+    expect(thumbnail.querySelector('.scene-editor-thumbnail__frame')).toHaveAttribute('data-captured', 'false')
+    expect(within(discovery).getByText('0 selected')).toHaveAttribute('aria-live', 'polite')
+    expect(screen.getByText('Required · 0 characters · 2 minimum')).toHaveAttribute('aria-live', 'polite')
+
+    await user.type(nameInput, 'Nova')
+    expect(screen.getByText('Required · 4 characters · 2 minimum')).toBeInTheDocument()
   })
 
   it('shows capture progress and prevents duplicate thumbnail requests', async () => {
@@ -148,7 +169,7 @@ describe('CreateScenePage workflow', () => {
     expect(mockCaptureFramePreview).toHaveBeenCalledTimes(1)
 
     resolveCapture(CAPTURED_THUMBNAIL_DATA_URL)
-    expect(await screen.findByRole('button', { name: /capture again/i })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: /recapture thumbnail/i })).toBeEnabled()
   })
 
   it('keeps the first section ordered around scene metadata with publishing reserved for Confirm', async () => {

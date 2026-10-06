@@ -50,7 +50,7 @@ describe('real scene editor live preview updates', () => {
     expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Details' }))
-    await user.click(screen.getByRole('button', { name: /^Capture (Thumbnail|Again)$/ }))
+    await user.click(screen.getByRole('button', { name: /^(Capture|Recapture) Thumbnail$/ }))
     await waitFor(() => expect(controller.captureFramePreview).toHaveBeenCalledOnce())
     const capture = vi.mocked(controller.captureFramePreview!)
     const captured = await capture.mock.results[0].value
