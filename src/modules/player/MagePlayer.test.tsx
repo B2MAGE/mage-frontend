@@ -157,8 +157,10 @@ describe('MagePlayer', () => {
 
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
 
+    const onPlaybackStatusChange = vi.fn()
     const { rerender } = render(
       <MagePlayer
+        onPlaybackStatusChange={onPlaybackStatusChange}
         sceneBlob={{
           invalid: true,
         }}
@@ -166,18 +168,20 @@ describe('MagePlayer', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This scene needs changes.')
+    expect(onPlaybackStatusChange).toHaveBeenLastCalledWith('unavailable')
     expect(createMagePlayer).not.toHaveBeenCalled()
     expect(controller.dispose).not.toHaveBeenCalled()
 
     const validSceneBlob = buildMagePlayerSceneBlob()
 
-    rerender(<MagePlayer sceneBlob={validSceneBlob} />)
+    rerender(<MagePlayer onPlaybackStatusChange={onPlaybackStatusChange} sceneBlob={validSceneBlob} />)
 
     await waitFor(() => {
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(validSceneBlob)
     })
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onPlaybackStatusChange).toHaveBeenLastCalledWith('playing')
   })
 
   it('supports a paused initial playback state and toggles playback from the shared control bar', async () => {
@@ -186,13 +190,15 @@ describe('MagePlayer', () => {
 
     const sceneBlob = buildMagePlayerSceneBlob()
 
-    render(<MagePlayer initialPlayback="paused" sceneBlob={sceneBlob} />)
+    const onPlaybackStatusChange = vi.fn()
+    render(<MagePlayer initialPlayback="paused" onPlaybackStatusChange={onPlaybackStatusChange} sceneBlob={sceneBlob} />)
 
     expect(screen.queryByRole('button', { name: /scene playback/i })).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
+      expect(onPlaybackStatusChange).toHaveBeenLastCalledWith('paused')
     })
 
     const playbackButton = screen.getByRole('button', { name: /play scene and audio playback/i })
@@ -202,6 +208,7 @@ describe('MagePlayer', () => {
     fireEvent.click(playbackButton)
 
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
+    expect(onPlaybackStatusChange).toHaveBeenLastCalledWith('playing')
     expect(playbackButton).toHaveAttribute('aria-pressed', 'true')
     expect(playbackButton).toHaveAccessibleName('Pause scene and audio playback')
     await waitFor(() => {

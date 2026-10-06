@@ -41,6 +41,8 @@ export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   capabilities: MageAudioResponseCapabilities
 }
 
+export type MagePlayerPlaybackStatus = 'playing' | 'paused' | 'unavailable'
+
 export type MagePlayerProps = {
   /** Players without a playlist replace their only song after it loads. */
   audioMode?: 'single' | 'playlist'
@@ -55,6 +57,7 @@ export type MagePlayerProps = {
     captureFramePreview: (() => Promise<string | null>) | null,
   ) => void
   onPlaylistChange?: (tracks: MagePlayerPlaylistTrack[]) => void
+  onPlaybackStatusChange?: (status: MagePlayerPlaybackStatus) => void
   /** Notify a route-owned playlist to reset its local ordering/preferences. */
   onClearMusic?: () => void
   onRequestPlaylistOpen?: () => void
@@ -121,6 +124,17 @@ type SessionAudioProps = {
 }
 
 type SessionPlaybackIntent = { playback: MagePlayerPlaybackState; initialPlayback: MagePlayerPlaybackState; sceneKey: MageSceneKey | undefined }
+
+function MagePlayerStatusReporter({
+  onChange,
+  status,
+}: {
+  onChange?: (status: MagePlayerPlaybackStatus) => void
+  status: MagePlayerPlaybackStatus
+}) {
+  useEffect(() => onChange?.(status), [onChange, status])
+  return null
+}
 
 function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   const defaultPlayback = props.initialPlayback ?? 'playing'
@@ -214,44 +228,57 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   }, [])
 
   if (requiresAvailability && ((!availability.allowed && !availabilityPending) || !props.sceneBlob)) {
-    return <SceneAvailabilityPanel className={props.className} posterUrl={props.posterUrl}
-      onClearMusic={props.clearMusic}
-      message={!availability.allowed ? availability.message : sourceError
-        ? 'This scene could not be loaded. You can check again.' : canRestoreSource
-          ? 'Loading this scene…' : 'This scene is temporarily unavailable.'}
-      checking={availability.code === 'CHECKING' || (availability.allowed && canRestoreSource && !sourceError)}
-      onCheck={availability.code === 'STATUS_UNAVAILABLE' ? () => { void sceneAvailabilityStore.check(target) }
-        : availability.allowed && sourceError ? () => setReloadAttempt((value) => value + 1) : undefined}
-    />
+    const checking = availability.code === 'CHECKING' || (availability.allowed && canRestoreSource && !sourceError)
+    return <>
+      <MagePlayerStatusReporter onChange={props.onPlaybackStatusChange} status={checking ? 'paused' : 'unavailable'} />
+      <SceneAvailabilityPanel className={props.className} posterUrl={props.posterUrl}
+        onClearMusic={props.clearMusic}
+        message={!availability.allowed ? availability.message : sourceError
+          ? 'This scene could not be loaded. You can check again.' : canRestoreSource
+            ? 'Loading this scene…' : 'This scene is temporarily unavailable.'}
+        checking={checking}
+        onCheck={availability.code === 'STATUS_UNAVAILABLE' ? () => { void sceneAvailabilityStore.check(target) }
+          : availability.allowed && sourceError ? () => setReloadAttempt((value) => value + 1) : undefined}
+      />
+    </>
   }
 
   if (props.sceneBlob && (block || safeMode)) {
-    return <SceneRecoveryPanel
-      onClearMusic={props.clearMusic}
-      className={props.className}
-      posterUrl={props.posterUrl}
-      block={block}
-      safeMode={safeMode}
-      onRetry={() => {
-        if (!blockedRecoveryKey || !sceneAvailabilityStore.isAllowed(target)) return
-        if (block?.reason === 'stopped') sceneRecovery.resumeStoppedScene(blockedRecoveryKey, block.at)
-        else sceneRecovery.retry(blockedRecoveryKey)
-      }}
-      onSafeModeChange={sceneRecovery.setSafeMode}
-    />
+    return <>
+      <MagePlayerStatusReporter
+        onChange={props.onPlaybackStatusChange}
+        status={safeMode || block?.reason === 'stopped' ? 'paused' : 'unavailable'}
+      />
+      <SceneRecoveryPanel
+        onClearMusic={props.clearMusic}
+        className={props.className}
+        posterUrl={props.posterUrl}
+        block={block}
+        safeMode={safeMode}
+        onRetry={() => {
+          if (!blockedRecoveryKey || !sceneAvailabilityStore.isAllowed(target)) return
+          if (block?.reason === 'stopped') sceneRecovery.resumeStoppedScene(blockedRecoveryKey, block.at)
+          else sceneRecovery.retry(blockedRecoveryKey)
+        }}
+        onSafeModeChange={sceneRecovery.setSafeMode}
+      />
+    </>
   }
 
   if (validationError) {
-    return <section className={buildMagePlayerClassName('mage-player', props.className)} data-state="error">
-      <div className="mage-player__viewport">
-        <div className="mage-player__overlay" role="alert">
-          <div className="mage-player__overlay-copy"><strong>This scene needs changes.</strong><p>{validationError}</p></div>
+    return <>
+      <MagePlayerStatusReporter onChange={props.onPlaybackStatusChange} status="unavailable" />
+      <section className={buildMagePlayerClassName('mage-player', props.className)} data-state="error">
+        <div className="mage-player__viewport">
+          <div className="mage-player__overlay" role="alert">
+            <div className="mage-player__overlay-copy"><strong>This scene needs changes.</strong><p>{validationError}</p></div>
+          </div>
         </div>
-      </div>
-      <div className="mage-player__controls mage-player__controls--recovery-only">
-        <PlaybackOptions onClearMusic={props.clearMusic} />
-      </div>
-    </section>
+        <div className="mage-player__controls mage-player__controls--recovery-only">
+          <PlaybackOptions onClearMusic={props.clearMusic} />
+        </div>
+      </section>
+    </>
   }
 
   return <MagePlayerRenderer key={rendererInstance} {...props}
@@ -277,6 +304,7 @@ function MagePlayerRenderer({
   onAudioResponseCapabilitiesChange,
   onEngineDiagnosticsChange,
   onCaptureFramePreviewChange,
+  onPlaybackStatusChange,
   onRequestPlaylistOpen,
   repeatEnabled = false,
   sceneBlob,
@@ -624,6 +652,16 @@ function MagePlayerRenderer({
         : playbackIdentity !== null && loadedSceneIdentity === playbackIdentity && loadedPlayerVersion === playerVersion
           ? 'ready'
           : 'loading'
+
+  const publishedPlaybackStatus: MagePlayerPlaybackStatus = status === 'ready'
+    ? playbackState
+    : status === 'loading'
+      ? 'paused'
+      : 'unavailable'
+
+  useEffect(() => {
+    onPlaybackStatusChange?.(publishedPlaybackStatus)
+  }, [onPlaybackStatusChange, publishedPlaybackStatus])
 
   const hasCapabilitiesCallback = Boolean(onAudioResponseCapabilitiesChange)
 
