@@ -1722,3 +1722,46 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
 
   html[data-theme] .scene-editor-page .scene-editor-main { padding: 16px 8px 22px; }
 }
+
+/* Scene keeps the studio's dark foundation while interactive surfaces carry
+   the contrast needed for quick scanning. */
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] :is(
+  select.mage-select,
+  input.scene-text-input,
+  input.scene-number-input,
+  input.scene-slider__number,
+  textarea.scene-textarea
+) {
+  border-color: var(--studio-border-strong);
+  background-color: var(--studio-control);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] :is(
+  select.mage-select,
+  input.scene-text-input,
+  input.scene-number-input,
+  input.scene-slider__number,
+  textarea.scene-textarea
+):not(:disabled):hover {
+  border-color: var(--studio-accent-border);
+  background-color: var(--studio-control-hover);
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field],
+html[data-theme] .scene-editor-page .builder-inspector-section > summary,
+html[data-theme] .scene-editor-page .builder-control-stage__header {
+  transition: background-color .16s ease;
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field]:hover,
+html[data-theme] .scene-editor-page .builder-inspector-section > summary:hover,
+html[data-theme] .scene-editor-page .builder-control-stage__header:hover {
+  background: rgba(255, 255, 255, .018);
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] + [data-template-field],
+html[data-theme] .scene-editor-page .builder-object-editor__heading,
+html[data-theme] .scene-editor-page .builder-inspector-section,
+html[data-theme] .scene-editor-page .builder-control-stage {
+  border-color: rgba(255, 255, 255, .11);
+}
