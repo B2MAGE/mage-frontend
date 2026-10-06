@@ -60,6 +60,10 @@ function formatDegrees(value: number) {
   return `${Math.round(value)}\u00B0`;
 }
 
+function toCameraDegreeValue(radians: number) {
+  return Number(toDegrees(radians).toFixed(2));
+}
+
 type SceneEditorShellProps = {
   authenticatedFetch: AuthenticatedFetch;
   initialState?: SceneEditorInitialState;
@@ -409,9 +413,9 @@ export function SceneEditorShell({
 
   function renderCameraAdvancedFields() {
     return (
-      <div className="scene-editor-grid">
+      <div className="camera-controls__advanced-fields">
         <NumberField
-          description="Experimental compact scene field exported by the library."
+          description="Choose how the camera interprets its orientation value (0–2)."
           id="camera-orientation-mode"
           label="Camera Orientation Mode"
           min={0}
@@ -427,7 +431,7 @@ export function SceneEditorShell({
         />
 
         <NumberField
-          description="Experimental compact scene field exported by the library."
+          description="Set how quickly automatic camera orientation changes."
           id="camera-orientation-speed"
           label="Camera Orientation Speed"
           min={0}
@@ -886,88 +890,103 @@ export function SceneEditorShell({
                 description="Set the starting view, framing, and lens settings for the scene."
                 title="Camera"
               >
-                <div className="scene-editor-stack">
-                  <div className="scene-editor-grid">
-                    <Vector3Field
-                      min={-1000} max={1000}
-                      description="The camera position in the scene."
-                      id="camera-position"
-                      label="Camera Position"
-                      onChange={(nextValue) =>
-                        updateBranch("controls", (currentControls) => ({
-                          ...currentControls,
-                          position0: nextValue,
-                        }))
-                      }
-                      value={sceneModel.controls.position0}
-                    />
+                <div className="camera-controls">
+                  <section className="camera-controls__group" aria-labelledby="camera-starting-view-title">
+                    <div className="camera-controls__group-heading">
+                      <h3 id="camera-starting-view-title">Starting view</h3>
+                      <p>Choose where the camera begins and what it points toward.</p>
+                    </div>
+                    <div className="camera-controls__surface camera-controls__vectors">
+                      <Vector3Field
+                        min={-1000} max={1000}
+                        description="Where the camera begins in the scene."
+                        id="camera-position"
+                        label="Camera Position"
+                        onChange={(nextValue) =>
+                          updateBranch("controls", (currentControls) => ({
+                            ...currentControls,
+                            position0: nextValue,
+                          }))
+                        }
+                        value={sceneModel.controls.position0}
+                      />
 
-                    <Vector3Field
-                      min={-1000} max={1000}
-                      description="Where the camera points while the scene loads."
-                      id="camera-target"
-                      label="Camera Target"
-                      onChange={(nextValue) =>
-                        updateBranch("controls", (currentControls) => ({
-                          ...currentControls,
-                          target0: nextValue,
-                        }))
-                      }
-                      value={sceneModel.controls.target0}
-                    />
+                      <Vector3Field
+                        min={-1000} max={1000}
+                        description="Where the camera points while the scene loads."
+                        id="camera-target"
+                        label="Camera Target"
+                        onChange={(nextValue) =>
+                          updateBranch("controls", (currentControls) => ({
+                            ...currentControls,
+                            target0: nextValue,
+                          }))
+                        }
+                        value={sceneModel.controls.target0}
+                      />
+                    </div>
+                  </section>
 
-                    <SliderField
-                      description="How wide the camera lens feels."
-                      formatValue={(value) => formatFixed(value, 0)}
-                      id="field-of-view"
-                      label="FOV"
-                      max={179}
-                      min={1}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          fov: nextValue,
-                        }))
-                      }
-                      step={1}
-                      value={sceneModel.intent.fov}
-                    />
+                  <section className="camera-controls__group" aria-labelledby="camera-framing-title">
+                    <div className="camera-controls__group-heading">
+                      <h3 id="camera-framing-title">Framing &amp; lens</h3>
+                    </div>
+                    <div className="camera-controls__surface camera-controls__lens">
+                      <SliderField
+                        description="How wide the camera lens feels."
+                        formatValue={(value) => formatFixed(value, 0)}
+                        id="field-of-view"
+                        label="FOV"
+                        max={179}
+                        min={1}
+                        onChange={(nextValue) =>
+                          updateBranch("intent", (currentIntent) => ({
+                            ...currentIntent,
+                            fov: nextValue,
+                          }))
+                        }
+                        step={1}
+                        value={sceneModel.intent.fov}
+                      />
 
-                    <SliderField
-                      description="Displayed in degrees while the engine still stores radians."
-                      formatValue={(value) => formatDegrees(value)}
-                      id="camera-tilt"
-                      label="Camera Orientation"
-                      max={360}
-                      min={0}
-                      onChange={(nextValue) =>
-                        updateBranch("intent", (currentIntent) => ({
-                          ...currentIntent,
-                          camTilt: toRadians(nextValue),
-                        }))
-                      }
-                      step={1}
-                      value={toDegrees(sceneModel.intent.camTilt)}
-                    />
+                      <SliderField
+                        description="Displayed in degrees while the engine still stores radians."
+                        formatValue={(value) => formatDegrees(value)}
+                        id="camera-tilt"
+                        label="Camera Orientation"
+                        max={360}
+                        min={0}
+                        onChange={(nextValue) =>
+                          updateBranch("intent", (currentIntent) => ({
+                            ...currentIntent,
+                            camTilt: toRadians(nextValue),
+                          }))
+                        }
+                        step={1}
+                        value={toCameraDegreeValue(sceneModel.intent.camTilt)}
+                      />
 
-                    <NumberField
-                      description="Set camera zoom from 0.01 to 100."
-                      min={0.01} max={100}
-                      id="zoom"
-                      label="Zoom"
-                      onChange={(nextValue) =>
-                        updateBranch("controls", (currentControls) => ({
-                          ...currentControls,
-                          zoom0: nextValue,
-                        }))
-                      }
-                      step={0.1}
-                      value={sceneModel.controls.zoom0}
-                    />
-                  </div>
+                      <NumberField
+                        description="Set camera zoom from 0.01 to 100."
+                        min={0.01} max={100}
+                        id="zoom"
+                        label="Zoom"
+                        onChange={(nextValue) =>
+                          updateBranch("controls", (currentControls) => ({
+                            ...currentControls,
+                            zoom0: nextValue,
+                          }))
+                        }
+                        step={0.1}
+                        value={sceneModel.controls.zoom0}
+                      />
+                    </div>
+                  </section>
 
-                  <section className="scene-effects-category" aria-labelledby="camera-movement-title">
-                    <h3 className="scene-effects-category__title" id="camera-movement-title">Camera movement</h3>
+                  <section className="camera-controls__group camera-controls__movement" aria-labelledby="camera-movement-title">
+                    <div className="camera-controls__group-heading">
+                      <h3 id="camera-movement-title">Camera movement</h3>
+                    </div>
                     <EffectCard title="Automatic orbit" toggleLabel="Automatic orbit" enabled={sceneModel.intent.autoRotate}
                       description="Let the camera travel around the scene on its own."
                       onToggle={value => updateBranch("intent", current => ({ ...current, autoRotate: value }))}
@@ -981,17 +1000,19 @@ export function SceneEditorShell({
                     </EffectCard>
                   </section>
 
-                  <CollapsibleEditorGroup
-                    hideLabel="Hide advanced camera controls"
-                    id="camera-advanced-options"
-                    isOpen={isCameraAdvancedEnabled}
-                    onToggle={() =>
-                      handleCameraAdvancedToggle(!isCameraAdvancedEnabled)
-                    }
-                    showLabel="Show advanced camera controls"
-                  >
-                    {renderCameraAdvancedFields()}
-                  </CollapsibleEditorGroup>
+                  <div className="camera-controls__advanced">
+                    <CollapsibleEditorGroup
+                      hideLabel="Hide advanced camera controls"
+                      id="camera-advanced-options"
+                      isOpen={isCameraAdvancedEnabled}
+                      onToggle={() =>
+                        handleCameraAdvancedToggle(!isCameraAdvancedEnabled)
+                      }
+                      showLabel="Show advanced camera controls"
+                    >
+                      {renderCameraAdvancedFields()}
+                    </CollapsibleEditorGroup>
+                  </div>
                 </div>
               </SceneSection>
             ) : null}
