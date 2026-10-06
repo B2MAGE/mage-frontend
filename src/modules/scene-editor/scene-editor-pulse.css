@@ -1531,9 +1531,9 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
     order: 2;
     display: flex;
     width: 100%;
-    height: auto;
+    height: 60%;
     max-height: 60%;
-    flex: 0 0 auto;
+    flex: 0 0 60%;
     border-left: 0;
     border-bottom: 1px solid var(--studio-border-strong);
     opacity: 1;
@@ -1549,12 +1549,13 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
 
   html[data-theme] .scene-editor-page .scene-editor-preview__card {
     display: grid;
-    height: auto;
+    height: 100%;
     grid-template-rows: 42px minmax(0, 1fr);
     transition: grid-template-rows 240ms ease;
   }
 
   html[data-theme] .scene-editor-page .scene-editor-preview__content {
+    min-height: 0;
     overflow: hidden;
     opacity: 1;
     transform: translateY(0);
@@ -1579,7 +1580,22 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
   html[data-theme] .scene-editor-page .scene-editor-preview__card,
   html[data-theme] .scene-editor-page .scene-editor-preview__content,
   html[data-theme] .scene-editor-page .scene-editor-preview__player { width: 100%; min-width: 0; }
-  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport { width: 100%; }
+  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport {
+    width: auto;
+    max-width: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    align-self: center;
+  }
+  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__controls {
+    flex: 0 0 auto;
+  }
 
   html[data-theme] .scene-editor-page .scene-editor-main {
     order: 3;
@@ -1627,6 +1643,5 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
     padding-inline: 8px;
   }
 
-  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport { width: 100%; }
   html[data-theme] .scene-editor-page .scene-editor-main { padding: 16px 10px 22px; }
 }
