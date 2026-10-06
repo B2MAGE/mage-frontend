@@ -48,12 +48,17 @@ function mergeChangedValues(original: unknown, before: unknown, after: unknown):
 }
 
 type UseSceneEditorStateArgs = {
+  allowCustomSceneData?: boolean
   authenticatedFetch: AuthenticatedFetch
   initialState?: SceneEditorInitialState
   titleId?: string
 }
 
+const CUSTOM_SCENE_DATA_DISABLED_MESSAGE =
+  'Custom Code is disabled for MAGE. Raw JSON can only contain a Template or Builder scene.'
+
 export function useSceneEditorState({
+  allowCustomSceneData = true,
   authenticatedFetch,
   initialState,
   titleId: providedTitleId = 'create-scene-title',
@@ -119,9 +124,16 @@ export function useSceneEditorState({
     validateSceneName(name),
     thumbnailFile ? validateThumbnailFile(thumbnailFile) : null,
   ].filter((message): message is string => Boolean(message))
+  const sceneDataValidation = validateSceneDataText(sceneDataText)
+  const disabledCustomImportIssue = !allowCustomSceneData && (isTemplate || isBuilder)
+    ? (() => {
+        try { return parseSceneImport(sceneDataText).kind === 'custom' ? CUSTOM_SCENE_DATA_DISABLED_MESSAGE : null }
+        catch { return null }
+      })()
+    : null
   const confirmSectionIssueMessage = pendingImport
     ? 'Confirm replacing your custom scene with the imported template, or cancel to keep your custom scene.'
-    : validateSceneDataText(sceneDataText).error
+    : disabledCustomImportIssue ?? sceneDataValidation.error
   const sectionIssuesById: Partial<Record<EditorSectionId, string | null>> = {
     confirm: confirmSectionIssueMessage,
     details:
@@ -400,12 +412,20 @@ export function useSceneEditorState({
   }
 
   function handleRawSceneDataChange(nextValue: string) {
+    if (!allowCustomSceneData && !isTemplate && !isBuilder) {
+      setErrors(current => ({ ...current, sceneData: 'Custom Code is disabled for MAGE. This saved custom scene is read-only.' }))
+      return
+    }
     setSceneDataText(nextValue)
     setPendingImport(null)
     clearErrors('sceneData', 'form', 'fields')
 
     try {
       const document = parseSceneImport(nextValue)
+      if (!allowCustomSceneData && document.kind === 'custom') {
+        setErrors(current => ({ ...current, sceneData: CUSTOM_SCENE_DATA_DISABLED_MESSAGE }))
+        return
+      }
       if (!isTemplate && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= sceneDataText
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
@@ -421,6 +441,12 @@ export function useSceneEditorState({
   function handleFormatJson() {
     try {
       const document = parseSceneImport(sceneDataText)
+      if (!allowCustomSceneData && document.kind === 'custom') {
+        setErrors(current => ({ ...current, sceneData: isTemplate || isBuilder
+          ? CUSTOM_SCENE_DATA_DISABLED_MESSAGE
+          : 'Custom Code is disabled for MAGE. This saved custom scene is read-only.' }))
+        return
+      }
       if (!isTemplate && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= prettyPrintEditorSceneData(sceneData)
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })

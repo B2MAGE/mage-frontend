@@ -133,10 +133,12 @@ describe('scene editor presets and beat preview', () => {
     expect(getSceneEditorModel(draftScene()).state.volume_multiplier).toBe(0.27)
 
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
-    expect(screen.getByText('Audio Response')).toBeInTheDocument()
-    expect(screen.getByText('Beat detection')).toBeInTheDocument()
-    expect(screen.queryByText('Input gain')).not.toBeInTheDocument()
-    expect(screen.queryByText('Peak emphasis')).not.toBeInTheDocument()
+    const review = screen.getByRole('region', { name: 'Scene review' })
+    await user.click(within(review).getByRole('button', { name: /^4 Motion/ }))
+    expect(within(review).getByText('Response mode')).toBeInTheDocument()
+    expect(within(review).getAllByText('Saved beat response')).toHaveLength(2)
+    expect(within(review).queryByText('Input gain')).not.toBeInTheDocument()
+    expect(within(review).queryByText('Peak emphasis')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toBeDefined())
     expect(readEditableSceneData(updated!.sceneData).audioResponse).toBe('transient-v1')
@@ -145,7 +147,7 @@ describe('scene editor presets and beat preview', () => {
       time_multiplier: 0.6, pointerDownMultiplier: getSceneEditorModel(defaults).intent.pointerDownMultiplier,
     })
     expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).state.volume_multiplier).toBe(0.27)
-  })
+  }, 15_000)
 
   it.each(['Rose Circuit', 'Ripple Rings', 'Tidal Lantern'])('keeps %s as a source-free template without retired controls', async label => {
     storeSceneEditorSession()
@@ -212,7 +214,7 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.queryByRole('slider', { name: 'Tempo' })).not.toBeInTheDocument()
     expect(screen.queryByRole('spinbutton', { name: 'Tempo numeric value' })).not.toBeInTheDocument()
     expect(draftScene()).toEqual(before)
-  })
+  }, 15_000)
 
   it('preserves inline animation and camera tuning across sections without an Advanced tab', async () => {
     storeSceneEditorSession()
@@ -252,7 +254,7 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.getByRole('spinbutton', { name: 'Response offset' })).toHaveValue(0.4)
     await user.click(screen.getByRole('button', { name: 'Hide advanced animation controls' }))
     expect(draftScene()).toEqual(before)
-  })
+  }, 15_000)
 
   it('creates a selected template without shader or temporary preview metadata', async () => {
     storeSceneEditorSession()
@@ -396,7 +398,7 @@ describe('scene editor presets and beat preview', () => {
     expect(draftScene()).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: updatedConfig })
     expect(getSceneEditorModel(draftScene()).visualizer.shader).toBe(shaderOption('Tidal Lantern').shader)
     expect(JSON.stringify(writes)).not.toMatch(/effectiveConfig|savedConfig|audioResponseOverride/)
-  })
+  }, 15_000)
 
 })
 

@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -44,13 +44,24 @@ import { createBuilderScene } from "./builderEditor";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
-import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
+import type { EditorSectionId, SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
   getActivePassOrder,
   readEditableSceneData,
   validateThumbnailFile,
 } from "./utils";
+
+type ReviewSectionId = Exclude<EditorSectionId, "confirm">;
+
+const REVIEW_SECTION_IDS: readonly ReviewSectionId[] = [
+  "details",
+  "scene",
+  "camera",
+  "motion",
+  "effects",
+  "pass-order",
+];
 
 function formatFixed(value: number, fractionDigits = 2) {
   if (fractionDigits === 0) return value.toFixed(0);
@@ -63,6 +74,38 @@ function formatDegrees(value: number) {
 
 function toCameraDegreeValue(radians: number) {
   return Number(toDegrees(radians).toFixed(2));
+}
+
+const BUILDER_SHAPE_LABELS = {
+  box: "Box",
+  cylinder: "Cylinder",
+  sphere: "Sphere",
+  torus: "Torus",
+} as const;
+
+function formatBuilderOperation(object: BuilderObject) {
+  const operation = object.operation;
+  if (operation.type === "box") return `Width ${formatFixed(operation.width)} · Height ${formatFixed(operation.height)} · Depth ${formatFixed(operation.depth)}`;
+  if (operation.type === "cylinder") return `Radius ${formatFixed(operation.radius)} · Height ${formatFixed(operation.height)}`;
+  if (operation.type === "torus") return `Radius ${formatFixed(operation.radius)} · Tube ${formatFixed(operation.tube)}`;
+  return `Radius ${formatFixed(operation.radius)}`;
+}
+
+function formatBuilderModifier(modifier: BuilderObject["modifiers"][number]) {
+  if (modifier.type === "expand") return `Expand ${formatFixed(modifier.amount)}`;
+  if (modifier.type === "shell") return `Shell ${formatFixed(modifier.thickness)}`;
+  return `Twist ${modifier.axis.toUpperCase()} ${formatFixed(modifier.amount)}`;
+}
+
+function formatBuilderArrangement(arrangement: BuilderObject["arrangements"][number]) {
+  if (arrangement.type === "linear") return `Line ×${arrangement.count} · ${arrangement.axis.toUpperCase()} · Spacing ${formatFixed(arrangement.spacing)}`;
+  return `Ring ×${arrangement.count} · ${arrangement.axis.toUpperCase()} · Radius ${formatFixed(arrangement.radius)}`;
+}
+
+function formatBuilderMotion(object: BuilderObject) {
+  return object.motion.type === "spin"
+    ? `Spin ${object.motion.axis.toUpperCase()} · Speed ${formatFixed(object.motion.speed)}`
+    : "None";
 }
 
 type SceneEditorShellProps = {
@@ -90,6 +133,8 @@ export function SceneEditorShell({
   const [passOrderAnnouncement, setPassOrderAnnouncement] = useState("");
   const [draggedPassId, setDraggedPassId] = useState<ScenePassId | null>(null);
   const [dragOverPassId, setDragOverPassId] = useState<ScenePassId | null>(null);
+  const [openReviewSection, setOpenReviewSection] = useState<ReviewSectionId | null>(null);
+  const [isBuilderObjectReviewOpen, setIsBuilderObjectReviewOpen] = useState(false);
   const previewHideButtonRef = useRef<HTMLButtonElement | null>(null);
   const previewRestoreButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isTemplateSourceVisible, setIsTemplateSourceVisible] = useState(() => {
@@ -103,9 +148,11 @@ export function SceneEditorShell({
   const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
   const [customTimingDrafts, setCustomTimingDrafts] = useState<Partial<Record<AudioResponseTarget, { attack: number; release: number }>>>({});
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
+  const reviewFocusTargetRef = useRef<string | null>(null);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
   const [pendingBuilderTemplateId, setPendingBuilderTemplateId] = useState<TemplateId | null>(null);
   const [selectedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
+  const customCodeAvailability = useSceneAvailability('custom');
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -202,6 +249,7 @@ export function SceneEditorShell({
     confirmTemplateImport,
     cancelTemplateImport,
   } = useSceneEditorState({
+    allowCustomSceneData: customCodeAvailability.allowed,
     authenticatedFetch,
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
@@ -216,7 +264,6 @@ export function SceneEditorShell({
   }, [builderDocument, selectedBuilderObjectId]);
   const availabilityTarget = useMemo(() => getSceneAvailabilityTarget(mode.type === 'edit' ? mode.sceneId : undefined, sceneData), [mode, sceneData]);
   const availability = useSceneAvailability(availabilityTarget);
-  const customCodeAvailability = useSceneAvailability('custom');
   useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
   useEffect(() => { if (pendingBuilderTemplateId) builderTemplateCancelRef.current?.focus(); }, [pendingBuilderTemplateId]);
   useEffect(() => { if (pendingTemplateImport) importCancelRef.current?.focus(); }, [pendingTemplateImport]);
@@ -244,6 +291,11 @@ export function SceneEditorShell({
   }, [builderDocument, errors.fields, handleSectionJump, isBuilder, isTemplate]);
   useEffect(() => {
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
+    const focusTargetId = reviewFocusTargetRef.current;
+    if (focusTargetId) {
+      document.getElementById(focusTargetId)?.focus();
+      reviewFocusTargetRef.current = null;
+    }
   }, [sectionMenuValue]);
   const {
     previewSceneData,
@@ -274,11 +326,25 @@ export function SceneEditorShell({
 
     return nextIssues;
   }, [errors.fields, isBuilder, sectionIssuesById, templateFieldErrors]);
+  const reviewIssueEntries = REVIEW_SECTION_IDS.flatMap((sectionId) => {
+    const message = studioSectionIssuesById[sectionId];
+    return message ? [[sectionId, message] as const] : [];
+  });
+  const confirmDataIssue = studioSectionIssuesById.confirm;
+  const reviewIssueCount = reviewIssueEntries.length + Number(Boolean(confirmDataIssue));
+  const firstInvalidReviewSection = reviewIssueEntries[0]?.[0] ?? null;
+  const firstReviewIssueMessage = reviewIssueEntries[0]?.[1] ?? confirmDataIssue ?? null;
+  useEffect(() => {
+    if (sectionMenuValue !== "confirm") return;
+    if (firstInvalidReviewSection) setOpenReviewSection(firstInvalidReviewSection);
+    if (confirmDataIssue) setIsConfirmJsonOpen(true);
+  }, [confirmDataIssue, firstInvalidReviewSection, sectionMenuValue, setIsConfirmJsonOpen]);
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
   const activePassOrder = getActivePassOrder(sceneModel.fx.passOrder, sceneModel.fx);
   const movablePassOrder = activePassOrder.filter((passId) => passId !== "outputPass");
+  const enabledOptionalEffects = activePassOrder.filter((passId) => passId !== "outputPass");
   function passAtPointer(event: ReactPointerEvent<HTMLElement>) {
     const passId = document.elementFromPoint(event.clientX, event.clientY)
       ?.closest<HTMLElement>("[data-pass-id]")?.dataset.passId as ScenePassId | undefined;
@@ -495,35 +561,44 @@ export function SceneEditorShell({
   }
 
   function renderRawSceneDataEditor() {
+    const isRawCustomSceneReadOnly = !customCodeAvailability.allowed && !isTemplate && !isBuilder;
+    const editorDescription = isRawCustomSceneReadOnly
+      ? "Review or download the saved scene source."
+      : "Edit, format, or download the complete scene document.";
+    const editorStatus = isRawCustomSceneReadOnly
+      ? "Editing is locked while Custom Code is disabled. Switch to Builder to replace this scene."
+      : isTemplate || isBuilder
+        ? `${isBuilder ? "Builder" : "Template"} JSON only updates Live Preview after it is valid.${customCodeAvailability.allowed ? "" : " Custom scene imports are unavailable while Custom Code is disabled."}`
+        : "Valid JSON updates Live Preview automatically.";
     return (
-      <div className="field-group">
-        <div className="scene-advanced-header">
-          <div>
+      <div className="field-group scene-raw-json-editor">
+        <div className="scene-raw-json-editor__header">
+          <div className="scene-raw-json-editor__copy">
             <FieldGroupLabel
-              description="Inspect and edit the raw scene JSON directly."
+              description={editorDescription}
               htmlFor="sceneData"
               label="Scene Data JSON"
             />
-            <p className="field-hint">
-              {isTemplate || isBuilder ? `Raw scene data stays available here. While the JSON is invalid, the preview keeps the last valid ${isBuilder ? 'Builder scene' : 'template'}.`
-                : 'Your custom code and settings stay available here for editing or download. Valid changes are previewed in the separate player when playback is available.'}
-            </p>
           </div>
-          <button
-            className="scene-secondary-button"
-            onClick={handleFormatJson}
-            type="button"
-          >
-            Format JSON
-          </button>
-          <button className="scene-secondary-button" type="button" onClick={() => {
-            const url = URL.createObjectURL(new Blob([sceneDataText], { type: 'application/json' }));
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = mode.type === 'edit' ? `scene-${mode.sceneId}.json` : 'scene-draft.json';
-            link.click();
-            URL.revokeObjectURL(url);
-          }}>Download scene JSON</button>
+          <div className="scene-raw-json-editor__actions">
+            <button
+              aria-label="Format JSON"
+              className="scene-secondary-button scene-raw-json-editor__action"
+              disabled={isRawCustomSceneReadOnly}
+              onClick={handleFormatJson}
+              type="button"
+            >
+              Format
+            </button>
+            <button aria-label="Download scene JSON" className="scene-secondary-button scene-raw-json-editor__action" type="button" onClick={() => {
+              const url = URL.createObjectURL(new Blob([sceneDataText], { type: 'application/json' }));
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = mode.type === 'edit' ? `scene-${mode.sceneId}.json` : 'scene-draft.json';
+              link.click();
+              URL.revokeObjectURL(url);
+            }}>Download</button>
+          </div>
         </div>
         <textarea
           aria-describedby={
@@ -534,6 +609,7 @@ export function SceneEditorShell({
           id="sceneData"
           name="sceneData"
           onChange={(event) => handleRawSceneDataChange(event.currentTarget.value)}
+          readOnly={isRawCustomSceneReadOnly}
           required
           rows={16}
           value={sceneDataText}
@@ -554,9 +630,9 @@ export function SceneEditorShell({
             {errors.sceneData}
           </p>
         ) : (
-          <p className="field-hint" id="sceneData-hint">
-            Structured controls above keep this JSON in sync with the current
-            scene.
+          <p className="scene-raw-json-editor__status" id="sceneData-hint">
+            <span aria-hidden="true" className="scene-raw-json-editor__status-dot" />
+            <span>{editorStatus}</span>
           </p>
         )}
       </div>
@@ -582,6 +658,17 @@ export function SceneEditorShell({
         ))}
       </span>
     );
+  }
+
+  function editReviewSection(sectionId: ReviewSectionId, focusId: string) {
+    reviewFocusTargetRef.current = focusId;
+    handleSectionJump(sectionId);
+  }
+
+  function toggleReviewSection(sectionId: ReviewSectionId) {
+    setOpenReviewSection((currentSectionId) => (
+      currentSectionId === sectionId ? null : sectionId
+    ));
   }
 
   const { handleSubmit } = useSceneEditorSubmission({
@@ -647,6 +734,50 @@ export function SceneEditorShell({
   const templateSelectValue = isBuilder
     ? BUILDER_SHADER_TEMPLATE_VALUE
     : templateDocument?.templateId ?? matchingCustomTemplate?.templateId ?? "custom";
+  const selectedTemplateLabel = templateCatalog.find(
+    (template) => template.templateId === templateDocument?.templateId,
+  )?.label ?? "Template";
+  const sceneCreationMode = isBuilder ? "Builder" : isTemplate ? "Template" : "Custom";
+  const sceneSource = isBuilder
+    ? "Builder Shader"
+    : isTemplate
+      ? selectedTemplateLabel
+      : matchingCustomTemplate?.label ?? "Custom Shader";
+  const detailsReviewSummary = [
+    name.trim() || "Name missing",
+    thumbnailPreviewUrl ? "Thumbnail captured" : "No thumbnail",
+    selectedTags.length ? `${selectedTags.length} tag${selectedTags.length === 1 ? "" : "s"}` : "No tags",
+  ].join(" · ");
+  const sceneReviewSummary = [
+    sceneCreationMode,
+    SKYBOX_OPTIONS.find((option) => option.value === sceneModel.visualizer.skyboxPreset)?.label
+      ?? String(sceneModel.visualizer.skyboxPreset),
+    `Scale ${formatFixed(sceneModel.visualizer.scale, 0)}`,
+    ...(isBuilder ? [`${builderDocument?.objects.length ?? 0} object${builderDocument?.objects.length === 1 ? "" : "s"}`] : []),
+  ].join(" · ");
+  const cameraReviewSummary = [
+    `Position ${formatFixed(sceneModel.controls.position0.x)}, ${formatFixed(sceneModel.controls.position0.y)}, ${formatFixed(sceneModel.controls.position0.z)}`,
+    `FOV ${formatFixed(sceneModel.intent.fov, 0)}`,
+    `Orbit ${sceneModel.intent.autoRotate ? "on" : "off"}`,
+  ].join(" · ");
+  const responseModeLabel = usesMappedAudio
+    ? "Version 2 — Selective"
+    : editorAudioResponseMode === "transient-v1"
+      ? "Saved beat response"
+      : "Version 1 — Original";
+  const motionReviewSummary = `Animation ${formatFixed(sceneModel.intent.time_multiplier)}× · ${responseModeLabel}`;
+  const outputEnabled = activePassOrder.includes("outputPass");
+  const effectsReviewSummary = [
+    enabledOptionalEffects.length
+      ? `${enabledOptionalEffects.length} optional effect${enabledOptionalEffects.length === 1 ? "" : "s"}`
+      : "No optional effects",
+    `Output ${outputEnabled ? "on" : "off"}`,
+    ...(outputEnabled ? [selectedToneMapping.label, `Exposure ${formatFixed(sceneModel.fx.toneMapping.exposure)}`] : []),
+  ].join(" · ");
+  const passOrderReviewSummary = activePassOrder.length
+    ? `Active output: ${activePassOrder.map((passId) => PASS_LABELS[passId]).join(" → ")}`
+    : "No active passes";
+  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0;
   const shaderEditor = (
     <div className="field-group">
       <FieldGroupLabel
@@ -1616,18 +1747,45 @@ export function SceneEditorShell({
                 className="scene-editor-section--confirm"
                 description={
                   isEditMode
-                    ? "Review the scene setup before updating it and expand the raw JSON only if you need a final low-level check."
-                    : "Review every saved value, then create the scene. You can still jump back to any section."
+                    ? "Review the saved settings that affect the scene, then update it. Preview-only controls and disabled effect settings are left out to keep this readable."
+                    : "Review the saved settings that affect the scene, then create it. Preview-only controls and disabled effect settings are left out to keep this readable."
                 }
                 title="Confirm"
                 stepNumber={currentSectionIndex + 1}
               >
                 <div className="scene-editor-stack">
-                  <div className="scene-confirm-summary">
-                    <ConfirmSummarySection title="Details">
+                  <div
+                    aria-live="polite"
+                    className={`scene-confirm-validation${reviewIssueCount ? " scene-confirm-validation--issue" : " scene-confirm-validation--ready"}`}
+                    role="status"
+                  >
+                    <span aria-hidden="true" className="scene-confirm-validation__icon">
+                      {reviewIssueCount ? "!" : "✓"}
+                    </span>
+                    <span className="scene-confirm-validation__copy">
+                      <strong>{reviewIssueCount ? `${firstInvalidReviewSection ? editorSections.find((section) => section.id === firstInvalidReviewSection)?.title : "Review"} needs attention` : "Ready to save"}</strong>
+                      <span>{reviewIssueCount ? firstReviewIssueMessage : "All required information is complete."}</span>
+                    </span>
+                    <span className="scene-confirm-validation__count">
+                      {reviewIssueCount} {reviewIssueCount === 1 ? "issue" : "issues"}
+                    </span>
+                  </div>
+
+                  <section aria-label="Scene review" className="scene-confirm-summary">
+                    <ConfirmSummarySection
+                      id="details"
+                      isOpen={openReviewSection === "details"}
+                      issue={studioSectionIssuesById.details}
+                      onEdit={() => editReviewSection("details", "name")}
+                      onToggle={() => toggleReviewSection("details")}
+                      stepNumber={1}
+                      summary={detailsReviewSummary}
+                      title="Details"
+                    >
                       <ConfirmSummaryItem
                         label="Scene Name"
                         value={formatOptionalText(name)}
+                        warning={!name.trim()}
                       />
                       <ConfirmSummaryItem
                         label="Description"
@@ -1656,12 +1814,23 @@ export function SceneEditorShell({
                       />
                     </ConfirmSummarySection>
 
-                    <ConfirmSummarySection title="Visual Setup">
+                    <ConfirmSummarySection
+                      id="scene"
+                      isOpen={openReviewSection === "scene"}
+                      issue={studioSectionIssuesById.scene}
+                      onEdit={() => editReviewSection("scene", "template-templateId")}
+                      onToggle={() => toggleReviewSection("scene")}
+                      stepNumber={2}
+                      summary={sceneReviewSummary}
+                      title="Scene"
+                    >
                       <ConfirmSummaryItem
-                        label={isBuilder ? "Builder" : isTemplate ? "Template" : "Shader"}
-                        value={isBuilder ? `${builderDocument?.objects.length ?? 0} object${builderDocument?.objects.length === 1 ? '' : 's'}`
-                          : isTemplate ? listSceneTemplates().find(template => template.templateId === templateDocument?.templateId)?.label ?? "Template"
-                            : matchingCustomTemplate?.label ?? "Custom Shader"}
+                        label="Creation mode"
+                        value={sceneCreationMode}
+                      />
+                      <ConfirmSummaryItem
+                        label="Source"
+                        value={sceneSource}
                       />
                       <ConfirmSummaryItem
                         label="Skybox"
@@ -1676,9 +1845,65 @@ export function SceneEditorShell({
                         label="Scale"
                         value={formatFixed(sceneModel.visualizer.scale, 0)}
                       />
+                      {isBuilder && builderDocument ? (
+                        <div className="scene-confirm-section__item scene-confirm-section__item--objects">
+                          <dt className="scene-confirm-section__term">Builder objects</dt>
+                          <dd className="scene-confirm-section__value scene-confirm-objects__count">
+                            {builderDocument.objects.length} {builderDocument.objects.length === 1 ? "object" : "objects"}
+                          </dd>
+                          <dd className="scene-confirm-objects__content">
+                            <div className="scene-confirm-objects">
+                              <div className="scene-confirm-objects__list">
+                                {builderDocument.objects.map((object) => (
+                                  <div className="scene-confirm-object" key={object.id}>
+                                    <span>
+                                      <strong>{object.name} · {BUILDER_SHAPE_LABELS[object.operation.type]}</strong>
+                                      <small>{object.modifiers.length} modifier{object.modifiers.length === 1 ? "" : "s"} · {object.arrangements.length} arrangement{object.arrangements.length === 1 ? "" : "s"} · {formatBuilderMotion(object)}</small>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <button
+                                aria-controls="confirm-builder-object-details"
+                                aria-expanded={isBuilderObjectReviewOpen}
+                                className="scene-confirm-subtoggle"
+                                onClick={() => setIsBuilderObjectReviewOpen((isOpen) => !isOpen)}
+                                type="button"
+                              >
+                                <span>{isBuilderObjectReviewOpen ? "Hide saved object details" : "Show saved object details"}</span>
+                                <span aria-hidden="true">{isBuilderObjectReviewOpen ? "⌃" : "⌄"}</span>
+                              </button>
+                              <div className="scene-confirm-object-details" hidden={!isBuilderObjectReviewOpen} id="confirm-builder-object-details">
+                                {builderDocument.objects.map((object) => (
+                                  <section key={object.id}>
+                                    <strong>{object.name}</strong>
+                                    <span>Shape: {BUILDER_SHAPE_LABELS[object.operation.type]} · {formatBuilderOperation(object)}</span>
+                                    <span>Position: {formatFixed(object.transform.position.x)}, {formatFixed(object.transform.position.y)}, {formatFixed(object.transform.position.z)}</span>
+                                    <span>Rotation: {formatFixed(object.transform.rotation.x)}, {formatFixed(object.transform.rotation.y)}, {formatFixed(object.transform.rotation.z)} · Scale: {formatFixed(object.transform.scale.x)}, {formatFixed(object.transform.scale.y)}, {formatFixed(object.transform.scale.z)}</span>
+                                    <span>Modifiers: {object.modifiers.length ? object.modifiers.map(formatBuilderModifier).join(" → ") : "None"}</span>
+                                    <span>Arrangements: {object.arrangements.length ? object.arrangements.map(formatBuilderArrangement).join(" → ") : "None"}</span>
+                                    <span>Animation: {formatBuilderMotion(object)}</span>
+                                    <span>Appearance: {object.material.color} · Metalness {formatFixed(object.material.metalness)} · Shininess {formatFixed(object.material.shininess)}</span>
+                                    <span>Audio mappings: {object.bindings.length}</span>
+                                  </section>
+                                ))}
+                              </div>
+                            </div>
+                          </dd>
+                        </div>
+                      ) : null}
                     </ConfirmSummarySection>
 
-                    <ConfirmSummarySection title="Camera">
+                    <ConfirmSummarySection
+                      id="camera"
+                      isOpen={openReviewSection === "camera"}
+                      issue={studioSectionIssuesById.camera}
+                      onEdit={() => editReviewSection("camera", "camera-position-x")}
+                      onToggle={() => toggleReviewSection("camera")}
+                      stepNumber={3}
+                      summary={cameraReviewSummary}
+                      title="Camera"
+                    >
                       <ConfirmSummaryItem
                         label="Position"
                         value={formatVectorSummary(sceneModel.controls.position0)}
@@ -1714,13 +1939,27 @@ export function SceneEditorShell({
                       {sceneModel.intent.autoRotate ? <ConfirmSummaryItem label="Orbit speed" value={formatFixed(sceneModel.intent.autoRotateSpeed)} /> : null}
                     </ConfirmSummarySection>
 
-                    <ConfirmSummarySection title="Motion & Effects">
+                    <ConfirmSummarySection
+                      id="motion"
+                      isOpen={openReviewSection === "motion"}
+                      issue={studioSectionIssuesById.motion}
+                      onEdit={() => editReviewSection("motion", "time-multiplier")}
+                      onToggle={() => toggleReviewSection("motion")}
+                      stepNumber={4}
+                      summary={motionReviewSummary}
+                      title="Motion"
+                    >
                       <ConfirmSummaryItem
                         label="Animation speed"
                         value={formatFixed(sceneModel.intent.time_multiplier)}
                       />
+                      <ConfirmSummaryItem label="Starting animation time" value={formatFixed(sceneModel.state.time)} />
+                      <ConfirmSummaryItem label="Response mode" value={responseModeLabel} />
                       {usesModernAudio ? (
-                        <ConfirmSummaryItem label="Audio Response" value={usesMappedAudio ? "Audio mappings" : "Beat detection"} />
+                        <ConfirmSummaryItem
+                          label="Audio mappings"
+                          value={usesMappedAudio ? `${audioResponseConfig.mappings.length} saved` : "Saved beat response"}
+                        />
                       ) : <>
                       <ConfirmSummaryItem
                         label="Input gain"
@@ -1731,22 +1970,51 @@ export function SceneEditorShell({
                         value={formatFixed(sceneModel.intent.power_factor)}
                       />
                       </>}
-                      <ConfirmSummaryItem label="Starting animation time" value={formatFixed(sceneModel.state.time)} />
                       {!usesModernAudio ? <>
                         <ConfirmSummaryItem label="Resting response" value={formatFixed(sceneModel.intent.base_speed)} />
                         <ConfirmSummaryItem label="Smoothing" value={formatFixed(sceneModel.intent.easing_speed)} />
                         <ConfirmSummaryItem label="Response offset" value={formatFixed(sceneModel.state.volume_multiplier)} />
                       </> : null}
+                    </ConfirmSummarySection>
+
+                    <ConfirmSummarySection
+                      id="effects"
+                      isOpen={openReviewSection === "effects"}
+                      issue={studioSectionIssuesById.effects}
+                      onEdit={() => editReviewSection("effects", "bloom-toggle")}
+                      onToggle={() => toggleReviewSection("effects")}
+                      stepNumber={5}
+                      summary={effectsReviewSummary}
+                      title="Effects"
+                    >
                       <ConfirmSummaryItem
-                        label="Tone Mapping"
-                        value={selectedToneMapping.label}
+                        label="Optional effects"
+                        value={(
+                          <ConfirmSummaryPills
+                            emptyLabel="None enabled"
+                            values={enabledOptionalEffects.map((passId) => PASS_LABELS[passId])}
+                          />
+                        )}
                       />
+                      <ConfirmSummaryItem label="Output Pass" value={outputEnabled ? "On" : "Off"} />
+                      {outputEnabled ? <>
+                        <ConfirmSummaryItem label="Tone Mapping" value={selectedToneMapping.label} />
+                        <ConfirmSummaryItem label="Exposure" value={formatFixed(sceneModel.fx.toneMapping.exposure)} />
+                      </> : null}
+                    </ConfirmSummarySection>
+
+                    <ConfirmSummarySection
+                      id="pass-order"
+                      isOpen={openReviewSection === "pass-order"}
+                      issue={studioSectionIssuesById["pass-order"]}
+                      onEdit={() => editReviewSection("pass-order", "scene-pass-order")}
+                      onToggle={() => toggleReviewSection("pass-order")}
+                      stepNumber={6}
+                      summary={passOrderReviewSummary}
+                      title="Pass Order"
+                    >
                       <ConfirmSummaryItem
-                        label="Exposure"
-                        value={formatFixed(sceneModel.fx.toneMapping.exposure)}
-                      />
-                      <ConfirmSummaryItem
-                        label="Active Pass Order"
+                        label="Active pass order"
                         value={
                           <ConfirmSummaryPills
                             emptyLabel="No active effect passes"
@@ -1755,9 +2023,10 @@ export function SceneEditorShell({
                         }
                       />
                     </ConfirmSummarySection>
-                  </div>
+                  </section>
 
                   <CollapsibleEditorGroup
+                    className="scene-editor-collapsible--raw-json"
                     hideLabel="Hide Raw JSON"
                     id="confirm-raw-json"
                     isOpen={isConfirmJsonOpen}
@@ -1770,7 +2039,26 @@ export function SceneEditorShell({
                   </CollapsibleEditorGroup>
                 </div>
                 <div className="scene-editor-confirm-actions">
-                  <button aria-busy={isSubmitting} className="scene-editor-confirm-submit" disabled={isSubmitting} type="submit">
+                  <p
+                    className={reviewIssueCount ? "scene-editor-confirm-help scene-editor-confirm-help--issue" : "scene-editor-confirm-help"}
+                    id="confirm-submit-help"
+                  >
+                    {reviewIssueCount ? <AppIcon aria-hidden="true" name="circle-alert" /> : null}
+                    <span>
+                      {reviewIssueCount
+                        ? `Fix ${reviewIssueCount === 1 ? "the issue above" : `the ${reviewIssueCount} issues above`} before ${isEditMode ? "updating" : "creating"} this scene.`
+                        : tagsLoading
+                          ? "Wait for scene details to finish loading."
+                          : `Ready to ${isEditMode ? "update" : "create"} this scene.`}
+                    </span>
+                  </p>
+                  <button
+                    aria-busy={isSubmitting}
+                    aria-describedby="confirm-submit-help"
+                    className="scene-editor-confirm-submit"
+                    disabled={reviewSubmitDisabled}
+                    type="submit"
+                  >
                     <PendingButtonLabel
                       pending={isSubmitting}
                       pendingLabel={pendingTagAttachment ? "Retrying tag attachment..." : isEditMode ? "Updating scene..." : "Creating scene..."}
