@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useId, useState } from 'react'
 import type {
   AudioResponseConfig,
   AudioResponseMapping,
@@ -31,11 +31,12 @@ export type MusicResponseControlsProps = {
   onConfigChange: (config: AudioResponseConfig) => void
   onReset: () => void
   canReset: boolean
+  isAdvancedOpen?: boolean
+  onAdvancedToggle?: () => void
   classicSettings: ClassicMusicResponseSettings
   onClassicSettingChange: (key: keyof ClassicMusicResponseSettings, value: number) => void
   customTimingDrafts?: MusicResponseTimingDrafts
   onCustomTimingDraftsChange?: (drafts: MusicResponseTimingDrafts) => void
-  previewTools?: ReactNode
 }
 
 const TARGET_LABELS: Record<AudioResponseTarget, string> = {
@@ -59,12 +60,14 @@ function clamp(value: number, min: number, max: number) {
 export function MusicResponseControls({
   mode, config, supportedTargets, onModeChange, onConfigChange, onReset, canReset,
   classicSettings, onClassicSettingChange,
-  customTimingDrafts, onCustomTimingDraftsChange, previewTools, idPrefix,
+  customTimingDrafts, onCustomTimingDraftsChange, idPrefix,
+  isAdvancedOpen: controlledAdvancedOpen, onAdvancedToggle,
 }: MusicResponseControlsProps) {
   const generatedId = useId()
   const id = idPrefix ?? generatedId
   const errors = useSceneEditorFieldErrors()
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
+  const advancedOpen = controlledAdvancedOpen ?? isAdvancedOpen
   const [preferredTarget, setPreferredTarget] = useState<AudioResponseTarget>('size')
   const [internalCustomTiming, setInternalCustomTiming] = useState<MusicResponseTimingDrafts>({})
   const invalidMappingPath = Object.values(errors).find(issue => issue.path.startsWith('settings.audioResponseConfig.mappings'))?.path
@@ -128,15 +131,23 @@ export function MusicResponseControls({
     onCustomTimingDraftsChange?.(drafts)
   }
 
+  function toggleAdvanced() {
+    if (onAdvancedToggle) onAdvancedToggle()
+    else setIsAdvancedOpen(open => !open)
+  }
+
   return (
     <section className="music-response-controls" aria-labelledby={`${id}-title`}>
-      <h3 className="scene-effects-category__title" id={`${id}-title`}>Music response</h3>
+      <div className="motion-controls__group-heading">
+        <h3 id={`${id}-title`}>Music response</h3>
+      </div>
+      <div className="music-response-controls__surface motion-controls__surface">
       <SelectField
         fieldClassName="scene-field--plain"
         id={`${id}-mode`} label="Response mode" value={mode}
         description={mode === 'transient-v1'
           ? 'This scene keeps its saved beat response until you choose a version.'
-          : undefined}
+          : 'Choose which music-response system the scene uses.'}
         options={[
           ...(mode === 'transient-v1' ? [{ value: 'transient-v1', label: 'Saved beat response', disabled: true }] : []),
           { value: 'legacy', label: 'Version 1 — Original' },
@@ -174,9 +185,9 @@ export function MusicResponseControls({
             />
           </div>
           <CollapsibleEditorGroup
-            id={`${id}-advanced`} isOpen={isAdvancedOpen || Boolean(errors[`${id}-offset`])}
+            id={`${id}-advanced`} isOpen={advancedOpen || Boolean(errors[`${id}-offset`])}
             showLabel="Show advanced music controls" hideLabel="Hide advanced music controls"
-            onToggle={() => setIsAdvancedOpen((open) => !open)}
+            onToggle={toggleAdvanced}
           >
             <NumberField
               id={`${id}-offset`} label="Response offset"
@@ -267,13 +278,13 @@ export function MusicResponseControls({
           </div>
         </>
       )}
-      {previewTools}
       <div className="music-response-controls__reset">
         <button
           className="scene-secondary-button" type="button" disabled={!canReset} aria-describedby={`${id}-reset-description`}
           onClick={() => { updateCustomTimings({}); onReset() }}
         >Reset music settings</button>
         <p id={`${id}-reset-description`}>Restore the music settings this scene started with.</p>
+      </div>
       </div>
     </section>
   )
