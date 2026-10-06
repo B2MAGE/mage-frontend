@@ -33,12 +33,14 @@ export function FieldGroupLabel({
 
 export function CollapsibleEditorGroup({
   children,
+  className,
   hideLabel,
   id,
   isOpen,
   onToggle,
   showLabel,
 }: PropsWithChildren<{
+  className?: string
   hideLabel?: string
   id: string
   isOpen: boolean
@@ -52,7 +54,7 @@ export function CollapsibleEditorGroup({
   }
   const showContent = isOpen || errorControlIds[id]?.some(controlId => Boolean(errors[controlId]))
   return (
-    <section className="scene-editor-collapsible">
+    <section className={`scene-editor-collapsible${className ? ` ${className}` : ''}`}>
       <button
         aria-controls={id}
         aria-expanded={Boolean(showContent)}
@@ -74,29 +76,78 @@ export function CollapsibleEditorGroup({
 
 export function ConfirmSummarySection({
   children,
+  id,
+  isOpen,
+  issue,
+  onEdit,
+  onToggle,
+  stepNumber,
+  summary,
   title,
 }: PropsWithChildren<{
+  id: string
+  isOpen: boolean
+  issue?: string | null
+  onEdit: () => void
+  onToggle: () => void
+  stepNumber: number
+  summary: string
   title: string
 }>) {
+  const bodyId = `confirm-review-${id}`
   return (
-    <section className="scene-confirm-section">
-      <h3 className="scene-confirm-section__title">{title}</h3>
-      <dl className="scene-confirm-section__list">{children}</dl>
+    <section
+      className="scene-confirm-section"
+      data-issue={Boolean(issue)}
+      data-open={isOpen}
+    >
+      <button
+        aria-controls={bodyId}
+        aria-expanded={isOpen}
+        className="scene-confirm-section__head"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="scene-confirm-section__step">{stepNumber}</span>
+        <span className="scene-confirm-section__copy">
+          <strong>{title}</strong>
+          <span>{summary}</span>
+        </span>
+        <span aria-hidden="true" className="scene-confirm-section__chevron" />
+      </button>
+      <div className="scene-confirm-section__body" hidden={!isOpen} id={bodyId}>
+        {isOpen ? <>
+          <div className="scene-confirm-section__toolbar">
+            <button className="scene-confirm-section__edit" onClick={onEdit} type="button">
+              Edit {title}
+            </button>
+          </div>
+          {issue ? <p className="scene-confirm-section__issue" role="status">{issue}</p> : null}
+          <dl className="scene-confirm-section__list">{children}</dl>
+        </> : null}
+      </div>
     </section>
   )
 }
 
 export function ConfirmSummaryItem({
   label,
+  note,
   value,
+  warning = false,
 }: {
   label: string
+  note?: string
   value: ReactNode
+  warning?: boolean
 }) {
   return (
     <div className="scene-confirm-section__item">
       <dt className="scene-confirm-section__term">{label}</dt>
-      <dd className="scene-confirm-section__value">{value}</dd>
+      <dd className={`scene-confirm-section__value${warning ? ' scene-confirm-section__value--warning' : ''}`}>
+        {value}
+        {note ? <span className="scene-confirm-section__note">{note}</span> : null}
+      </dd>
     </div>
   )
 }

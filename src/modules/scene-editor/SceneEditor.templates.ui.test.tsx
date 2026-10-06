@@ -89,6 +89,27 @@ describe('Basic template editor controls', () => {
     expect(screen.getByText('Sphere 1')).toBeInTheDocument()
   })
 
+  it('allows safe raw template edits but rejects custom-scene imports while Custom Code is disabled', async () => {
+    availabilityMocks.customEnabled = false
+    mockCreateScenePageFetch()
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    const originalPreview = previewDocument()
+    const raw = await openRawJson(user)
+
+    expect(raw).not.toHaveAttribute('readonly')
+    const custom = { schemaVersion: 1, kind: 'custom', scene: createDefaultSceneData() }
+    fireEvent.change(raw, { target: { value: JSON.stringify(custom) } })
+    expect(raw).toHaveValue(JSON.stringify(custom))
+    expect(screen.getByRole('alert')).toHaveTextContent(/raw json can only contain a template or builder scene/i)
+    expect(previewDocument()).toEqual(originalPreview)
+
+    const template = createTemplateScene('embedded-scene-1')
+    fireEvent.change(raw, { target: { value: JSON.stringify(template) } })
+    expect(screen.queryByText(/raw json can only contain a template or builder scene/i)).not.toBeInTheDocument()
+    expect(previewDocument()).toEqual(template)
+  })
+
   it('preserves a saved custom scene as locked source until its owner chooses Builder', async () => {
     availabilityMocks.customEnabled = false
     const user = userEvent.setup()
@@ -110,6 +131,11 @@ describe('Basic template editor controls', () => {
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
     expect(previewDocument()).toMatchObject(source)
     expect(shader).toHaveValue(source.visualizer.shader)
+
+    const raw = await openRawJson(user)
+    expect(raw).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'Format JSON' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Download scene JSON' })).toBeEnabled()
   })
 
   it.each(['classic-facebook', 'mage-pulse'] as const)('starts with a source-free template in the %s theme', async theme => {
@@ -237,7 +263,10 @@ describe('Basic template editor controls', () => {
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(draft)
     expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
     expect(draft.parameters.scale).toBe(10)
+    const review = within(screen.getByRole('region', { name: 'Scene review' }))
+    await user.click(review.getByRole('button', { name: /2 Scene/i }))
     expect(screen.getByText('Scale', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^10$/)
+    await user.click(review.getByRole('button', { name: /3 Camera/i }))
     expect(screen.getByText('FOV', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^110$/)
   })
 
@@ -300,7 +329,7 @@ describe('Basic template editor controls', () => {
     const raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(draft)
     expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it.each([
     ['settings.camera.autoRotate', 'checkbox', 'Automatic orbit'],

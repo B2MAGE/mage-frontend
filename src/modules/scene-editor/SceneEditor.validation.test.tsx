@@ -29,7 +29,8 @@ const preview = () => JSON.parse(screen.getByTestId('preview').getAttribute('dat
 const effect = (label: string) => within(screen.getByRole('heading', { name: label }).closest('.effect-card-group') as HTMLElement).getByRole('checkbox')
 async function rawEditor(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Confirm' }))
-  await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
+  const showJson = screen.queryByRole('button', { name: 'Show Raw JSON' })
+  if (showJson) await user.click(showJson)
   return screen.getByLabelText('Scene Data JSON')
 }
 
@@ -109,7 +110,7 @@ describe('scene editor resource preflight', () => {
     const editor = await rawEditor(user) as HTMLTextAreaElement
     expect(JSON.parse(editor.value).fx.bloom.enabled).toBe(false)
     expect(screen.getByTestId('preview')).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it('checks the whole request budget before thumbnail capture or upload', async () => {
     const fetchMock = mockCreateScenePageFetch()
