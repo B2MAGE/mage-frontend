@@ -515,7 +515,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
   html[data-theme] .scene-editor-page .scene-editor-thumbnail { grid-template-columns: 1fr; }
   html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: 1fr; }
 }
-@media (max-width: 1360px) and (min-width: 961px) {
+@media (max-width: 1250px) and (min-width: 901px) {
     html[data-theme] .scene-editor-page .scene-editor-layout { grid-template-columns: 68px minmax(0,1fr) minmax(340px,36vw); }
     html[data-theme] .scene-editor-page .scene-editor-stepper-rail { padding: 14px 8px; }
     html[data-theme] .scene-editor-page .scene-editor-stepper-rail__label, html[data-theme] .scene-editor-page .scene-editor-stepper__label, html[data-theme] .scene-editor-page .scene-editor-stepper__marker { display: none; }
@@ -524,7 +524,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
     html[data-theme] .scene-editor-page .scene-editor-main { padding-inline: 24px; }
     html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta:not(.mage-player__control-meta--single) { display: none; }
 }
-@media (max-width: 960px) {
+@media (max-width: 900px) {
   html[data-theme] .scene-editor-page {
     width: min(calc(100% - 32px), 900px);
     padding-top: 14px
@@ -1319,4 +1319,295 @@ html[data-theme] .scene-editor-page .builder-color-control > input.builder-color
   .builder-inspector-section .builder-composition-control__add { grid-template-columns: 1fr; }
   html[data-theme] .scene-editor-page .builder-object-list { grid-template-columns: 1fr; }
   .builder-workspace__header { align-items: flex-start; flex-direction: column; }
+}
+
+/* CS-01: responsive Scene Studio frame. */
+html[data-theme] .scene-editor-page .scene-editor-form { position: relative; }
+
+html[data-theme] .scene-editor-page .scene-editor-layout {
+  grid-template-columns: 180px minmax(500px, 1fr) minmax(410px, .92fr);
+  border-radius: 14px;
+  transition: grid-template-columns 260ms ease;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-layout--preview-hidden {
+  grid-template-columns: 180px minmax(500px, 1fr) minmax(0, 0fr);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-layout--preview-hidden .scene-editor-preview {
+  opacity: 0;
+  transform: translateX(32px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.scene-editor-stepper__status,
+.scene-editor-preview__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-main {
+  padding: 24px 22px 32px;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__header {
+  position: relative;
+  padding: 0 13px;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview {
+  opacity: 1;
+  transform: translateX(0);
+  visibility: visible;
+  transition: opacity 200ms ease, transform 260ms ease, visibility 0s linear;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-layout--preview-hidden .scene-editor-preview {
+  transition: opacity 180ms ease, transform 260ms ease, visibility 0s linear 260ms;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__title,
+html[data-theme] .scene-editor-page .scene-editor-preview__actions {
+  display: flex;
+  align-items: center;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__title { gap: 8px; }
+html[data-theme] .scene-editor-page .scene-editor-preview__actions { gap: 5px; }
+html[data-theme] .scene-editor-page .scene-editor-preview__mobile-chevron { display: none; }
+
+html[data-theme] .scene-editor-page .scene-editor-preview__live-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: #e5b94f;
+  box-shadow: 0 0 0 3px rgba(229, 185, 79, .08);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__live-dot[data-status="playing"] {
+  background: var(--studio-success);
+  box-shadow: 0 0 0 3px rgba(103, 215, 161, .08);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__live-dot[data-status="unavailable"] {
+  background: var(--studio-error);
+  box-shadow: 0 0 0 3px rgba(239, 104, 123, .08);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--studio-border);
+  border-radius: 7px;
+  background: var(--studio-field);
+  color: var(--studio-muted);
+  cursor: pointer;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__icon-button:not(:disabled):hover {
+  border-color: var(--studio-border-strong);
+  color: var(--studio-text);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview__icon-button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview-restore {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 0;
+  display: flex;
+  width: 29px;
+  min-height: 92px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 0;
+  transform: translateY(-50%);
+  border: 1px solid var(--studio-border);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  background: var(--studio-control);
+  color: var(--studio-muted);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  writing-mode: vertical-rl;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-preview-restore[hidden] { display: none; }
+
+html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
+  color: var(--studio-text);
+}
+
+@media (max-width: 1250px) and (min-width: 901px) {
+  html[data-theme] .scene-editor-page .scene-editor-layout {
+    grid-template-columns: 68px minmax(0, 1fr) minmax(340px, 36vw);
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-layout--preview-hidden {
+    grid-template-columns: 68px minmax(0, 1fr) minmax(0, 0vw);
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-theme] .scene-editor-page {
+    width: min(calc(100% - 24px), 900px);
+    padding-top: 18px;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-layout,
+  html[data-theme] .scene-editor-page .scene-editor-layout--preview-hidden {
+    display: flex;
+    flex-direction: column;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-stepper-rail {
+    order: 1;
+    flex: 0 0 54px;
+    min-height: 54px;
+    padding: 7px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--studio-border);
+    scrollbar-width: none;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-stepper-rail__label { display: none; }
+
+  html[data-theme] .scene-editor-page .scene-editor-stepper__list {
+    width: max-content;
+    min-width: 100%;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-stepper__button {
+    width: auto;
+    grid-template-columns: 23px auto;
+    padding: 6px 8px;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-stepper__marker { display: none; }
+
+  html[data-theme] .scene-editor-page .scene-editor-layout--preview-hidden .scene-editor-preview,
+  html[data-theme] .scene-editor-page .scene-editor-preview {
+    order: 2;
+    display: flex;
+    width: 100%;
+    height: auto;
+    max-height: 60%;
+    flex: 0 0 auto;
+    border-left: 0;
+    border-bottom: 1px solid var(--studio-border-strong);
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+    transition: max-height 240ms ease, border-color 240ms ease;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-preview.is-collapsed {
+    max-height: 42px;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-preview__card {
+    display: grid;
+    height: auto;
+    grid-template-rows: 42px minmax(0, 1fr);
+    transition: grid-template-rows 240ms ease;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-preview__content {
+    overflow: hidden;
+    opacity: 1;
+    transform: translateY(0);
+    transform-origin: top;
+    transition: opacity 180ms ease, transform 240ms ease;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-preview.is-collapsed .scene-editor-preview__card {
+    grid-template-rows: 42px 0fr;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-preview.is-collapsed .scene-editor-preview__content {
+    display: block;
+    opacity: 0;
+    transform: translateY(-12px);
+    pointer-events: none;
+  }
+  html[data-theme] .scene-editor-page .scene-editor-preview__visibility-button { display: grid; }
+  html[data-theme] .scene-editor-page .scene-editor-preview__desktop-chevron { display: none; }
+  html[data-theme] .scene-editor-page .scene-editor-preview__mobile-chevron { display: inline-flex; }
+  html[data-theme] .scene-editor-page .scene-editor-preview-restore { display: none; }
+  html[data-theme] .scene-editor-page .scene-editor-preview__card,
+  html[data-theme] .scene-editor-page .scene-editor-preview__content,
+  html[data-theme] .scene-editor-page .scene-editor-preview__player { width: 100%; min-width: 0; }
+  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport { width: 100%; }
+
+  html[data-theme] .scene-editor-page .scene-editor-main {
+    order: 3;
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 22px 14px 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-theme]:has(.scene-editor-page) { --nav-height: 56px; }
+  html[data-theme]:has(.scene-editor-page) .nav-inner { width: calc(100% - 12px); }
+  html[data-theme]:has(.scene-editor-page) :is(.nav-create, .nav-signin, .nav-profile-trigger) { min-height: 38px; }
+  html[data-theme]:has(.scene-editor-page) .pulse-footer { width: calc(100% - 12px); min-height: 36px; }
+  html[data-theme]:has(.scene-editor-page) .pulse-footer__inner {
+    min-height: 36px;
+    gap: 12px;
+    padding: 5px 0 6px;
+    font-size: 11px;
+  }
+  html[data-theme]:has(.scene-editor-page) .pulse-footer__nav { gap: 14px; }
+
+  html[data-theme] .scene-editor-page {
+    width: calc(100% - 12px);
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+
+  html[data-theme] .scene-editor-page .auth-header { margin-bottom: 10px; }
+  html[data-theme] .scene-editor-page .auth-title { font-size: 30px; }
+  html[data-theme] .scene-editor-page .auth-copy { display: none; }
+  html[data-theme] .scene-editor-page .scene-editor-layout { border-radius: 10px; }
+  html[data-theme] .scene-editor-page .scene-editor-stepper-rail {
+    min-height: 46px;
+    flex-basis: 46px;
+    padding: 5px 8px;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-stepper__list { width: 100%; min-width: 100%; }
+  html[data-theme] .scene-editor-page .scene-editor-stepper__label { display: none; }
+  html[data-theme] .scene-editor-page .scene-editor-stepper__button {
+    grid-template-columns: 24px;
+    min-height: 34px;
+    padding-block: 5px;
+    padding-inline: 8px;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-preview__player:not(:fullscreen) .mage-player__viewport { width: 100%; }
+  html[data-theme] .scene-editor-page .scene-editor-main { padding: 16px 10px 22px; }
 }

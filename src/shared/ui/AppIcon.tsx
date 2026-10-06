@@ -1,6 +1,6 @@
 import {
   ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, Check,
-  ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight,
   CircleAlert, GripVertical, Heart, Images, Info, Layers, ListMusic,
   LogOut, Maximize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
   Search, Settings, Shuffle, User, Volume2, VolumeX, X,
@@ -21,6 +21,7 @@ const icons = {
   'chevron-down': ChevronDown,
   'chevron-left': ChevronLeft,
   'chevron-right': ChevronRight,
+  'chevron-up': ChevronUp,
   'chevrons-left': ChevronsLeft,
   'chevrons-right': ChevronsRight,
   'circle-alert': CircleAlert,
