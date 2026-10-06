@@ -32,7 +32,7 @@ import {
 } from "./ui/SceneEditorLayout";
 import { SceneEditorStepper } from "./ui/SceneEditorStepper";
 import { BuilderSceneControls } from "./ui/BuilderSceneControls";
-import { SceneSetupControls } from "./ui/SceneSetupControls";
+import { BUILDER_SHADER_TEMPLATE_VALUE, SceneSetupControls } from "./ui/SceneSetupControls";
 import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEditorFieldValidation";
 import { builderControlLocation, templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
@@ -94,8 +94,8 @@ export function SceneEditorShell({
   const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
   const [customTimingDrafts, setCustomTimingDrafts] = useState<Partial<Record<AudioResponseTarget, { attack: number; release: number }>>>({});
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(() => listSceneTemplates()[0].templateId);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
+  const [pendingBuilderTemplateId, setPendingBuilderTemplateId] = useState<TemplateId | null>(null);
   const [selectedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,6 +108,7 @@ export function SceneEditorShell({
   }, []);
   const replacementTriggerRef = useRef<HTMLButtonElement | null>(null);
   const replacementCancelRef = useRef<HTMLButtonElement | null>(null);
+  const builderTemplateCancelRef = useRef<HTMLButtonElement | null>(null);
   const importCancelRef = useRef<HTMLButtonElement | null>(null);
   const {
     canResetAudioResponse,
@@ -207,6 +208,7 @@ export function SceneEditorShell({
   const availability = useSceneAvailability(availabilityTarget);
   const customCodeAvailability = useSceneAvailability('custom');
   useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
+  useEffect(() => { if (pendingBuilderTemplateId) builderTemplateCancelRef.current?.focus(); }, [pendingBuilderTemplateId]);
   useEffect(() => { if (pendingTemplateImport) importCancelRef.current?.focus(); }, [pendingTemplateImport]);
   function cancelImportedTemplate() {
     cancelTemplateImport();
@@ -585,10 +587,6 @@ export function SceneEditorShell({
       templateVersion: template.templateVersion as 1,
     }).trim() === source) ?? null;
   }, [isCustomCreation, sceneModel.visualizer.shader, templateCatalog]);
-  useEffect(() => {
-    const nextTemplateId = templateDocument?.templateId ?? matchingCustomTemplate?.templateId;
-    if (nextTemplateId) setSelectedTemplateId(nextTemplateId);
-  }, [matchingCustomTemplate?.templateId, templateDocument?.templateId]);
   const previousCustomCreationRef = useRef(isCustomCreation);
   useEffect(() => {
     if (isCustomCreation && !previousCustomCreationRef.current) setIsTemplateSourceVisible(true);
@@ -607,7 +605,7 @@ export function SceneEditorShell({
         ? 'Custom Code is disabled for MAGE. This scene’s code is preserved but locked. Switch to Builder to replace it.'
         : 'Custom Code is disabled for MAGE. Use a template or Builder.';
   const templateSelectValue = isBuilder
-    ? selectedTemplateId
+    ? BUILDER_SHADER_TEMPLATE_VALUE
     : templateDocument?.templateId ?? matchingCustomTemplate?.templateId ?? "custom";
   const shaderEditor = (
     <div className="field-group">
@@ -638,6 +636,34 @@ export function SceneEditorShell({
     setIsTemplateSourceVisible(false);
     setIsReplacementPending(false);
   }
+  function focusTemplateSelect() {
+    requestAnimationFrame(() => document.getElementById('template-templateId')?.focus());
+  }
+  function cancelBuilderTemplateReplacement() {
+    setPendingBuilderTemplateId(null);
+    focusTemplateSelect();
+  }
+  function trapModalFocus(event: React.KeyboardEvent<HTMLElement>, onEscape: () => void) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onEscape();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    ));
+    if (controls.length === 0) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   function hidePreview() {
     setIsPreviewCollapsed(true);
@@ -653,9 +679,21 @@ export function SceneEditorShell({
     requestAnimationFrame(() => previewHideButtonRef.current?.focus());
   }
   function handleSharedTemplateChange(templateId: string) {
-    setSelectedTemplateId(templateId);
+    if (isBuilder) {
+      const template = templateCatalog.find(option => option.templateId === templateId);
+      if (template) setPendingBuilderTemplateId(template.templateId as TemplateId);
+      return;
+    }
     handleTemplateSelection(templateId);
     if (isCustomCreation) setIsTemplateSourceVisible(true);
+  }
+  function confirmBuilderTemplateReplacement() {
+    if (!pendingBuilderTemplateId) return;
+    const templateId = pendingBuilderTemplateId;
+    setPendingBuilderTemplateId(null);
+    handleSwitchToTemplate(templateId);
+    setIsTemplateSourceVisible(false);
+    focusTemplateSelect();
   }
   const creationMode = (
     <section className="scene-creation-mode" aria-labelledby="scene-creation-mode-title">
@@ -663,11 +701,7 @@ export function SceneEditorShell({
       <div className="scene-creation-mode__options" role="group" aria-labelledby="scene-creation-mode-title">
         <button className="scene-secondary-button" type="button" aria-pressed={isBuilder} ref={replacementTriggerRef}
           onClick={() => {
-            if (isBuilder) {
-              handleSwitchToTemplate(selectedTemplateId as TemplateId);
-              setIsTemplateSourceVisible(false);
-              return;
-            }
+            if (isBuilder) return;
             if (isCustomCreation && !matchingCustomTemplate && !isUnmodifiedBuilderCustom) {
               setIsReplacementPending(true);
               return;
@@ -685,7 +719,7 @@ export function SceneEditorShell({
           }} aria-describedby="advanced-creation-hint">Custom Code</button>
       </div>
       <p className="field-hint" id="advanced-creation-hint">{customCodeAvailabilityMessage ?? (isBuilder
-        ? 'Builder starts with an editable object scene. Turn Builder off to return to the selected template, or open its generated shader in Custom Code.'
+        ? 'Builder starts with an editable object scene. Choose a premade template above to replace this draft after confirmation, or open its generated shader in Custom Code.'
         : isCustomCodeVisible ? 'Custom Code keeps the current shader source. Choose another template above to replace the source with that template.'
           : 'Leave both options off to use the selected template as-is.')}</p>
     </section>
@@ -695,14 +729,30 @@ export function SceneEditorShell({
       if (event.target === event.currentTarget) cancelTemplateReplacement();
     }}>
       <section className="scene-editor-modal" role="alertdialog" aria-modal="true" aria-labelledby="replace-custom-title"
-        aria-describedby="replace-custom-description" onKeyDown={event => {
-          if (event.key === 'Escape') { event.preventDefault(); cancelTemplateReplacement(); }
-        }}>
+        aria-describedby="replace-custom-description" onKeyDown={event => trapModalFocus(event, cancelTemplateReplacement)}>
         <h2 id="replace-custom-title">Switch to Builder?</h2>
         <p id="replace-custom-description">Your edited custom shader code and scene settings will be replaced by the default Builder scene. Your name, description, tags, and selected music will stay.</p>
         <div className="auth-actions">
           <button className="scene-editor-confirm-submit" type="button" onClick={switchToDefaultBuilder}>Switch to Builder</button>
           <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
+        </div>
+      </section>
+    </div>
+  ) : null;
+  const pendingBuilderTemplate = pendingBuilderTemplateId
+    ? templateCatalog.find(template => template.templateId === pendingBuilderTemplateId) ?? null
+    : null;
+  const builderTemplateReplacementDialog = isBuilder && pendingBuilderTemplate ? (
+    <div className="scene-editor-modal-backdrop" role="presentation" onMouseDown={event => {
+      if (event.target === event.currentTarget) cancelBuilderTemplateReplacement();
+    }}>
+      <section className="scene-editor-modal" role="alertdialog" aria-modal="true" aria-labelledby="replace-builder-title"
+        aria-describedby="replace-builder-description" onKeyDown={event => trapModalFocus(event, cancelBuilderTemplateReplacement)}>
+        <h2 id="replace-builder-title">Replace your Builder scene?</h2>
+        <p id="replace-builder-description">Switching to {pendingBuilderTemplate.label} discards every Builder object and any unsaved Builder changes. This cannot be undone.</p>
+        <div className="auth-actions">
+          <button className="scene-editor-confirm-submit" type="button" onClick={confirmBuilderTemplateReplacement}>Use {pendingBuilderTemplate.label}</button>
+          <button className="scene-secondary-button" type="button" ref={builderTemplateCancelRef} onClick={cancelBuilderTemplateReplacement}>Cancel</button>
         </div>
       </section>
     </div>
@@ -1718,6 +1768,7 @@ export function SceneEditorShell({
         </button>
       </form>
       {replacementDialog}
+      {builderTemplateReplacementDialog}
     </AuthPage>
   );
 }

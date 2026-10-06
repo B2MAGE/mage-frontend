@@ -1,9 +1,10 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { createBuilderScene } from './builderEditor'
+import { BUILDER_SHADER_TEMPLATE_VALUE } from './ui/SceneSetupControls'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
 
 const renderedPlayer = vi.fn()
@@ -25,7 +26,7 @@ afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 const preview = () => JSON.parse(screen.getByTestId('builder-preview').getAttribute('data-scene')!)
 
 describe('Scene Builder object editor', () => {
-  it('keeps shared scene controls above the mode selector and disables templates only in Builder', async () => {
+  it('keeps shared scene controls above the mode selector and guards replacing a Builder scene with a template', async () => {
     const user = userEvent.setup()
     renderCreateScenePage()
     await screen.findByLabelText(/scene name/i)
@@ -39,7 +40,9 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByLabelText('Custom Shader')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Builder' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(template).toBeDisabled()
+    expect(template).toBeEnabled()
+    expect(template).toHaveValue(BUILDER_SHADER_TEMPLATE_VALUE)
+    expect(within(template).getByRole('option', { name: 'Builder Shader' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Starting style')).not.toBeInTheDocument()
     expect(screen.getAllByLabelText('Skybox')).toHaveLength(1)
     expect(screen.getAllByLabelText('Scene Scale numeric value')).toHaveLength(1)
@@ -56,10 +59,36 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByText('Position 0, 0, 0 · Scale 1×')).toBeInTheDocument()
     expect(preview()).toMatchObject({ kind: 'builder', parameters: { scale: 1 }, objects: [{ material: { color: '#8066ff' } }] })
 
-    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    const name = screen.getByLabelText('Name')
+    await user.clear(name)
+    await user.type(name, 'Draft orb')
+    const builderDraft = preview()
+    await user.selectOptions(template, 'reaction-lantern-v1')
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog).toHaveTextContent(/discards every Builder object/i)
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus()
+    expect(template).toHaveValue(BUILDER_SHADER_TEMPLATE_VALUE)
+    expect(preview()).toEqual(builderDraft)
+    await user.tab()
+    expect(within(dialog).getByRole('button', { name: /^Use / })).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus()
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    await waitFor(() => expect(template).toHaveFocus())
+    expect(screen.getByLabelText('Name')).toHaveValue('Draft orb')
+    expect(preview()).toEqual(builderDraft)
+
+    await user.selectOptions(template, 'reaction-rings-v1')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(template).toHaveFocus())
+    expect(preview()).toEqual(builderDraft)
+    await user.selectOptions(template, 'reaction-rings-v1')
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /^Use / }))
     expect(template).toBeEnabled()
     expect(template).toHaveValue('reaction-rings-v1')
     expect(preview()).toMatchObject({ kind: 'template', templateId: 'reaction-rings-v1' })
+    expect(preview()).not.toHaveProperty('objects')
     expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Custom Code' })).toHaveAttribute('aria-pressed', 'false')
   })
@@ -130,6 +159,9 @@ describe('Scene Builder object editor', () => {
     renderEditScenePage()
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
+    expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('Template')).toBeEnabled()
+    expect(screen.getByLabelText('Template')).toHaveValue(BUILDER_SHADER_TEMPLATE_VALUE)
     expect(screen.getByText('Sphere 1')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
