@@ -152,16 +152,59 @@ html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-seconda
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:first-child { border-radius: var(--editor-button-radius) 0 0 var(--editor-button-radius); }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:last-child { margin-left: -1px; border-radius: 0 var(--editor-button-radius) var(--editor-button-radius) 0; }
 html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button[aria-pressed="true"] { position: relative; border-color: var(--studio-accent-border); background: var(--studio-accent-fill); color: var(--studio-accent); opacity: 1; }
-html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 4px; }
-html[data-theme] .scene-editor-page .scene-setup-controls__scale { grid-column: 1 / -1; }
-html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] { display: flex; min-width: 0; flex-direction: column; }
-html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] > .scene-field { flex: 1; }
-html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell {
-  padding: 18px;
-  gap: 14px;
+html[data-theme] .scene-editor-page .scene-setup-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-bottom: 4px;
+  overflow: hidden;
   border: 1px solid var(--studio-border);
   border-radius: 12px;
-  background: var(--studio-field);
+  background: var(--studio-panel);
+}
+html[data-theme] .scene-editor-page .scene-setup-controls__scale { grid-column: auto; }
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] {
+  display: block;
+  min-width: 0;
+  padding: 13px 15px;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] + [data-template-field] { border-top: 1px solid var(--studio-border); }
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-field__shell .scene-field__description {
+  order: initial;
+  margin: 0;
+  padding: 0;
+  font-size: 9px;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-field__control { order: initial; }
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider__value { display: none; }
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider__controls { grid-column: auto; order: initial; }
+html[data-theme] .scene-editor-page .scene-setup-controls .scene-slider .scene-field__description {
+  grid-column: auto;
+  order: initial;
+  padding: 0;
+  font-size: 9px;
 }
 html[data-theme] .scene-editor-modal-backdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .68); }
 html[data-theme] .scene-editor-modal { box-sizing: border-box; width: min(520px, 100%); padding: 24px; border: 1px solid var(--studio-border-strong); border-radius: 16px; background: var(--studio-panel); color: var(--studio-text); box-shadow: 0 24px 80px rgba(0, 0, 0, .42); }
@@ -529,13 +572,12 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
   html[data-theme] .scene-editor-page .scene-editor-grid,
   html[data-theme] .scene-editor-page .scene-editor-section[data-section="Motion"] .scene-editor-stack,
   html[data-theme] .scene-editor-page .scene-confirm-summary { grid-template-columns: 1fr; }
-  html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container editor (max-width: 430px) {
   html[data-theme] .scene-editor-page .scene-editor-details__thumbnail-row { grid-template-columns: 1fr; }
   html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { width: min(180px, 100%); }
   html[data-theme] .scene-editor-page .scene-editor-details__field-row .scene-field__label-row { align-items: flex-start; flex-direction: column; gap: 3px; }
-  html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: 1fr; }
+  html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] { padding: 12px; }
 }
 @media (max-width: 1360px) and (min-width: 961px) {
     html[data-theme] .scene-editor-page .scene-editor-layout { grid-template-columns: 68px minmax(0,1fr) minmax(340px,36vw); }
@@ -862,6 +904,23 @@ html[data-theme] .scene-editor-page .scene-editor-preview__card { overflow: clip
 /* Validation follows the existing field layout without adding a visual container. */
 .scene-editor-page .scene-field-validation { min-width: 0; }
 .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-field-validation:has(> .scene-field--slider) { grid-column: 1 / -1; }
+
+/* Scene settings use one flat surface with compact label/control rows. */
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__top,
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__copy,
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-slider__top,
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-slider__copy {
+  display: grid;
+  gap: 3px;
+}
+
+@container editor (max-width: 570px) {
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-field__shell,
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] .scene-setup-controls .scene-slider {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
 
 /* Keep Builder navigation and the selected object's controls in one workspace. */
 html[data-theme] .scene-editor-page .builder-workspace {
