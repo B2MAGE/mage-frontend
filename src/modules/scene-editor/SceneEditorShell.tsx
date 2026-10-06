@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot, type TemplateId } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -75,6 +75,14 @@ export function SceneEditorShell({
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+  const [isNarrowPreviewLayout, setIsNarrowPreviewLayout] = useState(() => (
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 900px)").matches
+      : false
+  ));
+  const [previewPlaybackStatus, setPreviewPlaybackStatus] = useState<MagePlayerPlaybackStatus>("paused");
+  const previewHideButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previewRestoreButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isTemplateSourceVisible, setIsTemplateSourceVisible] = useState(() => {
     const initialDocument = initialState?.sceneData;
     if (!initialDocument || typeof initialDocument !== "object") return false;
@@ -89,6 +97,15 @@ export function SceneEditorShell({
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => listSceneTemplates()[0].templateId);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
   const [selectedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 900px)");
+    const syncLayout = () => setIsNarrowPreviewLayout(media.matches);
+    syncLayout();
+    media.addEventListener?.("change", syncLayout);
+    return () => media.removeEventListener?.("change", syncLayout);
+  }, []);
   const replacementTriggerRef = useRef<HTMLButtonElement | null>(null);
   const replacementCancelRef = useRef<HTMLButtonElement | null>(null);
   const importCancelRef = useRef<HTMLButtonElement | null>(null);
@@ -234,6 +251,17 @@ export function SceneEditorShell({
   }, [initialState?.sceneData, previewOriginalSceneData]);
   const canPreviewScene = !!previewSceneData;
   const sceneDraftError = sectionIssuesById.confirm ?? previewError;
+  const studioSectionIssuesById = useMemo(() => {
+    const nextIssues = { ...sectionIssuesById };
+    const fieldIssues = { ...templateFieldErrors, ...errors.fields };
+
+    for (const [path, message] of Object.entries(fieldIssues)) {
+      const location = isBuilder ? builderControlLocation(path) : templateControlLocation(path);
+      if (location && !nextIssues[location.section]) nextIssues[location.section] = message;
+    }
+
+    return nextIssues;
+  }, [errors.fields, isBuilder, sectionIssuesById, templateFieldErrors]);
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
@@ -610,6 +638,20 @@ export function SceneEditorShell({
     setIsTemplateSourceVisible(false);
     setIsReplacementPending(false);
   }
+
+  function hidePreview() {
+    setIsPreviewCollapsed(true);
+    requestAnimationFrame(() => {
+      if (window.matchMedia?.("(min-width: 901px)").matches) {
+        previewRestoreButtonRef.current?.focus();
+      }
+    });
+  }
+
+  function showPreview() {
+    setIsPreviewCollapsed(false);
+    requestAnimationFrame(() => previewHideButtonRef.current?.focus());
+  }
   function handleSharedTemplateChange(templateId: string) {
     setSelectedTemplateId(templateId);
     handleTemplateSelection(templateId);
@@ -689,7 +731,7 @@ export function SceneEditorShell({
         noValidate
         onSubmit={handleSubmit}
       >
-        <div className="scene-editor-layout">
+        <div className={`scene-editor-layout${isPreviewCollapsed ? " scene-editor-layout--preview-hidden" : ""}`}>
           <aside className="scene-editor-stepper-rail">
             <div className="scene-editor-stepper-rail__label">Scene setup</div>
             <div className="scene-editor-toolbar">
@@ -699,7 +741,7 @@ export function SceneEditorShell({
                     sections={editorSections}
                     currentSection={currentSection}
                     currentSectionIndex={currentSectionIndex}
-                    sectionIssuesById={sectionIssuesById}
+                    sectionIssuesById={studioSectionIssuesById}
                     onSectionJump={handleSectionJump}
                   />
                 </div>
@@ -1590,22 +1632,55 @@ export function SceneEditorShell({
 
           </SceneEditorFieldErrorsProvider>
 
-          <aside className={`scene-editor-preview${isPreviewCollapsed ? " is-collapsed" : ""}`}>
+          <aside
+            aria-hidden={isPreviewCollapsed && !isNarrowPreviewLayout ? true : undefined}
+            aria-labelledby="scene-editor-live-preview-title"
+            className={`scene-editor-preview${isPreviewCollapsed ? " is-collapsed" : ""}`}
+            inert={isPreviewCollapsed && !isNarrowPreviewLayout}
+          >
             <section className="surface surface--soft scene-editor-preview__card">
               <div className="scene-editor-preview__header">
-                <div>
-                  <span className="scene-editor-toolbar__eyebrow">Preview</span>
-                  <h2>Live Preview</h2>
+                <div className="scene-editor-preview__title">
+                  <span
+                    aria-live="polite"
+                    className="scene-editor-preview__live-dot"
+                    data-status={previewPlaybackStatus}
+                    role="status"
+                    title={previewPlaybackStatus === "playing"
+                      ? "Preview playing"
+                      : previewPlaybackStatus === "paused"
+                        ? "Preview paused"
+                        : "Preview unavailable"}
+                  >
+                    <span className="scene-editor-preview__status">
+                      {previewPlaybackStatus === "playing"
+                        ? "Preview playing"
+                        : previewPlaybackStatus === "paused"
+                          ? "Preview paused"
+                          : "Preview unavailable"}
+                    </span>
+                  </span>
+                  <h2 id="scene-editor-live-preview-title">Live Preview</h2>
                 </div>
-                <button
-                  aria-controls="scene-editor-live-preview"
-                  aria-expanded={!isPreviewCollapsed}
-                  className="scene-editor-preview__collapse"
-                  onClick={() => setIsPreviewCollapsed((collapsed) => !collapsed)}
-                  type="button"
-                >
-                  {isPreviewCollapsed ? "Expand" : "Collapse"}
-                </button>
+                <div className="scene-editor-preview__actions">
+                  <button
+                    aria-controls="scene-editor-live-preview"
+                    aria-expanded={!isPreviewCollapsed}
+                    aria-label={isPreviewCollapsed ? "Show preview" : "Hide preview"}
+                    className="scene-editor-preview__icon-button scene-editor-preview__visibility-button"
+                    onClick={isPreviewCollapsed ? showPreview : hidePreview}
+                    ref={previewHideButtonRef}
+                    title={isPreviewCollapsed ? "Show preview" : "Hide preview"}
+                    type="button"
+                  >
+                    <span className="scene-editor-preview__desktop-chevron">
+                      <AppIcon name="chevron-right" size={15} />
+                    </span>
+                    <span className="scene-editor-preview__mobile-chevron">
+                      <AppIcon name={isPreviewCollapsed ? "chevron-down" : "chevron-up"} size={15} />
+                    </span>
+                  </button>
+                </div>
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
@@ -1616,6 +1691,7 @@ export function SceneEditorShell({
                 className="scene-editor-preview__player"
                 initialPlayback="playing"
                 onCaptureFramePreviewChange={registerCaptureFramePreview}
+                onPlaybackStatusChange={setPreviewPlaybackStatus}
                 sceneBlob={previewSceneData}
                 recoverySceneBlob={recoverySceneData ?? undefined}
                 posterUrl={thumbnailPreviewUrl}
@@ -1628,6 +1704,18 @@ export function SceneEditorShell({
           </aside>
 
         </div>
+        <button
+          aria-controls="scene-editor-live-preview"
+          aria-expanded={!isPreviewCollapsed}
+          className="scene-editor-preview-restore"
+          hidden={!isPreviewCollapsed}
+          onClick={showPreview}
+          ref={previewRestoreButtonRef}
+          type="button"
+        >
+          <AppIcon name="chevron-left" size={13} />
+          <span>Show preview</span>
+        </button>
       </form>
       {replacementDialog}
     </AuthPage>
