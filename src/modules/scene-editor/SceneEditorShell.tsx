@@ -1082,11 +1082,19 @@ export function SceneEditorShell({
                 description="Add glow, color treatment, distortion, and other finishing effects."
                 title="Effects"
               >
-                <p className="field-hint" role="status">{enabledEffectCount} of {SCENE_LIMITS.optionalEffects} optional effects enabled, including bloom. {effectBudgetFull ? 'Turn an effect off before enabling another.' : 'Output does not count toward this limit.'}</p>
+                <div className="scene-effects-status" role="status" aria-live="polite">
+                  <span>Up to {SCENE_LIMITS.optionalEffects} optional effects can be enabled. Output Pass does not count toward the limit.</span>
+                  <strong>{enabledEffectCount}/{SCENE_LIMITS.optionalEffects} enabled</strong>
+                </div>
+                {effectBudgetFull ? (
+                  <p className="scene-effects-limit" role="alert">
+                    You have reached the {SCENE_LIMITS.optionalEffects}-effect limit. Turn off an optional effect to enable another.
+                  </p>
+                ) : null}
                 <div className="scene-effects-grid">
                   <div className="scene-effects-category">
                     <h3 className="scene-effects-category__title">
-                      Finish &amp; Output
+                      Core
                     </h3>
                     <div className="scene-effects-category__grid">
                       <EffectCard
@@ -1174,6 +1182,7 @@ export function SceneEditorShell({
                             },
                           }))
                         }
+                        note="Does not count toward effect limit"
                         title="Output Pass"
                       >
                         <div className="scene-editor-grid scene-editor-grid--2">
@@ -1222,7 +1231,7 @@ export function SceneEditorShell({
 
                   <div className="scene-effects-category">
                     <h3 className="scene-effects-category__title">
-                      Channel &amp; Motion
+                      Motion &amp; glitch
                     </h3>
                     <div className="scene-effects-category__grid">
                       <EffectCard
@@ -1334,7 +1343,7 @@ export function SceneEditorShell({
 
                   <div className="scene-effects-category">
                     <h3 className="scene-effects-category__title">
-                      Color &amp; Tone
+                      Color &amp; style
                     </h3>
                     <div className="scene-effects-category__grid">
                       <EffectCard
@@ -1400,7 +1409,7 @@ export function SceneEditorShell({
 
                   <div className="scene-effects-category">
                     <h3 className="scene-effects-category__title">
-                      Pattern &amp; Structure
+                      Pattern &amp; screen
                     </h3>
                     <div className="scene-effects-category__grid">
                       <EffectCard
