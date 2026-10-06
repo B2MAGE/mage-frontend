@@ -15,7 +15,7 @@
   --studio-group: #12161d;
   --studio-shadow: rgba(0,0,0,.18);
   --studio-rail: #0e1014;
-  --studio-subtle: #757b87;
+  --studio-subtle: #9298a4;
   --studio-selected: #1b1e25;
   --studio-accent-fill: rgba(124,108,255,.15);
   --studio-accent: #b2a8ff;
@@ -27,7 +27,7 @@
   --studio-error-border: rgba(255,116,116,.36);
   --studio-error: #ff7474;
   --studio-scroll-track: rgba(255,255,255,.04);
-  --studio-placeholder: #5f6470;
+  --studio-placeholder: #7b818d;
   --studio-focus-outline: rgba(178,168,255,.5);
   --studio-focus-ring: rgba(124,108,255,.08);
   --studio-error-ring: rgba(255,116,116,.12);
@@ -41,6 +41,8 @@
   --studio-alert-border: rgba(255,116,116,.3);
   --studio-alert-background: rgba(255,116,116,.07);
   --studio-preview: #0b0d10;
+  --studio-row-hover: rgba(255,255,255,.025);
+  --studio-row-selected: rgba(124,108,255,.15);
 }
 .scene-editor-beat-preview { display: grid; min-width: 0; }
 html[data-theme] .scene-editor-page .scene-editor-preview__content { max-height: calc(100% - 48px); overflow-y: auto; }
@@ -2839,4 +2841,226 @@ html[data-theme] .scene-editor-page .builder-object-editor__heading,
 html[data-theme] .scene-editor-page .builder-inspector-section,
 html[data-theme] .scene-editor-page .builder-control-stage {
   border-color: rgba(255, 255, 255, .11);
+}
+
+/* Visual consistency pass: keep every step on the same surface hierarchy and
+   never shrink supporting copy below the readable scale used by Confirm. */
+html[data-theme] .scene-editor-page :is(
+  .scene-editor-details__surface,
+  .scene-setup-controls,
+  .builder-workspace,
+  .camera-controls__surface,
+  .camera-controls__advanced .scene-editor-collapsible,
+  .motion-controls__surface,
+  .scene-editor-section[data-section="Effects"] .scene-effects-category__grid,
+  .scene-pass-order__surface,
+  .scene-confirm-review,
+  .scene-confirm-raw
+) {
+  border-color: var(--studio-border);
+  background: var(--studio-group);
+  box-shadow: none;
+}
+
+html[data-theme] .scene-editor-page :is(
+  .builder-workspace__header,
+  .builder-object-inspector,
+  .camera-controls__movement .effect-card,
+  .motion-controls .music-response-controls__surface > .scene-field-validation:first-child .scene-field__shell
+) {
+  background: transparent;
+}
+
+html[data-theme] .scene-editor-page :is(
+  .builder-inspector-section,
+  .scene-editor-section[data-section="Effects"] .effect-card__details,
+  .scene-confirm-section__body
+) {
+  background: var(--studio-panel);
+}
+
+html[data-theme] .scene-editor-page :is(
+  .scene-field__meta,
+  .field-hint,
+  .scene-field__description,
+  .scene-effect-footnote,
+  .scene-editor-thumbnail__placeholder,
+  .scene-editor-thumbnail__copy p,
+  .builder-inline-notice p,
+  .music-response-controls__message,
+  .music-response-controls__reset p
+) {
+  color: var(--studio-subtle);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+html[data-theme] .scene-editor-page .field-hint :is(span, strong) {
+  color: inherit;
+  font-size: inherit;
+}
+
+html[data-theme] .scene-editor-page :is(
+  .scene-editor-details__group-label,
+  .camera-controls__group-heading h3,
+  .motion-controls__group-heading h3,
+  .scene-editor-section[data-section="Effects"] .scene-effects-category__title
+) {
+  color: var(--studio-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-stepper__number,
+html[data-theme] .scene-editor-page .scene-editor-preview__collapse,
+html[data-theme] .scene-editor-page .scene-editor-preview-restore {
+  font-size: 10px;
+}
+
+html[data-theme] .scene-editor-page .scene-setup-controls :is(.scene-field__description, .scene-slider .scene-field__description),
+html[data-theme] .scene-editor-page .builder-workspace__title span,
+html[data-theme] .scene-editor-page .builder-object-list__copy span,
+html[data-theme] .scene-editor-page .builder-object-editor__heading p,
+html[data-theme] .scene-editor-page .builder-inspector-section__title > span,
+html[data-theme] .scene-editor-page .builder-inspector-section__status,
+html[data-theme] .scene-editor-page .builder-control-stage__number,
+html[data-theme] .scene-editor-page .builder-control-stage__description,
+html[data-theme] .scene-editor-page .builder-control-stage__summary span {
+  color: var(--studio-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+html[data-theme] .scene-editor-page .camera-controls__vectors .scene-vector-field__axis span {
+  color: var(--studio-muted);
+  font-size: 10px;
+}
+
+html[data-theme] .scene-editor-page .scene-effects-status,
+html[data-theme] .scene-editor-page .scene-effects-status strong,
+html[data-theme] .scene-editor-page .scene-effects-limit {
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card {
+  min-height: 62px;
+  transition: background-color .16s ease;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card:hover {
+  background: var(--studio-row-hover);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card-group.is-enabled > .effect-card {
+  background: var(--studio-row-selected);
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__header h3 {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] :is(
+  .effect-card__header p,
+  .effect-card__note,
+  .effect-card__toggle .scene-toggle__label
+) {
+  color: var(--studio-subtle);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__note {
+  color: var(--studio-accent);
+}
+
+html[data-theme] .scene-editor-page .scene-pass-order__summary,
+html[data-theme] .scene-editor-page .scene-pass-order__index,
+html[data-theme] .scene-editor-page .scene-pass-order__copy span,
+html[data-theme] .scene-editor-page .scene-pass-order__empty span {
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+html[data-theme] .scene-editor-page .scene-pass-order__copy strong {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+html[data-theme] .scene-editor-page .scene-pass-order__item { min-height: 54px; }
+html[data-theme] .scene-editor-page .scene-pass-order__item--pinned { background: transparent; }
+
+html[data-theme] .scene-editor-page :is(
+  .scene-setup-controls > [data-template-field],
+  .builder-inspector-section > summary,
+  .builder-control-stage__header,
+  .camera-controls__surface .scene-field__shell,
+  .camera-controls__surface .scene-slider,
+  .motion-controls__surface .scene-field__shell,
+  .motion-controls__surface .scene-slider,
+  .music-response-controls__group legend,
+  .scene-confirm-section__head
+) {
+  transition: background-color .16s ease;
+}
+
+html[data-theme] .scene-editor-page :is(
+  .scene-setup-controls > [data-template-field],
+  .builder-inspector-section > summary,
+  .builder-control-stage__header,
+  .camera-controls__surface .scene-field__shell,
+  .camera-controls__surface .scene-slider,
+  .motion-controls__surface .scene-field__shell,
+  .motion-controls__surface .scene-slider,
+  .music-response-controls__group legend
+):hover {
+  background: var(--studio-row-hover);
+}
+
+html[data-theme] .scene-editor-page :is(
+  select.mage-select,
+  input.scene-text-input,
+  input.scene-number-input,
+  input.scene-slider__number,
+  textarea.scene-textarea,
+  .scene-color-field,
+  .builder-color-control
+) {
+  border-color: var(--studio-border-strong);
+  background-color: var(--studio-field);
+  transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+
+html[data-theme] .scene-editor-page :is(
+  select.mage-select,
+  input.scene-text-input,
+  input.scene-number-input,
+  input.scene-slider__number,
+  textarea.scene-textarea,
+  .scene-color-field,
+  .builder-color-control
+):not(:disabled):hover {
+  border-color: var(--studio-accent-border);
+  background-color: var(--studio-control-hover);
+}
+
+html[data-theme] .scene-editor-page :is(select.mage-select, .scene-color-field):focus-visible,
+html[data-theme] .scene-editor-page .builder-color-control:focus-within {
+  border-color: var(--studio-focus-outline);
+  outline: 0;
+  box-shadow: 0 0 0 1px var(--studio-focus-ring);
+}
+
+@container editor (max-width: 570px) {
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card {
+    min-height: 66px;
+  }
+
+  html[data-theme] .scene-editor-page .scene-editor-section[data-section="Effects"] .effect-card__header {
+    gap: 10px;
+  }
 }
