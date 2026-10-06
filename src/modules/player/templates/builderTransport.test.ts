@@ -12,6 +12,9 @@ describe('builder storage and playback boundaries', () => {
     [{ ...builder, objects: [{ id: 'ball', operation: { type: 'sphere', radius: 0 } }] }, 'sceneData.objects[0].operation.radius'],
     [{ ...builder, objects: [builder.objects[0], builder.objects[0]] }, 'sceneData.objects[1]'],
     [{ ...builder, objects: [{ ...builder.objects[0], bindings: [builder.objects[0].bindings[0], builder.objects[0].bindings[0]] }] }, 'sceneData.objects[0].bindings[1]'],
+    [{ ...builder, objects: [{ ...builder.objects[0], modifiers: [{ type: 'shell', thickness: 2 }] }] }, 'sceneData.objects[0].modifiers[0].thickness'],
+    [{ ...builder, objects: [{ ...builder.objects[0], arrangements: [{ type: 'linear', axis: 'x', count: 9, spacing: 1 }] }] }, 'sceneData.objects[0].arrangements[0].count'],
+    [{ ...builder, objects: [{ ...builder.objects[0], motion: { type: 'spin', axis: 'q', speed: 1 } }] }, 'sceneData.objects[0].motion.axis'],
   ])('reports the invalid operation field or duplicate item at the backend-compatible path', (document, path) => {
     try {
       validateSceneForStorage(document)
@@ -28,6 +31,7 @@ describe('builder storage and playback boundaries', () => {
     expect(stored).toMatchObject({ kind: 'builder', builderVersion: 1, objects: [{
       id: 'ball', name: 'Object', operation: { type: 'sphere', radius: 1 },
       transform: { position: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } },
+      modifiers: [], arrangements: [], motion: { type: 'none' },
       bindings: [{ target: 'scale.x', source: 'bass-hit', mode: 'add', amount: 1, offset: 0, attack: 0.04, release: 0.35 }],
     }] })
     expect(parseSceneImport(before)).toEqual(stored)

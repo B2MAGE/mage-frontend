@@ -6,6 +6,9 @@
     "compositionOperations": 15,
     "transformOperations": 80,
     "materialOperations": 48,
+    "modifierOperations": 80,
+    "arrangementOperations": 15,
+    "animationOperations": 16,
     "liveUniforms": 64,
     "optionalEffects": 4,
     "generatedSourceBytes": 32768
@@ -17,6 +20,11 @@
     "cylinder": 1,
     "transformPerObject": 5,
     "materialPerObject": 3,
+    "expandModifier": 1,
+    "shellModifier": 2,
+    "twistModifier": 2,
+    "arrangementPerAdditionalCopy": 1,
+    "spinPerPrimitive": 1,
     "compositionPerAdditionalObject": 1,
     "liveUniformPerBinding": 1
   }

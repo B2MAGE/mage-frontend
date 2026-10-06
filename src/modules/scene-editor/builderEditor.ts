@@ -18,6 +18,16 @@ import {
 
 export type BuilderShape = BuilderOperation['type']
 
+export const BUILDER_EXPANDED_PRIMITIVE_LIMIT = 16
+
+export function builderObjectExpandedCount(object: BuilderObject) {
+  return object.arrangements.reduce((count, arrangement) => count * arrangement.count, 1)
+}
+
+export function builderSceneExpandedCount(document: BuilderSceneDocument) {
+  return document.objects.reduce((count, object) => count + builderObjectExpandedCount(object), 0)
+}
+
 const shapeLabels: Record<BuilderShape, string> = {
   sphere: 'Sphere',
   box: 'Box',
@@ -93,6 +103,9 @@ export function createBuilderObject(type: BuilderShape, objects: readonly Builde
       scale: { x: 1, y: 1, z: 1 },
     },
     material: { color: '#8066ff', metalness: 0, shininess: 0.5 },
+    modifiers: [],
+    arrangements: [],
+    motion: { type: 'none' },
     bindings: [],
   }
 }
@@ -164,7 +177,7 @@ export function applyBuilderTemplate(document: BuilderSceneDocument, templateId:
 }
 
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape) {
-  if (document.objects.length >= 16) return document
+  if (document.objects.length >= 16 || builderSceneExpandedCount(document) >= BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
   return { ...document, objects: [...document.objects, createBuilderObject(type, document.objects)] }
 }
 
@@ -182,7 +195,7 @@ export function updateBuilderObject(
 export function duplicateBuilderObject(document: BuilderSceneDocument, objectId: string) {
   if (document.objects.length >= 16) return document
   const source = document.objects.find(object => object.id === objectId)
-  if (!source) return document
+  if (!source || builderSceneExpandedCount(document) + builderObjectExpandedCount(source) > BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
   const number = nextObjectNumber(document.objects)
   const copy = structuredClone(source)
   copy.id = `object-${number}`
