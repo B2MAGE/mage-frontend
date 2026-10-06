@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
@@ -17,6 +18,7 @@ import {
   SKYBOX_OPTIONS,
   toDegrees,
   toRadians,
+  type ScenePassId,
 } from "./sceneEditor";
 import {
   additionalPassesByCategory,
@@ -45,8 +47,7 @@ import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
 import type { SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
   buildCapturedThumbnailFile,
-  describePassState,
-  getVisiblePassOrder,
+  getActivePassOrder,
   readEditableSceneData,
   validateThumbnailFile,
 } from "./utils";
@@ -86,6 +87,9 @@ export function SceneEditorShell({
   ));
   const [previewPlaybackStatus, setPreviewPlaybackStatus] = useState<MagePlayerPlaybackStatus>("paused");
   const [isMusicAdvancedOpen, setIsMusicAdvancedOpen] = useState(false);
+  const [passOrderAnnouncement, setPassOrderAnnouncement] = useState("");
+  const [draggedPassId, setDraggedPassId] = useState<ScenePassId | null>(null);
+  const [dragOverPassId, setDragOverPassId] = useState<ScenePassId | null>(null);
   const previewHideButtonRef = useRef<HTMLButtonElement | null>(null);
   const previewRestoreButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isTemplateSourceVisible, setIsTemplateSourceVisible] = useState(() => {
@@ -153,6 +157,7 @@ export function SceneEditorShell({
     isSubmitting,
     isTagDropdownOpen,
     movePass,
+    movePassTo,
     name,
     normalizedTagSearchValue,
     openTagDropdown,
@@ -272,7 +277,37 @@ export function SceneEditorShell({
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
-  const visiblePassOrder = getVisiblePassOrder(sceneModel.fx.passOrder);
+  const activePassOrder = getActivePassOrder(sceneModel.fx.passOrder, sceneModel.fx);
+  const movablePassOrder = activePassOrder.filter((passId) => passId !== "outputPass");
+  function passAtPointer(event: ReactPointerEvent<HTMLElement>) {
+    const passId = document.elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>("[data-pass-id]")?.dataset.passId as ScenePassId | undefined;
+    return passId && movablePassOrder.some((movablePassId) => movablePassId === passId) ? passId : null;
+  }
+  function clearPassDrag() {
+    setDraggedPassId(null);
+    setDragOverPassId(null);
+  }
+  function handlePassPointerMove(event: ReactPointerEvent<HTMLElement>) {
+    if (!draggedPassId) return;
+    event.preventDefault();
+    const targetPassId = passAtPointer(event);
+    setDragOverPassId(targetPassId === draggedPassId ? null : targetPassId);
+  }
+  function handlePassPointerUp(event: ReactPointerEvent<HTMLElement>) {
+    if (!draggedPassId) return;
+    const targetPassId = passAtPointer(event);
+    if (targetPassId && targetPassId !== draggedPassId) {
+      movePassTo(draggedPassId, targetPassId);
+      setPassOrderAnnouncement(
+        `Moved ${PASS_LABELS[draggedPassId]} to position ${movablePassOrder.findIndex((passId) => passId === targetPassId) + 1}.`,
+      );
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    clearPassDrag();
+  }
   const usesMappedAudio = editorAudioResponseMode === "mapped-v1";
   const usesModernAudio = editorAudioResponseMode === "transient-v1" || usesMappedAudio;
   const audioResponseConfig = editorAudioResponseConfig;
@@ -1489,53 +1524,90 @@ export function SceneEditorShell({
                 description="Move passes up or down to change how the final image is layered. Output always stays last."
                 title="Pass Order"
               >
-                <FieldValidation id="scene-pass-order"><ol className="scene-pass-order" id="scene-pass-order" tabIndex={-1}>
-                  {visiblePassOrder.map((passId, index) => {
-                    const isOutputPass = passId === "outputPass";
+                <div className="scene-pass-order__summary" role="status">
+                  <span><strong>{activePassOrder.length} active {activePassOrder.length === 1 ? "pass" : "passes"}</strong> · Disabled passes are hidden.</span>
+                  <span className="scene-pass-order__direction">Top → Bottom</span>
+                </div>
+                <FieldValidation id="scene-pass-order">
+                  <div className="scene-pass-order__surface" id="scene-pass-order" tabIndex={-1}>
+                    {activePassOrder.length ? (
+                      <ol aria-label="Active effect pass order" className="scene-pass-order">
+                        {activePassOrder.map((passId, index) => {
+                          const isOutputPass = passId === "outputPass";
+                          const movableIndex = passId === "outputPass"
+                            ? -1
+                            : movablePassOrder.indexOf(passId);
 
-                    return (
-                      <li className="scene-pass-order__item" key={passId}>
-                        <AppIcon
-                          className="scene-pass-order__grip"
-                          name="grip-vertical"
-                          size={16}
-                        />
-                        <div className="scene-pass-order__copy">
-                          <div className="scene-pass-order__header">
-                            <strong>{PASS_LABELS[passId]}</strong>
-                            <span className="scene-pass-order__index">
-                              {index + 1}
-                            </span>
-                          </div>
-                          <span>{describePassState(passId, sceneModel)}</span>
-                        </div>
-                        <div className="scene-pass-order__actions">
-                          <button
-                            aria-label={`Move ${PASS_LABELS[passId]} up`}
-                            className="scene-order-button"
-                            disabled={isOutputPass || index === 0}
-                            onClick={() => movePass(passId, -1)}
-                            type="button"
-                          >
-                            Up
-                          </button>
-                          <button
-                            aria-label={`Move ${PASS_LABELS[passId]} down`}
-                            className="scene-order-button"
-                            disabled={
-                              isOutputPass ||
-                              index >= visiblePassOrder.length - 2
-                            }
-                            onClick={() => movePass(passId, 1)}
-                            type="button"
-                          >
-                            Down
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol></FieldValidation>
+                          return (
+                            <li
+                              className={`scene-pass-order__item${isOutputPass ? " scene-pass-order__item--pinned" : ""}${draggedPassId === passId ? " scene-pass-order__item--dragging" : ""}${dragOverPassId === passId ? " scene-pass-order__item--drag-target" : ""}`}
+                              data-pass-id={passId}
+                              key={passId}
+                            >
+                              <span
+                                aria-label={isOutputPass ? undefined : `Drag ${PASS_LABELS[passId]} to reorder`}
+                                className="scene-pass-order__grip"
+                                onPointerCancel={isOutputPass ? undefined : clearPassDrag}
+                                onPointerDown={isOutputPass ? undefined : (event) => {
+                                  if (event.button !== 0) return;
+                                  event.currentTarget.setPointerCapture(event.pointerId);
+                                  setDraggedPassId(passId);
+                                  setDragOverPassId(null);
+                                }}
+                                onPointerMove={isOutputPass ? undefined : handlePassPointerMove}
+                                onPointerUp={isOutputPass ? undefined : handlePassPointerUp}
+                                title={isOutputPass ? "Output always stays last" : "Drag to reorder"}
+                              >
+                                <AppIcon aria-hidden="true" name="grip-vertical" size={14} />
+                              </span>
+                              <span className="scene-pass-order__index" aria-label={`Position ${index + 1}`}>
+                                {index + 1}
+                              </span>
+                              <div className="scene-pass-order__copy">
+                                <strong>{PASS_LABELS[passId]}</strong>
+                                <span>{isOutputPass ? "Enabled · Always last" : "Enabled"}</span>
+                              </div>
+                              {isOutputPass ? null : (
+                                <div className="scene-pass-order__actions">
+                                  <button
+                                    aria-label={`Move ${PASS_LABELS[passId]} up`}
+                                    className="scene-order-button"
+                                    disabled={movableIndex === 0}
+                                    onClick={() => {
+                                      movePass(passId, -1);
+                                      setPassOrderAnnouncement(`Moved ${PASS_LABELS[passId]} up to position ${index}.`);
+                                    }}
+                                    type="button"
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    aria-label={`Move ${PASS_LABELS[passId]} down`}
+                                    className="scene-order-button"
+                                    disabled={movableIndex === movablePassOrder.length - 1}
+                                    onClick={() => {
+                                      movePass(passId, 1);
+                                      setPassOrderAnnouncement(`Moved ${PASS_LABELS[passId]} down to position ${index + 2}.`);
+                                    }}
+                                    type="button"
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    ) : (
+                      <div className="scene-pass-order__empty" role="status">
+                        <strong>No active passes</strong>
+                        <span>Enable an effect to add it to the active stack.</span>
+                      </div>
+                    )}
+                  </div>
+                </FieldValidation>
+                <p className="scene-pass-order__announcement" role="status" aria-live="polite">{passOrderAnnouncement}</p>
               </SceneSection>
             ) : null}
 
@@ -1674,17 +1746,11 @@ export function SceneEditorShell({
                         value={formatFixed(sceneModel.fx.toneMapping.exposure)}
                       />
                       <ConfirmSummaryItem
-                        label="Enabled Passes"
+                        label="Active Pass Order"
                         value={
                           <ConfirmSummaryPills
-                            emptyLabel="No effect passes enabled"
-                            values={visiblePassOrder
-                              .filter(
-                                (passId) =>
-                                  describePassState(passId, sceneModel) ===
-                                  "Enabled",
-                              )
-                              .map((passId) => PASS_LABELS[passId])}
+                            emptyLabel="No active effect passes"
+                            values={activePassOrder.map((passId) => PASS_LABELS[passId])}
                           />
                         }
                       />

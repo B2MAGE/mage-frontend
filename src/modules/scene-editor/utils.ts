@@ -207,16 +207,34 @@ export function getVisiblePassOrder(passOrder: readonly ScenePassId[]) {
   return passOrder.filter((passId) => passId !== 'copyShader')
 }
 
-export function moveVisiblePass(passOrder: ScenePassId[], passId: ScenePassId, direction: -1 | 1) {
+type SceneFx = ReturnType<typeof getSceneEditorModel>['fx']
+
+export function isPassEnabled(passId: ScenePassId, fx: SceneFx) {
+  if (passId === 'bloom') return fx.bloom.enabled
+  if (passId === 'copyShader') return false
+  const flag = passFlagsById[passId]
+  return Boolean(flag && fx.passes[flag])
+}
+
+export function getActivePassOrder(passOrder: readonly ScenePassId[], fx: SceneFx) {
+  const activePasses = getVisiblePassOrder(passOrder).filter((passId) => isPassEnabled(passId, fx))
+  const outputEnabled = activePasses.includes('outputPass')
+  return [
+    ...activePasses.filter((passId) => passId !== 'outputPass'),
+    ...(outputEnabled ? ['outputPass' as const] : []),
+  ]
+}
+
+export function moveActivePass(passOrder: ScenePassId[], fx: SceneFx, passId: ScenePassId, direction: -1 | 1) {
   if (passId === 'copyShader' || passId === 'outputPass') return passOrder
 
-  const movablePasses = getVisiblePassOrder(passOrder).filter((id) => id !== 'outputPass')
-  const visibleIndex = movablePasses.indexOf(passId)
-  const neighbor = movablePasses[visibleIndex + direction]
-  if (visibleIndex < 0 || !neighbor) return passOrder
+  const movablePasses = getActivePassOrder(passOrder, fx).filter((id) => id !== 'outputPass')
+  const activeIndex = movablePasses.indexOf(passId)
+  const neighbor = movablePasses[activeIndex + direction]
+  if (activeIndex < 0 || !neighbor) return passOrder
 
-  // Swap visible neighbors in the complete payload so legacy hidden passes
-  // retain their original slots instead of being removed or silently moved.
+  // Swap active neighbors in the complete payload. Hidden passes retain their
+  // exact slots, so re-enabling one restores it at a deterministic position.
   const currentIndex = passOrder.indexOf(passId)
   const neighborIndex = passOrder.indexOf(neighbor)
   const nextPassOrder = [...passOrder]
@@ -225,20 +243,40 @@ export function moveVisiblePass(passOrder: ScenePassId[], passId: ScenePassId, d
   return nextPassOrder
 }
 
+export function moveActivePassTo(
+  passOrder: ScenePassId[],
+  fx: SceneFx,
+  passId: ScenePassId,
+  targetPassId: ScenePassId,
+) {
+  if (passId === 'copyShader' || passId === 'outputPass'
+    || targetPassId === 'copyShader' || targetPassId === 'outputPass') return passOrder
+
+  const movablePasses = getActivePassOrder(passOrder, fx).filter((id) => id !== 'outputPass')
+  const sourceIndex = movablePasses.indexOf(passId)
+  const targetIndex = movablePasses.indexOf(targetPassId)
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return passOrder
+
+  const reorderedPasses = [...movablePasses]
+  const [movedPass] = reorderedPasses.splice(sourceIndex, 1)
+  reorderedPasses.splice(targetIndex, 0, movedPass)
+
+  // Fill only the active pass slots. Disabled passes keep their exact positions
+  // so turning one back on restores it predictably.
+  let activeSlot = 0
+  return passOrder.map((currentPassId) => (
+    movablePasses.some((passId) => passId === currentPassId) ? reorderedPasses[activeSlot++] : currentPassId
+  ))
+}
+
 export function describePassState(
   passId: ScenePassId,
   sceneModel: ReturnType<typeof getSceneEditorModel>,
 ) {
-  if (passId === 'bloom') {
-    return sceneModel.fx.bloom.enabled ? 'Enabled' : 'Disabled'
-  }
-
   if (passId === 'copyShader') {
     return 'Included'
   }
-
-  const flag = passFlagsById[passId]
-  return flag && sceneModel.fx.passes[flag] ? 'Enabled' : 'Disabled'
+  return isPassEnabled(passId, sceneModel.fx) ? 'Enabled' : 'Disabled'
 }
 
 export function prettyPrintEditorSceneData(sceneData: SceneData) {
