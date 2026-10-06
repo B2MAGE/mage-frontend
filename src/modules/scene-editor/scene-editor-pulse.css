@@ -451,16 +451,16 @@ html[data-theme] .scene-editor-page .scene-color-input { width: 100%; min-height
 html[data-theme] .scene-editor-page .scene-editor-details { display: grid; gap: 22px; }
 html[data-theme] .scene-editor-page .scene-editor-details__group { display: grid; gap: 9px; min-width: 0; }
 html[data-theme] .scene-editor-page .scene-editor-details__group-label { margin: 0; color: var(--studio-muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; line-height: 1.4; text-transform: uppercase; }
-html[data-theme] .scene-editor-page .scene-editor-details__surface { position: relative; min-width: 0; border: 1px solid var(--studio-border); border-radius: 12px; background: var(--studio-group); box-shadow: 0 10px 30px rgba(0,0,0,.1); }
+html[data-theme] .scene-editor-page .scene-editor-details__surface { position: relative; min-width: 0; border: 1px solid var(--studio-border); border-radius: 12px; background: var(--studio-panel); box-shadow: 0 10px 30px rgba(0,0,0,.1); }
 html[data-theme] .scene-editor-page .scene-editor-details__field-row { padding: 14px 15px; gap: 8px; }
 html[data-theme] .scene-editor-page .scene-editor-details__field-row + .scene-editor-details__field-row { border-top: 1px solid var(--studio-border); }
-html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select) { border-color: var(--studio-border-strong); background-color: var(--studio-field); }
-html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select):not(:disabled):hover { border-color: #444c5b; background-color: #0d1117; }
-html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select):not(:disabled):focus { border-color: var(--studio-focus-outline); background-color: var(--studio-field); box-shadow: 0 0 0 1px var(--studio-focus-ring); }
+html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select) { border-color: var(--studio-border-strong); background-color: var(--studio-control); }
+html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select):not(:disabled):hover { border-color: var(--studio-accent-border); background-color: var(--studio-control-hover); }
+html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select):not(:disabled):focus { border-color: var(--studio-focus-outline); background-color: var(--studio-control); box-shadow: 0 0 0 1px var(--studio-focus-ring); }
 html[data-theme] .scene-editor-page .scene-editor-details__status-note { display: flex; align-items: center; gap: 6px; }
 html[data-theme] .scene-editor-page .scene-editor-details__status-dot { width: 5px; height: 5px; flex: 0 0 5px; border-radius: 50%; background: var(--studio-accent); }
 html[data-theme] .scene-editor-page .scene-editor-details__thumbnail-row { display: grid; grid-template-columns: minmax(150px, 180px) minmax(0, 1fr); align-items: center; gap: 16px; padding: 15px; }
-html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { display: grid; place-items: center; position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border: 1px dashed var(--studio-border-strong); border-radius: 10px; background: radial-gradient(circle at 30% 25%, var(--studio-accent-fill), transparent 35%), var(--studio-field); }
+html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { display: grid; place-items: center; position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border: 1px dashed var(--studio-border-strong); border-radius: 10px; background: radial-gradient(circle at 30% 25%, var(--studio-accent-fill), transparent 35%), var(--studio-control); }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame[data-captured="true"] { border-style: solid; border-color: var(--studio-accent-border); }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__placeholder { width: 110px; padding: 12px; color: var(--studio-subtle); font-size: 10px; line-height: 1.4; text-align: center; }
