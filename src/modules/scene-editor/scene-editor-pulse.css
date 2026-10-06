@@ -534,7 +534,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
   html[data-theme] .scene-editor-page .scene-editor-details__field-row .scene-field__label-row { align-items: flex-start; flex-direction: column; gap: 3px; }
   html[data-theme] .scene-editor-page .scene-setup-controls { grid-template-columns: 1fr; }
 }
-@media (max-width: 1250px) and (min-width: 901px) {
+@media (max-width: 1250px) and (min-width: 1025px) {
     html[data-theme] .scene-editor-page .scene-editor-layout { grid-template-columns: 68px minmax(0,1fr) minmax(340px,36vw); }
     html[data-theme] .scene-editor-page .scene-editor-stepper-rail { padding: 14px 8px; }
     html[data-theme] .scene-editor-page .scene-editor-stepper-rail__label, html[data-theme] .scene-editor-page .scene-editor-stepper__label, html[data-theme] .scene-editor-page .scene-editor-stepper__marker { display: none; }
@@ -543,9 +543,9 @@ html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__
     html[data-theme] .scene-editor-page .scene-editor-main { padding-inline: 24px; }
     html[data-theme] .scene-editor-page .scene-editor-preview__player .mage-player__control-meta:not(.mage-player__control-meta--single) { display: none; }
 }
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   html[data-theme] .scene-editor-page {
-    width: min(calc(100% - 32px), 900px);
+    width: min(calc(100% - 32px), 1024px);
     padding-top: 14px
   }
     html[data-theme] .scene-editor-page .auth-header { margin-bottom: 16px; }
@@ -820,7 +820,7 @@ html[data-theme] .scene-editor-loading .scene-editor-main {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .scene-editor-loading .scene-editor-layout {
     grid-template-columns: 1fr;
   }
@@ -1475,7 +1475,7 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
   color: var(--studio-text);
 }
 
-@media (max-width: 1250px) and (min-width: 901px) {
+@media (max-width: 1250px) and (min-width: 1025px) {
   html[data-theme] .scene-editor-page .scene-editor-layout {
     grid-template-columns: 68px minmax(0, 1fr) minmax(340px, 36vw);
   }
@@ -1485,9 +1485,9 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   html[data-theme] .scene-editor-page {
-    width: min(calc(100% - 24px), 900px);
+    width: min(calc(100% - 24px), 1024px);
     padding-top: 18px;
   }
 
