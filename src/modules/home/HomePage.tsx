@@ -2,7 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { fetchScenes, fetchTags, formatMetricLabel, formatRelativeTime, type SceneListResponse, type TagResponse } from '@shared/lib'
-import { AppIcon, EngagementButton, LoadingRegion, ScrollableTagBar, Skeleton, UserAvatar } from '@shared/ui'
+import {
+  AppIcon,
+  CreatorProfileLink,
+  EngagementButton,
+  LoadingRegion,
+  PageFrame,
+  PageHeader,
+  PagePanel,
+  ScrollableTagBar,
+  SectionHeader,
+  Skeleton,
+  UserAvatar,
+} from '@shared/ui'
 import { selectPopularHomeTags } from './selectors'
 import { MagePlayer } from '@modules/player'
 import { BrandScene } from '@modules/scene-artwork'
@@ -43,14 +55,40 @@ function FeaturedSceneSkeleton() {
           <Skeleton shape="line" className="featured-loading__description featured-loading__description--short" />
         </div>
         <Skeleton shape="line" className="featured-loading__tag-space" />
-        <div className="scene-stats featured-loading__stats">
-          <Skeleton shape="line" className="featured-loading__stats-line" />
-        </div>
-        <div className="featured-action">
-          <Skeleton shape="block" className="featured-loading__action" />
+        <div className="featured-footer">
+          <div className="scene-stats featured-loading__stats">
+            <Skeleton shape="line" className="featured-loading__stats-line" />
+          </div>
+          <div className="featured-action">
+            <Skeleton shape="block" className="featured-loading__action" />
+          </div>
         </div>
       </div>
     </LoadingRegion>
+  )
+}
+
+function FeaturedCreatorIdentity({ scene }: { scene: SceneDetail }) {
+  const creatorName = scene.creatorDisplayName || 'MAGE creator'
+  const creatorInitials = creatorName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+
+  return (
+    <CreatorProfileLink className="featured-creator-profile" handle={scene.creatorHandle}>
+      <UserAvatar
+        className="creator-avatar"
+        initials={creatorInitials}
+        gradientStart={scene.creatorAvatarGradientStart}
+        gradientEnd={scene.creatorAvatarGradientEnd}
+      />
+      <span className="featured-creator-profile__copy">
+        <strong>{creatorName}</strong>
+        <span>{scene.creatorHandle ? `@${scene.creatorHandle}` : 'Scene creator'}</span>
+      </span>
+    </CreatorProfileLink>
   )
 }
 
@@ -165,7 +203,7 @@ export function HomePage() {
   const showWelcome = !isAuthenticated && !isRestoringSession && !dismissed
   const featuredErrorCopy = featuredError ? readErrorCopy(featuredError) : null
   return (
-    <main className={`pulse-home${showWelcome ? '' : ' pulse-home--without-welcome'}`}>
+    <PageFrame className="pulse-home">
       {showWelcome && <section className="creator-section" aria-label="Create with MAGE">
         <button className="creator-dismiss" type="button" aria-label="Dismiss create prompt" title="Dismiss" onClick={() => setDismissed(true)}><AppIcon name="x" size={18} /></button>
         <div className="creator-copy">
@@ -196,10 +234,12 @@ export function HomePage() {
         </div>
       </section>}
       <section className="featured-section" aria-labelledby="featured-heading">
-        <div className="featured-heading">
-          <h1 id="featured-heading">Featured Scenes</h1>
-          <Link className="browse-link" to="/scenes?sort=featured"><span className="browse-link__label">Browse all featured</span> <AppIcon name="arrow-right" size={16} /></Link>
-        </div>
+        <PageHeader
+          actions={<Link className="browse-link" to="/scenes?sort=featured"><span className="browse-link__label">Browse all featured</span> <AppIcon name="arrow-right" size={16} /></Link>}
+          className="featured-heading"
+          title="Featured Scenes"
+          titleId="featured-heading"
+        />
         {featuredLoading && !featured && <FeaturedSceneSkeleton />}
         {featuredErrorCopy && <SceneCollectionState
           kind="error"
@@ -216,21 +256,11 @@ export function HomePage() {
           description="There’s no featured scene right now. Explore the collection and find something you love."
           action={<Link className="scene-collection-state__button" to="/scenes">Explore scenes</Link>}
         />}
-        {featured && !featuredError && <article className="featured-scene">
+        {featured && !featuredError && <PagePanel as="article" className="featured-scene" padding="none">
           <div className="featured-player"><MagePlayer audioMode="single" ariaLabel={`Featured scene: ${featured.name}`} sceneBlob={featured.sceneData} sceneKey={featured.id} posterUrl={featured.thumbnailRef} initialPlayback="playing" onAvailabilityRestored={reloadFeaturedSource} /></div>
           <div className="featured-info">
             <div className="creator-row">
-              {featured.creatorHandle ? (
-                <Link className="featured-creator-profile" to={`/@${featured.creatorHandle}`}>
-                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} gradientStart={featured.creatorAvatarGradientStart} gradientEnd={featured.creatorAvatarGradientEnd} />
-                  <div className="featured-creator-profile__copy"><strong>{featured.creatorDisplayName || 'MAGE creator'}</strong><span>@{featured.creatorHandle}</span></div>
-                </Link>
-              ) : (
-                <div className="featured-creator-profile featured-creator-profile--static">
-                  <UserAvatar className="creator-avatar" initials={(featured.creatorDisplayName || 'MAGE').split(/\s+/).slice(0,2).map(s=>s[0]).join('')} gradientStart={featured.creatorAvatarGradientStart} gradientEnd={featured.creatorAvatarGradientEnd} />
-                  <div className="featured-creator-profile__copy"><strong>{featured.creatorDisplayName || 'MAGE creator'}</strong><span>Scene creator</span></div>
-                </div>
-              )}
+              <FeaturedCreatorIdentity scene={featured} />
               <button className="follow-button" type="button" disabled title="Following creators is not available yet">Follow</button>
             </div>
             <div className="scene-copy">
@@ -241,22 +271,23 @@ export function HomePage() {
             <ScrollableTagBar ariaLabel="Featured scene categories" barClassName="tag-row featured-tags">
               {featured.tags.map(t=><Link key={t} className="tag-pill" to={`/scenes?tag=${encodeURIComponent(t)}`}>{t}</Link>)}
             </ScrollableTagBar>
-            <div className="scene-stats">
-              <EngagementButton ariaLabel="Upvote featured scene" className="featured-engagement-button" count={featured.engagement.upvotes} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='up'} isSelected={featured.engagement.currentUserVote==='up'} kind="upvote" onClick={()=>void engage('up')} />
-              <EngagementButton ariaLabel="Downvote featured scene" className="featured-engagement-button" count={featured.engagement.downvotes} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='down'} isSelected={featured.engagement.currentUserVote==='down'} kind="downvote" onClick={()=>void engage('down')} />
-              <EngagementButton ariaLabel="Save featured scene" className="featured-engagement-button" count={featured.engagement.saves} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='save'} isSelected={featured.engagement.currentUserSaved} kind="save" onClick={()=>void engage('save')} />
-            </div>
             {actionError && <p role="alert">{actionError}</p>}
-            <div className="featured-action">
-              <Link className="primary-button" to={`/scenes/${featured.id}`}>Open scene <AppIcon name="arrow-right" size={16} /></Link>
+            <div className="featured-footer">
+              <div className="scene-stats">
+                <EngagementButton ariaLabel="Upvote featured scene" className="featured-engagement-button" count={featured.engagement.upvotes} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='up'} isSelected={featured.engagement.currentUserVote==='up'} kind="upvote" onClick={()=>void engage('up')} />
+                <EngagementButton ariaLabel="Downvote featured scene" className="featured-engagement-button" count={featured.engagement.downvotes} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='down'} isSelected={featured.engagement.currentUserVote==='down'} kind="downvote" onClick={()=>void engage('down')} />
+                <EngagementButton ariaLabel="Save featured scene" className="featured-engagement-button" count={featured.engagement.saves} disabled={pendingEngagementAction!==null} isBusy={pendingEngagementAction==='save'} isSelected={featured.engagement.currentUserSaved} kind="save" onClick={()=>void engage('save')} />
+              </div>
+              <div className="featured-action">
+                <Link className="primary-button" to={`/scenes/${featured.id}`}>Open scene <AppIcon name="arrow-right" size={16} /></Link>
+              </div>
             </div>
           </div>
-        </article>}
+        </PagePanel>}
       </section>
       <section className="discover-section" aria-labelledby="recent-scenes-heading">
-        <div className="section-heading">
-          <h2 id="recent-scenes-heading">For You</h2>
-          {tagsLoading ? (
+        <SectionHeader
+          actions={tagsLoading ? (
             <LoadingRegion
               className="home-filter-loading-region"
               label="Loading scene filters"
@@ -272,7 +303,10 @@ export function HomePage() {
               ))}
             </ScrollableTagBar>
           )}
-        </div>
+          className="section-heading"
+          title="For You"
+          titleId="recent-scenes-heading"
+        />
         {error && <DiscoveryErrorState
           headingLevel={3}
           onRetry={() => setRetry(n => n + 1)}
@@ -288,6 +322,6 @@ export function HomePage() {
           <div className="discover-more"><Link className="secondary-button" to="/scenes?sort=recommended">See all recommended <AppIcon name="arrow-right" size={16} /></Link></div>
         </>}
       </section>
-    </main>
+    </PageFrame>
   )
 }

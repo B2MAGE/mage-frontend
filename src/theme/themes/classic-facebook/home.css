@@ -1,6 +1,6 @@
 /* Shared homepage structure, dressed as compact Classic Blue panels. */
-:root[data-theme='classic-facebook'] .pulse-home { width: min(calc(100% - 48px), 1280px); padding-top: var(--page-content-top-gap); }
-:root[data-theme='classic-facebook'] .pulse-home .featured-section { padding-bottom: 32px; }
+:root[data-theme='classic-facebook'] .pulse-home { width: var(--ui-page-inline-size); padding-block: 30px 72px; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-section { padding-bottom: 24px; }
 :root[data-theme='classic-facebook'] .pulse-home .featured-heading { margin-bottom: 16px; }
 :root[data-theme='classic-facebook'] .pulse-home .featured-heading h1 { font-size: 24px; letter-spacing: -.02em; }
 :root[data-theme='classic-facebook'] .pulse-home .featured-scene { box-shadow: var(--surface-shadow); }
@@ -15,12 +15,12 @@
 :root[data-theme='classic-facebook'] .pulse-home a.featured-creator-profile:hover strong { color: var(--muted); text-decoration: none; }
 :root[data-theme='classic-facebook'] .pulse-home .follow-button { color: var(--accent); border-radius: 3px; background: var(--surface-soft); }
 :root[data-theme='classic-facebook'] .pulse-home .follow-button:disabled { opacity: .6; }
-:root[data-theme='classic-facebook'] .pulse-home .scene-stats { padding-bottom: 12px; }
-:root[data-theme='classic-facebook'] .pulse-home .featured-action { padding-top: 12px; }
+:root[data-theme='classic-facebook'] .pulse-home .scene-stats { padding: 0; }
+:root[data-theme='classic-facebook'] .pulse-home .featured-action { padding: 0; }
 :root[data-theme='classic-facebook'] .pulse-home .scene-stats button { border-radius: 3px; }
 :root[data-theme='classic-facebook'] .pulse-home .scene-stats .featured-engagement-button { min-height: 30px; padding: 3px 5px; border: 1px solid transparent; border-radius: 2px; background: transparent; color: #6076a8; }
 :root[data-theme='classic-facebook'] .pulse-home .scene-stats .featured-engagement-button[aria-pressed='false']:not(:disabled):hover { color: #2d4373; border-color: #bcc7d8; background: #eef2f7; }
-:root[data-theme='classic-facebook'] .pulse-home .discover-section { padding: 32px 0; }
+:root[data-theme='classic-facebook'] .pulse-home .discover-section { padding: 24px 0 0; }
 :root[data-theme='classic-facebook'] .pulse-home .section-heading { margin-bottom: 20px; }
 :root[data-theme='classic-facebook'] .pulse-home .section-heading h2 { font-size: 24px; }
 :root[data-theme='classic-facebook'] .pulse-home .discover-more { margin-top: 24px; }
@@ -47,8 +47,9 @@
   :root[data-theme='classic-facebook'] .pulse-home .featured-description { -webkit-line-clamp: 2; }
 }
 @media (max-width: 700px) {
-  :root[data-theme='classic-facebook'] .pulse-home { width: calc(100% - 28px); }
-  :root[data-theme='classic-facebook'] .pulse-home .featured-section { padding-top: 0; }
+  :root[data-theme='classic-facebook'] .pulse-home { width: var(--ui-page-inline-size); padding-block: 18px 44px; }
+  :root[data-theme='classic-facebook'] .pulse-home .featured-section { padding: 0 0 20px; }
+  :root[data-theme='classic-facebook'] .pulse-home .discover-section { padding-top: 22px; }
   :root[data-theme='classic-facebook'] .pulse-home .featured-heading { display: flex; flex-wrap: wrap; gap: 10px; }
   :root[data-theme='classic-facebook'] .pulse-home .browse-link { margin-top: 0; font-size: 12px; }
   :root[data-theme='classic-facebook'] .pulse-home .featured-info { padding: 18px; }

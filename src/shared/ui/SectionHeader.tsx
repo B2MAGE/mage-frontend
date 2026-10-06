@@ -7,6 +7,7 @@ type SectionHeaderProps = Omit<HTMLAttributes<HTMLElement>, 'title'> & {
   eyebrow?: ReactNode
   title: ReactNode
   titleAs?: 'h2' | 'h3'
+  titleId?: string
 }
 
 export function SectionHeader({
@@ -16,13 +17,14 @@ export function SectionHeader({
   eyebrow,
   title,
   titleAs: Title = 'h2',
+  titleId,
   ...props
 }: SectionHeaderProps) {
   return (
     <header {...props} className={joinClassNames('ui-section-header', className)}>
       <div className="ui-section-header__copy">
         {eyebrow ? <p className="ui-eyebrow">{eyebrow}</p> : null}
-        <Title className="ui-section-title">{title}</Title>
+        <Title className="ui-section-title" id={titleId}>{title}</Title>
         {description ? <div className="ui-section-description">{description}</div> : null}
       </div>
       {actions ? <div className="ui-section-header__actions">{actions}</div> : null}

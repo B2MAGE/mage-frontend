@@ -17,9 +17,10 @@ describe('shared page primitives', () => {
           description="Manage the scenes that belong to you."
           eyebrow="Library"
           title="My scenes"
+          titleId="my-scenes-heading"
         />
         <PagePanel aria-label="Published scenes" interactive tone="nested">
-          <SectionHeader description="Ready to share" title="Published" />
+          <SectionHeader description="Ready to share" title="Published" titleId="published-heading" />
           <StatusBadge tone="success">Public</StatusBadge>
         </PagePanel>
       </PageFrame>,
@@ -28,7 +29,9 @@ describe('shared page primitives', () => {
     const main = screen.getByRole('main', { name: 'Scene library' })
     expect(main).toHaveClass('ui-page-frame', 'ui-page-frame--form')
     expect(screen.getByRole('heading', { level: 1, name: 'My scenes' })).toHaveClass('ui-page-title')
+    expect(screen.getByRole('heading', { level: 1, name: 'My scenes' })).toHaveAttribute('id', 'my-scenes-heading')
     expect(screen.getByRole('heading', { level: 2, name: 'Published' })).toHaveClass('ui-section-title')
+    expect(screen.getByRole('heading', { level: 2, name: 'Published' })).toHaveAttribute('id', 'published-heading')
     expect(screen.getByRole('region', { name: 'Published scenes' })).toHaveAttribute('data-interactive', 'true')
     expect(screen.getByRole('button', { name: 'Create' })).toHaveClass('ui-button--primary')
     expect(screen.getByText('Public')).toHaveClass('ui-status--success')
