@@ -22,7 +22,7 @@
   --border-strong: #9aabc5;
   --radius: 4px;
   --radius-lg: 5px;
-  --content: 1280px;
+  --content: var(--ui-page-max-width);
   --page-content-top-gap: 54px;
   --nav-height: 56px;
   --nav-control-hover-background: #49679f;

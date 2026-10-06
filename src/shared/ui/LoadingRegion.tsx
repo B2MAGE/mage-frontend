@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { joinClassNames } from '@shared/lib'
 
 type LoadingRegionElement = 'article' | 'aside' | 'div' | 'main' | 'section'
 
@@ -20,7 +21,7 @@ export function LoadingRegion({
   return (
     <Component
       aria-busy="true"
-      className={['loading-region', className].filter(Boolean).join(' ')}
+      className={joinClassNames('loading-region', 'ui-loading-region', className)}
     >
       <span
         aria-atomic="true"
@@ -32,7 +33,7 @@ export function LoadingRegion({
       </span>
       <div
         aria-hidden="true"
-        className={['loading-region__visual', visualClassName].filter(Boolean).join(' ')}
+        className={joinClassNames('loading-region__visual', 'ui-loading-region__visual', visualClassName)}
       >
         {children}
       </div>

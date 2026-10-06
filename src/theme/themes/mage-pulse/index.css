@@ -16,7 +16,17 @@
   --player-track-summary-hover-text: #f4f5f7; --player-feedback-text: #ff9aaa;
   --nav-focus-border: #a89eff; --nav-focus-ring: 0 0 0 3px rgba(124,108,255,.18);
   --nav-menu-channel-link-color: #a89eff;
-  --radius: 14px; --radius-lg: 20px; --content: 1280px;
+  --radius: 14px; --radius-lg: 20px; --content: var(--ui-page-max-width);
+  --ui-panel-background: #111318; --ui-panel-nested-background: #0d0f13; --ui-panel-quiet-background: #171a20;
+  --ui-border: rgba(255,255,255,.09); --ui-border-strong: rgba(255,255,255,.16); --ui-border-hover: rgba(194,185,255,.52);
+  --ui-focus-color: #a89eff; --ui-focus-ring: 0 0 0 3px rgba(124,108,255,.18);
+  --ui-field-background: #0d0f13; --ui-field-hover-background: #111318;
+  --ui-text-secondary: #a4a8b2; --ui-text-muted: #9298a4;
+  --ui-button-primary-background: #f4f5f7; --ui-button-primary-hover: #dedee8; --ui-button-primary-text: #090a0d;
+  --ui-status-info-background: rgba(124,108,255,.12); --ui-status-info-border: rgba(178,168,255,.32); --ui-status-info-text: #c8c1ff;
+  --ui-status-success-background: rgba(103,215,161,.1); --ui-status-success-border: rgba(103,215,161,.32); --ui-status-success-text: #92e7bc;
+  --ui-status-warning-background: rgba(216,180,109,.1); --ui-status-warning-border: rgba(216,180,109,.3); --ui-status-warning-text: #e8c77e;
+  --ui-status-danger-background: rgba(255,116,116,.1); --ui-status-danger-border: rgba(255,116,116,.32); --ui-status-danger-text: #ff9b9b;
   --nav-height: 68px; --nav-background: rgba(9,10,13,.9); --nav-border-color: var(--border);
   --nav-control-text: var(--text); --nav-control-background: var(--surface);
   --nav-control-radius: 9px; --nav-menu-background: #111318;

@@ -18,7 +18,7 @@
 }
 
 .nav-inner {
-  width: min(1380px, calc(100% - 48px));
+  width: var(--ui-page-inline-size);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3380,7 +3380,7 @@
 
 @media (max-width: 560px) {
   .nav-inner {
-    width: min(1380px, calc(100% - 2rem));
+    width: var(--ui-page-inline-size);
     gap: 14px;
   }
 

@@ -15,7 +15,7 @@ export function SelectableChip({
   return (
     <button
       {...buttonProps}
-      className={joinClassNames(className, active && activeClassName)}
+      className={joinClassNames('ui-chip', className, active && activeClassName)}
       data-active={active}
       type="button"
     />

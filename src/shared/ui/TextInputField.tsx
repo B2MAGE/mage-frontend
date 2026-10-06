@@ -41,7 +41,7 @@ export function TextInputField({
   )
 
   return (
-    <div className={joinClassNames('field-group', fieldClassName)}>
+    <div className={joinClassNames('field-group', 'ui-field', fieldClassName)}>
       <label htmlFor={id}>{label}{labelSuffix}</label>
       {inputPrefix || inputAction ? (
         <div className={joinClassNames(

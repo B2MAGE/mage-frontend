@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
+import { joinClassNames } from '@shared/lib'
 import { AppIcon } from './AppIcon'
 
 type PaginationIconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children' | 'type'> & {
@@ -17,7 +18,7 @@ function PaginationChevronIcon({
   const isLeft = direction === 'left'
 
   return (
-    <span className="my-scenes-pagination__icon" aria-hidden="true">
+    <span className="ui-pagination-button__icon" aria-hidden="true">
       <AppIcon
         name={double ? (isLeft ? 'chevrons-left' : 'chevrons-right') : (isLeft ? 'chevron-left' : 'chevron-right')}
         size={16}
@@ -34,7 +35,12 @@ export function PaginationIconButton({
   ...buttonProps
 }: PaginationIconButtonProps) {
   return (
-    <button {...buttonProps} aria-label={label} className={className} type="button">
+    <button
+      {...buttonProps}
+      aria-label={label}
+      className={joinClassNames('ui-pagination-button', className)}
+      type="button"
+    >
       <PaginationChevronIcon direction={direction} double={double} />
     </button>
   )

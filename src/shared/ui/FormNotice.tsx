@@ -10,7 +10,11 @@ type FormNoticeProps = PropsWithChildren<{
 export function FormNotice({ children, className, id, tone }: FormNoticeProps) {
   return (
     <div
-      className={joinClassNames(tone === 'error' ? 'form-alert' : 'form-note', className)}
+      className={joinClassNames(
+        'ui-notice',
+        tone === 'error' ? 'ui-notice--error form-alert' : 'ui-notice--note form-note',
+        className,
+      )}
       id={id}
       role={tone === 'error' ? 'alert' : 'status'}
     >

@@ -270,6 +270,42 @@
   --editor-choice-selected-border: rgba(99, 240, 214, 0.42);
   --editor-choice-selected-background: rgba(17, 58, 53, 0.42);
   --editor-choice-selected-shadow: 0 0 0 4px rgba(99, 240, 214, 0.08);
+
+  /* Shared page and component primitives. */
+  --ui-page-max-width: 1440px;
+  --ui-page-readable-width: 760px;
+  --ui-page-form-width: 1040px;
+  --ui-page-gutter: 24px;
+  --ui-page-block-start: 48px;
+  --ui-page-block-end: 80px;
+  --ui-page-section-gap: 32px;
+  --ui-panel-background: var(--panel);
+  --ui-panel-nested-background: var(--surface-nested-bg);
+  --ui-panel-quiet-background: var(--surface-soft-bg);
+  --ui-border: var(--border);
+  --ui-border-strong: rgba(255, 255, 255, 0.18);
+  --ui-border-hover: rgba(99, 240, 214, 0.34);
+  --ui-focus-color: var(--accent);
+  --ui-focus-ring: 0 0 0 3px rgba(99, 240, 214, 0.12);
+  --ui-field-background: rgba(4, 12, 14, 0.72);
+  --ui-field-hover-background: rgba(8, 20, 23, 0.84);
+  --ui-text-secondary: var(--muted);
+  --ui-text-muted: rgba(155, 177, 171, 0.92);
+  --ui-button-primary-background: var(--accent);
+  --ui-button-primary-hover: #7bf4e1;
+  --ui-button-primary-text: #03211c;
+  --ui-status-info-background: rgba(99, 240, 214, 0.1);
+  --ui-status-info-border: rgba(99, 240, 214, 0.24);
+  --ui-status-info-text: #d5faf3;
+  --ui-status-success-background: rgba(64, 189, 132, 0.12);
+  --ui-status-success-border: rgba(83, 214, 154, 0.32);
+  --ui-status-success-text: #9ce9c4;
+  --ui-status-warning-background: rgba(216, 180, 109, 0.1);
+  --ui-status-warning-border: rgba(216, 180, 109, 0.3);
+  --ui-status-warning-text: #f0cf8d;
+  --ui-status-danger-background: rgba(255, 116, 116, 0.1);
+  --ui-status-danger-border: rgba(255, 116, 116, 0.32);
+  --ui-status-danger-text: #ffb0b0;
 }
 
 :root[data-theme='classic-facebook'] {
@@ -521,6 +557,28 @@
   --editor-choice-selected-border: #5b74a8;
   --editor-choice-selected-background: #e9eff8;
   --editor-choice-selected-shadow: inset 0 0 0 1px #a8b8d9;
+  --ui-border-strong: #9aabc5;
+  --ui-border-hover: #6d84b4;
+  --ui-focus-color: #3b5998;
+  --ui-focus-ring: 0 0 0 3px rgba(59, 89, 152, 0.16);
+  --ui-field-background: #ffffff;
+  --ui-field-hover-background: #f7f8fb;
+  --ui-text-muted: #5f6f88;
+  --ui-button-primary-background: #3b5998;
+  --ui-button-primary-hover: #49679f;
+  --ui-button-primary-text: #ffffff;
+  --ui-status-info-background: #e9eff8;
+  --ui-status-info-border: #a8b8d9;
+  --ui-status-info-text: #2d4373;
+  --ui-status-success-background: #e6f4eb;
+  --ui-status-success-border: #8cc7a2;
+  --ui-status-success-text: #245f3a;
+  --ui-status-warning-background: #fff7df;
+  --ui-status-warning-border: #dec47a;
+  --ui-status-warning-text: #755b12;
+  --ui-status-danger-background: #fff0f0;
+  --ui-status-danger-border: #e4a1a1;
+  --ui-status-danger-text: #8c3030;
 }
 
 body {
