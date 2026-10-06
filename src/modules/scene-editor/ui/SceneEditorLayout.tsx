@@ -6,11 +6,13 @@ export function FieldGroupLabel({
   htmlFor,
   label,
   meta,
+  metaLive,
 }: {
   description?: string
   htmlFor?: string
   label: string
-  meta?: string
+  meta?: ReactNode
+  metaLive?: 'assertive' | 'polite'
 }) {
   return (
     <div className="scene-field__copy">
@@ -22,7 +24,7 @@ export function FieldGroupLabel({
         ) : (
           <span className="scene-field__label">{label}</span>
         )}
-        {meta ? <span className="scene-field__meta">{meta}</span> : null}
+        {meta ? <span aria-live={metaLive} className="scene-field__meta">{meta}</span> : null}
       </div>
       {description ? <p className="scene-field__description">{description}</p> : null}
     </div>

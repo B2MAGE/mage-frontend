@@ -214,14 +214,14 @@ describe('EditScenePage workflow', () => {
     if (kind === 'template') expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
     else expect(screen.getByTestId('mage-player')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /create scene/i })).not.toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: /^ambient$/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^remove ambient$/i })).toBeInTheDocument()
 
     await user.clear(screen.getByLabelText(/scene name/i))
     await user.type(screen.getByLabelText(/scene name/i), ' Updated Scene ')
     await user.clear(screen.getByLabelText(/description/i))
     await user.type(screen.getByLabelText(/description/i), ' Updated from My Scenes. ')
     await selectExistingTag(user, 'focus-friendly')
-    await user.click(screen.getByRole('button', { name: /capture again/i }))
+    await user.click(screen.getByRole('button', { name: /recapture thumbnail/i }))
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /update scene/i }))
 
