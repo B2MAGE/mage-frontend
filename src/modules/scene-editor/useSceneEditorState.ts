@@ -15,7 +15,8 @@ import type {
   SceneEditorInitialState,
 } from './types'
 import {
-  moveVisiblePass,
+  moveActivePass,
+  moveActivePassTo,
   prettyPrintEditorSceneData,
   readEditableSceneData,
   validateSceneDataText,
@@ -457,9 +458,19 @@ export function useSceneEditorState({
     updateBranch('fx', (currentFx) => {
       return {
         ...currentFx,
-        passOrder: moveVisiblePass(currentFx.passOrder, passId, direction),
+        passOrder: moveActivePass(currentFx.passOrder, currentFx, passId, direction),
       }
     })
+  }
+
+  function movePassTo(passId: ScenePassId, targetPassId: ScenePassId) {
+    if (passId === 'outputPass' || passId === 'copyShader'
+      || targetPassId === 'outputPass' || targetPassId === 'copyShader') return
+
+    updateBranch('fx', (currentFx) => ({
+      ...currentFx,
+      passOrder: moveActivePassTo(currentFx.passOrder, currentFx, passId, targetPassId),
+    }))
   }
 
   return {
@@ -511,6 +522,7 @@ export function useSceneEditorState({
     isUnmodifiedBuilderCustom,
     isTagDropdownOpen,
     movePass,
+    movePassTo,
     name,
     openTagDropdown,
     pendingRetryTags,

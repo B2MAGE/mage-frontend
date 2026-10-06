@@ -293,7 +293,7 @@ describe('Basic template editor controls', () => {
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
     await user.click(screen.getByRole('button', { name: 'Move RGB Shift up' }))
     expect(previewDocument().settings.effects.passOrder).toContain('RGBShift')
-    expect(screen.getByRole('button', { name: 'Move Output up' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Move Output up' })).not.toBeInTheDocument()
     const draft = previewDocument()
     expect(draft.kind).toBe('template')
     expect(JSON.stringify(draft)).not.toContain('"shader"')

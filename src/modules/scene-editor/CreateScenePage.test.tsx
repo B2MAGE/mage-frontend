@@ -332,10 +332,10 @@ describe('CreateScenePage workflow', () => {
 
     expect(screen.getByRole('heading', { name: /^finish the look\.$/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /^control the effect stack\.$/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^finish & output$/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^channel & motion$/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^color & tone$/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^pattern & structure$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^core$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^motion & glitch$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^color & style$/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^pattern & screen$/i })).toBeInTheDocument()
     expect(screen.getByText(/^gamma correction$/i)).toBeInTheDocument()
     expect(screen.getByText(/sharp digital breakups and instability/i)).toBeInTheDocument()
     expect(screen.queryByText(/^additional passes$/i)).not.toBeInTheDocument()
@@ -345,7 +345,9 @@ describe('CreateScenePage workflow', () => {
 
     expect(screen.getByRole('heading', { name: /^control the effect stack\.$/i })).toBeInTheDocument()
     expect(screen.getByText(/^output$/i)).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: /^finish & output$/i })).not.toBeInTheDocument()
+    expect(screen.getByText('1 active pass')).toBeInTheDocument()
+    expect(screen.queryByText(/^bloom$/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^core$/i })).not.toBeInTheDocument()
   })
 
   it('reveals inline advanced controls without changing scene data and keeps raw data in Confirm', async () => {

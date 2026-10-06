@@ -13,7 +13,7 @@ import {
   type SceneData,
   type ScenePassId,
 } from './sceneEditor'
-import { describePassState, getVisiblePassOrder, moveVisiblePass } from './utils'
+import { describePassState, getActivePassOrder, moveActivePass, moveActivePassTo } from './utils'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -119,17 +119,27 @@ describe('editor effect persistence', () => {
     }
   })
 
-  it('moves adjacent visible passes across hidden Copy without moving Copy or Output', () => {
+  it('moves adjacent active passes without disturbing hidden passes or Output', () => {
     const order: ScenePassId[] = ['bloom', 'copyShader', 'toonShader', 'bleachBypassShader', 'outputPass']
-    expect(getVisiblePassOrder(order)).toEqual(['bloom', 'toonShader', 'bleachBypassShader', 'outputPass'])
-    const moved = moveVisiblePass(order, 'toonShader', -1)
-    expect(moved).toEqual(['toonShader', 'copyShader', 'bloom', 'bleachBypassShader', 'outputPass'])
-    expect(moveVisiblePass(moved, 'toonShader', 1)).toEqual(order)
-    expect(moveVisiblePass(order, 'bloom', -1)).toEqual(order)
-    expect(moveVisiblePass(order, 'bleachBypassShader', 1)).toEqual(order)
-    expect(moveVisiblePass(order, 'outputPass', -1)).toEqual(order)
-    expect(moveVisiblePass(order, 'copyShader', -1)).toEqual(order)
+    const fx = getSceneEditorModel(savedEffectsScene()).fx
+    expect(getActivePassOrder(order, fx)).toEqual(['toonShader', 'bleachBypassShader', 'outputPass'])
+    const moved = moveActivePass(order, fx, 'bleachBypassShader', -1)
+    expect(moved).toEqual(['bloom', 'copyShader', 'bleachBypassShader', 'toonShader', 'outputPass'])
+    expect(moveActivePass(moved, fx, 'bleachBypassShader', 1)).toEqual(order)
+    expect(moveActivePass(order, fx, 'bloom', -1)).toEqual(order)
+    expect(moveActivePass(order, fx, 'toonShader', -1)).toEqual(order)
+    expect(moveActivePass(order, fx, 'outputPass', -1)).toEqual(order)
+    expect(moveActivePass(order, fx, 'copyShader', -1)).toEqual(order)
     expect(order).toEqual(['bloom', 'copyShader', 'toonShader', 'bleachBypassShader', 'outputPass'])
+
+    const dragged = moveActivePassTo(order, fx, 'toonShader', 'bleachBypassShader')
+    expect(dragged).toEqual(['bloom', 'copyShader', 'bleachBypassShader', 'toonShader', 'outputPass'])
+    expect(moveActivePassTo(order, fx, 'outputPass', 'toonShader')).toEqual(order)
+    expect(moveActivePassTo(order, fx, 'toonShader', 'outputPass')).toEqual(order)
+
+    const reenabledFx = { ...fx, bloom: { ...fx.bloom, enabled: true } }
+    expect(getActivePassOrder(moved, reenabledFx)).toEqual(['bloom', 'bleachBypassShader', 'toonShader', 'outputPass'])
+    expect(getActivePassOrder(order, { ...fx, passes: { ...fx.passes, outputPass: false, toon: false, bleachBypass: false } })).toEqual([])
   })
 })
 
@@ -188,12 +198,33 @@ describe('editor Toon and Bleach Bypass controls', () => {
     await user.click(effectToggle('Toon'))
     expect(getSceneEditorModel(draftScene()).fx.passes).toMatchObject({ toon: false, bleachBypass: true })
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
-    expect(passRow('Toon').getByText('Disabled')).toBeInTheDocument()
+    expect(screen.queryByText('Toon', { exact: true })).not.toBeInTheDocument()
     expect(passRow('Bleach Bypass').getByText('Enabled')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(screen.getByText('Bleach Bypass', { exact: true })).toBeInTheDocument()
     expect(screen.queryByText('Toon', { exact: true })).not.toBeInTheDocument()
     expect(screen.queryByText('Copy Shader', { exact: true })).not.toBeInTheDocument()
+  })
+
+  it('shows Output as the only default pass and a clear empty state when Output is disabled', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
+      ? jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] })) : undefined)
+    const user = userEvent.setup()
+    renderEditScenePage(undefined, 'mage-pulse')
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Pass Order' }))
+    expect(screen.getByText('1 active pass')).toBeInTheDocument()
+    expect(passRow('Output').getByText(/always last/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /move output/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Bloom', { exact: true })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Effects' }))
+    await user.click(effectToggle('Output Pass'))
+    await user.click(screen.getByRole('button', { name: 'Pass Order' }))
+    expect(screen.getByText('0 active passes')).toBeInTheDocument()
+    expect(screen.getByText('No active passes')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Active effect pass order' })).not.toBeInTheDocument()
   })
 
   it('includes both enabled flags in the custom repair update request', async () => {
@@ -223,7 +254,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('loads saved flags, reorders across hidden Copy, and saves changed flags', async () => {
+  it('loads saved flags, reorders active neighbors across hidden passes, and saves changed flags', async () => {
     storeSceneEditorSession()
     const scene = buildSceneEditorApiScene({ sceneData: savedEffectsScene(), tags: [] })
     let updated: unknown
@@ -242,16 +273,22 @@ describe('editor Toon and Bleach Bypass controls', () => {
     await user.click(screen.getByRole('button', { name: 'Effects' }))
     expect(effectToggle('Toon')).toBeChecked()
     expect(effectToggle('Bleach Bypass')).toBeChecked()
-    await user.click(effectToggle('Toon'))
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
     expect(screen.queryByText('Copy Shader', { exact: true })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Move Toon up' }))
+    expect(screen.getByLabelText('Drag Toon to reorder')).toHaveAttribute('title', 'Drag to reorder')
+    expect(screen.getByLabelText('Drag Bleach Bypass to reorder')).toHaveAttribute('title', 'Drag to reorder')
+    expect(screen.queryByText('Output is pinned to the end of the stack and cannot be moved.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Move Bleach Bypass up' }))
     const preview = getSceneEditorModel(draftScene())
-    expect(preview.fx.passOrder.slice(0, 4)).toEqual(['toonShader', 'copyShader', 'bloom', 'bleachBypassShader'])
+    expect(preview.fx.passOrder.slice(0, 4)).toEqual(['bloom', 'copyShader', 'bleachBypassShader', 'toonShader'])
     expect(preview.fx.passOrder.at(-1)).toBe('outputPass')
-    expect(screen.getByRole('button', { name: 'Move Toon up' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Move Output up' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Move Output down' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move Bleach Bypass up' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Move Output up' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Move Output down' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Effects' }))
+    await user.click(effectToggle('Toon'))
+    await user.click(screen.getByRole('button', { name: 'Pass Order' }))
+    expect(screen.queryByText('Toon', { exact: true })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toMatchObject({ sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: {
