@@ -6,6 +6,7 @@ import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { buildMagePlayerController } from '../player/test-fixtures'
 import { createTemplateScene } from './templateEditor'
+import { createBuilderScene } from './builderEditor'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
 
 vi.mock('../player/infrastructure/engineAdapter', () => ({ createMagePlayer: vi.fn() }))
@@ -16,11 +17,35 @@ afterEach(() => {
     sceneRecovery.setSafeMode(false)
     for (const key of blockedKeys) sceneRecovery.clear(key)
   })
+  vi.mocked(createMagePlayer).mockReset()
   vi.restoreAllMocks()
   window.localStorage.clear()
 })
 
 describe('scene editor recovery', () => {
+  it('treats choosing the bounded default Builder scene as an explicit retry', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    const player = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(player)
+    const builder = createBuilderScene()
+    const key = sceneRecoveryKey(builder)!
+    blockedKeys.add(key)
+    sceneRecovery.block(key, 'runtime')
+
+    renderCreateScenePage('mage-pulse')
+    await waitFor(() => expect(player.loadSceneBlob).toHaveBeenCalled())
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /^Scene$/ }))
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
+
+    await waitFor(() => expect(player.loadSceneBlob).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: 'builder', objects: [expect.objectContaining({ operation: { type: 'sphere', radius: 1 } })] }),
+      expect.any(Object),
+    ))
+    expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
+  })
+
   it('preserves unsaved template settings and details through failure, safe editing, and explicit retry', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()

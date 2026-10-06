@@ -16,6 +16,22 @@ type Props = {
 }
 
 const fieldId = (path: string) => `template-${path.replaceAll('.', '-')}`
+const SCENE_SCALE_MIN = 1
+const SCENE_SCALE_MAX = 200
+const SCENE_SCALE_SLIDER_MAX = 1000
+const SCENE_SCALE_CURVE = 4
+
+function sceneScaleToSliderPosition(scale: number) {
+  const bounded = Math.min(SCENE_SCALE_MAX, Math.max(SCENE_SCALE_MIN, scale))
+  const normalizedScale = Math.log(bounded) / Math.log(SCENE_SCALE_MAX)
+  return Math.round(Math.pow(normalizedScale, 1 / SCENE_SCALE_CURVE) * SCENE_SCALE_SLIDER_MAX)
+}
+
+function sliderPositionToSceneScale(position: number) {
+  const bounded = Math.min(SCENE_SCALE_SLIDER_MAX, Math.max(0, position))
+  const normalizedPosition = bounded / SCENE_SCALE_SLIDER_MAX
+  return Number(Math.exp(Math.log(SCENE_SCALE_MAX) * Math.pow(normalizedPosition, SCENE_SCALE_CURVE)).toFixed(2))
+}
 
 export function SceneSetupControls({
   fields = {},
@@ -84,17 +100,20 @@ export function SceneSetupControls({
         <input
           aria-describedby={describedBy('parameters.scale')}
           aria-invalid={Boolean(error('parameters.scale'))}
+          aria-valuemax={SCENE_SCALE_MAX}
+          aria-valuemin={SCENE_SCALE_MIN}
+          aria-valuenow={scale}
           className="scene-slider__range"
           id={fieldId('parameters.scale')}
-          max={200}
-          min={1}
+          max={SCENE_SCALE_SLIDER_MAX}
+          min={0}
           onChange={event => {
-            const value = event.currentTarget.valueAsNumber
-            if (Number.isFinite(value)) onScaleChange(value)
+            const position = event.currentTarget.valueAsNumber
+            if (Number.isFinite(position)) onScaleChange(sliderPositionToSceneScale(position))
           }}
           step={1}
           type="range"
-          value={scale}
+          value={sceneScaleToSliderPosition(scale)}
         />
         <input
           aria-describedby={describedBy('parameters.scale')}
@@ -102,13 +121,13 @@ export function SceneSetupControls({
           aria-label="Scene Scale numeric value"
           className="scene-slider__number"
           id={`${fieldId('parameters.scale')}-number`}
-          max={200}
-          min={1}
+          max={SCENE_SCALE_MAX}
+          min={SCENE_SCALE_MIN}
           onChange={event => {
             const value = event.currentTarget.valueAsNumber
             if (Number.isFinite(value)) onScaleChange(value)
           }}
-          step={1}
+          step={0.01}
           type="number"
           value={scale}
         />

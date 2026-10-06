@@ -40,6 +40,16 @@ export type BuilderOperation =
   | { type: 'torus'; radius: number; tube: number }
   | { type: 'cylinder'; radius: number; height: number }
 export type BuilderVector = { x: number; y: number; z: number }
+export type BuilderModifier =
+  | { type: 'expand'; amount: number }
+  | { type: 'shell'; thickness: number }
+  | { type: 'twist'; axis: 'x' | 'y' | 'z'; amount: number }
+export type BuilderArrangement =
+  | { type: 'linear'; axis: 'x' | 'y' | 'z'; count: number; spacing: number }
+  | { type: 'radial'; axis: 'x' | 'y' | 'z'; count: number; radius: number }
+export type BuilderMotion =
+  | { type: 'none' }
+  | { type: 'spin'; axis: 'x' | 'y' | 'z'; speed: number }
 export type BuilderBinding = {
   target: `${'position' | 'rotation' | 'scale'}.${'x' | 'y' | 'z'}` | 'material.metalness' | 'material.shininess'
   source: `${'bass' | 'mid' | 'treble' | 'overall'}-${'level' | 'hit'}` | 'pointer-x' | 'pointer-y' | 'pointer-down'
@@ -50,6 +60,9 @@ export type BuilderObject = {
   id: string; name: string; operation: BuilderOperation
   transform: { position: BuilderVector; rotation: BuilderVector; scale: BuilderVector }
   material: { color: string; metalness: number; shininess: number }
+  modifiers: BuilderModifier[]
+  arrangements: BuilderArrangement[]
+  motion: BuilderMotion
   bindings: BuilderBinding[]
 }
 export type BuilderSceneDocument = {

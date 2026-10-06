@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot, type TemplateId } from "@modules/player";
+import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type MagePlayerAudioResponseCapabilitiesSnapshot, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -38,6 +38,7 @@ import { builderControlLocation, templateControlLocation } from "./ui/sceneEdito
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
+import { createBuilderScene } from "./builderEditor";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
@@ -594,6 +595,17 @@ export function SceneEditorShell({
     </div>
   );
   function switchToDefaultBuilder() {
+    // Choosing Builder is an explicit request to start the known, bounded
+    // default document. Let that click retry a matching recovery marker left by
+    // an earlier local build or renderer failure instead of opening on a stale
+    // Playback paused panel.
+    const nextBuilder = createBuilderScene();
+    const recoveryKey = sceneRecoveryKey(nextBuilder, mode.type === "edit" ? mode.sceneId : undefined);
+    const recoveryBlock = recoveryKey ? sceneRecovery.getBlock(recoveryKey) : null;
+    if (recoveryKey && recoveryBlock) {
+      if (recoveryBlock.reason === "stopped") sceneRecovery.resumeStoppedScene(recoveryKey, recoveryBlock.at);
+      else sceneRecovery.retry(recoveryKey);
+    }
     handleSwitchToBuilder();
     setIsTemplateSourceVisible(false);
     setIsReplacementPending(false);
@@ -725,8 +737,7 @@ export function SceneEditorShell({
                 />
               </section>
               {creationMode}
-              {isBuilder && builderDocument ? <div className="builder-workspace">
-                <BuilderSceneControls
+              {isBuilder && builderDocument ? <BuilderSceneControls
                   document={builderDocument}
                   selectedObjectId={selectedBuilderObjectId}
                   onSelectObject={setSelectedBuilderObjectId}
@@ -734,8 +745,7 @@ export function SceneEditorShell({
                   onDuplicateObject={handleDuplicateBuilderObject}
                   onRemoveObject={handleRemoveBuilderObject}
                   onUpdateObject={handleUpdateBuilderObject}
-                />
-              </div> : null}
+                /> : null}
               {isCustomCodeVisible ? shaderEditor : null}
             </SceneSection> : null}
 

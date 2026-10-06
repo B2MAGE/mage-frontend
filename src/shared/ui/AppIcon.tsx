@@ -1,7 +1,7 @@
 import {
   ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, Check,
   ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  CircleAlert, GripVertical, Heart, Images, Layers, ListMusic,
+  CircleAlert, GripVertical, Heart, Images, Info, Layers, ListMusic,
   LogOut, Maximize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
   Search, Settings, Shuffle, User, Volume2, VolumeX, X,
   type LucideProps,
@@ -27,6 +27,7 @@ const icons = {
   'grip-vertical': GripVertical,
   heart: Heart,
   images: Images,
+  info: Info,
   layers: Layers,
   'list-music': ListMusic,
   'log-out': LogOut,

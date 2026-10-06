@@ -37,14 +37,53 @@ describe('compileBuilderDocument', () => {
     const second = compileBuilderDocument(structuredClone(input))
     expect(second).toEqual(first)
     expect(first.shader).toContain('extractSDF(sphere)')
-    expect(first.shader).toContain('extractSDF(box)')
+    expect(first.shader).toContain('builder_box_delta_1_0=abs(builder_box_space_1_0)-vec3(0.5,0.75,1)')
+    expect(first.shader).not.toContain('extractSDF(box)')
     expect(first.shader).toContain('extractSDF(torus)')
     expect(first.shader).toContain('extractSDF(cylinder)')
     expect(first.shader).not.toContain(input.objects[0].name)
     expect(first.shader).not.toContain(input.objects[0].id)
     expect(first.workload).toEqual({ expandedPrimitives: 4, compositionOperations: 3,
       transformOperations: 20, materialOperations: 12, liveUniforms: 16,
+      modifierOperations: 0, arrangementOperations: 0, animationOperations: 0,
       optionalEffects: 0, generatedSourceBytes: new TextEncoder().encode(first.shader).byteLength })
+  })
+
+  it('expands nested bounded arrangements and applies modifiers and spin to every copy', () => {
+    const input = document(1)
+    input.objects[0].arrangements = [
+      { type: 'linear', axis: 'x', count: 2, spacing: 1.5 },
+      { type: 'radial', axis: 'y', count: 3, radius: 2 },
+    ]
+    input.objects[0].modifiers = [
+      { type: 'twist', axis: 'y', amount: 1.5 },
+      { type: 'expand', amount: 0.2 },
+      { type: 'shell', thickness: 0.1 },
+    ]
+    input.objects[0].motion = { type: 'spin', axis: 'z', speed: 0.5 }
+    const compiled = compileBuilderDocument(input)
+    expect(compiled.shader.match(/extractSDF\(sphere\)/g)).toHaveLength(6)
+    expect(compiled.shader).toContain('rotateZ((0.3+time*0.5))')
+    expect(compiled.shader).toContain('builder_twist_angle_0_0_0=builder_twist_space_0_0_0.y*1.5')
+    expect(compiled.shader).toContain('abs((builder_distance_0_0-0.2))-0.1')
+    expect(compiled.shader.indexOf('builder_twist_angle_0_0_0')).toBeLessThan(compiled.shader.indexOf('extractSDF(sphere)'))
+    expect(compiled.shader.indexOf('extractSDF(sphere)')).toBeLessThan(compiled.shader.indexOf('abs((builder_distance_0_0-0.2))-0.1'))
+    expect(compiled.workload).toMatchObject({ expandedPrimitives: 6, compositionOperations: 5,
+      transformOperations: 30, materialOperations: 18, modifierOperations: 30,
+      arrangementOperations: 5, animationOperations: 6 })
+    expect(() => compileShader(compiled.shader)).not.toThrow()
+  })
+
+  it('accepts exactly 16 expanded copies and rejects the next one', () => {
+    const input = document(2)
+    input.objects[0].arrangements = [{ type: 'linear', axis: 'x', count: 8, spacing: 1 }]
+    input.objects[1].arrangements = [{ type: 'radial', axis: 'y', count: 8, radius: 2 }]
+    expect(compileBuilderDocument(input).workload.expandedPrimitives).toBe(16)
+
+    const overBudget = document(3)
+    overBudget.objects[0].arrangements = input.objects[0].arrangements
+    overBudget.objects[1].arrangements = input.objects[1].arrangements
+    expect(() => compileBuilderDocument(overBudget)).toThrow('expandedPrimitives requires 17; maximum is 16')
   })
 
   it('creates stable bounded uniforms only for declared live properties', () => {

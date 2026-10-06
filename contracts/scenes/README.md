@@ -7,7 +7,9 @@ SB-01 adds `kind: "builder"` with explicit `builderVersion: 1`. See
 catalog, transforms, materials, property bindings, limits, version policy and
 the storage-versus-rendering delivery boundary. SB-02 adds the versioned
 `builder-rendering.v1.json` workload policy and trusted compilation inside the
-isolated player. The same shared schema and
+isolated player. SB-04 adds bounded Expand/Shell/Twist modifiers, nested Line/Ring
+arrangements and per-object spin while applying every rendering budget after
+copy expansion. The same shared schema and
 fixtures cover Builder, template and custom documents; a Builder document is
 never treated as custom source.
 

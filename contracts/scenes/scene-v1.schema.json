@@ -852,6 +852,97 @@
                 },
                 "default": {}
               },
+              "modifiers": {
+                "type": "array",
+                "maxItems": 3,
+                "x-uniqueBy": "type",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["type"],
+                      "properties": {
+                        "type": { "const": "expand" },
+                        "amount": { "type": "number", "minimum": -2, "maximum": 2, "default": 0.2 }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["type"],
+                      "properties": {
+                        "type": { "const": "shell" },
+                        "thickness": { "type": "number", "minimum": 0.01, "maximum": 1, "default": 0.1 }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["type"],
+                      "properties": {
+                        "type": { "const": "twist" },
+                        "axis": { "type": "string", "enum": ["x", "y", "z"], "default": "y" },
+                        "amount": { "type": "number", "minimum": -6, "maximum": 6, "default": 1 }
+                      }
+                    }
+                  ]
+                },
+                "default": []
+              },
+              "arrangements": {
+                "type": "array",
+                "maxItems": 2,
+                "x-uniqueBy": "type",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["type"],
+                      "properties": {
+                        "type": { "const": "linear" },
+                        "axis": { "type": "string", "enum": ["x", "y", "z"], "default": "x" },
+                        "count": { "type": "integer", "minimum": 2, "maximum": 8, "default": 3 },
+                        "spacing": { "type": "number", "minimum": 0.1, "maximum": 10, "default": 1.5 }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["type"],
+                      "properties": {
+                        "type": { "const": "radial" },
+                        "axis": { "type": "string", "enum": ["x", "y", "z"], "default": "y" },
+                        "count": { "type": "integer", "minimum": 3, "maximum": 8, "default": 5 },
+                        "radius": { "type": "number", "minimum": 0.1, "maximum": 10, "default": 2 }
+                      }
+                    }
+                  ]
+                },
+                "default": []
+              },
+              "motion": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type"],
+                    "properties": { "type": { "const": "none" } }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["type"],
+                    "properties": {
+                      "type": { "const": "spin" },
+                      "axis": { "type": "string", "enum": ["x", "y", "z"], "default": "y" },
+                      "speed": { "type": "number", "minimum": -4, "maximum": 4, "default": 0.5 }
+                    }
+                  }
+                ],
+                "default": { "type": "none" }
+              },
               "bindings": {
                 "type": "array",
                 "maxItems": 4,

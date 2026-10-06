@@ -22,6 +22,7 @@
     "renderer:build": "tsc -b && node scripts/build-isolated-renderer.mjs",
     "prerenderer:build:production": "npm run engine:prepare",
     "renderer:build:production": "tsc -b && node scripts/build-isolated-renderer.mjs --production",
+    "prerenderer:serve": "npm run renderer:build",
     "renderer:serve": "node scripts/serve-isolated-renderer.mjs",
     "renderer:diagnostics:build": "tsc -p scripts/tsconfig.diagnostics.json && node scripts/build-diagnostics-renderer.mjs",
     "renderer:diagnostics:serve": "node scripts/serve-diagnostics-renderer.mjs",

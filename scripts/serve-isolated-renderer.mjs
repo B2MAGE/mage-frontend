@@ -45,10 +45,35 @@ export function createRendererRequestHandler({ manifest, files }) {
   }
 }
 
+export function createReloadingRendererRequestHandler(directory, initialBuild, initialManifestSource) {
+  let build = initialBuild
+  let manifestSource = initialManifestSource
+
+  return async (request, response) => {
+    try {
+      const nextManifestSource = await readFile(resolve(directory, 'hosting-manifest.json'), 'utf8')
+      if (nextManifestSource !== manifestSource) {
+        // Local editor and renderer builds are separate on purpose. Pick up a
+        // completed rebuild without requiring the long-running server to restart.
+        build = await loadRendererBuild(directory)
+        manifestSource = nextManifestSource
+      }
+      createRendererRequestHandler(build)(request, response)
+    } catch {
+      if (response.headersSent) return response.end()
+      response.setHeader('Cache-Control', 'no-store')
+      response.setHeader('Content-Type', 'text/plain; charset=utf-8')
+      response.writeHead(503).end('Renderer rebuild is not ready')
+    }
+  }
+}
+
 export async function startRendererServer({ directory, port = 5181, tls } = {}) {
   const root = fileURLToPath(new URL('..', import.meta.url))
-  const build = await loadRendererBuild(directory ?? resolve(root, 'dist-isolated-renderer'))
-  const handler = createRendererRequestHandler(build)
+  const buildDirectory = directory ?? resolve(root, 'dist-isolated-renderer')
+  const build = await loadRendererBuild(buildDirectory)
+  const manifestSource = await readFile(resolve(buildDirectory, 'hosting-manifest.json'), 'utf8')
+  const handler = createReloadingRendererRequestHandler(buildDirectory, build, manifestSource)
   const server = tls ? createHttpsServer(tls, handler) : createHttpServer(handler)
   await new Promise((accept, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', accept) })
   return server

@@ -30,7 +30,13 @@ export function normalizeBuilderDocument(value: JsonRecord, fail: Fail): JsonRec
       return visit(input, target as Rule, path)
     }
     if (rule.anyOf) {
-      // Branches are disjoint operation types. Failed branches never mutate input.
+      // Builder unions use a literal `type` discriminator. Resolve it first so
+      // validation errors point at the selected operation instead of a later branch.
+      if (input && typeof input === 'object' && !Array.isArray(input) && typeof input.type === 'string') {
+        const branch = rule.anyOf.find(candidate => candidate.properties?.type?.const === input.type)
+        if (branch) return visit(input, branch, path)
+      }
+      // Failed branches never mutate input.
       let deepest: Error | undefined
       for (const branch of rule.anyOf) {
         try { return visit(input, branch, path) } catch (error) {

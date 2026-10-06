@@ -1,6 +1,6 @@
 import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
 import { templateOptionalEffectCount } from './templateSettings'
-import type { BuilderBinding, BuilderObject, BuilderSceneDocument } from './sceneContract'
+import type { BuilderArrangement, BuilderBinding, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
 export const BUILDER_COMPILER_VERSION = 1 as const
 export const BUILDER_RENDERING_POLICY = Object.freeze({
@@ -14,6 +14,9 @@ export type BuilderWorkload = Readonly<{
   compositionOperations: number
   transformOperations: number
   materialOperations: number
+  modifierOperations: number
+  arrangementOperations: number
+  animationOperations: number
   liveUniforms: number
   optionalEffects: number
   generatedSourceBytes: number
@@ -96,24 +99,101 @@ function colorChannels(color: string): [number, number, number] {
   return [(value >> 16) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255]
 }
 
-function operationSource(object: BuilderObject): { operation: BuilderObject['operation']['type']; arguments: string } {
+function primitiveDistanceSource(object: BuilderObject, suffix: string): string {
   const operation = object.operation
   switch (operation.type) {
-    case 'sphere': return { operation: 'sphere', arguments: literal(operation.radius) }
-    case 'box': return { operation: 'box', arguments: `${literal(operation.width)},${literal(operation.height)},${literal(operation.depth)}` }
-    case 'torus': return { operation: 'torus', arguments: `${literal(operation.radius)},${literal(operation.tube)}` }
-    case 'cylinder': return { operation: 'cylinder', arguments: `${literal(operation.radius)},${literal(operation.height)}` }
+    case 'sphere': return `let builder_distance_${suffix}=extractSDF(sphere)(${literal(operation.radius)});`
+    case 'box': {
+      // Shader Park's generated compiler does not expose its `box` helper inside
+      // a dedicated browser Worker. Emit the equivalent allowlisted SDF math so
+      // Builder boxes compile in the same isolated path used in production.
+      const space = `builder_box_space_${suffix}`
+      const delta = `builder_box_delta_${suffix}`
+      const outside = `builder_box_outside_${suffix}`
+      return [
+        `let ${space}=getSpace();`,
+        `let ${delta}=abs(${space})-vec3(${literal(operation.width)},${literal(operation.height)},${literal(operation.depth)});`,
+        `let ${outside}=vec3(max(${delta}.x,0),max(${delta}.y,0),max(${delta}.z,0));`,
+        `let builder_distance_${suffix}=min(max(${delta}.x,max(${delta}.y,${delta}.z)),0)+length(${outside});`,
+      ].join('')
+    }
+    case 'torus': return `let builder_distance_${suffix}=extractSDF(torus)(${literal(operation.radius)},${literal(operation.tube)});`
+    case 'cylinder': return `let builder_distance_${suffix}=extractSDF(cylinder)(${literal(operation.radius)},${literal(operation.height)});`
     default: return fail('sceneData.objects.operation.type', 'Unsupported Builder operation.')
   }
 }
 
+function addVector(left: BuilderVector, right: BuilderVector): BuilderVector {
+  return { x: left.x + right.x, y: left.y + right.y, z: left.z + right.z }
+}
+
+function arrangementOffsets(arrangement: BuilderArrangement): BuilderVector[] {
+  if (arrangement.type === 'linear') {
+    return Array.from({ length: arrangement.count }, (_, index) => {
+      const value = (index - (arrangement.count - 1) / 2) * arrangement.spacing
+      return { x: arrangement.axis === 'x' ? value : 0, y: arrangement.axis === 'y' ? value : 0, z: arrangement.axis === 'z' ? value : 0 }
+    })
+  }
+  return Array.from({ length: arrangement.count }, (_, index) => {
+    const angle = index * Math.PI * 2 / arrangement.count
+    const first = Math.cos(angle) * arrangement.radius
+    const second = Math.sin(angle) * arrangement.radius
+    if (arrangement.axis === 'x') return { x: 0, y: first, z: second }
+    if (arrangement.axis === 'y') return { x: first, y: 0, z: second }
+    return { x: first, y: second, z: 0 }
+  })
+}
+
+/** Arrangement stages are ordered. Each later stage repeats the complete result of the previous stage. */
+function expandedOffsets(object: BuilderObject): BuilderVector[] {
+  return object.arrangements.reduce<BuilderVector[]>((offsets, arrangement) => {
+    const additions = arrangementOffsets(arrangement)
+    return offsets.flatMap(offset => additions.map(addition => addVector(offset, addition)))
+  }, [{ x: 0, y: 0, z: 0 }])
+}
+
+function modifierExpression(object: BuilderObject, distance: string): string {
+  return object.modifiers.reduce((expression, modifier) => modifier.type === 'expand'
+    ? `(${expression}-${literal(modifier.amount)})`
+    : modifier.type === 'shell' ? `(abs(${expression})-${literal(modifier.thickness)})` : expression, distance)
+}
+
+function coordinateModifierSource(object: BuilderObject, suffix: string): string {
+  return object.modifiers.flatMap((modifier, modifierIndex) => {
+    if (modifier.type !== 'twist') return []
+    const space = `builder_twist_space_${suffix}_${modifierIndex}`
+    const angle = `builder_twist_angle_${suffix}_${modifierIndex}`
+    const amount = literal(modifier.amount)
+    if (modifier.axis === 'x') return [
+      `let ${space}=getSpace();let ${angle}=${space}.x*${amount};`,
+      `setSpace(vec3(${space}.x,${space}.y*cos(${angle})-${space}.z*sin(${angle}),${space}.y*sin(${angle})+${space}.z*cos(${angle})));`,
+    ]
+    if (modifier.axis === 'y') return [
+      `let ${space}=getSpace();let ${angle}=${space}.y*${amount};`,
+      `setSpace(vec3(${space}.x*cos(${angle})-${space}.z*sin(${angle}),${space}.y,${space}.x*sin(${angle})+${space}.z*cos(${angle})));`,
+    ]
+    return [
+      `let ${space}=getSpace();let ${angle}=${space}.z*${amount};`,
+      `setSpace(vec3(${space}.x*cos(${angle})-${space}.y*sin(${angle}),${space}.x*sin(${angle})+${space}.y*cos(${angle}),${space}.z));`,
+    ]
+  }).join('')
+}
+
 function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 'generatedSourceBytes'> {
-  const objects = document.objects.length
+  const expandedCounts = document.objects.map(object => expandedOffsets(object).length)
+  const expandedPrimitives = expandedCounts.reduce((sum, count) => sum + count, 0)
   return {
-    expandedPrimitives: document.objects.reduce((sum, object) => sum + policy.operationCosts[object.operation.type], 0),
-    compositionOperations: Math.max(0, objects - 1) * policy.operationCosts.compositionPerAdditionalObject,
-    transformOperations: objects * policy.operationCosts.transformPerObject,
-    materialOperations: objects * policy.operationCosts.materialPerObject,
+    expandedPrimitives,
+    compositionOperations: Math.max(0, expandedPrimitives - 1) * policy.operationCosts.compositionPerAdditionalObject,
+    transformOperations: expandedPrimitives * policy.operationCosts.transformPerObject,
+    materialOperations: expandedPrimitives * policy.operationCosts.materialPerObject,
+    modifierOperations: document.objects.reduce((sum, object, index) => sum + expandedCounts[index] * object.modifiers.reduce((cost, modifier) =>
+      cost + policy.operationCosts[modifier.type === 'expand' ? 'expandModifier'
+        : modifier.type === 'shell' ? 'shellModifier' : 'twistModifier'], 0), 0),
+    arrangementOperations: document.objects.reduce((sum, _object, index) =>
+      sum + Math.max(0, expandedCounts[index] - 1) * policy.operationCosts.arrangementPerAdditionalCopy, 0),
+    animationOperations: document.objects.reduce((sum, object, index) =>
+      sum + (object.motion.type === 'spin' ? expandedCounts[index] * policy.operationCosts.spinPerPrimitive : 0), 0),
     liveUniforms: document.objects.reduce((sum, object) => sum + object.bindings.length * policy.operationCosts.liveUniformPerBinding, 0),
     optionalEffects: templateOptionalEffectCount(document.settings),
   }
@@ -151,19 +231,26 @@ export function compileBuilderDocument(document: BuilderSceneDocument): BuilderC
     const read = (target: BuilderBinding['target']) => values.get(target) ?? literal(propertyValue(object, target))
     const [red, green, blue] = colorChannels(object.material.color)
     const scaleX = read('scale.x'), scaleY = read('scale.y'), scaleZ = read('scale.z')
-    const operation = operationSource(object)
-    objects.push([
-      `let builder_object_${objectIndex}=shape(()=>{`,
-      `displace(${read('position.x')},${read('position.y')},${read('position.z')});`,
-      `rotateX(${read('rotation.x')});rotateY(${read('rotation.y')});rotateZ(${read('rotation.z')});`,
-      `let builder_space_${objectIndex}=getSpace();`,
-      `setSpace(vec3(builder_space_${objectIndex}.x/${scaleX},builder_space_${objectIndex}.y/${scaleY},builder_space_${objectIndex}.z/${scaleZ}));`,
-      `color(${literal(red)},${literal(green)},${literal(blue)});`,
-      `metal(${read('material.metalness')});shine(${read('material.shininess')});`,
-      `let builder_distance_${objectIndex}=extractSDF(${operation.operation})(${operation.arguments});`,
-      `setSDF(builder_distance_${objectIndex}*min(${scaleX},min(${scaleY},${scaleZ})));`,
-      `});builder_object_${objectIndex}();`,
-    ].join(''))
+    expandedOffsets(object).forEach((offset, copyIndex) => {
+      const suffix = `${objectIndex}_${copyIndex}`
+      const spin = object.motion.type === 'spin' ? object.motion : null
+      const rotation = (axis: 'x' | 'y' | 'z') => spin?.axis === axis
+        ? `(${read(`rotation.${axis}`)}+time*${literal(spin.speed)})`
+        : read(`rotation.${axis}`)
+      objects.push([
+        `let builder_object_${suffix}=shape(()=>{`,
+        `displace((${read('position.x')}+${literal(offset.x)}),(${read('position.y')}+${literal(offset.y)}),(${read('position.z')}+${literal(offset.z)}));`,
+        `rotateX(${rotation('x')});rotateY(${rotation('y')});rotateZ(${rotation('z')});`,
+        `let builder_space_${suffix}=getSpace();`,
+        `setSpace(vec3(builder_space_${suffix}.x/${scaleX},builder_space_${suffix}.y/${scaleY},builder_space_${suffix}.z/${scaleZ}));`,
+        coordinateModifierSource(object, suffix),
+        `color(${literal(red)},${literal(green)},${literal(blue)});`,
+        `metal(${read('material.metalness')});shine(${read('material.shininess')});`,
+        primitiveDistanceSource(object, suffix),
+        `setSDF(${modifierExpression(object, `builder_distance_${suffix}`)}*min(${scaleX},min(${scaleY},${scaleZ})));`,
+        `});builder_object_${suffix}();`,
+      ].join(''))
+    })
   })
 
   const shader = [`setMaxIterations(96);setStepSize(0.7);`, ...declarations, ...objects].join('\n')

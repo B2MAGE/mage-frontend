@@ -70,9 +70,28 @@ Transforms use `{x,y,z}` objects. Position is −100–100 (default 0), rotation
 centered at the local origin. The specified order is local scale, X/Y/Z rotation,
 then translation. Each object has its own transform/material scope; it cannot
 alter later objects. Objects combine by union in saved array order. There are no
-child trees, repetition, Boolean-operation scripts or component references in
-this first catalog. SB-04/SB-07 must add their own bounded validated structures
-and account for expanded work before exposing those operations.
+Boolean-operation scripts or component references; SB-07 must add its own
+bounded validated component structure and expanded-work accounting.
+
+SB-04 adds ordered `modifiers` and `arrangements` to each object. The initial
+modifier catalog allows one `twist` (X/Y/Z axis, −6–6 radians per local unit),
+one `expand` (`amount` −2–2) and one `shell` (`thickness` 0.01–1). The compiler
+applies the object transform and scale, then any twist to local coordinates,
+then evaluates the primitive, and finally applies expand/shell in saved order to
+the signed distance. A coordinate twist leaves a perfect sphere visually unchanged
+because all of its cross-sections are circular. Arrangements are limited to two stages and one of each type:
+`linear` repeats 2–8 copies along a selected X/Y/Z axis with 0.1–10 unit spacing;
+`radial` repeats 3–8 copies around a selected axis with radius 0.1–10. An empty
+arrangement renders one primitive. Ordered stages nest by repeating the complete
+result of the previous stage, so their copy counts multiply. The entire scene
+must still expand to at most 16 primitives.
+
+Each object also has bounded `motion`: `none`, or `spin` around one X/Y/Z axis at
+−4–4 radians per second. Spin adds to the authored local rotation and applies to
+all arranged copies. Arranged copies form an isolated compiler-owned group; no
+arbitrary child references, formulas, recursive groups or cross-object mutation
+are accepted. This fixes grouping depth at two arrangement stages and prevents
+cycles while still supporting lines, rings and nested layouts.
 
 Material fields are `color` (`#RRGGBB`, default `#8066ff`), `metalness` (0–1,
 default 0), and `shininess` (0–1, default 0.5). No textures, asset URLs, source,
@@ -126,9 +145,10 @@ effects. Frontend import/submission uses the same contract and budgets.
 
 The version-one compiler applies `builder-rendering.v1.json` after object
 expansion: at most 16 primitives, 15 union operations, 80 transform operations,
-48 material operations, 64 live property uniforms, four optional effects and
-32 KiB of generated trusted source. Copies, nesting, effects and future
-components must add their expanded costs before compilation. The existing
+48 material operations, 80 modifier operations, 15 arrangement operations,
+16 animation operations, 64 live property uniforms, four optional effects and
+32 KiB of generated trusted source. Copies and nested arrangement stages add
+their expanded costs before compilation. The existing
 runtime quality, resolution, frame-rate, capture and raymarch ceilings still
 apply independently.
 

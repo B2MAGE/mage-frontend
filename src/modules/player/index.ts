@@ -10,7 +10,8 @@ export { readTemplateShaderSource, createCustomSceneFromTemplate } from './templ
 export { resolveSceneForPlayback } from './templates/resolveScene'
 export type { SceneTemplate } from './templates/templateRegistry'
 export { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError } from './templates/sceneContract'
-export type { SceneDocument, PlayableSceneDocument, TemplateSceneDocument, CustomSceneDocument, BuilderSceneDocument, BuilderObject, BuilderOperation, BuilderVector, BuilderBinding, TemplateId } from './templates/sceneContract'
+export type { SceneDocument, PlayableSceneDocument, TemplateSceneDocument, CustomSceneDocument, BuilderSceneDocument, BuilderObject,
+  BuilderOperation, BuilderVector, BuilderBinding, BuilderModifier, BuilderArrangement, BuilderMotion, TemplateId } from './templates/sceneContract'
 export { SceneValidationError, validateSceneDocument, validateSceneForStorage, validateSceneForPlayback, parseSceneImport, assertSceneRequestBudget, SCENE_POLICY, SCENE_LIMITS, SCENE_RUNTIME_CEILINGS } from './policy/sceneValidation'
 export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'
 export type { RenderBudget, RenderProfile } from './policy/renderBudget'

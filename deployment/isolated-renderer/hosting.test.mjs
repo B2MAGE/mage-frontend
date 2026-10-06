@@ -8,7 +8,7 @@ import { runInNewContext } from 'node:vm'
 import { assertNonCredentialedResponse, createHostingManifest, integrityOf, parseParentOrigins, renderDocument } from './hosting-policy.mjs'
 import { createCloudFormationTemplate } from './cloudformation-template.mjs'
 import { assertCompilerWorkerBundle, COMPILER_WORKER_ALLOWED_MODULES } from './compiler-build-policy.mjs'
-import { createRendererRequestHandler, loadRendererBuild } from '../../scripts/serve-isolated-renderer.mjs'
+import { createRendererRequestHandler, loadRendererBuild, startRendererServer } from '../../scripts/serve-isolated-renderer.mjs'
 
 const bundle = Buffer.from('window.rendererLoaded = true;')
 const localManifest = () => createHostingManifest({ bundlePath: 'assets/renderer-test123.js', bundle, parentOrigins: parseParentOrigins() })
@@ -140,6 +140,34 @@ test('modified files or relaxed manifest policies fail server startup', async ()
     await writeFile(join(directory, manifest.bundlePath), 'window.tampered = true')
     await assert.rejects(loadRendererBuild(directory), /required hosting policy/)
   } finally {
+    assert(resolve(directory).startsWith(`${resolve(tmpdir())}${sep}`), 'Temporary test directory must stay within the system temporary directory.')
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('running local server picks up a completed renderer rebuild', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'mage-renderer-reload-'))
+  const writeBuild = async (source, assetName) => {
+    const nextBundle = Buffer.from(source)
+    const manifest = createHostingManifest({ bundlePath: `assets/${assetName}`, bundle: nextBundle, parentOrigins: parseParentOrigins() })
+    await mkdir(join(directory, 'assets'), { recursive: true })
+    await writeFile(join(directory, manifest.bundlePath), nextBundle)
+    await writeFile(join(directory, 'index.html'), renderDocument(manifest))
+    await writeFile(join(directory, 'hosting-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+    return manifest
+  }
+  let server
+  try {
+    const first = await writeBuild('window.rendererVersion = 1;', 'renderer-first.js')
+    server = await startRendererServer({ directory, port: 0 })
+    const base = `http://127.0.0.1:${server.address().port}`
+    assert((await (await fetch(base)).text()).includes(first.bundlePath))
+
+    const second = await writeBuild('window.rendererVersion = 2;', 'renderer-second.js')
+    assert((await (await fetch(base)).text()).includes(second.bundlePath))
+    assert.equal(await (await fetch(`${base}/${second.bundlePath}`)).text(), 'window.rendererVersion = 2;')
+  } finally {
+    if (server) await new Promise((accept, reject) => server.close((error) => error ? reject(error) : accept()))
     assert(resolve(directory).startsWith(`${resolve(tmpdir())}${sep}`), 'Temporary test directory must stay within the system temporary directory.')
     await rm(directory, { recursive: true, force: true })
   }

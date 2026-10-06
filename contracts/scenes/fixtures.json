@@ -1958,7 +1958,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           }
         ],
         "parameters": {
@@ -2165,7 +2170,12 @@
                 "attack": 0.04,
                 "release": 0.35
               }
-            ]
+            ],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "box-2",
@@ -2198,7 +2208,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "ring-3",
@@ -2230,7 +2245,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "tube-4",
@@ -2262,7 +2282,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           }
         ],
         "parameters": {
@@ -2435,7 +2460,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-1",
@@ -2466,7 +2496,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-2",
@@ -2497,7 +2532,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-3",
@@ -2528,7 +2568,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-4",
@@ -2559,7 +2604,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-5",
@@ -2590,7 +2640,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-6",
@@ -2621,7 +2676,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-7",
@@ -2652,7 +2712,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-8",
@@ -2683,7 +2748,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-9",
@@ -2714,7 +2784,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-10",
@@ -2745,7 +2820,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-11",
@@ -2776,7 +2856,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-12",
@@ -2807,7 +2892,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-13",
@@ -2838,7 +2928,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-14",
@@ -2869,7 +2964,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           },
           {
             "id": "object-15",
@@ -2900,7 +3000,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           }
         ],
         "parameters": {
@@ -3023,7 +3128,12 @@
                 "attack": 2,
                 "release": 5
               }
-            ]
+            ],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           }
         ],
         "parameters": {
@@ -4026,7 +4136,12 @@
               "metalness": 0,
               "shininess": 0.5
             },
-            "bindings": []
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           }
         ],
         "parameters": {
@@ -4083,6 +4198,155 @@
             "id": "orb-1\n",
             "operation": {
               "type": "sphere"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: bounded modifiers nested arrangements and spin",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "arranged-orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "modifiers": [
+              {
+                "type": "expand",
+                "amount": 0.2
+              },
+              {
+                "type": "shell",
+                "thickness": 0.1
+              },
+              {
+                "type": "twist",
+                "axis": "y",
+                "amount": 1.5
+              }
+            ],
+            "arrangements": [
+              {
+                "type": "linear",
+                "axis": "x",
+                "count": 2,
+                "spacing": 1.5
+              },
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 3,
+                "radius": 2
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 1.25
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: duplicate modifier type",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "modifiers": [
+              {
+                "type": "expand",
+                "amount": 0.1
+              },
+              {
+                "type": "expand",
+                "amount": 0.2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: invalid twist amount",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "modifiers": [
+              {
+                "type": "twist",
+                "axis": "y",
+                "amount": 7
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: invalid arrangement copy count",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "arrangements": [
+              {
+                "type": "linear",
+                "axis": "x",
+                "count": 9,
+                "spacing": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "builder: invalid spin axis",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "motion": {
+              "type": "spin",
+              "axis": "all",
+              "speed": 1
             }
           }
         ]
