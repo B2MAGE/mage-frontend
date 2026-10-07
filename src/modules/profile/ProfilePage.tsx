@@ -9,7 +9,7 @@ import {
   type DiscoverySort,
 } from '@modules/discovery'
 import { formatCompactCount } from '@shared/lib'
-import { AppIcon, Skeleton, UserAvatar } from '@shared/ui'
+import { AppIcon, PageFrame, PagePanel, Skeleton, UserAvatar } from '@shared/ui'
 import {
   buildProfileViewModel,
   fetchPublicProfile,
@@ -34,12 +34,16 @@ type ProfileLoadState =
 
 function ProfileLoadingState() {
   return (
-    <main className="profile-page profile-page--loading" aria-busy="true" aria-label="Loading profile">
-      <section className="profile-hero" aria-hidden="true">
-        <Skeleton className="profile-avatar profile-avatar--loading" shape="circle" />
-        <div className="profile-identity profile-identity--loading">
-          <Skeleton className="profile-identity__name-loading" shape="line" />
-          <Skeleton className="profile-identity__handle-loading" shape="line" />
+    <PageFrame className="profile-page profile-page--loading" aria-busy="true" aria-label="Loading profile">
+      <PagePanel className="profile-hero" aria-hidden="true">
+        <div className="profile-identity-row">
+          <Skeleton className="profile-avatar profile-avatar--loading" shape="circle" />
+          <div className="profile-identity profile-identity--loading">
+            <Skeleton className="profile-identity__name-loading" shape="line" />
+            <Skeleton className="profile-identity__handle-loading" shape="line" />
+          </div>
+        </div>
+        <div className="profile-hero__details">
           <Skeleton className="profile-identity__description-loading" shape="line" />
           <div className="profile-stats">
             {Array.from({ length: 4 }, (_, index) => (
@@ -47,7 +51,7 @@ function ProfileLoadingState() {
             ))}
           </div>
         </div>
-      </section>
+      </PagePanel>
 
       <section className="profile-scenes">
         <div className="profile-scenes__toolbar" aria-hidden="true">
@@ -59,7 +63,7 @@ function ProfileLoadingState() {
         </div>
         <SceneGridSkeleton count={6} label="Loading profile scenes" />
       </section>
-    </main>
+    </PageFrame>
   )
 }
 
@@ -73,14 +77,14 @@ function ProfilePageState({
   title: string
 }) {
   return (
-    <main className="profile-page profile-page--state">
+    <PageFrame className="profile-page profile-page--state">
       <SceneCollectionState
         action={action}
         description={description}
         kind="error"
         title={title}
       />
-    </main>
+    </PageFrame>
   )
 }
 
@@ -216,32 +220,39 @@ export function ProfilePage() {
   ]
 
   return (
-    <main className="profile-page" aria-labelledby="profile-page-title">
-      <section className="profile-hero" aria-label="Profile summary">
-        <UserAvatar className="profile-avatar" initials={profile.initials} gradientStart={profile.avatarGradientStart} gradientEnd={profile.avatarGradientEnd} />
+    <PageFrame className="profile-page" aria-labelledby="profile-page-title">
+      <PagePanel className="profile-hero" aria-label="Profile summary">
+        <div className="profile-identity-row">
+          <UserAvatar className="profile-avatar" initials={profile.initials} gradientStart={profile.avatarGradientStart} gradientEnd={profile.avatarGradientEnd} />
 
-        <div className="profile-identity">
-          <h1 id="profile-page-title">{profile.displayName}</h1>
-          <p className="profile-identity__handle">@{profile.handle}</p>
+          <div className="profile-identity">
+            <h1 className="ui-page-title" id="profile-page-title">{profile.displayName}</h1>
+            <p className="profile-identity__handle">@{profile.handle}</p>
+          </div>
+        </div>
+
+        <div className="profile-hero__details">
           {profile.description ? (
             <p className="profile-identity__description">{profile.description}</p>
           ) : null}
 
-          <div className="profile-stats" aria-label="Profile statistics">
-            {profileStats.map((stat) => (
-              <span className="profile-stat" key={stat.label}>
-                <strong>{formatCompactCount(stat.value)}</strong>{stat.label}
-              </span>
-            ))}
+          <div className="profile-hero__footer">
+            <div className="profile-stats" aria-label="Profile statistics">
+              {profileStats.map((stat) => (
+                <span className="profile-stat" key={stat.label}>
+                  <strong>{formatCompactCount(stat.value)}</strong>{stat.label}
+                </span>
+              ))}
+            </div>
+
+            {isOwner ? (
+              <div className="profile-actions">
+                <Link className="profile-edit-button ui-button ui-button--primary" to="/settings#profile">Edit profile</Link>
+              </div>
+            ) : null}
           </div>
         </div>
-
-        {isOwner ? (
-          <div className="profile-actions">
-            <Link className="profile-edit-button" to="/settings#profile">Edit profile</Link>
-          </div>
-        ) : null}
-      </section>
+      </PagePanel>
 
       <section className="profile-scenes" aria-labelledby="profile-scenes-title">
         <div className="profile-scenes__toolbar" ref={toolbarRef}>
@@ -334,6 +345,6 @@ export function ProfilePage() {
           />
         ) : null}
       </section>
-    </main>
+    </PageFrame>
   )
 }

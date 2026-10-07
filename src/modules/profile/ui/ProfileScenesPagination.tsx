@@ -25,8 +25,9 @@ export function ProfileScenesPagination({
   return (
     <nav className="profile-scenes-pagination" aria-label="Profile scene pagination">
       <label className="profile-scenes-pagination__size">
-        <span>Scenes per page</span>
+        <span>Per page</span>
         <select
+          aria-label="Scenes per page"
           className="mage-select"
           onChange={(event) => onPageSizeChange(Number(event.target.value))}
           value={pageSize}

@@ -120,11 +120,19 @@ describe('ProfilePage', () => {
     expect(container.querySelector('.profile-avatar')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByText('@aririvera')).toBeInTheDocument()
     expect(screen.getByText('Slow visual spaces built for late-night listening.')).toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveClass('ui-page-frame', 'ui-page-frame--wide')
+    const identityRow = container.querySelector('.profile-identity-row')
+    expect(identityRow).toContainElement(container.querySelector('.profile-avatar'))
+    expect(identityRow).toContainElement(screen.getByRole('heading', { name: 'Ari Rivera', level: 1 }))
+    const profileDetails = container.querySelector('.profile-hero__details')
+    expect(profileDetails).toContainElement(screen.getByText('Slow visual spaces built for late-night listening.'))
+    expect(profileDetails).toContainElement(screen.getByLabelText('Profile statistics'))
     expect(screen.queryByText('ari@pulse.local')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit profile' })).toHaveAttribute(
       'href',
       '/settings#profile',
     )
+    expect(screen.getByRole('link', { name: 'Edit profile' })).toHaveClass('ui-button', 'ui-button--primary')
     expect(screen.getByRole('heading', { name: 'Copper Reef', level: 3 })).toBeInTheDocument()
 
     const stats = screen.getByLabelText('Profile statistics')
