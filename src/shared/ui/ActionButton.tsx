@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react'
+import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { joinClassNames } from '@shared/lib'
 
 type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -6,13 +6,16 @@ type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: 'primary' | 'secondary' | 'danger' | 'ghost'
 }
 
-export function ActionButton({
-  className,
-  size = 'normal',
-  tone = 'secondary',
-  type = 'button',
-  ...props
-}: ActionButtonProps) {
+export const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(function ActionButton(
+  {
+    className,
+    size = 'normal',
+    tone = 'secondary',
+    type = 'button',
+    ...props
+  },
+  ref,
+) {
   return (
     <button
       {...props}
@@ -22,7 +25,8 @@ export function ActionButton({
         `ui-button--${size}`,
         className,
       )}
+      ref={ref}
       type={type}
     />
   )
-}
+})

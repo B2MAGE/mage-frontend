@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 import { useAuth, type AuthenticatedFetch } from '@auth'
 import { fetchCustomControl, isOperatorAccessDenied, OperatorRequestError, sceneAvailabilityStore,
   updateCustomControl, type CustomRenderingControl } from '@modules/player'
+import { ActionButton, FormNotice, PagePanel, SectionHeader, StatusBadge } from '@shared/ui'
 import { fetchAdminCapabilities, isModerationAccessDenied } from './api'
 import './customShaderControls.css'
 
@@ -134,19 +135,27 @@ function VerifiedCustomShaderControls({ fetcher }: { fetcher: AuthenticatedFetch
   }
 
   const changed = control !== null && draftEnabled !== control.enabled
-  return <section className="custom-shader-controls" aria-labelledby={titleId} aria-busy={pending}>
-    <h2 id={titleId}>Custom shader playback</h2>
-    <p id={descriptionId}>Turn playback on or off for scenes that use custom shader code across MAGE. Scenes using built-in templates are not affected.</p>
-    {status === 'checking' && <p role="status">Checking current playback settings…</p>}
-    {status === 'denied' && <p role="status">Administrator permission is required to manage custom shader playback.</p>}
-    {status === 'error' && <p role="alert">The current playback settings couldn’t be verified. Please check again.</p>}
+  return <PagePanel className="custom-shader-controls moderation-tool" aria-labelledby={titleId} aria-busy={pending}>
+    <SectionHeader
+      description={<p id={descriptionId}>Turn playback on or off for scenes that use custom shader code across MAGE. Scenes using built-in templates are not affected.</p>}
+      title="Custom shader playback"
+      titleId={titleId}
+    />
+    {status === 'checking' && <FormNotice tone="note">Checking current playback settings…</FormNotice>}
+    {status === 'denied' && <FormNotice tone="note">Administrator permission is required to manage custom shader playback.</FormNotice>}
+    {status === 'error' && <FormNotice tone="error">The current playback settings couldn’t be verified. Please check again.</FormNotice>}
     {status === 'ready' && control && <>
-      <p className="custom-shader-controls__saved"><strong>Saved status: {effectiveEnabled(control) ? 'On' : 'Off'}</strong></p>
-      {!control.releaseApproved && <div id={gateId}>
+      <div className="custom-shader-controls__saved">
+        <span>Current saved setting</span>
+        <StatusBadge tone={effectiveEnabled(control) ? 'success' : 'neutral'}>
+          Saved status: {effectiveEnabled(control) ? 'On' : 'Off'}
+        </StatusBadge>
+      </div>
+      {!control.releaseApproved && <FormNotice id={gateId} tone="note">
         <p>{gateMessage}</p>
         {control.enabled && <p>An on setting is saved, but playback is locked off. Turn this off and save to cancel it.</p>}
-      </div>}
-      <form onSubmit={event => void save(event)}>
+      </FormNotice>}
+      <form className="custom-shader-controls__form" onSubmit={event => void save(event)}>
         <label className="custom-shader-controls__toggle">
           <span>Allow custom shader playback</span>
           <input type="checkbox" role="switch" aria-label="Allow custom shader playback" aria-describedby={`${descriptionId}${!control.releaseApproved ? ` ${gateId}` : ''}`}
@@ -159,22 +168,26 @@ function VerifiedCustomShaderControls({ fetcher }: { fetcher: AuthenticatedFetch
           <span className="custom-shader-controls__track" aria-hidden="true"><span /></span>
         </label>
         {changed && <>
-          <p className="custom-shader-controls__hint">Not saved yet. Add a reason and select Save change to turn playback {draftEnabled ? 'on' : 'off'}.</p>
-          <label htmlFor={reasonId}>Why are you making this change?</label>
-          <textarea id={reasonId} value={reason} maxLength={1000} rows={3} required aria-describedby={reasonHintId}
-            disabled={pending} onChange={event => setReason(event.target.value)} />
-          <p id={reasonHintId} className="custom-shader-controls__hint">Required. Only administrators can see your reason.</p>
-          <button type="submit" className="primary-button" disabled={pending || !reason.trim() || (draftEnabled && !control.releaseApproved)}>
-            {pending ? 'Saving…' : 'Save change'}
-          </button>
+          <FormNotice className="custom-shader-controls__hint" tone="note">Not saved yet. Add a reason and select Save change to turn playback {draftEnabled ? 'on' : 'off'}.</FormNotice>
+          <div className="ui-field custom-shader-controls__reason">
+            <label htmlFor={reasonId}>Why are you making this change?</label>
+            <textarea id={reasonId} value={reason} maxLength={1000} rows={3} required aria-describedby={reasonHintId}
+              disabled={pending} onChange={event => setReason(event.target.value)} />
+            <p id={reasonHintId} className="field-hint">Required. Only administrators can see your reason.</p>
+          </div>
+          <div className="moderation-action-row">
+            <ActionButton type="submit" tone="primary" disabled={pending || !reason.trim() || (draftEnabled && !control.releaseApproved)}>
+              {pending ? 'Saving…' : 'Save change'}
+            </ActionButton>
+          </div>
         </>}
       </form>
-      {control.changedAt && <div className="custom-shader-controls__audit">
+      {control.changedAt && <PagePanel className="custom-shader-controls__audit" padding="compact" tone="nested">
         <p>Last changed <time dateTime={control.changedAt}>{new Date(control.changedAt).toLocaleString()}</time>{control.changedByUserId ? ` by account #${control.changedByUserId}` : ''}.</p>
         {control.reason && <p>Previous reason: {control.reason}</p>}
-      </div>}
+      </PagePanel>}
     </>}
-    {notice && status !== 'denied' && <p role={notice.error ? 'alert' : 'status'}>{notice.text}</p>}
-    {status !== 'denied' && <button type="button" className="secondary-button" disabled={pending} onClick={() => void refresh()}>Check current status</button>}
-  </section>
+    {notice && status !== 'denied' && <FormNotice tone={notice.error ? 'error' : 'note'}>{notice.text}</FormNotice>}
+    {status !== 'denied' && <ActionButton type="button" tone="secondary" disabled={pending} onClick={() => void refresh()}>Check current status</ActionButton>}
+  </PagePanel>
 }

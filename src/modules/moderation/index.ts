@@ -1,5 +1,6 @@
 export { ModeratorsPage } from './ModeratorsPage'
 export { ModerationPage } from './ModerationPage'
+export { ModerationLoadingState } from './ModerationLoadingState'
 export { ModeratorSettingsLink, ModerationMenuLink } from './ModeratorSettingsLink'
 export { useAdminCapabilities } from './useAdminCapabilities'
 export { fetchAdminCapabilities, isModerationAccessDenied } from './api'

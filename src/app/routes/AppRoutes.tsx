@@ -14,7 +14,7 @@ import {
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
 import { MyScenesLoadingState, MyScenesPage } from '@modules/my-scenes'
-import { ModerationPage } from '@modules/moderation'
+import { ModerationLoadingState, ModerationPage } from '@modules/moderation'
 import { ProfilePage } from '@modules/profile'
 import { CreateScenePage, EditScenePage, SceneEditorLoadingState } from '@modules/scene-editor'
 import { SceneDetailPage } from '@modules/scene-detail'
@@ -147,9 +147,9 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/moderation" element={<ProtectedRoute loadingFallback={<SettingsLoadingState />}><ModerationPage /></ProtectedRoute>} />
-        <Route path="/moderation/playback" element={<ProtectedRoute loadingFallback={<SettingsLoadingState />}><ModerationPage section="playback" /></ProtectedRoute>} />
-        <Route path="/moderation/moderators" element={<ProtectedRoute loadingFallback={<SettingsLoadingState />}><ModerationPage section="moderators" /></ProtectedRoute>} />
+        <Route path="/moderation" element={<ProtectedRoute loadingFallback={<ModerationLoadingState />}><ModerationPage /></ProtectedRoute>} />
+        <Route path="/moderation/playback" element={<ProtectedRoute loadingFallback={<ModerationLoadingState />}><ModerationPage section="playback" /></ProtectedRoute>} />
+        <Route path="/moderation/moderators" element={<ProtectedRoute loadingFallback={<ModerationLoadingState />}><ModerationPage section="moderators" /></ProtectedRoute>} />
         <Route path="/settings/moderators" element={<Navigate replace to="/moderation/moderators" />} />
         <Route path="/:profileHandle" element={<HandleProfileRoute />} />
         <Route path="*" element={<Navigate replace to="/" />} />

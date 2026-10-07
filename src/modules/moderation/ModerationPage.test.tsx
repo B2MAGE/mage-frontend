@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ModerationLoadingState } from './ModerationLoadingState'
 import { ModerationPage } from './ModerationPage'
 import { ModerationMenuLink } from './ModeratorSettingsLink'
 
@@ -33,6 +34,14 @@ beforeEach(() => {
 describe('moderation area', () => {
   it('gives administrators navigation to both site-wide tools', async () => {
     show()
+    const heading = await screen.findByRole('heading', { name: 'Moderation' })
+    expect(heading.closest('main')).toHaveClass('ui-page-frame', 'ui-page-frame--form')
+    expect(screen.getByRole('navigation', { name: 'Moderation sections' })).toHaveClass(
+      'ui-section-nav__list',
+    )
+    expect(screen.getByRole('heading', { name: 'Manage a scene' }).closest('section')).toHaveClass(
+      'ui-panel',
+    )
     expect(await screen.findByRole('link', { name: 'Custom shaders' })).toHaveAttribute('href', '/moderation/playback')
     expect(screen.getByRole('link', { name: 'Moderator access' })).toHaveAttribute('href', '/moderation/moderators')
     fireEvent.click(screen.getByRole('link', { name: 'Custom shaders' }))
@@ -40,6 +49,12 @@ describe('moderation area', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Moderator access' }))
     expect(await screen.findByText('Private moderator management')).toBeInTheDocument()
     expect(screen.queryByText('Private custom shader tool')).not.toBeInTheDocument()
+  })
+
+  it('uses a route-specific shared loading shell while authentication restores', () => {
+    render(<ModerationLoadingState />)
+    expect(screen.getByRole('status')).toHaveTextContent('Restoring your session before loading moderation')
+    expect(screen.getByRole('main')).toHaveClass('ui-page-frame', 'ui-page-frame--form')
   })
 
   it.each(['/moderation/playback', '/moderation/moderators'])('does not mount administrator tools for moderators visiting %s directly', async path => {

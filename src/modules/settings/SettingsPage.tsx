@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { PageFrame, PageHeader, PageState } from '@shared/ui'
+import { PageFrame, PageHeader, PageSectionNav, PageState } from '@shared/ui'
 import { changePassword } from './password'
 import { saveUserProfile } from './profile'
 import { getSettingsSection, type SettingsSection } from './sections'
@@ -39,20 +39,22 @@ export function SettingsPage() {
       />
 
       <div className="settings-layout">
-        <aside className="settings-nav">
-          <nav aria-label="Settings sections" className="settings-nav__list">
-            {sectionLinks.map(({ id, label }) => (
-              <Link
-                aria-current={activeSection === id ? 'page' : undefined}
-                className="settings-nav__link"
-                key={id}
-                to={{ pathname: location.pathname, search: location.search, hash: `#${id}` }}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
+        <PageSectionNav
+          ariaLabel="Settings sections"
+          className="settings-nav"
+          listClassName="settings-nav__list"
+        >
+          {sectionLinks.map(({ id, label }) => (
+            <Link
+              aria-current={activeSection === id ? 'page' : undefined}
+              className="ui-section-nav__link settings-nav__link"
+              key={id}
+              to={{ pathname: location.pathname, search: location.search, hash: `#${id}` }}
+            >
+              {label}
+            </Link>
+          ))}
+        </PageSectionNav>
 
         <section className="settings-content">
           <div className="settings-section-view" hidden={activeSection !== 'appearance'}>

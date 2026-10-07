@@ -1,21 +1,143 @@
-.custom-shader-controls { max-width: 720px; }
-.custom-shader-controls > p { line-height: 1.6; }
-.custom-shader-controls__saved { margin-top: 24px; }
-.custom-shader-controls form { margin: 24px 0; }
-.custom-shader-controls label:not(.custom-shader-controls__toggle) { display: block; margin-bottom: 8px; font-weight: 600; }
-.custom-shader-controls textarea { width: 100%; min-height: 96px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; resize: vertical; }
-.custom-shader-controls .custom-shader-controls__toggle { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 44px; margin-bottom: 16px; cursor: pointer; }
-.custom-shader-controls__toggle input { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; }
-.custom-shader-controls__track { display: block; flex-shrink: 0; width: 38px; height: 22px; border-radius: 999px; background: var(--border-strong, #687282); transition: background .15s; }
-.custom-shader-controls__track > span { display: block; margin: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
-.custom-shader-controls__toggle input:checked + .custom-shader-controls__track { background: var(--accent); }
-.custom-shader-controls__toggle input:checked + .custom-shader-controls__track > span { transform: translateX(16px); }
-.custom-shader-controls__toggle input:focus-visible + .custom-shader-controls__track { outline: 2px solid var(--accent); outline-offset: 4px; }
-.custom-shader-controls__toggle:has(input:disabled) { opacity: .55; cursor: default; }
-.custom-shader-controls__hint, .custom-shader-controls__audit { color: var(--text-soft); font-size: 14px; }
-.custom-shader-controls__hint { margin: 8px 0 18px; }
-.custom-shader-controls__audit { margin: 24px 0; overflow-wrap: anywhere; }
-.custom-shader-controls__audit p { margin: 6px 0; }
-.custom-shader-controls button { min-height: 44px; max-width: 100%; white-space: normal; }
-.custom-shader-controls button:disabled, .custom-shader-controls textarea:disabled { opacity: .55; cursor: default; }
-.custom-shader-controls :is(button, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.custom-shader-controls {
+  max-width: none;
+}
+
+.custom-shader-controls > .ui-section-header {
+  margin-bottom: 22px;
+}
+
+.custom-shader-controls > .ui-notice,
+.custom-shader-controls__form + .custom-shader-controls__audit,
+.custom-shader-controls__audit + .ui-notice {
+  margin-top: 16px;
+}
+
+.custom-shader-controls__saved {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-panel-nested-background);
+  color: var(--ui-text-secondary);
+  font-size: 13px;
+}
+
+.custom-shader-controls__form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.custom-shader-controls .custom-shader-controls__toggle {
+  position: relative;
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-panel-nested-background);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.custom-shader-controls__toggle:hover:not(:has(input:disabled)) {
+  border-color: var(--ui-border-hover);
+  background: var(--ui-panel-quiet-background);
+}
+
+.custom-shader-controls__toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+}
+
+.custom-shader-controls__track {
+  display: block;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 38px;
+  border-radius: 999px;
+  background: var(--ui-border-strong);
+  transition: background-color .15s ease;
+}
+
+.custom-shader-controls__track > span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 3px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform .15s ease;
+}
+
+.custom-shader-controls__toggle input:checked + .custom-shader-controls__track {
+  background: var(--ui-focus-color);
+}
+
+.custom-shader-controls__toggle input:checked + .custom-shader-controls__track > span {
+  transform: translateX(16px);
+}
+
+.custom-shader-controls__toggle input:focus-visible + .custom-shader-controls__track {
+  outline: 2px solid var(--ui-focus-color);
+  outline-offset: 3px;
+  box-shadow: var(--ui-focus-ring);
+}
+
+.custom-shader-controls__toggle:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.custom-shader-controls__reason {
+  margin-top: 2px;
+}
+
+.custom-shader-controls__hint {
+  margin: 0;
+}
+
+.custom-shader-controls__audit {
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.custom-shader-controls__audit p {
+  margin: 0;
+}
+
+.custom-shader-controls__audit p + p {
+  margin-top: 6px;
+}
+
+.custom-shader-controls > .ui-button {
+  margin-top: 16px;
+}
+
+@media (max-width: 520px) {
+  .custom-shader-controls__saved {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .custom-shader-controls__form .moderation-action-row .ui-button,
+  .custom-shader-controls > .ui-button {
+    width: 100%;
+  }
+}

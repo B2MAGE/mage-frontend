@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth, type AuthenticatedFetch } from '@auth'
+import {
+  ActionButton,
+  FormNotice,
+  PageFrame,
+  PageHeader,
+  PagePanel,
+  PageState,
+  SectionHeader,
+} from '@shared/ui'
 import { fetchAdminCapabilities, fetchModeratorAudit, findModeratorUsers, isExactModeratorQuery, isModerationAccessDenied,
   ModerationRequestError, updateModerator, type ModeratorAuditPage, type ModeratorChange, type ModeratorUser } from './api'
 import { useAdminCapabilities } from './useAdminCapabilities'
@@ -9,22 +18,53 @@ import './moderation.css'
 export function ModeratorsPage({ embedded = false }: { embedded?: boolean }) {
   const { accessToken, user, authenticatedFetch } = useAuth()
   const { capabilities, checking, failed, refresh } = useAdminCapabilities()
-  const Container = embedded ? 'section' : 'main'
-  const Heading = embedded ? 'h2' : 'h1'
-  return <Container className={embedded ? 'moderation-area__moderators' : 'moderators-page'}>
-    {!embedded && <Link to="/moderation">Back to moderation</Link>}
-    <header>
-      <Heading>Moderator access</Heading>
-      <p>Add or remove people who can block and unblock scenes. Only administrators can manage moderators or change custom shader playback for everyone.</p>
-    </header>
-    {checking ? <p role="status">Checking your permissions…</p> : capabilities?.canManageModerators
-      ? <ModeratorManagement key={`${accessToken}:${user?.userId}`} fetcher={authenticatedFetch} onAccessLost={refresh} />
-      : <section aria-labelledby="moderator-access-title">
-        <h2 id="moderator-access-title">{failed ? 'Permissions couldn’t be checked' : 'Administrator access required'}</h2>
-        <p>{failed ? 'Please check your connection and try again.' : 'Only an administrator can manage scene moderators.'}</p>
-        {failed && <button type="button" className="secondary-button" onClick={refresh}>Try again</button>}
-      </section>}
-  </Container>
+  const content = (
+    <PagePanel className="moderation-tool moderation-area__moderators">
+      {embedded ? (
+        <SectionHeader
+          description="Add or remove people who can block and unblock scenes. Only administrators can manage this access."
+          title="Moderator access"
+        />
+      ) : null}
+      {checking ? (
+        <FormNotice tone="note">Checking your permissions…</FormNotice>
+      ) : capabilities?.canManageModerators ? (
+        <ModeratorManagement
+          fetcher={authenticatedFetch}
+          key={`${accessToken}:${user?.userId}`}
+          onAccessLost={refresh}
+        />
+      ) : (
+        <PageState
+          actions={failed ? (
+            <ActionButton onClick={refresh} tone="secondary">Try again</ActionButton>
+          ) : undefined}
+          description={failed
+            ? 'Please check your connection and try again.'
+            : 'Only an administrator can manage scene moderators.'}
+          kind="error"
+          title={failed ? 'Permissions couldn’t be checked' : 'Administrator access required'}
+        />
+      )}
+    </PagePanel>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <PageFrame className="moderators-page" width="form">
+      <Link className="ui-button ui-button--ghost moderators-page__back" to="/moderation">
+        Back to moderation
+      </Link>
+      <PageHeader
+        description="Add or remove people who can block and unblock scenes. Only administrators can manage moderators or change custom shader playback for everyone."
+        title="Moderator access"
+      />
+      {content}
+    </PageFrame>
+  )
 }
 
 function ModeratorManagement({ fetcher, onAccessLost }: { fetcher: AuthenticatedFetch; onAccessLost: () => void }) {
@@ -174,23 +214,29 @@ function ModeratorManagement({ fetcher, onAccessLost }: { fetcher: Authenticated
     }
   }
 
-  return <>
-    <section aria-labelledby="moderator-search-title">
-      <h2 id="moderator-search-title">Find an account</h2>
+  return <div className="moderator-management">
+    <PagePanel as="section" className="moderator-management__section" padding="compact" tone="nested" aria-labelledby="moderator-search-title">
+      <SectionHeader
+        description="Search by one complete identifier before reviewing or changing access."
+        title="Find an account"
+        titleId="moderator-search-title"
+      />
       <form onSubmit={search} className="moderators-search">
-        <label htmlFor="moderator-query">Account ID, @handle, or email</label>
-        <div className="moderators-actions">
-          <input id="moderator-query" value={query} maxLength={320} autoComplete="off" required disabled={pending || !!confirmation}
-            onChange={event => setQuery(event.target.value)} aria-describedby="moderator-query-hint" />
-          <button className="secondary-button" disabled={searching || pending || !!confirmation} type="submit">{searching ? 'Searching…' : 'Find account'}</button>
+        <div className="ui-field">
+          <label htmlFor="moderator-query">Account ID, @handle, or email</label>
+          <div className="moderation-action-row">
+            <input id="moderator-query" value={query} maxLength={320} autoComplete="off" required disabled={pending || !!confirmation}
+              onChange={event => setQuery(event.target.value)} aria-describedby="moderator-query-hint" />
+            <ActionButton disabled={searching || pending || !!confirmation} tone="secondary" type="submit">{searching ? 'Searching…' : 'Find account'}</ActionButton>
+          </div>
+          <p id="moderator-query-hint" className="field-hint">Use the full identifier. Names and partial matches are not searched.</p>
         </div>
-        <p id="moderator-query-hint" className="moderators-muted">Use the full identifier. Names and partial matches are not searched.</p>
       </form>
-      {error && <p role="alert" className="moderators-error">{error}</p>}
-      {notice && <p role="status">{notice}</p>}
-      {searching && <p role="status">Loading account…</p>}
-      {searched && !target && !searching && <p role="status">No account matches that identifier.</p>}
-      {target && <section className="moderators-account" aria-labelledby="moderator-account-title">
+      {error && <FormNotice tone="error">{error}</FormNotice>}
+      {notice && <FormNotice tone="note">{notice}</FormNotice>}
+      {searching && <FormNotice tone="note">Loading account…</FormNotice>}
+      {searched && !target && !searching && <FormNotice tone="note">No account matches that identifier.</FormNotice>}
+      {target && <PagePanel className="moderators-account" padding="compact" tone="quiet" aria-labelledby="moderator-account-title">
         <h3 id="moderator-account-title">{target.displayName}</h3>
         <dl className="moderators-identity">
           <div><dt>Account ID</dt><dd>{target.userId}</dd></div>
@@ -199,43 +245,48 @@ function ModeratorManagement({ fetcher, onAccessLost }: { fetcher: Authenticated
           <div><dt>Permission</dt><dd>{target.isAdministrator ? 'Administrator' : target.sceneModerator ? 'Scene moderator' : 'Not a scene moderator'}</dd></div>
         </dl>
         {target.isAdministrator ? <p>Administrator access is managed separately. It cannot be changed here.</p> : <>
-          {!confirmation ? <form onSubmit={review}>
-            <label htmlFor="moderator-reason">Reason for this change</label>
-            <textarea id="moderator-reason" value={reason} maxLength={1000} required onChange={event => setReason(event.target.value)} />
-            <button className="secondary-button" type="submit" disabled={!reason.trim()}>{target.sceneModerator ? 'Review removal' : 'Review grant'}</button>
-          </form> : <section className="moderators-confirmation" aria-labelledby="moderator-confirm-title" aria-busy={pending}>
+          {!confirmation ? <form className="moderators-review-form" onSubmit={review}>
+            <div className="ui-field">
+              <label htmlFor="moderator-reason">Reason for this change</label>
+              <textarea id="moderator-reason" value={reason} maxLength={1000} required onChange={event => setReason(event.target.value)} />
+            </div>
+            <ActionButton tone="secondary" type="submit" disabled={!reason.trim()}>{target.sceneModerator ? 'Review removal' : 'Review grant'}</ActionButton>
+          </form> : <PagePanel className="moderators-confirmation" padding="compact" tone="nested" aria-labelledby="moderator-confirm-title" aria-busy={pending}>
             <h3 id="moderator-confirm-title">{confirmation.enabled ? 'Grant scene-moderator permission?' : 'Remove scene-moderator permission?'}</h3>
             <p>{confirmation.enabled ? 'Allow' : 'Stop allowing'} <strong>{target.displayName}</strong> (account {target.userId}, {target.email}) to disable and re-enable individual scenes.</p>
             <p><strong>Reason:</strong> {confirmation.reason}</p>
-            <div className="moderators-actions">
-              <button className="primary-button" type="button" ref={confirmButton} disabled={pending} onClick={() => void confirmChange()}>
+            <div className="moderation-action-row">
+              <ActionButton tone="primary" type="button" ref={confirmButton} disabled={pending} onClick={() => void confirmChange()}>
                 {pending ? 'Saving…' : uncertain ? 'Retry same change' : confirmation.enabled ? 'Confirm grant' : 'Confirm removal'}
-              </button>
-              <button className="secondary-button" type="button" disabled={pending} onClick={() => {
+              </ActionButton>
+              <ActionButton tone="secondary" type="button" disabled={pending} onClick={() => {
                 if (uncertain) void findAccount(String(target.userId), true)
                 else setConfirmation(null)
-              }}>{uncertain ? 'Check latest status' : 'Cancel'}</button>
+              }}>{uncertain ? 'Check latest status' : 'Cancel'}</ActionButton>
             </div>
-          </section>}
+          </PagePanel>}
         </>}
-      </section>}
-    </section>
-    <section aria-labelledby="moderator-history-title" aria-busy={historyLoading}>
-      <div className="moderators-section-heading"><h2 id="moderator-history-title">Permission history</h2>
-        <button type="button" className="secondary-button" disabled={historyLoading} onClick={() => void loadHistory()}>Refresh history</button></div>
-      {historyLoading && <p role="status">Loading permission history…</p>}
-      {historyError && <p role="alert">Permission history couldn’t be loaded. <button type="button" className="secondary-button" onClick={() => void loadHistory(historyCursor)}>Try again</button></p>}
+      </PagePanel>}
+    </PagePanel>
+    <PagePanel as="section" className="moderator-management__section" padding="compact" tone="nested" aria-labelledby="moderator-history-title" aria-busy={historyLoading}>
+      <SectionHeader
+        actions={<ActionButton size="compact" tone="secondary" disabled={historyLoading} onClick={() => void loadHistory()}>Refresh history</ActionButton>}
+        title="Permission history"
+        titleId="moderator-history-title"
+      />
+      {historyLoading && <FormNotice tone="note">Loading permission history…</FormNotice>}
+      {historyError && <FormNotice tone="error">Permission history couldn’t be loaded. <ActionButton size="compact" tone="secondary" onClick={() => void loadHistory(historyCursor)}>Try again</ActionButton></FormNotice>}
       {history && !historyError && <>
-        {history.entries.length === 0 ? <p>No permission changes have been recorded.</p> : <ol className="moderators-history">{history.entries.map(entry => <li key={entry.id}>
+        {history.entries.length === 0 ? <FormNotice tone="note">No permission changes have been recorded.</FormNotice> : <ol className="moderators-history">{history.entries.map(entry => <li key={entry.id}>
           <strong>Account {entry.targetUserId}: {entry.previousEnabled ? 'Scene moderator' : 'Not a scene moderator'} → {entry.enabled ? 'Scene moderator' : 'Not a scene moderator'}</strong>
           <p className="moderators-muted">{entry.source === 'legacy-allowlist' ? 'Server migration' : `Administrator ${entry.administratorUserId}`} · <time dateTime={entry.changedAt}>{new Date(entry.changedAt).toLocaleString()}</time></p>
           <p>{entry.reason}</p>
         </li>)}</ol>}
-        <div className="moderators-actions">
-          {history.nextCursor !== null && <button type="button" className="secondary-button" disabled={historyLoading} onClick={() => void loadHistory(history.nextCursor!)}>Older changes</button>}
-          {historyCursor !== undefined && <button type="button" className="secondary-button" disabled={historyLoading} onClick={() => void loadHistory()}>Latest changes</button>}
+        <div className="moderation-action-row">
+          {history.nextCursor !== null && <ActionButton type="button" tone="secondary" disabled={historyLoading} onClick={() => void loadHistory(history.nextCursor!)}>Older changes</ActionButton>}
+          {historyCursor !== undefined && <ActionButton type="button" tone="secondary" disabled={historyLoading} onClick={() => void loadHistory()}>Latest changes</ActionButton>}
         </div>
       </>}
-    </section>
-  </>
+    </PagePanel>
+  </div>
 }
