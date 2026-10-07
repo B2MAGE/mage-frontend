@@ -1,10 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_THEME_STORAGE_KEY, ThemeProvider } from '@theme'
 import { ANIMATED_SCENE_THUMBNAILS_STORAGE_KEY } from '@shared/preferences'
 import { SettingsPage } from './SettingsPage'
-vi.mock('@modules/moderation', () => ({ ModeratorSettingsLink: () => null }))
 
 let authState = {
   accessToken: null as string | null,
@@ -31,11 +31,27 @@ vi.mock('@auth', async (importOriginal) => ({
   useAuth: () => authState,
 }))
 
-function renderSettingsPage() {
+function SettingsHistoryControls() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  return (
+    <div>
+      <output data-testid="settings-location">{`${location.pathname}${location.hash}`}</output>
+      <button onClick={() => navigate(-1)}>History back</button>
+      <button onClick={() => navigate(1)}>History forward</button>
+    </div>
+  )
+}
+
+function renderSettingsPage(section = 'profile') {
   return render(
-    <ThemeProvider>
-      <SettingsPage />
-    </ThemeProvider>,
+    <MemoryRouter initialEntries={[`/settings#${section}`]}>
+      <ThemeProvider>
+        <SettingsPage />
+        <SettingsHistoryControls />
+      </ThemeProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -75,15 +91,14 @@ describe('SettingsPage', () => {
     renderSettingsPage()
 
     expect(screen.getByRole('heading', { name: /^settings$/i, level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /appearance/i, level: 2 })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /profile details/i, level: 2 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /password/i, level: 2 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /appearance/i, level: 2 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /password/i, level: 2 })).not.toBeInTheDocument()
     expect(
       screen.getByText(
         /manage how MAGE looks on this device and update the account details tied to your profile/i,
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /mage pulse/i })).toHaveAttribute('aria-checked', 'true')
     const emailInput = screen.getByRole('textbox', { name: /^email$/i })
     const profilePreview = screen.getByRole('group', { name: /profile preview/i })
 
@@ -105,10 +120,7 @@ describe('SettingsPage', () => {
     )
     expect(screen.queryByText('LOCAL')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
-    expect(screen.getByLabelText(/current password/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^new password$/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/verify new password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /save password/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/current password/i)).not.toBeVisible()
     expect(screen.queryByRole('button', { name: /reset password/i })).not.toBeInTheDocument()
     expect(emailInput).not.toHaveAttribute('placeholder')
     const fieldPlaceholders = [
@@ -117,17 +129,53 @@ describe('SettingsPage', () => {
       ['First name', 'John'],
       ['Last name', 'Doe'],
       ['Description', 'Tell people about the scenes you make.'],
-      ['Current password', 'Enter current password'],
-      ['New password', 'Enter new password'],
-      ['Verify new password', 'Enter new password again'],
     ]
 
     fieldPlaceholders.forEach(([label, placeholder]) => {
       expect(screen.getByLabelText(label)).toHaveAttribute('placeholder', placeholder)
     })
-    for (const label of ['Current password', 'New password', 'Verify new password']) {
-      expect(screen.getByLabelText(label)).toHaveValue('')
+  })
+
+  it('uses the URL to show one section, supports history, and keeps draft values mounted', async () => {
+    authState = {
+      ...authState,
+      accessToken: 'token',
+      isAuthenticated: true,
+      user: {
+        authProvider: 'LOCAL',
+        displayName: 'Scene Artist',
+        email: 'artist@example.com',
+        handle: 'sceneartist',
+        userId: 8,
+      },
     }
+    const user = userEvent.setup()
+    renderSettingsPage('appearance')
+
+    expect(screen.getByRole('heading', { name: /appearance/i, level: 2 })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: /profile details/i, level: 2 })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Appearance' })).toHaveAttribute('aria-current', 'page')
+
+    await user.click(screen.getByRole('link', { name: 'Profile' }))
+    expect(screen.getByTestId('settings-location')).toHaveTextContent('/settings#profile')
+    const displayName = screen.getByRole('textbox', { name: 'Display name' })
+    await user.clear(displayName)
+    await user.type(displayName, 'Draft Artist')
+
+    const passwordLink = screen.getByRole('link', { name: 'Password' })
+    passwordLink.focus()
+    await user.keyboard('{Enter}')
+    expect(screen.getByTestId('settings-location')).toHaveTextContent('/settings#security')
+    expect(screen.getByRole('heading', { name: /password/i, level: 2 })).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Display name' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('History back'))
+    expect(screen.getByRole('textbox', { name: 'Display name' })).toHaveValue('Draft Artist')
+    expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
+    await user.click(screen.getByText('History back'))
+    expect(screen.getByRole('heading', { name: /appearance/i, level: 2 })).toBeVisible()
+    await user.click(screen.getByText('History forward'))
+    expect(screen.getByRole('textbox', { name: 'Display name' })).toHaveValue('Draft Artist')
   })
 
   it('marks only public profile fields and associates their shared explanation without changing labels', async () => {
@@ -218,7 +266,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    renderSettingsPage()
+    renderSettingsPage('appearance')
 
     await user.click(screen.getByRole('radio', { name: /classic blue/i }))
 
@@ -324,7 +372,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    renderSettingsPage()
+    renderSettingsPage('appearance')
 
     const animatedThumbnailSwitch = screen.getByRole('switch', {
       name: /animated scene thumbnails/i,
@@ -575,7 +623,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    renderSettingsPage()
+    renderSettingsPage('security')
 
     await user.type(screen.getByLabelText(/current password/i), 'current-secret')
     await user.type(screen.getByLabelText(/^new password$/i), 'new-secret-value')
@@ -621,7 +669,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    renderSettingsPage()
+    renderSettingsPage('security')
 
     await user.click(screen.getByRole('button', { name: /save password/i }))
 
@@ -675,7 +723,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    renderSettingsPage()
+    renderSettingsPage('security')
 
     await user.type(screen.getByLabelText(/current password/i), 'wrong-secret')
     await user.type(screen.getByLabelText(/^new password$/i), 'new-secret-value')
@@ -723,7 +771,7 @@ describe('SettingsPage', () => {
 
     const user = userEvent.setup()
 
-    renderSettingsPage()
+    renderSettingsPage('security')
 
     await user.type(screen.getByLabelText(/current password/i), 'current-secret')
     await user.type(screen.getByLabelText(/^new password$/i), 'new-secret-value')
@@ -764,7 +812,7 @@ describe('SettingsPage', () => {
       },
     }
 
-    renderSettingsPage()
+    renderSettingsPage('security')
 
     expect(
       screen.getByText('Password changes are managed by Google for this account.'),

@@ -1,6 +1,6 @@
 import { type AppThemeDefinition, useTheme } from '@theme'
 import type { CSSProperties } from 'react'
-import { SurfaceCard } from '@shared/ui'
+import { PagePanel } from '@shared/ui'
 import { AnimatedThumbnailSetting } from './AnimatedThumbnailSetting'
 import './themeSettingsSection.css'
 
@@ -42,11 +42,10 @@ export function ThemeSettingsSection() {
   const { setTheme, themeId, themes } = useTheme()
 
   return (
-    <SurfaceCard
+    <PagePanel
       as="section"
       className="settings-section settings-section--appearance"
       id="appearance"
-      tone="soft"
       aria-labelledby="theme-settings-title"
     >
       <div className="settings-section__header">
@@ -86,6 +85,6 @@ export function ThemeSettingsSection() {
       </div>
 
       <AnimatedThumbnailSetting />
-    </SurfaceCard>
+    </PagePanel>
   )
 }

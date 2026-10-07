@@ -8,8 +8,10 @@
 
 :root[data-theme='classic-facebook'] .settings-page__heading { margin-bottom: 24px; }
 :root[data-theme='classic-facebook'] .settings-title,
+:root[data-theme='classic-facebook'] .settings-page .ui-page-title,
 :root[data-theme='classic-facebook'] .auth-page:not(.scene-editor-page) .auth-title { margin: 0; font-size: 28px; line-height: 1.2; letter-spacing: -.025em; }
-:root[data-theme='classic-facebook'] .settings-lead { margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
+:root[data-theme='classic-facebook'] .settings-lead,
+:root[data-theme='classic-facebook'] .settings-page .ui-page-lead { margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
 :root[data-theme='classic-facebook'] .settings-layout { grid-template-columns: 160px minmax(0, 1fr); gap: 24px; }
 :root[data-theme='classic-facebook'] .settings-nav { position: sticky; top: 86px; }
 :root[data-theme='classic-facebook'] .settings-nav__link { padding: 9px 12px; border: 1px solid transparent; border-radius: 2px; color: var(--text-soft); font-size: 13px; font-weight: 700; text-decoration: none; }
@@ -18,11 +20,11 @@
 :root[data-theme='classic-facebook'] .settings-section { display: block; margin: 0; padding: 22px; scroll-margin-top: 88px; background: var(--surface); }
 :root[data-theme='classic-facebook'] .settings-section__header { display: block; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 :root[data-theme='classic-facebook'] .settings-section__header h2 { margin: 0 0 6px; color: var(--text); font-size: 18px; letter-spacing: -.015em; }
-:root[data-theme='classic-facebook'] .settings-section__header p { max-width: 600px; margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+:root[data-theme='classic-facebook'] .settings-section__header p { max-width: 600px; margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
 
 /* Inputs share settings and registration markup, including the fixed @ prefix. */
 :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-group { min-width: 0; display: block; }
-:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group label, .auth-field label) { display: block; margin-bottom: 6px; color: var(--text-soft); font-size: 12px; font-weight: 700; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group label, .auth-field label) { display: block; margin-bottom: 6px; color: var(--text-soft); font-size: 13px; font-weight: 700; }
 :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input) { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 2px; outline: none; background: var(--surface); color: var(--text); font-size: 14px; box-shadow: none; }
 :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input)::placeholder { color: var(--text-muted); opacity: 1; }
 :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.field-group input, .field-group textarea, .auth-field input):hover { border-color: #8198bf; }
@@ -32,15 +34,15 @@
 :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.text-input-control--action, .auth-password-wrap) > input { padding-inline-end: 64px; }
 :root[data-theme='classic-facebook'] .settings-page .field-group input[readonly] { background: var(--surface-soft); color: var(--text-muted); }
 :root[data-theme='classic-facebook'] .settings-page .field-group textarea { min-height: 110px; line-height: 1.5; }
-:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-hint { margin: 6px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
-:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-error { margin-top: 6px; color: #9e3044; font-size: 11px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-hint { margin: 6px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) .field-error { margin-top: 6px; color: #9e3044; font-size: 12px; line-height: 1.5; }
 :root[data-theme='classic-facebook'] :is(.settings-page, .auth-page:not(.scene-editor-page)) :is(.form-note, .form-alert) { margin: 0; padding: 11px 12px; font-size: 12px; line-height: 1.5; }
 :root[data-theme='classic-facebook'] .settings-description-hint { display: flex; justify-content: flex-end; }
 :root[data-theme='classic-facebook'] .profile-identity-preview { padding: 14px; border-color: var(--border); border-radius: 3px; background: var(--surface-soft); }
 :root[data-theme='classic-facebook'] .profile-identity-preview__copy strong { font-size: 13px; }
-:root[data-theme='classic-facebook'] .profile-identity-preview__copy span { font-size: 11px; }
+:root[data-theme='classic-facebook'] .profile-identity-preview__copy span { font-size: 12px; }
 :root[data-theme='classic-facebook'] .settings-actions { margin-top: 4px; gap: 12px; }
-:root[data-theme='classic-facebook'] .settings-action-button { min-width: 124px; min-height: 36px; padding: 0 14px; font-size: 12px; }
+:root[data-theme='classic-facebook'] .settings-save-button { min-width: 124px; min-height: 38px; padding: 0 14px; font-size: 13px; }
 :root[data-theme='classic-facebook'] .settings-save-button:disabled,
 :root[data-theme='classic-facebook'] .settings-save-button:disabled:hover { border-color: var(--border); background: #e4e8ef; color: #778398; opacity: 1; cursor: default; box-shadow: none; }
 :root[data-theme='classic-facebook'] .settings-security-note { padding: 12px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface-soft); color: var(--text-muted); font-size: 12px; line-height: 1.5; }
@@ -60,12 +62,12 @@
 :root[data-theme='classic-facebook'] .theme-option__details { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 13px; }
 :root[data-theme='classic-facebook'] .theme-option__copy { min-width: 0; gap: 4px; }
 :root[data-theme='classic-facebook'] .theme-option__copy strong { color: var(--text); font-size: 13px; letter-spacing: 0; }
-:root[data-theme='classic-facebook'] .theme-option__copy span { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
-:root[data-theme='classic-facebook'] .theme-option__status { flex: 0 0 auto; min-height: 24px; padding: 3px 6px; border-radius: 2px; background: #edf0f5; color: #566680; font-size: 10px; letter-spacing: 0; text-transform: none; }
+:root[data-theme='classic-facebook'] .theme-option__copy span { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+:root[data-theme='classic-facebook'] .theme-option__status { flex: 0 0 auto; min-height: 26px; padding: 3px 7px; border-radius: 2px; background: #edf0f5; color: #566680; font-size: 12px; letter-spacing: 0; text-transform: none; }
 :root[data-theme='classic-facebook'] .theme-option[data-active='true'] .theme-option__status { background: #dce6f6; color: #29447e; }
 :root[data-theme='classic-facebook'] .animated-thumbnail-setting { margin-top: 18px; padding: 14px; border-color: var(--border); border-radius: 3px; background: var(--surface-soft); }
 :root[data-theme='classic-facebook'] .animated-thumbnail-setting__copy strong { font-size: 13px; }
-:root[data-theme='classic-facebook'] .animated-thumbnail-setting__copy span { color: var(--text-muted); font-size: 11px; }
+:root[data-theme='classic-facebook'] .animated-thumbnail-setting__copy span { color: var(--text-muted); font-size: 12px; }
 :root[data-theme='classic-facebook'] .animated-thumbnail-setting__switch { background: #b5c0d1; }
 :root[data-theme='classic-facebook'] .animated-thumbnail-setting__input:checked + .animated-thumbnail-setting__switch { background: var(--accent); }
 

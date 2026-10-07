@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react'
-import { FormNotice, PendingButtonLabel, SurfaceCard, TextInputField } from '@shared/ui'
+import { ActionButton, FormNotice, PagePanel, PendingButtonLabel, TextInputField } from '@shared/ui'
 import type { PasswordChangeFields, PasswordChangeResult } from '../types'
 
 type PasswordChangeFormProps = {
@@ -103,11 +103,10 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
   }
 
   return (
-    <SurfaceCard
+    <PagePanel
       as="section"
       className="settings-section settings-section--security"
       id="security"
-      tone="soft"
       aria-label="Password"
     >
       <div className="settings-section__header">
@@ -168,19 +167,20 @@ export function PasswordChangeForm({ authProvider, onSave }: PasswordChangeFormP
           {successMessage ? <FormNotice tone="note">{successMessage}</FormNotice> : null}
 
           <div className="settings-actions">
-            <button
+            <ActionButton
               aria-busy={isSubmitting}
-              className="demo-link auth-submit settings-action-button settings-save-button"
+              className="settings-save-button"
               disabled={isSubmitting}
+              tone="primary"
               type="submit"
             >
               <PendingButtonLabel pending={isSubmitting} pendingLabel="Saving password...">
                 Save password
               </PendingButtonLabel>
-            </button>
+            </ActionButton>
           </div>
         </form>
       )}
-    </SurfaceCard>
+    </PagePanel>
   )
 }

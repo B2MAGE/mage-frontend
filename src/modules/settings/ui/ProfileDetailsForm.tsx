@@ -8,11 +8,12 @@ import { HandleInputField } from '@auth/HandleInputField'
 import { DEFAULT_AVATAR_GRADIENT, isAvatarColor, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 import { AvatarGradientPicker } from './AvatarGradientPicker'
 import {
+  ActionButton,
   FormNotice,
+  PagePanel,
   PendingButtonLabel,
   ProfileIdentityPreview,
   PublicProfileMarker,
-  SurfaceCard,
   TextInputField,
 } from '@shared/ui'
 import type { ProfileDetailsFields, ProfileSaveResult } from '../types'
@@ -168,11 +169,10 @@ export function ProfileDetailsForm({
   }
 
   return (
-    <SurfaceCard
+    <PagePanel
       as="section"
       className="settings-section settings-section--profile"
       id="profile"
-      tone="soft"
       aria-label="Profile details"
     >
       <div className="settings-section__header">
@@ -292,18 +292,19 @@ export function ProfileDetailsForm({
           <p className="field-hint public-profile-hint" id="settings-public-profile-hint">
             <PublicProfileMarker />Shown on your public profile.
           </p>
-          <button
+          <ActionButton
             aria-busy={isSubmitting}
-            className="demo-link auth-submit settings-action-button settings-save-button"
+            className="settings-save-button"
             disabled={!isDirty || isSubmitting}
+            tone="primary"
             type="submit"
           >
             <PendingButtonLabel pending={isSubmitting} pendingLabel="Saving...">
               Save changes
             </PendingButtonLabel>
-          </button>
+          </ActionButton>
         </div>
       </form>
-    </SurfaceCard>
+    </PagePanel>
   )
 }

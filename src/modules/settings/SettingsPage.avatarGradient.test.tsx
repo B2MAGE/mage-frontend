@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThemeProvider } from '@theme'
 import { SettingsPage } from './SettingsPage'
@@ -27,7 +28,11 @@ vi.mock('@auth', async (importOriginal) => ({
 }))
 
 function renderPage() {
-  return render(<ThemeProvider><SettingsPage /></ThemeProvider>)
+  return render(
+    <MemoryRouter initialEntries={['/settings#profile']}>
+      <ThemeProvider><SettingsPage /></ThemeProvider>
+    </MemoryRouter>,
+  )
 }
 
 function previewAvatar() {

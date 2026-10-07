@@ -1,4 +1,6 @@
-import { LoadingRegion, Skeleton, SurfaceCard } from '@shared/ui'
+import { useLocation } from 'react-router-dom'
+import { LoadingRegion, PagePanel, Skeleton } from '@shared/ui'
+import { getSettingsSection } from './sections'
 import './settings.css'
 
 const SETTINGS_NAV_WIDTHS = ['72%', '55%', '64%']
@@ -64,10 +66,12 @@ function ThemeCardSkeleton() {
 }
 
 export function SettingsLoadingState() {
+  const activeSection = getSettingsSection(useLocation().hash)
+
   return (
     <LoadingRegion
       as="main"
-      className="page-stack settings-page settings-page--loading"
+      className="ui-page-frame ui-page-frame--form page-stack settings-page settings-page--loading"
       label="Loading account settings"
       visualClassName="settings-loading__visual"
     >
@@ -99,11 +103,11 @@ export function SettingsLoadingState() {
         </aside>
 
         <div className="settings-content">
-          <SurfaceCard
-            as="section"
-            className="settings-section settings-section--appearance settings-loading__section"
-            tone="soft"
-          >
+          <div className="settings-section-view" hidden={activeSection !== 'appearance'}>
+            <PagePanel
+              as="section"
+              className="settings-section settings-section--appearance settings-loading__section"
+            >
             <SectionHeading title="Appearance" />
             <div className="theme-settings__grid settings-loading__theme-grid">
               <ThemeCardSkeleton />
@@ -116,13 +120,14 @@ export function SettingsLoadingState() {
               </div>
               <Skeleton className="settings-loading__preference-control" shape="block" />
             </div>
-          </SurfaceCard>
+            </PagePanel>
+          </div>
 
-          <SurfaceCard
-            as="section"
-            className="settings-section settings-section--profile settings-loading__section"
-            tone="soft"
-          >
+          <div className="settings-section-view" hidden={activeSection !== 'profile'}>
+            <PagePanel
+              as="section"
+              className="settings-section settings-section--profile settings-loading__section"
+            >
             <SectionHeading title="Profile details" />
             <div className="settings-profile-form settings-loading__profile-form">
               <FieldSkeleton full />
@@ -143,13 +148,14 @@ export function SettingsLoadingState() {
                 <Skeleton className="settings-loading__save" shape="block" />
               </div>
             </div>
-          </SurfaceCard>
+            </PagePanel>
+          </div>
 
-          <SurfaceCard
-            as="section"
-            className="settings-section settings-section--security settings-loading__section"
-            tone="soft"
-          >
+          <div className="settings-section-view" hidden={activeSection !== 'security'}>
+            <PagePanel
+              as="section"
+              className="settings-section settings-section--security settings-loading__section"
+            >
             <SectionHeading title="Password" />
             <div className="settings-password-form settings-loading__password-form">
               <Skeleton className="settings-loading__security-note" shape="block" />
@@ -160,7 +166,8 @@ export function SettingsLoadingState() {
                 <Skeleton className="settings-loading__save" shape="block" />
               </div>
             </div>
-          </SurfaceCard>
+            </PagePanel>
+          </div>
         </div>
       </div>
     </LoadingRegion>

@@ -749,12 +749,12 @@
 .settings-save-button:disabled,
 .settings-save-button:disabled:hover {
   cursor: not-allowed;
-  opacity: 0.58;
+  opacity: 1;
   transform: none;
   box-shadow: none;
-  color: rgba(245, 251, 249, 0.7);
-  background: rgba(99, 240, 214, 0.14);
-  border: 1px solid rgba(99, 240, 214, 0.18);
+  color: var(--ui-text-muted);
+  background: var(--ui-panel-quiet-background);
+  border-color: var(--ui-border);
 }
 
 .scene-empty-state {
