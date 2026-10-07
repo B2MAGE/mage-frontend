@@ -1,50 +1,180 @@
 .about-page {
-  --about-section-gap: 56px;
-  width: min(calc(100% - 48px), 1180px);
-  margin: 0 auto;
-  padding: 48px 0 56px;
-  color: var(--text);
+  --about-section-gap: 48px;
+  padding-block-start: 28px;
 }
 
 .about-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 410px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
   align-items: center;
-  gap: 64px;
+  gap: clamp(32px, 5vw, 72px);
+  padding: clamp(24px, 3vw, 40px);
 }
 
-.about-hero__copy { min-width: 0; }
-.about-hero h1 { margin: 0; font-size: clamp(48px, 7vw, 80px); line-height: .96; letter-spacing: -.055em; }
-.about-hero__copy > p { max-width: 620px; margin: 20px 0 0; color: var(--text-soft); font-size: 17px; line-height: 1.65; }
-.about-hero__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
-.about-page :is(.primary-button, .secondary-button) { min-height: 40px; padding: 0 14px; border-radius: 9px; font-size: 12px; font-weight: 700; }
-
-.about-introduction { margin-top: var(--about-section-gap); padding-top: 32px; border-top: 1px solid var(--border); }
-.about-introduction h2 { margin: 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -.04em; }
-.about-introduction > p { max-width: 720px; margin: 12px 0 34px; color: var(--text-soft); font-size: 15px; line-height: 1.7; }
-.about-principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
-.about-principles article { padding-top: 18px; border-top: 1px solid var(--border-strong); }
-.about-principles h3 { margin: 0; font-size: 16px; }
-.about-principles p { margin: 8px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
-
-.about-callout { display: flex; align-items: center; justify-content: space-between; gap: 28px; margin-top: var(--about-section-gap); padding-top: 32px; border-top: 1px solid var(--border); }
-.about-callout h2 { margin: 0; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.035em; }
-.about-callout p { margin: 7px 0 0; color: var(--text-muted); font-size: 12px; }
-.about-callout > a { flex-shrink: 0; }
-
-@media (max-width: 1000px) {
-  .about-hero { grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 36px; }
+.about-hero__copy {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
 }
 
-@media (max-width: 850px) {
-  .about-page { --about-section-gap: 48px; padding-top: 40px; }
-  .about-hero { grid-template-columns: 1fr; gap: 32px; }
-  .about-scene { max-width: 520px; justify-self: center; }
-  .about-principles { grid-template-columns: 1fr; gap: 22px; }
+.about-hero .ui-page-title {
+  max-width: 11ch;
+  font-size: clamp(44px, 6vw, 72px);
+  line-height: .98;
 }
 
-@media (max-width: 650px) {
-  .about-page { --about-section-gap: 40px; width: calc(100% - 28px); padding-top: 32px; padding-bottom: 40px; }
-  .about-hero { gap: 28px; }
-  .about-callout { align-items: flex-start; flex-direction: column; gap: 20px; }
+.about-hero .ui-page-lead {
+  max-width: 56ch;
+  margin: 4px 0 0;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.about-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.about-scene {
+  align-self: center;
+  justify-self: end;
+  max-width: 460px;
+  aspect-ratio: 4 / 3;
+  border-color: var(--ui-border-strong);
+}
+
+.about-introduction {
+  margin-top: var(--about-section-gap);
+}
+
+.about-introduction .ui-section-header {
+  max-width: 780px;
+  margin-bottom: 22px;
+}
+
+.about-introduction .ui-section-description {
+  max-width: 72ch;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.about-principles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.about-principle {
+  position: relative;
+  min-height: 172px;
+}
+
+.about-principle__number {
+  display: block;
+  margin-bottom: 28px;
+  color: var(--accent-light, var(--accent));
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .09em;
+}
+
+.about-principle h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.about-principle p {
+  max-width: 40ch;
+  margin: 8px 0 0;
+  color: var(--ui-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.about-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin-top: var(--about-section-gap);
+}
+
+.about-callout > div {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.about-callout h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -.03em;
+  text-wrap: balance;
+}
+
+.about-callout p {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.about-callout > a { flex: 0 0 auto; }
+
+@media (max-width: 900px) {
+  .about-page { --about-section-gap: 40px; }
+  .about-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr);
+    gap: 28px;
+  }
+  .about-hero .ui-page-title { font-size: clamp(40px, 7vw, 58px); }
+}
+
+@media (max-width: 760px) {
+  .about-hero { grid-template-columns: 1fr; }
+  .about-scene {
+    width: min(100%, 560px);
+    max-width: none;
+    justify-self: center;
+    aspect-ratio: 16 / 10;
+  }
+  .about-principles { grid-template-columns: 1fr; }
+  .about-principle { min-height: 0; }
+  .about-principle__number { margin-bottom: 18px; }
+}
+
+@media (max-width: 700px) {
+  .about-page {
+    --about-section-gap: 30px;
+    padding-block-start: 18px;
+  }
+  .about-hero { gap: 22px; }
+  .about-hero .ui-page-title {
+    max-width: 10ch;
+    font-size: clamp(36px, 12vw, 48px);
+  }
+  .about-hero .ui-page-lead {
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .about-hero__actions { margin-top: 8px; }
+  .about-introduction .ui-section-header { margin-bottom: 16px; }
+  .about-introduction .ui-section-description { font-size: 14px; }
+  .about-principles { gap: 12px; }
+  .about-callout {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .about-callout > a { align-self: flex-start; }
+}
+
+@media (max-width: 430px) {
+  .about-hero__actions .ui-button { flex: 1 1 140px; }
+  .about-callout > a { width: 100%; }
 }
