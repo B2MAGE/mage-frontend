@@ -179,7 +179,9 @@ describe('SceneDetailPage route states', () => {
 
     renderSceneDetailPage()
 
-    expect(await screen.findByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
+    const sceneHeading = await screen.findByRole('heading', { name: /aurora drift/i })
+    expect(sceneHeading).toBeInTheDocument()
+    expect(sceneHeading.closest('main')).toHaveClass('ui-page-frame')
     expect(screen.getByTestId('mage-player')).toHaveTextContent('player-ready')
     expect(screen.getByTestId('mage-player')).toHaveAttribute('data-playback', 'playing')
     expect(screen.getByTestId('mage-player')).toHaveAttribute('data-audio-mode', 'playlist')
@@ -188,6 +190,10 @@ describe('SceneDetailPage route states', () => {
     expect(screen.getByRole('button', { name: /upvote 416/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^show more$/i })).toBeInTheDocument()
     expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
+    expect(screen.getByText('Soft teal bloom with low-end drift.').closest('section')).toHaveClass(
+      'ui-panel',
+    )
+    expect(screen.getByRole('region', { name: /recommended scenes/i })).toHaveClass('ui-panel')
     expect(screen.getAllByRole('button', { name: /downvote/i }).length).toBeGreaterThan(0)
     expect(
       screen.getByRole('textbox', { name: /add a public comment/i }),

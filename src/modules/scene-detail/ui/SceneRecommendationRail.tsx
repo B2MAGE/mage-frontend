@@ -1,6 +1,6 @@
 import { type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { CreatorProfileLink, LoadingRegion, ScrollableTagBar } from '@shared/ui'
+import { CreatorProfileLink, LoadingRegion, PagePanel, ScrollableTagBar, SelectableChip } from '@shared/ui'
 import type { MagePlayerPlaylistTrack } from '@modules/player'
 import { buildTagRecommendationFilter, readRecommendationFilterTag } from '../recommendations'
 import type { RecommendedSceneCard, RecommendationFilter } from '../types'
@@ -113,91 +113,101 @@ export function SceneRecommendationRail({
         selectedTrackId={selectedTrackId}
         shuffleEnabled={shuffleEnabled}
       />
-      <section className="scene-detail-recommendations" aria-label="Recommended scenes">
-      <ScrollableTagBar
-        ariaLabel="Filter recommended scenes"
-        barClassName="scene-detail-recommendation-filters"
-        role="toolbar"
-      >
-        <button
-          aria-pressed={recommendationFilter === 'all'}
-          className={`tag-pill${recommendationFilter === 'all' ? ' tag-pill--active' : ''}`}
-          onClick={() => {
-            onSelectFilter('all')
-          }}
-          type="button"
+      <PagePanel aria-label="Recommended scenes" className="scene-detail-recommendations" padding="none">
+        <ScrollableTagBar
+          ariaLabel="Filter recommended scenes"
+          barClassName="scene-detail-recommendation-filters"
+          role="toolbar"
         >
-          All
-        </button>
-        <button
-          aria-label={`From ${creatorDisplayName}`}
-          aria-pressed={recommendationFilter === 'creator'}
-          className={`tag-pill${recommendationFilter === 'creator' ? ' tag-pill--active' : ''}`}
-          onClick={() => {
-            onSelectFilter('creator')
-          }}
-          type="button"
-        >
-          From {creatorDisplayName.split(' ')[0]}
-        </button>
-        {currentSceneTags.map((tag) => {
-          const tagFilter = buildTagRecommendationFilter(tag)
+          <SelectableChip
+            active={recommendationFilter === 'all'}
+            activeClassName="tag-pill--active"
+            aria-pressed={recommendationFilter === 'all'}
+            className="tag-pill"
+            onClick={() => {
+              onSelectFilter('all')
+            }}
+          >
+            All
+          </SelectableChip>
+          <SelectableChip
+            active={recommendationFilter === 'creator'}
+            activeClassName="tag-pill--active"
+            aria-label={`From ${creatorDisplayName}`}
+            aria-pressed={recommendationFilter === 'creator'}
+            className="tag-pill"
+            onClick={() => {
+              onSelectFilter('creator')
+            }}
+          >
+            From {creatorDisplayName.split(' ')[0]}
+          </SelectableChip>
+          {currentSceneTags.map((tag) => {
+            const tagFilter = buildTagRecommendationFilter(tag)
 
-          return (
-            <button
-              key={tag}
-              aria-pressed={recommendationFilter === tagFilter}
-              className={`tag-pill${recommendationFilter === tagFilter ? ' tag-pill--active' : ''}`}
-              onClick={() => {
-                onSelectFilter(tagFilter)
-              }}
-              type="button"
-            >
-              {tag}
-            </button>
-          )
-        })}
-      </ScrollableTagBar>
+            return (
+              <SelectableChip
+                active={recommendationFilter === tagFilter}
+                activeClassName="tag-pill--active"
+                aria-pressed={recommendationFilter === tagFilter}
+                className="tag-pill"
+                key={tag}
+                onClick={() => {
+                  onSelectFilter(tagFilter)
+                }}
+              >
+                {tag}
+              </SelectableChip>
+            )
+          })}
+        </ScrollableTagBar>
 
-      {isLoading ? (
-        <LoadingRegion className="scene-detail-recommendations-loading" label={loadingCopy}>
-          <SceneRecommendationSkeletonList />
-        </LoadingRegion>
-      ) : recommendedScenes.length === 0 ? (
-        <p className="mage-watch__rail-empty">{emptyCopy}</p>
-      ) : (
-        <div className="mage-watch__rail-list">
-          {recommendedScenes.slice(0, 4).map((recommendedScene) => (
-            <article className="mage-scene-card" key={recommendedScene.id}>
-              {recommendedScene.thumbnailRef ? (
-                <img
-                  alt={`${recommendedScene.title} thumbnail`}
-                  className="mage-scene-card__thumb mage-scene-card__thumb-image"
-                  src={recommendedScene.thumbnailRef}
-                />
-              ) : (
-                <div
-                  aria-hidden="true"
-                  className="mage-scene-card__thumb mage-scene-card__thumb--fallback"
-                  style={{ '--scene-accent': recommendedScene.accent } as CSSProperties}
-                />
-              )}
-              <div className="mage-scene-card__body">
-                <Link className="mage-scene-card__open-link" to={`/scenes/${recommendedScene.id}`}>
-                  <strong>{recommendedScene.title}</strong>
-                </Link>
-                <span>
-                  <CreatorProfileLink handle={recommendedScene.creatorHandle}>
-                    {recommendedScene.creator}
-                  </CreatorProfileLink>
-                </span>
-                <span>{recommendedScene.meta}</span>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-      </section>
+        {isLoading ? (
+          <LoadingRegion className="scene-detail-recommendations-loading" label={loadingCopy}>
+            <SceneRecommendationSkeletonList />
+          </LoadingRegion>
+        ) : recommendedScenes.length === 0 ? (
+          <p className="mage-watch__rail-empty">{emptyCopy}</p>
+        ) : (
+          <div className="mage-watch__rail-list">
+            {recommendedScenes.slice(0, 4).map((recommendedScene) => (
+              <PagePanel
+                as="article"
+                className="mage-scene-card"
+                interactive
+                key={recommendedScene.id}
+                padding="compact"
+                tone="quiet"
+              >
+                {recommendedScene.thumbnailRef ? (
+                  <img
+                    alt={`${recommendedScene.title} thumbnail`}
+                    className="mage-scene-card__thumb mage-scene-card__thumb-image"
+                    src={recommendedScene.thumbnailRef}
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="mage-scene-card__thumb mage-scene-card__thumb--fallback"
+                    style={{ '--scene-accent': recommendedScene.accent } as CSSProperties}
+                  />
+                )}
+                <div className="mage-scene-card__body">
+                  <Link className="mage-scene-card__open-link" to={`/scenes/${recommendedScene.id}`}>
+                    <strong>{recommendedScene.title}</strong>
+                  </Link>
+                  <span>
+                    <CreatorProfileLink handle={recommendedScene.creatorHandle}>
+                      {recommendedScene.creator}
+                    </CreatorProfileLink>
+                  </span>
+                  <span>{recommendedScene.meta}</span>
+                </div>
+              </PagePanel>
+            ))}
+          </div>
+        )}
+      </PagePanel>
     </aside>
   )
 }

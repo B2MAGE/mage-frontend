@@ -1,15 +1,15 @@
 /* Shared player: a 16:9 canvas with persistent controls below it. */
-html[data-theme] .mage-player {position:relative;width:100%;margin:0;border:0;background:#090a0f;border-radius:0;box-shadow:none;}
-html[data-theme] .mage-player__viewport {aspect-ratio:16/9;border:0;border-radius:0;background:#090a0f;box-shadow:none;}
+html[data-theme] .mage-player {position:relative;width:100%;margin:0;border:0;background:var(--ui-panel-nested-background, #090a0f);border-radius:0;box-shadow:none;}
+html[data-theme] .mage-player__viewport {aspect-ratio:16/9;border:0;border-radius:0;background:var(--ui-panel-nested-background, #090a0f);box-shadow:none;}
 html[data-theme] .mage-player__viewport::after {display:none;}
-html[data-theme] .mage-player__controls {position:relative;inset:auto;display:flex;align-items:center;gap:14px;min-height:66px;padding:0 16px 0 18px;border-top:1px solid var(--border);border-radius:0;background:var(--player-inline-bar, #0d0f13);opacity:1;transform:none;pointer-events:auto;}
+html[data-theme] .mage-player__controls {position:relative;inset:auto;display:flex;align-items:center;gap:14px;min-height:66px;padding:0 16px 0 18px;border-top:1px solid var(--ui-border, var(--border));border-radius:0;background:var(--player-inline-bar, var(--ui-panel-nested-background, #0d0f13));opacity:1;transform:none;pointer-events:auto;}
 /* Keep the track title above the seek bar in every player. */
 html[data-theme] .mage-player__controls-main {display:grid;flex:1;gap:3px;min-width:0;padding-block:8px;}
 html[data-theme] .mage-player__control-actions {width:auto;display:flex;align-items:center;gap:4px;flex:0 0 auto;order:2;}
 html[data-theme] .mage-player__control-meta {display:grid;order:0;flex:auto;min-width:0;width:auto;gap:3px;}
-html[data-theme] .mage-player__audio-label,html[data-theme] .mage-player__track-summary {color:var(--text-soft);font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;}
+html[data-theme] .mage-player__audio-label,html[data-theme] .mage-player__track-summary {color:var(--ui-text-secondary, var(--text-soft));font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;}
 html[data-theme] .mage-player__timeline {order:1;min-width:0;flex:1;gap:9px;}
-html[data-theme] .mage-player__time-label {font-size:10px;color:var(--text-muted);}
+html[data-theme] .mage-player__time-label {font-size:11px;color:var(--ui-text-muted, var(--text-muted));}
 html[data-theme] .mage-player__control-button {width:34px;height:34px;min-width:34px;min-height:34px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:transparent;color:var(--text-soft);box-shadow:none;order:2;}
 html[data-theme] .mage-player__control-button--playback {order:-1;width:36px;height:36px;min-width:36px;border-radius:50%;background:var(--text);color:#090a0d;}
 html[data-theme] .mage-player__volume-control {order:3;}
@@ -20,6 +20,18 @@ html[data-theme] .mage-player:fullscreen {display:grid;grid-template-rows:minmax
 html[data-theme] .mage-player:fullscreen .mage-player__viewport {width:100%;height:100%;min-height:0;aspect-ratio:auto;}
 html[data-theme] .mage-player:fullscreen .mage-player__controls {align-self:end;align-items:center;min-height:66px;padding-block:0;}
 @media(max-width:760px){html[data-theme] .mage-player__controls{gap:8px;padding-inline:12px;}}
+
+@media(max-width:560px){
+  html[data-theme] .mage-player__viewport{min-height:0;border-radius:0;}
+  html[data-theme] .mage-player__controls{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;gap:6px 8px;min-height:0;padding:9px 10px 10px;}
+  html[data-theme] .mage-player__controls-main{grid-column:1 / -1;grid-row:1;width:100%;padding:0;}
+  html[data-theme] .mage-player__control-actions{grid-column:1;grid-row:2;width:auto;min-width:0;justify-content:flex-start;gap:2px;overflow-x:auto;scrollbar-width:none;}
+  html[data-theme] .mage-player__control-actions::-webkit-scrollbar{display:none;}
+  html[data-theme] .mage-player__controls > .mage-player__control-button--playback{grid-column:2;grid-row:2;justify-self:end;order:0;}
+  html[data-theme] .mage-player__control-button{width:34px;height:34px;min-width:34px;min-height:34px;}
+  html[data-theme] .mage-player__control-button--text{width:34px;min-width:34px;padding:0;}
+  html[data-theme] .mage-player__volume-panel{left:0;right:auto;}
+}
 
 /* Keep replacement errors readable in compact single-song players. */
 html[data-theme] .mage-player__controls--single .mage-player__control-feedback {white-space:normal;overflow-wrap:anywhere;font-size:11px;}
@@ -36,6 +48,7 @@ html[data-theme] .mage-player__control-icon {display:grid;place-items:center;wid
 html[data-theme] .mage-player__control-icon svg {display:block;}
 html[data-theme] .mage-player__add-audio-icon,
 html[data-theme] .mage-player__add-audio-icon svg {width:22px;height:22px;flex-basis:22px;}
+html[data-theme] .mage-player__add-audio-icon {display:grid;}
 html[data-theme] .mage-player__control-button--playback .mage-player__control-icon,
 html[data-theme] .mage-player__control-button--playback .mage-player__control-icon svg {width:16px;height:16px;flex-basis:16px;}
 html[data-theme] .mage-player__timeline-slider {height:24px;padding:0;margin:0;background:transparent;}

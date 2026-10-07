@@ -5,7 +5,7 @@ export function SceneDetailLoadingState() {
   return (
     <LoadingRegion
       as="main"
-      className="scene-detail-page scene-detail-page--loading"
+      className="ui-page-frame ui-page-frame--wide scene-detail-page scene-detail-page--loading"
       label="Loading scene"
     >
       <section className="mage-watch scene-detail-watch" aria-hidden="true">

@@ -3,7 +3,7 @@ import './sceneDetail.css'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { MagePlayer, SceneAvailabilityAdminControls } from '@modules/player'
-import { EngagementButton, PendingButtonLabel, UserAvatar } from '@shared/ui'
+import { ActionButton, EngagementButton, PageFrame, PagePanel, PendingButtonLabel, UserAvatar } from '@shared/ui'
 import {
   clearSceneCommentVote,
   clearSceneVote,
@@ -589,13 +589,13 @@ export function SceneDetailPage() {
   }
 
   return (
-    <main className="scene-detail-page">
+    <PageFrame className="scene-detail-page">
       <section className="mage-watch scene-detail-watch">
         <div className="mage-watch__main">
-          <div className="mage-player-shell">
+          <PagePanel className="mage-player-shell" padding="none">
             <div
               className="mage-stage-frame mage-stage-frame--watch scene-detail-stage"
-              style={{ '--scene-accent': '#63f0d6' } as CSSProperties}
+              style={{ '--scene-accent': 'var(--accent)' } as CSSProperties}
             >
               <MagePlayer
                 audioMode="playlist"
@@ -619,7 +619,7 @@ export function SceneDetailPage() {
                 shuffleEnabled={isShuffleEnabled}
               />
             </div>
-          </div>
+          </PagePanel>
 
           <div className="scene-detail-header">
             <h1 className="mage-watch__title">{scene.name}</h1>
@@ -646,9 +646,9 @@ export function SceneDetailPage() {
 
               <div className="scene-detail-social-row__controls">
                 {user?.userId === scene.ownerUserId ? (
-                  <Link className="scene-detail-follow-button" to={`/scenes/${scene.id}/edit`}>Edit scene</Link>
+                  <Link className="ui-button ui-button--secondary ui-button--compact scene-detail-follow-button" to={`/scenes/${scene.id}/edit`}>Edit scene</Link>
                 ) : (
-                  <button className="scene-detail-follow-button" disabled title="Following creators is not available yet" type="button">Follow</button>
+                  <ActionButton className="scene-detail-follow-button" disabled size="compact" title="Following creators is not available yet">Follow</ActionButton>
                 )}
                 <SceneAvailabilityAdminControls sceneId={scene.id} />
               </div>
@@ -677,17 +677,19 @@ export function SceneDetailPage() {
                   handleVoteClick('down')
                 }}
               />
-              <button
+              <ActionButton
                 aria-busy={isSharing}
                 className="scene-detail-action-chip"
                 disabled={isSharing}
                 onClick={() => { void handleShare() }}
+                size="compact"
+                tone="secondary"
                 type="button"
               >
                 <PendingButtonLabel pending={isSharing} pendingLabel="Copying...">
                   Share
                 </PendingButtonLabel>
-              </button>
+              </ActionButton>
               <EngagementButton
                 ariaLabel={`${engagement.currentUserSaved ? 'Saved' : 'Save'} ${engagement.savesLabel}`}
                 className="scene-detail-action-chip"
@@ -762,6 +764,6 @@ export function SceneDetailPage() {
           onSelectFilter={setRecommendationFilter}
         />
       </section>
-    </main>
+    </PageFrame>
   )
 }

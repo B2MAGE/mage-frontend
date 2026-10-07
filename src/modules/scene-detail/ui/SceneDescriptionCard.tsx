@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { AppIcon } from '@shared/ui'
+import { AppIcon, PagePanel } from '@shared/ui'
 import type { SceneDescription, SceneEngagement } from '../types'
 
 type SceneDescriptionCardProps = {
@@ -50,7 +50,7 @@ export function SceneDescriptionCard({
   )
 
   return (
-    <section className="scene-detail-description-card">
+    <PagePanel className="scene-detail-description-card">
       <div className="scene-detail-description-card__meta">
         <strong>{engagement.viewsLabel}</strong>
         <span>{engagement.publishedLabel}</span>
@@ -82,6 +82,6 @@ export function SceneDescriptionCard({
       ) : (
         shouldShowToggle ? descriptionToggle : null
       )}
-    </section>
+    </PagePanel>
   )
 }

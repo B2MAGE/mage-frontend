@@ -1,4 +1,11 @@
-.scene-detail-page { --watch-stage: #050609; --watch-shadow: rgba(0,0,0,.24); --watch-thumbnail-border: #171b24; --watch-playlist-border: rgba(178,168,255,.22); --watch-playlist-tint: rgba(124,108,255,.06); --watch-submit-hover: #dedee8; }
+.scene-detail-page {
+  --watch-stage: var(--ui-panel-nested-background);
+  --watch-shadow: rgba(0, 0, 0, .24);
+  --watch-thumbnail-border: var(--ui-border);
+  --watch-playlist-border: var(--ui-status-info-border);
+  --watch-playlist-tint: var(--ui-status-info-background);
+  --watch-submit-hover: var(--ui-button-primary-hover);
+}
 html[data-theme] .scene-detail-state { padding-top: 64px; }
 .scene-detail-state h1 { margin: 0 0 16px; font-size: clamp(24px, 4vw, 36px); line-height: 1.2; }
 .scene-detail-state__copy p { max-width: 60ch; margin: 0; color: var(--text-soft); line-height: 1.6; }
@@ -38,33 +45,23 @@ html[data-theme] .scene-detail-state { padding-top: 64px; }
   outline: 2px solid var(--accent-light, var(--accent));
   outline-offset: 2px;
 }
-html[data-theme]:has(.scene-detail-page) .nav-inner {
-  width: min(calc(100% - 48px), 1360px);
-}
-@media (max-width: 760px) {
-  html[data-theme]:has(.scene-detail-page) .nav-inner {
-    width: calc(100% - 28px);
-  }
-}
 html[data-theme] .scene-detail-page {
-  width: min(calc(100% - 48px), 1360px);
   min-width: 0;
-  margin: 0 auto;
-  padding: 34px 0 90px;
+  padding-block: 34px 90px;
   color: var(--text);
   line-height: 1.5;
 
-  & .mage-watch { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
+  & .mage-watch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 28px; align-items: start; min-width: 0; }
   & .mage-watch__main { min-width: 0; }
-  & .mage-player-shell { width: 100%; overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--watch-stage); box-shadow: 0 24px 70px var(--watch-shadow); }
+  & .mage-player-shell { width: 100%; overflow: hidden; border-color: var(--ui-border); border-radius: 20px; background: var(--watch-stage); box-shadow: 0 24px 70px var(--watch-shadow); }
   & .scene-detail-stage { aspect-ratio: auto; min-height: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   & .scene-detail-stage::after { display: none; }
   & .scene-detail-player { width: 100%; height: auto; gap: 0; }
-  & .scene-detail-stage .mage-player:not(:fullscreen) .mage-player__viewport { height: auto; aspect-ratio: 16 / 9; border-radius: 0; }
+  & .scene-detail-stage .mage-player:not(:fullscreen) .mage-player__viewport { height: auto; min-height: 0; aspect-ratio: 16 / 9; border-radius: 0; }
   & .scene-detail-stage .mage-player__controls { padding: 0 16px 0 18px; min-height: 66px; }
   & .scene-detail-header { display: block; padding: 24px 2px 0; }
   & .mage-watch__title { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.05; letter-spacing: -.035em; }
-  & .scene-detail-social-row { margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--border); }
+  & .scene-detail-social-row { margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--ui-border); }
   & .scene-detail-social-row__creator { flex-direction: row; min-width: 0; max-width: 100%; gap: 11px; flex-wrap: wrap; }
   & .scene-detail-social-row__controls { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
   & .mage-channel-card { gap: 11px; }
@@ -78,21 +75,21 @@ html[data-theme] .scene-detail-page {
   & .mage-channel-card__avatar, & .mage-comment__avatar { cursor: default; transform: none; }
   & .mage-channel-card__copy { gap: 0; }
   & .mage-channel-card__copy strong { color: var(--text); font-size: 14px; text-decoration: none; cursor: default; }
-  & .mage-channel-card__copy span { color: var(--text-muted); font-size: 11px; }
-  & .scene-detail-follow-button { width: auto; flex-shrink: 0; display: inline-flex; align-items: center; height: 34px; min-height: 0; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 12px; font-weight: 650; letter-spacing: normal; text-transform: none; white-space: nowrap; }
-  & .scene-detail-follow-button:disabled { color: var(--text-muted); cursor: not-allowed; }
+  & .mage-channel-card__copy span { color: var(--ui-text-muted); font-size: 12px; }
+  & .scene-detail-follow-button { width: auto; flex-shrink: 0; height: 34px; min-height: 0; padding: 0 13px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  & .scene-detail-follow-button:disabled { color: var(--ui-text-muted); }
   & .scene-detail-action-row { flex-direction: row; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-  & .scene-detail-action-chip { width: auto; flex-shrink: 0; min-height: 0; height: 36px; padding: 0 12px; gap: 7px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-soft); font-size: 12px; font-weight: 600; letter-spacing: normal; text-transform: none; }
-  & .scene-detail-action-chip:hover, & .scene-detail-action-chip.is-selected { border-color: var(--border-strong); background: var(--surface-hover); color: var(--text); }
+  & .scene-detail-action-chip { width: auto; flex-shrink: 0; min-height: 0; height: 36px; padding: 0 12px; gap: 7px; border: 1px solid var(--ui-border); border-radius: 999px; background: var(--ui-panel-background); color: var(--ui-text-secondary); font-size: 12px; font-weight: 600; letter-spacing: normal; text-transform: none; }
+  & .scene-detail-action-chip:hover, & .scene-detail-action-chip.is-selected { border-color: var(--ui-border-hover); background: var(--ui-panel-quiet-background); color: var(--text); }
   & .scene-detail-action-chip.is-selected { color: var(--accent-light); }
   & .scene-detail-action-chip.engagement-button { min-width: 64px; }
   & .scene-detail-action-chip .engagement-button__icon { width: 18px; height: 18px; }
   & .scene-detail-action-error, & .scene-detail-share-status { width: 100%; margin: 0; font-size: 12px; color: var(--text-soft); }
-  & .scene-detail-description-card { margin-top: 20px; padding: 20px 22px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: none; }
-  & .scene-detail-description-card__meta { margin: 0; gap: 12px; color: var(--text-muted); font-size: 11px; }
-  & .scene-detail-description-card__meta strong { color: var(--text-soft); }
-  & .scene-detail-description-card__meta span { color: var(--text-muted); }
-  & .scene-detail-description-copy { display: block; margin-top: 14px; color: var(--text-soft); font-size: 14px; }
+  & .scene-detail-description-card { margin-top: 20px; padding: 20px 22px; border-color: var(--ui-border); border-radius: 14px; background: var(--ui-panel-background); box-shadow: none; }
+  & .scene-detail-description-card__meta { margin: 0; gap: 12px; color: var(--ui-text-muted); font-size: 12px; }
+  & .scene-detail-description-card__meta strong { color: var(--ui-text-secondary); }
+  & .scene-detail-description-card__meta span { color: var(--ui-text-muted); }
+  & .scene-detail-description-copy { display: block; margin-top: 14px; color: var(--ui-text-secondary); font-size: 14px; }
   & .scene-detail-description-copy[data-expanded='false'] { max-height: 48px; overflow: hidden; }
   & .scene-detail-description-copy p { margin: 0 0 10px; color: inherit; line-height: 1.5; }
   & .scene-detail-description-copy[data-expanded='false'] p:first-child { -webkit-line-clamp: 2; }
@@ -104,14 +101,14 @@ html[data-theme] .scene-detail-page {
   & .mage-comments__header { gap: 6px; }
   & .mage-comments__header h2 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
   & .mage-comments__header span { color: var(--text-muted); font-size: 13px; font-weight: 500; }
-  & .scene-detail-sort-chip { width: auto; min-height: 0; height: 32px; padding: 0 11px; font-size: 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-soft); text-transform: none; letter-spacing: normal; }
+  & .scene-detail-sort-chip { width: auto; min-height: 0; height: 32px; padding: 0 11px; font-size: 12px; border: 1px solid var(--ui-border); border-radius: 999px; background: var(--ui-panel-background); color: var(--ui-text-secondary); text-transform: none; letter-spacing: normal; }
   & .scene-detail-comment-composer { display: grid; grid-template-columns: 36px minmax(0,1fr); align-items: start; margin-top: 20px; padding: 0; gap: 11px; border: 0; background: none; }
   & .scene-detail-comment-composer__avatar, & .mage-comment__avatar { width: 36px; height: 36px; font-size: 10px; font-weight: 700; }
-  & .scene-detail-comment-form { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); gap: 0; }
+  & .scene-detail-comment-form { padding: 12px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-panel-background); gap: 0; }
   & .scene-detail-comment-composer__textarea { width: 100%; min-height: 68px; resize: vertical; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; line-height: 1.45; box-shadow: none; }
   & .scene-detail-comment-composer__textarea:focus { box-shadow: none; }
-  & .scene-detail-comment-composer__textarea::placeholder { color: var(--text-muted); }
-  & .scene-detail-comment-composer__field--button { min-height: 80px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text-muted); font-size: 13px; text-align: left; }
+  & .scene-detail-comment-composer__textarea::placeholder { color: var(--ui-text-muted); }
+  & .scene-detail-comment-composer__field--button { min-height: 80px; padding: 12px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-panel-background); color: var(--ui-text-muted); font-size: 13px; text-align: left; }
   & .scene-detail-comment-form__actions { margin-top: 8px; gap: 7px; }
   & .scene-detail-comment-submit-button, & .scene-detail-comment-cancel-button { min-height: 0; height: 34px; padding: 0 14px; border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: none; letter-spacing: normal; }
   & .scene-detail-comment-submit-button { background: var(--text); color: var(--bg); border: 0; }
@@ -121,10 +118,10 @@ html[data-theme] .scene-detail-page {
   & .mage-comment { display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 11px; }
   & .scene-detail-comment__header { gap: 7px; }
   & .scene-detail-comment__header strong { color: var(--text); font-size: 13px; cursor: default; text-decoration: none; }
-  & .scene-detail-comment__header span { color: var(--text-muted); font-size: 11px; }
+  & .scene-detail-comment__header span { color: var(--ui-text-muted); font-size: 12px; }
   & .mage-comment__body p { margin: 5px 0 8px; color: var(--text-soft); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
   & .scene-detail-comment__actions { display: flex; gap: 12px; }
-  & .scene-detail-comment__action { min-height: 0; padding: 0; gap: 4px; border: 0; border-radius: 0; background: none; color: var(--text-muted); font-size: 11px; letter-spacing: normal; text-transform: none; }
+  & .scene-detail-comment__action { min-height: 0; padding: 0; gap: 4px; border: 0; border-radius: 0; background: none; color: var(--ui-text-muted); font-size: 12px; letter-spacing: normal; text-transform: none; }
   & .scene-detail-comment__action.engagement-button { min-width: 40px; }
   & .scene-detail-comment__action .engagement-button__icon { width: 16px; height: 16px; }
   & .scene-detail-comment__action:hover { background: none; color: var(--text-soft); }
@@ -137,22 +134,22 @@ html[data-theme] .scene-detail-page {
   & .mage-comment--reply .mage-comment__avatar { width: 36px; height: 36px; font-size: 10px; }
   & .scene-detail-comments-status, & .scene-detail-comments-empty { font-size: 13px; color: var(--text-muted); }
   & .mage-watch__rail { position: sticky; top: 92px; display: block; min-width: 0; }
-  & .scene-detail-recommendations { overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-  & .scene-detail-recommendation-filters { padding: 10px 12px 12px; gap: 7px; border-bottom: 1px solid var(--border); }
+  & .scene-detail-recommendations { overflow: hidden; border-color: var(--ui-border); border-radius: 14px; background: var(--ui-panel-background); }
+  & .scene-detail-recommendation-filters { padding: 10px 12px 12px; gap: 7px; border-bottom: 1px solid var(--ui-border); }
   & .mage-watch__rail-list { display: flex; flex-direction: column; padding: 10px; gap: 10px; }
-  & .mage-watch__rail .mage-scene-card { width: 100%; padding: 9px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 12px; border-radius: 10px; background: none; }
-  & .mage-watch__rail .mage-scene-card:hover { background: var(--surface-hover); }
+  & .mage-watch__rail .mage-scene-card { width: 100%; padding: 9px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; gap: 12px; border-color: transparent; border-radius: 10px; background: transparent; }
+  & .mage-watch__rail .mage-scene-card:hover { background: var(--ui-panel-quiet-background); }
   & .mage-watch__rail .mage-scene-card__thumb { width: 100%; height: auto; aspect-ratio: 16 / 9; border: 1px solid var(--watch-thumbnail-border); border-radius: 8px; box-shadow: none; }
   & .mage-watch__rail .mage-scene-card__body { display: flex; flex-direction: column; gap: 3px; padding-top: 0; }
-  & .mage-watch__rail .mage-scene-card__body strong { color: var(--text); font-size: 12px; line-height: 1.35; }
-  & .mage-watch__rail .mage-scene-card__body span { color: var(--text-muted); font-size: 10px; line-height: 1.5; white-space: normal; }
-  & .mage-watch__rail-empty { padding: 16px; color: var(--text-muted); font-size: 12px; }
-  & .mage-watch__playlist-panel { margin-bottom: 14px; padding: 0; gap: 0; border: 1px solid var(--watch-playlist-border); border-radius: 14px; background: linear-gradient(180deg,var(--watch-playlist-tint),transparent 40%),var(--surface); box-shadow: none; }
-  & .mage-watch__playlist-header { padding: 14px 12px; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+  & .mage-watch__rail .mage-scene-card__body strong { color: var(--text); font-size: 13px; line-height: 1.35; }
+  & .mage-watch__rail .mage-scene-card__body span { color: var(--ui-text-muted); font-size: 12px; line-height: 1.45; white-space: normal; }
+  & .mage-watch__rail-empty { padding: 16px; color: var(--ui-text-muted); font-size: 13px; }
+  & .mage-watch__playlist-panel { margin-bottom: 14px; padding: 0; gap: 0; border: 1px solid var(--watch-playlist-border); border-radius: 14px; background: linear-gradient(180deg,var(--watch-playlist-tint),transparent 40%),var(--ui-panel-background); box-shadow: none; }
+  & .mage-watch__playlist-header { padding: 14px 12px; align-items: center; gap: 8px; border-bottom: 1px solid var(--ui-border); }
   & .mage-watch__playlist-header strong { font-size: 13px; }
-  & .mage-watch__playlist-header span { margin-top: 0; font-size: 10px; color: var(--text-muted); }
+  & .mage-watch__playlist-header span { margin-top: 0; font-size: 12px; color: var(--ui-text-muted); }
   & .mage-watch__playlist-actions { gap: 2px; }
-  & .mage-watch__playlist-action { min-height: 0; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--text-muted); font-size: 20px; letter-spacing: normal; text-transform: none; }
+  & .mage-watch__playlist-action { min-height: 0; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--ui-text-muted); font-size: 20px; letter-spacing: normal; text-transform: none; }
   & .mage-watch__playlist-action--icon { min-width: 30px; }
   & .mage-watch__playlist-action:not(:disabled):not([aria-pressed='true']):hover { background: var(--surface-hover); color: var(--text); }
   & .mage-watch__playlist-action[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent-light); box-shadow: inset 0 0 0 1px currentColor; }
@@ -173,7 +170,7 @@ html[data-theme] .scene-detail-page {
     padding-top: 0;
     & .mage-watch { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
     & .mage-watch__main { display: contents; }
-    & .mage-player-shell { width: calc(100% + 48px); margin-inline: -24px; }
+    & .mage-player-shell { width: calc(100% + var(--ui-page-gutter) + var(--ui-page-gutter)); margin-inline: calc(-1 * var(--ui-page-gutter)); }
     & .mage-watch__rail { position: static; order: 1; margin-top: 34px; }
     & .scene-detail-comments-panel { order: 2; }
     & .mage-watch__rail-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 12px; gap: 12px; }
@@ -181,22 +178,29 @@ html[data-theme] .scene-detail-page {
     & .mage-watch__rail .mage-scene-card__thumb { border-radius: 9px 9px 0 0; }
     & .mage-watch__rail .mage-scene-card__body { padding: 0 2px 4px; }
     & .mage-watch__rail .mage-scene-card__body strong { font-size: 14px; }
-    & .mage-watch__rail .mage-scene-card__body span { font-size: 11px; }
+    & .mage-watch__rail .mage-scene-card__body span { font-size: 12px; }
     & .mage-watch__playlist-panel { position: fixed; z-index: 91; top: 50%; left: 50%; width: min(calc(100vw - 28px),720px); max-height: calc(100dvh - 48px); margin: 0; overflow: auto; transform: translate(-50%,-50%); box-shadow: 0 24px 70px rgba(0,0,0,.55); }
     & .scene-detail-playlist-backdrop { display: block; position: fixed; z-index: 90; inset: 0; border: 0; border-radius: 0; background: rgba(0,0,0,.6); }
   }
   @media (max-width: 760px) {
-    width: calc(100% - 28px);
-    & .mage-player-shell { width: calc(100% + 28px); margin-inline: -14px; }
-    & .scene-detail-social-row { align-items: flex-start; flex-direction: column; }
-    & .scene-detail-action-row { width: 100%; overflow-x: auto; }
+    padding-bottom: 56px;
+    & .scene-detail-header { padding-top: 18px; }
+    & .mage-watch__title { font-size: clamp(26px, 8vw, 32px); }
+    & .scene-detail-social-row { align-items: stretch; flex-direction: column; gap: 14px; margin-top: 16px; padding-bottom: 18px; }
+    & .scene-detail-social-row__creator { width: 100%; justify-content: space-between; flex-wrap: nowrap; }
+    & .scene-detail-action-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 6px; }
+    & .scene-detail-action-chip { width: 100%; min-width: 0; padding-inline: 8px; }
     & .mage-watch__rail-list { grid-template-columns: 1fr; }
+    & .mage-watch__rail .mage-scene-card { grid-template-columns: minmax(120px, 42%) minmax(0, 1fr); align-items: center; gap: 11px; padding: 8px; }
+    & .mage-watch__rail .mage-scene-card__thumb { border-radius: 8px; }
+    & .mage-watch__rail .mage-scene-card__body { padding: 0; }
+    & .scene-detail-description-card { padding: 18px; }
+    & .scene-detail-comments-panel { margin-top: 28px; }
   }
   @media (max-width: 520px) {
     & .mage-player-shell { border-left: 0; border-right: 0; border-radius: 0; }
-    & .scene-detail-stage .mage-player__controls { gap: 8px; padding-inline: 12px; }
-    & .mage-watch__title { font-size: 30px; }
-    & .scene-detail-description-card { padding: 17px; }
+    & .scene-detail-stage .mage-player__controls { padding-inline: 10px; }
+    & .scene-detail-description-card { padding: 16px; }
     & .mage-comment { grid-template-columns: 30px minmax(0,1fr); }
     & .mage-comment__avatar, & .mage-comment--reply .mage-comment__avatar { width: 30px; height: 30px; }
   }

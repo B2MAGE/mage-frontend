@@ -1,6 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { formatCompactCount, formatRelativeTime } from '@shared/lib'
-import { CreatorProfileLink, LoadingRegion, PendingButtonLabel, Skeleton, UserAvatar } from '@shared/ui'
+import {
+  ActionButton,
+  CreatorProfileLink,
+  LoadingRegion,
+  PendingButtonLabel,
+  Skeleton,
+  UserAvatar,
+} from '@shared/ui'
 import { readInitial } from '../selectors'
 import type { SceneComment, SceneVoteState } from '../types'
 import { SceneCommentSkeletonList } from './SceneLoadingSkeletons'
@@ -185,25 +192,28 @@ export function SceneCommentsPanel({
                 value={replyDraft}
               />
               <div className="scene-detail-comment-form__actions">
-                <button
+                <ActionButton
                   className="scene-detail-comment-cancel-button"
                   onClick={() => {
                     setActiveReplyCommentId(null)
                   }}
-                  type="button"
+                  size="compact"
+                  tone="secondary"
                 >
                   Cancel
-                </button>
-                <button
+                </ActionButton>
+                <ActionButton
                   aria-busy={isReplySubmitting}
                   className="scene-detail-comment-submit-button"
                   disabled={!trimmedReplyDraft || isReplySubmitting}
+                  size="compact"
+                  tone="primary"
                   type="submit"
                 >
                   <PendingButtonLabel pending={isReplySubmitting} pendingLabel="Replying...">
                     Reply
                   </PendingButtonLabel>
-                </button>
+                </ActionButton>
               </div>
             </form>
           ) : null}
@@ -229,11 +239,11 @@ export function SceneCommentsPanel({
             <span>{commentsCount}</span>
           )}
         </div>
-        <button className="scene-detail-sort-chip" type="button"
+        <ActionButton className="scene-detail-sort-chip" size="compact" tone="secondary"
           onClick={() => setCommentSort((current) => current === 'top' ? 'newest' : 'top')}
           aria-label={commentSort === 'top' ? 'Top comments; switch to newest' : 'Newest first; switch to top comments'}>
           {commentSort === 'top' ? 'Top comments' : 'Newest first'}
-        </button>
+        </ActionButton>
       </div>
 
       <div className="scene-detail-comment-composer">
@@ -252,16 +262,18 @@ export function SceneCommentsPanel({
               value={commentDraft}
             />
             <div className="scene-detail-comment-form__actions">
-              <button
+              <ActionButton
                 aria-busy={isSubmittingComment}
                 className="scene-detail-comment-submit-button"
                 disabled={!trimmedCommentDraft || isSubmittingComment}
+                size="compact"
+                tone="primary"
                 type="submit"
               >
                 <PendingButtonLabel pending={isSubmittingComment} pendingLabel="Commenting...">
                   Comment
                 </PendingButtonLabel>
-              </button>
+              </ActionButton>
             </div>
           </form>
         ) : (
