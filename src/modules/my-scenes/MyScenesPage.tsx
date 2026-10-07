@@ -173,7 +173,7 @@ export function MyScenesPage() {
             : `${scenes.length} ${scenes.length === 1 ? 'scene' : 'scenes'}`}
         </span>
       </header>
-      <MyScenesToolbar availableStatuses={availableStatuses} selectedSceneCount={selectedSceneIds.length} sortSummary={sortSummary} totalScenes={sortedScenes.length} statusFilter={statusFilter} onSelectStatus={(status) => { setStatusFilter(status); setPageIndex(0) }} />
+      <MyScenesToolbar availableStatuses={availableStatuses} selectedSceneCount={selectedSceneIds.length} sortDirection={sortDirection} sortKey={sortKey} sortSummary={sortSummary} totalScenes={sortedScenes.length} statusFilter={statusFilter} onSelectSort={(nextSortKey, nextSortDirection) => { setSortKey(nextSortKey); setSortDirection(nextSortDirection); setPageIndex(0) }} onSelectStatus={(status) => { setStatusFilter(status); setPageIndex(0) }} />
       <section className="my-scenes-library-shell" aria-live="polite">
         {errorMessage ? (
           <div className="my-scenes-state"><h2>Couldn’t load your scenes</h2><p>{errorMessage}</p><button className="my-scenes-state-action" type="button" onClick={() => setReloadVersion((version) => version + 1)}>Retry</button></div>

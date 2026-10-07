@@ -260,3 +260,602 @@ html[data-theme='mage-pulse'] .my-scenes-page :is(a, button, input, select, [tab
     order: 3;
   }
 }
+
+/* Responsive library treatment: full table on wide screens, editorial rows and cards below. */
+html[data-theme='mage-pulse'] .my-scenes-row__continue-label,
+html[data-theme='mage-pulse'] .my-scenes-row__responsive-meta,
+html[data-theme='mage-pulse'] .my-scenes-open-button,
+html[data-theme='mage-pulse'] .my-scenes-board__compact-sort,
+html[data-theme='mage-pulse'] .my-scenes-page-button__icon {
+  display: none;
+}
+
+html[data-theme='mage-pulse'] .my-scenes-row__actions-cell > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+html[data-theme='mage-pulse'] .my-scenes-board__compact-sort select {
+  height: 34px;
+  min-width: 164px;
+  padding: 0 34px 0 12px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 9px;
+  background: #171a20;
+  color: #c6cad2;
+  font: inherit;
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  html[data-theme='mage-pulse'] .my-scenes-page {
+    width: min(calc(100% - 36px), 900px);
+    padding-top: 40px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page__header {
+    align-items: end;
+    flex-direction: row;
+    margin-bottom: 24px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-panel__title {
+    font-size: clamp(34px, 5vw, 46px);
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__toolbar {
+    align-items: center;
+    flex-direction: row;
+    margin-bottom: 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__toolbar-divider {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__selected-copy {
+    margin-left: auto;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__compact-sort {
+    display: block;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-library-shell {
+    border-radius: 16px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-scroll {
+    overflow: visible;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table {
+    display: block;
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table thead tr {
+    display: block;
+    width: 1px;
+    max-width: 1px;
+    overflow: hidden;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table tbody {
+    display: block;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page .my-scenes-row {
+    position: relative;
+    display: grid;
+    border-bottom: 1px solid rgba(255,255,255,.09);
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table .my-scenes-row__scene-cell,
+  html[data-theme='mage-pulse'] .my-scenes-row__primary {
+    display: contents;
+    min-width: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row__responsive-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    margin-top: 8px;
+    color: #8d94a1;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row__responsive-meta > span + span {
+    position: relative;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row__responsive-meta > span + span::before {
+    content: '·';
+    position: absolute;
+    left: -8px;
+    color: #555c68;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table td:is(.my-scenes-row__updated-cell, .my-scenes-row__views-cell, .my-scenes-row__comments-cell, .my-scenes-row__likes-cell) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child {
+    grid-template-columns: minmax(0, 1.42fr) minmax(245px, .88fr);
+    grid-template-rows: minmax(214px, 1fr) auto;
+    min-height: 286px;
+    background: #101217;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-check-cell {
+    position: absolute;
+    z-index: 4;
+    top: 12px;
+    left: 12px;
+    width: auto;
+    padding: 8px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 8px;
+    background: rgba(9,10,13,.86);
+    backdrop-filter: blur(6px);
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__thumb-link {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    min-width: 0;
+    min-height: 286px;
+    display: block;
+    overflow: hidden;
+    background: #0b0d12;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-loading__thumbnail {
+    width: 100%;
+    height: 100%;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child :is(.my-scenes-row__thumb, .my-scenes-row__thumb-fallback) {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+    object-fit: cover;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__copy {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    max-width: none;
+    padding: 26px 24px 16px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row__continue-label {
+    margin-bottom: 8px;
+    color: #a99cff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .075em;
+    text-transform: uppercase;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__continue-label {
+    display: block;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__copy strong {
+    overflow: visible;
+    font-size: 22px;
+    line-height: 1.2;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__description {
+    margin-top: 8px;
+    color: #a4a8b2;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: normal;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__status-cell {
+    z-index: 3;
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: end;
+    justify-self: end;
+    width: auto;
+    padding: 0;
+    margin: 0 14px 14px 0;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__actions-cell {
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    padding: 0 24px 24px;
+    text-align: left;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__actions-cell > div {
+    justify-content: flex-start;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-open-button {
+    display: inline-flex;
+  }
+
+  html[data-theme='mage-pulse'] :is(.my-scenes-open-button, .my-scenes-edit-button) {
+    min-width: 76px;
+    height: 38px;
+    padding: 0 14px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,.11);
+    border-radius: 9px;
+    background: #171a20;
+    color: #c6cad2;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-edit-button {
+    color: #090a0d;
+    border-color: #f4f5f7;
+    background: #f4f5f7;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) {
+    grid-template-columns: 42px 104px minmax(0,1fr) auto 62px;
+    align-items: center;
+    min-height: 82px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-check-cell {
+    grid-column: 1;
+    width: auto;
+    padding: 0 0 0 14px;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__thumb-link {
+    grid-column: 2;
+    display: block;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) :is(.my-scenes-row__thumb, .my-scenes-row__thumb-fallback, .my-scenes-loading__thumbnail) {
+    width: 94px;
+    height: 58px;
+    aspect-ratio: auto;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__copy {
+    grid-column: 3;
+    max-width: none;
+    padding: 12px 14px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__description {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__status-cell {
+    grid-column: 4;
+    width: auto;
+    padding: 0 10px;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__actions-cell {
+    grid-column: 5;
+    width: auto;
+    padding: 0 14px 0 0;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-edit-button {
+    min-width: 48px;
+    width: 48px;
+    padding: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-pagination {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-pagination__rows {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-pagination__range {
+    width: auto;
+    margin-left: 0;
+    order: initial;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-pagination__controls {
+    margin-left: auto;
+  }
+
+  :root[data-theme='mage-pulse']:has(.my-scenes-page) .nav-inner {
+    width: min(calc(100% - 36px), 900px);
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-theme='mage-pulse'] .my-scenes-page {
+    width: calc(100% - 24px);
+    padding: 28px 0 68px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page__header {
+    align-items: center;
+    margin-bottom: 18px;
+    gap: 14px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page__header > div {
+    min-width: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-panel__title {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-panel__lead {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page__summary {
+    margin-left: auto;
+    font-size: 10px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__toolbar {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    gap: 10px 12px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__filters {
+    grid-column: 1 / -1;
+    width: calc(100vw - 24px);
+    padding-bottom: 2px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__chip {
+    flex: 0 0 auto;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__selected-copy {
+    align-self: center;
+    margin-left: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__compact-sort {
+    justify-self: end;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-board__compact-sort select {
+    min-width: 138px;
+    max-width: 46vw;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-library-shell {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page .my-scenes-row,
+  html[data-theme='mage-pulse'] .my-scenes-page .my-scenes-row:first-child,
+  html[data-theme='mage-pulse'] .my-scenes-page .my-scenes-row:not(:first-child) {
+    grid-template-columns: minmax(0,1fr) auto;
+    grid-template-rows: auto auto auto;
+    align-items: stretch;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.11);
+    border-radius: 13px;
+    background: #111318;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-check-cell,
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-check-cell {
+    position: absolute;
+    z-index: 4;
+    top: 10px;
+    left: 10px;
+    width: auto;
+    padding: 7px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 7px;
+    background: rgba(9,10,13,.84);
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__thumb-link,
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__thumb-link {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child :is(.my-scenes-row__thumb, .my-scenes-row__thumb-fallback),
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) :is(.my-scenes-row__thumb, .my-scenes-row__thumb-fallback, .my-scenes-loading__thumbnail) {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+    object-fit: cover;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__status-cell,
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__status-cell {
+    z-index: 3;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    align-self: end;
+    justify-self: end;
+    width: auto;
+    padding: 0;
+    margin: 0 10px 10px 0;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__copy,
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: none;
+    padding: 13px 12px 9px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__continue-label,
+  html[data-theme='mage-pulse'] .my-scenes-row .my-scenes-row__description {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__copy strong,
+  html[data-theme='mage-pulse'] .my-scenes-row__copy strong {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row__responsive-meta {
+    margin-top: 7px;
+    gap: 4px 11px;
+    font-size: 10px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-row__actions-cell,
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-row__actions-cell {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: auto;
+    padding: 0 12px 12px;
+    border: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row__actions-cell > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child :is(.my-scenes-open-button, .my-scenes-edit-button),
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) :is(.my-scenes-open-button, .my-scenes-edit-button) {
+    display: inline-flex;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-row:first-child .my-scenes-open-button,
+  html[data-theme='mage-pulse'] .my-scenes-row:not(:first-child) .my-scenes-open-button {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    color: #c6cad2;
+    border-color: rgba(255,255,255,.11);
+    background: #171a20;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-pagination {
+    min-height: 54px;
+    padding: 14px 0 0;
+    background: transparent;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page-number {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page-button {
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page-button__label {
+    display: none;
+  }
+
+  html[data-theme='mage-pulse'] .my-scenes-page-button__icon {
+    display: inline;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  :root[data-theme='mage-pulse']:has(.my-scenes-page) .nav-inner {
+    width: calc(100% - 24px);
+  }
+
+  .my-scenes-loading__table {
+    min-width: 0;
+  }
+
+  .my-scenes-loading__row .my-scenes-row__copy {
+    min-height: 78px;
+  }
+
+  .my-scenes-loading__row .my-scenes-row__status-cell {
+    margin: 0 10px 10px 0;
+  }
+
+  .my-scenes-loading__row .my-scenes-row__actions-cell {
+    display: none;
+  }
+
+  .my-scenes-loading__pagination-rows,
+  .my-scenes-loading__page-number {
+    display: none;
+  }
+}

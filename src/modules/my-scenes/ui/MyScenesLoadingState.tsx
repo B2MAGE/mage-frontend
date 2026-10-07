@@ -51,21 +51,21 @@ export function MyScenesLoadingState() {
                   <td className="my-scenes-check-cell">
                     <Skeleton className="my-scenes-loading__checkbox" shape="block" />
                   </td>
-                  <td>
+                  <td className="my-scenes-row__scene-cell">
                     <div className="my-scenes-row__primary">
-                      <Skeleton className="my-scenes-loading__thumbnail" shape="block" />
+                      <Skeleton className="my-scenes-loading__thumbnail my-scenes-row__thumb-link" shape="block" />
                       <div className="my-scenes-row__copy my-scenes-loading__scene-copy">
                         <Skeleton className="my-scenes-loading__scene-name" shape="line" />
                         <Skeleton className="my-scenes-loading__description" shape="line" />
                       </div>
                     </div>
                   </td>
-                  <td><Skeleton className="my-scenes-loading__status" shape="block" /></td>
-                  <td><Skeleton className="my-scenes-loading__date" shape="line" /></td>
-                  <td className="my-scenes-numeric"><Skeleton className="my-scenes-loading__metric" shape="line" /></td>
-                  <td className="my-scenes-numeric"><Skeleton className="my-scenes-loading__metric" shape="line" /></td>
-                  <td className="my-scenes-numeric"><Skeleton className="my-scenes-loading__ratio" shape="line" /></td>
-                  <td className="my-scenes-action-cell"><Skeleton className="my-scenes-loading__edit" shape="block" /></td>
+                  <td className="my-scenes-row__status-cell"><Skeleton className="my-scenes-loading__status" shape="block" /></td>
+                  <td className="my-scenes-row__updated-cell"><Skeleton className="my-scenes-loading__date" shape="line" /></td>
+                  <td className="my-scenes-numeric my-scenes-row__views-cell"><Skeleton className="my-scenes-loading__metric" shape="line" /></td>
+                  <td className="my-scenes-numeric my-scenes-row__comments-cell"><Skeleton className="my-scenes-loading__metric" shape="line" /></td>
+                  <td className="my-scenes-numeric my-scenes-row__likes-cell"><Skeleton className="my-scenes-loading__ratio" shape="line" /></td>
+                  <td className="my-scenes-action-cell my-scenes-row__actions-cell"><Skeleton className="my-scenes-loading__edit" shape="block" /></td>
                 </tr>
               ))}
             </tbody>

@@ -25,9 +25,9 @@ export function MyScenesPagination({
       </label>
       <span className="my-scenes-pagination__range">{totalScenes === 0 ? '0-0 of 0' : (pageStart + 1) + '-' + pageEnd + ' of ' + totalScenes}</span>
       <div className="my-scenes-pagination__controls">
-        <button type="button" className="my-scenes-page-button" disabled={currentPageIndex === 0} aria-label="Go to previous page" onClick={onGoToPreviousPage}>Previous</button>
+        <button type="button" className="my-scenes-page-button" disabled={currentPageIndex === 0} aria-label="Go to previous page" onClick={onGoToPreviousPage}><span className="my-scenes-page-button__label">Previous</span><span aria-hidden="true" className="my-scenes-page-button__icon">‹</span></button>
         <span className="my-scenes-page-number" aria-current="page" aria-label={'Page ' + (currentPageIndex + 1)}>{currentPageIndex + 1}</span>
-        <button type="button" className="my-scenes-page-button" disabled={currentPageIndex >= pageCount - 1} aria-label="Go to next page" onClick={onGoToNextPage}>Next</button>
+        <button type="button" className="my-scenes-page-button" disabled={currentPageIndex >= pageCount - 1} aria-label="Go to next page" onClick={onGoToNextPage}><span className="my-scenes-page-button__label">Next</span><span aria-hidden="true" className="my-scenes-page-button__icon">›</span></button>
       </div>
     </div>
   )
