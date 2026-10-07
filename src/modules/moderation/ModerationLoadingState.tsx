@@ -8,7 +8,6 @@ export function ModerationLoadingState() {
       label="Restoring your session before loading moderation"
     >
       <div className="moderation-route-loading__header">
-        <Skeleton className="moderation-route-loading__eyebrow" shape="line" />
         <Skeleton className="moderation-route-loading__title" shape="line" />
         <Skeleton className="moderation-route-loading__lead" shape="line" />
       </div>

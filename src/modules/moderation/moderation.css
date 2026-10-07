@@ -155,11 +155,6 @@ html[data-theme] body:has(.moderation-area, .moderators-page) {
   gap: 10px;
 }
 
-.moderation-route-loading__eyebrow {
-  width: 118px;
-  height: 10px;
-}
-
 .moderation-route-loading__title {
   width: min(46%, 340px);
   height: 48px;

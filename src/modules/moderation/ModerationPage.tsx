@@ -37,7 +37,6 @@ export function ModerationPage({ section = 'scenes' }: { section?: ModerationSec
       <PageHeader
         className="moderation-area__header"
         description="Review scenes and manage the tools available to your account."
-        eyebrow="Admin workspace"
         title="Moderation"
       />
 

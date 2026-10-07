@@ -36,6 +36,7 @@ describe('moderation area', () => {
     show()
     const heading = await screen.findByRole('heading', { name: 'Moderation' })
     expect(heading.closest('main')).toHaveClass('ui-page-frame', 'ui-page-frame--form')
+    expect(screen.queryByText('Admin workspace')).not.toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Moderation sections' })).toHaveClass(
       'ui-section-nav__list',
     )

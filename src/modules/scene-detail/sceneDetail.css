@@ -166,6 +166,17 @@ html[data-theme] .scene-detail-page {
   & .scene-detail-comment-submit-button:not(:disabled):hover { background: var(--watch-submit-hover); border-color: transparent; color: var(--bg); }
   & .scene-detail-description-toggle { transition: color .18s ease; }
   & .scene-detail-description-toggle:hover { color: var(--accent-light); }
+  @media (max-width: 980px) {
+    & .scene-detail-social-row {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 14px;
+    }
+    & .scene-detail-social-row__creator,
+    & .scene-detail-action-row {
+      justify-content: flex-start;
+    }
+  }
   @media (max-width: 1080px) {
     padding-top: 0;
     & .mage-watch { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
