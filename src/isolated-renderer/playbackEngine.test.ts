@@ -347,21 +347,27 @@ describe('isolated playback engine', () => {
   })
 
   it.each(['full', 'preview'] as const)('retains the host %s allocation budget and preview capture ceiling after compilation', async profile => {
-    const f = fixture(profile), control = await f.ready()
-    expect(initMAGE).toHaveBeenCalledWith(expect.objectContaining({ pixelRatio: 1,
-      renderBudget: { maxRenderPixels: profile === 'full' ? 2073600 : 230400,
-        maxLongestEdge: profile === 'full' ? 1920 : 640, maxDevicePixelRatio: 1.5,
-        maxFramesPerSecond: profile === 'full' ? 60 : 30, maxRaymarchIterations: 200 } }))
-    control.resize({ width: 8192, height: 8192, pixelRatio: 1.5 })
-    await control.capture({ width: 100000, height: 100000, type: 'image/png', quality: 1 })
-    const [capture] = f.engine.captureFramePreview.mock.calls.at(-1)!
-    expect(capture).toMatchObject({ type: 'image/png', quality: 1 })
-    expect(capture.width).toBeGreaterThan(0)
-    expect(capture.width).toBeLessThanOrEqual(480)
-    expect(capture.height).toBe(capture.width)
-    expect(capture.width * capture.height).toBeLessThanOrEqual(230400)
-    expect(compileInWorker).toHaveBeenCalledOnce()
-    control.dispose()
+    const previousDevicePixelRatio = window.devicePixelRatio
+    Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 })
+    try {
+      const f = fixture(profile), control = await f.ready()
+      expect(initMAGE).toHaveBeenCalledWith(expect.objectContaining({ pixelRatio: 1.5,
+        renderBudget: { maxRenderPixels: profile === 'full' ? 2073600 : 230400,
+          maxLongestEdge: profile === 'full' ? 1920 : 640, maxDevicePixelRatio: 1.5,
+          maxFramesPerSecond: profile === 'full' ? 60 : 30, maxRaymarchIterations: 200 } }))
+      control.resize({ width: 8192, height: 8192, pixelRatio: 1.5 })
+      await control.capture({ width: 100000, height: 100000, type: 'image/png', quality: 1 })
+      const [capture] = f.engine.captureFramePreview.mock.calls.at(-1)!
+      expect(capture).toMatchObject({ type: 'image/png', quality: 1 })
+      expect(capture.width).toBeGreaterThan(0)
+      expect(capture.width).toBeLessThanOrEqual(480)
+      expect(capture.height).toBe(capture.width)
+      expect(capture.width * capture.height).toBeLessThanOrEqual(230400)
+      expect(compileInWorker).toHaveBeenCalledOnce()
+      control.dispose()
+    } finally {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: previousDevicePixelRatio })
+    }
   })
 
   it('rejects failed compilation and synchronous startup failure, releasing resources', async () => {

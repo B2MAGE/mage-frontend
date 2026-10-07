@@ -26,7 +26,7 @@ export function createCompilerWorker(): CompilerWorkerHandle {
   } catch (error) { URL.revokeObjectURL(url); throw error }
 }
 
-/** A fresh worker owns exactly one job. Progress never extends its absolute deadline. */
+/** A fresh worker owns exactly one job. Submitted source keeps a fixed execution deadline. */
 export function compileInWorker(source: string, options: { signal: AbortSignal; maxRaymarchIterations: number; sceneRevision?: number },
   dependencies: Dependencies = {}): Promise<CompiledShaderArtifact> {
   const { signal, maxRaymarchIterations, sceneRevision = 1 } = options
@@ -37,7 +37,7 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
     let complete = false, started = false, messages = 0
     const randomId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
     const jobId = randomId(), channelId = randomId()
-    const deadline = performance.now() + COMPILER_LIMITS.deadlineMs
+    let deadline = performance.now() + COMPILER_LIMITS.startupDeadlineMs
     const observe = (event: CompilerLifecycleEvent) => {
       try { dependencies.observe?.(event) } catch { /* Diagnostics cannot alter lifetime. */ }
     }
@@ -63,7 +63,7 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
     }
     const abort = () => finish('abort')
     signal.addEventListener('abort', abort, { once: true })
-    const timer = setTimeout(() => finish('timeout'), COMPILER_LIMITS.deadlineMs)
+    let timer = setTimeout(() => finish('timeout'), COMPILER_LIMITS.startupDeadlineMs)
     try {
       handle = (dependencies.createWorker ?? createCompilerWorker)()
       observe({ type: 'created' })
@@ -85,7 +85,11 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
           finish('error'); return
         }
         if (message.type === 'started' && !started && dataRecord(message, fields)) {
-          started = true; observe({ type: 'started' }); return
+          started = true
+          clearTimeout(timer)
+          deadline = performance.now() + COMPILER_LIMITS.deadlineMs
+          timer = setTimeout(() => finish('timeout'), COMPILER_LIMITS.deadlineMs)
+          observe({ type: 'started' }); return
         }
         if (message.type !== 'compiled' || !started || !dataRecord(message, [...fields, 'artifact'])) {
           finish('error'); return

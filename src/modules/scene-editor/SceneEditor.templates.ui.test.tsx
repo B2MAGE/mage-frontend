@@ -157,7 +157,7 @@ describe('Basic template editor controls', () => {
     expect(selector).toHaveFocus()
     expect(previewDocument()).toEqual(createTemplateScene('reaction-rings-v1'))
     expect(JSON.stringify(previewDocument())).not.toContain('shader')
-    expect(renderedPlayer.mock.lastCall?.[0].renderProfile).toBe('preview')
+    expect(renderedPlayer.mock.lastCall?.[0].renderProfile).toBe('full')
     const scaleNumber = screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })
     expect(scaleNumber).toHaveAttribute('min', '1')
     expect(scaleNumber).toHaveAttribute('max', '200')

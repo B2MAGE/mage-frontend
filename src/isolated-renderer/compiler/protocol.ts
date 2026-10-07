@@ -1,7 +1,13 @@
 /** The compiler receives source and one host-owned ceiling; never account or audio data. */
 export const COMPILER_PROTOCOL = 'mage-compiler'
 export const COMPILER_VERSION = 2
-export const COMPILER_LIMITS = Object.freeze({ sourceBytes: 65_536, deadlineMs: 2_000, maxIterations: 200, responseMessages: 2 })
+export const COMPILER_LIMITS = Object.freeze({
+  sourceBytes: 65_536,
+  startupDeadlineMs: 8_000,
+  deadlineMs: 2_000,
+  maxIterations: 200,
+  responseMessages: 2,
+})
 
 export type CompileRequest = {
   protocol: typeof COMPILER_PROTOCOL

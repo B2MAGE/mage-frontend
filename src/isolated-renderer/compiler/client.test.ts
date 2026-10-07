@@ -48,12 +48,21 @@ describe('disposable compiler owner', () => {
     expect(f.terminate).toHaveBeenCalledTimes(2)
   })
 
-  it('does not extend the absolute deadline after a started message', async () => {
+  it('allows bounded worker startup while keeping a fixed submitted-source deadline', async () => {
     vi.useFakeTimers()
     const f = fixture(), pending = expect(f.load()).rejects.toThrow('too long')
-    await vi.advanceTimersByTimeAsync(COMPILER_LIMITS.deadlineMs - 1)
+    await vi.advanceTimersByTimeAsync(COMPILER_LIMITS.startupDeadlineMs - 1)
     f.started()
-    await vi.advanceTimersByTimeAsync(1)
+    await vi.advanceTimersByTimeAsync(COMPILER_LIMITS.deadlineMs)
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce()
+    expect(f.observe).toHaveBeenLastCalledWith({ type: 'terminated', reason: 'timeout' })
+  })
+
+  it('terminates a worker that never reaches submitted-source execution', async () => {
+    vi.useFakeTimers()
+    const f = fixture(), pending = expect(f.load()).rejects.toThrow('too long')
+    await vi.advanceTimersByTimeAsync(COMPILER_LIMITS.startupDeadlineMs)
     await pending
     expect(f.terminate).toHaveBeenCalledOnce()
     expect(f.observe).toHaveBeenLastCalledWith({ type: 'terminated', reason: 'timeout' })

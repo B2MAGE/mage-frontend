@@ -75,7 +75,7 @@ Exports:
 - `ariaLabel?`
 - `className?`
 - `initialPlayback?`
-- `renderProfile?` (`full` by default; editor and hover previews use `preview`)
+- `renderProfile?` (`full` by default; compact artwork and hover previews use `preview`)
 - `log?`
 
 Optional route-level playlist props:
