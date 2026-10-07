@@ -46,6 +46,8 @@ User-facing behavior:
 - orders scenes newest first by creation time, including filtered results
 - reads the active tag from the `?tag=` query string
 - keeps the selected tag in the URL so filtered discovery is linkable
+- keeps the selected sort in the URL and reorders loaded scenes without another request
+- presents the current result count in a pagination-ready results header
 - shows loading, empty, and error states for scene loading
 - treats tag loading separately from scene loading so tag failures do not block scene results
 - lets the user click the active tag again to force a reload
@@ -53,7 +55,8 @@ User-facing behavior:
 Current limitations:
 
 - discovery supports only a single active tag filter at a time
-- there is no search box, sort control, or pagination yet
+- there is no search box or server-backed pagination yet
+- featured and recommended sorting currently preserve the newest-first fallback order
 - tag loading failures degrade to an empty filter list instead of a visible tag-specific error
 
 ## Tests

@@ -44,7 +44,7 @@
 :root[data-theme='classic-facebook'] .app-shell { display: block; width: 100%; max-width: none; min-height: 0; margin: 0; padding: 24px 0 40px; flex: 1 0 auto; }
 :root[data-theme='classic-facebook'] .app-shell > * { margin-inline: auto; }
 /* These pages own the same top gutter, including the viewport-height studio. */
-:root[data-theme='classic-facebook'] .app-shell:has(> :is(.pulse-home, .my-scenes-page, .settings-page, .scene-editor-page)) { padding-top: 0; }
+:root[data-theme='classic-facebook'] .app-shell:has(> :is(.pulse-home, .scenes-page, .my-scenes-page, .settings-page, .scene-editor-page)) { padding-top: 0; }
 :root[data-theme='classic-facebook'] .surface { border-color: var(--border); background: var(--surface); backdrop-filter: none; box-shadow: var(--surface-shadow); }
 :root[data-theme='classic-facebook'] :is(.surface--hero, .surface--form, .surface--page-header, .surface--page-panel, .surface--soft, .surface--nested) { border-radius: 4px; }
 :root[data-theme='classic-facebook'] .surface::before { display: none; }

@@ -1,13 +1,11 @@
 /* Keep the same responsive cards, hover previews and filter scroller as Pulse. */
 :root[data-theme='classic-facebook'] :is(.scenes-page, .pulse-home, .profile-page) { --discovery-hover-border: #6d84b4; }
-:root[data-theme='classic-facebook'] .scenes-page { padding-bottom: 32px; }
-:root[data-theme='classic-facebook'] .scenes-filter-rail {
-  top: 56px;
-  margin-bottom: 24px;
-  background: #eef2f7;
+:root[data-theme='classic-facebook'] .scenes-page { padding-block: 30px 48px; }
+:root[data-theme='classic-facebook'] .scenes-filter-panel {
+  background: var(--surface);
   backdrop-filter: none;
+  box-shadow: var(--surface-shadow);
 }
-:root[data-theme='classic-facebook'] .scenes-page .tag-filter-bar { min-height: 58px; }
 :root[data-theme='classic-facebook'] :is(.scenes-page, .pulse-home, .profile-page) .scene-grid { gap: 24px 18px; }
 :root[data-theme='classic-facebook'] :is(.scenes-page, .pulse-home, .profile-page) .scene-card__thumbnail {
   border-color: var(--border);
@@ -24,3 +22,7 @@
   filter: none;
 }
 :root[data-theme='classic-facebook'] :is(.scenes-page, .pulse-home, .profile-page) .scene-card-link:hover .scene-card__name { color: var(--muted); text-decoration: none; }
+
+@media (max-width: 700px) {
+  :root[data-theme='classic-facebook'] .scenes-page { padding-block: 18px 42px; }
+}

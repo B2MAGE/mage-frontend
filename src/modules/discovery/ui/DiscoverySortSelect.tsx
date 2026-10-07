@@ -8,8 +8,8 @@ type DiscoverySortSelectProps = {
 }
 
 const SORT_OPTIONS: Array<{ label: string; value: DiscoverySort }> = [
-  { label: 'Descending', value: 'descending' },
-  { label: 'Ascending', value: 'ascending' },
+  { label: 'Newest first', value: 'descending' },
+  { label: 'Oldest first', value: 'ascending' },
   { label: 'Most viewed', value: 'most-viewed' },
   { label: 'Most liked', value: 'most-liked' },
   { label: 'Featured', value: 'featured' },

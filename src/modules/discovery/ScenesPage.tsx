@@ -1,6 +1,7 @@
 import './discovery.css'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { PageFrame, PagePanel } from '@shared/ui'
 import { fetchDiscoveryScenes, fetchDiscoveryTags } from './loaders'
 import {
   buildAvailableDiscoveryTags,
@@ -35,7 +36,6 @@ export function ScenesPage() {
     () => sortDiscoveryScenes(scenes, activeSort),
     [activeSort, scenes],
   )
-
   useEffect(() => {
     let cancelled = false
 
@@ -131,29 +131,39 @@ export function ScenesPage() {
   }
 
   return (
-    <main className="scenes-page">
-      <div className="scenes-filter-rail">
-        <DiscoveryTagFilterBar
-          tags={availableTags}
-          activeTag={activeTag}
-          onTagSelect={updateActiveTag}
-          isLoading={tagsLoading}
-        />
-        <DiscoverySortSelect value={activeSort} onChange={updateActiveSort} />
-      </div>
-
-      {pageState === 'loading' ? <DiscoveryLoadingGrid /> : null}
-      {pageState === 'ready' && sortedScenes.length === 0 ? (
-        <DiscoveryEmptyState activeTag={activeTag} onClearFilter={() => updateActiveTag(null)} />
-      ) : null}
-      {pageState === 'ready' && sortedScenes.length > 0 ? (
-        <div className="scene-grid" aria-label="Scene list">
-          {sortedScenes.map((scene) => (
-            <DiscoverySceneCard key={scene.sceneId} scene={scene} />
-          ))}
+    <PageFrame className="scenes-page">
+      <PagePanel
+        aria-label="Scene filters"
+        as="section"
+        className="scenes-filter-panel"
+        padding="compact"
+        tone="nested"
+      >
+        <div className="scenes-filter-rail">
+          <DiscoveryTagFilterBar
+            tags={availableTags}
+            activeTag={activeTag}
+            onTagSelect={updateActiveTag}
+            isLoading={tagsLoading}
+          />
+          <DiscoverySortSelect value={activeSort} onChange={updateActiveSort} />
         </div>
-      ) : null}
-      {pageState === 'error' ? <DiscoveryErrorState onRetry={handleRetry} /> : null}
-    </main>
+      </PagePanel>
+
+      <section className="scenes-results" aria-label="Scene results">
+        {pageState === 'loading' ? <DiscoveryLoadingGrid /> : null}
+        {pageState === 'ready' && sortedScenes.length === 0 ? (
+          <DiscoveryEmptyState activeTag={activeTag} onClearFilter={() => updateActiveTag(null)} />
+        ) : null}
+        {pageState === 'ready' && sortedScenes.length > 0 ? (
+          <div className="scene-grid" aria-label="Scene list">
+            {sortedScenes.map((scene) => (
+              <DiscoverySceneCard key={scene.sceneId} scene={scene} />
+            ))}
+          </div>
+        ) : null}
+        {pageState === 'error' ? <DiscoveryErrorState onRetry={handleRetry} /> : null}
+      </section>
+    </PageFrame>
   )
 }

@@ -101,9 +101,13 @@ describe('ScenesPage', () => {
 
     expect(screen.getByText('Loading scenes')).toHaveAttribute('role', 'status')
     expect(screen.getByText('Loading scene filters')).toHaveAttribute('role', 'status')
-    expect(container.querySelectorAll('.scene-card--loading')).toHaveLength(6)
+    expect(container.querySelectorAll('.scene-card--loading')).toHaveLength(8)
     expect(container.querySelector('.tag-filter-bar__loading-placeholder')).toBeInTheDocument()
     expect(container.querySelector('.tag-pill--skeleton')).not.toBeInTheDocument()
+    expect(container.querySelector('main.scenes-page')).toHaveClass('ui-page-frame', 'ui-page-frame--wide')
+    expect(screen.getByRole('region', { name: 'Scene filters' })).toHaveClass('ui-panel', 'ui-panel--nested')
+    expect(screen.getByRole('region', { name: 'Scene results' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Discover scenes' })).not.toBeInTheDocument()
   })
 
   it('renders scene cards after successful fetch', async () => {
@@ -117,6 +121,7 @@ describe('ScenesPage', () => {
     expect(screen.getByText('Ocean Artist')).toBeInTheDocument()
     expect(screen.getByText('42 views')).toBeInTheDocument()
     expect(screen.getByText('1.5K views')).toBeInTheDocument()
+    expect(screen.queryByText('2 scenes available')).not.toBeInTheDocument()
   })
 
   it.each([null, 'fire'])('shows newest scenes first with filter %s', async (tag) => {
@@ -133,6 +138,7 @@ describe('ScenesPage', () => {
       .toEqual(['Newest scene', 'Middle scene', 'Oldest scene'])
     expect(screen.getByRole('combobox', { name: 'Sort scenes' })).toHaveValue('descending')
     expect(screen.getByRole('combobox', { name: 'Sort scenes' })).toHaveClass('mage-select')
+    expect(screen.getByRole('option', { name: 'Newest first' })).toBeInTheDocument()
   })
 
   it('sorts oldest first for ascending and leaves invalid dates last', async () => {
@@ -243,6 +249,7 @@ describe('ScenesPage', () => {
     await user.click(await screen.findByRole('button', { name: 'fire' }))
     expect(screen.getByTestId('location-search')).toHaveTextContent('tag=fire')
     expect(screen.getByTestId('location-search')).toHaveTextContent('sort=most-liked')
+    expect(screen.queryByText('2 scenes tagged “fire”')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'All' }))
     await waitFor(() => expect(screen.getByTestId('location-search')).not.toHaveTextContent('tag='))

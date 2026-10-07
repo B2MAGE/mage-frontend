@@ -43,7 +43,7 @@ export function SceneGridSkeleton({ count = 6, label = 'Loading scenes' }: Scene
 }
 
 export function DiscoveryLoadingGrid() {
-  return <SceneGridSkeleton />
+  return <SceneGridSkeleton count={8} />
 }
 
 export function DiscoveryEmptyState({ activeTag, onClearFilter, headingLevel = 2 }: DiscoveryEmptyStateProps) {
