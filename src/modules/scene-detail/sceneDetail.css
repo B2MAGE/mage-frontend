@@ -60,8 +60,8 @@ html[data-theme] .scene-detail-page {
   & .scene-detail-stage .mage-player:not(:fullscreen) .mage-player__viewport { height: auto; min-height: 0; aspect-ratio: 16 / 9; border-radius: 0; }
   & .scene-detail-stage .mage-player__controls { padding: 0 16px 0 18px; min-height: 66px; }
   & .scene-detail-header { display: block; padding: 24px 2px 0; }
-  & .mage-watch__title { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.05; letter-spacing: -.035em; }
-  & .scene-detail-social-row { margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--ui-border); }
+  & .mage-watch__title { max-width: 100%; margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.05; letter-spacing: -.035em; overflow-wrap: anywhere; text-wrap: balance; }
+  & .scene-detail-social-row { display: flex; flex-direction: row; justify-content: space-between; margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--ui-border); }
   & .scene-detail-social-row__creator { flex-direction: row; min-width: 0; max-width: 100%; gap: 11px; flex-wrap: wrap; }
   & .scene-detail-social-row__controls { display: flex; align-items: center; flex-shrink: 0; gap: 8px; }
   & .mage-channel-card { gap: 11px; }
