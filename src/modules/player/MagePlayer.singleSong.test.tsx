@@ -128,7 +128,7 @@ describe('single-song player replacement', () => {
     expect(screen.getByText(/original\.mp3/)).toBeInTheDocument()
   })
 
-  it('honors a pause during replacement and preserves volume when the new song arrives', async () => {
+  it('disables playback during replacement and preserves playing state and volume when the new song arrives', async () => {
     const f = fixture()
     await loadFirst(f)
     fireEvent.click(screen.getByRole('button', { name: 'Adjust audio volume' }))
@@ -138,13 +138,15 @@ describe('single-song player replacement', () => {
     vi.mocked(f.controller.loadAudio).mockImplementationOnce(async options => { await decode.promise; return loadAudio(options) })
     select(f.container, 'paused-replacement.mp3')
     await waitFor(() => expect(f.controller.loadAudio).toHaveBeenCalledTimes(2))
-    fireEvent.click(screen.getByRole('button', { name: /pause scene and audio playback/i }))
-    expect(f.controller.getPlaybackState()).toBe('paused')
+    const pause = screen.getByRole('button', { name: /pause scene and audio playback/i })
+    expect(pause).toBeDisabled()
+    fireEvent.click(pause)
+    expect(f.controller.getPlaybackState()).toBe('playing')
     await act(async () => decode.resolve())
     await waitFor(() => expect(f.onPlaylistChange).toHaveBeenCalledOnce())
-    expect(f.controller.getPlaybackState()).toBe('paused')
+    expect(f.controller.getPlaybackState()).toBe('playing')
     expect(f.controller.getAudioState()).toMatchObject({ sourcePath: 'paused-replacement.mp3', volume: 0.4 })
-    expect(screen.getByRole('button', { name: /play scene and audio playback/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /pause scene and audio playback/i })).toBeEnabled()
     expect(f.controller.loadSceneBlob).toHaveBeenCalledOnce()
   })
 

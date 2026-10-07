@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@auth'
+import { ActionButton, PageFrame, PageState } from '@shared/ui'
 import { fetchUserScenes } from './loaders'
 import { buildMyScenesBoardModel, pruneSelectedSceneIds } from './selectors'
 import type { SortDirection, SortKey, StatusFilter, UserScene } from './types'
@@ -113,7 +114,7 @@ export function MyScenesPage() {
 
   if (!isRestoringSession && typeof user?.userId !== 'number') {
     return (
-      <main className="my-scenes-page"><div className="my-scenes-library-shell"><div className="my-scenes-state"><h1>Unable to load scenes</h1><p>Your session is missing the user information needed to load scenes.</p></div></div></main>
+      <PageFrame className="my-scenes-page"><PageState kind="error" title="Unable to load scenes" description="Your session is missing the user information needed to load scenes." /></PageFrame>
     )
   }
 
@@ -161,7 +162,7 @@ export function MyScenesPage() {
   }
 
   return (
-    <main className="page-stack my-scenes-page">
+    <PageFrame className="page-stack my-scenes-page">
       <header className="my-scenes-page__header">
         <div>
           <h1 className="my-scenes-panel__title">My scenes</h1>
@@ -176,11 +177,11 @@ export function MyScenesPage() {
       <MyScenesToolbar availableStatuses={availableStatuses} selectedSceneCount={selectedSceneIds.length} sortDirection={sortDirection} sortKey={sortKey} sortSummary={sortSummary} totalScenes={sortedScenes.length} statusFilter={statusFilter} onSelectSort={(nextSortKey, nextSortDirection) => { setSortKey(nextSortKey); setSortDirection(nextSortDirection); setPageIndex(0) }} onSelectStatus={(status) => { setStatusFilter(status); setPageIndex(0) }} />
       <section className="my-scenes-library-shell" aria-live="polite">
         {errorMessage ? (
-          <div className="my-scenes-state"><h2>Couldn’t load your scenes</h2><p>{errorMessage}</p><button className="my-scenes-state-action" type="button" onClick={() => setReloadVersion((version) => version + 1)}>Retry</button></div>
+          <PageState kind="error" title="Couldn’t load your scenes" description={errorMessage} actions={<ActionButton tone="primary" onClick={() => setReloadVersion((version) => version + 1)}>Retry</ActionButton>} />
         ) : scenes.length === 0 ? (
-          <div className="my-scenes-state"><h2>No scenes yet</h2><p>Create your first scene to start building your library.</p><Link className="my-scenes-state-action" to="/create-scene">Create scene</Link></div>
+          <PageState title="No scenes yet" description="Create your first scene to start building your library." actions={<Link className="ui-button ui-button--primary ui-button--normal" to="/create-scene">Create scene</Link>} />
         ) : sortedScenes.length === 0 ? (
-          <div className="my-scenes-state"><h2>No matching scenes</h2><p>No scenes in your library match this status.</p><button className="my-scenes-state-action" type="button" onClick={() => setStatusFilter('All')}>Show all scenes</button></div>
+          <PageState title="No matching scenes" description="No scenes in your library match this status." actions={<ActionButton onClick={() => setStatusFilter('All')}>Show all scenes</ActionButton>} />
         ) : (
           <>
             <MyScenesTable allPageScenesSelected={allPageScenesSelected} pagedScenes={pagedScenes} selectAllCheckboxRef={selectAllCheckboxRef} selectedSceneIdSet={selectedSceneIdSet} sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} onToggleSceneSelection={handleToggleSceneSelection} onToggleSelectAll={handleSelectAllVisibleScenes} />
@@ -188,6 +189,6 @@ export function MyScenesPage() {
           </>
         )}
       </section>
-    </main>
+    </PageFrame>
   )
 }

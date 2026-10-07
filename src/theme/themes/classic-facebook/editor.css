@@ -163,6 +163,7 @@ html[data-theme='classic-facebook'] .scene-textarea--code {
   --studio-accent-solid: #3b5998;
   --studio-muted: #596b93;
   --studio-panel: #ffffff;
+  --studio-group: #f7f8fb;
   --studio-shadow: rgba(29,42,68,.08);
   --studio-rail: #f7f8fb;
   --studio-subtle: #596b93;
@@ -171,6 +172,9 @@ html[data-theme='classic-facebook'] .scene-textarea--code {
   --studio-accent: #3b5998;
   --studio-success-border: #a2c5af;
   --studio-success: #287747;
+  --studio-warning-border: #ddc88e;
+  --studio-warning-background: #fff8e8;
+  --studio-warning: #8a651f;
   --studio-error-border: #c86f6f;
   --studio-error: #a42d2d;
   --studio-scroll-track: #eef2f7;
@@ -188,6 +192,8 @@ html[data-theme='classic-facebook'] .scene-textarea--code {
   --studio-alert-border: #c86f6f;
   --studio-alert-background: #fff4f3;
   --studio-preview: #f7f8fb;
+  --studio-row-hover: rgba(59,89,152,.05);
+  --studio-row-selected: #e9eff8;
 }
 
 :root[data-theme='classic-facebook'] .scene-editor-page .auth-header { margin-bottom: 18px; }

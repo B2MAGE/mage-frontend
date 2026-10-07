@@ -289,7 +289,9 @@ describe('MagePlayer', () => {
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const onRequestPlaylistOpen = vi.fn()
     render(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} onRequestPlaylistOpen={onRequestPlaylistOpen} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Open playlist' }))
+    const playlist = await screen.findByRole('button', { name: 'Open playlist' })
+    await waitFor(() => expect(playlist).toBeEnabled())
+    fireEvent.click(playlist)
     expect(onRequestPlaylistOpen).toHaveBeenCalledTimes(1)
   })
 

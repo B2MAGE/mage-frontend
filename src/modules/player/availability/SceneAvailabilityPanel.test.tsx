@@ -9,7 +9,9 @@ describe('scene availability presentation', () => {
     const player = screen.getByRole('region', { name: 'Playback unavailable' })
     expect(player).toHaveAccessibleDescription('This scene is currently unavailable.')
     expect(screen.getByRole('status')).toHaveTextContent('This scene is currently unavailable.')
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument()
+    for (const control of screen.getAllByRole('button')) expect(control).toBeDisabled()
+    expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toBeDisabled()
     expect(container.querySelector('canvas, iframe')).not.toBeInTheDocument()
     const poster = container.querySelector('img')
     if (posterUrl) {
@@ -35,21 +37,17 @@ describe('scene availability presentation', () => {
     expect(onCheck).toHaveBeenCalledTimes(1)
   })
 
-  it.each([false, true])('can clear local music while playback is unavailable or checking (%s)', async checking => {
-    const onClearMusic = vi.fn()
+  it.each([false, true])('keeps the full player controls visible and disabled while unavailable or checking (%s)', checking => {
     const onCheck = vi.fn()
     render(<SceneAvailabilityPanel message="This scene is currently unavailable." checking={checking}
-      onCheck={onCheck} onClearMusic={onClearMusic} />)
-    const user = userEvent.setup()
-    const trigger = screen.getByRole('button', { name: 'Playback options' })
-    expect(trigger.closest('.mage-player__controls--recovery-only')).toBeInTheDocument()
-    await user.click(trigger)
-    expect(screen.getByRole('button', { name: 'Clear music' })).toBeEnabled()
-    expect(screen.queryByRole('checkbox', { name: 'Pause all scenes' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Clear music' }))
-    expect(onClearMusic).toHaveBeenCalledOnce()
+      onCheck={onCheck} audioMode="single" />)
+
+    expect(screen.getByText('No song selected')).toBeInTheDocument()
+    for (const control of screen.getAllByRole('button').filter(button => button.textContent !== 'Check again')) {
+      expect(control).toBeDisabled()
+    }
+    expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toBeDisabled()
     expect(onCheck).not.toHaveBeenCalled()
     expect(screen.getByRole('status')).toHaveTextContent('This scene is currently unavailable.')
-    expect(trigger).toHaveFocus()
   })
 })

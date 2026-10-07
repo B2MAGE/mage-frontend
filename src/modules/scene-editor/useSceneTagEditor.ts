@@ -127,7 +127,10 @@ export function useSceneTagEditor({
     }
 
     function handleDocumentMouseDown(event: MouseEvent) {
-      if (!tagDropdownRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node
+      const dropdownPanel = document.getElementById('scene-tag-dropdown-panel')
+
+      if (!tagDropdownRef.current?.contains(target) && !dropdownPanel?.contains(target)) {
         setIsTagDropdownOpen(false)
       }
     }

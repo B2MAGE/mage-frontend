@@ -1,4 +1,4 @@
-import { type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
+import { useRef, type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react'
 import { AppIcon, PendingButtonLabel } from '@shared/ui'
 import {
   readPlaylistTrackSummaryName,
@@ -14,7 +14,6 @@ import { PlaybackOptions } from './recovery/PlaybackOptions'
 type MagePlayerControlsProps = {
   audioMode?: 'single' | 'playlist'
   disabled?: boolean
-  allowPause?: boolean
   activeAudioAction: 'add' | 'load' | null
   audioError: string | null
   audioProgressPercent: string
@@ -40,7 +39,6 @@ type MagePlayerControlsProps = {
 export function MagePlayerControls({
   audioMode = 'playlist',
   disabled = false,
-  allowPause = false,
   activeAudioAction,
   audioError,
   audioProgressPercent,
@@ -80,7 +78,7 @@ export function MagePlayerControls({
           aria-label={`${playbackLabel} scene and audio playback`}
           aria-pressed={playbackState === 'playing'}
           className="mage-player__control-button mage-player__control-button--playback"
-          disabled={controlsBusy && !(allowPause && playbackState === 'playing')}
+          disabled={controlsBusy}
           onClick={onTogglePlayback}
           title={`${playbackLabel} scene and audio playback`}
           type="button"
@@ -96,7 +94,7 @@ export function MagePlayerControls({
               {isSingleSong ? 'Loading song…' : 'Loading track…'}
             </span>
           ) : !isSingleSong && tracksCount > 0 ? (
-            <button className="mage-player__track-summary" onClick={onTrackSummaryClick} type="button">
+            <button className="mage-player__track-summary" disabled={disabled} onClick={onTrackSummaryClick} type="button">
               {trackSummaryLabel}
             </button>
           ) : (
@@ -188,11 +186,12 @@ export function MagePlayerControls({
         </div>
 
 
-        <button className="mage-player__control-button mage-player__control-button--fullscreen" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
-        <PlaybackOptions onStopScene={onStopScene} onClearMusic={onClearMusic} onPauseAllScenes={onPauseAllScenes} />
+        <button className="mage-player__control-button mage-player__control-button--fullscreen" disabled={disabled} type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
+        <PlaybackOptions key={disabled ? 'disabled' : 'enabled'} disabled={disabled} onStopScene={onStopScene} onClearMusic={onClearMusic} onPauseAllScenes={onPauseAllScenes} />
         {!isSingleSong && showPlaylistButton && (
           <button
             className="mage-player__control-button mage-player__control-button--playlist"
+            disabled={disabled}
             type="button"
             aria-label="Open playlist"
             title="Open playlist"
@@ -206,4 +205,44 @@ export function MagePlayerControls({
       </div>
     </div>
   )
+}
+
+const DISABLED_AUDIO_STATE: MagePlayerAudioState = {
+  currentTime: 0,
+  duration: 0,
+  hasSource: false,
+  isLoaded: false,
+  sourcePath: null,
+  volume: 1,
+}
+
+const ignoreDisabledControl = () => undefined
+
+export function MagePlayerDisabledControls({ audioMode = 'playlist' }: {
+  audioMode?: 'single' | 'playlist'
+}) {
+  const volumeControlRef = useRef<HTMLDivElement>(null)
+
+  return <MagePlayerControls
+    audioMode={audioMode}
+    disabled
+    activeAudioAction={null}
+    audioError={null}
+    audioProgressPercent="0%"
+    audioState={DISABLED_AUDIO_STATE}
+    currentTrack={null}
+    currentTrackIndex={0}
+    isVolumeOpen={false}
+    onOpenAudioPicker={ignoreDisabledControl}
+    onSeekAudio={ignoreDisabledControl}
+    onTogglePlayback={ignoreDisabledControl}
+    onToggleVolumePanel={ignoreDisabledControl}
+    onTrackSummaryClick={ignoreDisabledControl}
+    onVolumeChange={ignoreDisabledControl}
+    onPauseAllScenes={ignoreDisabledControl}
+    playbackState="paused"
+    showPlaylistButton={false}
+    tracksCount={0}
+    volumeControlRef={volumeControlRef}
+  />
 }

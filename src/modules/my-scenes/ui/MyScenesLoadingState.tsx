@@ -6,7 +6,7 @@ export function MyScenesLoadingState() {
   return (
     <LoadingRegion
       as="main"
-      className="page-stack my-scenes-page my-scenes-page--loading"
+      className="ui-page-frame ui-page-frame--wide page-stack my-scenes-page my-scenes-page--loading"
       label="Loading your scenes"
     >
       <header className="my-scenes-page__header">

@@ -2,10 +2,8 @@
 :root[data-theme='classic-facebook'] .my-scenes-page {
   --my-scenes-row-selected-background: #e7eef9;
   --table-title-hover-color: #29447e;
-  width: min(1280px, calc(100% - 48px));
   display: block;
   margin-top: 0;
-  padding: var(--page-content-top-gap) 0 36px;
 }
 
 :root[data-theme='classic-facebook'] .my-scenes-page__header { margin-bottom: 22px; gap: 20px; }
@@ -73,7 +71,6 @@
 :root[data-theme='classic-facebook'] :is(.my-scenes-loading__filter-slot, .my-scenes-loading__thumbnail, .my-scenes-loading__status, .my-scenes-loading__edit, .my-scenes-loading__rows-select, .my-scenes-loading__page-control, .my-scenes-loading__page-number) { border-radius: 3px; }
 
 @media (max-width: 780px) {
-  :root[data-theme='classic-facebook'] .my-scenes-page { width: calc(100% - 28px); }
   :root[data-theme='classic-facebook'] .my-scenes-page__header { align-items: flex-start; flex-direction: column; gap: 12px; }
   :root[data-theme='classic-facebook'] .my-scenes-board__toolbar { align-items: flex-start; flex-direction: column; }
   :root[data-theme='classic-facebook'] .my-scenes-board__toolbar-divider { display: none; }

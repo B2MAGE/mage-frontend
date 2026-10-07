@@ -146,44 +146,7 @@
 .music-response-controls__group input.scene-slider__number { height: 36px; }
 
 .music-response-controls__group .scene-editor-collapsible {
-  display: grid;
   border-top: 1px solid var(--studio-border, var(--editor-field-border));
-}
-
-.music-response-controls__group .scene-editor-collapsible__toggle {
-  justify-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 42px;
-  padding: 0 15px;
-  border: 0;
-  border-radius: 0;
-  background: rgba(255,255,255,.008);
-  color: var(--studio-muted);
-  text-align: left;
-}
-
-.music-response-controls__group .scene-editor-collapsible__toggle::after {
-  content: "";
-  width: 7px;
-  height: 7px;
-  margin-right: 3px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translateY(-2px);
-  transition: transform .16s ease;
-}
-
-.music-response-controls__group .scene-editor-collapsible__toggle[aria-expanded="true"]::after {
-  transform: rotate(225deg) translate(-2px, -1px);
-}
-
-.music-response-controls__group .scene-editor-collapsible__toggle:hover {
-  border: 0;
-  background: rgba(255,255,255,.018);
-  color: var(--studio-text);
 }
 
 .music-response-controls__group .scene-editor-collapsible__content {

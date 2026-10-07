@@ -1,4 +1,5 @@
-import type { ReactNode, RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import type { TagResponse } from '@shared/lib'
 import { AppIcon, LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
 import type { CreateSceneFormErrors, PendingTagAttachment } from '../types'
@@ -186,6 +187,69 @@ function TagEditor({
   onTagSearchChange,
   onToggleTagSelection,
 }: SceneEditorDetailsSectionProps) {
+  const tagDropdownPanelRef = useRef<HTMLDivElement | null>(null)
+  const [tagDropdownPosition, setTagDropdownPosition] = useState<{
+    left: number
+    placement: 'above' | 'below'
+    top: number
+    width: number
+  }>({ left: 0, placement: 'below', top: -10000, width: 0 })
+
+  useLayoutEffect(() => {
+    const dropdown = tagDropdownRef.current
+    const panel = tagDropdownPanelRef.current
+
+    if (!isTagDropdownOpen || !dropdown || !panel) {
+      return
+    }
+
+    const positionedDropdown = dropdown
+    const positionedPanel = panel
+    const scrollContainer = dropdown.closest<HTMLElement>('.scene-editor-main')
+
+    function updatePlacement() {
+      const dropdownBounds = positionedDropdown.getBoundingClientRect()
+      const panelHeight = positionedPanel.getBoundingClientRect().height
+      const viewportTop = 8
+      const viewportBottom = window.innerHeight - 8
+      const spaceAbove = dropdownBounds.top - viewportTop - 8
+      const spaceBelow = viewportBottom - dropdownBounds.bottom - 8
+      const placement = spaceBelow < panelHeight && spaceAbove > spaceBelow ? 'above' : 'below'
+      const preferredTop = placement === 'above'
+        ? dropdownBounds.top - panelHeight - 8
+        : dropdownBounds.bottom + 8
+      const top = Math.max(viewportTop, Math.min(preferredTop, viewportBottom - panelHeight))
+
+      setTagDropdownPosition({
+        left: dropdownBounds.left,
+        placement,
+        top,
+        width: dropdownBounds.width,
+      })
+    }
+
+    updatePlacement()
+
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updatePlacement)
+    resizeObserver?.observe(panel)
+    scrollContainer?.addEventListener('scroll', updatePlacement, { passive: true })
+    window.addEventListener('resize', updatePlacement)
+
+    return () => {
+      resizeObserver?.disconnect()
+      scrollContainer?.removeEventListener('scroll', updatePlacement)
+      window.removeEventListener('resize', updatePlacement)
+    }
+  }, [canCreateTagFromSearch, filteredSelectableTags.length, isTagDropdownOpen, tagDropdownRef])
+
+  const tagDropdownPortalStyle: CSSProperties = {
+    left: tagDropdownPosition.left,
+    top: tagDropdownPosition.top,
+    width: tagDropdownPosition.width,
+  }
+
   return (
     <div className="scene-tag-editor">
       <div className="scene-tag-editor__search-row">
@@ -258,8 +322,17 @@ function TagEditor({
                 />
               </div>
 
-              {isTagDropdownOpen ? (
-                <div className="scene-tag-dropdown__panel" id="scene-tag-dropdown-panel">
+              {isTagDropdownOpen ? createPortal(
+                <div
+                  className="scene-editor-page scene-tag-dropdown__portal"
+                  data-placement={tagDropdownPosition.placement}
+                  style={tagDropdownPortalStyle}
+                >
+                  <div
+                    className="scene-tag-dropdown__panel"
+                    id="scene-tag-dropdown-panel"
+                    ref={tagDropdownPanelRef}
+                  >
                   {filteredSelectableTags.length > 0 || canCreateTagFromSearch ? (
                     <div className="scene-tag-dropdown__options">
                       {filteredSelectableTags.map((tag) => (
@@ -299,8 +372,9 @@ function TagEditor({
                   ) : (
                     <p className="field-hint">No matching unselected tags.</p>
                   )}
+                  </div>
                 </div>
-              ) : null}
+              , document.body) : null}
             </div>
           )}
         </div>

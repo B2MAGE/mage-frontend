@@ -118,8 +118,8 @@ describe('player audio-response capabilities bridge', () => {
     rerender(<MagePlayer sceneBlob={second} sceneKey={sceneKey} onAudioResponseCapabilitiesChange={onChange} />)
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
     if (reason === 'stopped') {
-      fireEvent.click(screen.getByRole('button', { name: 'Playback options' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Stop this scene' }))
+      expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
+      act(() => sceneRecovery.block(sceneRecoveryKey(second, sceneKey)!, 'stopped'))
     } else {
       vi.spyOn(sceneAvailabilityStore, 'getSnapshot').mockReturnValue({
         allowed: false, code: 'SCENE_DISABLED', message: 'This scene is temporarily unavailable.', checkedAt: 1,

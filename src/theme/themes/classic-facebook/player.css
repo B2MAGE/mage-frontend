@@ -1,5 +1,5 @@
 html[data-theme='classic-facebook'] .scene-detail-page {
-  width: min(1380px, 100%);
+  width: var(--ui-page-inline-size);
   margin-top: 0;
 }
 

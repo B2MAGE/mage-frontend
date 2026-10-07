@@ -47,9 +47,10 @@ The integrated layout refresh and its documented behavior are accepted as the
 delivered baseline. Future visual, responsive, accessibility, or state regressions
 should be recorded as focused follow-up issues.
 
-The accepted My Scenes mobile treatment keeps the scene-management table
-horizontally scrollable (minimum 940px in Pulse and 960px in Classic) while the
-toolbars and pagination wrap separately.
+The My Scenes library keeps the complete management table on wide screens,
+switches to uniform compact rows on medium screens, and uses stacked scene
+cards on phones. Both themes use the same responsive structure, page frame,
+state panels, and mobile actions.
 
 The accepted homepage scope uses recent scenes for For You and newest ordering
 for Featured/Recommended discovery fallbacks. The Watch/editor scope supports

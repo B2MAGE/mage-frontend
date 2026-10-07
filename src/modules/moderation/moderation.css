@@ -342,6 +342,20 @@ html[data-theme] body:has(.moderation-area, .moderators-page) {
     margin-bottom: 20px;
   }
 
+  .moderation-area .ui-section-nav__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .moderation-area .ui-section-nav__link {
+    min-width: 0;
+    padding-inline: 6px;
+    font-size: 12px;
+    text-align: center;
+    white-space: normal;
+  }
+
   .moderation-tool {
     padding: 16px;
     border-radius: 14px;

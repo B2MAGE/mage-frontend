@@ -2,7 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { AppIcon } from '@shared/ui'
 import { PauseAllScenesToggle } from './PauseAllScenesToggle'
 
-export function PlaybackOptions({ onStopScene, onClearMusic, onPauseAllScenes }: {
+export function PlaybackOptions({ disabled = false, onStopScene, onClearMusic, onPauseAllScenes }: {
+  disabled?: boolean
   onStopScene?: () => void
   onClearMusic?: () => void
   onPauseAllScenes?: () => void
@@ -37,6 +38,7 @@ export function PlaybackOptions({ onStopScene, onClearMusic, onPauseAllScenes }:
     }}>
     <button type="button" className="mage-player__control-button" ref={trigger}
       aria-label="Playback options" title="Playback options" aria-expanded={open} aria-controls={id}
+      disabled={disabled}
       onClick={() => setOpen((value) => !value)}>
       <AppIcon name="settings" />
     </button>

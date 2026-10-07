@@ -2662,6 +2662,24 @@
   box-shadow: var(--editor-dropdown-shadow);
 }
 
+.scene-tag-dropdown__portal {
+  position: fixed;
+  z-index: 120;
+  display: block;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.scene-tag-dropdown__portal .scene-tag-dropdown__panel {
+  position: static;
+  width: 100%;
+  pointer-events: auto;
+}
+
 .scene-tag-dropdown__search {
   display: grid;
   gap: 8px;

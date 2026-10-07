@@ -196,24 +196,26 @@ describe('Clear music across player sessions', () => {
     expect(screen.getByText('original.mp3')).toBeInTheDocument()
   })
 
-  it('clears while permission is being checked and does not reload music when the check allows playback', async () => {
+  it('keeps music and all controls disabled during a permission check, then allows clearing after playback returns', async () => {
     const f = fixture()
     await loadMusic(f)
     const permission = deferred<Response>()
     f.fetchMock.mockReturnValue(permission.promise)
     act(() => window.dispatchEvent(new Event('focus')))
     expect(f.container.querySelector('.mage-player')).toHaveAttribute('data-availability-pending', 'true')
-    clearMusic()
-    expect(f.controller.getAudioState().isLoaded).toBe(false)
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
+    expect(f.controller.getAudioState().isLoaded).toBe(true)
     await act(async () => permission.resolve(availabilityResponse()))
     await ready(f)
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeEnabled()
+    clearMusic()
     expectEmpty(f)
     expect(f.controller.loadAudio).toHaveBeenCalledOnce()
     expect(f.controller.loadSceneBlob).toHaveBeenCalledOnce()
     expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 
-  it.each(['stopped', 'denied'] as const)('clears retained music while %s without resuming or bypassing its block', async condition => {
+  it.each(['stopped', 'denied'] as const)('keeps retained music and disables its controls while playback is %s', async condition => {
     const f = fixture()
     await loadMusic(f)
     const key = sceneRecoveryKey(template, 24)!
@@ -227,10 +229,11 @@ describe('Clear music across player sessions', () => {
     const source = vi.mocked(f.controller.loadAudio).mock.calls[0][0]!.sourcePath!
     const revoke = vi.spyOn(URL, 'revokeObjectURL')
     vi.mocked(f.controller.setPlaybackState).mockClear()
-    clearMusic()
-    expect(f.onPlaylistChange).toHaveBeenLastCalledWith([])
-    expect(f.onSelectedTrackChange).toHaveBeenLastCalledWith(null)
-    expect(revoke).toHaveBeenCalledWith(source)
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add song' })).toBeDisabled()
+    expect(f.onPlaylistChange).not.toHaveBeenCalled()
+    expect(f.onSelectedTrackChange).not.toHaveBeenCalled()
+    expect(revoke).not.toHaveBeenCalledWith(source)
     expect(f.container.querySelector('.mage-player')).toHaveAttribute('data-state', condition === 'stopped' ? 'blocked' : 'unavailable')
     expect(sceneRecovery.getBlock(key)).toEqual(block)
     expect(f.controller.setPlaybackState).not.toHaveBeenCalled()
@@ -238,8 +241,12 @@ describe('Clear music across player sessions', () => {
     if (condition === 'stopped') {
       fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
       await ready(f)
-      expect(f.controller.loadAudio).toHaveBeenCalledOnce()
-      expect(screen.getByText('No song selected')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Playback options' })).toBeEnabled()
+      clearMusic()
+      expect(f.onPlaylistChange).toHaveBeenLastCalledWith([])
+      expect(f.onSelectedTrackChange).toHaveBeenLastCalledWith(null)
+      expect(revoke).toHaveBeenCalledWith(source)
+      expectEmpty(f)
     } else expect(sceneAvailabilityStore.isAllowed('template:24')).toBe(false)
   })
 

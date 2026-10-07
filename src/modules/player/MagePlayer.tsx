@@ -10,7 +10,7 @@ import {
   type MageSceneBlob,
 } from './infrastructure/engineAdapter'
 import { type MagePlayerPlaylistTrack } from './playlist'
-import { MagePlayerControls } from './MagePlayerControls'
+import { MagePlayerControls, MagePlayerDisabledControls } from './MagePlayerControls'
 import './magePlayer.css'
 import './pulsePlayer.css'
 import {
@@ -27,7 +27,6 @@ import { extractLiveSceneSettings } from './liveSceneSettings'
 import { normalizeAudioResponseMode } from '@shared/lib'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
-import { PlaybackOptions } from './recovery/PlaybackOptions'
 import { sceneAvailabilityStore } from './availability/sceneAvailability'
 import { availabilityStatusTarget, availabilityTarget } from './availability/availabilityTarget'
 import { useSceneAvailability } from './availability/useSceneAvailability'
@@ -232,7 +231,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     return <>
       <MagePlayerStatusReporter onChange={props.onPlaybackStatusChange} status={checking ? 'paused' : 'unavailable'} />
       <SceneAvailabilityPanel className={props.className} posterUrl={props.posterUrl}
-        onClearMusic={props.clearMusic}
+        audioMode={props.audioMode}
         message={!availability.allowed ? availability.message : sourceError
           ? 'This scene could not be loaded. You can check again.' : canRestoreSource
             ? 'Loading this scene…' : 'This scene is temporarily unavailable.'}
@@ -250,7 +249,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
         status={safeMode || block?.reason === 'stopped' ? 'paused' : 'unavailable'}
       />
       <SceneRecoveryPanel
-        onClearMusic={props.clearMusic}
+        audioMode={props.audioMode}
         className={props.className}
         posterUrl={props.posterUrl}
         block={block}
@@ -274,9 +273,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
             <div className="mage-player__overlay-copy"><strong>This scene needs changes.</strong><p>{validationError}</p></div>
           </div>
         </div>
-        <div className="mage-player__controls mage-player__controls--recovery-only">
-          <PlaybackOptions onClearMusic={props.clearMusic} />
-        </div>
+        <MagePlayerDisabledControls audioMode={props.audioMode} />
       </section>
     </>
   }
@@ -1121,11 +1118,10 @@ function MagePlayerRenderer({
           </div>
         ) : null}
       </div>
-        {status === 'ready' || availabilityPending || (status === 'loading' && loadedPlayerVersion !== null) ? (
+        {sceneBlob ? (
           <MagePlayerControls
             audioMode={audioMode}
             disabled={status !== 'ready'}
-            allowPause
             activeAudioAction={audioSelection.adding ? 'add' : activeAudioAction}
             audioError={audioSelection.error ?? audioError}
             audioProgressPercent={audioProgressPercent}
@@ -1147,9 +1143,7 @@ function MagePlayerRenderer({
             tracksCount={tracks.length}
             volumeControlRef={volumeControlRef}
           />
-        ) : sceneBlob ? <div className="mage-player__controls mage-player__controls--recovery-only">
-          <PlaybackOptions onStopScene={onStopRendering} onPauseAllScenes={onSafeMode} onClearMusic={clearMusic} />
-        </div> : null}
+        ) : null}
     </section>
   )
 }

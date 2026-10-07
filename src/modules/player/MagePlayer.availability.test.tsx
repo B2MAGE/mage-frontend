@@ -73,7 +73,7 @@ afterEach(() => {
 })
 
 describe('MagePlayer live availability', () => {
-  it.each(['permission-check', 'compilation'] as const)('allows an immediate music pause during %s and does not resume it on completion', async pendingReason => {
+  it.each(['permission-check', 'compilation'] as const)('disables the complete control bar during %s and preserves playback intent on completion', async pendingReason => {
     const scene = buildMagePlayerSceneBlob()
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
@@ -89,17 +89,18 @@ describe('MagePlayer live availability', () => {
         sceneKey={930} playlistTracks={tracks} selectedTrackId="track-1" />)
       await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
     }
-    const pause = screen.getByRole('button', { name: 'Pause scene and audio playback' })
-    expect(pause).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeDisabled()
-    fireEvent.click(pause)
-    expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
-    expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeDisabled()
     vi.mocked(controller.setPlaybackState).mockClear()
+    const pause = screen.getByRole('button', { name: 'Pause scene and audio playback' })
+    expect(pause).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Toggle fullscreen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
+    fireEvent.click(pause)
+    expect(controller.setPlaybackState).not.toHaveBeenCalled()
     if (pendingReason === 'permission-check') permission(930, allowed)
     else await act(async () => { compiling.resolve() })
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeEnabled())
-    expect(controller.setPlaybackState).not.toHaveBeenCalledWith('playing')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeEnabled())
+    expect(controller.setPlaybackState).not.toHaveBeenCalledWith('paused')
     expect(controller.loadAudio).toHaveBeenCalledOnce()
     expect(createMagePlayer).toHaveBeenCalledOnce()
   })
@@ -495,7 +496,8 @@ describe('MagePlayer live availability', () => {
     expect(first.dispose).toHaveBeenCalledOnce()
     expect(onCapture).toHaveBeenLastCalledWith(null)
     expect(onCapabilities).toHaveBeenLastCalledWith(null)
-    expect(screen.queryByRole('button', { name: 'Add audio tracks' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
     await expect(oldCapture()).resolves.toBeNull()
     expect(first.captureFramePreview).not.toHaveBeenCalled()
 

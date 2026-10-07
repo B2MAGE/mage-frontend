@@ -65,6 +65,7 @@ describe('MyScenesPage states', () => {
 
     expect(await screen.findAllByText(/loading your scenes/i)).not.toHaveLength(0)
     expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('main')).toHaveClass('ui-page-frame', 'ui-page-frame--wide')
     expect(screen.queryByText(/^0 scenes$/i)).not.toBeInTheDocument()
     expect(document.querySelectorAll('.my-scenes-loading__row')).toHaveLength(5)
     expect(document.querySelector('.my-scenes-loading__filter-slot')).toBeInTheDocument()
@@ -74,6 +75,8 @@ describe('MyScenesPage states', () => {
     resolveScenesResponse?.(jsonResponse([]))
 
     expect(await screen.findByText(/no scenes yet/i)).toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveClass('ui-page-frame', 'ui-page-frame--wide')
+    expect(screen.getByRole('status')).toHaveClass('ui-page-state', 'ui-page-state--empty')
     expect(screen.getByRole('link', { name: /create scene/i })).toHaveAttribute('href', '/create-scene')
   })
 
@@ -213,6 +216,8 @@ describe('MyScenesPage states', () => {
     expect(
       await screen.findByText(/unable to load scenes right now\. please try again in a moment\./i),
     ).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveClass('ui-page-state', 'ui-page-state--error')
+    expect(screen.getByRole('button', { name: 'Retry' })).toHaveClass('ui-button', 'ui-button--primary')
     expect(fetchSpy).toHaveBeenCalledTimes(2)
     fetchSpy.mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) return Promise.resolve(jsonResponse(storedUser))

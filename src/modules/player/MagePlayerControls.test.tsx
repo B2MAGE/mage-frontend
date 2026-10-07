@@ -117,7 +117,7 @@ describe('MagePlayerControls library icons', () => {
     expect(trigger).toHaveFocus()
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
-    rerender(<MagePlayerControls {...props} audioMode={audioMode} disabled activeAudioAction="add" />)
+    rerender(<MagePlayerControls {...props} audioMode={audioMode} activeAudioAction="add" />)
     await user.click(trigger)
     expect(screen.getByRole('button', { name: 'Clear music' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Clear music' }))
@@ -126,6 +126,16 @@ describe('MagePlayerControls library icons', () => {
     expect(props.onTogglePlayback).not.toHaveBeenCalled()
     expect(props.onStopScene).not.toHaveBeenCalled()
     expect(props.onPauseAllScenes).not.toHaveBeenCalled()
+  })
+
+  it('keeps the complete control bar visible and disables every interaction when playback is unavailable', () => {
+    const props = createProps()
+    render(<MagePlayerControls {...props} disabled />)
+
+    for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled()
+    expect(screen.getByRole('slider', { name: 'Seek scene audio' })).toBeDisabled()
+    expect(screen.getByText('Track 0/0: No track selected')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Playback options' })).toHaveAttribute('aria-expanded', 'false')
   })
 })
 
