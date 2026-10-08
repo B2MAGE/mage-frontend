@@ -21,8 +21,16 @@ const catalog: readonly SceneTemplate[] = Object.freeze(definitions.map((definit
   description: definition.description,
 })))
 
+const retiredPickerIds = new Set(['reaction-rings-v1', 'reaction-lantern-v1'])
+const selectableCatalog: readonly SceneTemplate[] = Object.freeze(
+  catalog.filter((template) => !retiredPickerIds.has(template.templateId)),
+)
+
 /** Code-free metadata for a picker. Saved scenes must keep both ID and version. */
 export const listSceneTemplates = (): readonly SceneTemplate[] => catalog
+
+/** Templates offered for new scenes. Retired definitions remain readable for saved scenes. */
+export const listSelectableSceneTemplates = (): readonly SceneTemplate[] => selectableCatalog
 
 /** Exact lookup only: unknown versions must never silently resolve to newer code. */
 export const getTemplateDefinition = (

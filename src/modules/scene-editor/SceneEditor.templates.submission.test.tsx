@@ -41,7 +41,7 @@ describe('template editor API round trips', () => {
     const view = renderCreateScenePage()
     fireEvent.change(await screen.findByLabelText(/scene name/i), { target: { value: 'Template round trip' } })
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    await user.selectOptions(screen.getByLabelText('Template', { exact: true }), 'reaction-rings-v1')
+    await user.selectOptions(screen.getByLabelText('Template', { exact: true }), 'embedded-scene-1')
     fireEvent.change(document.getElementById('template-parameters-scale-number')!, { target: { value: '12' } })
     await user.click(screen.getByRole('button', { name: 'Camera' }))
     fireEvent.change(screen.getByLabelText('Camera Position X'), { target: { value: '15' } })
@@ -60,7 +60,7 @@ describe('template editor API round trips', () => {
     await screen.findByText('My Scenes')
     const saved = parseSceneDocument(submitted?.sceneData)
     expect(saved).toEqual(expected)
-    expect(saved).toMatchObject({ schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1,
+    expect(saved).toMatchObject({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-1', templateVersion: 1,
       parameters: { scale: 12, speed: 1.8 }, settings: {
         controls: { position0: { x: 15 }, zoom0: 2 }, motion: { minimizing_factor: 0.7 },
         effects: { passes: { rgbShift: true }, params: { rgbShift: { amount: 0.02 } } },

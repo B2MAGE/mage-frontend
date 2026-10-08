@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import catalogManifest from '../../../../contracts/scenes/template-catalog.v1.json'
-import { getTemplateDefinition, listSceneTemplates } from './templateRegistry'
+import { getTemplateDefinition, listSceneTemplates, listSelectableSceneTemplates } from './templateRegistry'
 
 describe('versioned template registry', () => {
   it('includes all 16 original presets as immutable version 1 definitions', () => {
@@ -30,6 +30,17 @@ describe('versioned template registry', () => {
     for (const template of listSceneTemplates()) {
       expect(Object.keys(template).sort()).toEqual(['description', 'label', 'templateId', 'templateVersion'])
     }
+  })
+
+  it('does not offer retired reaction templates for new scenes', () => {
+    const selectable = listSelectableSceneTemplates()
+    expect(selectable).toHaveLength(14)
+    expect(selectable.map(template => template.templateId)).not.toEqual(expect.arrayContaining([
+      'reaction-rings-v1',
+      'reaction-lantern-v1',
+    ]))
+    expect(getTemplateDefinition('reaction-rings-v1', 1)).toBeDefined()
+    expect(getTemplateDefinition('reaction-lantern-v1', 1)).toBeDefined()
   })
 
   it('matches the shared catalog and preserves the original source fingerprints', () => {

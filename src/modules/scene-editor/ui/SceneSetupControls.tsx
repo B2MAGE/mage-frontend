@@ -1,4 +1,4 @@
-import { listSceneTemplates } from '@modules/player'
+import { listSceneTemplates, listSelectableSceneTemplates } from '@modules/player'
 import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import { SKYBOX_OPTIONS } from '../sceneEditor'
 
@@ -47,6 +47,11 @@ export function SceneSetupControls({
   skybox,
   templateId,
 }: Props) {
+  const selectableTemplates = listSelectableSceneTemplates()
+  const selectedRetiredTemplate = !isBuilder && templateId !== 'custom'
+    && !selectableTemplates.some(template => template.templateId === templateId)
+    ? listSceneTemplates().find(template => template.templateId === templateId)
+    : undefined
   const error = (path: string) => fields[`sceneData.${path}`] ?? fields[path] ?? fields[`scene.${path}`]
   const describedBy = (path: string) => error(path) ? `${fieldId(path)}-error` : undefined
   const issue = (path: string) => error(path)
@@ -75,7 +80,10 @@ export function SceneSetupControls({
         >
           {isBuilder ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>Builder Shader</option> : null}
           {templateId === 'custom' ? <option value="custom" disabled>Custom shader</option> : null}
-          {listSceneTemplates().map(template => <option
+          {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>
+            {selectedRetiredTemplate.label} (unavailable)
+          </option> : null}
+          {selectableTemplates.map(template => <option
             key={`${template.templateId}:${template.templateVersion}`}
             value={template.templateId}
           >{template.label}</option>)}
