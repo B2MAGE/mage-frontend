@@ -187,10 +187,10 @@ describe('recovery leases and local history', () => {
     expect(second.begin(key)).not.toBeNull()
   })
 
-  it('drops only stale version-1 compiler blocks after the compiler-worker fix', () => {
+  it.each([1, 2])('drops only stale version-%s compiler blocks after the compiler-worker rollout', (version) => {
     const runtimeKey = revision(2)
     const local = memoryStorage({ [RECOVERY_HISTORY_KEY]: JSON.stringify({
-      version: 1,
+      version,
       safeMode: false,
       blocks: [
         { key, reason: 'compile', at: Date.now() },
@@ -202,7 +202,7 @@ describe('recovery leases and local history', () => {
     expect(migrated.getBlock(runtimeKey)?.reason).toBe('runtime')
 
     migrated.block(key, 'compile')
-    expect(JSON.parse(local.getItem(RECOVERY_HISTORY_KEY)!).version).toBe(2)
+    expect(JSON.parse(local.getItem(RECOVERY_HISTORY_KEY)!).version).toBe(3)
     expect(store({ localStorage: local }).getBlock(key)?.reason).toBe('compile')
   })
 

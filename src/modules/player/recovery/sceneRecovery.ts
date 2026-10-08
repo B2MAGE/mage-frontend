@@ -14,7 +14,7 @@ export type RecoveryLease = { dispose(): void; fail(reason: RecoveryReason): voi
 /** Recovery contains identifiers and timestamps only, never submitted scene data. */
 export const RECOVERY_HISTORY_KEY = 'mage.scene-recovery.v1'
 export const RECOVERY_ACTIVE_KEY = 'mage.scene-recovery.active.v1'
-const RECOVERY_HISTORY_VERSION = 2
+const RECOVERY_HISTORY_VERSION = 3
 export const RECOVERY_HISTORY_LIMIT = 64
 export const RECOVERY_ACTIVE_LIMIT = 32
 export const RECOVERY_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
@@ -194,14 +194,15 @@ export const createSceneRecoveryStore = (options: SceneRecoveryOptions = {}) => 
       const raw = local.getItem(RECOVERY_HISTORY_KEY)
       const value: unknown = raw && raw.length <= 32_768 ? JSON.parse(raw) : null
       const next = new Map<string, RecoveryBlock>()
-      if (!isRecord(value) || (value.version !== 1 && value.version !== RECOVERY_HISTORY_VERSION)
+      if (!isRecord(value) || ![1, 2, RECOVERY_HISTORY_VERSION].includes(value.version as number)
         || !Array.isArray(value.blocks)) return { safeMode: false, blocks: next }
       for (const item of value.blocks.slice(0, RECOVERY_HISTORY_LIMIT)) {
         if (!isRecord(item) || typeof item.key !== 'string' || !keyPattern.test(item.key)
           || typeof item.reason !== 'string' || !reasons.has(item.reason as RecoveryReason) || !fresh(item.at)) continue
-        // Version 1 predates the compiler-worker bundle fix. Its compile blocks
-        // can describe healthy templates, so retire only those stale records.
-        if (value.version === 1 && item.reason === 'compile') continue
+        // Earlier history can contain compiler blocks written while the updated
+        // frontend and renderer were rolling out separately. Retire only those
+        // stale records; version 3 failures still require a deliberate retry.
+        if (value.version !== RECOVERY_HISTORY_VERSION && item.reason === 'compile') continue
         next.set(item.key, { reason: item.reason as RecoveryReason, at: item.at })
       }
       return { safeMode: value.safeMode === true, blocks: next }
