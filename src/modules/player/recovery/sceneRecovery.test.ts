@@ -187,6 +187,25 @@ describe('recovery leases and local history', () => {
     expect(second.begin(key)).not.toBeNull()
   })
 
+  it('drops only stale version-1 compiler blocks after the compiler-worker fix', () => {
+    const runtimeKey = revision(2)
+    const local = memoryStorage({ [RECOVERY_HISTORY_KEY]: JSON.stringify({
+      version: 1,
+      safeMode: false,
+      blocks: [
+        { key, reason: 'compile', at: Date.now() },
+        { key: runtimeKey, reason: 'runtime', at: Date.now() },
+      ],
+    }) })
+    const migrated = store({ localStorage: local })
+    expect(migrated.getBlock(key)).toBeNull()
+    expect(migrated.getBlock(runtimeKey)?.reason).toBe('runtime')
+
+    migrated.block(key, 'compile')
+    expect(JSON.parse(local.getItem(RECOVERY_HISTORY_KEY)!).version).toBe(2)
+    expect(store({ localStorage: local }).getBlock(key)?.reason).toBe('compile')
+  })
+
   it('keeps independent tab history changes without overwriting the other keys', () => {
     const local = memoryStorage()
     const first = store({ localStorage: local }); const second = store({ localStorage: local })
