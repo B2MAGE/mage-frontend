@@ -382,7 +382,7 @@
 
 .pulse-home .featured-scene--loading { cursor: default; }
 .pulse-home .featured-player--loading::after {
-  height: 66px;
+  height: 60px;
   border-top: 1px solid var(--ui-border);
   background: var(--ui-panel-nested-background);
   content: '';
@@ -450,36 +450,6 @@
 }
 
 @media (max-width: 430px) {
-  .pulse-home .featured-player .mage-player:not(:fullscreen) .mage-player__controls {
-    display: grid;
-    min-height: 88px;
-    padding: 8px 10px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    gap: 4px 8px;
-  }
-
-  .pulse-home .featured-player .mage-player__controls-main {
-    width: 100%;
-    padding: 0;
-    grid-column: 1 / -1;
-    grid-row: 1;
-  }
-
-  .pulse-home .featured-player .mage-player__control-actions {
-    display: flex;
-    width: auto;
-    grid-column: 1;
-    grid-row: 2;
-    justify-content: flex-start;
-    gap: 2px;
-  }
-
-  .pulse-home .featured-player .mage-player__controls > .mage-player__control-button--playback { grid-column: 2; grid-row: 2; }
-  .pulse-home .featured-player .mage-player__control-button { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
-  .pulse-home .featured-player .mage-player__control-button--playback { width: 34px; height: 34px; min-width: 34px; }
-  .pulse-home .featured-player .mage-player__time-label { display: none; }
-  .pulse-home .featured-player--loading::after { height: 88px; }
   .pulse-home .featured-footer { gap: 10px; }
   .pulse-home .scene-stats { gap: 1px; }
   .pulse-home .scene-stats button { min-width: 36px; padding-inline: 5px; }
