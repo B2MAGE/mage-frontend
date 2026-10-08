@@ -1,5 +1,5 @@
 /* Shared player: a 16:9 canvas with persistent controls below it. */
-html[data-theme] .mage-player {position:relative;width:100%;margin:0;border:0;background:var(--ui-panel-nested-background, #090a0f);border-radius:0;box-shadow:none;}
+html[data-theme] .mage-player {position:relative;width:100%;margin:0;border:0;background:var(--ui-panel-nested-background, #090a0f);border-radius:0;box-shadow:none;container:mage-player / inline-size;}
 html[data-theme] .mage-player__viewport {aspect-ratio:16/9;border:0;border-radius:0;background:var(--ui-panel-nested-background, #090a0f);box-shadow:none;}
 html[data-theme] .mage-player__viewport::after {display:none;}
 html[data-theme] .mage-player__controls {position:relative;inset:auto;display:flex;align-items:center;gap:10px;min-height:60px;padding:8px 12px;border-top:1px solid var(--ui-border, var(--border));border-radius:0;background:var(--player-inline-bar, var(--ui-panel-nested-background, #0d0f13));opacity:1;transform:none;pointer-events:auto;}
@@ -19,9 +19,9 @@ html[data-theme] .mage-player__control-icon svg,html[data-theme] .mage-player__c
 html[data-theme] .mage-player:fullscreen {display:grid;grid-template-rows:minmax(0,1fr) auto;align-content:stretch;gap:0;width:100%;height:100%;min-height:0;overflow:hidden;background:#090a0f;}
 html[data-theme] .mage-player:fullscreen .mage-player__viewport {width:100%;height:100%;min-height:0;aspect-ratio:auto;}
 html[data-theme] .mage-player:fullscreen .mage-player__controls {align-self:end;align-items:center;min-height:66px;padding-block:0;}
-@media(max-width:760px){html[data-theme] .mage-player__controls{gap:8px;padding-inline:12px;}}
+@container mage-player (max-width:760px){html[data-theme] .mage-player__controls{gap:8px;padding-inline:12px;}}
 
-@media(max-width:560px){
+@container mage-player (max-width:560px){
   html[data-theme] .mage-player__viewport{min-height:0;border-radius:0;}
   html[data-theme] .mage-player__controls{display:flex;align-items:center;gap:4px;min-height:60px;padding:8px 10px;}
   html[data-theme] .mage-player__controls-main{width:auto;min-width:0;flex:1 1 auto;padding:0;}
@@ -31,6 +31,15 @@ html[data-theme] .mage-player:fullscreen .mage-player__controls {align-self:end;
   html[data-theme] .mage-player__control-button{width:34px;height:34px;min-width:34px;min-height:34px;}
   html[data-theme] .mage-player__control-button--text{width:34px;min-width:34px;padding:0;}
   html[data-theme] .mage-player__volume-panel{left:0;right:auto;}
+}
+
+@container mage-player (max-width:380px){
+  html[data-theme] .mage-player__controls{gap:4px;padding-inline:6px;}
+  html[data-theme] .mage-player__control-actions{gap:0;}
+  html[data-theme] .mage-player__control-button{width:30px;min-width:30px;}
+  html[data-theme] .mage-player__control-button--playback{width:34px;min-width:34px;}
+  html[data-theme] .mage-player__timeline{gap:4px;}
+  html[data-theme] .mage-player__time-label{font-size:10px;}
 }
 
 /* Keep replacement errors readable in compact single-song players. */

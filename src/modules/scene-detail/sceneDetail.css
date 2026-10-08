@@ -58,7 +58,6 @@ html[data-theme] .scene-detail-page {
   & .scene-detail-stage::after { display: none; }
   & .scene-detail-player { width: 100%; height: auto; gap: 0; }
   & .scene-detail-stage .mage-player:not(:fullscreen) .mage-player__viewport { height: auto; min-height: 0; aspect-ratio: 16 / 9; border-radius: 0; }
-  & .scene-detail-stage .mage-player__controls { padding: 0 16px 0 18px; min-height: 66px; }
   & .scene-detail-header { display: block; padding: 24px 2px 0; }
   & .mage-watch__title { max-width: 100%; margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.05; letter-spacing: -.035em; overflow-wrap: anywhere; text-wrap: balance; }
   & .scene-detail-social-row { display: flex; flex-direction: row; justify-content: space-between; margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--ui-border); }
@@ -210,7 +209,6 @@ html[data-theme] .scene-detail-page {
   }
   @media (max-width: 520px) {
     & .mage-player-shell { border-left: 0; border-right: 0; border-radius: 0; }
-    & .scene-detail-stage .mage-player__controls { padding-inline: 10px; }
     & .scene-detail-description-card { padding: 16px; }
     & .mage-comment { grid-template-columns: 30px minmax(0,1fr); }
     & .mage-comment__avatar, & .mage-comment--reply .mage-comment__avatar { width: 30px; height: 30px; }
@@ -233,8 +231,8 @@ html[data-theme] .scene-detail-page {
 }
 
 .scene-detail-skeleton__player-controls {
-  min-height: 66px;
-  padding: 0 18px;
+  min-height: 60px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 14px;
