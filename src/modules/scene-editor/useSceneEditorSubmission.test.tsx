@@ -15,7 +15,7 @@ function deferred<T>() {
 }
 function setup(mode: SceneEditorSubmissionMode = { type: 'edit', sceneId: 42 }) {
   const document = createBuilderScene()
-  const props = { authenticatedFetch: vi.fn(async () => new Response('{}')), availableTags: [],
+  const props = { authenticatedFetch: vi.fn(async () => new Response('{"sceneId":42}')), availableTags: [],
     captureThumbnailIfMissing: vi.fn(async () => new File(['preview'], 'preview.png', { type: 'image/png' })),
     description: 'Saved details', mode, name: 'My scene', onComplete: vi.fn(), sceneData: document,
     sceneDataText: JSON.stringify(document), selectedTagIds: [4, 7], setErrors: vi.fn(), setIsSubmitting: vi.fn(),
@@ -65,20 +65,69 @@ describe('atomic draft submission ownership', () => {
     expect(props.onComplete).not.toHaveBeenCalled()
   })
 
-  it.each(['success', 'failure'] as const)('ignores an old %s response after a newer draft is saved', async outcome => {
+  it.each(['success', 'failure'] as const)('settles an earlier %s before allowing the newer draft to save', async outcome => {
     const pending = deferred<Response>()
     const { result, props, rerender } = setup()
     props.authenticatedFetch.mockReturnValueOnce(pending.promise)
     let first!: Promise<void>
     act(() => { first = result.current.handleSubmit(event) })
     const firstOptions = (props.authenticatedFetch.mock.calls[0] as unknown as [string, RequestInit])[1]
-    rerender({ ...props, name: 'New draft' })
-    expect(firstOptions.signal?.aborted).toBe(true)
+    rerender({ ...props, name: 'New draft', thumbnailFile: new File(['new'], 'new.png') })
+    expect(firstOptions.signal?.aborted).toBe(false)
     await act(() => result.current.handleSubmit(event))
-    const errorsBeforeOldResponse = props.setErrors.mock.calls.length
-    await act(async () => { pending.resolve(new Response('{}', { status: outcome === 'success' ? 200 : 400 })); await first })
+    expect(props.authenticatedFetch).toHaveBeenCalledOnce()
+    await act(async () => {
+      pending.resolve(new Response(JSON.stringify({ details: { name: 'Old field error' } }), { status: outcome === 'success' ? 200 : 400 }))
+      await first
+    })
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect(uploads.replace).not.toHaveBeenCalled()
+    const retainNewerDraft = props.setErrors.mock.lastCall?.[0] as unknown as (errors: object) => object
+    expect(retainNewerDraft({ name: 'New draft validation' })).toMatchObject({ name: 'New draft validation' })
+    await act(() => result.current.handleSubmit(event))
+    expect(props.authenticatedFetch).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(String((props.authenticatedFetch.mock.calls[1] as unknown as [string, RequestInit])[1].body)).name).toBe('New draft')
     expect(props.onComplete).toHaveBeenCalledOnce()
-    expect(props.setErrors).toHaveBeenCalledTimes(errorsBeforeOldResponse)
+  })
+
+  it('retains a successful create reference and updates it with the newer complete draft', async () => {
+    uploads.upload.mockResolvedValue('old-thumbnail/key')
+    const pending = deferred<Response>()
+    const { result, props, rerender } = setup({ type: 'create' })
+    props.authenticatedFetch.mockReturnValueOnce(pending.promise)
+    let first!: Promise<void>
+    await act(async () => {
+      first = result.current.handleSubmit(event)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(props.authenticatedFetch).toHaveBeenCalledOnce()
+    const newerDocument = { ...props.sceneData, parameters: { ...props.sceneData.parameters, scale: 2 } }
+    rerender({ ...props, name: 'Newer draft', description: 'Latest details', selectedTagIds: [8],
+      sceneData: newerDocument, sceneDataText: JSON.stringify(newerDocument) })
+    await act(() => result.current.handleSubmit(event))
+    expect(props.authenticatedFetch).toHaveBeenCalledOnce()
+    await act(async () => { pending.resolve(new Response('{"sceneId":73}')); await first })
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect(result.current.hasSavedScene).toBe(true)
+    expect(uploads.replace).not.toHaveBeenCalled()
+    await act(() => result.current.handleSubmit(event))
+    const calls = props.authenticatedFetch.mock.calls as unknown as [string, RequestInit][]
+    expect(calls.map(([url, init]) => [url, init.method])).toEqual([['/scenes', 'POST'], ['/scenes/73', 'PUT']])
+    expect(JSON.parse(String(calls[1][1].body))).toMatchObject({ name: 'Newer draft', description: 'Latest details', tagIds: [8], sceneData: newerDocument })
+    expect(props.captureThumbnailIfMissing).toHaveBeenCalledOnce()
+    expect(props.onComplete).toHaveBeenCalledOnce()
+  })
+
+  it('does not create a duplicate after losing the response to a dispatched create', async () => {
+    uploads.upload.mockResolvedValue('thumbnail/key')
+    const { result, props } = setup({ type: 'create' })
+    props.authenticatedFetch.mockRejectedValueOnce(new TypeError('Network connection lost'))
+    await act(() => result.current.handleSubmit(event))
+    expect(result.current.saveNeedsReview).toBe(true)
+    await act(() => result.current.handleSubmit(event))
+    expect(props.authenticatedFetch).toHaveBeenCalledOnce()
+    expect(props.onComplete).not.toHaveBeenCalled()
   })
 
   it('disposes a pending save without completing navigation or attaching a thumbnail', async () => {

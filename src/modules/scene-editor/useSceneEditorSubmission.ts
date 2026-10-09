@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useLayoutEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
 import { assertSceneRequestBudget } from '@modules/player'
@@ -21,20 +21,42 @@ type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   setIsSubmitting: Dispatch<SetStateAction<boolean>>
 }
 
-/** Each attempt saves one immutable draft. Edits and disposal cancel its side effects. */
+type SaveAttempt = {
+  controller: AbortController
+  draftKey: string
+  dispatched: boolean
+  thumbnailController?: AbortController
+}
+
+/** A dispatched save must settle: cancellation cannot roll back a server transaction. */
 export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailIfMissing,
   description, mode, name, onComplete, sceneData, sceneDataText, selectedTagIds,
   setErrors, setIsSubmitting, tagsError, tagsLoading, thumbnailFile }: UseSceneEditorSubmissionArgs) {
   const draftKey = JSON.stringify([mode, name, description, sceneDataText, selectedTagIds])
-  const active = useRef<AbortController | null>(null)
+  const latestDraftKey = useRef(draftKey)
+  const active = useRef<SaveAttempt | null>(null)
+  const [createdSceneId, setCreatedSceneId] = useState<number | null>(null)
+  const [saveNeedsReview, setSaveNeedsReview] = useState(false)
   useLayoutEffect(() => {
-    setIsSubmitting(false)
-    return () => { active.current?.abort(); active.current = null }
+    latestDraftKey.current = draftKey
+    const attempt = active.current
+    if (!attempt || attempt.draftKey === draftKey) return
+    attempt.thumbnailController?.abort()
+    if (!attempt.dispatched) {
+      attempt.controller.abort()
+      active.current = null
+      setIsSubmitting(false)
+    }
   }, [draftKey, setIsSubmitting])
+  useLayoutEffect(() => () => {
+    active.current?.controller.abort()
+    active.current?.thumbnailController?.abort()
+    active.current = null
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (active.current) return
+    if (active.current || saveNeedsReview) return
     if (tagsLoading || tagsError) {
       setErrors({ tags: tagsError ?? 'Wait for tags to finish loading before saving the scene.' })
       return
@@ -52,13 +74,19 @@ export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailI
       serializeSceneRequest(request)
     } catch (error) { setErrors({ form: describeSceneValidationError(error) }); return }
 
-    const attempt = new AbortController()
+    const attempt: SaveAttempt = { controller: new AbortController(), draftKey, dispatched: false }
     active.current = attempt
-    const isCurrent = () => active.current === attempt && !attempt.signal.aborted
+    const isOwned = () => active.current === attempt && !attempt.controller.signal.aborted
+    const isCurrent = () => isOwned() && latestDraftKey.current === attempt.draftKey
+    const savedSceneId = mode.type === 'edit' ? mode.sceneId : createdSceneId
+    const isCreate = savedSceneId === null
+    let sceneSaved = false
+    const retainNewerDraft = () => setErrors(current => ({ ...current,
+      form: 'Your earlier version was saved. Your newer changes are still here; save again to update the scene.' }))
     setIsSubmitting(true)
     setErrors({})
     try {
-      if (mode.type === 'create') {
+      if (isCreate) {
         let file = thumbnailFile
         if (!file) {
           try { file = await captureThumbnailIfMissing() }
@@ -68,30 +96,56 @@ export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailI
           }
         }
         if (!isCurrent()) return
-        const objectKey = await uploadNewSceneThumbnail(authenticatedFetch, file, attempt.signal)
+        const objectKey = await uploadNewSceneThumbnail(authenticatedFetch, file, attempt.controller.signal)
         if (!isCurrent()) return
         request = { ...request, thumbnailObjectKey: objectKey }
       }
-      const response = await authenticatedFetch(mode.type === 'edit' ? `/scenes/${mode.sceneId}` : '/scenes', {
-        method: mode.type === 'edit' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
-        body: serializeSceneRequest(request), signal: attempt.signal,
+      attempt.dispatched = true
+      const response = await authenticatedFetch(isCreate ? '/scenes' : `/scenes/${savedSceneId}`, {
+        method: isCreate ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: serializeSceneRequest(request), signal: attempt.controller.signal,
       })
-      if (!isCurrent()) return
+      if (!isOwned()) return
       if (!response.ok) {
         const error = await parseApiError(response)
         if (isCurrent()) setErrors(sceneSubmissionErrors(response.status, error))
+        else if (isOwned()) setErrors(current => ({ ...current,
+          form: 'The earlier save was rejected. Your newer changes are still here; save again to submit them.' }))
         return
       }
-      if (mode.type === 'edit' && thumbnailFile) {
-        await replaceSceneThumbnail(authenticatedFetch, mode.sceneId, thumbnailFile, attempt.signal)
-        if (!isCurrent()) return
+      sceneSaved = true
+      if (isCreate) {
+        const payload: unknown = await response.json().catch(() => null)
+        if (!isOwned()) return
+        const id = payload && typeof payload === 'object' && 'sceneId' in payload ? payload.sceneId : null
+        if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) setCreatedSceneId(id)
+        else if (!isCurrent()) {
+          setSaveNeedsReview(true)
+          setErrors(current => ({ ...current,
+            form: 'Your earlier version was saved, but its scene reference was missing. Your newer draft is still here. Open My Scenes to review the saved scene before saving again.' }))
+          return
+        }
+      }
+      if (!isCurrent()) { retainNewerDraft(); return }
+      if (!isCreate && thumbnailFile) {
+        attempt.thumbnailController = new AbortController()
+        await replaceSceneThumbnail(authenticatedFetch, savedSceneId!, thumbnailFile, attempt.thumbnailController.signal)
+        if (!isCurrent()) { if (isOwned()) retainNewerDraft(); return }
       }
       onComplete()
     } catch (error) {
-      if (isCurrent()) setErrors({ form: describeSceneValidationError(error) })
+      if (!isOwned()) return
+      if (sceneSaved && !isCurrent()) retainNewerDraft()
+      else if (isCreate && attempt.dispatched) {
+        // A lost response does not prove that POST failed; a second POST can duplicate it.
+        setSaveNeedsReview(true)
+        setErrors(current => ({ ...current,
+          form: 'We could not confirm whether the scene was created. Your draft is still here. Check My Scenes before creating another scene.' }))
+      } else if (isCurrent()) setErrors({ form: describeSceneValidationError(error) })
+      else setErrors(current => ({ ...current, form: 'We could not confirm the earlier save. Your newer changes are still here.' }))
     } finally {
-      if (isCurrent()) { active.current = null; setIsSubmitting(false) }
+      if (isOwned()) { active.current = null; setIsSubmitting(false) }
     }
   }
-  return { handleSubmit }
+  return { handleSubmit, hasSavedScene: mode.type === 'edit' || createdSceneId !== null, saveNeedsReview }
 }

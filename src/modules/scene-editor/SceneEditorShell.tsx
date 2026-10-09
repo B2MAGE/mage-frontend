@@ -141,7 +141,7 @@ export function SceneEditorShell({
   const reviewFocusTargetRef = useRef<string | null>(null);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
   const [pendingBuilderTemplateId, setPendingBuilderTemplateId] = useState<TemplateId | null>(null);
-  const [selectedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
+  const [requestedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
   const customCodeAvailability = useSceneAvailability('custom');
 
   useEffect(() => {
@@ -239,14 +239,8 @@ export function SceneEditorShell({
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
   });
-  useEffect(() => {
-    if (!builderDocument) {
-      setSelectedBuilderObjectId(null);
-      return;
-    }
-    if (selectedBuilderObjectId && builderDocument.objects.some(object => object.id === selectedBuilderObjectId)) return;
-    setSelectedBuilderObjectId(builderDocument.objects[0]?.id ?? null);
-  }, [builderDocument, selectedBuilderObjectId]);
+  const selectedBuilderObjectId = builderDocument?.objects.some(object => object.id === requestedBuilderObjectId)
+    ? requestedBuilderObjectId : builderDocument?.objects[0]?.id ?? null;
   const availabilityTarget = useMemo(() => getSceneAvailabilityTarget(mode.type === 'edit' ? mode.sceneId : undefined, sceneData), [mode, sceneData]);
   const availability = useSceneAvailability(availabilityTarget);
   useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
@@ -260,20 +254,29 @@ export function SceneEditorShell({
     setIsReplacementPending(false);
     requestAnimationFrame(() => replacementTriggerRef.current?.focus());
   }
-  useEffect(() => {
-    if ((!isTemplate && !isBuilder) || !errors.fields) return;
-    const location = Object.keys(errors.fields).map(path => isBuilder ? builderControlLocation(path) : templateControlLocation(path)).find(value => value !== null);
-    if (!location) return;
-    if (isBuilder && 'objectIndex' in location && typeof location.objectIndex === 'number') {
-      setSelectedBuilderObjectId(builderDocument?.objects[location.objectIndex]?.id ?? null);
+  const fieldErrorLocation = useMemo(() => {
+    if ((!isTemplate && !isBuilder) || !errors.fields) return null;
+    return Object.keys(errors.fields).map(path => isBuilder ? builderControlLocation(path) : templateControlLocation(path))
+      .find(value => value !== null) ?? null;
+  }, [errors.fields, isBuilder, isTemplate]);
+  const [handledFieldErrors, setHandledFieldErrors] = useState(errors.fields);
+  if (handledFieldErrors !== errors.fields) {
+    setHandledFieldErrors(errors.fields);
+    if (fieldErrorLocation) {
+      if (isBuilder && 'objectIndex' in fieldErrorLocation && typeof fieldErrorLocation.objectIndex === 'number') {
+        setSelectedBuilderObjectId(builderDocument?.objects[fieldErrorLocation.objectIndex]?.id ?? null);
+      }
+      handleSectionJump(fieldErrorLocation.section);
     }
-    handleSectionJump(location.section);
+  }
+  useEffect(() => {
+    if (!fieldErrorLocation) return;
     const frame = requestAnimationFrame(() => {
-      const input = document.getElementById(`${location.id}-number`) ?? document.getElementById(location.id);
+      const input = document.getElementById(`${fieldErrorLocation.id}-number`) ?? document.getElementById(fieldErrorLocation.id);
       input?.focus();
     });
     return () => cancelAnimationFrame(frame);
-  }, [builderDocument, errors.fields, handleSectionJump, isBuilder, isTemplate]);
+  }, [fieldErrorLocation]);
   useEffect(() => {
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
     const focusTargetId = reviewFocusTargetRef.current;
@@ -320,11 +323,15 @@ export function SceneEditorShell({
   const reviewIssueCount = reviewIssueEntries.length + Number(Boolean(confirmDataIssue));
   const firstInvalidReviewSection = reviewIssueEntries[0]?.[0] ?? null;
   const firstReviewIssueMessage = reviewIssueEntries[0]?.[1] ?? confirmDataIssue ?? null;
-  useEffect(() => {
-    if (sectionMenuValue !== "confirm") return;
-    if (firstInvalidReviewSection) setOpenReviewSection(firstInvalidReviewSection);
-    if (confirmDataIssue) setIsConfirmJsonOpen(true);
-  }, [confirmDataIssue, firstInvalidReviewSection, sectionMenuValue, setIsConfirmJsonOpen]);
+  const reviewIssueKey = JSON.stringify([confirmDataIssue, firstInvalidReviewSection, sectionMenuValue]);
+  const [handledReviewIssueKey, setHandledReviewIssueKey] = useState(reviewIssueKey);
+  if (handledReviewIssueKey !== reviewIssueKey) {
+    setHandledReviewIssueKey(reviewIssueKey);
+    if (sectionMenuValue === "confirm") {
+      if (firstInvalidReviewSection) setOpenReviewSection(firstInvalidReviewSection);
+      if (confirmDataIssue) setIsConfirmJsonOpen(true);
+    }
+  }
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
@@ -566,7 +573,7 @@ export function SceneEditorShell({
     ));
   }
 
-  const { handleSubmit } = useSceneEditorSubmission({
+  const { handleSubmit, hasSavedScene, saveNeedsReview } = useSceneEditorSubmission({
     authenticatedFetch,
     availableTags,
     captureThumbnailIfMissing: captureThumbnailFromPreview,
@@ -607,16 +614,14 @@ export function SceneEditorShell({
       templateVersion: template.templateVersion as 1,
     }).trim() === source) ?? null;
   }, [isCustomCreation, sceneModel.visualizer.shader, templateCatalog]);
-  const previousCustomCreationRef = useRef(isCustomCreation);
-  useEffect(() => {
-    if (isCustomCreation && !previousCustomCreationRef.current) setIsTemplateSourceVisible(true);
-    previousCustomCreationRef.current = isCustomCreation;
-  }, [isCustomCreation]);
-  useEffect(() => {
-    if (!isCustomCodeAvailable && !isCustomCreation && isTemplateSourceVisible) {
-      setIsTemplateSourceVisible(false);
-    }
-  }, [isCustomCodeAvailable, isCustomCreation, isTemplateSourceVisible]);
+  const [previousCustomCreation, setPreviousCustomCreation] = useState(isCustomCreation);
+  if (previousCustomCreation !== isCustomCreation) {
+    setPreviousCustomCreation(isCustomCreation);
+    if (isCustomCreation) setIsTemplateSourceVisible(true);
+  }
+  if (!isCustomCodeAvailable && !isCustomCreation && isTemplateSourceVisible) {
+    setIsTemplateSourceVisible(false);
+  }
   const isCustomCodeVisible = !isBuilder && isTemplateSourceVisible;
   const customCodeAvailabilityMessage = isCustomCodeAvailable ? null
     : customCodeAvailability.code === 'CHECKING'
@@ -653,7 +658,7 @@ export function SceneEditorShell({
     `FOV ${formatFixed(sceneModel.intent.fov, 0)}`,
     `Orbit ${sceneModel.intent.autoRotate ? "on" : "off"}`,
   ].join(" · ");
-  const responseModeLabel = usesMappedAudio ? "Version 2 � Selective" : "Version 1 � Original";
+  const responseModeLabel = usesMappedAudio ? "Version 2 \u2014 Selective" : "Version 1 \u2014 Original";
   const motionReviewSummary = `Animation ${formatFixed(sceneModel.intent.time_multiplier)}× · ${responseModeLabel}`;
   const outputEnabled = activePassOrder.includes("outputPass");
   const effectsReviewSummary = [
@@ -666,7 +671,7 @@ export function SceneEditorShell({
   const passOrderReviewSummary = activePassOrder.length
     ? `Active output: ${activePassOrder.map((passId) => PASS_LABELS[passId]).join(" → ")}`
     : "No active passes";
-  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0;
+  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0 || saveNeedsReview;
   const shaderEditor = (
     <div className="field-group">
       <FieldGroupLabel
@@ -1677,10 +1682,6 @@ export function SceneEditorShell({
                         value={formatOptionalText(description)}
                       />
                       <ConfirmSummaryItem
-                        label="Playlist"
-                        value="Not available"
-                      />
-                      <ConfirmSummaryItem
                         label="Thumbnail"
                         value={
                           thumbnailPreviewUrl
@@ -1931,10 +1932,12 @@ export function SceneEditorShell({
                     {reviewIssueCount ? <AppIcon aria-hidden="true" name="circle-alert" /> : null}
                     <span>
                       {reviewIssueCount
-                        ? `Fix ${reviewIssueCount === 1 ? "the issue above" : `the ${reviewIssueCount} issues above`} before ${isEditMode ? "updating" : "creating"} this scene.`
-                        : tagsLoading
-                          ? "Wait for scene details to finish loading."
-                          : `Ready to ${isEditMode ? "update" : "create"} this scene.`}
+                        ? `Fix ${reviewIssueCount === 1 ? "the issue above" : `the ${reviewIssueCount} issues above`} before ${hasSavedScene ? "updating" : "creating"} this scene.`
+                        : saveNeedsReview
+                          ? "Check My Scenes before saving again. Your draft is still here."
+                          : tagsLoading
+                            ? "Wait for scene details to finish loading."
+                            : `Ready to ${hasSavedScene ? "update" : "create"} this scene.`}
                     </span>
                   </p>
                   <button
@@ -1946,9 +1949,9 @@ export function SceneEditorShell({
                   >
                     <PendingButtonLabel
                       pending={isSubmitting}
-                      pendingLabel={isEditMode ? "Updating scene..." : "Creating scene..."}
+                      pendingLabel={hasSavedScene ? "Updating scene..." : "Creating scene..."}
                     >
-                      {isEditMode ? "Update scene" : "Create scene"}
+                      {hasSavedScene ? "Update scene" : "Create scene"}
                     </PendingButtonLabel>
                   </button>
                 </div>
