@@ -1,5 +1,7 @@
 import engineSource from '@notrac/mage?raw'
 import type { MAGEConfig, MAGEEngineAPI } from '@notrac/mage'
+import { compileShader } from '@notrac/mage/compiler'
+import { normalizeCompiledShader } from '@notrac/mage/compiled-shader'
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
 type EngineHarness = Record<string, unknown>
@@ -77,11 +79,9 @@ describe('installed MAGE engine compatibility', () => {
     const callbacks: Array<() => Record<string, unknown>> = []
     const createMesh = classMethod(engineSource.slice(start, end), 'createMesh', {
       BoxGeometry: class {},
-      import_shader_park_core_umd: {
-        createSculptureWithGeometry: (_geometry: unknown, _shader: string, callback: () => Record<string, unknown>) => {
-          callbacks.push(callback)
-          return {}
-        },
+      createSculptureWithGeometry: (_geometry: unknown, _shader: string, callback: () => Record<string, unknown>) => {
+        callbacks.push(callback)
+        return {}
       },
     })
     const state = { time: 1, size: 0.206, pointerDown: 0, mouse: {} }
@@ -93,24 +93,40 @@ describe('installed MAGE engine compatibility', () => {
   })
 
   it('allows custom shaders to omit unused callback inputs while updating declared uniforms', () => {
-    const marker = 'mesh.onBeforeRender = function('
-    const start = engineSource.indexOf(marker)
-    const end = engineSource.indexOf('\n\t\t\t};', start)
-    if (start < 0 || end < start) throw new Error('Missing ShaderPark uniform callback.')
-    const callbackSource = engineSource.slice(start + 'mesh.onBeforeRender = '.length, end + '\n\t\t\t}'.length)
-    const callback = new Function('uniformCallback', '_typeof', '_slicedToArray', `return ${callbackSource}`)(
-      () => ({ time: 4, size: .5, pointerDown: .2, mouse: 'pointer', _scale: 10 }),
-      (value: unknown) => typeof value,
-      (value: unknown) => value,
-    ) as (...args: unknown[]) => void
-    const uniforms = { time: { value: 0 }, mouse: { value: 'initial' }, _scale: { value: 1 } }
-    expect(() => callback(null, null, null, null, { uniforms }, null)).not.toThrow()
-    expect(uniforms).toEqual({ time: { value: 4 }, mouse: { value: 'pointer' }, _scale: { value: 10 } })
+    // This mesh factory is private, so run its installed implementation with
+    // inert Three resources and the public compiler/artifact boundaries.
+    const start = engineSource.indexOf('function createSculptureWithGeometry(')
+    const end = engineSource.indexOf('\n}', start)
+    if (start < 0 || end < start) throw new Error('Missing installed sculpture factory.')
+    type Uniforms = Record<string, { value: unknown }>
+    class VectorFixture {
+      constructor(...values: number[]) { Object.assign(this, Object.fromEntries(values.map((value, index) => ['xyzw'[index], value]))) }
+    }
+    class MaterialFixture {
+      extensions = {}
+      uniforms: Uniforms
+      constructor({ uniforms }: { uniforms: Uniforms }) { this.uniforms = uniforms }
+    }
+    class MeshFixture {
+      onBeforeRender = () => {}
+      material: MaterialFixture
+      constructor(_geometry: unknown, material: MaterialFixture) { this.material = material }
+    }
+    const dependencies = { compileShader, normalizeCompiledShader, Vector2: VectorFixture, Vector3: VectorFixture,
+      Vector4: VectorFixture, ShaderMaterial: MaterialFixture, Mesh: MeshFixture }
+    const create = new Function(...Object.keys(dependencies), `${engineSource.slice(start, end + 2)}; return createSculptureWithGeometry;`)(
+      ...Object.values(dependencies),
+    ) as (geometry: unknown, source: string, callback: () => Record<string, unknown>) => MeshFixture
+    const geometry = { computeBoundingSphere: vi.fn(), boundingSphere: { radius: 1 } }
+    const mesh = create(geometry, 'sphere(0.5);', () => ({ time: 4, size: .5, pointerDown: .2, mouse: 'pointer', _scale: 10 }))
+    expect(() => mesh.onBeforeRender()).not.toThrow()
+    const uniforms = mesh.material.uniforms
+    expect(uniforms).toMatchObject({ time: { value: 4 }, mouse: { value: 'pointer' }, _scale: { value: 10 } })
     expect(uniforms).not.toHaveProperty('size')
     expect(uniforms).not.toHaveProperty('pointerDown')
   })
 
-  it('exposes the patched APIs in the dependency’s own TypeScript declarations', () => {
+  it('exposes the maintained APIs in the dependency’s own TypeScript declarations', () => {
     expectTypeOf<MAGEEngineAPI['unloadAudio']>().toEqualTypeOf<() => void>()
     expectTypeOf<MAGEEngineAPI['getAudioVolume']>().toEqualTypeOf<() => number>()
     expectTypeOf<MAGEEngineAPI['setAudioVolume']>().toEqualTypeOf<(volume: number) => number>()
@@ -608,23 +624,10 @@ describe('installed MAGE engine compatibility', () => {
     expect(() => renderer.debug.onShaderError?.()).toThrow(/GPU program could not be compiled/)
   })
 
-  it('compiles saved-scene ShaderPark helpers through the real embedded compiler', () => {
-    const start = engineSource.indexOf('var require_shader_park_core_umd =')
-    const end = engineSource.indexOf('\n//#endregion', start)
-    if (start < 0 || end <= start) throw new Error('Could not locate MAGE’s embedded ShaderPark compiler.')
-    type CommonModule = { exports: Record<string, unknown> }
-    const commonJS = (factory: (exports: CommonModule['exports'], module: CommonModule) => void) => () => {
-      const module: CommonModule = { exports: {} }
-      factory(module.exports, module)
-      return module.exports
-    }
-    const compiler = new Function('__commonJSMin', 'console', `${engineSource.slice(start, end)}; return require_shader_park_core_umd();`)(commonJS, { log: vi.fn(), warn: vi.fn(), error: vi.fn() }) as {
-      sculptToGLSL: (source: string) => { error?: unknown; stepSizeConstant: number; geoGLSL: string; colorGLSL: string }
-    }
+  it('compiles saved-scene ShaderPark helpers through the installed public compiler', () => {
     const previousTorus = Reflect.get(globalThis, 'torus')
-    const result = compiler.sculptToGLSL('setStepSize(0.58); torus(0.7, 0.04); reset(); cylinder(0.1, 0.6);')
-    expect(result.error).toBeUndefined()
-    expect(result.stepSizeConstant).toBe(0.58)
+    const result = compileShader('setStepSize(0.58); torus(0.7, 0.04); reset(); cylinder(0.1, 0.6);')
+    expect(result.frag).toContain('const float STEP_SIZE_CONSTANT = 0.58;')
     expect(result.geoGLSL).toContain('surfaceDistance')
     expect(result.geoGLSL).toContain('= torus(')
     expect(result.geoGLSL).toContain('= cylinder(')
