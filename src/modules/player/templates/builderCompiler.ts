@@ -1,5 +1,6 @@
 import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
 import { templateOptionalEffectCount } from './templateSettings'
+import { BUILDER_BINDING_RANGES } from './builderDefinitions'
 import type { BuilderArrangement, BuilderBinding, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
 export const BUILDER_COMPILER_VERSION = 1 as const
@@ -49,20 +50,6 @@ export class BuilderCompilationError extends Error {
   }
 }
 
-type UniformRange = Readonly<{ minimum: number; maximum: number }>
-const TARGET_RANGES: Readonly<Record<BuilderBinding['target'], UniformRange>> = Object.freeze({
-  'position.x': { minimum: -100, maximum: 100 },
-  'position.y': { minimum: -100, maximum: 100 },
-  'position.z': { minimum: -100, maximum: 100 },
-  'rotation.x': { minimum: -2 * Math.PI, maximum: 2 * Math.PI },
-  'rotation.y': { minimum: -2 * Math.PI, maximum: 2 * Math.PI },
-  'rotation.z': { minimum: -2 * Math.PI, maximum: 2 * Math.PI },
-  'scale.x': { minimum: 0.01, maximum: 20 },
-  'scale.y': { minimum: 0.01, maximum: 20 },
-  'scale.z': { minimum: 0.01, maximum: 20 },
-  'material.metalness': { minimum: 0, maximum: 1 },
-  'material.shininess': { minimum: 0, maximum: 1 },
-})
 const TARGET_TOKENS: Readonly<Record<BuilderBinding['target'], string>> = Object.freeze({
   'position.x': 'position_x', 'position.y': 'position_y', 'position.z': 'position_z',
   'rotation.x': 'rotation_x', 'rotation.y': 'rotation_y', 'rotation.z': 'rotation_z',
@@ -180,7 +167,10 @@ function coordinateModifierSource(object: BuilderObject, suffix: string): string
 }
 
 function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 'generatedSourceBytes'> {
-  const expandedCounts = document.objects.map(object => expandedOffsets(object).length)
+  // Count before allocating copies or emitting source. Every stage repeats the
+  // result of the previous stage, so counts multiply rather than add.
+  const expandedCounts = document.objects.map(object => object.arrangements
+    .reduce((count, arrangement) => count * arrangement.count, 1))
   const expandedPrimitives = expandedCounts.reduce((sum, count) => sum + count, 0)
   return {
     expandedPrimitives,
@@ -199,11 +189,18 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
   }
 }
 
-function assertBudget(workload: BuilderWorkload): void {
+function assertBudget(workload: Omit<BuilderWorkload, 'generatedSourceBytes'> & { generatedSourceBytes?: number }): void {
   for (const [field, maximum] of Object.entries(policy.limits)) {
     const value = workload[field as keyof BuilderWorkload]
-    if (value > maximum) fail('sceneData.objects', `${field} requires ${value}; maximum is ${maximum}.`)
+    if (value !== undefined && value > maximum) fail('sceneData.objects', `${field} requires ${value}; maximum is ${maximum}.`)
   }
+}
+
+/** Shared preflight for storage and compilation; normalized data is required. */
+export function validateBuilderRenderingWorkload(document: BuilderSceneDocument) {
+  const workload = initialWorkload(document)
+  assertBudget(workload)
+  return workload
 }
 
 /**
@@ -212,7 +209,7 @@ function assertBudget(workload: BuilderWorkload): void {
  * numeric values and fixed operation tokens are emitted.
  */
 export function compileBuilderDocument(document: BuilderSceneDocument): BuilderCompilation {
-  const baseWorkload = initialWorkload(document)
+  const baseWorkload = validateBuilderRenderingWorkload(document)
   const uniforms: BuilderUniform[] = []
   const declarations: string[] = []
   const objects: string[] = []
@@ -220,12 +217,13 @@ export function compileBuilderDocument(document: BuilderSceneDocument): BuilderC
   document.objects.forEach((object, objectIndex) => {
     const values = new Map<BuilderBinding['target'], string>()
     object.bindings.forEach(binding => {
-      const range = TARGET_RANGES[binding.target]
+      const range = BUILDER_BINDING_RANGES[binding.target]
       if (!range) fail(`sceneData.objects[${objectIndex}].bindings`, 'Unsupported live property target.')
       const name = builderUniformName(objectIndex, binding.target)
       const initialValue = propertyValue(object, binding.target)
       declarations.push(`let ${name}=input(${literal(initialValue)},${literal(range.minimum)},${literal(range.maximum)});`)
-      uniforms.push({ objectId: object.id, objectIndex, target: binding.target, name, initialValue, ...range })
+      uniforms.push({ objectId: object.id, objectIndex, target: binding.target, name, initialValue,
+        minimum: range.minimum, maximum: range.maximum })
       values.set(binding.target, name)
     })
     const read = (target: BuilderBinding['target']) => values.get(target) ?? literal(propertyValue(object, target))

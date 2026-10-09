@@ -71,3 +71,18 @@ test('architecture guard detects runtime imports, evaluation and direct renderer
   assert.deepEqual(violations("import { compileShader } from '@notrac/mage/compiler'; engine.loadPreset(source)", 'src/isolated-renderer/playbackEngine.ts'), ['compiler outside worker', 'source compilation on renderer thread'])
   assert.deepEqual(violations("await import('@notrac/mage/compiler')", 'src/example.ts'), ['compiler outside worker'])
 })
+
+test('renderer-shared scene definitions only import checked-in contract data at runtime', () => {
+  const allowed = new Set(['../../../../contracts/scenes/scene-v1.schema.json', '../../../../contracts/scenes/builder-rendering.v1.json'])
+  for (const file of ['builderDefinitions.ts', 'sceneDefinitions.ts']) {
+    const name = `src/modules/player/templates/${file}`
+    const source = readFileSync(resolve(root, name), 'utf8')
+    const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true)
+    for (const node of ast.statements) {
+      if (!ts.isImportDeclaration(node) || node.importClause?.isTypeOnly) continue
+      assert.ok(ts.isStringLiteral(node.moduleSpecifier) && allowed.has(node.moduleSpecifier.text),
+        `${name} must not pull app state, storage, UI or runtime engine code into the renderer`)
+    }
+    assert.deepEqual(violations(source, name), [])
+  }
+})

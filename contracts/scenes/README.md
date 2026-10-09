@@ -121,3 +121,16 @@ The schema uses standard `maxItems` and `uniqueItems` for pass-order arrays plus
 - `x-maxOptionalEffects: 4` on template settings counts `bloom.enabled`, `tint.enabled`, and true flags under `effects.passes` other than `outputPass`. The total cannot exceed four. This is enforced during contract validation, not silently trimmed during normalization.
 
 The frontend parser, independent AJV conformance tests, and Java schema interpreter implement both assertions. The shared fixtures include accepted sparse/full settings, widened bounds, source injection attempts, conflicting aliases, duplicate pass IDs and audio targets, and the combined effect limit.
+
+### Current write and reopen checks
+
+`current-round-trips.json` exercises the full write boundary for template, Builder
+and custom documents, including exact normalized output, defaults, mapped audio,
+ordered modifiers and nested arrangements. Both repositories consume these
+fixtures independently. Structural validity in `fixtures.json` does not imply
+write validity: an empty custom shader is one example of the difference.
+
+From the frontend checkout, run `npm run contracts:check -- <backend-checkout>`
+to compare the six shared schema, policy, catalog and fixture files without
+modifying either repository. See [current scene definitions](../../docs/scene-foundations.md)
+for ownership, a Box-field walkthrough and the supported-operation workflow.

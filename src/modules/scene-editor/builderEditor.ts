@@ -1,7 +1,12 @@
 import {
+  BUILDER_LIMITS,
+  BUILDER_MATERIAL,
+  BUILDER_OPERATIONS,
+  BUILDER_TRANSFORMS,
+  createBuilderOperation,
   parseSceneDocument,
   type BuilderObject,
-  type BuilderOperation,
+  type BuilderShape,
   type BuilderSceneDocument,
   type TemplateId,
 } from '@modules/player'
@@ -16,9 +21,9 @@ import {
   type TemplateFieldPath,
 } from './templateEditor'
 
-export type BuilderShape = BuilderOperation['type']
+export { BUILDER_SHAPES, createBuilderOperation, type BuilderShape } from '@modules/player'
 
-export const BUILDER_EXPANDED_PRIMITIVE_LIMIT = 16
+export const BUILDER_EXPANDED_PRIMITIVE_LIMIT = BUILDER_LIMITS.expandedPrimitives
 
 export function builderObjectExpandedCount(object: BuilderObject) {
   return object.arrangements.reduce((count, arrangement) => count * arrangement.count, 1)
@@ -27,18 +32,6 @@ export function builderObjectExpandedCount(object: BuilderObject) {
 export function builderSceneExpandedCount(document: BuilderSceneDocument) {
   return document.objects.reduce((count, object) => count + builderObjectExpandedCount(object), 0)
 }
-
-const shapeLabels: Record<BuilderShape, string> = {
-  sphere: 'Sphere',
-  box: 'Box',
-  torus: 'Torus',
-  cylinder: 'Cylinder',
-}
-
-export const BUILDER_SHAPES = (Object.keys(shapeLabels) as BuilderShape[]).map(value => ({
-  label: shapeLabels[value],
-  value,
-}))
 
 type BuilderStartingStyle = Readonly<{
   colors: readonly string[]
@@ -77,13 +70,6 @@ function applyStartingStyle(objects: readonly BuilderObject[], templateId: Templ
   }))
 }
 
-export function createBuilderOperation(type: BuilderShape): BuilderOperation {
-  if (type === 'box') return { type, width: 1, height: 1, depth: 1 }
-  if (type === 'torus') return { type, radius: 1, tube: 0.25 }
-  if (type === 'cylinder') return { type, radius: 1, height: 2 }
-  return { type: 'sphere', radius: 1 }
-}
-
 function nextObjectNumber(objects: readonly BuilderObject[]) {
   const ids = new Set(objects.map(object => object.id))
   let number = 1
@@ -93,16 +79,21 @@ function nextObjectNumber(objects: readonly BuilderObject[]) {
 
 export function createBuilderObject(type: BuilderShape, objects: readonly BuilderObject[] = []): BuilderObject {
   const number = nextObjectNumber(objects)
+  const vector = (field: keyof typeof BUILDER_TRANSFORMS) => {
+    const { x, y, z } = BUILDER_TRANSFORMS[field].properties
+    return { x: x.default, y: y.default, z: z.default }
+  }
   return {
     id: `object-${number}`,
-    name: `${shapeLabels[type]} ${number}`,
+    name: `${BUILDER_OPERATIONS[type].label} ${number}`,
     operation: createBuilderOperation(type),
     transform: {
-      position: { x: 0, y: 0, z: 0 },
-      rotation: { x: 0, y: 0, z: 0 },
-      scale: { x: 1, y: 1, z: 1 },
+      position: vector('position'),
+      rotation: vector('rotation'),
+      scale: vector('scale'),
     },
-    material: { color: '#8066ff', metalness: 0, shininess: 0.5 },
+    material: { color: BUILDER_MATERIAL.color.default, metalness: BUILDER_MATERIAL.metalness.default,
+      shininess: BUILDER_MATERIAL.shininess.default },
     modifiers: [],
     arrangements: [],
     motion: { type: 'none' },
@@ -177,7 +168,7 @@ export function applyBuilderTemplate(document: BuilderSceneDocument, templateId:
 }
 
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape) {
-  if (document.objects.length >= 16 || builderSceneExpandedCount(document) >= BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
+  if (document.objects.length >= BUILDER_LIMITS.objects || builderSceneExpandedCount(document) >= BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
   return { ...document, objects: [...document.objects, createBuilderObject(type, document.objects)] }
 }
 
@@ -193,13 +184,13 @@ export function updateBuilderObject(
 }
 
 export function duplicateBuilderObject(document: BuilderSceneDocument, objectId: string) {
-  if (document.objects.length >= 16) return document
+  if (document.objects.length >= BUILDER_LIMITS.objects) return document
   const source = document.objects.find(object => object.id === objectId)
   if (!source || builderSceneExpandedCount(document) + builderObjectExpandedCount(source) > BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
   const number = nextObjectNumber(document.objects)
   const copy = structuredClone(source)
   copy.id = `object-${number}`
-  copy.name = `${source.name} copy`.slice(0, 80)
+  copy.name = `${source.name} copy`.slice(0, BUILDER_LIMITS.nameLength)
   return { ...document, objects: [...document.objects, copy] }
 }
 

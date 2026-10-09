@@ -10,8 +10,13 @@ export { readTemplateShaderSource, createCustomSceneFromTemplate } from './templ
 export { resolveSceneForPlayback } from './templates/resolveScene'
 export type { SceneTemplate } from './templates/templateRegistry'
 export { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError } from './templates/sceneContract'
+export { SCENE_PARAMETER_RULES, SCENE_SETTING_RULES } from './templates/sceneDefinitions'
 export type { SceneDocument, PlayableSceneDocument, TemplateSceneDocument, CustomSceneDocument, BuilderSceneDocument, BuilderObject,
   BuilderOperation, BuilderVector, BuilderBinding, BuilderModifier, BuilderArrangement, BuilderMotion, TemplateId } from './templates/sceneContract'
+export { BUILDER_OPERATIONS, BUILDER_SHAPES, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_MATERIAL,
+  BUILDER_MODIFIERS, BUILDER_ARRANGEMENTS, BUILDER_SPIN, builderOperationFields,
+  createBuilderOperation, createBuilderModifier, createBuilderArrangement, createBuilderMotion } from './templates/builderDefinitions'
+export type { BuilderShape, BuilderDimension } from './templates/builderDefinitions'
 export { SceneValidationError, validateSceneDocument, validateSceneForStorage, validateSceneForPlayback, parseSceneImport, assertSceneRequestBudget, SCENE_POLICY, SCENE_LIMITS, SCENE_RUNTIME_CEILINGS } from './policy/sceneValidation'
 export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'
 export type { RenderBudget, RenderProfile } from './policy/renderBudget'
