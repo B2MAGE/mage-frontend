@@ -62,11 +62,6 @@
 :root[data-theme='classic-facebook'] .my-scenes-page-button:hover:not(:disabled) { border-color: #8198bf; background: #e7edf7; color: #29447e; }
 :root[data-theme='classic-facebook'] .my-scenes-page-button:disabled { background: #edf0f5; color: #8995a8; cursor: default; }
 :root[data-theme='classic-facebook'] .my-scenes-page-number { border-color: #3b5998; background: #5b74a8; color: #fff; }
-:root[data-theme='classic-facebook'] .my-scenes-state { min-height: 320px; padding: 30px; }
-:root[data-theme='classic-facebook'] .my-scenes-state h2 { margin: 0 0 8px; font-size: 23px; letter-spacing: -.02em; }
-:root[data-theme='classic-facebook'] .my-scenes-state p { max-width: 440px; margin: 0 0 18px; color: var(--text-muted); font-size: 13px; }
-:root[data-theme='classic-facebook'] .my-scenes-state-action { min-height: 36px; padding: 0 14px; border: 1px solid #29447e; border-radius: 2px; background: #5b74a8; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
-:root[data-theme='classic-facebook'] .my-scenes-state-action:hover { background: #4e679d; }
 :root[data-theme='classic-facebook'] .my-scenes-page :is(a, button, input, select, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 :root[data-theme='classic-facebook'] :is(.my-scenes-loading__filter-slot, .my-scenes-loading__thumbnail, .my-scenes-loading__status, .my-scenes-loading__edit, .my-scenes-loading__rows-select, .my-scenes-loading__page-control, .my-scenes-loading__page-number) { border-radius: 3px; }
 

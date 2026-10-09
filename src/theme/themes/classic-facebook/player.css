@@ -29,7 +29,6 @@ html[data-theme='classic-facebook'] .mage-stage-frame--watch::after {
 
 html[data-theme='classic-facebook'] .mage-watch__title,
 html[data-theme='classic-facebook'] .mage-comments__header h2,
-html[data-theme='classic-facebook'] .mage-watch__rail-header h2,
 html[data-theme='classic-facebook'] .scene-detail-comment__header strong,
 html[data-theme='classic-facebook'] .mage-channel-card__copy strong {
   color: #1d2a44;
@@ -47,11 +46,9 @@ html[data-theme='classic-facebook'] .scene-detail-social-row {
 }
 
 html[data-theme='classic-facebook'] .mage-channel-card__copy span,
-html[data-theme='classic-facebook'] .mage-comment__meta span,
 html[data-theme='classic-facebook'] .mage-comments__header span,
 html[data-theme='classic-facebook'] .scene-detail-comment__header span,
 html[data-theme='classic-facebook'] .mage-comment__body p,
-html[data-theme='classic-facebook'] .mage-watch__rail-header p,
 html[data-theme='classic-facebook'] .mage-watch__rail-empty {
   color: #596b93;
 }

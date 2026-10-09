@@ -17,13 +17,6 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
   { id: 'confirm', title: 'Confirm' },
 ]
 
-export const PLAYLIST_OPTIONS = [
-  { label: 'Featured Collection', value: 'featured-collection' },
-  { label: 'Ambient Atlas', value: 'ambient-atlas' },
-  { label: 'Night Drive', value: 'night-drive' },
-  { label: 'Discovery Lab', value: 'discovery-lab' },
-]
-
 export const initialSceneData = sanitizeSceneData(createDefaultSceneData())
 export const initialSceneModel = getSceneEditorModel(initialSceneData)
 

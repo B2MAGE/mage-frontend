@@ -80,14 +80,6 @@ describe('render recovery monitor', () => {
     expect(player.unsubscribe).toHaveBeenCalledTimes(1)
   })
 
-  it('does not invent a progress signal for a renderer without lifecycle support', () => {
-    const onFailure = vi.fn()
-    const monitor = monitorSceneRendering({ canvas: document.createElement('canvas'), onFailure })
-    vi.advanceTimersByTime(60_000)
-    expect(onFailure).not.toHaveBeenCalled()
-    monitor.dispose()
-  })
-
   it('handles a renderer reporting failure synchronously during subscription', () => {
     const unsubscribe = vi.fn()
     const onFailure = vi.fn()

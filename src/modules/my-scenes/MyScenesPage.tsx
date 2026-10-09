@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { ActionButton, PageFrame, PageState } from '@shared/ui'
 import { fetchUserScenes } from './loaders'
@@ -9,7 +9,8 @@ import { MyScenesLoadingState, MyScenesPagination, MyScenesTable, MyScenesToolba
 import './my-scenes.css'
 
 export function MyScenesPage() {
-  const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
+  const { authenticatedFetch, user: authenticatedUser } = useAuth()
+  const user = authenticatedUser!
   const [scenes, setScenes] = useState<UserScene[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
@@ -23,7 +24,7 @@ export function MyScenesPage() {
   const selectAllCheckboxRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
-    if (isRestoringSession || !isAuthenticated || typeof user?.userId !== 'number') {
+    if (typeof user.userId !== 'number') {
       return
     }
 
@@ -60,7 +61,7 @@ export function MyScenesPage() {
     return () => {
       isCurrent = false
     }
-  }, [authenticatedFetch, isAuthenticated, isRestoringSession, user?.userId, reloadVersion])
+  }, [authenticatedFetch, user.userId, reloadVersion])
 
   useEffect(() => {
     setSelectedSceneIds((currentIds) => pruneSelectedSceneIds(currentIds, scenes))
@@ -108,17 +109,13 @@ export function MyScenesPage() {
     setPageIndex((currentIndex) => Math.min(currentIndex, pageCount - 1))
   }, [pageCount])
 
-  if (!isRestoringSession && !isAuthenticated) {
-    return <Navigate replace to="/login" />
-  }
-
-  if (!isRestoringSession && typeof user?.userId !== 'number') {
+  if (typeof user.userId !== 'number') {
     return (
       <PageFrame className="my-scenes-page"><PageState kind="error" title="Unable to load scenes" description="Your session is missing the user information needed to load scenes." /></PageFrame>
     )
   }
 
-  if (isRestoringSession || isLoading) {
+  if (isLoading) {
     return <MyScenesLoadingState />
   }
 

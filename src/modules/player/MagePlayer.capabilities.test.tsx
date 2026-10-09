@@ -202,12 +202,12 @@ describe('player audio-response capabilities bridge', () => {
     expect(controller.getAudioResponseCapabilities).toHaveBeenCalledOnce()
   })
 
-  it.each(['missing', 'unsupported', 'throws'] as const)('keeps playback usable when the capability getter %s', async mode => {
-    const getter = mode === 'missing' ? undefined : vi.fn(() => {
+  it.each(['unsupported', 'throws'] as const)('keeps playback usable when the capability getter %s', async mode => {
+    const getter = vi.fn(() => {
       if (mode === 'throws') throw new Error('capability unavailable')
       return null
     })
-    const controller = buildMagePlayerController({ getAudioResponseCapabilities: getter as MagePlayerController['getAudioResponseCapabilities'] })
+    const controller = buildMagePlayerController({ getAudioResponseCapabilities: getter })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const onChange = vi.fn()
     render(<MagePlayer sceneBlob={buildMagePlayerSceneBlob()} onAudioResponseCapabilitiesChange={onChange} />)
@@ -226,7 +226,7 @@ describe('player audio-response capabilities bridge', () => {
     const { rerender } = render(<MagePlayer sceneBlob={scene} onAudioResponseCapabilitiesChange={onChange} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: scene, capabilities: capabilities('size') }))
     onChange.mockClear()
-    rerender(<MagePlayer sceneBlob={scene} log onAudioResponseCapabilitiesChange={onChange} />)
+    rerender(<MagePlayer sceneBlob={scene} renderProfile="preview" onAudioResponseCapabilitiesChange={onChange} />)
     await waitFor(() => expect(createMagePlayer).toHaveBeenCalledTimes(2))
     expect(onChange).toHaveBeenLastCalledWith(null)
     await act(async () => finishReplacement(second))
@@ -245,7 +245,7 @@ describe('player audio-response capabilities bridge', () => {
     const onChange = vi.fn()
     const { rerender } = render(<MagePlayer sceneBlob={scene} onAudioResponseCapabilitiesChange={onChange} />)
     await waitFor(() => expect(createMagePlayer).toHaveBeenCalledOnce())
-    rerender(<MagePlayer sceneBlob={scene} log onAudioResponseCapabilitiesChange={onChange} />)
+    rerender(<MagePlayer sceneBlob={scene} renderProfile="preview" onAudioResponseCapabilitiesChange={onChange} />)
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: scene, capabilities: capabilities('bass') }))
     onChange.mockClear()
     await act(async () => finishObsolete(obsolete))

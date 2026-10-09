@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
 import { APP_THEME_STORAGE_KEY, ThemeProvider, type AppThemeId } from '@theme'
-import { AuthProvider, type AuthenticatedUser } from '@auth'
+import { AuthProvider, ProtectedRoute, type AuthenticatedUser } from '@auth'
 import { buildApiUrl } from '@shared/lib'
 import { buildAuthenticatedUser, storeAuthenticatedSession } from '@shared/test/auth'
 import { jsonResponse } from '@shared/test/http'
 import { CreateScenePage } from './CreateScenePage'
 import { EditScenePage } from './EditScenePage'
+import { SceneEditorLoadingState } from './SceneEditorLoadingState'
 
 export type SceneEditorFetchHandler = (
   input: RequestInfo | URL,
@@ -191,7 +192,18 @@ export function renderEditScenePage(initialEntries = ['/scenes/12/edit'], themeI
         <Routes>
           <Route path="/login" element={<div>Login</div>} />
           <Route path="/my-scenes" element={<div>My Scenes</div>} />
-          <Route path="/scenes/:id/edit" element={<EditScenePage />} />
+          <Route
+            path="/scenes/:id/edit"
+            element={
+              <ProtectedRoute
+                loadingFallback={
+                  <SceneEditorLoadingState label="Restoring your session before loading the scene editor" />
+                }
+              >
+                <EditScenePage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
       </ThemeProvider>

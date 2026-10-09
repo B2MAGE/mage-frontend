@@ -42,7 +42,7 @@ function fixture() {
     _disconnectTransientAnalyser: vi.fn(),
   }
   for (const name of ['setExternalAudioFrame', '_externalAudioSnapshot', '_sampleExternalTransientAudio',
-    '_sampleMappedAudio', '_syncAudioAnalysis', '_resetAudioAnalysis', 'getAudioAnalysis', 'setEngineTime',
+    '_sampleMappedAudio', '_syncAudioAnalysis', '_resetAudioAnalysis', 'getAudioAnalysis',
     'setExternalClock', '_updateExternalClock']) engine[name] = method(name)
   return engine
 }
@@ -176,19 +176,6 @@ describe('installed external audio bridge API', () => {
     method('play').call(engine)
     expect(engine.audio.play).not.toHaveBeenCalled()
     expect(engine.isAudioLoaded).not.toHaveBeenCalled()
-  })
-
-  it('sets only a finite bounded visual clock and resets its animation timer', () => {
-    const engine = fixture()
-    engine.clock = { reset: vi.fn() }
-    for (const invalid of [NaN, Infinity, -1, 604801, '1']) expect(engine.setEngineTime(invalid)).toBe(false)
-    expect(engine.state.time).toBe(1)
-    expect(engine.setEngineTime(0)).toBe(true)
-    expect(engine.state.time).toBe(0)
-    expect(engine.timeIncreasing).toBe(true)
-    expect(engine.clock.reset).toHaveBeenCalledOnce()
-    expect(engine.setEngineTime(604800)).toBe(true)
-    expect(engine.timeIncreasing).toBe(false)
   })
 
   it.each([0, 2])('uses the host visual clock at rate %s without advancing it a second time', rate => {

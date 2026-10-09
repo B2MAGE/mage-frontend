@@ -6,7 +6,7 @@ import { normalizeAudioResponseMode, normalizeAudioResponseConfig, type AudioRes
 import { attachViewerMouseInteractions, type ViewerMouseEngine } from './viewerMouseInteractions'
 import { resolveSceneForPlayback } from '../templates/resolveScene'
 import { sceneRecovery, sceneRecoveryKey } from '../recovery/sceneRecovery'
-import { monitorSceneRendering, type RenderLifecycleEvent, type RenderFailure } from '../recovery/renderRecoveryMonitor'
+import { monitorSceneRendering, type RenderFailure } from '../recovery/renderRecoveryMonitor'
 import { sceneAvailabilityStore } from '../availability/sceneAvailability'
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { BRAND_SCENE } from '../templates/platformBrandScene'
@@ -25,39 +25,14 @@ const SCENE_BLOB_KEYS = [
   'visualizer',
 ] as const
 
-const MIN_RUNNING_ENGINE_TIME = 1 / 60
 const DEFAULT_ENGINE_CONTROLS = {
   active: false,
   integrated: false,
 } as const
 const GENERIC_RENDER_ERROR_MESSAGE = 'Scene data could not be rendered by the MAGE engine.'
 
-type MageEngineBridge = {
-  getEngineFields: ViewerMouseEngine['getEngineFields']
-  setInputState: ViewerMouseEngine['setInputState']
-  captureFramePreview?: MAGEEngineAPI['captureFramePreview']
-  dispose: MAGEEngineAPI['dispose']
-  getAudioDuration?: MAGEEngineAPI['getAudioDuration']
-  getAudioTime?: MAGEEngineAPI['getAudioTime']
-  getAudioVolume?: () => number
-  getAudioResponseCapabilities?: MAGEEngineAPI['getAudioResponseCapabilities']
-  getAudioResponseDiagnostics?: MAGEEngineAPI['getAudioResponseDiagnostics']
-  getAudioResponseEvents?: MAGEEngineAPI['getAudioResponseEvents']
-  getEngineTime?: MAGEEngineAPI['getEngineTime']
-  isAudioLoaded?: MAGEEngineAPI['isAudioLoaded']
-  loadAudio?: MAGEEngineAPI['loadAudio']
-  pause: MAGEEngineAPI['pause']
-  play: MAGEEngineAPI['play']
+type MageEngineBridge = Omit<MAGEEngineAPI, 'loadPreset'> & ViewerMouseEngine & {
   loadPreset: (scene: unknown) => unknown
-  seek?: MAGEEngineAPI['seek']
-  setAudioVolume?: (volume: number) => number
-  setAudioResponseMode?: (mode: SceneAudioResponseMode) => void
-  setAudioResponseConfig?: MAGEEngineAPI['setAudioResponseConfig']
-  setEngineTime?: (time: number) => boolean
-  setSyntheticPreview: MAGEEngineAPI['setSyntheticPreview']
-  start: MAGEEngineAPI['start']
-  unloadAudio?: MAGEEngineAPI['unloadAudio']
-  subscribeRenderLifecycle?: (listener: (event: RenderLifecycleEvent) => void) => () => void
 }
 
 type MageEngineModule = {
@@ -192,11 +167,6 @@ function readSceneAudioSource(sceneBlob: MageSceneBlob) {
 
 function clampAudioTime(engine: MageEngineBridge, time: number) {
   const normalizedTime = Number.isFinite(time) ? Math.max(time, 0) : 0
-
-  if (typeof engine.getAudioDuration !== 'function') {
-    return normalizedTime
-  }
-
   const duration = engine.getAudioDuration()
 
   if (!Number.isFinite(duration) || duration <= 0) {
@@ -218,16 +188,6 @@ function nowMs() {
   return typeof performance !== 'undefined' ? performance.now() : Date.now()
 }
 
-function primeEngineTime(engine: MageEngineBridge) {
-  if (
-    typeof engine.getEngineTime === 'function' &&
-    typeof engine.setEngineTime === 'function' &&
-    engine.getEngineTime() <= 0
-  ) {
-    engine.setEngineTime(MIN_RUNNING_ENGINE_TIME)
-  }
-}
-
 function applyPlaybackState(
   engine: MageEngineBridge,
   playbackState: MagePlayerPlaybackState,
@@ -237,9 +197,6 @@ function applyPlaybackState(
     return playbackState
   }
 
-  // The published engine can stop immediately when it starts from exactly time 0.
-  // Prime the engine just past zero before resuming so the scene can animate.
-  primeEngineTime(engine)
   engine.play()
   return playbackState
 }
@@ -518,9 +475,9 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
     const configKey = response.effectiveConfig ? JSON.stringify(response.effectiveConfig) : null
     // Re-selecting a mode tears down its analyzer. Live configuration edits
     // retain the audio clock and analysis history by changing only the config.
-    if (modeChanged) engine.setAudioResponseMode?.(response.effectiveMode)
+    if (modeChanged) engine.setAudioResponseMode(response.effectiveMode)
     if (response.effectiveMode === 'mapped-v1' && (modeChanged || configKey !== appliedResponseConfig)) {
-      engine.setAudioResponseConfig?.(response.effectiveConfig)
+      engine.setAudioResponseConfig(response.effectiveConfig)
     }
     appliedResponseMode = response.effectiveMode
     appliedResponseConfig = configKey
@@ -543,7 +500,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
   }
 
   function getTrackedAudioDuration() {
-    return typeof engine.getAudioDuration === 'function' ? clampAudioTime(engine, engine.getAudioDuration()) : 0
+    return clampAudioTime(engine, engine.getAudioDuration())
   }
 
   function syncTrackedAudioTime() {
@@ -565,7 +522,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
   }
 
   function resumeTrackedAudioTime() {
-    if (typeof engine.isAudioLoaded === 'function' && !engine.isAudioLoaded()) {
+    if (!engine.isAudioLoaded()) {
       trackedAudioStartedAtMs = null
       return
     }
@@ -580,8 +537,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
 
   function getAudioState(): MagePlayerAudioState {
     const sourcePath = hasAttachedAudio ? currentAudioLabel : null
-    const isLoaded =
-      hasAttachedAudio && typeof engine.isAudioLoaded === 'function' ? engine.isAudioLoaded() : false
+    const isLoaded = hasAttachedAudio && engine.isAudioLoaded()
     const duration = isLoaded ? getTrackedAudioDuration() : 0
 
     if (isLoaded) {
@@ -591,10 +547,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
       trackedAudioStartedAtMs = null
     }
 
-    const volume =
-      typeof engine.getAudioVolume === 'function'
-        ? clampAudioVolume(engine.getAudioVolume())
-        : currentAudioVolume
+    const volume = clampAudioVolume(engine.getAudioVolume())
 
     currentAudioVolume = volume
 
@@ -622,7 +575,6 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
     } else if (hasAttachedAudio) {
       playbackState = applyPlaybackState(engine, nextPlaybackState)
     } else {
-      primeEngineTime(engine)
       engine.start()
       playbackState = nextPlaybackState
     }
@@ -647,11 +599,6 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
         )
       }
 
-      if (typeof engine.captureFramePreview !== 'function') {
-        throw new MagePlayerAdapterError(
-          'This MAGE engine build does not support preview capture.',
-        )
-      }
       if (!platformArtwork) await sceneAvailabilityStore.check(target)
       assertRenderingAllowed()
       if (captureGeneration !== sceneGeneration) return null
@@ -670,9 +617,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
     },
     clearAudio() {
       audioLoadGeneration += 1
-      if (!disposed && typeof engine.unloadAudio === 'function') {
-        engine.unloadAudio()
-      }
+      if (!disposed) engine.unloadAudio()
 
       hasAttachedAudio = false
       currentAudioLabel = null
@@ -691,18 +636,18 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
     getAudioState,
     getAudioResponseState,
     getAudioResponseCapabilities() {
-      return engine.getAudioResponseCapabilities ? structuredClone(engine.getAudioResponseCapabilities()) : null
+      return structuredClone(engine.getAudioResponseCapabilities())
     },
     getAudioResponseDiagnostics() {
-      return engine.getAudioResponseDiagnostics ? structuredClone(engine.getAudioResponseDiagnostics()) : null
+      return structuredClone(engine.getAudioResponseDiagnostics())
     },
     getAudioResponseEvents(afterId) {
-      return engine.getAudioResponseEvents ? structuredClone(engine.getAudioResponseEvents(afterId)) : []
+      return structuredClone(engine.getAudioResponseEvents(afterId))
     },
     getEngineDiagnostics() {
       if (!hasLoadedScene) return null
       try {
-        const state: unknown = engine.getEngineFields()?.state
+        const state: unknown = engine.getEngineFields().state
         if (!isRecord(state)) return null
         const measurement = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null
         // Copy measurements rather than exposing the engine's mutable state.
@@ -751,10 +696,6 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
       const audioSource = options.sourcePath ?? savedAudioSource
       const audioLabel = options.sourceLabel ?? audioSource ?? null
 
-      if (typeof engine.loadAudio !== 'function') {
-        throw createAudioError('This MAGE engine build does not support audio loading.')
-      }
-
       if (!audioSource) {
         throw createAudioError('Choose an audio file or save an audioPath on the scene.')
       }
@@ -768,9 +709,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
         if (!availabilitySuspended) assertRenderingAllowed()
       }
 
-      if (typeof engine.unloadAudio === 'function') {
-        engine.unloadAudio()
-      }
+      engine.unloadAudio()
 
       try {
         hasAttachedAudio = false
@@ -797,7 +736,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
             window.setTimeout(poll, 50)
             return
           }
-          if (typeof engine.isAudioLoaded === 'function' && engine.isAudioLoaded()) {
+          if (engine.isAudioLoaded()) {
             resolve()
             return
           }
@@ -816,21 +755,14 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
       assertCurrentAudioLoad()
       assertRenderingAllowed()
 
-      const audioTime =
-        typeof engine.getEngineTime === 'function'
-          ? clampAudioTime(engine, engine.getEngineTime())
-          : 0
+      const audioTime = clampAudioTime(engine, engine.getEngineTime())
 
-      if (typeof engine.seek === 'function') {
-        engine.seek(audioTime)
-      }
+      engine.seek(audioTime)
 
       hasAttachedAudio = true
       setTrackedAudioTime(audioTime)
 
-      if (typeof engine.setAudioVolume === 'function') {
-        currentAudioVolume = clampAudioVolume(engine.setAudioVolume(currentAudioVolume))
-      }
+      currentAudioVolume = clampAudioVolume(engine.setAudioVolume(currentAudioVolume))
 
       if (playbackState === 'paused') {
         pauseTrackedAudioTime()
@@ -889,14 +821,12 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
         currentRecoveryKey = key
         renderMonitor = monitorSceneRendering({
           canvas,
-          subscribe: engine.subscribeRenderLifecycle?.bind(engine),
+          subscribe: engine.subscribeRenderLifecycle.bind(engine),
           onFailure: failRendering,
         })
         assertUsable()
         renderMonitor.setPaused(playbackState === 'paused')
-        if (typeof engine.unloadAudio === 'function') {
-          engine.unloadAudio()
-        }
+        engine.unloadAudio()
 
         currentSceneBlob = { ...sceneBlob }
         readSavedAudioResponse(sceneBlob)
@@ -975,9 +905,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
         failRendering('load')
         throw createSceneRenderError(error)
       }
-      if (typeof engine.seek === 'function') {
-        engine.seek(0)
-      }
+      engine.seek(0)
 
       engine.start()
       engine.pause()
@@ -992,9 +920,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
 
       const nextTime = clampAudioTime(engine, time)
 
-      if (typeof engine.seek === 'function') {
-        engine.seek(nextTime)
-      }
+      engine.seek(nextTime)
 
       setTrackedAudioTime(nextTime)
 
@@ -1010,9 +936,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
       assertRenderingAllowed()
       currentAudioVolume = clampAudioVolume(volume)
 
-      if (typeof engine.setAudioVolume === 'function') {
-        currentAudioVolume = clampAudioVolume(engine.setAudioVolume(currentAudioVolume))
-      }
+      currentAudioVolume = clampAudioVolume(engine.setAudioVolume(currentAudioVolume))
 
       return getAudioState()
     },

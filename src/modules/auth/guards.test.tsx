@@ -35,7 +35,7 @@ function renderGuestOnlyRoute() {
         <Route
           path="/login"
           element={
-            <GuestOnlyRoute>
+            <GuestOnlyRoute loadingFallback={<div role="status">Restoring guest session</div>}>
               <div>Guest page</div>
             </GuestOnlyRoute>
           }
@@ -63,6 +63,24 @@ describe('auth guards', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(/restoring your session/i)
     expect(screen.queryByText(/checking your login/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the route-owned guest restore state during session bootstrap', () => {
+    useAuthMock.mockReturnValue({
+      accessToken: null,
+      authenticatedFetch: vi.fn(),
+      completeLoginSession: vi.fn(),
+      isAuthenticated: false,
+      isRestoringSession: true,
+      logout: vi.fn(),
+      updateAuthenticatedUser: vi.fn(),
+      user: null,
+    })
+
+    renderGuestOnlyRoute()
+
+    expect(screen.getByRole('status')).toHaveTextContent(/restoring guest session/i)
+    expect(screen.queryByText('Guest page')).not.toBeInTheDocument()
   })
 
   it('redirects unauthenticated users away from protected routes', () => {

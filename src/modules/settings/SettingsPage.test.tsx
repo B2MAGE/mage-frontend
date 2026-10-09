@@ -822,12 +822,4 @@ describe('SettingsPage', () => {
     expect(screen.queryByRole('button', { name: /reset password/i })).not.toBeInTheDocument()
   })
 
-  it('shows a fallback state when the page cannot read a signed-in user', () => {
-    renderSettingsPage()
-
-    expect(screen.getByRole('heading', { name: /unable to open settings/i })).toBeInTheDocument()
-    expect(
-      screen.getByText(/could not find the signed-in account details needed to render this page/i),
-    ).toBeInTheDocument()
-  })
 })

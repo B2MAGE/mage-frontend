@@ -1,10 +1,3 @@
-export type AppThemePreviewDefinition = {
-  background: string
-  bar: string
-  rail: string
-  card: string
-}
-
 const APP_THEME_CONFIG = [
   {
     colorScheme: 'dark',
@@ -37,7 +30,6 @@ const APP_THEME_CONFIG = [
 
 export type AppThemeDefinition = (typeof APP_THEME_CONFIG)[number]
 export type AppThemeId = AppThemeDefinition['id']
-export type AppThemeColorScheme = AppThemeDefinition['colorScheme']
 
 export const APP_THEMES = [...APP_THEME_CONFIG] as readonly AppThemeDefinition[]
 export const DEFAULT_APP_THEME_ID: AppThemeId = 'mage-pulse'

@@ -4,25 +4,15 @@ import { AppIcon } from './AppIcon'
 
 type PaginationIconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children' | 'type'> & {
   direction: 'left' | 'right'
-  double?: boolean
   label: string
 }
 
-function PaginationChevronIcon({
-  direction,
-  double = false,
-}: {
-  direction: 'left' | 'right'
-  double?: boolean
-}) {
+function PaginationChevronIcon({ direction }: { direction: 'left' | 'right' }) {
   const isLeft = direction === 'left'
 
   return (
     <span className="ui-pagination-button__icon" aria-hidden="true">
-      <AppIcon
-        name={double ? (isLeft ? 'chevrons-left' : 'chevrons-right') : (isLeft ? 'chevron-left' : 'chevron-right')}
-        size={16}
-      />
+      <AppIcon name={isLeft ? 'chevron-left' : 'chevron-right'} size={16} />
     </span>
   )
 }
@@ -30,7 +20,6 @@ function PaginationChevronIcon({
 export function PaginationIconButton({
   className,
   direction,
-  double = false,
   label,
   ...buttonProps
 }: PaginationIconButtonProps) {
@@ -41,7 +30,7 @@ export function PaginationIconButton({
       className={joinClassNames('ui-pagination-button', className)}
       type="button"
     >
-      <PaginationChevronIcon direction={direction} double={double} />
+      <PaginationChevronIcon direction={direction} />
     </button>
   )
 }

@@ -1156,7 +1156,7 @@ index 7e71e8c..3829da7 100644
  }
  
  /** 
-@@ -210,11 +235,54 @@ export interface MAGEFxAPI {
+@@ -210,11 +235,52 @@ export interface MAGEFxAPI {
   * console.log('Captured thumbnail:', thumbnail);
   * engine.dispose();
   */
@@ -1198,8 +1198,6 @@ index 7e71e8c..3829da7 100644
 +  setExternalAudioFrame(value: MAGEExternalAudioFrame | null): void;
 +  /** Replaces the animation clock with a bounded host clock; null restores normal animation. */
 +  setExternalClock(value: MAGEExternalClock | null): void;
-+  /** Sets the visual clock in seconds, from zero to 604800. Invalid values return false. */
-+  setEngineTime(time: number): boolean;
 +  /** Immutable copy of effective host-owned runtime ceilings. */
 +  getRenderBudget(): Readonly<MAGERenderBudget>;
    /**
@@ -1211,7 +1209,7 @@ index 7e71e8c..3829da7 100644
    /**
     * Returns the total duration of the loaded audio in seconds. If no audio is loaded, it returns 0.
     */
-@@ -223,6 +291,10 @@ export interface MAGEEngineAPI {
+@@ -223,6 +289,10 @@ export interface MAGEEngineAPI {
     * Returns the current playback time of the audio in seconds. If no audio is loaded, it returns 0.
     */
    getAudioTime(): number;
@@ -1222,7 +1220,7 @@ index 7e71e8c..3829da7 100644
    /**
     * Seeks to a specific time in the audio playback.
     * @param time 
-@@ -251,11 +323,41 @@ export interface MAGEEngineAPI {
+@@ -251,11 +321,41 @@ export interface MAGEEngineAPI {
     * (URL must support CORS so things like YouTube will not work). 
     */
    loadAudio(path?: string | URL): void;
@@ -1264,7 +1262,7 @@ index 7e71e8c..3829da7 100644
    /**
     * Swaps the current rendering canvas with a new HTMLCanvasElement. This allows users to change the output canvas dynamically, which can be useful for 
     * integrating the MAGE engine into different parts of a web application or for implementing features like picture-in-picture or multi-view setups.
-@@ -344,9 +446,21 @@ export interface MAGEEngineAPI {
+@@ -344,9 +444,21 @@ export interface MAGEEngineAPI {
  /**
   * Configuration options for the MAGE Engine.
   */
@@ -2420,17 +2418,10 @@ index 7e32237..cb56b96 100644
  		if (preset.fx) this.#_applyCompactFx(preset.fx);
  		this.#_syncPostProcessingFromState();
  		this.#_syncSobelResolution();
-@@ -107479,6 +108137,34 @@ var MAGEEngine = class MAGEEngine {
+@@ -107479,6 +108137,27 @@ var MAGEEngine = class MAGEEngine {
  	getEngineTime() {
  		return this.#state.time;
  	}
-+	setEngineTime(time) {
-+		if (this.#isDisposed || !this.#state || !Number.isFinite(time) || time < 0 || time > 604800) return false;
-+		this.#state.time = time;
-+		this.#timeIncreasing = time < 180;
-+		this.#clock?.reset();
-+		return true;
-+	}
 +	setExternalClock(value) {
 +		if (this.#isDisposed) return;
 +		if (value !== null && (!value || typeof value !== "object" || Array.isArray(value)
@@ -2455,7 +2446,7 @@ index 7e32237..cb56b96 100644
  	/**
  	* Exports the current engine configuration as a preset object. The exported preset can include the current state, custom settings, and visualizer configuration, 
  	* depending on the specified options.
-@@ -107488,7 +108174,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107488,7 +108167,7 @@ var MAGEEngine = class MAGEEngine {
  		const preset = {
  			version: MAGE_VERSION,
  			visualizer: {
@@ -2464,7 +2455,7 @@ index 7e32237..cb56b96 100644
  				skyboxPreset: this.#visualizer.skyboxPreset,
  				scale: this.#visualizer.scale
  			},
-@@ -107535,6 +108221,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107535,6 +108214,8 @@ var MAGEEngine = class MAGEEngine {
  					halftone: this.fx.halftonePass.enabled,
  					gammaCorrection: this.fx.gammaCorrectionShader.enabled,
  					kaleid: this.fx.kaleidoShader.enabled,
@@ -2473,7 +2464,7 @@ index 7e32237..cb56b96 100644
  					outputPass: this.fx.outputPass.enabled
  				},
  				params: {
-@@ -107552,6 +108240,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -107552,6 +108233,8 @@ var MAGEEngine = class MAGEEngine {
  			}
  		};
  		preset.state = { ...this.#state };
@@ -2482,7 +2473,7 @@ index 7e32237..cb56b96 100644
  		if (this.log) console.log("Generated preset from current state:", preset);
  		return preset;
  	}
-@@ -107633,13 +108323,17 @@ var MAGEEngine = class MAGEEngine {
+@@ -107633,13 +108316,17 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {Promise<string|null>} A data URL representing the captured thumbnail, or null if the capture failed.
  	*/
  	async captureThumbnail(presetInput, { width = 224, height = 224, settleFrames = 2, quality = .84, type = "image/png" } = {}) {
@@ -2501,7 +2492,7 @@ index 7e32237..cb56b96 100644
  	}
  	/**
  	* Captures a thumbnail for a given preset without requiring an instance of MAGEEngine.
-@@ -107650,20 +108344,20 @@ var MAGEEngine = class MAGEEngine {
+@@ -107650,20 +108337,20 @@ var MAGEEngine = class MAGEEngine {
  	* It creates a temporary offscreen canvas and a new MAGEEngine instance to load the preset, render it for a few frames to allow for stabilization, 
  	* and capture the resulting image as a data URL. This is useful for generating thumbnails for presets without affecting the current state of an existing engine instance.
  	*/
@@ -2526,7 +2517,7 @@ index 7e32237..cb56b96 100644
  			thumbnailEngine.#_syncViewport(true);
  			thumbnailEngine.#composer = thumbnailEngine.fx.applyPostProcessing(thumbnailEngine.#scene, thumbnailEngine.#renderer, thumbnailEngine.#camera);
  			thumbnailEngine.#_syncSobelResolution();
-@@ -107671,14 +108365,16 @@ var MAGEEngine = class MAGEEngine {
+@@ -107671,14 +108358,16 @@ var MAGEEngine = class MAGEEngine {
  				thumbnailEngine.#controls.enabled = false;
  				thumbnailEngine.#controls.autoRotate = false;
  			}
@@ -2545,7 +2536,7 @@ index 7e32237..cb56b96 100644
  			for (let i = 0; i < frames; i += 1) thumbnailEngine.#_renderSingleFrame();
  			return thumbnailEngine.#_captureFramePreviewDataUrlSync({
  				width: w,
-@@ -107702,10 +108398,19 @@ var MAGEEngine = class MAGEEngine {
+@@ -107702,10 +108391,19 @@ var MAGEEngine = class MAGEEngine {
  	* @returns {void}
  	*/
  	dispose() {
@@ -2566,7 +2557,7 @@ index 7e32237..cb56b96 100644
  		if (this.#animationFrameId !== null) {
  			cancelAnimationFrame(this.#animationFrameId);
  			this.#animationFrameId = null;
-@@ -107766,6 +108471,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -107766,6 +108464,7 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#audioAnalyser) this.#audioAnalyser = null;
  		if (this.#visualizer) {
  			this.#visualizer.mesh = null;
@@ -2574,7 +2565,7 @@ index 7e32237..cb56b96 100644
  			this.#visualizer.shader = null;
  			this.#visualizer.shaders = [];
  		}
-@@ -107990,19 +108696,25 @@ var MAGEEngine = class MAGEEngine {
+@@ -107990,19 +108689,25 @@ var MAGEEngine = class MAGEEngine {
  	* @property {number} [settleFrames = 2] - Number of frames to render after loading preset before capturing thumbnail, to allow for any async loading and shader stabilization (default: 2)
  	*/
  	async #_captureFramePreviewBlob({ width = 224, height = 224, type = "image/png", quality = .84 } = {}) {
@@ -2608,7 +2599,7 @@ index 7e32237..cb56b96 100644
  	}
  	#_waitForPendingSkyboxLoad(timeoutMs = 2e3) {
  		if (!this.#_pendingSkyboxLoad) return Promise.resolve();
-@@ -108017,9 +108729,12 @@ var MAGEEngine = class MAGEEngine {
+@@ -108017,9 +108722,12 @@ var MAGEEngine = class MAGEEngine {
  			reader.readAsDataURL(blob);
  		});
  	}
@@ -2624,7 +2615,7 @@ index 7e32237..cb56b96 100644
  		this.#_syncSobelResolution();
  		if (this.#composer) this.#composer.render(this.#scene, this.#camera);
  		else this.#renderer.render(this.#scene, this.#camera);
-@@ -108038,26 +108753,20 @@ var MAGEEngine = class MAGEEngine {
+@@ -108038,26 +108746,20 @@ var MAGEEngine = class MAGEEngine {
  		this.#_syncSobelResolution();
  	}
  	#_syncSobelResolution() {
@@ -2660,7 +2651,7 @@ index 7e32237..cb56b96 100644
  		} catch {
  			return null;
  		}
-@@ -108092,7 +108801,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -108092,7 +108794,7 @@ var MAGEEngine = class MAGEEngine {
  		}
  		if (typeof intent.camTilt === "number" && Number.isFinite(intent.camTilt) && this.#camera) this.#_setCameraUpFromTilt(intent.camTilt);
  	}
@@ -2669,7 +2660,7 @@ index 7e32237..cb56b96 100644
  		if (!fx || typeof fx !== "object") return;
  		if (Array.isArray(fx.passOrder)) this.fx.setPassOrder(fx.passOrder);
  		if (fx.bloom && typeof fx.bloom === "object") {
-@@ -108120,6 +108829,8 @@ var MAGEEngine = class MAGEEngine {
+@@ -108120,6 +108822,8 @@ var MAGEEngine = class MAGEEngine {
  			if (typeof fx.passes.halftone === "boolean") this.fx.halftonePass.enabled = fx.passes.halftone;
  			if (typeof fx.passes.gammaCorrection === "boolean") this.fx.gammaCorrectionShader.enabled = fx.passes.gammaCorrection;
  			if (typeof fx.passes.kaleid === "boolean") this.fx.kaleidoShader.enabled = fx.passes.kaleid;
@@ -2678,7 +2669,7 @@ index 7e32237..cb56b96 100644
  			if (typeof fx.passes.outputPass === "boolean") this.fx.outputPass.enabled = fx.passes.outputPass;
  		}
  		if (fx.params && typeof fx.params === "object") {
-@@ -108141,7 +108852,7 @@ var MAGEEngine = class MAGEEngine {
+@@ -108141,7 +108845,7 @@ var MAGEEngine = class MAGEEngine {
  				} catch {}
  			}
  		}
@@ -2687,7 +2678,7 @@ index 7e32237..cb56b96 100644
  	}
  	#_coercePresetInput(presetInput, report) {
  		if (presetInput instanceof MAGEPreset) return presetInput;
-@@ -108276,31 +108987,38 @@ var MAGEEngine = class MAGEEngine {
+@@ -108276,31 +108980,38 @@ var MAGEEngine = class MAGEEngine {
  		};
  	}
  	#_getViewportSize() {
@@ -2740,7 +2731,7 @@ index 7e32237..cb56b96 100644
  		this.#_syncSobelResolution();
  	}
  	#_ensureViewportToast() {
-@@ -108353,15 +109071,23 @@ var MAGEEngine = class MAGEEngine {
+@@ -108353,15 +109064,23 @@ var MAGEEngine = class MAGEEngine {
  		this.#viewportToast.el = null;
  	}
  	#_createRenderer() {
@@ -2770,7 +2761,7 @@ index 7e32237..cb56b96 100644
  		this.#renderer.setClearColor(new Color(1, 1, 1), 0);
  		this.#renderer.toneMappingExposure = this.fx.toneMapping.exposure;
  		this.#renderer.outputColorSpace = SRGBColorSpace;
-@@ -108471,10 +109197,34 @@ var MAGEEngine = class MAGEEngine {
+@@ -108471,10 +109190,34 @@ var MAGEEngine = class MAGEEngine {
  		}
  	}
  	#_updateVisualizer() {
@@ -2807,7 +2798,7 @@ index 7e32237..cb56b96 100644
  			format: RGBAFormat,
  			type: UnsignedByteType
  		});
-@@ -108484,25 +109234,72 @@ var MAGEEngine = class MAGEEngine {
+@@ -108484,25 +109227,72 @@ var MAGEEngine = class MAGEEngine {
  		if (this.log) console.log("Visualizer Loaded!");
  	}
  	#_render = () => {
@@ -2886,7 +2877,7 @@ index 7e32237..cb56b96 100644
  		else {
  			const val = Math.sin(this.#state.time) * this.#state.size * .02 + .1;
  			this.#state.currAudio = bass_input + val * this.#state.base_speed + delta * this.#state.base_speed;
-@@ -108533,6 +109330,15 @@ var MAGEEngine = class MAGEEngine {
+@@ -108533,6 +109323,15 @@ var MAGEEngine = class MAGEEngine {
  		if (this.#cameraUpdateHook) this.#cameraUpdateHook(this);
  		if (this.#composer) this.#composer.render(this.#scene, this.#camera);
  		else this.#renderer.render(this.#scene, this.#camera);
@@ -2902,7 +2893,7 @@ index 7e32237..cb56b96 100644
  	};
  	#_growVisualizer() {
  		this.#state.size += .035 * (1 - this.#state.easing_speed + .01);
-@@ -108787,9 +109593,11 @@ var MAGEEngine = class MAGEEngine {
+@@ -108787,9 +109586,11 @@ var MAGEEngine = class MAGEEngine {
  };
  //#endregion
  //#region js/mage-lib.js

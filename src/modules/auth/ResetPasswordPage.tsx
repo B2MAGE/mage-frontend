@@ -1,12 +1,11 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AuthPage, AuthPageHeader, FormNotice, PendingButtonLabel } from '@shared/ui'
 import { AuthInput } from './AuthInput'
 import './auth.css'
 import { parseApiError } from '@shared/lib'
 import { confirmPasswordReset } from './client'
-import { useAuth } from './authContext'
 
 type ResetPasswordFormValues = {
   newPassword: string
@@ -45,7 +44,6 @@ function validateResetPasswordForm(values: ResetPasswordFormValues): ResetPasswo
 }
 
 export function ResetPasswordPage() {
-  const { isAuthenticated } = useAuth()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')?.trim() ?? ''
   const [values, setValues] = useState<ResetPasswordFormValues>(initialValues)
@@ -55,10 +53,6 @@ export function ResetPasswordPage() {
 
   const formNoticeId = useId()
   const titleId = 'reset-password-title'
-
-  if (isAuthenticated) {
-    return <Navigate replace to="/" />
-  }
 
   function handleChange(field: keyof ResetPasswordFormValues, nextValue: string) {
     setValues((currentValues) => ({

@@ -140,7 +140,7 @@ describe('live scene audio response', () => {
     const tracks = [buildMagePlayerTrack({ sourcePath: '/track.mp3' })]
     const { rerender } = render(<MagePlayer sceneBlob={scene} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await waitFor(() => expect(first.loadAudio).toHaveBeenCalledTimes(1))
-    rerender(<MagePlayer sceneBlob={scene} log playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
+    rerender(<MagePlayer sceneBlob={scene} renderProfile="preview" playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await waitFor(() => expect(second.loadAudio).toHaveBeenCalledTimes(1))
     expect(second.loadSceneBlob).toHaveBeenCalledTimes(1)
     expect(second.setAudioResponseSettings).not.toHaveBeenCalled()
