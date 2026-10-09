@@ -39,6 +39,17 @@ describe('Builder editor document helpers', () => {
     expect(parseSceneDocument(document)).toEqual(document)
   })
 
+  it.each(['9007199254740991', '9007199254740992', '999999999999999999999999'])('edits imported numeric IDs without unsafe counter loops (%s)', suffix => {
+    const initial = addBuilderObject(createBuilderScene(), 'box')
+    const document = { ...initial, objects: initial.objects.map((object, index) => index === 1 ? { ...object, id: `object-${suffix}` } : object) }
+    expect(parseSceneDocument(document)).toEqual(document)
+    const added = addBuilderObject(document, 'sphere')
+    const duplicated = duplicateBuilderObject(added, `object-${suffix}`)
+    expect(new Set(duplicated.objects.map(object => object.id)).size).toBe(4)
+    expect(duplicated.objects[1]).toBe(document.objects[1])
+    expect(parseSceneDocument(duplicated)).toEqual(duplicated)
+  })
+
   it('keeps objects while applying a starting style and scene-wide controls', () => {
     const withHero = updateBuilderObject(createBuilderScene(), 'object-1', object => ({ ...object, name: 'Hero' }))
     const original = { ...addBuilderObject(withHero, 'box'), parameters: { scale: 3, speed: 1 } }

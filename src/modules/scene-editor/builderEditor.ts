@@ -70,10 +70,12 @@ function applyStartingStyle(objects: readonly BuilderObject[], templateId: Templ
 
 function nextObjectNumber(objects: readonly BuilderObject[]) {
   const ids = new Set(objects.map(object => object.id))
-  let number = objects.reduce((largest, object) => {
+  const largest = objects.reduce((current, object) => {
     const match = /^object-(\d+)$/.exec(object.id)
-    return match ? Math.max(largest, Number(match[1])) : largest
-  }, 0) + 1
+    const suffix = match ? Number(match[1]) : NaN
+    return Number.isSafeInteger(suffix) ? Math.max(current, suffix) : current
+  }, 0)
+  let number = largest < Number.MAX_SAFE_INTEGER ? largest + 1 : 1
   while (ids.has(`object-${number}`)) number += 1
   return number
 }
