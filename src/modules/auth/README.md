@@ -55,6 +55,11 @@ The module is responsible for:
 - exposing `authenticatedFetch()` for protected API calls
 - clearing auth state on logout or invalid-token responses
 
+Only the current JSON session with an access token and complete cached identity (including
+its canonical handle) is restored. Raw token strings, token-only sessions, and historical
+missing-handle identities are cleared instead of repaired. Bootstrap still verifies the current
+session through `/users/me`; account-switch and logout protections remain in force.
+
 ## Route Surfaces
 
 ### `/login`
