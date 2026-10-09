@@ -27,7 +27,10 @@ export async function buildCompilerWorker(root) {
       sourcemap: false,
       cssCodeSplit: false,
       lib: { entry: resolve(root, 'src/isolated-renderer/compiler/worker.ts'), name: 'MageCompilerWorker', formats: ['iife'] },
-      rollupOptions: { output: { inlineDynamicImports: true } },
+      // Shader Park exposes its DSL to submitted source through direct eval.
+      // Those functions have no static call sites, so tree-shaking would remove
+      // valid built-ins such as box() and setGeometryQuality().
+      rollupOptions: { treeshake: false, output: { inlineDynamicImports: true } },
     },
   })
   if (!source) throw new Error('Compiler worker build produced no source.')

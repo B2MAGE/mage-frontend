@@ -72,9 +72,9 @@ describe('real scene editor live preview updates', () => {
     fireEvent.change(screen.getByRole('slider', { name: 'FOV' }), { target: { value: '82' } })
     await waitFor(() => expect(updateSceneSettings).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), 'reaction-rings-v1')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), 'embedded-scene-1')
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
-    expect(vi.mocked(controller.loadSceneBlob).mock.lastCall?.[0]).toMatchObject({ kind: 'template', templateId: 'reaction-rings-v1' })
+    expect(vi.mocked(controller.loadSceneBlob).mock.lastCall?.[0]).toMatchObject({ kind: 'template', templateId: 'embedded-scene-1' })
     const skybox = screen.getByRole('combobox', { name: 'Skybox' }) as HTMLSelectElement
     const nextSkybox = [...skybox.options].find(option => option.value !== skybox.value)!.value
     await user.selectOptions(skybox, nextSkybox)

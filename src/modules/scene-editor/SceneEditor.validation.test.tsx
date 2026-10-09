@@ -40,7 +40,7 @@ describe('scene editor resource preflight', () => {
     const user = userEvent.setup()
     renderCreateScenePage()
     await screen.findByLabelText(/scene name/i)
-    expect(screen.getByTestId('preview')).toHaveAttribute('data-profile', 'preview')
+    expect(screen.getByTestId('preview')).toHaveAttribute('data-profile', 'full')
     await user.click(screen.getByRole('button', { name: 'Camera' }))
     expect(screen.getByLabelText('FOV')).toHaveAttribute('max', '179')
     expect(screen.getByLabelText('FOV')).toHaveAttribute('min', '1')

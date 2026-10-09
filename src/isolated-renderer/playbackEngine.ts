@@ -55,7 +55,10 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   signal.throwIfAborted()
   const { initMAGE } = await import('@notrac/mage')
   signal.throwIfAborted()
-  const engine = initMAGE({ canvas, autoStart: false, log: false, pixelRatio: 1,
+  const devicePixelRatio = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0
+    ? Math.min(window.devicePixelRatio, renderBudget.maxDevicePixelRatio)
+    : 1
+  const engine = initMAGE({ canvas, autoStart: false, log: false, pixelRatio: devicePixelRatio,
     withControls: { active: false, integrated: false }, renderBudget }) as unknown as Engine
   let disposed = false
   let unsubscribe = () => {}

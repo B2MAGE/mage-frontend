@@ -94,3 +94,9 @@ html[data-theme='mage-pulse'] .pulse-footer a:hover {color:var(--text);}
     padding-right: 6px;
   }
 }
+
+@media (max-width: 360px) {
+  html[data-theme] .nav-profile-trigger__chevron {
+    display: none;
+  }
+}

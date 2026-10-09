@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { MagePlayerLoading } from './MagePlayerLoading'
 import {
   createMagePlayer,
@@ -25,7 +25,7 @@ import { useMagePlayerAudioSelection } from './useMagePlayerAudioSelection'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
 import { extractLiveSceneSettings } from './liveSceneSettings'
 import { normalizeAudioResponseMode } from '@shared/lib'
-import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
+import { sceneRecovery, sceneRecoveryKey, type RecoveryReason } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
 import { sceneAvailabilityStore } from './availability/sceneAvailability'
 import { availabilityStatusTarget, availabilityTarget } from './availability/availabilityTarget'
@@ -123,6 +123,14 @@ type SessionAudioProps = {
 
 type SessionPlaybackIntent = { playback: MagePlayerPlaybackState; initialPlayback: MagePlayerPlaybackState; sceneKey: MageSceneKey | undefined }
 
+const AUTOMATIC_RECOVERY_REASONS = new Set<RecoveryReason>([
+  'load',
+  'runtime',
+  'startup-timeout',
+  'progress-timeout',
+])
+const AUTOMATIC_RECOVERY_HISTORY_LIMIT = 32
+
 function MagePlayerStatusReporter({
   onChange,
   status,
@@ -164,6 +172,8 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   }
   const block = blockedRecoveryKey ? sceneRecovery.getBlock(blockedRecoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
+  const activeRecoveryKeyRef = useRef<string | null>(null)
+  const automaticallyRetriedKeysRef = useRef(new Set<string>())
   const target = useMemo(() => props.sceneBlob ? availabilityTarget(props.sceneKey, props.sceneBlob)
     : availabilityStatusTarget(props.sceneKey), [props.sceneKey, props.sceneBlob])
   const availability = useSceneAvailability(target)
@@ -183,6 +193,26 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   useEffect(() => { restoreSourceRef.current = props.onAvailabilityRestored }, [props.onAvailabilityRestored])
   const hasSource = !!props.sceneBlob
   const canRestoreSource = !!props.onAvailabilityRestored
+
+  useLayoutEffect(() => {
+    if (!blockedRecoveryKey || safeMode || !availability.allowed) {
+      activeRecoveryKeyRef.current = null
+      return
+    }
+    if (!block) {
+      activeRecoveryKeyRef.current = blockedRecoveryKey
+      return
+    }
+    if (activeRecoveryKeyRef.current !== blockedRecoveryKey
+      || !AUTOMATIC_RECOVERY_REASONS.has(block.reason)
+      || automaticallyRetriedKeysRef.current.has(blockedRecoveryKey)) return
+
+    activeRecoveryKeyRef.current = null
+    const attempted = automaticallyRetriedKeysRef.current
+    attempted.add(blockedRecoveryKey)
+    if (attempted.size > AUTOMATIC_RECOVERY_HISTORY_LIMIT) attempted.delete(attempted.values().next().value!)
+    sceneRecovery.retry(blockedRecoveryKey)
+  }, [availability.allowed, block, blockedRecoveryKey, safeMode])
 
   useEffect(() => {
     if (!availability.allowed && availability.code !== 'CHECKING' && recoveryKey) sceneRecovery.revokeRetry(recoveryKey)
@@ -285,7 +315,10 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     recoveryRevision={recoveryRevision}
     playlist={playlist}
     audioSelection={audioSelection}
-    onStopRendering={recoveryKey ? () => sceneRecovery.block(recoveryKey, 'stopped') : undefined}
+    onStopRendering={recoveryKey ? () => {
+      activeRecoveryKeyRef.current = null
+      sceneRecovery.block(recoveryKey, 'stopped')
+    } : undefined}
     onSafeMode={() => sceneRecovery.setSafeMode(true)}
   />
 }

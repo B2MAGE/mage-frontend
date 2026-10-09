@@ -17,6 +17,7 @@ describe('SceneRecoveryPanel', () => {
     const status = screen.getByRole('status')
     expect(within(status).getByText('Playback paused')).toBeInTheDocument()
     expect(within(status).getByText(message)).toBeInTheDocument()
+    expect(status.closest('.mage-player')).toHaveAttribute('data-recovery-reason', reason)
     expect(within(status).queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Pause all scenes' })).not.toBeChecked()
     await userEvent.setup().click(screen.getByRole('button', { name: action }))

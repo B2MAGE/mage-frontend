@@ -75,6 +75,30 @@ describe('MagePlayer recovery', () => {
     expect(sceneRecovery.getBlock(key)).toBeNull()
   })
 
+  it('automatically retries one new transient failure before requiring manual recovery', async () => {
+    const scene = buildMagePlayerSceneBlob()
+    const key = identity(scene, 842)
+    const first = controllerWithLease(key)
+    const recovered = controllerWithLease(key)
+    const unused = controllerWithLease(key)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(recovered).mockResolvedValueOnce(unused)
+    const view = render(<MagePlayer sceneBlob={scene} sceneKey={842} />)
+    await waitFor(() => expect(first.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(scene, { sceneKey: 842 }))
+
+    act(() => sceneRecovery.block(key, 'runtime'))
+
+    await waitFor(() => expect(recovered.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(scene, { sceneKey: 842 }))
+    expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
+    expect(sceneRecovery.getBlock(key)).toBeNull()
+
+    act(() => sceneRecovery.block(key, 'runtime'))
+
+    expect(await screen.findByRole('button', { name: 'Retry scene' })).toBeEnabled()
+    expect(view.container.querySelector('[data-recovery-reason="runtime"]')).toBeInTheDocument()
+    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(unused.loadSceneBlob).not.toHaveBeenCalled()
+  })
+
   it('disposes a stopped renderer and keeps playlist data for a deliberate resume', async () => {
     const scene = buildMagePlayerSceneBlob()
     identity(scene, 802)

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { listSceneTemplates, type TemplateSceneDocument } from '@modules/player'
+import { listSceneTemplates, listSelectableSceneTemplates, type TemplateSceneDocument } from '@modules/player'
 import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import type { TemplateFieldPath } from '../templateEditor'
 import type { EditorSectionId } from '../types'
@@ -16,6 +16,10 @@ type Props = {
 }
 
 export function TemplateSceneControls({ section, document, creationMode, fields = {}, onTemplateChange, onChange }: Props) {
+  const selectableTemplates = listSelectableSceneTemplates()
+  const selectedRetiredTemplate = !selectableTemplates.some(template => template.templateId === document.templateId)
+    ? listSceneTemplates().find(template => template.templateId === document.templateId)
+    : undefined
   const error = (path: string) => fields[`sceneData.${path}`] ?? fields[path] ?? fields[`scene.${path}`]
   const id = (path: string) => `template-${path.replaceAll('.', '-')}`
   const issue = (path: string) => error(path) ? <p className="field-error" id={`${id(path)}-error`} role="alert">{error(path)}</p> : null
@@ -38,7 +42,8 @@ export function TemplateSceneControls({ section, document, creationMode, fields 
     <div data-template-field="templateId">
       <EditorFieldShell htmlFor={id('templateId')} label="Template" description="Choose the visual to build your scene around.">
         <select {...props('templateId')} className="mage-select" id={id('templateId')} value={document.templateId} onChange={event => onTemplateChange(event.currentTarget.value)}>
-          {listSceneTemplates().map(template => <option key={`${template.templateId}:${template.templateVersion}`} value={template.templateId}>{template.label}</option>)}
+          {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>{selectedRetiredTemplate.label} (unavailable)</option> : null}
+          {selectableTemplates.map(template => <option key={`${template.templateId}:${template.templateVersion}`} value={template.templateId}>{template.label}</option>)}
         </select>
       </EditorFieldShell>
       {issue('templateId')}

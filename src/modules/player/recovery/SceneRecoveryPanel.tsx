@@ -25,7 +25,8 @@ export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRe
         : compileRejected ? "This shader could not be prepared for playback. Simplify the shader code or choose a template, then try again. It won't restart automatically."
           : 'This scene stopped because of a playback error. You can retry it.'
 
-  return <section className={buildMagePlayerClassName('mage-player', className)} data-state="blocked">
+  return <section className={buildMagePlayerClassName('mage-player', className)}
+    data-recovery-reason={safeMode ? 'safe-mode' : block?.reason} data-state="blocked">
     <div className="mage-player__viewport mage-player__recovery-viewport">
       {posterUrl ? <img className="mage-player__recovery-poster" src={posterUrl} alt="" /> : null}
       <div className="mage-player__recovery-panel">

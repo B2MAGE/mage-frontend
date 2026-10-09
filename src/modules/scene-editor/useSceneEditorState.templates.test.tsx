@@ -243,7 +243,10 @@ describe('template editor state and preview', () => {
   })
 
   it('updates effect order and reports extended numeric errors without changing the document mode', async () => {
-    const { result } = await state()
+    const template = createTemplateScene()
+    template.settings.bloom.enabled = true
+    template.settings.effects = { passes: { glitch: true } }
+    const { result } = await state({ sceneData: template })
     act(() => result.current.movePass('glitchPass', 1))
     expect(result.current.templateDocument?.settings.effects?.passOrder?.slice(0, 2)).toEqual(['bloom', 'glitchPass'])
     act(() => result.current.updateBranch('controls', branch => ({ ...branch, zoom0: 0 })))
