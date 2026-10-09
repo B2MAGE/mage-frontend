@@ -45,7 +45,7 @@ the live contract. Invalid input is rejected before fields are removed for ident
 4. Full snapshots let rapid edits to different controls coalesce without dropping
    an earlier setting. The renderer validates again and diffs against its last
    applied snapshot. Only changed leaves reach `engine.updateSettings`.
-5. The frontend-owned engine patch checks the entire delta and merged effect budget
+5. The maintained engine package checks the entire delta and merged effect budget
    before mutation. It changes existing objects. A paused scene draws one frame
    without advancing animation or starting audio; a stopped/failed scene remains
    stopped until explicit Resume/Retry.
@@ -63,7 +63,7 @@ load path. Deploy the matching app and separate renderer builds together.
 
 ## Verification
 
-- Engine patch tests run in `npm run test:compiled-output`: strict/atomic deltas,
+- Engine consumer tests run in `npm run test:compiled-output`: strict/atomic deltas,
   aggregate effects, reused pass/object references, rapid changes, paused refresh,
   and the existing compiled-output regressions.
 - Player tests cover structural identity, strict snapshots, live controller
