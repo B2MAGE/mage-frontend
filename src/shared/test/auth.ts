@@ -6,6 +6,7 @@ export function buildAuthenticatedUser(
   return {
     authProvider: 'LOCAL',
     displayName: 'Scene Artist',
+    handle: 'scene_artist',
     email: 'artist@example.com',
     userId: 8,
     ...overrides,

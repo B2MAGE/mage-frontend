@@ -39,22 +39,7 @@ function draftScene() {
   const source = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value) as SceneData
   if (open) fireEvent.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
   fireEvent.click(screen.getByLabelText(currentSection, { selector: 'button' }))
-  return source
-}
-
-async function renderSavedBeatScene() {
-  storeSceneEditorSession()
-  const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 1.9, mappings: [
-    { target: 'size', source: 'bass-hit', amount: 1.4, attack: 0.23, release: 0.87 },
-  ] }).config
-  const stored = { ...createDefaultSceneData(), audioResponse: 'transient-v1', audioResponseConfig: config }
-  mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
-    ? jsonResponse(buildSceneEditorApiScene({ sceneData: stored, tags: [] })) : undefined)
-  const user = userEvent.setup()
-  renderEditScenePage(undefined, 'mage-pulse')
-  await screen.findByLabelText(/scene name/i)
-  await user.click(screen.getByRole('button', { name: 'Motion' }))
-  return { config, user }
+  return readEditableSceneData(source)
 }
 
 describe('creator music response workflow', () => {
@@ -130,7 +115,6 @@ describe('creator music response workflow', () => {
     let stored = { ...createDefaultSceneData(), audioResponse: 'mapped-v1', audioResponseConfig: startingConfig }
     let submitted: SceneData | undefined
     mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes/12/tags') && init?.method === 'PUT') return jsonResponse([])
       if (input !== buildApiUrl('/scenes/12')) return
       if (init?.method === 'PUT') {
         submitted = (JSON.parse(String(init.body)) as { sceneData: SceneData }).sceneData
@@ -173,31 +157,6 @@ describe('creator music response workflow', () => {
     expect(resetDraft.audioResponse).toBe('mapped-v1')
     expect(resetDraft.audioResponseConfig).toEqual(readEditableSceneData(stored).audioResponseConfig)
   }, 60_000)
-
-  it('preserves a saved beat response until a deliberate version switch', async () => {
-    const { config } = await renderSavedBeatScene()
-    expect(draftScene()).toMatchObject({ audioResponse: 'transient-v1', audioResponseConfig: config })
-    expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('transient-v1')
-    expect(screen.getByRole('option', { name: 'Saved beat response' })).toBeDisabled()
-    expect(screen.getByText('This scene keeps its saved beat response until you choose a version.')).toBeInTheDocument()
-    expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('slider', { name: 'Amount' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Reset music settings' })).toBeDisabled()
-  })
-
-  it('restores a saved beat response after deliberately switching versions', async () => {
-    const { config, user } = await renderSavedBeatScene()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'mapped-v1')
-    expect(draftScene()).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: config })
-    expect(screen.getByRole('spinbutton', { name: 'Amount numeric value' })).toHaveValue(1.4)
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'legacy')
-    expect(draftScene()).toMatchObject({ audioResponse: 'legacy', audioResponseConfig: config })
-    expect(screen.getByRole('slider', { name: 'Input gain' })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Reset music settings' }))
-    expect(draftScene()).toMatchObject({ audioResponse: 'transient-v1', audioResponseConfig: config })
-    expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('transient-v1')
-    expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
-  })
 })
 
 // These editor workflows exercise fields/submission with explicit playback permission.

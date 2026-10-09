@@ -53,7 +53,6 @@ async function editor(scene: SceneData = customScene()) {
   let stored = scene
   let submitted: SceneData | undefined
   mockCreateScenePageFetch((input, init) => {
-    if (input === buildApiUrl('/scenes/12/tags') && init?.method === 'PUT') return jsonResponse([])
     if (input !== buildApiUrl('/scenes/12')) return
     if (init?.method === 'PUT') {
       submitted = JSON.parse(String(init.body)).sceneData
@@ -100,6 +99,7 @@ describe('editor targets from compiled shader capabilities', () => {
     publish(['size', 'bass'])
     section('Scene')
     fireEvent.change(screen.getByLabelText('Custom Shader'), { target: { value: 'sphere(0.8)' } })
+    await waitFor(() => expect(latestPlayer().sceneBlob).not.toEqual(firstSource))
     const secondSource = latestPlayer().sceneBlob
     section('Motion')
     publish(['size', 'bass'], firstSource)
@@ -163,7 +163,7 @@ describe('editor targets from compiled shader capabilities', () => {
     publish(['size'])
     expect(screen.getByRole('spinbutton', { name: 'Amount numeric value' })).toHaveValue(1.1)
     expect(screen.queryByRole('combobox', { name: 'Response target' })).not.toBeInTheDocument()
-    publish(['bass'], createTemplateScene('reaction-rings-v1'))
+    publish(['bass'], createTemplateScene('embedded-scene-1'))
     expect(screen.queryByRole('slider', { name: 'Amount' })).not.toBeInTheDocument()
   })
 })

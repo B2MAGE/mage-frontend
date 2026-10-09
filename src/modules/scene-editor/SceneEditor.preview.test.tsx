@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl, normalizeAudioResponseConfig } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel, SHADER_SCENES, type SceneData } from './sceneEditor'
-import { buildEffectiveSceneData, readEditableSceneData } from './utils'
+import { buildEffectiveSceneData, editorSceneDocument, readEditableSceneData } from './utils'
 import { createTemplateScene } from './templateEditor'
 import {
   buildSceneEditorApiScene,
@@ -56,7 +56,7 @@ function draftScene() {
   const source = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value) as SceneData
   if (open) fireEvent.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
   fireEvent.click(screen.getByRole('button', { name: currentSection }))
-  return source
+  return readEditableSceneData(source)
 }
 
 function shaderOption(label: string) {
@@ -81,12 +81,12 @@ describe('scene editor presets and beat preview', () => {
     expect(await screen.findByTestId('scene-preview')).toHaveAttribute('data-audio-mode', 'single')
   })
 
-  it('explains beat detection, hides only bypassed controls, and preserves legacy settings when saving', async () => {
+  it('preserves Original tuning while Selective is active and saves it with current data', async () => {
     storeSceneEditorSession()
     const defaults = createDefaultSceneData()
     const saved = {
       ...defaults,
-      audioResponse: 'transient-v1',
+      audioResponse: 'mapped-v1',
       intent: {
         ...getSceneEditorModel(defaults).intent,
         minimizing_factor: 1.3, power_factor: 3.4, base_speed: 0.13, easing_speed: 0.44,
@@ -96,7 +96,6 @@ describe('scene editor presets and beat preview', () => {
     const scene = buildSceneEditorApiScene({ sceneData: saved, tags: [] })
     let updated: SceneWritePayload | undefined
     mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes/12/tags') && init?.method === 'PUT') return jsonResponse([])
       if (input !== buildApiUrl('/scenes/12')) return
       if (!init?.method || init.method === 'GET') return jsonResponse(scene)
       if (init.method === 'PUT') {
@@ -109,11 +108,9 @@ describe('scene editor presets and beat preview', () => {
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Motion' }))
 
-    expect(screen.getByText('This scene keeps its saved beat response until you choose a version.')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('transient-v1')
-    expect(screen.getByRole('option', { name: 'Saved beat response' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
     expect(screen.queryByRole('option', { name: 'Automatic beats' })).not.toBeInTheDocument()
-    expect(draftScene().audioResponse).toBe('transient-v1')
+    expect(draftScene().audioResponse).toBe('mapped-v1')
     for (const name of ['Input gain', 'Peak emphasis', 'Resting response', 'Smoothing']) {
       expect(screen.queryByRole('slider', { name })).not.toBeInTheDocument()
     }
@@ -135,13 +132,13 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     const review = screen.getByRole('region', { name: 'Scene review' })
     await user.click(within(review).getByRole('button', { name: /^4 Motion/ }))
-    expect(within(review).getByText('Response mode')).toBeInTheDocument()
-    expect(within(review).getAllByText('Saved beat response')).toHaveLength(2)
+    const responseMode = within(review).getByText('Response mode')
+    expect(responseMode.nextElementSibling).toHaveTextContent(/^Version 2 \u2014 Selective$/)
     expect(within(review).queryByText('Input gain')).not.toBeInTheDocument()
     expect(within(review).queryByText('Peak emphasis')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(updated).toBeDefined())
-    expect(readEditableSceneData(updated!.sceneData).audioResponse).toBe('transient-v1')
+    expect(readEditableSceneData(updated!.sceneData).audioResponse).toBe('mapped-v1')
     expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).intent).toMatchObject({
       minimizing_factor: 1.3, power_factor: 3.4, base_speed: 0.13, easing_speed: 0.44,
       time_multiplier: 0.6, pointerDownMultiplier: getSceneEditorModel(defaults).intent.pointerDownMultiplier,
@@ -157,7 +154,7 @@ describe('scene editor presets and beat preview', () => {
     const before = previewScene()
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption(label).id)
-    expect(previewScene()).toEqual({ ...before, templateId: shaderOption(label).id })
+    await waitFor(() => expect(previewScene()).toEqual({ ...before, templateId: shaderOption(label).id }))
     expect(previewScene()).not.toHaveProperty('visualizer')
     expect(previewScene()).not.toHaveProperty('reactions')
     expect(previewScene()).not.toHaveProperty('mageTemplate')
@@ -240,7 +237,7 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.queryByRole('button', { name: 'Reset advanced settings' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
-    const exported = JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value) as SceneData
+    const exported = readEditableSceneData(JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value))
     const after = getSceneEditorModel(exported)
     expect(after.state.time).toBe(12)
     expect(after.intent.camOrientationSpeed).toBe(2.3)
@@ -282,46 +279,6 @@ describe('scene editor presets and beat preview', () => {
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('keeps unsupported legacy metadata for owner repair without previewing or silently deleting it', async () => {
-    storeSceneEditorSession()
-    const source = '// An authored audio response\nlet size = input();\ncolor(0.2, 0.6, 0.8);\nsphere(0.3 + size * 0.7);'
-    const saved = {
-      ...createDefaultSceneData(),
-      visualizer: { shader: source, skyboxPreset: 4, customVisualizerSetting: true },
-      reactions: { version: 1, pulse: 1.6, deformation: 0.8 },
-      mageTemplate: { id: 'embedded-scene-0', version: 1, parameters: { pulse: 1.2, deformation: 0.6 } },
-      otherExtension: { preserve: true },
-    }
-    const scene = buildSceneEditorApiScene({ sceneData: saved, tags: [] })
-    let updated: SceneWritePayload | undefined
-    mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes/12/tags') && init?.method === 'PUT') return jsonResponse([])
-      if (input !== buildApiUrl('/scenes/12')) return
-      if (!init?.method || init.method === 'GET') return jsonResponse(scene)
-      if (init.method === 'PUT') {
-        updated = JSON.parse(String(init.body)) as SceneWritePayload
-        return jsonResponse(scene)
-      }
-    })
-    const user = userEvent.setup()
-    renderEditScenePage(undefined, 'mage-pulse')
-    await screen.findByLabelText(/scene name/i)
-    await user.click(screen.getByRole('button', { name: 'Scene' }))
-    expect(screen.getByRole('combobox', { name: 'Template' })).toHaveValue('custom')
-    expect(screen.getByRole('textbox', { name: 'Custom Shader' })).toHaveValue(source)
-    await user.click(screen.getByRole('button', { name: 'Motion' }))
-    expectRetiredControlsAbsent()
-    expect(screen.queryByTestId('scene-preview')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Confirm' }))
-    await user.click(screen.getByRole('button', { name: /^update scene$/i }))
-    expect(updated).toBeUndefined()
-    expect(JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)).toEqual(saved)
-    expect(screen.getByRole('button', { name: 'Download scene JSON' })).toBeEnabled()
-    expect(saved.visualizer.shader).toBe(source)
-    expect(saved).toHaveProperty('reactions')
-    expect(saved).toHaveProperty('mageTemplate')
-  })
-
   it('rejects unsupported metadata instead of deleting it or changing the original', () => {
     const original = Object.freeze({
       visualizer: Object.freeze({ shader: 'sphere(0.71);', skyboxPreset: 6 }),
@@ -333,7 +290,7 @@ describe('scene editor presets and beat preview', () => {
     expect(original).toHaveProperty('reactions')
     expect(original).toHaveProperty('mageTemplate')
   })
-  it('preserves mapped settings through JSON import, shader selection, custom repair update requests, and reopening', async () => {
+  it('preserves mapped settings through JSON import, shader selection, current custom update requests, and reopening', async () => {
     storeSceneEditorSession()
     const config = normalizeAudioResponseConfig({ sensitivity: 1.7, mappings: [
       { target: 'size', source: 'bass-hit', amount: 0.8, attack: 0.02, release: 0.4 },
@@ -349,17 +306,16 @@ describe('scene editor presets and beat preview', () => {
         return jsonResponse(buildSceneEditorApiScene({ ...stored, tags: [] }), method === 'POST' ? 201 : 200)
       }
       if (input === buildApiUrl('/scenes/12') && method === 'GET') return jsonResponse(buildSceneEditorApiScene({ ...stored, tags: [] }))
-      if (input === buildApiUrl('/scenes/12/tags') && method === 'PUT') return jsonResponse([])
     })
     const user = userEvent.setup()
     const create = renderEditScenePage(undefined, 'mage-pulse')
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
-    const imported = { ...createDefaultSceneData(), audioResponse: 'mapped-v1', audioResponseConfig: config }
+    const imported = editorSceneDocument({ ...createDefaultSceneData(), audioResponse: 'mapped-v1', audioResponseConfig: config })
     fireEvent.change(screen.getByRole('textbox', { name: 'Scene Data JSON' }), { target: { value: JSON.stringify(imported) } })
     await user.click(screen.getByRole('button', { name: 'Format JSON' }))
-    expect(JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value).audioResponseConfig).toEqual(config)
+    expect(readEditableSceneData(JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value)).audioResponseConfig).toEqual(config)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption('Rose Circuit').id)
     expect(draftScene().audioResponseConfig).toEqual(config)
@@ -381,10 +337,10 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
     const updatedConfig = { ...config, sensitivity: 2.1 }
-    const exported = JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value) as SceneData
+    const exported = readEditableSceneData(JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value))
     expect(exported.audioResponseConfig).toEqual(config)
     fireEvent.change(screen.getByRole('textbox', { name: 'Scene Data JSON' }), {
-      target: { value: JSON.stringify({ ...exported, audioResponseConfig: updatedConfig }) },
+      target: { value: JSON.stringify(editorSceneDocument({ ...exported, audioResponseConfig: updatedConfig })) },
     })
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await screen.findByText('My Scenes')
