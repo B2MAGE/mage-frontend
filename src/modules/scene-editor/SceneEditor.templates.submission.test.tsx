@@ -24,7 +24,7 @@ vi.mock('@modules/player/availability/sceneAvailability', async () => {
 
 beforeEach(() => { capture.mockClear(); storeSceneEditorSession() })
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
-const template = () => parseSceneDocument({ schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1,
+const template = () => parseSceneDocument({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1,
   parameters: { scale: 8, speed: 0.7 }, settings: { skybox: 3, camera: { fov: 65, autoRotate: false }, tint: { enabled: true, color: '#abc123' } } })
 
 describe('template editor API round trips', () => {

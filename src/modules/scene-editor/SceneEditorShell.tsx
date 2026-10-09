@@ -47,6 +47,7 @@ import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/M
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
 import type { EditorSectionId, SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
+  editorSceneDocument,
   getActivePassOrder,
   readEditableSceneData,
 } from "./utils";
@@ -295,7 +296,7 @@ export function SceneEditorShell({
   const recoverySceneData = useMemo(() => {
     const original = initialState?.sceneData;
     if (original && previewOriginalSceneData
-      && sceneRecoveryKey(readEditableSceneData(original)) === sceneRecoveryKey(previewOriginalSceneData)) return original;
+      && sceneRecoveryKey(editorSceneDocument(readEditableSceneData(original))) === sceneRecoveryKey(editorSceneDocument(previewOriginalSceneData))) return original;
     return previewOriginalSceneData;
   }, [initialState?.sceneData, previewOriginalSceneData]);
   const canPreviewScene = !!previewSceneData;

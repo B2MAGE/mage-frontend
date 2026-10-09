@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { BuilderObject, BuilderSceneDocument } from '@modules/player'
 import { addBuilderObject, duplicateBuilderObject, isBuilderEditorDocument, moveBuilderObject,
   removeBuilderObject, updateBuilderObject, type BuilderShape } from './builderEditor'
@@ -35,4 +36,3 @@ export function useSceneDraftCommands({ readDraft, applyDraft }: Args) {
       editObjects(document => updateBuilderObject(document, id, recipe)),
   }
 }
-import { useRef } from 'react'

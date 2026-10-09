@@ -115,8 +115,7 @@ describe('CreateScenePage workflow', () => {
     expect(screen.getByLabelText(/description/i)).toHaveValue(
       'A soft drifting scene for night scenes.',
     )
-    expect(screen.getByLabelText(/playlists/i)).toBeDisabled()
-    expect(screen.getByLabelText(/playlists/i)).toHaveValue('')
+    expect(screen.queryByLabelText(/playlists/i)).not.toBeInTheDocument()
     expect(
       screen.getByAltText(/captured thumbnail preview/i),
     ).toBeInTheDocument()
@@ -180,7 +179,6 @@ describe('CreateScenePage workflow', () => {
 
     const nameField = screen.getByLabelText(/scene name/i)
     const descriptionField = screen.getByLabelText(/description/i)
-    const playlistsField = screen.getByLabelText(/playlists/i)
     const thumbnailField = screen.getByRole('button', {
       name: /capture thumbnail/i,
     })
@@ -192,11 +190,7 @@ describe('CreateScenePage workflow', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
-      descriptionField.compareDocumentPosition(playlistsField) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    expect(
-      playlistsField.compareDocumentPosition(thumbnailField) &
+      descriptionField.compareDocumentPosition(thumbnailField) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     expect(
@@ -420,8 +414,7 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
     expect(within(thumbnailFrame as HTMLElement).queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Create a scene' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Start with the basics.' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Playlists')).toBeDisabled()
-    expect(screen.getByLabelText('Playlists')).toHaveClass('mage-select')
+    expect(screen.queryByLabelText('Playlists')).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Ambient Atlas' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^create scene$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^next$/i })).not.toBeInTheDocument()

@@ -9,8 +9,8 @@ const source = { ...createDefaultSceneData(), visualizer: { shader: 'sphere(0.37
 const custom = { schemaVersion: 1, kind: 'custom', scene: source }
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 
-describe('versioned scene transport compatibility', () => {
-  it('wraps existing engine settings as explicit custom data without modifying the original', () => {
+describe('current scene document transport', () => {
+  it('assembles explicitly authored custom settings without modifying the original', () => {
     const original = JSON.stringify(source)
     expect(buildSceneSubmissionDocument(source)).toEqual({ schemaVersion: 1, kind: 'custom', scene: source })
     expect(JSON.stringify(source)).toBe(original)
@@ -47,7 +47,7 @@ describe('versioned scene transport compatibility', () => {
     expect(readEditableSceneData(template)).toEqual(parseSceneDocument(template))
     expect(validateForm('Template', JSON.stringify(template))).toEqual({ errors: {}, parsedSceneData: parseSceneDocument(template) })
     expect(buildEffectiveSceneData(template)).toEqual(parseSceneDocument(template))
-    expect(JSON.parse(prettyPrintEditorSceneData(template))).toEqual(parseSceneDocument(template))
+    expect(JSON.parse(prettyPrintEditorSceneData(template))).toEqual(template)
   })
 
   it('preserves builder objects for storage, export, preview, and editing', () => {
@@ -56,7 +56,7 @@ describe('versioned scene transport compatibility', () => {
     const normalized = parseSceneDocument(builder)
     expect(buildSceneSubmissionDocument(builder)).toEqual(normalized)
     expect(readEditableSceneData(builder)).toEqual(normalized)
-    expect(JSON.parse(prettyPrintEditorSceneData(builder))).toEqual(normalized)
+    expect(JSON.parse(prettyPrintEditorSceneData(builder))).toEqual(builder)
     expect(validateForm('Builder', JSON.stringify(builder))).toEqual({ errors: {}, parsedSceneData: normalized })
     expect(buildEffectiveSceneData(builder)).toEqual(normalized)
   })

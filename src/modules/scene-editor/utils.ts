@@ -31,15 +31,6 @@ export function upsertTag(tags: TagResponse[], nextTag: TagResponse) {
   ])
 }
 
-export function parseCreatedSceneId(payload: unknown) {
-  if (!payload || typeof payload !== 'object') {
-    return null
-  }
-
-  const sceneId = (payload as { sceneId?: unknown }).sceneId
-  return typeof sceneId === 'number' && sceneId > 0 ? sceneId : null
-}
-
 export async function loadAvailableTagsFromBackend() {
   return sortTags(await fetchAvailableTags())
 }

@@ -23,6 +23,7 @@ import {
   validateThumbnailFile,
 } from './utils'
 import { useSceneImportExport } from './useSceneImportExport'
+import { changeSceneBranch, mergeChangedValues } from './draftCommands'
 import { useSceneDraftCommands } from './useSceneDraftCommands'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
@@ -30,23 +31,8 @@ import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioRes
 import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
 import { createCustomSceneFromTemplate, readTemplateShaderSource, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderSceneDocument, type TemplateId } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
-import { changedTemplateFields, changeTemplateBranch, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorModel, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
-import { changeBuilderBranch, changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorModel, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
-
-/** Apply only the user's changed fields, retaining unsupported repair values. */
-function mergeChangedValues(original: unknown, before: unknown, after: unknown): unknown {
-  if (before === after) return original
-  if (original && before && after && typeof original === 'object' && typeof before === 'object' && typeof after === 'object'
-    && !Array.isArray(original) && !Array.isArray(before) && !Array.isArray(after)) {
-    const next = { ...original } as Record<string, unknown>
-    for (const [key, value] of Object.entries(after)) {
-      const previous = (before as Record<string, unknown>)[key]
-      if (previous !== value) next[key] = mergeChangedValues(next[key], previous, value)
-    }
-    return next
-  }
-  return after
-}
+import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
+import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
 
 type UseSceneEditorStateArgs = {
   allowCustomSceneData?: boolean
@@ -206,20 +192,10 @@ export function useSceneEditorState({
     branch: K,
     recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
   ) {
-    const currentModel = templateDocument ? getTemplateEditorModel(templateDocument)
-      : builderDocument ? getBuilderEditorModel(builderDocument) : getSceneEditorModel(sceneData)
-    const nextBranch = recipe(currentModel[branch])
-    if (templateDocument) {
-      const next = changeTemplateBranch(templateDocument, branch, nextBranch)
-      applySceneData(next, false, changedTemplateFields(templateDocument, next))
-      return
-    }
-    if (builderDocument) {
-      const next = changeBuilderBranch(builderDocument, branch, nextBranch)
-      applySceneData(next, false)
-      return
-    }
-    applySceneData({ ...sceneData, [branch]: mergeChangedValues(sceneData[branch], currentModel[branch], nextBranch) })
+    const current = sceneDraftRef.current
+    const next = changeSceneBranch(current, branch, recipe)
+    applySceneData(next, false, isTemplateEditorDocument(current) && isTemplateEditorDocument(next)
+      ? changedTemplateFields(current, next) : undefined)
   }
 
   function handleAudioResponseModeChange(mode: SceneAudioResponseMode, supportedTargets?: readonly AudioResponseTarget[]) {
@@ -288,11 +264,13 @@ export function useSceneEditorState({
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {
-    if (templateDocument) applySceneData(changeTemplateValue(templateDocument, path, value), false, path)
+    const current = sceneDraftRef.current
+    if (isTemplateEditorDocument(current)) applySceneData(changeTemplateValue(current, path, value), false, path)
   }
 
   function updateBuilderValue(path: TemplateFieldPath, value: number | string | boolean) {
-    if (builderDocument) applySceneData(changeBuilderValue(builderDocument, path, value), false, path)
+    const current = sceneDraftRef.current
+    if (isBuilderEditorDocument(current)) applySceneData(changeBuilderValue(current, path, value), false, path)
   }
 
   const { handleAddBuilderObject, handleUpdateBuilderObject, handleDuplicateBuilderObject,
