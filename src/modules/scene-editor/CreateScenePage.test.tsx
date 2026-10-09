@@ -403,7 +403,7 @@ describe('CreateScenePage workflow', () => {
     const document = JSON.parse((screen.getByLabelText(/scene data json/i) as HTMLTextAreaElement).value)
     expect(document).toEqual({ schemaVersion: 1, kind: 'custom', scene: createDefaultSceneData() })
     expect(screen.getByTestId('mage-player')).toBeInTheDocument()
-  }, 15_000)
+  }, 60_000)
 })
 
 describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (themeId) => {

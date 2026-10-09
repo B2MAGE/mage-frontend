@@ -110,7 +110,7 @@ describe('scene editor resource preflight', () => {
     const editor = await rawEditor(user) as HTMLTextAreaElement
     expect(JSON.parse(editor.value).fx.bloom.enabled).toBe(false)
     expect(screen.getByTestId('preview')).toBeInTheDocument()
-  }, 15_000)
+  }, 60_000)
 
   it('checks the whole request budget before thumbnail capture or upload', async () => {
     const fetchMock = mockCreateScenePageFetch()

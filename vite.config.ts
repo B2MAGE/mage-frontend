@@ -47,6 +47,8 @@ export default defineConfig({
     // Local browser profiles can contain third-party extension test files.
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     maxWorkers: 4,
+    // Themed editor accessibility queries and userEvent flows exceed the old limits even on baseline.
+    testTimeout: 30_000,
     css: true,
     environment: 'jsdom',
     setupFiles: './src/shared/test/setup.ts',

@@ -205,7 +205,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     expect(screen.getByText('Bleach Bypass', { exact: true })).toBeInTheDocument()
     expect(screen.queryByText('Toon', { exact: true })).not.toBeInTheDocument()
     expect(screen.queryByText('Copy Shader', { exact: true })).not.toBeInTheDocument()
-  }, 15_000)
+  }, 60_000)
 
   it('shows Output as the only default pass and a clear empty state when Output is disabled', async () => {
     storeSceneEditorSession()

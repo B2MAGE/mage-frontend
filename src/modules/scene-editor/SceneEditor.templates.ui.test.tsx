@@ -331,7 +331,7 @@ describe('Basic template editor controls', () => {
     const raw = await openRawJson(user)
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(draft)
     expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
-  }, 15_000)
+  }, 60_000)
 
   it.each([
     ['settings.camera.autoRotate', 'checkbox', 'Automatic orbit'],

@@ -119,7 +119,7 @@ describe('creator music response workflow', () => {
     expect(getSceneEditorModel(resetDraft).intent.minimizing_factor).toBe(originalInputGain)
     expect(getSceneEditorModel(resetDraft).intent.time_multiplier).toBe(0.6)
     expect(screen.getByRole('button', { name: 'Reset music settings' })).toBeDisabled()
-  }, 15000)
+  }, 60_000)
 
   it.each([0, 0.0123456789, 2.1])('saves tuned settings with amount %s, reopens them, and resets to the saved scene configuration', async amount => {
     storeSceneEditorSession()
@@ -172,7 +172,7 @@ describe('creator music response workflow', () => {
     const resetDraft = draftScene()
     expect(resetDraft.audioResponse).toBe('mapped-v1')
     expect(resetDraft.audioResponseConfig).toEqual(readEditableSceneData(stored).audioResponseConfig)
-  }, 15000)
+  }, 60_000)
 
   it('preserves a saved beat response until a deliberate version switch', async () => {
     const { config } = await renderSavedBeatScene()
