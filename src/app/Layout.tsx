@@ -122,7 +122,7 @@ export function Layout({ children }: PropsWithChildren) {
                       className="nav-menu__profile-link"
                       onClick={() => setIsAccountMenuOpen(false)}
                       role="menuitem"
-                      to={user.handle ? `/@${user.handle}` : '/profile'}
+                      to={user.handle ? `/@${user.handle}` : '/settings#profile'}
                     >
                       <UserAvatar className="nav-avatar nav-avatar--large" initials={profileInitials} gradientStart={user?.avatarGradientStart} gradientEnd={user?.avatarGradientEnd} />
                       <div className="nav-menu__identity">

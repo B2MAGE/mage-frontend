@@ -104,7 +104,7 @@ describe('App routing', () => {
     expect(screen.queryByText('Login page')).not.toBeInTheDocument()
   })
 
-  it('keeps the profile placeholder behind authentication', async () => {
+  it('treats the retired profile alias as an unknown route', async () => {
     render(
       <MemoryRouter initialEntries={['/profile']}>
         <App />
@@ -112,7 +112,7 @@ describe('App routing', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Login page')).toBeInTheDocument()
+      expect(screen.getByText('Home page')).toBeInTheDocument()
     })
 
     expect(screen.queryByRole('heading', { name: 'Your profile' })).not.toBeInTheDocument()
