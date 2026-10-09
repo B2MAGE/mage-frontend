@@ -57,10 +57,10 @@ describe('scene editor resource preflight', () => {
   })
 
   it.each([
-    ['source size', JSON.stringify({ visualizer: { shader: 'x'.repeat(65537) } })],
-    ['wrong type', JSON.stringify({ visualizer: { shader: 'sphere(1)', skyboxPreset: '4' } })],
-    ['duplicate key', '{"visualizer":{"shader":"first","shader":"second"}}'],
-    ['unknown field', JSON.stringify({ visualizer: { shader: 'sphere(1)' }, unsupported: true })],
+    ['source size', JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'x'.repeat(65537) } } })],
+    ['wrong type', JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(1)', skyboxPreset: '4' } } })],
+    ['duplicate key', '{"schemaVersion":1,"kind":"custom","scene":{"visualizer":{"shader":"first","shader":"second"}}}'],
+    ['unknown field', JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(1)' }, unsupported: true } })],
   ])('keeps an invalid %s import intact and never previews or submits it', async (_label, text) => {
     const fetchMock = mockCreateScenePageFetch()
     const user = userEvent.setup()
@@ -87,7 +87,7 @@ describe('scene editor resource preflight', () => {
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     fireEvent.change(screen.getByLabelText('Animation speed'), { target: { value: '2' } })
     const editor = await rawEditor(user) as HTMLTextAreaElement
-    expect(JSON.parse(editor.value)).toMatchObject({ intent: { fov: 'broken', time_multiplier: 2 }, unknown: 'retain' })
+    expect(JSON.parse(editor.value)).toMatchObject({ schemaVersion: 1, kind: 'custom', scene: { intent: { fov: 'broken', time_multiplier: 2 }, unknown: 'retain' } })
     expect(screen.queryByTestId('preview')).not.toBeInTheDocument()
   })
 
@@ -108,7 +108,7 @@ describe('scene editor resource preflight', () => {
     await user.click(effect('Bloom'))
     expect(effect('Afterimage')).toBeEnabled()
     const editor = await rawEditor(user) as HTMLTextAreaElement
-    expect(JSON.parse(editor.value).fx.bloom.enabled).toBe(false)
+    expect(JSON.parse(editor.value).scene.fx.bloom.enabled).toBe(false)
     expect(screen.getByTestId('preview')).toBeInTheDocument()
   }, 60_000)
 
@@ -152,8 +152,8 @@ describe('scene editor resource preflight', () => {
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Keep this name')
   })
 
-  it('maps both legacy and versioned nested field paths without losing metadata errors', () => {
-    expect(sceneSubmissionErrors(400, { details: { name: 'Choose another name.', 'sceneData.intent.fov': 'Must be between 1 and 179.',
+  it('maps current nested field paths without losing metadata errors', () => {
+    expect(sceneSubmissionErrors(400, { details: { name: 'Choose another name.', 'sceneData.scene.intent.fov': 'Must be between 1 and 179.',
       'sceneData.scene.fx': 'Enable at most 4 optional effects, including bloom.' } }))
       .toMatchObject({ name: 'Choose another name.', sceneData: 'FOV: Must be between 1 and 179. Effects: Enable at most 4 optional effects, including bloom.' })
   })

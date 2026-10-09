@@ -112,7 +112,7 @@ describe('live Confirm review', () => {
 
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
     const raw = screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement
-    expect(JSON.parse(raw.value)).toEqual(saved)
+    expect(JSON.parse(raw.value)).toEqual({ schemaVersion: 1, kind: 'custom', scene: saved })
     fireEvent.change(raw, { target: { value: '{bad json' } })
     expect(screen.getByRole('button', { name: 'Update scene' })).toBeDisabled()
   })

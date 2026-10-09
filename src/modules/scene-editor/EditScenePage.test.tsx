@@ -61,7 +61,7 @@ afterEach(() => {
 })
 
 describe('EditScenePage workflow', () => {
-  it.each(['legacy', 'transient-v1', 'mapped-v1'] as const)(
+  it.each(['legacy', 'mapped-v1'] as const)(
     'keeps hidden advanced values when opening, closing, and saving a %s scene',
     async (audioResponse) => {
       storeSceneEditorSession()
@@ -82,7 +82,6 @@ describe('EditScenePage workflow', () => {
           submitted = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
           return jsonResponse({ ...scene, ...submitted })
         }
-        if (input === buildApiUrl('/scenes/12/tags') && method === 'PUT') return jsonResponse([])
       })
       const user = userEvent.setup()
       renderEditScenePage()
@@ -111,10 +110,11 @@ describe('EditScenePage workflow', () => {
       await user.click(screen.getByRole('button', { name: 'Confirm' }))
       await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
       const document = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)
-      expect(document.intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
-      expect(document.state).toEqual(sceneData.state)
+      expect(document.scene.intent.camTilt).toBeCloseTo(Math.PI / 2, 5)
+      expect(document.scene.state).toEqual(sceneData.state)
       await user.click(screen.getByRole('button', { name: /update scene/i }))
       await waitFor(() => expect(submitted).toMatchObject({
+        tagIds: [],
         sceneData: {
           schemaVersion: 1, kind: 'custom', scene: {
             audioResponse,
@@ -134,16 +134,16 @@ describe('EditScenePage workflow', () => {
     const scene = buildSceneEditorApiScene({
       tags: ['ambient'],
       sceneData: kind === 'template' ? createTemplateScene() : {
-        ...buildSceneEditorApiScene().sceneData,
-        audioResponse: 'transient-v1',
+        ...createDefaultSceneData(),
+        visualizer: { shader: 'nebula' },
+        audioResponse: 'mapped-v1',
       },
     })
     let updateSceneBody: Record<string, unknown> | null = null
-    let replaceTagsBody: Record<string, unknown> | null = null
     let finalizeThumbnailBody: Record<string, unknown> | null = null
     let replacementUploadRequested = false
 
-    mockCreateScenePageFetch((input, init) => {
+    const fetchMock = mockCreateScenePageFetch((input, init) => {
       const method =
         typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET'
 
@@ -160,14 +160,6 @@ describe('EditScenePage workflow', () => {
           name: nextSubmittedBody.name,
           sceneData: nextSubmittedBody.sceneData,
         })
-      }
-
-      if (input === buildApiUrl('/scenes/12/tags') && method === 'PUT') {
-        replaceTagsBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return jsonResponse([
-          { sceneId: 12, tagId: 1 },
-          { sceneId: 12, tagId: 2 },
-        ])
       }
 
       if (input === buildApiUrl('/scenes/12/thumbnail/presign') && method === 'POST') {
@@ -229,18 +221,17 @@ describe('EditScenePage workflow', () => {
       expect(updateSceneBody).toMatchObject({
         description: 'Updated from My Scenes.',
         name: 'Updated Scene',
+        tagIds: [1, 2],
         sceneData: kind === 'template' ? createTemplateScene() : {
           schemaVersion: 1, kind: 'custom', scene: {
-            audioResponse: 'transient-v1',
+            audioResponse: 'mapped-v1',
             visualizer: { shader: 'nebula' },
           },
         },
       }),
     )
     await waitFor(() => expect(finalizeThumbnailBody).toEqual({ objectKey: 'scenes/12/thumbnails/replacement.png' }))
-    expect(replaceTagsBody).toEqual({
-      tagIds: [1, 2],
-    })
+    expect(fetchMock.mock.calls.some(([input]) => input === buildApiUrl('/scenes/12/tags'))).toBe(false)
     expect(replacementUploadRequested).toBe(true)
     expect(mockCaptureFramePreview).toHaveBeenCalledOnce()
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
