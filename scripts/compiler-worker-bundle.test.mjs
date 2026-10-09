@@ -40,7 +40,9 @@ function compileWithBundledWorker(workerSource, source, sceneRevision) {
 test('production compiler-worker bundle keeps eval-only DSL functions for every built-in scene', async () => {
   const { source: workerSource } = await buildCompilerWorker(root)
   const fixtures = JSON.parse(readFileSync(resolve(root, 'src/modules/player/policy/fixtures/builtin-presets.json'), 'utf8'))
-  assert.equal(fixtures.length, 16)
+  const catalog = JSON.parse(readFileSync(new URL('../contracts/scenes/template-catalog.v1.json', import.meta.url), 'utf8'))
+  assert.deepEqual(fixtures.map(fixture => fixture.sceneId),
+    catalog.templates.map(template => `template:${template.templateId}@${template.templateVersion}`))
   for (const [index, fixture] of fixtures.entries()) {
     const messages = compileWithBundledWorker(workerSource, fixture.sceneData.visualizer.shader, index + 1)
     assert.deepEqual(messages.map(message => message.type), ['started', 'compiled'], fixture.sceneId)

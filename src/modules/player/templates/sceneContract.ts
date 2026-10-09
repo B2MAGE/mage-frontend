@@ -7,7 +7,7 @@ export const TEMPLATE_IDS = [
   'embedded-scene-0', 'embedded-scene-1', 'embedded-scene-2', 'embedded-scene-3',
   'embedded-scene-4', 'embedded-scene-5', 'embedded-scene-6', 'embedded-scene-7',
   'embedded-scene-8', 'embedded-scene-9', 'embedded-scene-10', 'embedded-scene-11',
-  'embedded-scene-12', 'embedded-scene-13', 'reaction-rings-v1', 'reaction-lantern-v1',
+  'embedded-scene-12', 'embedded-scene-13',
 ] as const
 
 export type TemplateId = typeof TEMPLATE_IDS[number]

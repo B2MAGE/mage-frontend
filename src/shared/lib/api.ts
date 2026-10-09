@@ -95,7 +95,7 @@ export function normalizeSceneAvailability(value: unknown, sceneId: number): Sce
   if (typeof value.message !== 'string' && !(available && value.message === null)) return null
 
   const message = value.code === 'SCENE_UPGRADE_REQUIRED'
-    ? 'This scene needs an update from its creator before it can play.'
+    ? 'This historical scene format is no longer supported.'
     : value.code === 'BUILDER_RENDERING_UNAVAILABLE' ? 'Builder scene playback is not available yet.' : value.message as string
   return { sceneId, available: value.available, code: value.code, message: available ? '' : message }
 }

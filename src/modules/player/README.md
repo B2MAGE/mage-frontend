@@ -91,15 +91,14 @@ Optional route-level playlist props:
 The adapter accepts versioned template/custom documents described in
 [`contracts/scenes`](../../../contracts/scenes/README.md). Template documents are validated
 before any engine load and resolved inside the child from the immutable platform library. The source never
-comes from the submitted document. All 16 existing shader presets have a version 1 entry.
+comes from the submitted document. All 14 current shader presets have a version 1 entry.
 
-For compatibility, the adapter also accepts raw custom scene blobs that satisfy the shared
-submission policy: `visualizer.shader` is required, and only documented scene fields are allowed.
+The adapter requires a current template, Builder, or custom envelope. Historical raw
+scene blobs, retired template IDs, and abandoned audio modes are rejected before rendering.
 Renderer settings, audio URLs, external assets, unknown keys, and out-of-range values are rejected.
 Load playlist audio through the explicit host audio API, never through scene data.
-Legacy blobs and explicit custom documents remain **untrusted**, even when their source matches
-a template. All submitted scene kinds take the isolated path; classification does not authorize parent compilation.
-Documents with any version/kind/template markers cannot fall back to legacy loading when invalid.
+Explicit custom documents remain **untrusted**, even when their source matches a template.
+All submitted scene kinds take the isolated path; classification does not authorize parent compilation.
 
 ## Runtime Behavior
 
@@ -160,7 +159,7 @@ during editing and saving. New scenes default to a template; existing custom sce
 and remain editable/exportable when playback is disabled or unavailable. Previewing
 valid custom edits requires fresh permission and the separate renderer; repair access
 does not grant execution permission.
-Do not run template documents through the legacy editor's `sanitizeSceneData` helpers: those
+Do not run template documents through the custom editor's `sanitizeSceneData` helpers: those
 helpers add engine fields and would make a template document invalid. Source edits must create
 a custom document, never alter the trusted registry or retain a template classification.
 

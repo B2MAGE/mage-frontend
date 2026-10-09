@@ -80,9 +80,9 @@ Current limitations:
 
 Coverage lives in the colocated scene-editor specs under `src/modules/scene-editor/`.
 
-## Versioned transport compatibility (PP-B02)
+## Current versioned transport
 
-The custom repair editor exposes its existing controls and raw engine JSON.
+The custom editor exposes its existing controls and current custom-envelope JSON.
 Custom POST/PUT requests wrap those values in `{ schemaVersion: 1, kind: "custom", scene }`.
 Choosing a familiar preset shader does not convert it into a trusted template.
 Saved custom documents are validated before unwrapping into controls and wrapped
@@ -93,12 +93,11 @@ Malformed document markers and unsupported versions never fall back to raw custo
 source. Template documents retain their envelope through editing, preview, submission,
 and JSON export. Unsupported stored formats are exportable by their owner without opening a preview.
 
-Legacy scenes remain editable through the owner repair endpoint under the saved
-scene ID. The server's `SCENE_UPGRADE_REQUIRED` status blocks automatic playback;
-an explicit successful save upgrades transport, without clearing an operator
-disable or enabling the global rendering switch. `sceneMode` is returned metadata,
-never a client-selected permission. PP-B03 provides the template-first authoring UI;
-PP-V02 supplies client resource policy and detailed field validation.
+Historical raw scenes and retired template/audio formats cannot be repaired or upgraded by
+this editor. The owner-only source endpoint remains available for current documents whose
+playback is disabled; ownership retrieval never grants playback permission or converts formats.
+Current template, Builder, and custom documents preserve their respective envelopes on import,
+export, preview, create, and update. Both Original and Selective music responses remain supported.
 
 Deploy this frontend together with the PP-B02 API. The earlier API rejects the
 new envelope, while the strict API rejects writes from older cached frontend

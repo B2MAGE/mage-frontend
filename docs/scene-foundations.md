@@ -70,6 +70,6 @@ budget; adding another object is rejected consistently by the frontend and API.
 ## Scope of this step
 
 Existing defaults, control labels, appearance and audio behavior are retained.
-This step establishes shared definitions and current-format checks. Retiring
-legacy formats and audio modes, splitting editor state, and the remaining Builder
-features belong to the subsequent cleanup and Builder stories.
+This step establishes shared definitions and current-format checks. MAINT-02 removes historical transport formats while retaining Version 1 Original
+and Version 2 Selective audio. Editor state and remaining Builder features are
+handled by their respective stories.

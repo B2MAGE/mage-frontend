@@ -145,11 +145,8 @@ export function MusicResponseControls({
       <SelectField
         fieldClassName="scene-field--plain"
         id={`${id}-mode`} label="Response mode" value={mode}
-        description={mode === 'transient-v1'
-          ? 'This scene keeps its saved beat response until you choose a version.'
-          : 'Choose which music-response system the scene uses.'}
+        description="Choose which music-response system the scene uses."
         options={[
-          ...(mode === 'transient-v1' ? [{ value: 'transient-v1', label: 'Saved beat response', disabled: true }] : []),
           { value: 'legacy', label: 'Version 1 — Original' },
           { value: 'mapped-v1', label: 'Version 2 — Selective' },
         ]}
@@ -198,7 +195,7 @@ export function MusicResponseControls({
             />
           </CollapsibleEditorGroup>
         </fieldset>
-      ) : mode === 'transient-v1' ? null : supportedTargets === null ? (
+      ) : supportedTargets === null ? (
         <p className="music-response-controls__message" role="status">Available inputs will appear when this preview can run.</p>
       ) : !mapping ? (
         <p className="music-response-controls__message" role="status">This shader has no supported music-response inputs.</p>

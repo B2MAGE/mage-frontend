@@ -20,7 +20,7 @@ const metadata = {
   description: 'Original description', sceneData: null, availability, thumbnailRef: '/saved.png',
   createdAt: '2026-10-03T00:00:00Z', tags: ['ambient'],
 }
-const source = { visualizer: { shader: 'sphere(1)' }, audioResponse: 'mapped-v1', state: { size: 0.3 } }
+const source = { schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(1)' }, audioResponse: 'mapped-v1', state: { size: 0.3 } } }
 const repair = { sceneId: 23, ownerUserId: 8, name: 'Saved scene', description: 'Original description',
   sceneData: source, thumbnailRef: '/saved.png', availability, playable: false }
 
@@ -80,7 +80,7 @@ describe('owner repair loading', () => {
   })
 
   it('retains a custom envelope for recovery identity while providing it to the compatible editor', async () => {
-    const custom = { schemaVersion: 1, kind: 'custom', scene: source }
+    const custom = source
     mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
       ? { ...repair, sceneData: custom } : { ...metadata, sceneMode: 'custom-v1' })))
     render(page())
@@ -88,13 +88,20 @@ describe('owner repair loading', () => {
     expect(screen.getByTestId('editor')).toHaveAttribute('data-scene-id', '23')
   })
 
-  it('keeps legacy repair source editable under its saved ID without treating repair access as playback approval', async () => {
+  it('rejects historical scenes without requesting a repair or mounting an editor', async () => {
     const legacy = { ...availability, code: 'SCENE_UPGRADE_REQUIRED', message: 'Upgrade required' }
-    mocks.fetch.mockImplementation(path => Promise.resolve(jsonResponse(path.endsWith('/repair')
-      ? { ...repair, availability: legacy } : { ...metadata, availability: legacy, sceneMode: 'legacy-custom' })))
+    mocks.fetch.mockResolvedValueOnce(jsonResponse({ ...metadata, availability: legacy, sceneMode: 'legacy-custom' }))
     render(page())
-    expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(source))
-    expect(screen.getByTestId('editor')).toHaveAttribute('data-scene-id', '23')
+    expect(await screen.findByText(/historical scene format is no longer supported/)).toBeInTheDocument()
+    expect(mocks.fetch).toHaveBeenCalledTimes(1)
+    expect(mocks.editor).not.toHaveBeenCalled()
+  })
+
+  it('rejects raw historical source returned under a current scene label', async () => {
+    mocks.fetch.mockResolvedValueOnce(jsonResponse({ ...metadata, sceneMode: 'custom-v1', sceneData: source.scene, availability: { ...availability, available: true, code: 'AVAILABLE' } }))
+    render(page())
+    expect(await screen.findByRole('heading', { name: /format is not supported/ })).toBeInTheDocument()
+    expect(mocks.editor).not.toHaveBeenCalled()
   })
 
   it('opens a disabled template for owner editing while preserving its original document and scene ID', async () => {
@@ -108,7 +115,7 @@ describe('owner repair loading', () => {
   })
 
   it('opens a playable template directly without requesting owner repair or inserting shader source', async () => {
-    const template = { schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1,
+    const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-1', templateVersion: 1,
       parameters: { speed: 0.5, scale: 8 }, settings: { skybox: 3 } }
     mocks.fetch.mockResolvedValueOnce(jsonResponse({ ...metadata, sceneData: template, sceneMode: 'template-v1',
       availability: { ...availability, available: true, code: 'AVAILABLE' } }))

@@ -141,7 +141,7 @@ describe('shared live scene availability', () => {
     fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status')
       ? global() : [scene(23, 'SCENE_UPGRADE_REQUIRED')]))
     expect(await store.check(23)).toMatchObject({ allowed: false, code: 'SCENE_UPGRADE_REQUIRED',
-      message: 'This scene needs an update from its creator before it can play.' })
+      message: 'This historical scene format is no longer supported.' })
     expect(store.isAllowed(23)).toBe(false)
     fetchMock.mockImplementation(async input => json(String(input).includes('rendering-status') ? global() : [scene(23)]))
     expect((await store.check(23)).allowed).toBe(true)

@@ -56,7 +56,7 @@ export function createQualityRenderer(container) {
   }
   return {
     async captureScene(sceneData, { checkAudio = false } = {}) {
-      const validated = validateSceneForPlayback(sceneData);
+      const validated = validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: sceneData });
       if (validated.kind !== 'custom') throw new Error('The quality corpus requires explicit engine data.');
       sceneData = validated.scene;
       player ??= createIsolatedPlayer({ container, rendererUrl: getIsolatedRendererUrl(), profile: 'preview' });
@@ -64,10 +64,10 @@ export function createQualityRenderer(container) {
       player.pause(); player.clearAudio(); player.setSynthetic(false);
       const objectUrls = [];
       try {
-        await player.loadScene({ ...sceneData, visualizer: { ...sceneData.visualizer, shader: 'let size = input(); let pointerDown = input(); sphere(0.00001);' } });
+        await player.loadScene({ schemaVersion: 1, kind: 'custom', scene: { ...sceneData, visualizer: { ...sceneData.visualizer, shader: 'let size = input(); let pointerDown = input(); sphere(0.00001);' } } });
         const backgroundUrl = await capture(); objectUrls.push(backgroundUrl);
         const background = await readPixels(backgroundUrl);
-        await player.loadScene(sceneData);
+        await player.loadScene(validated);
         await player.play();
         const startedAt = performance.now(), samples = []; let best;
         // Observe actual child frames. Private engine state and arbitrary time/input

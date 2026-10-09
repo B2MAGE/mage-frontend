@@ -5,7 +5,7 @@ import { createTestRhythm } from './testRhythm'
 const controlIds = ['switch', 'pause', 'reset', 'test-audio', 'clear', 'audio', 'simulate', 'response', 'volume', 'seek', 'capture-button']
 
 function fixedScene(alternate: boolean, response: string) {
-  return {
+  return { schemaVersion: 1, kind: 'custom', scene: {
     visualizer: { skyboxPreset: 6, scale: 1, shader: `let size = input(); let pointerDown = input();
 setMaxIterations(80); setStepSize(0.7); rotateY(time * 0.4); rotateX(mouse.y * 0.4 + 0.35);
 color(${alternate ? '0.12,0.7,0.65' : '0.45,0.16,0.9'}); ${alternate ? 'sphere(0.55 + size * 0.18 + pointerDown * 0.15);' : 'torus(0.7 + size * 0.15,0.16 + pointerDown * 0.1);'}` },
@@ -15,7 +15,7 @@ color(${alternate ? '0.12,0.7,0.65' : '0.45,0.16,0.9'}); ${alternate ? 'sphere(0
     fx: { passOrder: ['bloom', 'outputPass'], bloom: { enabled: false }, passes: { outputPass: true } },
     audioResponse: response === 'legacy' ? 'legacy' : 'mapped-v1',
     audioResponseConfig: { version: 1, sensitivity: 1, mappings: [{ target: 'size', source: 'bass-hit', amount: 0.8, attack: 0.02, release: 0.35 }] },
-  }
+  } }
 }
 
 export function mountLiveMusicCheck(options: { parentOrigin: string; rendererUrl: string }, dependencies: {

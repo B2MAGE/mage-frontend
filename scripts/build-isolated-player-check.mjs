@@ -14,6 +14,7 @@ const allowedModules = new Set([
   'src/modules/player/isolation/live-check/testRhythm.ts',
   'src/modules/player/isolation/live-check/boundaryCheck.ts',
   'src/modules/player/isolation/isolatedPlayer.ts',
+  'src/shared/lib/audioResponse.ts',
   'src/modules/player/isolation/parentAudio.ts',
   'src/modules/player/isolation/playbackHost.ts',
   'src/modules/player/isolation/playbackProtocol.ts',
@@ -41,6 +42,7 @@ const integrityOf = body => `sha384-${createHash('sha384').update(body).digest('
 
 await build({
   root,
+  resolve: { alias: { '@shared': resolve(root, 'src/shared') } },
   configFile: false,
   envDir: false,
   publicDir: false,

@@ -9,6 +9,9 @@ import type { MageSceneBlob } from '../infrastructure/engineAdapter'
 // Unlit colors are tuned through MAGE's color pipeline to match the homepage's
 // lavender, teal and pink artwork. The halo comes from native bloom below.
 export const BRAND_SCENE: MageSceneBlob = {
+  schemaVersion: 1,
+  kind: 'custom',
+  scene: {
   visualizer: {
     skyboxPreset: 6,
     scale: 1.25,
@@ -74,6 +77,7 @@ export const BRAND_SCENE: MageSceneBlob = {
     },
   },
   state: { size: 0, pointerDown: 0, currPointerDown: 0, currAudio: 0, time: 1, volume_multiplier: 0 },
+  },
 }
 
 // This exception is a fixed platform asset, never a submitted document.

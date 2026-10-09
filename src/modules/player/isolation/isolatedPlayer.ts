@@ -1,6 +1,7 @@
 import { resolveSceneForPlayback } from '../templates/resolveScene'
-import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig, normalizeAudioResponseMode,
-  type AudioResponseMode, type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
+import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig,
+  type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
+import { normalizeAudioResponseMode, type SceneAudioResponseMode as AudioResponseMode } from '@shared/lib/audioResponse'
 import type { RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
 import { createParentAudioSession, type ParentAudioSession } from './parentAudio'

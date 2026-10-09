@@ -1,14 +1,15 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { describe, expect, it, vi } from 'vitest'
 import { diffLiveSceneSettings, extractLiveSceneSettings, validateLiveSceneSettings } from './liveSceneSettings'
 import { scenePlaybackIdentity } from './scenePlaybackIdentity'
 
-const raw = { visualizer: { shader: 'sphere(.5)', skyboxPreset: 6 } }
+const raw = customDocument({ visualizer: { shader: 'sphere(.5)', skyboxPreset: 6 } })
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 
 describe('bounded live scene settings', () => {
   it('normalizes optional settings, including removing a previously authored value', () => {
     const start = extractLiveSceneSettings(raw)
-    const changed = extractLiveSceneSettings({ ...raw, intent: { fov: 100 }, fx: { passes: { rgbShift: true } } })
+    const changed = extractLiveSceneSettings(customDocument({ ...raw.scene, intent: { fov: 100 }, fx: { passes: { rgbShift: true } } }))
     expect(diffLiveSceneSettings(start, changed)).toEqual({ intent: { fov: 100 }, fx: { passes: { rgbShift: true } } })
     expect(diffLiveSceneSettings(changed, start)).toEqual({ intent: { fov: 75 }, fx: { passes: { rgbShift: false } } })
     expect(diffLiveSceneSettings(start, extractLiveSceneSettings(raw))).toEqual({})
@@ -32,7 +33,7 @@ describe('bounded live scene settings', () => {
     copy.fx.passOrder.reverse()
     expect(settings.controls.position0.x).toBe(0)
     expect(extractLiveSceneSettings(raw)).toEqual(settings)
-    expect(raw).toEqual({ visualizer: { shader: 'sphere(.5)', skyboxPreset: 6 } })
+    expect(raw.scene).toEqual({ visualizer: { shader: 'sphere(.5)', skyboxPreset: 6 } })
     expect(JSON.stringify(settings)).not.toContain('shader')
   })
 
@@ -58,10 +59,10 @@ describe('bounded live scene settings', () => {
     expect(() => validateLiveSceneSettings({ data: 'x'.repeat(600_000) })).toThrow()
   })
 
-  it('canonicalizes legacy and versioned custom identities without hiding invalid live data', () => {
-    expect(scenePlaybackIdentity(raw)).toBe(scenePlaybackIdentity({ schemaVersion: 1, kind: 'custom', scene: raw }))
-    expect(scenePlaybackIdentity({ ...raw, intent: { fov: 80 } })).toBe(scenePlaybackIdentity(raw))
-    expect(scenePlaybackIdentity({ ...raw, controls: { position0: { x: 0, y: 0, z: 0 } } })).toBeNull()
-    expect(scenePlaybackIdentity({ ...raw, fx: { unknown: true } })).toBeNull()
+  it('canonicalizes current custom identities without hiding invalid live data', () => {
+    expect(scenePlaybackIdentity(raw)).toBe(scenePlaybackIdentity({ schemaVersion: 1, kind: 'custom', scene: raw.scene }))
+    expect(scenePlaybackIdentity(customDocument({ ...raw.scene, intent: { fov: 80 } }))).toBe(scenePlaybackIdentity(raw))
+    expect(scenePlaybackIdentity(customDocument({ ...raw.scene, controls: { position0: { x: 0, y: 0, z: 0 } } }))).toBeNull()
+    expect(scenePlaybackIdentity(customDocument({ ...raw.scene, fx: { unknown: true } }))).toBeNull()
   })
 })

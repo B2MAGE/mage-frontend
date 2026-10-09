@@ -53,7 +53,7 @@ Basic template picker writes only template documents; the custom repair editor k
 
 ## Verification
 
-Automated coverage includes backend conformance fixtures, all 16 resolved templates, malformed imports,
+Automated coverage includes backend conformance fixtures, all 14 current resolved templates, malformed imports,
 invalid saved data, scene switches, high-DPI and large buffers, small/portrait buffers, frame scheduling,
 effect counts, capture size/restoration, and source iteration caps. Tests verify unchanged authored
 template iteration settings and rejection before any custom compilation.
@@ -63,7 +63,8 @@ For a repeatable browser check, start `npm run manual-checks:dev` and open `/scr
 data. The page measures actual engine frame events, compiled iterations, canvas sizes, oversized
 captures, and a resize to 7680 × 4320. Its displayed JSON is suitable for saving with review evidence.
 
-Measured on 2026-10-03 using Chrome 154 on Windows, with the `reaction-rings-v1` template and
+Historical measurement on 2026-10-03 using Chrome 154 on Windows, with the now-retired
+`reaction-rings-v1` template and
 requested DPR 3. Each frame count covers about 1.1 seconds after a 350 ms warm-up. Concurrent
 development work and browser scheduling affect rates; these measurements confirm the ceiling,
 not a device-performance promise.

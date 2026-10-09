@@ -54,8 +54,6 @@ const BUILDER_STARTING_STYLES = {
   'embedded-scene-11': { colors: ['#55aaff', '#ff5bd6', '#58ffd5'], metalness: 0.1, shininess: 0.6 },
   'embedded-scene-12': { colors: ['#ff5bd6', '#6b5cff', '#40e8ff'], metalness: 0.2, shininess: 0.7 },
   'embedded-scene-13': { colors: ['#be3f9c', '#ff85c8', '#7235bb'], metalness: 0.64, shininess: 0.41 },
-  'reaction-rings-v1': { colors: ['#7a42f2', '#14a693', '#f24d80', '#a67aff'], metalness: 0, shininess: 0.9 },
-  'reaction-lantern-v1': { colors: ['#2e5cd9', '#b838d9', '#29b39f'], metalness: 0.15, shininess: 0.8 },
 } satisfies Record<TemplateId, BuilderStartingStyle>
 
 function applyStartingStyle(objects: readonly BuilderObject[], templateId: TemplateId): BuilderObject[] {

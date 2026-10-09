@@ -83,7 +83,7 @@ describe('resolveSceneForPlayback', () => {
       ] },
     })
     // Template additions obey the same V01 limits as the engine's other input.
-    expect(() => validateSceneForPlayback(resolved.engineScene)).not.toThrow()
+    expect(() => validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: resolved.engineScene })).not.toThrow()
     expect(document).toEqual(before)
   })
 
@@ -121,12 +121,13 @@ describe('resolveSceneForPlayback', () => {
 
   it('keeps source untrusted even when it exactly matches a platform template', () => {
     const sourceScene = { visualizer: { shader: getTemplateDefinition(template.templateId, 1)?.shader } }
-    for (const value of [sourceScene, { schemaVersion: 1, kind: 'custom', scene: sourceScene }]) {
+    for (const value of [{ schemaVersion: 1, kind: 'custom', scene: sourceScene }]) {
       expect(resolveSceneForPlayback(value)).toEqual({ kind: 'custom', trust: 'untrusted', engineScene: sourceScene })
     }
   })
 
   it.each([
+    { visualizer: { shader: 'sphere(1)' } },
     { ...template, visualizer: { shader: 'throw new Error("injected")' } },
     { templateId: template.templateId, visualizer: { shader: 'injected' } },
     { schemaVersion: 2, visualizer: { shader: 'injected' } },

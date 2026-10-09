@@ -39,7 +39,7 @@ function responseSource(scene: MageSceneBlob) {
 
 function changedResponse(scene: MageSceneBlob, mode: SceneAudioResponseMode | undefined, config: unknown) {
   const copy = structuredClone(scene)
-  const source = copy.kind === 'template' ? copy.settings : copy.scene
+  const source = copy.kind === 'custom' ? copy.scene : copy.settings
   if (!record(source)) throw new MagePlayerAdapterError('The scene response settings are unavailable.')
   if (mode === undefined) delete source.audioResponse
   else source.audioResponse = mode
@@ -437,8 +437,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       if (audioOptions.signal?.aborted) throw audioChanged()
       if (!loaded || !currentScene) throw new MagePlayerAdapterError('Load a scene before loading audio.')
       const source = responseSource(currentScene)
-      const saved = typeof source.audioPath === 'string' ? source.audioPath : typeof source.audio === 'string' ? source.audio
-        : record(source.audio) ? source.audio.path ?? source.audio.url : undefined
+      const saved = typeof source.audioPath === 'string' ? source.audioPath : undefined
       const path = audioOptions.sourcePath ?? saved
       if (typeof path !== 'string' || !path) throw new MagePlayerAdapterError('Choose an audio file before loading audio.')
       const generation = ++audioGeneration

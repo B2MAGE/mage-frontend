@@ -409,7 +409,6 @@
         "type": "enum",
         "values": [
           "legacy",
-          "transient-v1",
           "mapped-v1"
         ]
       },

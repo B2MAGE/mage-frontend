@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { customDocument } from '@shared/test/sceneDocument'
 import { buildAudioResponseController } from '@shared/test/audioResponseController'
 import {
   type MagePlayerAudioState,
@@ -28,14 +29,14 @@ export function buildMagePlayerTrack(
 export function buildMagePlayerSceneBlob(
   overrides: Partial<Record<string, unknown>> = {},
 ) {
-  return {
+  return customDocument({
     ...overrides,
     visualizer: {
       shader: 'sphere(0.5);',
       skyboxPreset: 6,
       ...(typeof overrides.visualizer === 'object' && overrides.visualizer ? overrides.visualizer : {}),
     },
-  }
+  })
 }
 
 export function buildMagePlayerController(

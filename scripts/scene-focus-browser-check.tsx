@@ -3,7 +3,7 @@ import { MagePlayer, parseSceneDocument, sceneAvailabilityStore } from '@modules
 
 const FIXTURE_ID = 2_147_483_602
 const target = `template:${FIXTURE_ID}` as const
-const fixture = parseSceneDocument({ schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1 })
+const fixture = parseSceneDocument({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 })
 const preview = document.querySelector<HTMLDivElement>('#preview')!
 const result = document.querySelector<HTMLPreElement>('#result')!
 const start = document.querySelector<HTMLButtonElement>('#start')!

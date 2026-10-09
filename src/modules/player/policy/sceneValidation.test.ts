@@ -24,12 +24,12 @@ function rejects(value: unknown, path: string, message?: string) {
 }
 
 describe('shared scene submission preflight', () => {
-  it('accepts the same 116-scene corpus as the backend without modifying source', () => {
+  it('accepts the same 114-scene corpus as the backend without modifying source', () => {
     const corpus = [...builtin, ...quality]
-    expect(corpus).toHaveLength(116)
+    expect(corpus).toHaveLength(114)
     for (const row of corpus) {
       const before = JSON.stringify(row.sceneData)
-      expect(validateSceneForPlayback(row.sceneData), row.sceneId).toEqual(custom(row.sceneData))
+      expect(validateSceneForPlayback(custom(row.sceneData)), row.sceneId).toEqual(custom(row.sceneData))
       expect(JSON.stringify(row.sceneData)).toBe(before)
     }
   })
@@ -37,7 +37,7 @@ describe('shared scene submission preflight', () => {
   it.each(TEMPLATE_IDS)('accepts immutable template %s and its resolved engine payload', templateId => {
     const document = validateSceneDocument({ ...template, templateId })
     expect(document.kind).toBe('template')
-    expect(validateSceneForPlayback(resolveSceneForPlayback(document).engineScene).kind).toBe('custom')
+    expect(validateSceneForPlayback(custom(resolveSceneForPlayback(document).engineScene)).kind).toBe('custom')
   })
 
   it('validates platform artwork using the same data policy', () => {
@@ -53,11 +53,11 @@ describe('shared scene submission preflight', () => {
     },
   )
 
-  it('labels legacy raw data only as custom and requires an explicit contract on strict writes', () => {
+  it('rejects historical raw data for storage, imports, and playback', () => {
     const source = raw()
-    expect(validateSceneForPlayback(source)).toEqual(custom(source))
+    expect(() => validateSceneForPlayback(source)).toThrow('schemaVersion')
+    expect(() => parseSceneImport(JSON.stringify(source))).toThrow('schemaVersion')
     expect(() => validateSceneDocument(source)).toThrow('schemaVersion')
-    expect(() => validateSceneForPlayback(source, { allowLegacyRaw: false })).toThrow('schemaVersion')
     expect(validateSceneDocument(custom(source))).toEqual(custom(source))
   })
 
@@ -164,8 +164,8 @@ describe('shared scene submission preflight', () => {
 })
 
 describe('bounded JSON imports and submission bodies', () => {
-  it('imports raw and explicit custom documents exactly once', () => {
-    for (const input of [raw(), custom()]) expect(parseSceneImport(JSON.stringify(input))).toEqual(custom())
+  it('imports explicit custom documents without adding another envelope', () => {
+    for (const input of [custom()]) expect(parseSceneImport(JSON.stringify(input))).toEqual(custom())
     expect(parseSceneImport(JSON.stringify(template)).kind).toBe('template')
   })
 

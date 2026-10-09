@@ -30,7 +30,7 @@ function transport(options: Parameters<typeof createIsolatedPlaybackHost>[0]) {
     capture: vi.fn(async () => new Blob()), dispose: vi.fn(() => frame.remove()) }
 }
 
-const template = { schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1 }
+const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 const custom = { schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(0.7); // cached-source-must-not-run-in-parent' } } }
 const privateReason = 'PRIVATE operator 9821 investigated account details'
 const engagement = { views: 18, upvotes: 2, downvotes: 0, saves: 1, currentUserVote: null, currentUserSaved: false }

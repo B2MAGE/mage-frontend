@@ -34,6 +34,6 @@ export function isFixedRecoveryMarker(value: unknown): value is FixedRecoveryMar
     && ['connected', 'action', 'context-lost', 'unsupported'].includes(value.event as string)
     && typeof value.atMs === 'number' && Number.isFinite(value.atMs) && value.atMs >= 0 && value.atMs <= 120000
 }
-export const fixedRecoveryScene = () => ({ visualizer: { shader: 'setMaxIterations(48); color(0.35,0.2,0.8); sphere(0.5);', scale: 1 },
+export const fixedRecoveryScene = () => ({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'setMaxIterations(48); color(0.35,0.2,0.8); sphere(0.5);', scale: 1 },
   controls: { position0: { x: 0, y: 0, z: 4 }, target0: { x: 0, y: 0, z: 0 }, zoom0: 1 },
-  intent: { autoRotate: false }, fx: { bloom: { enabled: false }, passes: { outputPass: true } } })
+  intent: { autoRotate: false }, fx: { bloom: { enabled: false }, passes: { outputPass: true } } } })

@@ -1,5 +1,6 @@
 import type { AudioAnalysisFrame } from '@notrac/mage/audio-analysis'
-import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, type AudioResponseMode, type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
+import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
+import type { SceneAudioResponseMode } from '@shared/lib/audioResponse'
 import { validateSceneForPlayback, SCENE_LIMITS } from '../policy/sceneValidation'
 import { isSessionId, RENDERER_PROTOCOL } from './protocol'
 import { getRenderBudget } from '../policy/renderBudget'
@@ -20,7 +21,7 @@ export type PlaybackPayloads = {
   zoom: { factor: number }
   input: { time: number; audio: AudioInput; pointer: { x: number; y: number; down: boolean; inside?: boolean } }
   synthetic: { enabled: boolean; seed: number; tempoScale: number }
-  'audio-response': { mode: AudioResponseMode; config: AudioResponseConfig | null }
+  'audio-response': { mode: SceneAudioResponseMode; config: AudioResponseConfig | null }
   'scene-settings': SceneLiveSettings
   capabilities: null
   'capabilities-result': { supportedTargets: AudioResponseTarget[] }
@@ -55,7 +56,7 @@ const time = (v: unknown) => numberIn(v, 0, BRIDGE_LIMITS.maxTime)
 const bool = (v: unknown) => typeof v === 'boolean'
 const unit = (v: unknown) => numberIn(v, 0, 1)
 export function isAudioResponseSettings(value: unknown): value is PlaybackPayloads['audio-response'] {
-  if (!record(value, ['mode', 'config']) || !['legacy', 'transient-v1', 'mapped-v1'].includes(value.mode as string)) return false
+  if (!record(value, ['mode', 'config']) || !['legacy', 'mapped-v1'].includes(value.mode as string)) return false
   const config = value.config
   if (config === null) return true
   if (!record(config, ['version', 'sensitivity', 'mappings']) || config.version !== 1 || !numberIn(config.sensitivity, 0.1, 4)
@@ -123,13 +124,11 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
   }
 }
 
-/** Strip parent-only legacy media metadata before crossing the frame boundary. */
+/** Strip parent-owned media metadata before crossing the frame boundary. */
 export function sceneForBridge(value: unknown): Record<string, unknown> {
   const valid = validateSceneForPlayback(value)
   const copy = JSON.parse(JSON.stringify(valid)) as Record<string, unknown>
-  delete copy.audio; delete copy.audioPath
   if (copy.kind === 'custom' && copy.scene && typeof copy.scene === 'object') {
-    delete (copy.scene as Record<string, unknown>).audio
     delete (copy.scene as Record<string, unknown>).audioPath
   }
   if (JSON.stringify(copy).length > SCENE_LIMITS.sceneBytes) throw new Error('Scene is too large.')

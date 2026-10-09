@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { describe, expect, it } from 'vitest'
 import { isPlaybackMessage, playbackMessage, sceneForBridge, messageRate, type PlaybackPayloads } from './playbackProtocol'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
@@ -7,7 +8,7 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
   it('accepts only bounded data-only complete live settings', () => {
-    const settings = extractLiveSceneSettings({ visualizer: { shader: 'sphere(1);' } })
+    const settings = extractLiveSceneSettings(customDocument({ visualizer: { shader: 'sphere(1);' } }))
     const message = playbackMessage('scene-settings', session, 1, 2, settings)
     expect(isPlaybackMessage(message, ['scene-settings'])).toBe(true)
     const getter = { ...settings }
@@ -65,11 +66,11 @@ describe('bounded playback messages', () => {
     expect(isPlaybackMessage(playbackMessage('input', session, 1, 2, { ...input, pointer: { x: 10, y: 0, down: false } }), ['input'])).toBe(false)
   })
   it('applies shared scene policy before allowing source and rejects authority fields', () => {
-    expect(sceneForBridge({ visualizer: { shader: 'sphere(0.5);' } })).toMatchObject({ kind: 'custom' })
+    expect(sceneForBridge(customDocument({ visualizer: { shader: 'sphere(0.5);' } }))).toMatchObject({ kind: 'custom' })
     for (const scene of [{ visualizer: { shader: 'a'.repeat(65537) } }, { visualizer: { shader: 'sphere(1);' }, token: 'secret' },
       { visualizer: { shader: 'sphere(1);' }, audioPath: 'https://private.example/file' }]) {
-      expect(() => sceneForBridge(scene)).toThrow()
-      expect(isPlaybackMessage(playbackMessage('load', session, 1, 1, { scene, profile: 'preview' }), ['load'])).toBe(false)
+      expect(() => sceneForBridge(customDocument(scene))).toThrow()
+      expect(isPlaybackMessage(playbackMessage('load', session, 1, 1, { scene: customDocument(scene), profile: 'preview' }), ['load'])).toBe(false)
     }
   })
   it('rejects URL/SVG captures and counts a fixed bounded rate', () => {

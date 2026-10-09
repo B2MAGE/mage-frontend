@@ -151,46 +151,15 @@ adapter/player tests. Also verify real WebGL rendering, supported shaders,
 local audio controls, hover previews and fixed artwork in a browser when adopting
 an engine release. Unit tests alone cannot establish rendered appearance.
 
-## Opt-in transient audio response
+## Current music response versions
 
-Scenes may persist `audioResponse: "transient-v1"` at the scene-data root. Missing,
-unknown, or `"legacy"` values retain the original calculation. Both the preset
-loader and adapter select the mode explicitly on every load/reset; a reused
-player cannot carry the new mode into an old scene. Editor JSON import, structured
-edits, and save preserve the versioned field. No new reaction sliders are added.
-For opted-in scenes the editor explains automatic beat response and hides the
-legacy Audio Gain, Audio Curve, Base Speed, Easing Speed, and Volume Multiplier
-controls, which are not used by this mode. Their stored values are preserved
-while editing a beat-detection scene. Playback volume remains available.
-
-The engine owns the analysis, not a second React animation loop. For opted-in
-scenes only, a separate FFT-2048 analyser with no frequency-frame smoothing measures
-positive spectral changes in 40–180 Hz, 180–2000 Hz, and 2–8 kHz bands. Local energy
-normalization and an adaptive threshold reduce dependence on recording loudness
-and sustained notes. A silence floor, short startup warmup, and 160 ms retrigger
-guard suppress noise/duplicate hits. This detects musical attacks, not a predicted
-tempo grid; it does not guarantee recognition of every perceived beat.
-
-Each attack produces a bounded envelope with fast onset and a time-based 160 ms
-exponential release. `size` receives `0.006 + envelope` (0–1 envelope). This path
-uses the audio clock rather than the capped rendering delta, so a slow renderer
-does not stretch the release. A long suspension re-primes the detector.
-The response
-intentionally bypasses legacy power, additive offsets, and easing so they cannot
-flatten the envelope again. The shader still determines what moves; shaders that
-ignore `size` do not gain automatic deformation. The ten retuned Ari scenes use
-the envelope directly instead of their previous saturating response curve.
-
-The old analyser and numerical mapping are unchanged. The new side branch is
-disconnected/reset on mode/track changes, seeking, unload, and disposal; it never
-disconnects the audible playback graph. Forward/reversed playback selects the
-active source. Real playing audio takes precedence over silent preview; opted-in
-synthetic previews use the same bounded attack/release-style range without the
-old sustained baseline. The upstream frame-capture preview behavior is unchanged.
-
-Validation must measure repeated attacks and recovery after startup, including
-drums over sustained chords, low levels, silence, multiple sample/frame rates,
-and actual music. Comparing two still poses is not a sufficient audio test.
+Current scene documents support Version 1 Original (`legacy`) and Version 2
+Selective (`mapped-v1`). Omitting the mode retains Original. Both versions keep
+their saved tuning; selecting another version does not erase inactive settings.
+Document, import, editor and playback-message boundaries reject unsupported
+modes, including the retired `transient-v1` experiment. The engine package still
+contains that implementation internally, but it is not a supported app format.
+See [audio response](audio-response.md) for the current mapping contract.
 
 ## Editor shaders and beat preview
 
@@ -233,6 +202,6 @@ does not rewrite shader source or apply additional scene-wide audio transforms.
   narrow runtime-only `getEngineFields()` type stays inside player infrastructure.
   This does not change saved scene data. The About/home artwork reuses this interaction
   path; thumbnail hover previews remain noninteractive.
-- The legacy single-frequency-bin audio mapping remains the default in this
-  migration. The fork also retains the existing `transient-v1` and `mapped-v1`
-  modes. Removing compatibility behavior belongs to the later MAINT-02 cleanup.
+- Version 1 Original (`legacy`) remains the default audio response. Version 2
+  Selective (`mapped-v1`) remains supported. MAINT-02 removed historical app
+  format readers while preserving both current versions and their tuning.

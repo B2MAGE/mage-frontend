@@ -360,7 +360,7 @@ describe('MusicResponseControls', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it.each(['legacy', 'transient-v1'] as const)('keeps %s settings inactive until the user changes mode', async (mode) => {
+  it.each(['legacy'] as const)('keeps %s settings inactive until the user changes mode', async (mode) => {
     const onModeChange = vi.fn()
     const onChange = vi.fn()
     render(<ControlledControls mode={mode} onModeChange={onModeChange} onChange={onChange} />)
@@ -374,15 +374,8 @@ describe('MusicResponseControls', () => {
     expect(screen.queryByRole('option', { name: 'Automatic beats' })).not.toBeInTheDocument()
     expect(onModeChange).not.toHaveBeenCalled()
     expect(onChange).not.toHaveBeenCalled()
-    if (mode === 'transient-v1') {
-      expect(screen.getByText('This scene keeps its saved beat response until you choose a version.')).toBeInTheDocument()
-      expect(within(selector).getByRole('option', { name: 'Saved beat response' })).toBeDisabled()
-      expect(within(selector).getByRole('option', { name: 'Saved beat response' })).toHaveProperty('selected', true)
-      expect(screen.queryByRole('group', { name: 'Original response tuning' })).not.toBeInTheDocument()
-    } else {
-      expect(options).toHaveLength(2)
-      expect(screen.getByRole('slider', { name: 'Input gain' })).toBeVisible()
-    }
+    expect(options).toHaveLength(2)
+    expect(screen.getByRole('slider', { name: 'Input gain' })).toBeVisible()
     expect(screen.queryByRole('slider', { name: 'Hit sensitivity' })).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: 'React to music' })).not.toBeInTheDocument()
     await userEvent.setup().selectOptions(selector, 'mapped-v1')

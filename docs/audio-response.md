@@ -2,7 +2,7 @@
 
 Audio-response behavior is maintained in the [B2MAGE engine source/package](engine-package.md), installed under the `@notrac/mage` alias. The lightweight `@notrac/mage/audio-response` entry point has no browser, audio-context, or renderer dependencies and provides the shared configuration contract.
 
-Scenes explicitly opt into `mapped-v1`. Missing and unsupported modes normalize to `legacy`; `legacy` and `transient-v1` retain their existing behavior. Merely supplying a configuration does not opt an older scene into the new mode. Loading another scene must replace its mode and normalized configuration, including when the next scene has neither setting.
+Scenes explicitly opt into `mapped-v1`. An omitted mode uses `legacy` (Version 1 Original). Version 1 Original and `mapped-v1` (Version 2 Selective) remain current supported features; unsupported modes, including `transient-v1`, are rejected at the document and playback-message boundaries. Merely supplying a configuration does not opt an older scene into the new mode. Loading another scene must replace its mode and normalized configuration, including when the next scene has neither setting.
 
 ```json
 {
@@ -36,7 +36,7 @@ The worklet's output is silence. It connects to the destination solely to keep t
 
 Pause, seek, track changes, scene changes, and disposal must reset or disconnect the session. `reset()` keeps an established connection while starting a new analysis epoch and clearing measurements. Epoch and connection-generation checks reject late messages or asynchronous module loads from prior playback. `disconnect()` removes only the analysis side branch. `dispose()` also prevents future connections. Temporary worklet module URLs are revoked on both success and failure; a loaded module is shared by sessions in the same audio context.
 
-Unsupported AudioWorklet environments report `unsupported`; module or processor failures report `error` with a message. Mapped analysis does not silently fall back to frame-dependent polling. The existing legacy and transient modes remain available. AR02 initially supplies overall RMS level and timestamped frames; independent frequency levels and hit detection are introduced in AR03.
+Unsupported AudioWorklet environments report `unsupported`; module or processor failures report `error` with a message. Mapped analysis does not silently fall back to frame-dependent polling. Version 1 Original remains available. AR02 initially supplies overall RMS level and timestamped frames; independent frequency levels and hit detection are introduced in AR03.
 
 ## Independent frequency levels and hits
 
@@ -66,7 +66,7 @@ For a native browser check, open `/scripts/audio-response-browser-check.html` on
 
 ## Creator music controls
 
-AR06 adds **Music response** to the editor's Motion section. The **Response mode** dropdown uses the same plain field styling as Skybox and offers **Version 1 — Original** (`legacy`) and **Version 2 — Selective** (`mapped-v1`), with the applicable tuning below. These are response versions, not package versions. Automatic beats (`transient-v1`) is no longer an editor choice. An existing scene saved with that mode keeps its response, shown as a disabled current option named Saved beat response with a compatibility explanation, until the user chooses one of the two versions. Opening any older scene does not opt it in or migrate its settings. Switching versions preserves inactive tuning.
+AR06 adds **Music response** to the editor's Motion section. The **Response mode** dropdown uses the same plain field styling as Skybox and offers **Version 1 — Original** (`legacy`) and **Version 2 — Selective** (`mapped-v1`), with the applicable tuning below. These are response versions, not package versions. Automatic beats (`transient-v1`) is unsupported; its historical documents cannot open in the editor. Current documents retain their saved response and settings. Switching versions preserves inactive tuning.
 
 Selective response lists only targets declared by the compiled shader. `MagePlayer.onAudioResponseCapabilitiesChange` reports a scene-associated snapshot through the adapter boundary. A different shader, failed preview, or replacement player clears the prior capabilities; response-only edits retain controls until the updated snapshot arrives, preserving focus during keyboard and slider adjustments. First-time Selective mode uses defaults for the supported movements, with size Amount 0.1 for a gentler starting point; other targets retain their engine defaults. Explicitly saved amounts are never rescaled. Saved mappings for other targets remain in the document and become editable if a later shader supports them.
 
@@ -103,7 +103,7 @@ An authored scene stores the mode and configuration in its existing JSON documen
 }
 ```
 
-The editor normalizes explicitly supplied configuration and preserves it through shader selection, structured edits, JSON import/export, and create/update request payloads. Explicit configuration also survives while legacy or transient mode is selected. Older documents do not acquire mode or configuration fields merely by opening or editing them. Deleting the configuration in raw JSON removes its saved metadata; mapped mode then uses defaults. Backend scene data remains an ordinary JSON document.
+The editor normalizes explicitly supplied configuration and preserves it through shader selection, structured edits, JSON import/export, and create/update request payloads. Explicit configuration also survives while Version 1 Original is selected. Older documents do not acquire mode or configuration fields merely by opening or editing them. Deleting the configuration in raw JSON removes its saved metadata; mapped mode then uses defaults. Backend scene data remains an ordinary JSON document.
 
 Feature code uses the public `@modules/player` boundary. The controller exposes:
 

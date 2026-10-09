@@ -28,7 +28,7 @@ export type TemplateSettingsExtensions = {
     }
   }
   state?: Partial<{ size: number; pointerDown: number; currPointerDown: number; currAudio: number; time: number; volume_multiplier: number }>
-  audioResponse?: 'legacy' | 'transient-v1' | 'mapped-v1'
+  audioResponse?: 'legacy' | 'mapped-v1'
   audioResponseConfig?: { version: 1; sensitivity?: number; mappings?: AudioMapping[] }
 }
 

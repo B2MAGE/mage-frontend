@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlayer, type IsolatedPlayer } from './isolatedPlayer'
 import type { ParentAudioSession } from './parentAudio'
@@ -11,7 +12,7 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-const scene = { visualizer: { shader: 'sphere(0.5);' } }
+const scene = customDocument({ visualizer: { shader: 'sphere(0.5);' } })
 const players: IsolatedPlayer[] = []
 const observers: Array<{ callback: ResizeObserverCallback; observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = []
 
@@ -447,7 +448,7 @@ describe('isolated player parent integration', () => {
     const first = f.player.loadScene(scene)
     const rejected = expect(first).rejects.toThrow('Scene changed')
     await Promise.resolve()
-    await f.player.loadScene({ ...scene, audioResponseConfig: { version: 1, sensitivity: 3, mappings: [] } })
+    await f.player.loadScene(customDocument({ ...scene.scene, audioResponseConfig: { version: 1, sensitivity: 3, mappings: [] } }))
     loaded.resolve()
     await rejected
     expect(f.audio.setSensitivity).toHaveBeenLastCalledWith(3)

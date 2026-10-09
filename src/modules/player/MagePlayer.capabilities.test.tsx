@@ -103,7 +103,7 @@ describe('player audio-response capabilities bridge', () => {
     const sceneKey = 239
     const first = buildMagePlayerSceneBlob()
     const second = buildMagePlayerSceneBlob({ visualizer: { shader: 'input("bass", 0); sphere(1);' } })
-    const changedSettings = { ...second, audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } }
+    const changedSettings = { ...second, scene: { ...second.scene, audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } } }
     for (const scene of [first, second, changedSettings]) recoveryKeys.add(sceneRecoveryKey(scene, sceneKey)!)
     let finishCompilation!: () => void
     const pendingCompilation = new Promise<void>(resolve => { finishCompilation = resolve })
@@ -169,7 +169,7 @@ describe('player audio-response capabilities bridge', () => {
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const first = buildMagePlayerSceneBlob()
     const tracks = [buildMagePlayerTrack({ sourcePath: '/song.mp3' })]
-    const second = { ...first, audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } }
+    const second = { ...first, scene: { ...first.scene, audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } } }
     const onChange = vi.fn()
     const { rerender } = render(<MagePlayer sceneBlob={first} sceneKey="editor" onAudioResponseCapabilitiesChange={onChange} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await screen.findByText('Loading track…')
@@ -179,7 +179,7 @@ describe('player audio-response capabilities bridge', () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: second, capabilities: capabilities('size') }))
     expect(onChange.mock.calls.every(([snapshot]) => snapshot !== null && snapshot.sceneBlob === second)).toBe(true)
     expect(controller.loadSceneBlob).toHaveBeenCalledOnce()
-    expect(controller.setAudioResponseSettings).toHaveBeenLastCalledWith('mapped-v1', second.audioResponseConfig)
+    expect(controller.setAudioResponseSettings).toHaveBeenLastCalledWith('mapped-v1', second.scene.audioResponseConfig)
     expect(controller.loadAudio).toHaveBeenCalledOnce()
     expect(screen.getByText('Loading track…')).toBeInTheDocument()
     expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument()

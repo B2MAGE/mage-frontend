@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MagePlayerController } from './playerController'
 import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
@@ -32,8 +33,8 @@ import { createIsolatedMageController } from './isolatedController'
 import { sceneRecoveryKey } from '../recovery/sceneRecovery'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
 
-const template = { schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1 }
-const custom = { visualizer: { shader: 'sphere(0.5);' } }
+const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
+const custom = customDocument({ visualizer: { shader: 'sphere(0.5);' } })
 const controllers: MagePlayerController[] = []
 const deferred = <T,>() => {
   let resolve!: (value: T) => void, reject!: (error: unknown) => void
@@ -92,7 +93,7 @@ afterEach(() => {
 
 describe('isolated controller guards', () => {
   it('validates before checking permission or allocating the frame', async () => {
-    await expect(create({ ...custom, intent: { fov: 400 } })).rejects.toThrow(/fov/)
+    await expect(create(customDocument({ ...custom.scene, intent: { fov: 400 } }))).rejects.toThrow(/fov/)
     await expect(createIsolatedMageController(document.createElement('div'), {})).rejects.toThrow(/initial scene/)
     expect(mocks.check).not.toHaveBeenCalled()
     expect(mocks.create).not.toHaveBeenCalled()
@@ -134,7 +135,7 @@ describe('isolated controller guards', () => {
   it('rejects invalid replacements without touching the live renderer or audio', async () => {
     const player = await loaded()
     playerBridge.pause.mockClear(); playerBridge.loadScene.mockClear()
-    await expect(player.loadSceneBlob({ ...template, visualizer: custom.visualizer })).rejects.toThrow()
+    await expect(player.loadSceneBlob({ ...template, visualizer: custom.scene.visualizer })).rejects.toThrow()
     expect(playerBridge.pause).not.toHaveBeenCalled()
     expect(playerBridge.loadScene).not.toHaveBeenCalled()
   })
@@ -249,7 +250,7 @@ describe('isolated controller guards', () => {
     player.setAudioVolume(0.4)
     const attempts: Array<Promise<unknown>> = []
     for (let index = 0; index < 12; index++) {
-      attempts.push(Promise.resolve(player.loadSceneBlob({ visualizer: { shader: `sphere(${index / 20 + 0.1});` } })).catch(error => error))
+      attempts.push(Promise.resolve(player.loadSceneBlob(customDocument({ visualizer: { shader: `sphere(${index / 20 + 0.1});` } }))).catch(error => error))
       await flush()
     }
     await vi.advanceTimersByTimeAsync(349)
@@ -277,7 +278,7 @@ describe('isolated controller guards', () => {
     player.seekAudio(42)
     const compilation = deferred<void>()
     playerBridge.loadScene.mockReturnValueOnce(compilation.promise)
-    const loading = player.loadSceneBlob({ visualizer: { shader: 'box(0.5);' } })
+    const loading = player.loadSceneBlob(customDocument({ visualizer: { shader: 'box(0.5);' } }))
     await vi.advanceTimersByTimeAsync(350)
     expect(playerBridge.loadScene).toHaveBeenCalledTimes(2)
     expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(true)
@@ -443,13 +444,13 @@ describe('isolated controls and media', () => {
 
   it('moves recovery identity after a response-only edit without reloading', async () => {
     const player = await loaded(custom)
-    const next = { ...custom, audioResponse: 'mapped-v1' }
+    const next = customDocument({ ...custom.scene, audioResponse: 'mapped-v1' })
     player.setAudioResponseSettings('mapped-v1')
     player.updateRecoveryIdentity!(next)
     expect(playerBridge.loadScene).toHaveBeenCalledOnce()
     expect(mocks.begin).toHaveBeenLastCalledWith(sceneRecoveryKey(next))
     expect(mocks.leases[0].dispose).toHaveBeenCalledOnce()
-    expect(() => player.updateRecoveryIdentity!({ visualizer: { shader: 'box(1, 1, 1);' } })).toThrow(/complete scene load/)
+    expect(() => player.updateRecoveryIdentity!(customDocument({ visualizer: { shader: 'box(1, 1, 1);' } }))).toThrow(/complete scene load/)
   })
 
   it('keeps original editor identity separate from validated preview source', async () => {
@@ -636,19 +637,17 @@ describe('isolated controls and media', () => {
 })
 
 describe('isolated live scene settings', () => {
-  const cameraAndEffects = {
-    ...custom,
-    visualizer: { ...custom.visualizer, scale: 120 },
+  const cameraAndEffects = customDocument({
+    ...custom.scene,
+    visualizer: { ...custom.scene.visualizer, scale: 120 },
     controls: { position0: { x: 1, y: 2, z: 6 }, target0: { x: 0, y: 1, z: 0 }, zoom0: 1.2 },
     intent: { fov: 96, autoRotate: false, camTilt: 0.3, time_multiplier: 1.2 },
     fx: { bloom: { enabled: true, strength: 0.4 }, passes: { rgbShift: true }, params: { rgbShift: { amount: 0.02 } } },
     state: { volume_multiplier: 0.8 },
-  }
+  })
 
   it.each([
-    { name: 'legacy custom', initial: custom, next: cameraAndEffects },
-    { name: 'versioned custom', initial: { schemaVersion: 1, kind: 'custom', scene: custom },
-      next: { schemaVersion: 1, kind: 'custom', scene: cameraAndEffects } },
+    { name: 'current custom', initial: custom, next: cameraAndEffects },
     { name: 'template', initial: template, next: { ...template, parameters: { speed: 1.3, scale: 90 },
       settings: { camera: { fov: 96, autoRotate: false }, bloom: { enabled: true, strength: 0.4 } } } },
   ])('updates camera and effects for $name while music and playback keep their state', async ({ initial, next }) => {
@@ -680,8 +679,8 @@ describe('isolated live scene settings', () => {
     const player = await loaded(custom)
     let next = custom as Record<string, unknown>
     for (let index = 0; index < 20; index++) {
-      next = { ...custom, intent: { fov: 70 + index }, audioResponse: 'mapped-v1',
-        audioResponseConfig: normalizeAudioResponseConfig({ version: 1, sensitivity: 0.5 + index / 20 }).config }
+      next = customDocument({ ...custom.scene, intent: { fov: 70 + index }, audioResponse: 'mapped-v1',
+        audioResponseConfig: normalizeAudioResponseConfig({ version: 1, sensitivity: 0.5 + index / 20 }).config })
       player.updateSceneSettings!(next)
     }
     expect(playerBridge.loadScene).toHaveBeenCalledOnce()
@@ -703,13 +702,13 @@ describe('isolated live scene settings', () => {
     player.setAudioResponseOverride(override)
     playerBridge.setAudioResponse.mockClear()
     const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 0.6 }).config
-    player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'mapped-v1', audioResponseConfig: config })
+    player.updateSceneSettings!(customDocument({ ...cameraAndEffects.scene, audioResponse: 'mapped-v1', audioResponseConfig: config }))
     expect(player.getAudioResponseState()).toMatchObject({ savedMode: 'mapped-v1', savedConfig: config, override, effectiveConfig: override })
     expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
     player.setAudioResponseOverride(null)
     expect(playerBridge.setAudioResponse).toHaveBeenCalledExactlyOnceWith('mapped-v1', config)
     playerBridge.setAudioResponse.mockClear()
-    player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'mapped-v1', audioResponseConfig: config, intent: { fov: 100 } })
+    player.updateSceneSettings!(customDocument({ ...cameraAndEffects.scene, audioResponse: 'mapped-v1', audioResponseConfig: config, intent: { fov: 100 } }))
     expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
     player.updateSceneSettings!(cameraAndEffects)
     expect(playerBridge.setAudioResponse).toHaveBeenCalledExactlyOnceWith('legacy', undefined)
@@ -730,11 +729,11 @@ describe('isolated live scene settings', () => {
   })
 
   it.each([
-    { name: 'invalid camera', scene: { ...custom, intent: { fov: 400 } } },
-    { name: 'forbidden nested field', scene: { ...cameraAndEffects, fx: { bloom: { enabled: true, shader: 'box(1);' } } } },
-    { name: 'new source', scene: { visualizer: { shader: 'box(1);' } } },
-    { name: 'new skybox', scene: { ...custom, visualizer: { ...custom.visualizer, skyboxPreset: 2 } } },
-    { name: 'runtime time', scene: { ...custom, state: { time: 12 } } },
+    { name: 'invalid camera', scene: customDocument({ ...custom.scene, intent: { fov: 400 } }) },
+    { name: 'forbidden nested field', scene: customDocument({ ...cameraAndEffects.scene, fx: { bloom: { enabled: true, shader: 'box(1);' } } }) },
+    { name: 'new source', scene: customDocument({ visualizer: { shader: 'box(1);' } }) },
+    { name: 'new skybox', scene: customDocument({ ...custom.scene, visualizer: { ...custom.scene.visualizer, skyboxPreset: 2 } }) },
+    { name: 'runtime time', scene: customDocument({ ...custom.scene, state: { time: 12 } }) },
     { name: 'new template', scene: template },
     { name: 'route identity', scene: cameraAndEffects, key: 8 },
   ])('rejects $name before changing the live scene, audio response or recovery lease', async ({ scene, key }) => {
@@ -779,7 +778,7 @@ describe('isolated live scene settings', () => {
     expect(() => player.updateSceneSettings!(cameraAndEffects)).toThrow(/Load a scene/)
     await player.loadSceneBlob(custom)
     playerBridge.setSceneSettings.mockImplementationOnce(() => { throw new Error('Cannot enqueue') })
-    expect(() => player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'transient-v1' })).toThrow('Cannot enqueue')
+    expect(() => player.updateSceneSettings!(customDocument({ ...cameraAndEffects.scene, audioResponse: 'mapped-v1' }))).toThrow('Cannot enqueue')
     expect(player.getAudioResponseState().savedMode).toBe('legacy')
     expect(playerBridge.setAudioResponse).not.toHaveBeenCalled()
     expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
@@ -790,10 +789,10 @@ describe('isolated live scene settings', () => {
 
   it('keeps the saved document recovery identity when preview defaults change under the same key', async () => {
     const player = await loaded(custom)
-    player.updateSceneSettings!({ ...cameraAndEffects, audioResponse: 'transient-v1' }, { recoverySceneBlob: custom })
+    player.updateSceneSettings!(customDocument({ ...cameraAndEffects.scene, audioResponse: 'mapped-v1' }), { recoverySceneBlob: custom })
     expect(mocks.begin).toHaveBeenCalledOnce()
     expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
-    expect(player.getAudioResponseState().savedMode).toBe('transient-v1')
+    expect(player.getAudioResponseState().savedMode).toBe('mapped-v1')
     player.setAudioResponseSettings('mapped-v1')
     player.updateRecoveryIdentity!(cameraAndEffects, { recoverySceneBlob: custom })
     expect(mocks.begin).toHaveBeenCalledOnce()

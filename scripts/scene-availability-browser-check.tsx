@@ -8,7 +8,7 @@ const target = `template:${FIXTURE_ID}` as const
 const fixture = parseSceneDocument({
   schemaVersion: 1,
   kind: 'template',
-  templateId: 'reaction-rings-v1',
+  templateId: 'embedded-scene-0',
   templateVersion: 1,
   parameters: { scale: 1, speed: 1 },
   settings: { skybox: 6, bloom: { enabled: true, strength: 0.5, radius: 0.2, threshold: 0.1 } },

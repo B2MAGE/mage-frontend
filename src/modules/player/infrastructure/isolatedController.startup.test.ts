@@ -15,7 +15,7 @@ vi.mock('../recovery/sceneRecovery', async importActual => ({ ...await importAct
 } }))
 import { createIsolatedMageController } from './isolatedController'
 
-const scene = { schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1 }
+const scene = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 const controllers: MagePlayerController[] = []
 const deferred = <T,>() => {
   let resolve!: (value: T) => void

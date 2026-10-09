@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installPlaybackRuntime } from './playbackRuntime'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
@@ -6,7 +7,7 @@ import { ShaderCompilationError } from './compiler/errors'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 
 const origin = 'https://mage.peterbucci.com', session = '4b50667d-27d8-4634-93e8-3a795e110123'
-const scene = { visualizer: { shader: 'sphere(1);' } }
+const scene = customDocument({ visualizer: { shader: 'sphere(1);' } })
 const input: PlaybackPayloads['input'] = { time: 1, audio: { frame: null, legacyAmplitude: 0, audioTime: 0, loaded: false, playing: false }, pointer: { x: 0, y: 0, down: false } }
 const releases: (() => void)[] = []
 afterEach(() => { releases.splice(0).forEach(fn => fn()); vi.restoreAllMocks(); vi.useRealTimers() })

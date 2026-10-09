@@ -76,7 +76,7 @@ These branches contain data only. Their absent fields remain absent during contr
 | `settings.effects.params.rgbShift.amount` / `angle` | 0–0.1 / −2π–2π | 0.005 / 0 |
 | `settings.effects.params.afterImage.damp` | 0–1 | 0.96 |
 | `settings.effects.params.kaleid.sides` / `angle` | Integer 1–24 / −2π–2π | 6 / 0 |
-| `settings.audioResponse` | `legacy`, `transient-v1`, `mapped-v1` | `legacy` |
+| `settings.audioResponse` | `legacy` (Version 1 Original), `mapped-v1` (Version 2 Selective) | `legacy` |
 | `settings.audioResponseConfig.version` | Required `1` when the config is present | Config absent |
 | `settings.audioResponseConfig.sensitivity` | 0.1–4 | Existing engine mapping default |
 | `settings.audioResponseConfig.mappings` | Up to 6 mappings, one per unique target | Existing engine mapping default |
@@ -87,7 +87,7 @@ Each audio mapping requires `target` and `source`. Targets are `size`, `bass`, `
 
 The resolver maps `parameters.speed` to `intent.time_multiplier`, camera settings to their corresponding `intent` values, `settings.motion` to the remaining intent controls, `settings.effects` to `fx`, and controls/state/audio settings to their namesake engine branches. It always takes shader source exclusively from the immutable template registry. These data settings grant no additional execution permissions and do not alter PP-V02 rendering limits.
 
-## Custom documents and legacy scenes
+## Current custom documents
 
 Arbitrary engine scene data uses an explicit custom envelope:
 
@@ -101,9 +101,9 @@ Arbitrary engine scene data uses an explicit custom envelope:
 }
 ```
 
-Custom source stays untrusted, even when it is byte-for-byte identical to a template shader. Structural validity is not authorization to execute it. Custom authoring permission checks, scene resource budgets, and isolated execution are separate PP stories. Legacy engine-format documents also remain custom/untrusted; this contract does not automatically migrate or promote them to template documents.
+Custom source stays untrusted, even when it is byte-for-byte identical to a template shader. Structural validity is not authorization to execute it. Custom authoring permission checks, scene resource budgets, and isolated execution are separate PP stories. Historical raw engine-format documents are unsupported. Imports, playback, and writes require a current explicit envelope; they never convert raw data or promote it to a template.
 
-The custom `scene` must be a JSON object. Nested objects and arrays may carry legacy fields, but `__proto__`, `prototype`, and `constructor` keys are forbidden recursively. The frontend also rejects values that cannot originate from ordinary JSON: non-finite numbers, `undefined`, functions, symbols, accessors, class instances, cycles, and sparse or extended arrays. It copies enumerable data properties without invoking getters.
+The custom `scene` must be a JSON object. The storage policy further limits its fields; `__proto__`, `prototype`, and `constructor` keys are forbidden recursively. The frontend also rejects values that cannot originate from ordinary JSON: non-finite numbers, `undefined`, functions, symbols, accessors, class instances, cycles, and sparse or extended arrays. It copies enumerable data properties without invoking getters.
 
 ## Consumer verification
 
