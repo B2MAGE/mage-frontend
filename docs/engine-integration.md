@@ -2,11 +2,10 @@
 
 ## Overview
 
-The frontend uses the published `@notrac/mage@1.0.3` package for scene playback and preview.
-The version is pinned exactly because the checked-in patch targets that release.
-Unreleased GitHub engine changes are not included.
-The pinned package with the checked-in patch applied is the sole supported engine contract.
-Older, newer, and unpatched builds are not supported through runtime fallback branches.
+The frontend uses a built release from [B2MAGE/mage-engine](https://github.com/B2MAGE/mage-engine),
+installed under the existing `@notrac/mage` import alias. The dependency URL and
+lockfile pin the tested artifact. See [engine package maintenance](engine-package.md)
+for upstream synchronization, source ownership, release and rollback instructions.
 
 App code should not talk to the engine directly. The intended boundary is:
 
@@ -22,7 +21,7 @@ under `src/modules/player/isolation` never imports the engine. This fixed-sample
 bootstrap does not yet route user scenes or audio. See [isolated renderer](isolated-renderer.md)
 for local checks, hosting policy, AWS handoff, and the PP-I02/PP-I03 release boundary.
 
-The adapter and the checked-in package patch are both infrastructure. Feature modules should not depend on raw engine package behavior, patched internals, or browser-workaround code directly.
+The adapter and maintained engine package are infrastructure. Feature modules use the player module API rather than engine internals or browser-workaround code.
 
 ## Current Integration
 
@@ -61,7 +60,7 @@ data when it contains at least one engine-recognized root branch such as:
 The adapter is doing more than forwarding calls:
 
 - it keeps engine imports out of route components
-- it isolates engine patch assumptions behind a frontend-owned infrastructure layer
+- it isolates engine integration details behind a frontend-owned infrastructure layer
 - it validates scene blobs before loading
 - it centralizes scene pause/resume behavior so every embedded `MagePlayer` uses the same playback model
 - it bridges local audio loading, clearing, seeking, and volume into a single frontend-safe controller
@@ -130,79 +129,27 @@ or bypass recovery/moderation. Simulated beat settings and volume are retained.
 The existing audio unload bridge resets the music response. This change requires
 only the frontend deployment; it adds no engine patch or renderer protocol message.
 
-## Package Patch Notes
+## Maintained package behavior
 
-The frontend currently patches `@notrac/mage@1.0.3` with `patch-package`.
+The fork owns the source implementations previously carried by the frontend's
+1.0.3 compiled-output patch. These include:
 
-Relevant repo-owned pieces are:
+- the compiler-only entry and independent compiled-artifact validation
+- dynamic ShaderPark helpers and safe updates of declared uniforms
+- scene attachment, replacement, capture, export and resource disposal
+- external audio/visual clocks, pause/resume/seek and synthetic preview
+- current audio analysis/mapping and existing response modes
+- bounded live settings, post-processing effects and render-density options
 
-- `patches/@notrac+mage+1.0.3.patch`
-- `postinstall` in `package.json`
-- `prebuild` in `package.json`
+Package installation no longer applies a patch or generates a compiler from an
+installed bundle. The maintained source build produces all required entrypoints.
+The adapter continues to own the app-facing API.
 
-The patch is applied during install and before builds. Both hooks use `--error-on-fail`
-so an incompatible or missing hunk cannot silently ship an unpatched runtime.
-`patch-package` is a direct production dependency because 1.0.3 no longer supplies
-it transitively and the install hook must also work when dev dependencies are omitted.
-
-The 1.0.3 upgrade retains every functional correction from our 1.0.1 patch:
-
-- ShaderPark exposes `setStepSize`, `torus`, and `cylinder` to compiled scene code.
-- ShaderPark's render callback skips undeclared uniforms, allowing custom shaders
-  to omit unused `size` or `pointerDown` inputs without crashing.
-- The render clock accumulates elapsed time, updates Three's timer, clamps suspension
-  jumps, and resets the timer when resuming.
-- `pause()` stops rendering, `play()` resumes even without audio, and `dispose()`
-  releases resources even when the engine was paused.
-- Audio playback position is resolved from the audio clock; volume getters/setters
-  and `unloadAudio()` retain the shared player/playlist contract.
-- `setSyntheticPreview(enabled, seed, tempoScale)` retains deterministic silent
-  thumbnail/About beats. Actual playing audio takes priority.
-- Optional `pixelRatio` preserves the About/home artwork's smoother rendering. When
-  omitted, 1.0.3's low-quality/device-density behavior is unchanged.
-- Package declarations include the preserved methods and render-density option.
-
-The upstream `previewMAGE` mode and its low-quality rendering option remain intact;
-they do not replace our shared, cancellable hover-preview coordinator. Its existing
-synthetic rhythm and About page half-tempo behavior are intentionally unchanged.
-
-Browser verification also exposed two regressions in 1.0.3's visualizer refactor:
-loading a preset created its mesh without attaching it to the rendered scene, and
-exporting a preset read a shader property the visualizer no longer maintained.
-The patch attaches the loaded mesh, releases replaced rendering resources, and
-exports the active shader. This preserves existing scene geometry and editor
-round-tripping without rewriting saved scene data.
-
-The audio compatibility patch also clears accumulated playback progress when
-seeking while paused. Otherwise Three's previous progress was added to the new
-offset, making the actual resume position differ from the selected time.
-
-Toon uses a scene-texture post-processing shader with stepped luminance and
-pixel-sized outlines. The package's original implementation incorrectly rebuilt
-the pass from a numeric shader choice, and its initial mesh-material Toon shader
-could not process a rendered image. The corrected pass is reused across effect
-refreshes and its resolution follows canvas resizing and thumbnail rendering.
-
-Compact presets load/export `fx.passes.bleachBypass` and `fx.passes.toon`.
-Missing flags turn these effects off when loading legacy scenes, so a reused
-player never carries either effect into another scene. The editor exposes both
-with normal effect toggles. Copy stays hidden in the editor but existing raw
-pass-order entries are preserved for compatibility.
-
-The patch does not replace the adapter. The patch fixes published-package behavior the frontend depends on, while the adapter keeps the app-facing API stable and localizes engine-specific startup and runtime logic.
-
-If the engine package version changes:
-
-1. review and regenerate the checked-in patch as needed
-2. verify `src/modules/player/infrastructure/engineAdapter.ts` still matches the package behavior
-3. rerun player/editor verification because those surfaces depend on the patched runtime boundary
-
-Regression coverage includes `engineClock.test.ts`, `engineCompatibility.test.ts`,
-and the adapter/player tests. Also verify real WebGL rendering, all bundled shaders,
-saved scene loading, local audio play/pause/seek/volume/clear, hover previews, and
-the About/home artwork in a browser. Unit tests alone cannot validate WebGL output.
-
-No feature module should import from `patches/` or from `@notrac/mage` directly.
+Consumer regression coverage includes `engineClock.test.ts`,
+`engineCompatibility.test.ts`, compiled-output/live-setting checks and the
+adapter/player tests. Also verify real WebGL rendering, supported shaders,
+local audio controls, hover previews and fixed artwork in a browser when adopting
+an engine release. Unit tests alone cannot establish rendered appearance.
 
 ## Opt-in transient audio response
 
@@ -216,7 +163,7 @@ legacy Audio Gain, Audio Curve, Base Speed, Easing Speed, and Volume Multiplier
 controls, which are not used by this mode. Their stored values are preserved
 while editing a beat-detection scene. Playback volume remains available.
 
-The engine patch owns the analysis, not a second React animation loop. For opted-in
+The engine owns the analysis, not a second React animation loop. For opted-in
 scenes only, a separate FFT-2048 analyser with no frequency-frame smoothing measures
 positive spectral changes in 40–180 Hz, 180–2000 Hz, and 2–8 kHz bands. Local energy
 normalization and an adaptive threshold reduce dependence on recording loudness
@@ -268,7 +215,7 @@ does not rewrite shader source or apply additional scene-wide audio transforms.
 - The published package declarations still omit the runtime `getEngineFields()` shape and do not model the value returned by `loadPreset()`. The adapter keeps those two narrow type corrections local.
 - The engine bundle still emits `eval` warnings during `vite build`. The build succeeds, but those warnings are coming from the published package.
 - The engine bundle is very large and still triggers Vite chunk-size warnings. That does not block builds, but it is a real startup-cost concern.
-- 1.0.3's native controls bootstrap also installs global listeners, editor shortcuts,
+- The native controls bootstrap also installs global listeners, editor shortcuts,
   and control tooltips. We initialize with `active: false, integrated: false`, then
   opt full players into a filtered, canvas-local input bridge without calling that
   bootstrap. Native left-button orbit dragging is enabled. Full players also opt into
@@ -286,6 +233,6 @@ does not rewrite shader source or apply additional scene-wide audio transforms.
   narrow runtime-only `getEngineFields()` type stays inside player infrastructure.
   This does not change saved scene data. The About/home artwork reuses this interaction
   path; thumbnail hover previews remain noninteractive.
-- Published 1.0.3 uses the legacy single-frequency-bin audio mapping. That remains
-  the default; the local `transient-v1` opt-in described above is our patch, not an
-  upstream release feature.
+- The legacy single-frequency-bin audio mapping remains the default in this
+  migration. The fork also retains the existing `transient-v1` and `mapped-v1`
+  modes. Removing compatibility behavior belongs to the later MAINT-02 cleanup.

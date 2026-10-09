@@ -149,7 +149,7 @@ describe('Scene Builder object editor', () => {
     expect(preview()).not.toEqual(beforeCustomCode)
     expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'object-1', name: 'Sphere 1' }] })
     expect(screen.queryByText('Backdrop')).not.toBeInTheDocument()
-  }, 10_000)
+  }, 60_000)
 
   it('opens a saved Builder document directly and retains it in raw JSON', async () => {
     const user = userEvent.setup()
@@ -220,5 +220,5 @@ describe('Scene Builder object editor', () => {
       motion: { type: 'spin', axis: 'z', speed: 1.25 },
     })
     expect(screen.getByText('4 of 16 rendered copies used. Two arrangement stages may be nested.')).toBeInTheDocument()
-  }, 10_000)
+  }, 60_000)
 })

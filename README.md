@@ -7,7 +7,7 @@ The MAGE frontend is the React application for browsing, creating, and playing M
 This repository contains the client-side application for the MAGE platform. It is built with React, TypeScript, and Vite, and integrates with:
 
 - the MAGE backend API for authentication and scene persistence
-- the published `@notrac/mage` engine package for scene playback and scene preview
+- the maintained [B2MAGE engine fork](https://github.com/B2MAGE/mage-engine), installed under the `@notrac/mage` import alias, for scene playback and preview
 
 The current app includes:
 
@@ -26,7 +26,7 @@ The current app includes:
 - React Router 7
 - Vitest + Testing Library
 - ESLint
-- Published MAGE engine package via `@notrac/mage`
+- Versioned B2MAGE engine release package via the `@notrac/mage` import alias
 
 ## Repository Structure
 
@@ -138,3 +138,7 @@ Cross-cutting project notes live in `docs/`:
 Use [docs/README.md](./docs/README.md) as the main index for cross-cutting frontend documentation.
 Feature-specific behavior and public contracts now live in the owning module READMEs under
 `src/modules/<feature>/README.md`.
+
+Engine source, package provenance and upgrade checks are documented in
+[engine package maintenance](docs/engine-package.md). Installation consumes a built,
+versioned release from the fork; it does not patch or rebuild dependency files.

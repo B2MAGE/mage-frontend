@@ -1,6 +1,6 @@
 # Audio response configuration
 
-The audio-response work extends the existing `@notrac/mage` 1.0.3 package through `patch-package`. The renderer and dependency version stay in place. The lightweight `@notrac/mage/audio-response` entry point has no browser, audio-context, or renderer dependencies and provides the shared configuration contract.
+Audio-response behavior is maintained in the [B2MAGE engine source/package](engine-package.md), installed under the `@notrac/mage` alias. The lightweight `@notrac/mage/audio-response` entry point has no browser, audio-context, or renderer dependencies and provides the shared configuration contract.
 
 Scenes explicitly opt into `mapped-v1`. Missing and unsupported modes normalize to `legacy`; `legacy` and `transient-v1` retain their existing behavior. Merely supplying a configuration does not opt an older scene into the new mode. Loading another scene must replace its mode and normalized configuration, including when the next scene has neither setting.
 
@@ -24,7 +24,7 @@ Sensitivity is clamped to 0.1–4. Mapping amount is clamped to 0–4, attack to
 
 Sensitivity controls detection responsiveness; amount controls movement strength. Attack and release control how quickly the mapped movement rises and returns. These settings must not change audible playback volume.
 
-Engine changes belong in `patches/@notrac+mage+1.0.3.patch`, including these lightweight entry points and package exports. A clean install must apply the patch before testing or building. The configuration contract is exercised by `src/modules/player/infrastructure/audioResponseConfig.test.ts` against the installed patched package.
+Engine changes belong in the maintained fork, including these lightweight entry points and package exports. A clean install consumes the built release without modifying it. The configuration contract is exercised by `src/modules/player/infrastructure/audioResponseConfig.test.ts` against the installed package.
 
 ## Analysis timing and lifecycle
 
@@ -110,7 +110,7 @@ Feature code uses the public `@modules/player` boundary. The controller exposes:
 - `getAudioResponseState()` returns independent copies of `{ savedMode, savedConfig, override, effectiveMode, effectiveConfig }`. An absent saved configuration is `null`; effective configuration is `null` outside mapped mode.
 - `setAudioResponseSettings(mode, config?)` replaces the authored settings in the adapter's scene snapshot. Omitted configuration removes explicit metadata; an undefined mode removes its metadata. Callers retaining inactive mappings must pass that configuration when changing modes. This updates the current preview; durable saving still uses the editor's scene data and existing API request.
 - `setAudioResponseOverride(config)` applies a temporary viewer configuration in mapped mode. Passing `null` restores the authored mode and configuration. Overrides never enter the scene JSON. Updating authored settings while an override is active updates only the stored defaults until the override is cleared.
-- `getAudioResponseCapabilities()`, `getAudioResponseDiagnostics()`, and `getAudioResponseEvents(afterId?)` forward defensive snapshots from the supported pinned-and-patched engine contract. Reading events does not consume another caller's cursor.
+- `getAudioResponseCapabilities()`, `getAudioResponseDiagnostics()`, and `getAudioResponseEvents(afterId?)` forward defensive snapshots from the supported pinned engine contract. Reading events does not consume another caller's cursor.
 
 Live configuration changes keep the player, song, playback position, playback volume, and pause state. The adapter does not re-select an unchanged mode, since that would tear down the analysis session. Reapplying identical settings is a no-op. Resetting playback retains the current authored defaults and temporary override; loading a different scene clears the override. Pending audio-load completion is invalidated when a newer load, scene change, audio clear, or disposal supersedes it.
 

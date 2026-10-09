@@ -21,7 +21,7 @@ function padSection(artifact, name, targetBytes, character = 'x') {
   return result
 }
 
-test('patched compiler runs without browser globals and returns cloneable data with the requested ceiling', () => {
+test('packaged compiler runs without browser globals and returns cloneable data with the requested ceiling', () => {
   assert.equal(typeof window, 'undefined')
   assert.equal(typeof document, 'undefined')
   const artifact = compileShader('let bass=input(0.2,0,1); setMaxIterations(999); sphere(0.5+bass);', { maxRaymarchIterations: 48 })
@@ -35,13 +35,13 @@ test('patched compiler runs without browser globals and returns cloneable data w
   assert.throws(() => compileShader('sphere(1);', { maxRaymarchIterations: Infinity }), /budget/)
 })
 
-test('compiler entry is derived from the patched module without importing the DOM engine', () => {
+test('packaged compiler entry uses its separate compiler and validation modules without importing the DOM engine', () => {
   const generated = readFileSync(new URL('../node_modules/@notrac/mage/dist/shader-park-compiler.generated.js', import.meta.url), 'utf8')
-  assert(generated.includes('function sculptToGLSL(userProvidedSrc, requestedMaxIterations = 200)'))
-  assert(generated.includes('src.maxIterations = Number.isFinite(src.maxIterations)'))
   assert(!generated.includes('var MAGEVisualizer ='))
   assert(!generated.includes('var MAGEEngine ='))
   const entry = readFileSync(new URL('../node_modules/@notrac/mage/dist/compiler.js', import.meta.url), 'utf8')
+  assert(entry.includes("from './shader-park-compiler.generated.js'"))
+  assert(entry.includes("from './compiled-shader.js'"))
   assert(!entry.includes("from './mage-engine.js'"))
 })
 

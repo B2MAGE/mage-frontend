@@ -1,5 +1,6 @@
 import policy from '../../../../contracts/scenes/scene-limits.v1.json'
 import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type JsonRecord, type JsonValue, type SceneDocument, type PlayableSceneDocument } from '../templates/sceneContract'
+import { BuilderCompilationError, validateBuilderRenderingWorkload } from '../templates/builderCompiler'
 
 /** Exact PP-V01 policy copy; bounds apply to data, never establish source trust. */
 type Immutable<T> = T extends object ? { readonly [K in keyof T]: Immutable<T[K]> } : T
@@ -202,6 +203,13 @@ export function validateSceneDocument(value: unknown): SceneDocument {
     invalid(safe ? `sceneData${path.slice(5)}` : 'sceneData', delimiter >= 0 ? error.message.slice(delimiter + 2) : 'Unsupported scene document.')
   }
   boundedJson(document) // Materialized defaults also count toward the stored budget.
+  if (document.kind === 'builder') {
+    try { validateBuilderRenderingWorkload(document) }
+    catch (error) {
+      if (!(error instanceof BuilderCompilationError)) throw error
+      invalid(error.path, error.message.slice(error.path.length + 2))
+    }
+  }
   if (document.kind === 'custom') {
     const path = 'sceneData.scene'
     boundedJson(document.scene, { ...sceneBudget, path })

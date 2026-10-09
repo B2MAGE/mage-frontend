@@ -1,5 +1,6 @@
 import { parseTemplateSettingsExtensions, TEMPLATE_EXTENSION_KEYS, templateOptionalEffectCount, type TemplateSettingsExtensions } from './templateSettings'
 import { normalizeBuilderDocument } from './builderSchema'
+import { SCENE_PARAMETER_RULES, SCENE_SETTING_RULES } from './sceneDefinitions'
 
 /** The transport contract is also checked in under contracts/scenes for the Java API. */
 export const TEMPLATE_IDS = [
@@ -141,10 +142,10 @@ function optionalObject(value: JsonValue | undefined, path: string, allowed: rea
   return object(value === undefined ? {} : value, path, allowed)
 }
 
-function number(value: JsonValue | undefined, path: string, fallback: number, min: number, max: number): number {
-  if (value === undefined) return fallback
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
-    return fail(path, `expected a finite number from ${min} to ${max}`)
+function number(value: JsonValue | undefined, path: string, rule: { minimum: number; maximum: number; default?: number }): number {
+  if (value === undefined && rule.default !== undefined) return rule.default
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < rule.minimum || value > rule.maximum) {
+    return fail(path, `expected a finite number from ${rule.minimum} to ${rule.maximum}`)
   }
   return value
 }
@@ -183,14 +184,18 @@ export function parseSceneDocument(value: unknown): SceneDocument {
   const camera = optionalObject(settings.camera, 'scene.settings.camera', ['fov', 'autoRotate', 'orbitSpeed', 'tilt', 'orientationMode', 'orientationSpeed'])
   const bloom = optionalObject(settings.bloom, 'scene.settings.bloom', ['enabled', 'strength', 'radius', 'threshold'])
   const tint = optionalObject(settings.tint, 'scene.settings.tint', ['enabled', 'color'])
-  const skybox = number(settings.skybox, 'scene.settings.skybox', 6, 1, 10)
+  const cameraRules = SCENE_SETTING_RULES.camera.properties
+  const bloomRules = SCENE_SETTING_RULES.bloom.properties
+  const tintRules = SCENE_SETTING_RULES.tint.properties
+  const skybox = number(settings.skybox, 'scene.settings.skybox', { ...SCENE_SETTING_RULES.skybox,
+    minimum: Math.min(...SCENE_SETTING_RULES.skybox.enum), maximum: Math.max(...SCENE_SETTING_RULES.skybox.enum) })
   if (!Number.isInteger(skybox)) return fail('scene.settings.skybox', 'expected a catalog skybox ID from 1 to 10')
-  const color = tint.color === undefined ? '#ffffff' : tint.color
+  const color = tint.color === undefined ? tintRules.color.default : tint.color
   if (typeof color !== 'string' || color.length !== 7 || !/^#[0-9a-fA-F]{6}$/.test(color)) {
     return fail('scene.settings.tint.color', 'expected a #RRGGBB color')
   }
   const orientationMode = camera.orientationMode === undefined ? undefined
-    : number(camera.orientationMode, 'scene.settings.camera.orientationMode', 0, 0, 2)
+    : number(camera.orientationMode, 'scene.settings.camera.orientationMode', cameraRules.orientationMode)
   if (orientationMode !== undefined && !Number.isInteger(orientationMode)) fail('scene.settings.camera.orientationMode', 'expected an integer')
   const document: TemplateSceneDocument = {
     schemaVersion: 1,
@@ -198,27 +203,27 @@ export function parseSceneDocument(value: unknown): SceneDocument {
     templateId: template.templateId as TemplateId,
     templateVersion: 1,
     parameters: {
-      scale: number(parameters.scale, 'scene.parameters.scale', 10, 1, 200),
-      speed: number(parameters.speed, 'scene.parameters.speed', 1, 0, 10),
+      scale: number(parameters.scale, 'scene.parameters.scale', SCENE_PARAMETER_RULES.scale),
+      speed: number(parameters.speed, 'scene.parameters.speed', SCENE_PARAMETER_RULES.speed),
     },
     settings: {
       ...parseTemplateSettingsExtensions(settings, fail),
       skybox,
       camera: {
-        fov: number(camera.fov, 'scene.settings.camera.fov', 75, 1, 179),
-        autoRotate: boolean(camera.autoRotate, 'scene.settings.camera.autoRotate', true),
-        orbitSpeed: number(camera.orbitSpeed, 'scene.settings.camera.orbitSpeed', 0.2, -50, 50),
-        ...(camera.tilt === undefined ? {} : { tilt: number(camera.tilt, 'scene.settings.camera.tilt', 0, -2 * Math.PI, 2 * Math.PI) }),
+        fov: number(camera.fov, 'scene.settings.camera.fov', cameraRules.fov),
+        autoRotate: boolean(camera.autoRotate, 'scene.settings.camera.autoRotate', cameraRules.autoRotate.default),
+        orbitSpeed: number(camera.orbitSpeed, 'scene.settings.camera.orbitSpeed', cameraRules.orbitSpeed),
+        ...(camera.tilt === undefined ? {} : { tilt: number(camera.tilt, 'scene.settings.camera.tilt', cameraRules.tilt) }),
         ...(orientationMode === undefined ? {} : { orientationMode }),
-        ...(camera.orientationSpeed === undefined ? {} : { orientationSpeed: number(camera.orientationSpeed, 'scene.settings.camera.orientationSpeed', 1, 0, 10) }),
+        ...(camera.orientationSpeed === undefined ? {} : { orientationSpeed: number(camera.orientationSpeed, 'scene.settings.camera.orientationSpeed', cameraRules.orientationSpeed) }),
       },
       bloom: {
-        enabled: boolean(bloom.enabled, 'scene.settings.bloom.enabled', false),
-        strength: number(bloom.strength, 'scene.settings.bloom.strength', 1, 0, 10),
-        radius: number(bloom.radius, 'scene.settings.bloom.radius', 0.2, -10, 10),
-        threshold: number(bloom.threshold, 'scene.settings.bloom.threshold', 0.1, 0, 10),
+        enabled: boolean(bloom.enabled, 'scene.settings.bloom.enabled', bloomRules.enabled.default),
+        strength: number(bloom.strength, 'scene.settings.bloom.strength', bloomRules.strength),
+        radius: number(bloom.radius, 'scene.settings.bloom.radius', bloomRules.radius),
+        threshold: number(bloom.threshold, 'scene.settings.bloom.threshold', bloomRules.threshold),
       },
-      tint: { enabled: boolean(tint.enabled, 'scene.settings.tint.enabled', false), color },
+      tint: { enabled: boolean(tint.enabled, 'scene.settings.tint.enabled', tintRules.enabled.default), color },
     },
   }
   if (templateOptionalEffectCount(document.settings) > 4) fail('scene.settings.effects', 'enable at most 4 optional effects, including bloom and tint')

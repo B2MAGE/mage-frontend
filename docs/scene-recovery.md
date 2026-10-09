@@ -96,7 +96,7 @@ ordinary independent tabs retain separate sessionStorage.
 
 ## Failure signals and limits
 
-The existing `@notrac/mage@1.0.3` dependency patch adds a small optional
+The [maintained engine package](engine-package.md) provides an optional
 `subscribeRenderLifecycle` hook. It reports completed render submissions and
 runtime/GPU shader failures, and stops a failing frame loop before notifying the
 adapter. Source load/compile exceptions and WebGL context loss also block the
@@ -121,8 +121,8 @@ Automated coverage includes persisted failures and interrupted reloads, clean an
 failed disposal, two tabs and copied tab storage, storage corruption/unavailability,
 revision changes, deliberate retry, context loss, foreground timeouts, audio failure
 exclusion, stopped animation clocks, stale preview initialization, and editor data
-preservation. Patched-engine tests exercise real lifecycle notifications, and the
-patch is checked against a pristine MAGE 1.0.3 package.
+preservation. Engine consumer tests exercise real lifecycle notifications against
+the pinned fork release; a clean install does not modify dependency files.
 
 For a harmless manual check, stop a valid scene, reload, and verify it stays static.
 Resume explicitly, navigate away and return, and verify the manual pause is gone.

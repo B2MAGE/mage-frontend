@@ -3,7 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
+import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -76,19 +76,9 @@ function toCameraDegreeValue(radians: number) {
   return Number(toDegrees(radians).toFixed(2));
 }
 
-const BUILDER_SHAPE_LABELS = {
-  box: "Box",
-  cylinder: "Cylinder",
-  sphere: "Sphere",
-  torus: "Torus",
-} as const;
-
 function formatBuilderOperation(object: BuilderObject) {
-  const operation = object.operation;
-  if (operation.type === "box") return `Width ${formatFixed(operation.width)} · Height ${formatFixed(operation.height)} · Depth ${formatFixed(operation.depth)}`;
-  if (operation.type === "cylinder") return `Radius ${formatFixed(operation.radius)} · Height ${formatFixed(operation.height)}`;
-  if (operation.type === "torus") return `Radius ${formatFixed(operation.radius)} · Tube ${formatFixed(operation.tube)}`;
-  return `Radius ${formatFixed(operation.radius)}`;
+  return builderOperationFields(object.operation)
+    .map(field => `${field.summaryLabel} ${formatFixed(field.value)}`).join(" · ");
 }
 
 function formatBuilderModifier(modifier: BuilderObject["modifiers"][number]) {
@@ -1857,7 +1847,7 @@ export function SceneEditorShell({
                                 {builderDocument.objects.map((object) => (
                                   <div className="scene-confirm-object" key={object.id}>
                                     <span>
-                                      <strong>{object.name} · {BUILDER_SHAPE_LABELS[object.operation.type]}</strong>
+                                      <strong>{object.name} · {BUILDER_OPERATIONS[object.operation.type].label}</strong>
                                       <small>{object.modifiers.length} modifier{object.modifiers.length === 1 ? "" : "s"} · {object.arrangements.length} arrangement{object.arrangements.length === 1 ? "" : "s"} · {formatBuilderMotion(object)}</small>
                                     </span>
                                   </div>
@@ -1877,7 +1867,7 @@ export function SceneEditorShell({
                                 {builderDocument.objects.map((object) => (
                                   <section key={object.id}>
                                     <strong>{object.name}</strong>
-                                    <span>Shape: {BUILDER_SHAPE_LABELS[object.operation.type]} · {formatBuilderOperation(object)}</span>
+                                    <span>Shape: {BUILDER_OPERATIONS[object.operation.type].label} · {formatBuilderOperation(object)}</span>
                                     <span>Position: {formatFixed(object.transform.position.x)}, {formatFixed(object.transform.position.y)}, {formatFixed(object.transform.position.z)}</span>
                                     <span>Rotation: {formatFixed(object.transform.rotation.x)}, {formatFixed(object.transform.rotation.y)}, {formatFixed(object.transform.rotation.z)} · Scale: {formatFixed(object.transform.scale.x)}, {formatFixed(object.transform.scale.y)}, {formatFixed(object.transform.scale.z)}</span>
                                     <span>Modifiers: {object.modifiers.length ? object.modifiers.map(formatBuilderModifier).join(" → ") : "None"}</span>

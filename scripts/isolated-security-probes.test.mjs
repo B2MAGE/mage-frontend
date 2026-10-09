@@ -1,25 +1,52 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { TextEncoder } from 'node:util'
 import { runInNewContext } from 'node:vm'
+import { build } from 'vite'
 import { boundedStallSource, portAttackSource, readStallMarker, THROW_PROBE_SOURCE } from './isolated-security-probes.mjs'
 
-const source = readFileSync(new URL('../node_modules/@notrac/mage/dist/mage-engine.js', import.meta.url), 'utf8')
-const start = source.indexOf('var require_shader_park_core_umd =')
-const end = source.indexOf('\n//#endregion', start)
-if (start < 0 || end <= start) throw new Error('Installed ShaderPark compiler was not found.')
+// Bundle the package's public compiler entry without evaluating submitted source
+// in this process. The complete compiler runs only in the isolated context below.
+// Its DSL uses direct eval, so retain dynamically referenced shader helpers.
+const built = await build({
+  configFile: false,
+  envDir: false,
+  publicDir: false,
+  logLevel: 'silent',
+  build: {
+    write: false,
+    target: 'es2022',
+    minify: false,
+    lib: {
+      entry: fileURLToPath(import.meta.resolve('@notrac/mage/compiler')),
+      name: 'MageProbeCompiler',
+      formats: ['iife'],
+    },
+    rollupOptions: { treeshake: false, output: { inlineDynamicImports: true } },
+  },
+})
+const chunks = (Array.isArray(built) ? built : [built])
+  .flatMap(bundle => bundle.output).filter(output => output.type === 'chunk')
+assert.equal(chunks.length, 1, 'The fixed probes must use one self-contained compiler bundle.')
+assert.deepEqual(chunks[0].imports, [])
+assert.deepEqual(chunks[0].dynamicImports, [])
+const compilerSource = chunks[0].code
+const compileProbe = context => runInNewContext(
+  `${compilerSource}\nMageProbeCompiler.compileShader(shader);`, { TextEncoder, ...context }, { timeout: 3000 },
+)
 const nonce = 'a'.repeat(32)
-for (const mode of ['window', 'spoof', 'flood']) test(`fixed ${mode} probe compiles and executes through the installed ShaderPark parser`, () => {
+for (const mode of ['window', 'spoof', 'flood']) test(`fixed ${mode} probe compiles and executes through the packaged compiler`, () => {
   const portMessages = [], windowMessages = [], scheduled = []
   class Port { postMessage(message) { portMessages.push(message) } }
   const context = { MessagePort: Port, parent: { postMessage(message) { windowMessages.push(message) } },
     setTimeout(callback, milliseconds) { assert.equal(milliseconds, 150); scheduled.push(callback) },
     console: { log() {}, warn() {}, error() {} },
-    __commonJSMin: factory => () => { const module = { exports: {} }; factory(module.exports, module); return module.exports },
     shader: `sphere(0.5); ${portAttackSource(mode, nonce)}` }
   // This fixed probe runs only in Node's isolated test context, never the app parent.
   // No network, DOM, timers, credentials or arbitrary imported source is provided.
-  const result = runInNewContext(`${source.slice(start, end)}; require_shader_park_core_umd().sculptToGLSL(shader);`, context, { timeout: 3000 })
+  const result = compileProbe(context)
+  assert.equal(result.version, 1)
   assert.equal(result.error, undefined)
   new Port().postMessage({ protocol: 'mage-isolated-renderer', type: 'progress', session: 'test', generation: 1, requestId: 0, payload: { frames: 1 } })
   assert.equal(windowMessages[0].nonce, nonce)
@@ -30,23 +57,22 @@ for (const mode of ['window', 'spoof', 'flood']) test(`fixed ${mode} probe compi
   if (mode === 'spoof') { assert.equal(portMessages[1].type, 'navigate'); assert.equal(portMessages.length, 2) }
   if (mode === 'flood') assert.equal(portMessages.length, 51)
 })
-test('fixed thrown-source probe reaches its deliberate error in the installed parser', () => {
+test('fixed thrown-source probe reaches its deliberate error in the packaged compiler', () => {
   const context = { console: { log() {}, warn() {}, error() {} },
-    __commonJSMin: factory => () => { const module = { exports: {} }; factory(module.exports, module); return module.exports },
     shader: `sphere(0.5); ${THROW_PROBE_SOURCE}` }
-  assert.throws(() => runInNewContext(`${source.slice(start, end)}; require_shader_park_core_umd().sculptToGLSL(shader);`, context, { timeout: 3000 }), /Fixed isolation throw probe/)
+  assert.throws(() => compileProbe(context), /Fixed isolation throw probe/)
 })
 
-test('finite CPU probe distinguishes queued, scheduled, start and end through the installed parser', () => {
+test('finite CPU probe distinguishes queued, scheduled, start and end through the packaged compiler', () => {
   const windowMessages = [], scheduled = []
   let clock = 0
   const context = { parent: { postMessage(message) { windowMessages.push(message) } },
     performance: { now() { clock += 100; return clock } },
     setTimeout(callback, milliseconds) { assert.equal(milliseconds, 150); scheduled.push(callback) },
     console: { log() {}, warn() {}, error() {} },
-    __commonJSMin: factory => () => { const module = { exports: {} }; factory(module.exports, module); return module.exports },
     shader: `sphere(0.5); ${boundedStallSource(nonce)}` }
-  const result = runInNewContext(`${source.slice(start, end)}; require_shader_park_core_umd().sculptToGLSL(shader);`, context, { timeout: 3000 })
+  const result = compileProbe(context)
+  assert.equal(result.version, 1)
   assert.equal(result.error, undefined)
   assert.equal(windowMessages[0].nonce, nonce)
   assert.deepEqual(windowMessages.map(message => message.marker), ['queued', 'scheduled'])

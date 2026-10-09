@@ -1,0 +1,618 @@
+{
+  "contractVersion": 1,
+  "description": "Current full-write conformance and round trips. Unlike structural fixtures, validity includes scene resource budgets. Normalized data preserves shipped defaults and optional audio behavior. renderingWorkload is a frontend compilation assertion, not an API field.",
+  "cases": [
+    {
+      "name": "template-current-defaults",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1
+      },
+      "valid": true,
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "custom-current-source-and-mapped-audio",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "visualizer": {
+            "shader": "sphere(0.5);"
+          },
+          "audioResponse": "mapped-v1",
+          "audioResponseConfig": {
+            "version": 1,
+            "sensitivity": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "bass-level",
+                "amount": 1
+              }
+            ]
+          }
+        }
+      },
+      "valid": true,
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "visualizer": {
+            "shader": "sphere(0.5);"
+          },
+          "audioResponse": "mapped-v1",
+          "audioResponseConfig": {
+            "version": 1,
+            "sensitivity": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "bass-level",
+                "amount": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "builder-every-current-primitive-default",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "sphere",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "box",
+            "operation": {
+              "type": "box"
+            }
+          },
+          {
+            "id": "torus",
+            "operation": {
+              "type": "torus"
+            }
+          },
+          {
+            "id": "cylinder",
+            "operation": {
+              "type": "cylinder"
+            }
+          }
+        ]
+      },
+      "valid": true,
+      "renderingWorkload": {
+        "expandedPrimitives": 4,
+        "modifierOperations": 0,
+        "arrangementOperations": 0,
+        "animationOperations": 0,
+        "liveUniforms": 0
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "sphere",
+            "name": "Object",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "box",
+            "name": "Object",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "torus",
+            "name": "Object",
+            "operation": {
+              "type": "torus",
+              "radius": 1,
+              "tube": 0.25
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "cylinder",
+            "name": "Object",
+            "operation": {
+              "type": "cylinder",
+              "radius": 1,
+              "height": 2
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "builder-ordered-stages-at-sixteen-copy-boundary",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "staged",
+            "operation": {
+              "type": "box"
+            },
+            "modifiers": [
+              {
+                "type": "twist",
+                "axis": "y",
+                "amount": 1.5
+              },
+              {
+                "type": "expand",
+                "amount": 0.2
+              },
+              {
+                "type": "shell",
+                "thickness": 0.1
+              }
+            ],
+            "arrangements": [
+              {
+                "type": "linear",
+                "axis": "x",
+                "count": 2,
+                "spacing": 1.5
+              },
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 8,
+                "radius": 2
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.5
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit"
+              }
+            ]
+          }
+        ],
+        "settings": {
+          "audioResponse": "mapped-v1"
+        }
+      },
+      "valid": true,
+      "renderingWorkload": {
+        "expandedPrimitives": 16,
+        "modifierOperations": 80,
+        "arrangementOperations": 15,
+        "animationOperations": 16,
+        "liveUniforms": 1
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "staged",
+            "name": "Object",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [
+              {
+                "type": "twist",
+                "axis": "y",
+                "amount": 1.5
+              },
+              {
+                "type": "expand",
+                "amount": 0.2
+              },
+              {
+                "type": "shell",
+                "thickness": 0.1
+              }
+            ],
+            "arrangements": [
+              {
+                "type": "linear",
+                "axis": "x",
+                "count": 2,
+                "spacing": 1.5
+              },
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 8,
+                "radius": 2
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.5
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit",
+                "mode": "add",
+                "amount": 1,
+                "offset": 0,
+                "attack": 0.04,
+                "release": 0.35
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          },
+          "audioResponse": "mapped-v1"
+        }
+      }
+    },
+    {
+      "name": "template-rejects-fov-above-current-limit",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "template",
+        "templateId": "embedded-scene-0",
+        "templateVersion": 1,
+        "settings": {
+          "camera": {
+            "fov": 180
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-rejects-seventeenth-expanded-copy",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "staged",
+            "operation": {
+              "type": "box"
+            },
+            "modifiers": [
+              {
+                "type": "twist",
+                "axis": "y",
+                "amount": 1.5
+              },
+              {
+                "type": "expand",
+                "amount": 0.2
+              },
+              {
+                "type": "shell",
+                "thickness": 0.1
+              }
+            ],
+            "arrangements": [
+              {
+                "type": "linear",
+                "axis": "x",
+                "count": 2,
+                "spacing": 1.5
+              },
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 8,
+                "radius": 2
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.5
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit"
+              }
+            ]
+          },
+          {
+            "id": "extra",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-rejects-unknown-operation",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "unknown",
+            "operation": {
+              "type": "capsule"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-rejects-repeated-binding-target",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "ball",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-hit"
+              },
+              {
+                "target": "scale.x",
+                "source": "mid-hit"
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "custom-rejects-blank-shader",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "custom",
+        "scene": {
+          "visualizer": {
+            "shader": " "
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}

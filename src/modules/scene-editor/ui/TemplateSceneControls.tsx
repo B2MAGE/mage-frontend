@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { listSceneTemplates, listSelectableSceneTemplates, type TemplateSceneDocument } from '@modules/player'
+import { SCENE_PARAMETER_RULES, listSceneTemplates, listSelectableSceneTemplates, type TemplateSceneDocument } from '@modules/player'
 import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import type { TemplateFieldPath } from '../templateEditor'
 import type { EditorSectionId } from '../types'
@@ -57,7 +57,7 @@ export function TemplateSceneControls({ section, document, creationMode, fields 
       </EditorFieldShell>
       {issue('settings.skybox')}
     </div>
-    {number('parameters.scale', 'Scene Scale', document.parameters.scale, 1, 200, 1)}
+    {number('parameters.scale', 'Scene Scale', document.parameters.scale, SCENE_PARAMETER_RULES.scale.minimum, SCENE_PARAMETER_RULES.scale.maximum, 1)}
   </SceneSection>
 
   return null
