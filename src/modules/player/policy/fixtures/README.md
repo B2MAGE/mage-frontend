@@ -2,7 +2,7 @@
 
 `builtin-presets.json` and `demo-quality.json` are exact copies of the PP-V01
 backend test resources under `src/test/resources/scene-corpus/`. They contain
-the 16 immutable template engine payloads and 100 quality demo scenes accepted
+the 14 current immutable template engine payloads and 100 quality demo scenes accepted
 by the Java submission policy. They are test data, never runtime inputs.
 
 The authoritative policy copy is `contracts/scenes/scene-limits.v1.json` and

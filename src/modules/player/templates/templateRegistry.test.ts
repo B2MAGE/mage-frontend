@@ -5,17 +5,15 @@ import catalogManifest from '../../../../contracts/scenes/template-catalog.v1.js
 import { getTemplateDefinition, listSceneTemplates, listSelectableSceneTemplates } from './templateRegistry'
 
 describe('versioned template registry', () => {
-  it('includes all 16 original presets as immutable version 1 definitions', () => {
+  it('includes all 14 current presets as immutable version 1 definitions', () => {
     const catalog = listSceneTemplates()
     const originalIds = [
       ...Array.from({ length: 14 }, (_, index) => `embedded-scene-${index}`),
-      'reaction-rings-v1',
-      'reaction-lantern-v1',
     ]
 
     expect(catalog.map(({ templateId }) => templateId)).toEqual(originalIds)
     expect(Object.isFrozen(catalog)).toBe(true)
-    expect(new Set(catalog.map(({ templateId, templateVersion }) => `${templateId}:${templateVersion}`)).size).toBe(16)
+    expect(new Set(catalog.map(({ templateId, templateVersion }) => `${templateId}:${templateVersion}`)).size).toBe(14)
 
     for (const template of catalog) {
       expect(Object.isFrozen(template)).toBe(true)
@@ -32,22 +30,19 @@ describe('versioned template registry', () => {
     }
   })
 
-  it('does not offer retired reaction templates for new scenes', () => {
+  it('does not resolve retired templates for either playback or new scenes', () => {
     const selectable = listSelectableSceneTemplates()
     expect(selectable).toHaveLength(14)
-    expect(selectable.map(template => template.templateId)).not.toEqual(expect.arrayContaining([
-      'reaction-rings-v1',
-      'reaction-lantern-v1',
-    ]))
-    expect(getTemplateDefinition('reaction-rings-v1', 1)).toBeDefined()
-    expect(getTemplateDefinition('reaction-lantern-v1', 1)).toBeDefined()
+    expect(selectable).toEqual(listSceneTemplates())
+    expect(getTemplateDefinition('reaction-rings-v1', 1)).toBeUndefined()
+    expect(getTemplateDefinition('reaction-lantern-v1', 1)).toBeUndefined()
   })
 
   it('matches the shared catalog and preserves the original source fingerprints', () => {
     // These hashes lock the shipped source independently of the live editor presets.
     // Add another version for changed code; do not update a published version's hash.
     expect(catalogManifest.catalogVersion).toBe(1)
-    expect(catalogManifest.templates).toHaveLength(16)
+    expect(catalogManifest.templates).toHaveLength(14)
 
     for (const { sourceSha256, ...metadata } of catalogManifest.templates) {
       const definition = getTemplateDefinition(metadata.templateId, metadata.templateVersion)

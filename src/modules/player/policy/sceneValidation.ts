@@ -1,5 +1,5 @@
 import policy from '../../../../contracts/scenes/scene-limits.v1.json'
-import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type JsonRecord, type JsonValue, type SceneDocument, type PlayableSceneDocument } from '../templates/sceneContract'
+import { parseSceneDocument, SceneContractError, type JsonRecord, type JsonValue, type SceneDocument, type PlayableSceneDocument } from '../templates/sceneContract'
 import { BuilderCompilationError, validateBuilderRenderingWorkload } from '../templates/builderCompiler'
 
 /** Exact PP-V01 policy copy; bounds apply to data, never establish source trust. */
@@ -223,16 +223,14 @@ export function validateSceneDocument(value: unknown): SceneDocument {
   return document
 }
 
-/** Legacy acceptance is compatibility only; the resulting custom label grants no execution permission. */
-export function validateSceneForStorage(value: unknown, options: { allowLegacyRaw?: boolean } = {}): SceneDocument {
-  const original = boundedJson(value)
-  return validateSceneDocument(hasSceneDocumentMarkers(original) || options.allowLegacyRaw === false
-    ? original : { schemaVersion: 1, kind: 'custom', scene: original })
+/** Storage accepts only the declared current scene contract. */
+export function validateSceneForStorage(value: unknown): SceneDocument {
+  return validateSceneDocument(value)
 }
 
 /** A storable format is not necessarily supported by the current renderer. */
-export function validateSceneForPlayback(value: unknown, options: { allowLegacyRaw?: boolean } = {}): PlayableSceneDocument {
-  return validateSceneForStorage(value, options)
+export function validateSceneForPlayback(value: unknown): PlayableSceneDocument {
+  return validateSceneForStorage(value)
 }
 
 /** A small bounded JSON reader retains duplicate-key detection that JSON.parse loses. */

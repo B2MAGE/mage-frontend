@@ -110,120 +110,55 @@ describe('CreateScenePage submission', () => {
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
   })
 
-  it('attaches selected tags after the scene is created', async () => {
+  it('saves selected tags in the same request as the new scene', async () => {
     storeSceneEditorSession()
-
     let createBody: Record<string, unknown> | null = null
-    const attachedTagIds: number[] = []
-
-    mockCreateScenePageFetch((input, init) => {
+    const fetcher = mockCreateScenePageFetch((input, init) => {
       if (input === buildApiUrl('/scenes')) {
-        createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-        return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-      }
-
-      if (input === buildApiUrl('/scenes/18/tags')) {
-        const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
-
-        if (typeof payload.tagId === 'number') {
-          attachedTagIds.push(payload.tagId)
-        }
-
-        return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18, tagId: payload.tagId }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
+        createBody = JSON.parse(String(init?.body))
+        return new Response(JSON.stringify({ sceneId: 18 }), { status: 201 })
       }
     })
-
     const user = userEvent.setup()
-
     renderCreateScenePage()
-
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
-
     await screen.findByText('My Scenes')
-
-    expect(createBody).toMatchObject({
-      name: 'Aurora Drift',
-    })
-    expect(attachedTagIds).toEqual([1, 2])
+    expect(createBody).toMatchObject({ name: 'Aurora Drift', tagIds: [1, 2] })
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('/scenes/18/tags'))).toBe(false)
   })
 
-  it('keeps the created scene in retry mode when one or more tag attachments fail', async () => {
+  it('retains the editable draft when atomic tag validation rejects a save, then saves all changes on retry', async () => {
     storeSceneEditorSession()
-
-    const attachCalls: number[] = []
-
+    const saves: Record<string, unknown>[] = []
     mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes')) {
-        return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-      }
-
-      if (input === buildApiUrl('/scenes/18/tags')) {
-        const payload = JSON.parse(String(init?.body ?? '{}')) as { tagId?: number }
-
-        if (typeof payload.tagId === 'number') {
-          attachCalls.push(payload.tagId)
-        }
-
-        if (payload.tagId === 2) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                code: 'TAG_ATTACH_FAILED',
-                message: 'Tag attachment is unavailable right now.',
-              }),
-              {
-                status: 503,
-                headers: { 'Content-Type': 'application/json' },
-              },
-            ),
-          )
-        }
-
-        return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18, tagId: payload.tagId }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        )
-      }
+      if (input !== buildApiUrl('/scenes')) return
+      saves.push(JSON.parse(String(init?.body)))
+      return saves.length === 1
+        ? new Response(JSON.stringify({ message: 'Choose current tags.', details: { tagIds: 'The selected tag is unavailable.' } }), { status: 400 })
+        : new Response(JSON.stringify({ sceneId: 18 }), { status: 201 })
     })
-
     const user = userEvent.setup()
-
     renderCreateScenePage()
-
     await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
-
-    expect(
-      await screen.findByText(/scene created, but we couldn't attach focus-friendly\./i),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /retry tag attachment/i })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /^details$/i }))
-    expect(screen.getByText(/waiting to retry attachment for:/i)).toBeInTheDocument()
-    expect(attachCalls).toEqual([1, 2])
+    expect(await screen.findByText('The selected tag is unavailable.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Aurora Drift')
+    expect(screen.queryByRole('button', { name: /retry tag attachment/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove focus-friendly' }))
+    await user.type(screen.getByLabelText(/description/i), 'Revised draft')
+    await user.click(screen.getByRole('button', { name: /^confirm$/i }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
+    await screen.findByText('My Scenes')
+    expect(saves).toHaveLength(2)
+    expect(saves[0]).toMatchObject({ tagIds: [1, 2] })
+    expect(saves[1]).toMatchObject({ tagIds: [1], description: 'Revised draft' })
   })
 
   it('captures a thumbnail automatically from the live preview before the scene create request is sent', async () => {

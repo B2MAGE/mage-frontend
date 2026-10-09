@@ -505,8 +505,6 @@ html[data-theme] .scene-editor-page .scene-editor-details__field-row + .scene-ed
 html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select) { border-color: var(--studio-border-strong); background-color: var(--studio-field); }
 html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select):not(:disabled):hover { border-color: var(--studio-accent-border); background-color: var(--studio-control-hover); }
 html[data-theme] .scene-editor-page .scene-editor-details__surface :is(input, textarea, select):not(:disabled):focus { border-color: var(--studio-focus-outline); background-color: var(--studio-field); box-shadow: 0 0 0 1px var(--studio-focus-ring); }
-html[data-theme] .scene-editor-page .scene-editor-details__status-note { display: flex; align-items: center; gap: 6px; }
-html[data-theme] .scene-editor-page .scene-editor-details__status-dot { width: 5px; height: 5px; flex: 0 0 5px; border-radius: 50%; background: var(--studio-accent); }
 html[data-theme] .scene-editor-page .scene-editor-details__thumbnail-row { display: grid; grid-template-columns: minmax(150px, 180px) minmax(0, 1fr); align-items: center; gap: 16px; padding: 15px; }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame { display: grid; place-items: center; position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; border: 1px dashed var(--studio-border-strong); border-radius: 10px; background: radial-gradient(circle at 30% 25%, var(--studio-accent-fill), transparent 35%), var(--studio-field); }
 html[data-theme] .scene-editor-page .scene-editor-thumbnail__frame[data-captured="true"] { border-style: solid; border-color: var(--studio-accent-border); }

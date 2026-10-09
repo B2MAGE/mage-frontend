@@ -57,7 +57,7 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByRole('heading', { name: 'Transform', level: 4 }).closest('details')).not.toHaveAttribute('open')
     expect(screen.getByRole('heading', { name: 'Size', level: 4 }).closest('details')).not.toHaveAttribute('open')
     expect(screen.getByText('Position 0, 0, 0 · Scale 1×')).toBeInTheDocument()
-    expect(preview()).toMatchObject({ kind: 'builder', parameters: { scale: 1 }, objects: [{ material: { color: '#8066ff' } }] })
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', parameters: { scale: 1 }, objects: [{ material: { color: '#8066ff' } }] }))
 
     const name = screen.getByLabelText('Name')
     await user.clear(name)
@@ -68,7 +68,7 @@ describe('Scene Builder object editor', () => {
     expect(dialog).toHaveTextContent(/discards every Builder object/i)
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus()
     expect(template).toHaveValue(BUILDER_SHADER_TEMPLATE_VALUE)
-    expect(preview()).toEqual(builderDraft)
+    await waitFor(() => expect(preview()).toEqual(builderDraft))
     await user.tab()
     expect(within(dialog).getByRole('button', { name: /^Use / })).toHaveFocus()
     await user.tab({ shift: true })
@@ -77,18 +77,18 @@ describe('Scene Builder object editor', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     await waitFor(() => expect(template).toHaveFocus())
     expect(screen.getByLabelText('Name')).toHaveValue('Draft orb')
-    expect(preview()).toEqual(builderDraft)
+    await waitFor(() => expect(preview()).toEqual(builderDraft))
 
     await user.selectOptions(template, 'embedded-scene-1')
     await user.keyboard('{Escape}')
     await waitFor(() => expect(template).toHaveFocus())
-    expect(preview()).toEqual(builderDraft)
+    await waitFor(() => expect(preview()).toEqual(builderDraft))
     await user.selectOptions(template, 'embedded-scene-1')
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /^Use / }))
     expect(template).toBeEnabled()
     expect(template).toHaveValue('embedded-scene-1')
-    expect(preview()).toMatchObject({ kind: 'template', templateId: 'embedded-scene-1' })
-    expect(preview()).not.toHaveProperty('objects')
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'template', templateId: 'embedded-scene-1' }))
+    await waitFor(() => expect(preview()).not.toHaveProperty('objects'))
     expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Custom Code' })).toHaveAttribute('aria-pressed', 'false')
   })
@@ -100,7 +100,7 @@ describe('Scene Builder object editor', () => {
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.click(screen.getByRole('button', { name: 'Builder' }))
 
-    expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'object-1', operation: { type: 'sphere' } }] })
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'object-1', operation: { type: 'sphere' } }] }))
     expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.queryByLabelText('Custom Shader')).not.toBeInTheDocument()
 
@@ -126,19 +126,19 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByRole('heading', { name: 'Appearance', level: 4 }).closest('details')).toHaveAttribute('open')
     expect(screen.getByLabelText('Color code')).toHaveValue('#112233')
 
-    expect(preview().objects[1]).toMatchObject({
+    await waitFor(() => expect(preview().objects[1]).toMatchObject({
       id: 'object-2', name: 'Backdrop', operation: { type: 'box', width: 3 },
       transform: { position: { x: 4 } }, material: { color: '#112233' },
-    })
+    }))
     expect(screen.queryByRole('menuitem', { name: 'Duplicate' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Object options' }))
     await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }))
-    expect(preview().objects.map((object: { id: string }) => object.id)).toEqual(['object-1', 'object-2', 'object-3'])
+    await waitFor(() => expect(preview().objects.map((object: { id: string }) => object.id)).toEqual(['object-1', 'object-2', 'object-3']))
     expect(within(screen.getByRole('group', { name: 'Scene objects' })).getByRole('button', { name: /^Backdrop, Box$/ })).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'Camera' }))
     fireEvent.change(screen.getByLabelText('Camera Position X'), { target: { value: '8' } })
-    expect(preview()).toMatchObject({ kind: 'builder', settings: { controls: { position0: { x: 8 } } } })
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', settings: { controls: { position0: { x: 8 } } } }))
 
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     const beforeCustomCode = preview()
@@ -146,14 +146,14 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByLabelText('Custom Shader')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Builder' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(preview()).not.toEqual(beforeCustomCode)
-    expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'object-1', name: 'Sphere 1' }] })
+    await waitFor(() => expect(preview()).not.toEqual(beforeCustomCode))
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'object-1', name: 'Sphere 1' }] }))
     expect(screen.queryByText('Backdrop')).not.toBeInTheDocument()
   }, 60_000)
 
   it('opens a saved Builder document directly and retains it in raw JSON', async () => {
     const user = userEvent.setup()
-    const document = createBuilderScene('reaction-rings-v1')
+    const document = createBuilderScene('embedded-scene-0')
     mockCreateScenePageFetch(url => url === buildApiUrl('/scenes/12')
       ? jsonResponse(buildSceneEditorApiScene({ sceneData: document })) : undefined)
     renderEditScenePage()
@@ -214,11 +214,11 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByRole('button', { name: 'Why Spin may be hard to see on a sphere' })).toBeInTheDocument()
     expect(screen.queryByText('Spin speed is capped and stays inside this object’s isolated transform.')).not.toBeInTheDocument()
 
-    expect(preview().objects[0]).toMatchObject({
+    await waitFor(() => expect(preview().objects[0]).toMatchObject({
       modifiers: [{ type: 'shell', thickness: 0.2 }, { type: 'twist', axis: 'z', amount: 1.5 }],
       arrangements: [{ type: 'linear', axis: 'x', count: 4, spacing: 2.5 }],
       motion: { type: 'spin', axis: 'z', speed: 1.25 },
-    })
+    }))
     expect(screen.getByText('4 of 16 rendered copies used. Two arrangement stages may be nested.')).toBeInTheDocument()
   }, 60_000)
 })

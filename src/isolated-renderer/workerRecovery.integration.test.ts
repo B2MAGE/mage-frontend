@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installPlaybackRuntime } from './playbackRuntime'
 import { loadPlaybackEngine } from './playbackEngine'
@@ -25,7 +26,7 @@ class LinkedPort {
 const channels: { port1: LinkedPort; port2: LinkedPort }[] = []
 const releases: (() => void)[] = []
 const origin = 'http://localhost:5178'
-const scene = { visualizer: { shader: 'sphere(0.5); // private submitted source' } }
+const scene = customDocument({ visualizer: { shader: 'sphere(0.5); // private submitted source' } })
 
 function memoryStorage() {
   const values = new Map<string, string>()
@@ -142,7 +143,7 @@ describe('unavailable compiler through playback and recovery', () => {
     expect(recovery.getAutomaticBlock(key)?.reason).toBe('compile')
     retry!.fail('compile')
     expect(reloaded.begin(key)).toBeNull()
-    const nextRevision = sceneRecoveryKey({ visualizer: { shader: 'sphere(0.6);' } }, 41)!
+    const nextRevision = sceneRecoveryKey(customDocument({ visualizer: { shader: 'sphere(0.6);' } }), 41)!
     expect(reloaded.getAutomaticBlock(nextRevision)).toBeNull()
     const nextLease = reloaded.begin(nextRevision)
     expect(nextLease).not.toBeNull()

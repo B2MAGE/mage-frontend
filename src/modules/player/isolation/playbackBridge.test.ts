@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlaybackHost } from './playbackHost'
 import { installPlaybackRuntime } from '../../../isolated-renderer/playbackRuntime'
@@ -34,7 +35,7 @@ class LinkedPort {
 const channels: { port1: LinkedPort; port2: LinkedPort }[] = []
 const cleanups: (() => void)[] = []
 const origin = 'http://127.0.0.1:5178'
-const scene = { visualizer: { shader: 'sphere(0.5);' }, intent: { time_multiplier: 0.5 } }
+const scene = customDocument({ visualizer: { shader: 'sphere(0.5);' }, intent: { time_multiplier: 0.5 } })
 
 function raster(): PlaybackPayloads['captured'] {
   const bytes = new ArrayBuffer(33), data = new Uint8Array(bytes), view = new DataView(bytes)
@@ -125,7 +126,7 @@ describe('production parent and child playback bridge together', () => {
     expect(f.engines).toHaveLength(1)
     expect(f.engines[0].playback).toHaveBeenLastCalledWith(true)
     expect(f.status).toHaveBeenLastCalledWith('playing')
-    expect(f.requests[0].scene).toMatchObject({ kind: 'custom', scene })
+    expect(f.requests[0].scene).toEqual(scene)
     expect(f.ports.port1.sent.filter(message => message.type === 'playback')).toHaveLength(1)
     expect(f.failure).not.toHaveBeenCalled()
   })
@@ -135,7 +136,7 @@ describe('production parent and child playback bridge together', () => {
     await f.host.ready; await f.host.loadScene(scene); await flushMessages()
     f.host.setPlayback(false); f.host.setSynthetic(true, 17, 1.5); f.host.resize(600, 400)
     await vi.advanceTimersByTimeAsync(34)
-    await f.host.loadScene({ visualizer: { shader: 'box(0.5,0.5,0.5);' } })
+    await f.host.loadScene(customDocument({ visualizer: { shader: 'box(0.5,0.5,0.5);' } }))
     await vi.advanceTimersByTimeAsync(34)
     expect(f.requests[0].signal.aborted).toBe(true)
     expect(f.engines[0].dispose).toHaveBeenCalledOnce()
@@ -184,7 +185,7 @@ describe('production parent and child playback bridge together', () => {
     f.engines[0].capture.mockReturnValue(new Promise(resolve => { finishOld = resolve }))
     const pending = f.host.capture(captureRequest), oldRejected = expect(pending).rejects.toThrow('Scene changed.')
     await flushMessages()
-    await f.host.loadScene({ visualizer: { shader: 'sphere(0.8);' } }); await flushMessages()
+    await f.host.loadScene(customDocument({ visualizer: { shader: 'sphere(0.8);' } })); await flushMessages()
     await oldRejected
     finishOld(raster()); await flushMessages()
     expect(f.decode).not.toHaveBeenCalled()

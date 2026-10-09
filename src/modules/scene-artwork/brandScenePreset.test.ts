@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BRAND_SCENE } from './brandScenePreset'
+import { BRAND_SCENE as BRAND_DOCUMENT } from './brandScenePreset'
+const BRAND_SCENE = BRAND_DOCUMENT.scene as Record<string, unknown>
 
 type Ring = { radius: number; thickness: number }
 

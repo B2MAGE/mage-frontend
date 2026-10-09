@@ -28,7 +28,7 @@ button.addEventListener('click', async () => {
   button.disabled = true; result.textContent = ''
   let player, track
   try {
-    const scene = { audioResponse: 'mapped-v1', audioResponseConfig: settings(1), visualizer: { shader: 'let size = input(); color(0.2,0.7,1); sphere(0.4 + size * 0.1);' } }
+    const scene = { schemaVersion: 1, kind: 'custom', scene: { audioResponse: 'mapped-v1', audioResponseConfig: settings(1), visualizer: { shader: 'let size = input(); color(0.2,0.7,1); sphere(0.4 + size * 0.1);' } } }
     player = await createMagePlayer(document.querySelector('#scene'), { pixelRatio: 1, initialSceneBlob: scene })
     await player.loadSceneBlob(scene)
     track = silentTrack()
@@ -58,9 +58,9 @@ button.addEventListener('click', async () => {
     assert(player.getPlaybackState() === 'paused' && Math.abs(player.getAudioState().currentTime - pausedTime) < 0.03, 'Updating settings resumed paused audio')
     pass('settings changes preserve paused playback')
     player.setAudioResponseOverride(settings(3))
-    await player.loadSceneBlob({ visualizer: scene.visualizer })
+    await player.loadSceneBlob({ schemaVersion: 1, kind: 'custom', scene: { visualizer: scene.scene.visualizer } })
     assert(player.getAudioResponseState().override === null && player.getAudioResponseState().effectiveMode === 'legacy', 'Scene change leaked prior override or mode')
-    pass('switching to an older scene clears temporary settings and restores legacy behavior')
+    pass('switching to a current scene with omitted response clears overrides and restores Original')
     result.textContent += '\nAll platform player checks passed.'
   } catch (error) {
     result.textContent += `FAIL · ${error.stack || error}`

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { normalizeAudioResponseConfig } from '@shared/lib'
 import { scenePlaybackIdentity } from '@modules/player'
 import { createDefaultSceneData, getSceneEditorModel } from './sceneEditor'
-import { buildEffectiveSceneData } from './utils'
+import { buildEffectiveSceneData, readEditableSceneData } from './utils'
 import { changeMusicResponseConfig, changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
 
 const authoredConfig = normalizeAudioResponseConfig({
@@ -22,8 +22,7 @@ describe('creator music response settings', () => {
     expect(normalizeAudioResponseConfig(mapped.audioResponseConfig).config.mappings).toHaveLength(1)
     const edited = changeMusicResponseConfig(mapped, authoredConfig)
     const classic = changeMusicResponseMode(edited, 'legacy')
-    const automatic = changeMusicResponseMode(classic, 'transient-v1')
-    expect(changeMusicResponseMode(automatic, 'mapped-v1', ['size']).audioResponseConfig).toEqual(authoredConfig)
+    expect(changeMusicResponseMode(classic, 'mapped-v1', ['size']).audioResponseConfig).toEqual(authoredConfig)
     expect(original).toEqual(originalCopy)
   })
 
@@ -40,7 +39,7 @@ describe('creator music response settings', () => {
     expect(normalizeAudioResponseConfig(undefined).config.mappings.find(mapping => mapping.target === 'size')?.amount).toBe(1)
   })
 
-  it.each([undefined, 'legacy', 'transient-v1', 'mapped-v1'])('restores the opening %s settings and leaves other edits intact', mode => {
+  it.each([undefined, 'legacy', 'mapped-v1'])('restores the opening %s settings and leaves other edits intact', mode => {
     const initial = createDefaultSceneData()
     const model = getSceneEditorModel(initial)
     const original = {
@@ -75,9 +74,9 @@ describe('creator music response settings', () => {
     const initial = createDefaultSceneData()
     initial.state = { ...getSceneEditorModel(initial).state, volume_multiplier: 0.27 }
     const baseline = buildEffectiveSceneData(initial)
-    for (const mode of ['mapped-v1', 'transient-v1', 'legacy'] as const) {
-      const changed = buildEffectiveSceneData(changeMusicResponseMode(baseline, mode, ['size']))
-      expect(getSceneEditorModel(changed).state.volume_multiplier).toBe(0.27)
+    for (const mode of ['mapped-v1', 'legacy'] as const) {
+      const changed = buildEffectiveSceneData(changeMusicResponseMode(readEditableSceneData(baseline), mode, ['size']))
+      expect(getSceneEditorModel(readEditableSceneData(changed)).state.volume_multiplier).toBe(0.27)
       expect(scenePlaybackIdentity(changed, 'editor')).toBe(scenePlaybackIdentity(baseline, 'editor'))
     }
   })

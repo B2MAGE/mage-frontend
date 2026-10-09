@@ -104,7 +104,7 @@ describe('scene availability', () => {
     expect(normalizeSceneListItem({ ...scene, sceneMode: 'legacy-custom', sceneData: null,
       availability: { ...availability, code: 'SCENE_UPGRADE_REQUIRED', message: 'Internal migration detail' } }))
       .toMatchObject({ sceneMode: 'legacy-custom', sceneData: null, availability: {
-        available: false, code: 'SCENE_UPGRADE_REQUIRED', message: 'This scene needs an update from its creator before it can play.',
+        available: false, code: 'SCENE_UPGRADE_REQUIRED', message: 'This historical scene format is no longer supported.',
       } })
     expect(normalizeSceneListItem({ ...scene, sceneMode: 'operator-approved' })?.sceneMode).toBeNull()
     expect(normalizeSceneListItem({ ...scene, sceneData: { kind: 'template' } })?.sceneMode).toBeNull()

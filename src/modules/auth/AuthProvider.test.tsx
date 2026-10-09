@@ -124,6 +124,16 @@ function renderAuthHarness(options?: { strictMode?: boolean }) {
 }
 
 describe('AuthProvider', () => {
+  it.each(['raw-token', JSON.stringify({ accessToken: 'token', user: { ...storedUser, handle: undefined } })])(
+    'clears a historical session without attempting bootstrap: %s', async historical => {
+      window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, historical)
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      renderAuthHarness()
+      await waitFor(() => expect(screen.getByTestId('auth-status')).toHaveTextContent('signed-out'))
+      expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull()
+      expect(fetch).not.toHaveBeenCalled()
+    },
+  )
   it('does not sign out a new account when an old request later returns 401', async () => {
     storeSession()
     let resolveOld!: (response: Response) => void

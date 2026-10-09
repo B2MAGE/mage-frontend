@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,11 +15,8 @@ vi.mock('@modules/player/availability/sceneAvailability', async () => {
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 const custom = buildMagePlayerSceneBlob()
 const fixtures = [
-  { name: 'legacy custom', initial: custom, next: { ...custom, intent: { fov: 96, autoRotateSpeed: 0.8 },
-    fx: { bloom: { enabled: true, strength: 0.4 }, passes: { rgbShift: true } } } },
-  { name: 'versioned custom', initial: { schemaVersion: 1, kind: 'custom', scene: custom },
-    next: { schemaVersion: 1, kind: 'custom', scene: { ...custom, intent: { fov: 96 },
-      fx: { bloom: { enabled: true, strength: 0.4 }, passes: { rgbShift: true } } } } },
+  { name: 'current custom', initial: custom, next: customDocument({ ...custom.scene, intent: { fov: 96, autoRotateSpeed: 0.8 },
+    fx: { bloom: { enabled: true, strength: 0.4 }, passes: { rgbShift: true } } }) },
   { name: 'template', initial: template, next: { ...template, settings: { camera: { fov: 96, orbitSpeed: 0.8 },
     bloom: { enabled: true, strength: 0.4 }, effects: { passes: { rgbShift: true } } } } },
 ]
@@ -79,7 +77,7 @@ describe('MagePlayer live scene settings', () => {
     const revoke = vi.spyOn(URL, 'revokeObjectURL')
     let latest: MageSceneBlob = custom
     for (let index = 0; index < 16; index++) {
-      latest = { ...custom, intent: { fov: 75 + index }, fx: { bloom: { enabled: true, strength: index / 20 } } }
+      latest = customDocument({ ...custom.scene, intent: { fov: 75 + index }, fx: { bloom: { enabled: true, strength: index / 20 } } })
       view.rerender(<MagePlayer sceneBlob={latest} sceneKey="editor" onCaptureFramePreviewChange={captureChanged} />)
       expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument()
     }
@@ -157,7 +155,7 @@ describe('MagePlayer live scene settings', () => {
     const tracks = [buildMagePlayerTrack()]
     const view = render(<MagePlayer sceneBlob={custom} playlistTracks={tracks} selectedTrackId="track-1" />)
     await screen.findByText('Loading track…')
-    const next = { ...custom, intent: { fov: 96 } }
+    const next = customDocument({ ...custom.scene, intent: { fov: 96 } })
     view.rerender(<MagePlayer sceneBlob={next} playlistTracks={tracks} selectedTrackId="track-1" />)
     expect(controller.updateSceneSettings).toHaveBeenCalledWith(next, { sceneKey: undefined })
     expect(screen.getByText('Loading track…')).toBeInTheDocument()
@@ -173,8 +171,8 @@ describe('MagePlayer live scene settings', () => {
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const view = render(<MagePlayer sceneBlob={custom} recoverySceneBlob={custom} sceneKey="editor" />)
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledOnce())
-    const saved = { ...custom, intent: { fov: 96 } }
-    const preview = { ...saved, audioResponse: 'mapped-v1' }
+    const saved = customDocument({ ...custom.scene, intent: { fov: 96 } })
+    const preview = customDocument({ ...saved.scene, audioResponse: 'mapped-v1' })
     view.rerender(<MagePlayer sceneBlob={preview} recoverySceneBlob={saved} sceneKey="editor" />)
     await waitFor(() => expect(controller.updateSceneSettings).toHaveBeenCalledExactlyOnceWith(preview, { sceneKey: 'editor', recoverySceneBlob: saved }))
     expect(controller.loadSceneBlob).toHaveBeenCalledOnce()

@@ -9,7 +9,6 @@ import {
   ProtectedRoute,
   RegisterPage,
   ResetPasswordPage,
-  useAuth,
 } from '@modules/auth'
 import { ScenesPage } from '@modules/discovery'
 import { HomePage } from '@modules/home'
@@ -22,11 +21,6 @@ import { SettingsLoadingState, SettingsPage } from '@modules/settings'
 import { RouteScrollReset } from './RouteScrollReset'
 
 const HANDLE_PATH_PATTERN = /^@[a-z][a-z0-9_]{2,29}$/
-
-function OwnProfileRedirect() {
-  const { user } = useAuth()
-  return <Navigate replace to={user?.handle ? `/@${user.handle}` : '/settings#profile'} />
-}
 
 function HandleProfileRoute() {
   const { profileHandle = '' } = useParams()
@@ -127,18 +121,6 @@ export function AppRoutes() {
           }
         />
         <Route path="/create-scene" element={<CreateScenePage />} />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute
-              loadingFallback={
-                <AuthFormLoadingState label="Restoring your session before opening your profile" />
-              }
-            >
-              <OwnProfileRedirect />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/settings"
           element={

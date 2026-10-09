@@ -54,8 +54,6 @@ const BUILDER_STARTING_STYLES = {
   'embedded-scene-11': { colors: ['#55aaff', '#ff5bd6', '#58ffd5'], metalness: 0.1, shininess: 0.6 },
   'embedded-scene-12': { colors: ['#ff5bd6', '#6b5cff', '#40e8ff'], metalness: 0.2, shininess: 0.7 },
   'embedded-scene-13': { colors: ['#be3f9c', '#ff85c8', '#7235bb'], metalness: 0.64, shininess: 0.41 },
-  'reaction-rings-v1': { colors: ['#7a42f2', '#14a693', '#f24d80', '#a67aff'], metalness: 0, shininess: 0.9 },
-  'reaction-lantern-v1': { colors: ['#2e5cd9', '#b838d9', '#29b39f'], metalness: 0.15, shininess: 0.8 },
 } satisfies Record<TemplateId, BuilderStartingStyle>
 
 function applyStartingStyle(objects: readonly BuilderObject[], templateId: TemplateId): BuilderObject[] {
@@ -72,7 +70,12 @@ function applyStartingStyle(objects: readonly BuilderObject[], templateId: Templ
 
 function nextObjectNumber(objects: readonly BuilderObject[]) {
   const ids = new Set(objects.map(object => object.id))
-  let number = 1
+  const largest = objects.reduce((current, object) => {
+    const match = /^object-(\d+)$/.exec(object.id)
+    const suffix = match ? Number(match[1]) : NaN
+    return Number.isSafeInteger(suffix) ? Math.max(current, suffix) : current
+  }, 0)
+  let number = largest < Number.MAX_SAFE_INTEGER ? largest + 1 : 1
   while (ids.has(`object-${number}`)) number += 1
   return number
 }
@@ -167,9 +170,11 @@ export function applyBuilderTemplate(document: BuilderSceneDocument, templateId:
   return { ...document, objects: applyStartingStyle(document.objects, templateId) }
 }
 
-export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape) {
+export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape, objectId?: string) {
   if (document.objects.length >= BUILDER_LIMITS.objects || builderSceneExpandedCount(document) >= BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
-  return { ...document, objects: [...document.objects, createBuilderObject(type, document.objects)] }
+  if (objectId && document.objects.some(object => object.id === objectId)) return document
+  const object = createBuilderObject(type, document.objects)
+  return { ...document, objects: [...document.objects, objectId ? { ...object, id: objectId } : object] }
 }
 
 export function updateBuilderObject(
@@ -177,23 +182,38 @@ export function updateBuilderObject(
   objectId: string,
   recipe: (object: BuilderObject) => BuilderObject,
 ) {
+  if (!document.objects.some(object => object.id === objectId)) return document
   return {
     ...document,
-    objects: document.objects.map(object => object.id === objectId ? recipe(structuredClone(object)) : object),
+    objects: document.objects.map(object => object.id === objectId
+      ? { ...recipe(structuredClone(object)), id: object.id } : object),
   }
 }
 
-export function duplicateBuilderObject(document: BuilderSceneDocument, objectId: string) {
+export function duplicateBuilderObject(document: BuilderSceneDocument, objectId: string, copyId?: string) {
   if (document.objects.length >= BUILDER_LIMITS.objects) return document
+  if (copyId && document.objects.some(object => object.id === copyId)) return document
   const source = document.objects.find(object => object.id === objectId)
   if (!source || builderSceneExpandedCount(document) + builderObjectExpandedCount(source) > BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
   const number = nextObjectNumber(document.objects)
   const copy = structuredClone(source)
-  copy.id = `object-${number}`
+  copy.id = copyId ?? `object-${number}`
   copy.name = `${source.name} copy`.slice(0, BUILDER_LIMITS.nameLength)
   return { ...document, objects: [...document.objects, copy] }
 }
 
 export function removeBuilderObject(document: BuilderSceneDocument, objectId: string) {
+  if (!document.objects.some(object => object.id === objectId)) return document
   return { ...document, objects: document.objects.filter(object => object.id !== objectId) }
+}
+
+/** Object references and selection stay attached to IDs as positions change. */
+export function moveBuilderObject(document: BuilderSceneDocument, objectId: string, targetId: string) {
+  const from = document.objects.findIndex(object => object.id === objectId)
+  const to = document.objects.findIndex(object => object.id === targetId)
+  if (from < 0 || to < 0 || from === to) return document
+  const objects = [...document.objects]
+  const [object] = objects.splice(from, 1)
+  objects.splice(to, 0, object)
+  return { ...document, objects }
 }

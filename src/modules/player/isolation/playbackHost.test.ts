@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlaybackHost, type PlaybackHostDiagnostic } from './playbackHost'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from './playbackProtocol'
@@ -18,7 +19,7 @@ function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = 
   const port=channels.at(-1)!.port1
   function reply<T extends PlaybackType>(type:T,payload:PlaybackPayloads[T],generation=1,requestId=0,session=SESSION){port.receive(playbackMessage(type,session,generation,requestId,payload))}
   reply('ready',null,0)
-  async function load(){const promise=host.loadScene({visualizer:{shader:'sphere(0.5);'}});await Promise.resolve();const m=port.postMessage.mock.calls.at(-1)![0];reply('loaded',null,m.generation,m.requestId);await promise}
+  async function load(){const promise=host.loadScene(customDocument({visualizer:{shader:'sphere(0.5);'}}));await Promise.resolve();const m=port.postMessage.mock.calls.at(-1)![0];reply('loaded',null,m.generation,m.requestId);await promise}
   let frames=0
   const progress=(generation=1)=>reply('progress',{frames:++frames},generation)
   async function advanceProgress(milliseconds:number,generation=1) {
@@ -37,7 +38,7 @@ afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTim
 describe('isolated playback host',()=>{
   it('coalesces complete settings, snapshots their data, and rejects invalid edits without changing the queue',async()=>{
     const s=setup();await s.load()
-    const settings=extractLiveSceneSettings({visualizer:{shader:'sphere(1);'}})
+    const settings=extractLiveSceneSettings(customDocument({visualizer:{shader:'sphere(1);'}}))
     for(let i=0;i<100;i++)s.host.setSceneSettings({...settings,intent:{...settings.intent,fov:40+i/2}})
     const latest={...settings,intent:{...settings.intent,fov:90}}
     s.host.setSceneSettings(latest);latest.intent.fov=100
@@ -51,7 +52,7 @@ describe('isolated playback host',()=>{
   })
   it('discards pending settings on replacement and flushes current settings before capture',async()=>{
     const s=setup();await s.load()
-    const settings=extractLiveSceneSettings({visualizer:{shader:'sphere(1);'}})
+    const settings=extractLiveSceneSettings(customDocument({visualizer:{shader:'sphere(1);'}}))
     s.host.setSceneSettings(settings);await s.load();await vi.advanceTimersByTimeAsync(68)
     expect(s.port.postMessage.mock.calls.filter(([m])=>m.type==='scene-settings')).toHaveLength(0)
     s.host.setSceneSettings(settings)
@@ -61,7 +62,7 @@ describe('isolated playback host',()=>{
   })
   it('fairly drains simultaneous continuous edits within the existing command limit while paused',async()=>{
     const s=setup();await s.load();s.host.setPlayback(false)
-    const settings=extractLiveSceneSettings({visualizer:{shader:'sphere(1);'}})
+    const settings=extractLiveSceneSettings(customDocument({visualizer:{shader:'sphere(1);'}}))
     const audio={frame:null,legacyAmplitude:0,audioTime:0,playing:false,loaded:false}
     for(let i=0;i<50;i++){
       s.host.setSceneSettings({...settings,intent:{...settings.intent,fov:40+i}})
@@ -80,7 +81,7 @@ describe('isolated playback host',()=>{
   })
   it('removes a compiler-rejected frame and reports the fixed actionable reason without retrying',async()=>{
     const s=setup()
-    const promise=s.host.loadScene({visualizer:{shader:'sphere(0.5);'}})
+    const promise=s.host.loadScene(customDocument({visualizer:{shader:'sphere(0.5);'}}))
     const rejected=expect(promise).rejects.toThrow('Isolated player stopped.')
     await Promise.resolve()
     const request=s.port.postMessage.mock.calls.at(-1)![0]
@@ -282,9 +283,9 @@ describe('isolated playback host',()=>{
     s.host.dispose();expect(s.frame.isConnected).toBe(false);expect(s.port.close).toHaveBeenCalled()
   })
   it('ignores stale generations and rejects superseded scene work',async()=>{
-    const s=setup(),old=s.host.loadScene({visualizer:{shader:'sphere(1);'}}),rejected=expect(old).rejects.toThrow(/Scene changed/)
+    const s=setup(),old=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}})),rejected=expect(old).rejects.toThrow(/Scene changed/)
     await Promise.resolve();const first=s.port.postMessage.mock.calls.at(-1)![0]
-    const current=s.host.loadScene({visualizer:{shader:'box(1,1,1);'}});await Promise.resolve()
+    const current=s.host.loadScene(customDocument({visualizer:{shader:'box(1,1,1);'}}));await Promise.resolve()
     const second=s.port.postMessage.mock.calls.at(-1)![0]
     s.reply('loaded',null,first.generation,first.requestId);expect(s.status).not.toHaveBeenCalledWith('playing')
     s.reply('error',{code:'render'},first.generation,first.requestId);expect(s.failure).not.toHaveBeenCalled()

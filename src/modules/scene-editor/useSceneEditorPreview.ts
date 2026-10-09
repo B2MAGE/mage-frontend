@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { scenePlaybackIdentity } from '@modules/player'
 import { getSceneEditorModel, TONE_MAPPING_OPTIONS, type SceneData } from './sceneEditor'
 import { buildEffectiveSceneData, buildShaderOptions, buildToneMappingOptions } from './utils'
 import { describeSceneValidationError } from './sceneValidation'
@@ -19,13 +20,24 @@ export function useSceneEditorPreview({
     try { return { source: buildEffectiveSceneData(sceneData), error: null } }
     catch (error) { return { source: null, error: describeSceneValidationError(error) } }
   }, [sceneData])
-  const [lastValid, setLastValid] = useState<{ source: SceneData; original: SceneData } | null>(() =>
-    validation.source ? { source: validation.source, original: sceneData } : null)
-  if (validation.source && lastValid?.original !== sceneData) {
-    setLastValid({ source: validation.source, original: sceneData })
+  const structuralIdentity = useMemo(() => validation.source ? scenePlaybackIdentity(validation.source) : null, [validation.source])
+  const [lastValid, setLastValid] = useState(() => validation.source
+    ? { source: validation.source, original: sceneData, structuralIdentity } : null)
+  const isPreviewPending = !!validation.source && !!lastValid && structuralIdentity !== lastValid.structuralIdentity
+  if (validation.source && !isPreviewPending && lastValid?.original !== sceneData) {
+    setLastValid({ source: validation.source, original: sceneData, structuralIdentity })
   }
-  const previewSceneData = validation.source ?? lastValid?.source ?? null
-  const previewOriginalSceneData = validation.source ? sceneData : lastValid?.original ?? null
+  // Camera, effect, and other audited live settings reach the existing player
+  // immediately. Source/geometry changes wait for a short quiet interval.
+  useEffect(() => {
+    if (!validation.source || !isPreviewPending) return
+    const next = { source: validation.source, original: sceneData, structuralIdentity }
+    const timer = setTimeout(() => setLastValid(next), 120)
+    // Replaced structural requests and unmounted editors never publish work.
+    return () => clearTimeout(timer)
+  }, [isPreviewPending, sceneData, structuralIdentity, validation.source])
+  const previewSceneData = validation.source && !isPreviewPending ? validation.source : lastValid?.source ?? null
+  const previewOriginalSceneData = validation.source && !isPreviewPending ? sceneData : lastValid?.original ?? null
   const shaderSelection = useMemo(
     () => buildShaderOptions(sceneModel.visualizer.shader),
     [sceneModel.visualizer.shader],
@@ -42,6 +54,7 @@ export function useSceneEditorPreview({
     previewSceneData,
     previewOriginalSceneData,
     previewError: validation.error,
+    isPreviewPending,
     sceneModel,
     selectedShaderScene,
     selectedToneMapping,

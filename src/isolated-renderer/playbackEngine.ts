@@ -43,10 +43,10 @@ const noShortcuts: InputState = { requestToggleUI: false, requestResetVisualizer
 /** Only validated scene data and numbers enter this engine; no media loader is exposed. */
 export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, sceneRevision = 1, onError, onFrame }) => {
   const resolved = resolveSceneForPlayback(validateSceneForPlayback(scene)).engineScene
-  validateSceneForPlayback(resolved)
+  validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: resolved })
   // Defense in depth for callers other than the protocol validator.
   if (Object.hasOwn(resolved, 'audio') || Object.hasOwn(resolved, 'audioPath')) throw new Error('Media is parent-owned.')
-  let appliedSettings = extractLiveSceneSettings(resolved)
+  let appliedSettings = extractLiveSceneSettings(scene)
   const renderBudget = getRenderBudget(profile)
   const shader = (resolved.visualizer as { shader: string }).shader
   // Finish and retire submitted JavaScript before allocating the renderer. An

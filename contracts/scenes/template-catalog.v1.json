@@ -98,20 +98,6 @@
       "label": "Rose Circuit",
       "description": "Bundled engine scene with twin metallic rings, a cylinder, and shifting rose-colored highlights.",
       "sourceSha256": "2ce68933b3aa9a36b56a1222bc6e9d4c5d39dcf0ace4387565ed052cff5ab85a"
-    },
-    {
-      "templateId": "reaction-rings-v1",
-      "templateVersion": 1,
-      "label": "Ripple Rings",
-      "description": "Three luminous rings breathe gently and ripple independently with sound.",
-      "sourceSha256": "66bfd1b6d7eda9e051b79c01389e5fe2a16efc123837cd6f1535cf5f19a37bf8"
-    },
-    {
-      "templateId": "reaction-lantern-v1",
-      "templateVersion": 1,
-      "label": "Tidal Lantern",
-      "description": "An iridescent bell and flowing strands ripple with the music.",
-      "sourceSha256": "644c07142d501f37ecfdfabb6064b22816f785ac5dbbc880d075bcadfcfd0bd6"
     }
   ]
 }

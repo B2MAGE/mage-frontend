@@ -3,13 +3,13 @@
 The shared player accepts schema version 1 scene documents. Every existing preset has an
 immutable template version 1: Prism Core, Steel Lattice, Aqua Static, Verdant Frames,
 Crimson Reactor, Alloy Capsule, Redline Core, Violet Matrix, Mint Halo, Ember Grid,
-Emerald Ring, Spectrum Relay, Chroma Storm, Rose Circuit, Ripple Rings, and Tidal Lantern.
+Emerald Ring, Spectrum Relay, Chroma Storm, and Rose Circuit. Retired Ripple Rings and Tidal Lantern documents are rejected.
 
 ```json
 {
   "schemaVersion": 1,
   "kind": "template",
-  "templateId": "reaction-lantern-v1",
+  "templateId": "embedded-scene-0",
   "templateVersion": 1,
   "parameters": { "scale": 10, "speed": 1 },
   "settings": { "bloom": { "enabled": true, "strength": 1.2 } }
@@ -43,14 +43,14 @@ and the resolver creates fresh nested engine data for each load.
 
 ## Compatibility and remaining stories
 
-Old source-bearing documents and explicit `kind: "custom"` documents remain custom/untrusted.
+Raw source-bearing documents are unsupported. Explicit `kind: "custom"` documents remain untrusted.
 A preset name or an exact source match does not establish trust. Custom playback stays disabled
 until the isolated renderer and release checks are complete.
 
 ## Template editing (PP-B03)
 
 Create Scene starts with the Prism Core template. The existing Scene section now selects from
-all 16 immutable templates. Basic exposes the same scene, camera, motion, music-response,
+all 14 current immutable templates. Basic exposes the same scene, camera, motion, music-response,
 effects, and Pass Order controls as the existing editor. Only shader source selection/editing
 is replaced by the template library. Applying settings does not change a template into a custom
 scene. Existing section, dropdown, and effect-toggle styling is reused.
@@ -67,7 +67,7 @@ Choosing a different template preserves supported settings. A successful create/
 by reopening retains kind, schema version, template version, ID, and parameters. Server field
 errors identify the relevant control and preserve the draft.
 
-Existing custom scenes open for repair, with their source and settings intact. They never mount
+Current custom documents open for owner editing, with their source and settings intact. They never mount
 an in-page editor renderer. Advanced authoring remains explicitly unavailable until PP-I03; there
 is no fallback when isolation is absent. Custom source matching a preset remains custom. A switch
 from custom content to a template, including a template pasted into JSON, requires confirmation;
@@ -86,11 +86,6 @@ versions reject those fields. There is no database migration, reseeding, new tem
 or change to the custom-rendering release switch. Older frontends must refresh to edit templates
 using the expanded settings.
 
-The local October 3, 2026 browser check created a Ripple Rings template, reopened it, changed its
-field of view, saved it again, and verified the value on a second reopen. Desktop, a 390px mobile
-viewport, and both supported themes were checked. Custom JSON imported without mounting a canvas;
-Cancel restored its source after both selector and raw-template replacement prompts.
-
 Saved-player audio selection remains attached to the viewing session. Returning from a file picker
 suspends the existing renderer during its fresh permission check, then resumes the same scene and
 track position on approval. A denied or failed check still disposes it. The real-engine continuity
@@ -103,5 +98,5 @@ the saved music settings without rewinding. The build retains the existing upstr
 `eval` and large-bundle warnings.
 
 Changes to a released template's source or engine defaults require a new template version.
-Keep the old snapshot and catalog entry so saved scenes resolve consistently. Updating the
+Keep supported snapshots and catalog entries so saved scenes resolve consistently. Retired formats are rejected explicitly. Updating the
 existing shader catalog must never silently replace a published template snapshot.

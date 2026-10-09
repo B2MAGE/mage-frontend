@@ -18,7 +18,7 @@ button.addEventListener('click', async () => {
       container.style.width = `${scenario.width}px`; container.style.height = `${scenario.height}px`; stage.replaceChildren(container);
       const player = createIsolatedPlayer({ container, rendererUrl: getIsolatedRendererUrl(), profile: scenario.profile });
       try {
-        await player.loadScene({ schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1 });
+        await player.loadScene({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 });
         await player.play(); await wait(350);
         const bitmap = await createImageBitmap(await player.capture({ width: 640, height: 360, type: 'image/png' }));
         const capture = { width: bitmap.width, height: bitmap.height }; bitmap.close();

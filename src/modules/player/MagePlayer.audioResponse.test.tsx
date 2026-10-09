@@ -11,7 +11,7 @@ vi.mock('./infrastructure/engineAdapter', () => ({ createMagePlayer: vi.fn() }))
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 function withResponse(scene: MageSceneBlob, response: Record<string, unknown>): MageSceneBlob {
   return scene.kind === 'template' ? { ...structuredClone(scene), settings: { ...scene.settings as object, ...response } }
-    : { ...structuredClone(scene), ...response }
+    : { ...structuredClone(scene), scene: { ...scene.scene as object, ...response } }
 }
 
 describe('live scene audio response', () => {

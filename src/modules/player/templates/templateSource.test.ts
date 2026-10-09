@@ -5,7 +5,7 @@ import { resolveSceneForPlayback } from './resolveScene'
 
 describe('template shader editing', () => {
   it('copies the exact saved appearance and marks changed source untrusted without executing it', () => {
-    const template = parseSceneDocument({ schemaVersion: 1, kind: 'template', templateId: 'reaction-rings-v1', templateVersion: 1,
+    const template = parseSceneDocument({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1,
       parameters: { scale: 29, speed: 3 }, settings: { camera: { fov: 85 }, bloom: { strength: 1.3 },
         effects: { passes: { rgbShift: true } }, audioResponse: 'mapped-v1' },
     }) as TemplateSceneDocument
@@ -22,6 +22,6 @@ describe('template shader editing', () => {
   })
 
   it('never substitutes another template version', () => {
-    expect(() => readTemplateShaderSource({ templateId: 'reaction-rings-v1', templateVersion: 99 as 1 })).toThrow('Unknown template')
+    expect(() => readTemplateShaderSource({ templateId: 'embedded-scene-0', templateVersion: 99 as 1 })).toThrow('Unknown template')
   })
 })

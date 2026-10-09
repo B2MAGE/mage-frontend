@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { hasSceneDocumentMarkers, parseSceneDocument } from '@modules/player'
+import { parseSceneDocument } from '@modules/player'
 import { normalizeSceneAvailability, normalizeSceneListItem, parseApiError, type SceneListResponse } from '@shared/lib'
 import { SceneEditorLoadingState } from './SceneEditorLoadingState'
 import { SceneEditorShell } from './SceneEditorShell'
@@ -99,6 +99,10 @@ export function EditScenePage() {
           throw new Error('You can only edit scenes created by your account.')
         }
 
+        if (normalizedScene.sceneMode === 'legacy-custom') {
+          throw new Error('This historical scene format is no longer supported. Create a scene using the current template, Builder, or custom format.')
+        }
+
         let sceneData = normalizedScene.sceneData
         if (sceneData === null) {
           if (normalizedScene.availability?.available !== false || !isRecord(payload) || payload.sceneData !== null) {
@@ -126,13 +130,12 @@ export function EditScenePage() {
 
         let unsupportedDocument = false
         try {
-          const document = hasSceneDocumentMarkers(sceneData) ? parseSceneDocument(sceneData) : null
+          const document = parseSceneDocument(sceneData)
           // Keep the original document as the editor's authority. Valid template
           // and Builder settings are editable; unsupported versions remain export-only.
-          if (document?.kind !== 'template' && document?.kind !== 'builder') readEditableSceneData(sceneData)
+          if (document.kind === 'custom') readEditableSceneData(sceneData)
         } catch {
-          // An authenticated owner can export unsupported stored JSON for repair,
-          // but it must never be normalized into a different executable mode.
+          // Unsupported documents cannot enter the editor or become a different format.
           unsupportedDocument = true
         }
 
@@ -200,7 +203,7 @@ export function EditScenePage() {
     }
     return <EditSceneState
       title="This scene’s format is not supported"
-      description="Download the saved scene data to repair it. This editor will not run or replace an unsupported format.">
+      description="This editor supports current template, Builder, and custom scene documents. The saved data cannot be edited or played.">
       <div className="auth-actions">
         <Link className="demo-link" to={`/scenes/${scene.sceneId}`}>View scene</Link>
         <Link className="secondary-link" to="/my-scenes">Back to My Scenes</Link>

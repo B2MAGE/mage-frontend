@@ -1,4 +1,4 @@
-import { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError, type BuilderSceneDocument, type TemplateSceneDocument } from './sceneContract'
+import { parseSceneDocument, SceneContractError, type BuilderSceneDocument, type TemplateSceneDocument } from './sceneContract'
 import { compileBuilderDocument, type BuilderCompilation } from './builderCompiler'
 import { getTemplateDefinition } from './templateRegistry'
 
@@ -77,24 +77,16 @@ function buildVersionOnePayload(document: Pick<TemplateSceneDocument, 'parameter
 }
 
 export function resolveSceneForPlayback(value: unknown): ResolvedPlaybackScene {
-  if (hasSceneDocumentMarkers(value)) {
-    const document = parseSceneDocument(value)
-    if (document.kind === 'template') {
-      const definition = getTemplateDefinition(document.templateId, document.templateVersion)
-      if (!definition) throw new SceneContractError('Unknown template ID or version.')
-      return { kind: 'template', trust: 'platform-owned', engineScene: buildVersionOnePayload(document, definition.shader) }
-    }
-    if (document.kind === 'builder') {
-      const builderCompilation = compileBuilderDocument(document as BuilderSceneDocument)
-      return { kind: 'builder', trust: 'platform-owned',
-        engineScene: buildVersionOnePayload(document, builderCompilation.shader), builderCompilation }
-    }
-    return { kind: 'custom', trust: 'untrusted', engineScene: document.scene }
+  const document = parseSceneDocument(value)
+  if (document.kind === 'template') {
+    const definition = getTemplateDefinition(document.templateId, document.templateVersion)
+    if (!definition) throw new SceneContractError('Unknown template ID or version.')
+    return { kind: 'template', trust: 'platform-owned', engineScene: buildVersionOnePayload(document, definition.shader) }
   }
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new SceneContractError('Scene data must be an object.')
+  if (document.kind === 'builder') {
+    const builderCompilation = compileBuilderDocument(document as BuilderSceneDocument)
+    return { kind: 'builder', trust: 'platform-owned',
+      engineScene: buildVersionOnePayload(document, builderCompilation.shader), builderCompilation }
   }
-  // Compatibility only. Legacy source is never promoted by matching a preset.
-  // Routing custom scenes to an isolated renderer is the separate PP-I work.
-  return { kind: 'custom', trust: 'untrusted', engineScene: { ...value } }
+  return { kind: 'custom', trust: 'untrusted', engineScene: document.scene }
 }

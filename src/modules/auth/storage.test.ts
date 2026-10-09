@@ -6,6 +6,7 @@ describe('stored avatar gradient', () => {
     userId: 8,
     email: 'artist@example.com',
     displayName: 'Scene Artist',
+    handle: 'scene_artist',
     authProvider: 'LOCAL',
     avatarGradientStart: '#AB3456',
     avatarGradientEnd: '#1234EF',
@@ -20,7 +21,7 @@ describe('stored avatar gradient', () => {
     })
   })
 
-  it('uses safe defaults for invalid saved colors and supports old sessions', () => {
+  it('uses safe defaults for invalid saved colors', () => {
     window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify({
       accessToken: 'test-token',
       user: { ...user, avatarGradientStart: 'url(https://example.com)', avatarGradientEnd: 123 },
@@ -30,11 +31,18 @@ describe('stored avatar gradient', () => {
       avatarGradientEnd: '#264a48',
     })
 
-    persistSession({
-      accessToken: 'legacy-token',
-      user: { userId: 8, email: user.email, displayName: user.displayName, authProvider: 'LOCAL' },
-    })
-    expect(readStoredSession()?.user?.displayName).toBe(user.displayName)
-    expect(readStoredSession()?.user?.avatarGradientStart).toBeUndefined()
+  })
+
+  it.each([
+    'old-raw-token',
+    '{broken json',
+    JSON.stringify({ accessToken: 'old-token' }),
+    JSON.stringify({ accessToken: 'old-token', user: null }),
+    JSON.stringify({ accessToken: 'old-token', user: { ...user, handle: undefined } }),
+    JSON.stringify({ accessToken: 'old-token', user: { ...user, displayName: undefined } }),
+  ])('clears historical or malformed sessions instead of restoring them: %s', (stored) => {
+    window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, stored)
+    expect(readStoredSession()).toBeNull()
+    expect(window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull()
   })
 })

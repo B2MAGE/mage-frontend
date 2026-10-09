@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MagePlayerController, MagePlayerOptions } from './playerController'
 import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
@@ -11,7 +12,7 @@ vi.mock('../recovery/sceneRecovery', () => ({
     getBlock: () => null, getAutomaticBlock: () => null, isSafeMode: () => false, subscribe: () => () => {} },
 }))
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
-const source = { visualizer: { shader: 'sphere(1);' } }
+const source = customDocument({ visualizer: { shader: 'sphere(1);' } })
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 const deferred = <T,>() => {
   let resolve!: (value: T) => void, reject!: (error: unknown) => void
@@ -152,7 +153,7 @@ describe('isolated controller with the real availability polling store', () => {
     const changing: Record<string, unknown> = { ...template }
     const creating = create({ initialSceneBlob: changing, sceneKey: 47 })
     await vi.advanceTimersByTimeAsync(0)
-    changing.visualizer = source.visualizer
+    changing.visualizer = source.scene.visualizer
     pending.resolve(json([{ sceneId: 47, available: true, code: 'AVAILABLE' }]))
     const player = await creating
     await expect(player.loadSceneBlob(changing)).rejects.toThrow()

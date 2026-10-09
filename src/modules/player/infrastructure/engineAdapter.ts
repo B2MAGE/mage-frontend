@@ -15,7 +15,6 @@ import { boundCaptureSize, getRenderBudget, type RenderBudget } from '../policy/
 import { playerStartupCancelled, waitForPlayerStartup } from './playerStartup'
 
 const SCENE_BLOB_KEYS = [
-  'audio',
   'audioPath',
   'controls',
   'fx',
@@ -146,20 +145,6 @@ function readSceneAudioSource(sceneBlob: MageSceneBlob) {
 
   if (typeof audioPath === 'string' && audioPath.trim()) {
     return audioPath.trim()
-  }
-
-  const audio = sceneBlob.audio
-
-  if (typeof audio === 'string' && audio.trim()) {
-    return audio.trim()
-  }
-
-  if (isRecord(audio)) {
-    const audioSource = audio.path ?? audio.url
-
-    if (typeof audioSource === 'string' && audioSource.trim()) {
-      return audioSource.trim()
-    }
   }
 
   return null
@@ -669,7 +654,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
       else nextScene.audioResponse = mode
       if (config === undefined) delete nextScene.audioResponseConfig
       else nextScene.audioResponseConfig = config
-      validateSceneForPlayback(nextScene)
+      validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: nextScene })
       currentSceneBlob = nextScene
       readSavedAudioResponse(nextScene)
       applyAudioResponse()
@@ -790,7 +775,7 @@ async function createBrandPlayer(canvas: HTMLCanvasElement, options: MagePlayerO
         // Only the resolver can supply executable source for a template.
         const validated = validateSceneForPlayback(platformArtwork ? BRAND_SCENE : submittedScene)
         sceneBlob = resolveSceneForPlayback(validated).engineScene
-        validateSceneForPlayback(sceneBlob)
+        validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: sceneBlob })
       } catch (error) {
         if (key) sceneRecovery.block(key, 'load')
         throw createSceneRenderError(error)

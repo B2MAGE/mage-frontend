@@ -1,3 +1,4 @@
+import { customDocument } from '@shared/test/sceneDocument'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadPlaybackEngine } from './playbackEngine'
 import { SCENE_POLICY } from '../modules/player/policy/sceneValidation'
@@ -53,7 +54,7 @@ function fixture(profile: 'full' | 'preview' = 'preview') {
     subscribeRenderLifecycle: vi.fn(callback => { listener = callback; return () => { listener = undefined } }) }
   initMAGE.mockReturnValue(engine)
   const abort = new AbortController(), canvas = document.createElement('canvas'), onError = vi.fn(), onFrame = vi.fn()
-  const load = (scene: unknown = { visualizer: { shader: 'sphere(1);' } }) => loadPlaybackEngine({ canvas, signal: abort.signal, scene,
+  const load = (scene: unknown = customDocument({ visualizer: { shader: 'sphere(1);' } })) => loadPlaybackEngine({ canvas, signal: abort.signal, scene,
     profile, onError, onFrame })
   const ready = async (scene?: unknown) => { const loading = load(scene); await vi.waitFor(() => expect(engine.loadCompiledPreset).toHaveBeenCalledOnce()); listener?.({ type: 'frame' }); return loading }
   return { engine, response, abort, canvas, onError, onFrame, load, ready, emit: (type: 'frame' | 'error') => listener?.({ type }) }
@@ -61,7 +62,7 @@ function fixture(profile: 'full' | 'preview' = 'preview') {
 
 describe('isolated playback engine', () => {
   it('keeps cumulative wheel zoom continuous through camera setting edits', async () => {
-    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, settings = extractLiveSceneSettings(scene)
+    const f = fixture(), scene = customDocument({ visualizer: { shader: 'sphere(1);' } }), settings = extractLiveSceneSettings(scene)
     const fields = f.engine.getEngineFields()
     f.engine.getEngineFields.mockReturnValue(fields)
     const control = await f.ready(scene)
@@ -72,7 +73,7 @@ describe('isolated playback engine', () => {
     control.dispose()
   })
   it('applies only changed live data without reloading, resuming, or resetting music sessions', async () => {
-    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, control = await f.ready(scene)
+    const f = fixture(), scene = customDocument({ visualizer: { shader: 'sphere(1);' } }), control = await f.ready(scene)
     const settings = extractLiveSceneSettings(scene)
     control.playback(false); vi.clearAllMocks()
     const next = { ...settings, intent: { ...settings.intent, fov: 80 }, fx: { ...settings.fx,
@@ -87,7 +88,7 @@ describe('isolated playback engine', () => {
     control.dispose(); control.sceneSettings(settings); expect(f.engine.updateSettings).toHaveBeenCalledOnce()
   })
   it('validates the complete direct settings update before mutating engine or saved settings', async () => {
-    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, control = await f.ready(scene)
+    const f = fixture(), scene = customDocument({ visualizer: { shader: 'sphere(1);' } }), control = await f.ready(scene)
     const settings = extractLiveSceneSettings(scene)
     const next = { ...settings, intent: { ...settings.intent, fov: 80 } }
     for (const invalid of [
@@ -101,7 +102,7 @@ describe('isolated playback engine', () => {
     control.dispose()
   })
   it('does not advance the applied settings or clock when the engine rejects an update', async () => {
-    const f = fixture(), scene = { visualizer: { shader: 'sphere(1);' } }, control = await f.ready(scene)
+    const f = fixture(), scene = customDocument({ visualizer: { shader: 'sphere(1);' } }), control = await f.ready(scene)
     const settings = extractLiveSceneSettings(scene), next = { ...settings, intent: { ...settings.intent, time_multiplier: 2 } }
     f.engine.setExternalClock.mockClear(); f.engine.updateSettings.mockReturnValueOnce(false)
     expect(() => control.sceneSettings(next)).toThrow(/stopped/)
@@ -112,7 +113,7 @@ describe('isolated playback engine', () => {
     control.dispose()
   })
   it('anchors live speed edits without jumping elapsed time and preserves pause and reset semantics', async () => {
-    const scene = { visualizer: { shader: 'sphere(1);' }, intent: { time_multiplier: 0.5 }, state: { time: 3 } }
+    const scene = customDocument({ visualizer: { shader: 'sphere(1);' }, intent: { time_multiplier: 0.5 }, state: { time: 3 } })
     const f = fixture(), control = await f.ready(scene), settings = extractLiveSceneSettings(scene)
     const input = { time: 10, audio: { frame: null, legacyAmplitude: 0, audioTime: 0, loaded: false, playing: false }, pointer: { x: 0, y: 0, down: false } }
     control.input(input); f.engine.getEngineTime.mockReturnValue(8)
@@ -199,7 +200,7 @@ describe('isolated playback engine', () => {
   it('preserves saved selective settings and mapper history when the parent replays them after loading', async () => {
     const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 0.3,
       mappings: [{ target: 'size', source: 'bass-hit', amount: 0.025, attack: 0.12, release: 0.7 }] }).config
-    const f = fixture(), control = await f.ready({ visualizer: { shader: 'sphere(1);' }, audioResponse: 'mapped-v1', audioResponseConfig: config })
+    const f = fixture(), control = await f.ready(customDocument({ visualizer: { shader: 'sphere(1);' }, audioResponse: 'mapped-v1', audioResponseConfig: config }))
     const mapper = f.response.audioMapper, analysis = f.response.audioAnalysis, synthetic = f.response.syntheticAudioFrames
     mapper.process([{ sequence: 1, time: 1, levels: {}, hits: [{ band: 'bass', time: 1, strength: 0.8 }] }], 1)
     const history = mapper.getSnapshot()
@@ -215,7 +216,7 @@ describe('isolated playback engine', () => {
   })
 
   it('applies amount and sensitivity edits without reselecting the mode or replacing analysis/synthetic sessions', async () => {
-    const f = fixture(), control = await f.ready({ visualizer: { shader: 'sphere(1);' }, audioResponse: 'mapped-v1' })
+    const f = fixture(), control = await f.ready(customDocument({ visualizer: { shader: 'sphere(1);' }, audioResponse: 'mapped-v1' }))
     const analysis = f.response.audioAnalysis, mapper = f.response.audioMapper, synthetic = f.response.syntheticAudioFrames
     for (const [amount, sensitivity] of [[0, 0.1], [0.1, 0.7], [2, 3]]) {
       const config = normalizeAudioResponseConfig({ version: 1, sensitivity,
@@ -272,7 +273,7 @@ describe('isolated playback engine', () => {
   it('cancels before allocation and rejects parent-only media', async () => {
     const f = fixture(); const loading = f.load(); f.abort.abort()
     await expect(loading).rejects.toThrow()
-    await expect(f.load({ visualizer: { shader: 'sphere(1);' }, audioPath: '/song.mp3' })).rejects.toThrow()
+    await expect(f.load(customDocument({ visualizer: { shader: 'sphere(1);' }, audioPath: '/song.mp3' }))).rejects.toThrow()
     expect(initMAGE).not.toHaveBeenCalled()
   })
 
@@ -318,7 +319,7 @@ describe('isolated playback engine', () => {
 
   it('preserves authored animation speed and saved time, including while paused', async () => {
     const f = fixture()
-    const loading = f.load({ visualizer: { shader: 'sphere(1);' }, intent: { time_multiplier: 0.4 }, state: { time: 3 } })
+    const loading = f.load(customDocument({ visualizer: { shader: 'sphere(1);' }, intent: { time_multiplier: 0.4 }, state: { time: 3 } }))
     await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     f.emit('frame'); const control = await loading
     expect(f.engine.setExternalClock).toHaveBeenLastCalledWith({ time: 3, rate: 0.4, playing: true })

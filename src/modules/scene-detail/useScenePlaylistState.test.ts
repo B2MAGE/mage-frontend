@@ -6,7 +6,7 @@ import { useScenePlaylistState } from './useScenePlaylistState'
 
 afterEach(() => { vi.restoreAllMocks() })
 
-const source: MageSceneBlob = { visualizer: { shader: 'sphere(1)' } }
+const source = { schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(1)' } } }
 const deviceTrack = (id: string): MagePlayerPlaylistTrack => ({
   id, sourceType: 'device', sourcePath: `blob:${id}`, name: id, duration: 20,
 })
@@ -15,7 +15,7 @@ describe('scene playlist identity', () => {
   it.each(['custom', 'template'])('retains viewer tracks for valid %s response edits and clears them when changing scene identity', async kind => {
     const scene: MageSceneBlob = kind === 'template'
       ? { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
-      : { visualizer: { shader: 'sphere(1)' } }
+      : source
     const { result, rerender } = renderHook(({ blob, key }) => useScenePlaylistState(blob, key), {
       initialProps: { blob: scene, key: 1 },
     })
@@ -28,7 +28,7 @@ describe('scene playlist identity', () => {
     const revoke = vi.spyOn(URL, 'revokeObjectURL')
     revoke.mockClear()
     const response = { audioResponse: 'mapped-v1', audioResponseConfig: { version: 1, sensitivity: 2 } }
-    rerender({ blob: kind === 'template' ? { ...scene, settings: response } : { ...scene, ...response }, key: 1 })
+    rerender({ blob: kind === 'template' ? { ...scene, settings: response } : { ...source, scene: { ...source.scene, ...response } }, key: 1 })
     await act(async () => {})
     expect(result.current.playlistTracks).toEqual([track])
     expect(result.current.selectedTrackId).toBe('local')
@@ -81,7 +81,7 @@ describe('clearing route-owned music', () => {
   it('does not let pending scene initialization restore music after clear and does not modify the saved scene', async () => {
     const queued: Array<() => void> = []
     vi.spyOn(globalThis, 'queueMicrotask').mockImplementation(callback => { queued.push(callback) })
-    const scene = { ...source, audio: 'https://music.example.test/saved.mp3' }
+    const scene = { ...source, scene: { ...source.scene, audioPath: 'https://music.example.test/saved.mp3' } }
     const original = structuredClone(scene)
     const { result, rerender } = renderHook(({ blob }) => useScenePlaylistState(blob, 1), { initialProps: { blob: scene } })
     expect(queued).toHaveLength(1)
@@ -97,7 +97,7 @@ describe('clearing route-owned music', () => {
   })
 
   it('keeps a cleared saved song off on same-scene refresh but initializes it on a new visit', async () => {
-    const scene = { ...source, audioPath: 'https://music.example.test/saved.mp3' }
+    const scene = { ...source, scene: { ...source.scene, audioPath: 'https://music.example.test/saved.mp3' } }
     const revoke = vi.spyOn(URL, 'revokeObjectURL')
     const { result, rerender, unmount } = renderHook(({ blob, key }) => useScenePlaylistState(blob, key), {
       initialProps: { blob: scene, key: 1 },
@@ -107,11 +107,11 @@ describe('clearing route-owned music', () => {
     rerender({ blob: structuredClone(scene), key: 1 })
     await act(async () => {})
     expect(result.current.playlistTracks).toEqual([])
-    expect(scene.audioPath).toBe('https://music.example.test/saved.mp3')
+    expect(scene.scene.audioPath).toBe('https://music.example.test/saved.mp3')
     expect(revoke).not.toHaveBeenCalled()
     rerender({ blob: scene, key: 2 })
     await waitFor(() => expect(result.current.playlistTracks).toHaveLength(1))
-    expect(result.current.selectedTrackId).toBe(`scene:${scene.audioPath}`)
+    expect(result.current.selectedTrackId).toBe(`scene:${scene.scene.audioPath}`)
     unmount()
     expect(revoke).not.toHaveBeenCalled()
     const freshVisit = renderHook(() => useScenePlaylistState(scene, 1))

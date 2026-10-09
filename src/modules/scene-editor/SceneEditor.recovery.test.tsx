@@ -100,13 +100,13 @@ describe('scene editor recovery', () => {
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('My unfinished scene')
   })
 
-  it.each(['legacy', 'custom'] as const)('keeps failed saved %s source editable and previews a valid repair separately', async (mode) => {
+  it('keeps failed saved custom source editable and previews a valid edit separately', async () => {
     vi.mocked(createMagePlayer).mockReset()
     const repaired = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValue(repaired)
     storeSceneEditorSession()
     const raw = { visualizer: { shader: 'sphere(0.7)' } }
-    const document = mode === 'custom' ? { schemaVersion: 1, kind: 'custom', scene: raw } : raw
+    const document = { schemaVersion: 1, kind: 'custom', scene: raw }
     const key = sceneRecoveryKey(document, 12)!
     blockedKeys.add(key)
     sceneRecovery.block(key, 'load')
@@ -120,12 +120,12 @@ describe('scene editor recovery', () => {
     await user.click(screen.getByRole('button', { name: /^Scene$/ }))
     expect(screen.getByLabelText('Custom Shader', { exact: true })).toHaveValue(raw.visualizer.shader)
     fireEvent.change(screen.getByLabelText('Custom Shader', { exact: true }), { target: { value: 'sphere(0.6)' } })
-    await waitFor(() => expect(repaired.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({ visualizer: expect.objectContaining({ shader: 'sphere(0.6)' }) }), expect.any(Object)))
+    await waitFor(() => expect(repaired.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({ kind: 'custom', scene: expect.objectContaining({ visualizer: expect.objectContaining({ shader: 'sphere(0.6)' }) }) }), expect.any(Object)))
     expect(sceneRecovery.getBlock(key)?.reason).toBe('load')
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(screen.getByText('7 · Confirm')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
-    expect(JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)).toEqual({ visualizer: { shader: 'sphere(0.6)' } })
+    expect(JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)).toEqual({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(0.6)' } } })
   })
 
   it('keeps a failed saved template stopped until an explicit retry', async () => {
@@ -158,7 +158,7 @@ describe('scene editor recovery', () => {
     await waitFor(() => expect(player.loadSceneBlob).toHaveBeenCalled())
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: 'Show Raw JSON' }))
-    const draft = '{\n  "visualizer": { "shader": "while (true) { sphere(0.7); }" }\n}\n'
+    const draft = JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'while (true) { sphere(0.7); }' } } }, null, 2) + '\n'
     vi.mocked(player.loadSceneBlob).mockRejectedValue(new Error('Shader compiler rejected this draft.'))
     fireEvent.change(screen.getByLabelText('Scene Data JSON'), { target: { value: draft } })
     await screen.findByText('Shader compiler rejected this draft.')

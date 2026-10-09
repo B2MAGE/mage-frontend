@@ -76,7 +76,9 @@ function draftScene() {
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
   const open = screen.queryByRole('button', { name: 'Show Raw JSON' })
   if (open) fireEvent.click(open)
-  const source = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value) as SceneData
+  const sceneDocument = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)
+  expect(sceneDocument).toMatchObject({ schemaVersion: 1, kind: 'custom' })
+  const source = sceneDocument.scene as SceneData
   if (open) fireEvent.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
   fireEvent.click(screen.getByRole('button', { name: currentSection }))
   return source
@@ -237,7 +239,6 @@ describe('editor Toon and Bleach Bypass controls', () => {
         return jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] }))
       }
       if (input === buildApiUrl('/scenes/12')) return jsonResponse(buildSceneEditorApiScene({ sceneData: createDefaultSceneData(), tags: [] }))
-      if (input === buildApiUrl('/scenes/12/tags')) return jsonResponse([])
     })
     const user = userEvent.setup()
     renderEditScenePage(undefined, 'mage-pulse')
@@ -250,6 +251,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await waitFor(() => expect(created).toMatchObject({
       name: 'Ink and Silver',
+      tagIds: [],
       sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: { passes: { toon: true, bleachBypass: true } } } },
     }))
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()
@@ -260,7 +262,6 @@ describe('editor Toon and Bleach Bypass controls', () => {
     const scene = buildSceneEditorApiScene({ sceneData: savedEffectsScene(), tags: [] })
     let updated: unknown
     mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/scenes/12/tags') && init?.method === 'PUT') return jsonResponse([])
       if (input !== buildApiUrl('/scenes/12')) return
       if (!init?.method || init.method === 'GET') return jsonResponse(scene)
       if (init.method === 'PUT') {
@@ -292,7 +293,7 @@ describe('editor Toon and Bleach Bypass controls', () => {
     expect(screen.queryByText('Toon', { exact: true })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
-    await waitFor(() => expect(updated).toMatchObject({ sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: {
+    await waitFor(() => expect(updated).toMatchObject({ tagIds: [], sceneData: { schemaVersion: 1, kind: 'custom', scene: { fx: {
       passes: { toon: false, bleachBypass: true },
     } } } }))
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()

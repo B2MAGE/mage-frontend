@@ -28,7 +28,7 @@ const messages: Record<SceneAvailabilityCode, string> = {
   AVAILABLE: '',
   SCENE_DISABLED: 'This scene is currently unavailable.',
   SCENE_NOT_FOUND: 'This scene is no longer available.',
-  SCENE_UPGRADE_REQUIRED: 'This scene needs an update from its creator before it can play.',
+  SCENE_UPGRADE_REQUIRED: 'This historical scene format is no longer supported.',
   BUILDER_RENDERING_UNAVAILABLE: 'Builder scene playback is not available yet.',
   CUSTOM_RENDERING_DISABLED: 'Scene playback is temporarily disabled.',
   STATUS_UNAVAILABLE: 'Playback is paused until scene availability can be checked.',

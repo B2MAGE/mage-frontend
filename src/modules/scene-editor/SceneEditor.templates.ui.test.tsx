@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
+import { editorSceneDocument } from './utils'
 import { createDefaultSceneData } from './sceneEditor'
 import { createTemplateScene } from './templateEditor'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
@@ -102,12 +103,12 @@ describe('Basic template editor controls', () => {
     fireEvent.change(raw, { target: { value: JSON.stringify(custom) } })
     expect(raw).toHaveValue(JSON.stringify(custom))
     expect(screen.getByRole('alert')).toHaveTextContent(/raw json can only contain a template or builder scene/i)
-    expect(previewDocument()).toEqual(originalPreview)
+    await waitFor(() => expect(previewDocument()).toEqual(originalPreview))
 
     const template = createTemplateScene('embedded-scene-1')
     fireEvent.change(raw, { target: { value: JSON.stringify(template) } })
     expect(screen.queryByText(/raw json can only contain a template or builder scene/i)).not.toBeInTheDocument()
-    expect(previewDocument()).toEqual(template)
+    await waitFor(() => expect(previewDocument()).toEqual(template))
   })
 
   it('preserves a saved custom scene as locked source until its owner chooses Builder', async () => {
@@ -123,13 +124,13 @@ describe('Basic template editor controls', () => {
     expect(shader).toHaveAttribute('readonly')
     expect(shader).toHaveValue(source.visualizer.shader)
     expect(screen.getByLabelText('Template')).toBeDisabled()
-    expect(previewDocument()).toMatchObject(source)
+    await waitFor(() => expect(previewDocument()).toMatchObject(editorSceneDocument(source)))
     expect(screen.getByText(/this scene’s code is preserved but locked/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Builder' }))
     expect(screen.getByRole('alertdialog')).toHaveTextContent(/custom shader code.*will be replaced/i)
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
-    expect(previewDocument()).toMatchObject(source)
+    await waitFor(() => expect(previewDocument()).toMatchObject(editorSceneDocument(source)))
     expect(shader).toHaveValue(source.visualizer.shader)
 
     const raw = await openRawJson(user)
@@ -157,7 +158,7 @@ describe('Basic template editor controls', () => {
     selector.focus()
     await user.selectOptions(selector, 'embedded-scene-1')
     expect(selector).toHaveFocus()
-    expect(previewDocument()).toEqual(createTemplateScene('embedded-scene-1'))
+    await waitFor(() => expect(previewDocument()).toEqual(createTemplateScene('embedded-scene-1')))
     expect(JSON.stringify(previewDocument())).not.toContain('shader')
     expect(renderedPlayer.mock.lastCall?.[0].renderProfile).toBe('full')
     const scaleNumber = screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })
@@ -167,7 +168,7 @@ describe('Basic template editor controls', () => {
     expect(scaleSlider).toHaveAttribute('aria-valuemax', '200')
     fireEvent.change(scaleSlider, { target: { value: '500' } })
     expect(scaleNumber).toHaveValue(1.39)
-    expect(previewDocument()).toMatchObject({ parameters: { scale: 1.39 } })
+    await waitFor(() => expect(previewDocument()).toMatchObject({ parameters: { scale: 1.39 } }))
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expect(screen.queryByRole('group', { name: 'Creation mode' })).not.toBeInTheDocument()
     expect(screen.getByRole('spinbutton', { name: 'Animation speed' })).toHaveAttribute('max', '10')
@@ -191,7 +192,7 @@ describe('Basic template editor controls', () => {
     expect(screen.queryByRole('spinbutton', { name: 'Orbit speed numeric value' })).not.toBeInTheDocument()
     await user.click(orbit)
     expect(screen.getByRole('spinbutton', { name: 'Orbit speed numeric value' })).toHaveValue(4.2)
-    expect(previewDocument().settings.camera.orbitSpeed).toBe(4.2)
+    await waitFor(() => expect(previewDocument().settings.camera.orbitSpeed).toBe(4.2))
     expect(screen.getByRole('spinbutton', { name: 'FOV numeric value' })).toHaveAttribute('min', '1')
     expect(screen.getByRole('spinbutton', { name: 'FOV numeric value' })).toHaveAttribute('max', '179')
     await user.click(screen.getByRole('button', { name: 'Effects' }))
@@ -207,7 +208,7 @@ describe('Basic template editor controls', () => {
     expect(screen.queryByLabelText('Color')).not.toBeInTheDocument()
     await user.click(tint)
     fireEvent.change(screen.getByLabelText('Color'), { target: { value: '#112233' } })
-    expect(previewDocument().settings.tint).toEqual({ enabled: true, color: '#112233' })
+    await waitFor(() => expect(previewDocument().settings.tint).toEqual({ enabled: true, color: '#112233' }))
   })
 
   it('keeps an invalid numeric draft beside its field while previewing the last valid template', async () => {
@@ -223,10 +224,10 @@ describe('Basic template editor controls', () => {
     expect(field).toHaveAttribute('aria-invalid', 'true')
     expect(field).toHaveFocus()
     expect(within(field.closest('[data-template-field]') as HTMLElement).getByRole('alert')).toBeInTheDocument()
-    expect(previewDocument().settings.camera.fov).toBe(createTemplateScene().settings.camera.fov)
+    await waitFor(() => expect(previewDocument().settings.camera.fov).toBe(createTemplateScene().settings.camera.fov))
     fireEvent.change(field, { target: { value: '90' } })
     expect(field).toHaveAttribute('aria-invalid', 'false')
-    expect(previewDocument().settings.camera.fov).toBe(90)
+    await waitFor(() => expect(previewDocument().settings.camera.fov).toBe(90))
   })
 
   it('edits the full Basic camera settings and preserves integer summary values without adding source', async () => {
@@ -295,7 +296,7 @@ describe('Basic template editor controls', () => {
     } })
     const beforeSimulation = previewDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Simulate beat' }))
-    expect(previewDocument()).toEqual(beforeSimulation)
+    await waitFor(() => expect(previewDocument()).toEqual(beforeSimulation))
     expect(beforeSimulation.kind).toBe('template')
     expect(JSON.stringify(beforeSimulation)).not.toContain('"shader"')
   })
@@ -323,7 +324,7 @@ describe('Basic template editor controls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Pass Order' }))
     await user.click(screen.getByRole('button', { name: 'Move RGB Shift up' }))
-    expect(previewDocument().settings.effects.passOrder).toContain('RGBShift')
+    await waitFor(() => expect(previewDocument().settings.effects.passOrder).toContain('RGBShift'))
     expect(screen.queryByRole('button', { name: 'Move Output up' })).not.toBeInTheDocument()
     const draft = previewDocument()
     expect(draft.kind).toBe('template')
@@ -356,7 +357,7 @@ describe('Basic template editor controls', () => {
     const field = await screen.findByRole(role, { name: label })
     await waitFor(() => expect(field).toHaveFocus())
     expect(within(field.closest('[data-template-field]') as HTMLElement).getByRole('alert')).toHaveTextContent('Please correct this setting.')
-    expect(previewDocument()).toEqual(saved)
+    await waitFor(() => expect(previewDocument()).toEqual(saved))
   })
 })
 
@@ -371,10 +372,10 @@ describe('custom repair and explicit template replacement', () => {
     await user.click(screen.getByRole('button', { name: 'Custom Code' }))
     let source = screen.getByLabelText('Custom Shader') as HTMLTextAreaElement
     expect(source.value.length).toBeGreaterThan(0)
-    expect(previewDocument()).toEqual(original)
+    await waitFor(() => expect(previewDocument()).toEqual(original))
     await user.click(screen.getByRole('button', { name: 'Custom Code' }))
     expect(screen.queryByLabelText('Custom Shader')).not.toBeInTheDocument()
-    expect(previewDocument()).toEqual(original)
+    await waitFor(() => expect(previewDocument()).toEqual(original))
     await user.click(screen.getByRole('button', { name: 'Custom Code' }))
     source = screen.getByLabelText('Custom Shader') as HTMLTextAreaElement
     const code = source.value
@@ -383,8 +384,8 @@ describe('custom repair and explicit template replacement', () => {
     expect(screen.getByLabelText('Custom Shader')).toBe(source)
     expect(source).toHaveFocus()
     expect(source).toHaveValue(`${code} // custom`)
-    expect(previewDocument()).not.toHaveProperty('kind', 'template')
-    expect(previewDocument().visualizer.shader).toBe(`${code} // custom`)
+    await waitFor(() => expect(previewDocument()).not.toHaveProperty('kind', 'template'))
+    await waitFor(() => expect(previewDocument().scene.visualizer.shader).toBe(`${code} // custom`))
     await user.click(screen.getByRole('button', { name: 'Builder' }))
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
     expect(source).toHaveValue(`${code} // custom`)
@@ -395,11 +396,11 @@ describe('custom repair and explicit template replacement', () => {
   it('routes valid custom source to the isolated player and requires acceptance before replacing source', async () => {
     const user = userEvent.setup()
     const source = await customEditor()
-    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
-    expect(previewDocument().visualizer.shader).toBe(source.visualizer.shader)
+    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: editorSceneDocument(source) }))
+    await waitFor(() => expect(previewDocument().scene.visualizer.shader).toBe(source.visualizer.shader))
     expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
     let raw = await openRawJson(user)
-    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
+    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(editorSceneDocument(source))
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     expect(screen.getByRole('button', { name: 'Custom Code' })).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByRole('button', { name: 'Builder' }))
@@ -412,16 +413,16 @@ describe('custom repair and explicit template replacement', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Builder' })).toHaveFocus())
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     raw = await openRawJson(user)
-    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
-    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
+    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(editorSceneDocument(source))
+    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: editorSceneDocument(source) }))
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.click(screen.getByRole('button', { name: 'Builder' }))
     await user.click(screen.getByRole('button', { name: 'Switch to Builder' }))
     expect(screen.getByRole('button', { name: 'Builder' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('Sphere 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pass Order' })).toBeInTheDocument()
-    expect(previewDocument()).toMatchObject({ kind: 'builder', objects: [{ operation: { type: 'sphere' } }],
-      settings: createTemplateScene().settings })
+    await waitFor(() => expect(previewDocument()).toMatchObject({ kind: 'builder', objects: [{ operation: { type: 'sphere' } }],
+      settings: createTemplateScene().settings }))
     await user.click(screen.getByRole('button', { name: 'Details' }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Aurora Drift')
   })
@@ -430,16 +431,16 @@ describe('custom repair and explicit template replacement', () => {
     const user = userEvent.setup()
     const source = await customEditor()
     const raw = await openRawJson(user)
-    const imported = createTemplateScene('reaction-rings-v1')
+    const imported = createTemplateScene('embedded-scene-0')
     fireEvent.change(raw, { target: { value: JSON.stringify(imported) } })
     expect(screen.getByRole('alertdialog')).toHaveTextContent('The imported template replaces your custom code and settings.')
-    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: expect.objectContaining({ visualizer: expect.objectContaining({ shader: source.visualizer.shader }) }) }))
+    expect(renderedPlayer).toHaveBeenCalledWith(expect.objectContaining({ sceneBlob: editorSceneDocument(source) }))
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(raw).toHaveFocus())
-    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(source)
+    expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(editorSceneDocument(source))
     fireEvent.change(raw, { target: { value: JSON.stringify(imported) } })
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Replace custom scene' }))
-    expect(previewDocument()).toEqual(imported)
+    await waitFor(() => expect(previewDocument()).toEqual(imported))
     expect(JSON.parse((raw as HTMLTextAreaElement).value)).toEqual(imported)
   })
 })

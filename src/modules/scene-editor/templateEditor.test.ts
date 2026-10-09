@@ -72,9 +72,9 @@ describe('template editor documents', () => {
     expect(scene).not.toHaveProperty('visualizer')
   })
 
-  it('preserves invalid legacy and custom values for repair without changing their mode', () => {
+  it('preserves invalid current custom draft values but rejects raw documents', () => {
     const source = { visualizer: { shader: 'sphere(1)' }, intent: { fov: 'broken' }, retained: 'repair me' }
-    expect(readEditableSceneData(source)).toEqual(source)
+    expect(() => readEditableSceneData(source)).toThrow()
     expect(readEditableSceneData({ schemaVersion: 1, kind: 'custom', scene: source })).toEqual(source)
     expect(isTemplateEditorDocument(source)).toBe(false)
     expect(() => buildSceneSubmissionDocument(source)).toThrow()

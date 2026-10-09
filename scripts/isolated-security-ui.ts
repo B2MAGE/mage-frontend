@@ -51,9 +51,9 @@ function assertCurrent(token: number) { if (token !== run) throw new Error('Chec
 function sleep(ms: number) { return new Promise<void>(resolve => setTimeout(resolve, ms)) }
 const newNonce = () => crypto.randomUUID().replaceAll('-', '')
 function scene(code: string) {
-  return { visualizer: { shader: `setMaxIterations(48); setStepSize(0.7); color(0.35,0.2,0.8); sphere(0.5);\n${code}`, skyboxPreset: 6, scale: 1 },
+  return { schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: `setMaxIterations(48); setStepSize(0.7); color(0.35,0.2,0.8); sphere(0.5);\n${code}`, skyboxPreset: 6, scale: 1 },
     controls: { position0: { x: 0, y: 0, z: 4 }, target0: { x: 0, y: 0, z: 0 }, zoom0: 1 },
-    intent: { autoRotate: false, time_multiplier: 0.5 }, fx: { bloom: { enabled: false }, passes: { outputPass: true } } }
+    intent: { autoRotate: false, time_multiplier: 0.5 }, fx: { bloom: { enabled: false }, passes: { outputPass: true } } } }
 }
 async function register(nonce: string) {
   const response = await fetch(`${config.canaryPrefix}register?nonce=${nonce}`, { method: 'POST', credentials: 'omit', cache: 'no-store' })

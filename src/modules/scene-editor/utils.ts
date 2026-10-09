@@ -2,7 +2,6 @@ import { fetchAvailableTags, type TagResponse } from '@shared/lib'
 import { hasSceneDocumentMarkers, parseSceneDocument, parseSceneImport, validateSceneForStorage, validateSceneForPlayback, SceneContractError, type SceneDocument } from '@modules/player'
 import {
   getSceneEditorModel,
-  sanitizeSceneData,
   SHADER_SCENES,
   TONE_MAPPING_OPTIONS,
   type SceneData,
@@ -30,15 +29,6 @@ export function upsertTag(tags: TagResponse[], nextTag: TagResponse) {
     ...tags.filter((tag) => tag.tagId !== nextTag.tagId),
     nextTag,
   ])
-}
-
-export function parseCreatedSceneId(payload: unknown) {
-  if (!payload || typeof payload !== 'object') {
-    return null
-  }
-
-  const sceneId = (payload as { sceneId?: unknown }).sceneId
-  return typeof sceneId === 'number' && sceneId > 0 ? sceneId : null
 }
 
 export async function loadAvailableTagsFromBackend() {
@@ -180,8 +170,7 @@ export function buildCapturedThumbnailFile(dataUrl: string) {
 
 /** Preserve data-only documents; unwrap custom data without normalizing owner repair values. */
 export function readEditableSceneData(sceneData: SceneData): SceneData {
-  const document = parseSceneDocument(hasSceneDocumentMarkers(sceneData)
-    ? sceneData : { schemaVersion: 1, kind: 'custom', scene: sceneData })
+  const document = parseSceneDocument(sceneData)
   if (document.kind !== 'custom') {
     return document
   }
@@ -191,16 +180,19 @@ export function readEditableSceneData(sceneData: SceneData): SceneData {
   return document.scene
 }
 
+/** Assemble the explicitly selected custom editor mode, never use this for imports. */
+export function editorSceneDocument(sceneData: SceneData): SceneData {
+  return hasSceneDocumentMarkers(sceneData) ? sceneData : { schemaVersion: 1, kind: 'custom', scene: sceneData }
+}
+
 /** Every new API write declares its format, without guessing trust from a preset shader. */
 export function buildSceneSubmissionDocument(sceneData: SceneData): SceneDocument {
-  return validateSceneForStorage(sceneData)
+  return validateSceneForStorage(editorSceneDocument(sceneData))
 }
 
 export function buildEffectiveSceneData(sceneData: SceneData): SceneData {
   // Validate the original first: defaults must not hide malformed imported data.
-  const document = validateSceneForPlayback(sceneData)
-  if (document.kind === 'template' || document.kind === 'builder') return document
-  return sanitizeSceneData(readEditableSceneData(document))
+  return validateSceneForPlayback(editorSceneDocument(sceneData))
 }
 
 export function getVisiblePassOrder(passOrder: readonly ScenePassId[]) {
@@ -281,5 +273,5 @@ export function describePassState(
 
 export function prettyPrintEditorSceneData(sceneData: SceneData) {
   // Owner repair data may fail current limits; keep it intact for editing/export.
-  return JSON.stringify(readEditableSceneData(sceneData), null, 2)
+  return JSON.stringify(editorSceneDocument(sceneData), null, 2)
 }

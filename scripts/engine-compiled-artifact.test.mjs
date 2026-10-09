@@ -81,9 +81,11 @@ test('normalizer rejects malformed output and independently clamps supplied comp
   assert.equal(reads, 0)
 })
 
-test('all 16 immutable presets preserve supported output under both default and lower host ceilings', () => {
+test('all current immutable presets preserve supported output under both default and lower host ceilings', () => {
   const fixtures = JSON.parse(readFileSync(new URL('../src/modules/player/policy/fixtures/builtin-presets.json', import.meta.url), 'utf8'))
-  assert.equal(fixtures.length, 16)
+  const catalog = JSON.parse(readFileSync(new URL('../contracts/scenes/template-catalog.v1.json', import.meta.url), 'utf8'))
+  assert.deepEqual(fixtures.map(fixture => fixture.sceneId),
+    catalog.templates.map(template => `template:${template.templateId}@${template.templateVersion}`))
   for (const { sceneId, sceneData } of fixtures) {
     const source = sceneData.visualizer.shader
     const output = compileShader(source)

@@ -73,12 +73,14 @@ export function validateLiveSceneSettings(value: unknown): SceneLiveSettings {
   const settings = value as SceneLiveSettings
   // Reuse the scene contract's numeric, enum, color, uniqueness and effect-count
   // policy. The fixed source is validation scaffolding and is never executed.
-  const document = validateSceneForPlayback({ ...settings,
-    visualizer: { shader: 'sphere(1)', ...settings.visualizer } })
+  const document = validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: { ...settings,
+    visualizer: { shader: 'sphere(1)', ...settings.visualizer } } })
   if (document.kind !== 'custom') throw new Error('Unsupported live scene settings.')
   const copy = document.scene
   delete (copy.visualizer as Record<string, unknown>).shader
-  return copy as unknown as SceneLiveSettings
+  // Canonical field order makes repeated validated snapshots stable for the
+  // bridge's no-change comparison, independent of incoming JSON key order.
+  return selectWithDefaults(defaults, copy) as SceneLiveSettings
 }
 
 function selectWithDefaults(shape: unknown, source: unknown): unknown {

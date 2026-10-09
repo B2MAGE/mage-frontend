@@ -63,6 +63,7 @@ export function sceneSubmissionErrors(status: number, error: ApiErrorResponse | 
   return {
     description: details.description,
     name: details.name,
+    tags: details.tagIds,
     sceneData,
     ...(Object.keys(fields).length ? { fields } : {}),
     form: sceneData ? 'Some scene settings need attention. Your changes are still here.'

@@ -9,14 +9,14 @@ let alternate = false, paused = false, generation = 0, captureUrl: string | null
 const controls = ['stop','switch','pause','reset','test-audio','clear','audio','simulate','response','volume','seek','capture-button']
 const enable = (yes: boolean) => { controls.forEach(id => { (element(id) as HTMLInputElement).disabled = !yes }); button('start').disabled = yes }
 function scene() {
-  return { visualizer: { skyboxPreset: 6, scale: 1, shader: `let size = input(); let pointerDown = input();
+  return { schemaVersion: 1, kind: 'custom', scene: { visualizer: { skyboxPreset: 6, scale: 1, shader: `let size = input(); let pointerDown = input();
 setMaxIterations(80); setStepSize(0.7); rotateY(time * 0.4); rotateX(mouse.y * 0.4 + 0.35);
 color(${alternate ? '0.12,0.7,0.65' : '0.45,0.16,0.9'}); ${alternate ? 'sphere(0.55 + size * 0.18 + pointerDown * 0.15);' : 'torus(0.7 + size * 0.15,0.16 + pointerDown * 0.1);'}` },
     controls: { target0: {x:0,y:0,z:0}, position0: {x:0,y:0,z:4.5},zoom0:1 },
     intent: {time_multiplier:0.5,autoRotate:false,fov:50,base_speed:0.2,minimizing_factor:0.8,power_factor:8,pointerDownMultiplier:1,easing_speed:0.6},
     fx: { passOrder:['bloom','outputPass'],bloom:{enabled:false},passes:{outputPass:true} },
     audioResponse: element<HTMLSelectElement>('response').value,
-    audioResponseConfig: {version:1,sensitivity:1,mappings:[{target:'size',source:'bass-hit',amount:0.8,attack:0.02,release:0.35}]} }
+    audioResponseConfig: {version:1,sensitivity:1,mappings:[{target:'size',source:'bass-hit',amount:0.8,attack:0.02,release:0.35}]} } }
 }
 const reportError = (error: unknown) => { status.textContent = error instanceof Error ? error.message : 'The player could not complete this action.' }
 async function action(run: () => void | Promise<unknown>) { try { await run() } catch (error) { reportError(error) } }

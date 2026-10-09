@@ -8,24 +8,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function splitDisplayName(displayName: string) {
-  const trimmedDisplayName = displayName.trim()
-
-  if (!trimmedDisplayName) {
-    return {
-      firstName: '',
-      lastName: '',
-    }
-  }
-
-  const [firstName = '', ...remainingParts] = trimmedDisplayName.split(/\s+/)
-
-  return {
-    firstName,
-    lastName: remainingParts.join(' '),
-  }
-}
-
 function readStoredUser(value: unknown): AuthenticatedUser | null {
   if (!isRecord(value)) {
     return null
@@ -33,31 +15,27 @@ function readStoredUser(value: unknown): AuthenticatedUser | null {
 
   const email = typeof value.email === 'string' ? value.email : null
 
-  if (!email) {
+  if (!email || typeof value.userId !== 'number' || !Number.isSafeInteger(value.userId) || value.userId <= 0
+    || typeof value.displayName !== 'string' || !value.displayName.trim()
+    || typeof value.handle !== 'string' || !/^[a-z][a-z0-9_]{2,29}$/.test(value.handle)
+    || typeof value.authProvider !== 'string' || !value.authProvider.trim()) {
     return null
   }
 
-  const displayName =
-    typeof value.displayName === 'string' && value.displayName.trim() ? value.displayName : email
-  const derivedNames = splitDisplayName(displayName)
-
   return {
-    userId: typeof value.userId === 'number' ? value.userId : null,
+    userId: value.userId,
     email,
-    firstName: typeof value.firstName === 'string' ? value.firstName : derivedNames.firstName,
-    lastName: typeof value.lastName === 'string' ? value.lastName : derivedNames.lastName,
-    displayName,
-    handle:
-      typeof value.handle === 'string' && value.handle.trim()
-        ? value.handle.trim().replace(/^@/, '').toLowerCase()
-        : undefined,
+    firstName: typeof value.firstName === 'string' ? value.firstName : undefined,
+    lastName: typeof value.lastName === 'string' ? value.lastName : undefined,
+    displayName: value.displayName,
+    handle: value.handle,
     description:
       typeof value.description === 'string'
         ? value.description
         : value.description === null
           ? null
           : undefined,
-    authProvider: typeof value.authProvider === 'string' ? value.authProvider : 'LOCAL',
+    authProvider: value.authProvider,
     ...(value.avatarGradientStart !== undefined ? {
       avatarGradientStart: normalizeAvatarColor(value.avatarGradientStart, DEFAULT_AVATAR_GRADIENT.start),
     } : {}),
@@ -83,20 +61,18 @@ export function readStoredSession(): StoredAuthSession | null {
       return null
     }
 
-    return {
-      accessToken: parsed.accessToken,
-      user: readStoredUser(parsed.user),
-    }
-  } catch {
-    if (!rawSession.trim()) {
+    const user = readStoredUser(parsed.user)
+    if (!user) {
       clearStoredSession()
       return null
     }
-
     return {
-      accessToken: rawSession.trim(),
-      user: null,
+      accessToken: parsed.accessToken,
+      user,
     }
+  } catch {
+    clearStoredSession()
+    return null
   }
 }
 

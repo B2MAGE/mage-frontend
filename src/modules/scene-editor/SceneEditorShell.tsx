@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
-import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneAvailabilityStore, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
+import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -39,6 +39,7 @@ import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEdito
 import { builderControlLocation, templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
+import { useSceneThumbnailCapture } from "./useSceneThumbnailCapture";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { createBuilderScene } from "./builderEditor";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
@@ -46,10 +47,9 @@ import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/M
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
 import type { EditorSectionId, SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
 import {
-  buildCapturedThumbnailFile,
+  editorSceneDocument,
   getActivePassOrder,
   readEditableSceneData,
-  validateThumbnailFile,
 } from "./utils";
 
 type ReviewSectionId = Exclude<EditorSectionId, "confirm">;
@@ -141,7 +141,7 @@ export function SceneEditorShell({
   const reviewFocusTargetRef = useRef<string | null>(null);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
   const [pendingBuilderTemplateId, setPendingBuilderTemplateId] = useState<TemplateId | null>(null);
-  const [selectedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
+  const [requestedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
   const customCodeAvailability = useSceneAvailability('custom');
 
   useEffect(() => {
@@ -198,9 +198,6 @@ export function SceneEditorShell({
     name,
     normalizedTagSearchValue,
     openTagDropdown,
-    pendingRetryTags,
-    pendingTagAttachment,
-    playlistValue,
     reloadAvailableTags,
     sceneData,
     sceneDataText,
@@ -213,8 +210,6 @@ export function SceneEditorShell({
     setErrors,
     setIsConfirmJsonOpen,
     setIsSubmitting,
-    setPendingTagAttachment,
-    setPlaylistValue,
     tagDropdownRef,
     tagSearchInputId,
     tagSearchValue,
@@ -244,14 +239,8 @@ export function SceneEditorShell({
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
   });
-  useEffect(() => {
-    if (!builderDocument) {
-      setSelectedBuilderObjectId(null);
-      return;
-    }
-    if (selectedBuilderObjectId && builderDocument.objects.some(object => object.id === selectedBuilderObjectId)) return;
-    setSelectedBuilderObjectId(builderDocument.objects[0]?.id ?? null);
-  }, [builderDocument, selectedBuilderObjectId]);
+  const selectedBuilderObjectId = builderDocument?.objects.some(object => object.id === requestedBuilderObjectId)
+    ? requestedBuilderObjectId : builderDocument?.objects[0]?.id ?? null;
   const availabilityTarget = useMemo(() => getSceneAvailabilityTarget(mode.type === 'edit' ? mode.sceneId : undefined, sceneData), [mode, sceneData]);
   const availability = useSceneAvailability(availabilityTarget);
   useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
@@ -265,20 +254,29 @@ export function SceneEditorShell({
     setIsReplacementPending(false);
     requestAnimationFrame(() => replacementTriggerRef.current?.focus());
   }
-  useEffect(() => {
-    if ((!isTemplate && !isBuilder) || !errors.fields) return;
-    const location = Object.keys(errors.fields).map(path => isBuilder ? builderControlLocation(path) : templateControlLocation(path)).find(value => value !== null);
-    if (!location) return;
-    if (isBuilder && 'objectIndex' in location && typeof location.objectIndex === 'number') {
-      setSelectedBuilderObjectId(builderDocument?.objects[location.objectIndex]?.id ?? null);
+  const fieldErrorLocation = useMemo(() => {
+    if ((!isTemplate && !isBuilder) || !errors.fields) return null;
+    return Object.keys(errors.fields).map(path => isBuilder ? builderControlLocation(path) : templateControlLocation(path))
+      .find(value => value !== null) ?? null;
+  }, [errors.fields, isBuilder, isTemplate]);
+  const [handledFieldErrors, setHandledFieldErrors] = useState(errors.fields);
+  if (handledFieldErrors !== errors.fields) {
+    setHandledFieldErrors(errors.fields);
+    if (fieldErrorLocation) {
+      if (isBuilder && 'objectIndex' in fieldErrorLocation && typeof fieldErrorLocation.objectIndex === 'number') {
+        setSelectedBuilderObjectId(builderDocument?.objects[fieldErrorLocation.objectIndex]?.id ?? null);
+      }
+      handleSectionJump(fieldErrorLocation.section);
     }
-    handleSectionJump(location.section);
+  }
+  useEffect(() => {
+    if (!fieldErrorLocation) return;
     const frame = requestAnimationFrame(() => {
-      const input = document.getElementById(`${location.id}-number`) ?? document.getElementById(location.id);
+      const input = document.getElementById(`${fieldErrorLocation.id}-number`) ?? document.getElementById(fieldErrorLocation.id);
       input?.focus();
     });
     return () => cancelAnimationFrame(frame);
-  }, [builderDocument, errors.fields, handleSectionJump, isBuilder, isTemplate]);
+  }, [fieldErrorLocation]);
   useEffect(() => {
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
     const focusTargetId = reviewFocusTargetRef.current;
@@ -291,6 +289,7 @@ export function SceneEditorShell({
     previewSceneData,
     previewOriginalSceneData,
     previewError,
+    isPreviewPending,
     sceneModel,
     selectedToneMapping,
     toneMappingSelection,
@@ -300,7 +299,7 @@ export function SceneEditorShell({
   const recoverySceneData = useMemo(() => {
     const original = initialState?.sceneData;
     if (original && previewOriginalSceneData
-      && sceneRecoveryKey(readEditableSceneData(original)) === sceneRecoveryKey(previewOriginalSceneData)) return original;
+      && sceneRecoveryKey(editorSceneDocument(readEditableSceneData(original))) === sceneRecoveryKey(editorSceneDocument(previewOriginalSceneData))) return original;
     return previewOriginalSceneData;
   }, [initialState?.sceneData, previewOriginalSceneData]);
   const canPreviewScene = !!previewSceneData;
@@ -324,11 +323,15 @@ export function SceneEditorShell({
   const reviewIssueCount = reviewIssueEntries.length + Number(Boolean(confirmDataIssue));
   const firstInvalidReviewSection = reviewIssueEntries[0]?.[0] ?? null;
   const firstReviewIssueMessage = reviewIssueEntries[0]?.[1] ?? confirmDataIssue ?? null;
-  useEffect(() => {
-    if (sectionMenuValue !== "confirm") return;
-    if (firstInvalidReviewSection) setOpenReviewSection(firstInvalidReviewSection);
-    if (confirmDataIssue) setIsConfirmJsonOpen(true);
-  }, [confirmDataIssue, firstInvalidReviewSection, sectionMenuValue, setIsConfirmJsonOpen]);
+  const reviewIssueKey = JSON.stringify([confirmDataIssue, firstInvalidReviewSection, sectionMenuValue]);
+  const [handledReviewIssueKey, setHandledReviewIssueKey] = useState(reviewIssueKey);
+  if (handledReviewIssueKey !== reviewIssueKey) {
+    setHandledReviewIssueKey(reviewIssueKey);
+    if (sectionMenuValue === "confirm") {
+      if (firstInvalidReviewSection) setOpenReviewSection(firstInvalidReviewSection);
+      if (confirmDataIssue) setIsConfirmJsonOpen(true);
+    }
+  }
   const enabledEffectCount = Number(sceneModel.fx.bloom.enabled) + Object.entries(sceneModel.fx.passes)
     .filter(([key, enabled]) => key !== 'outputPass' && enabled).length;
   const effectBudgetFull = enabledEffectCount >= SCENE_LIMITS.optionalEffects;
@@ -365,109 +368,18 @@ export function SceneEditorShell({
     clearPassDrag();
   }
   const usesMappedAudio = editorAudioResponseMode === "mapped-v1";
-  const usesModernAudio = editorAudioResponseMode === "transient-v1" || usesMappedAudio;
+  const usesModernAudio = usesMappedAudio;
   const audioResponseConfig = editorAudioResponseConfig;
   // Keep controls steady through response edits, but never display the prior
   // shader's movement list while a different shader is compiling.
   const supportedAudioTargets = useMemo(() => supportedPreviewAudioTargets(
     audioResponseCapabilities, previewSceneData, sceneData,
   ), [audioResponseCapabilities, previewSceneData, sceneData]);
-  const captureFramePreviewRef = useRef<(() => Promise<string | null>) | null>(
-    null,
-  );
-  const registerCaptureFramePreview = useCallback((nextCapture: (() => Promise<string | null>) | null) => {
-    captureFramePreviewRef.current = nextCapture;
-  }, []);
-  const thumbnailCaptureInFlightRef = useRef(false);
-  const thumbnailCaptureGenerationRef = useRef(0);
-  const [isCapturingThumbnail, setIsCapturingThumbnail] = useState(false);
-
-  useEffect(() => {
-    thumbnailCaptureGenerationRef.current += 1;
-    thumbnailCaptureInFlightRef.current = false;
-    setIsCapturingThumbnail(false);
-  }, [sceneDraftError, previewOriginalSceneData]);
-
-  useEffect(() => {
-    const unsubscribe = sceneAvailabilityStore.subscribe(availabilityTarget, () => {
-      const availability = sceneAvailabilityStore.getSnapshot(availabilityTarget);
-      if (!availability.allowed && availability.code !== 'CHECKING') {
-        thumbnailCaptureGenerationRef.current += 1;
-        thumbnailCaptureInFlightRef.current = false;
-        setIsCapturingThumbnail(false);
-      }
-    });
-    return () => {
-      unsubscribe();
-      thumbnailCaptureGenerationRef.current += 1;
-      thumbnailCaptureInFlightRef.current = false;
-    };
-  }, [availabilityTarget]);
-
-  async function captureThumbnailFromPreview() {
-    if (!canPreviewScene) throw new Error("Load a valid scene before capturing a new thumbnail.");
-    if (sceneDraftError) throw new Error("Fix the scene settings before capturing a thumbnail.");
-    const generation = thumbnailCaptureGenerationRef.current;
-    if (!sceneAvailabilityStore.isAllowed(availabilityTarget)) {
-      throw new Error("Thumbnail capture is unavailable while scene playback is paused.");
-    }
-    if (!captureFramePreviewRef.current) {
-      throw new Error(
-        "Wait for the live preview to finish loading before capturing a thumbnail.",
-      );
-    }
-
-    const capturedPreviewUrl = await captureFramePreviewRef.current();
-
-    if (generation !== thumbnailCaptureGenerationRef.current || !sceneAvailabilityStore.isAllowed(availabilityTarget)) {
-      throw new Error("Thumbnail capture was cancelled because scene availability changed.");
-    }
-
-    if (!capturedPreviewUrl) {
-      throw new Error(
-        "We couldn't capture the current preview frame. Let the preview finish loading and try again.",
-      );
-    }
-
-    const capturedThumbnailFile = buildCapturedThumbnailFile(capturedPreviewUrl);
-    const thumbnailError = validateThumbnailFile(capturedThumbnailFile);
-
-    if (thumbnailError) {
-      throw new Error(thumbnailError);
-    }
-
-    handleThumbnailCapture(capturedThumbnailFile, capturedPreviewUrl);
-    return capturedThumbnailFile;
-  }
-
-  async function handleThumbnailCaptureRequest() {
-    if (thumbnailCaptureInFlightRef.current || !sceneAvailabilityStore.isAllowed(availabilityTarget)) {
-      return;
-    }
-
-    thumbnailCaptureInFlightRef.current = true;
-    const generation = thumbnailCaptureGenerationRef.current;
-    setIsCapturingThumbnail(true);
-
-    try {
-      await captureThumbnailFromPreview();
-    } catch (error) {
-      if (generation !== thumbnailCaptureGenerationRef.current) return;
-      setErrors((currentErrors) => ({
-        ...currentErrors,
-        form: undefined,
-        thumbnail:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "The live preview could not be captured right now. Please try again.",
-      }));
-    } finally {
-      if (generation === thumbnailCaptureGenerationRef.current) {
-        thumbnailCaptureInFlightRef.current = false;
-        setIsCapturingThumbnail(false);
-      }
-    }
-  }
+  const { captureThumbnailFromPreview, handleThumbnailCaptureRequest, isCapturingThumbnail,
+    registerCaptureFramePreview } = useSceneThumbnailCapture({
+    availabilityTarget, revision: sceneDataText, canPreviewScene, sceneDraftError,
+    isPreviewPending, onCapture: handleThumbnailCapture, setErrors,
+  });
 
   function renderAdditionalPassCard(passConfig: {
     description: string;
@@ -661,7 +573,7 @@ export function SceneEditorShell({
     ));
   }
 
-  const { handleSubmit } = useSceneEditorSubmission({
+  const { handleSubmit, hasSavedScene, saveNeedsReview } = useSceneEditorSubmission({
     authenticatedFetch,
     availableTags,
     captureThumbnailIfMissing: captureThumbnailFromPreview,
@@ -669,7 +581,6 @@ export function SceneEditorShell({
     mode,
     name,
     onComplete,
-    pendingTagAttachment,
     sceneData,
     sceneDataText,
     selectedTagIds,
@@ -687,7 +598,6 @@ export function SceneEditorShell({
       }
     },
     setIsSubmitting,
-    setPendingTagAttachment,
     tagsError,
     tagsLoading,
     thumbnailFile,
@@ -704,16 +614,14 @@ export function SceneEditorShell({
       templateVersion: template.templateVersion as 1,
     }).trim() === source) ?? null;
   }, [isCustomCreation, sceneModel.visualizer.shader, templateCatalog]);
-  const previousCustomCreationRef = useRef(isCustomCreation);
-  useEffect(() => {
-    if (isCustomCreation && !previousCustomCreationRef.current) setIsTemplateSourceVisible(true);
-    previousCustomCreationRef.current = isCustomCreation;
-  }, [isCustomCreation]);
-  useEffect(() => {
-    if (!isCustomCodeAvailable && !isCustomCreation && isTemplateSourceVisible) {
-      setIsTemplateSourceVisible(false);
-    }
-  }, [isCustomCodeAvailable, isCustomCreation, isTemplateSourceVisible]);
+  const [previousCustomCreation, setPreviousCustomCreation] = useState(isCustomCreation);
+  if (previousCustomCreation !== isCustomCreation) {
+    setPreviousCustomCreation(isCustomCreation);
+    if (isCustomCreation) setIsTemplateSourceVisible(true);
+  }
+  if (!isCustomCodeAvailable && !isCustomCreation && isTemplateSourceVisible) {
+    setIsTemplateSourceVisible(false);
+  }
   const isCustomCodeVisible = !isBuilder && isTemplateSourceVisible;
   const customCodeAvailabilityMessage = isCustomCodeAvailable ? null
     : customCodeAvailability.code === 'CHECKING'
@@ -750,11 +658,7 @@ export function SceneEditorShell({
     `FOV ${formatFixed(sceneModel.intent.fov, 0)}`,
     `Orbit ${sceneModel.intent.autoRotate ? "on" : "off"}`,
   ].join(" · ");
-  const responseModeLabel = usesMappedAudio
-    ? "Version 2 — Selective"
-    : editorAudioResponseMode === "transient-v1"
-      ? "Saved beat response"
-      : "Version 1 — Original";
+  const responseModeLabel = usesMappedAudio ? "Version 2 \u2014 Selective" : "Version 1 \u2014 Original";
   const motionReviewSummary = `Animation ${formatFixed(sceneModel.intent.time_multiplier)}× · ${responseModeLabel}`;
   const outputEnabled = activePassOrder.includes("outputPass");
   const effectsReviewSummary = [
@@ -767,7 +671,7 @@ export function SceneEditorShell({
   const passOrderReviewSummary = activePassOrder.length
     ? `Active output: ${activePassOrder.map((passId) => PASS_LABELS[passId]).join(" → ")}`
     : "No active passes";
-  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0;
+  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0 || saveNeedsReview;
   const shaderEditor = (
     <div className="field-group">
       <FieldGroupLabel
@@ -1016,9 +920,6 @@ export function SceneEditorShell({
                 isTagDropdownOpen={isTagDropdownOpen}
                 name={name}
                 normalizedTagSearchValue={normalizedTagSearchValue}
-                pendingRetryTags={pendingRetryTags}
-                pendingTagAttachment={pendingTagAttachment}
-                playlistValue={playlistValue}
                 selectableTags={selectableTags}
                 selectedTags={selectedTags}
                 tagDropdownRef={tagDropdownRef}
@@ -1032,7 +933,6 @@ export function SceneEditorShell({
                 onDescriptionChange={handleDescriptionChange}
                 onNameChange={handleNameChange}
                 onOpenTagDropdown={openTagDropdown}
-                onPlaylistValueChange={setPlaylistValue}
                 onReloadAvailableTags={reloadAvailableTags}
                 onTagSearchChange={handleTagSearchChange}
                 onThumbnailCaptureRequest={() => {
@@ -1782,10 +1682,6 @@ export function SceneEditorShell({
                         value={formatOptionalText(description)}
                       />
                       <ConfirmSummaryItem
-                        label="Playlist"
-                        value="Not available"
-                      />
-                      <ConfirmSummaryItem
                         label="Thumbnail"
                         value={
                           thumbnailPreviewUrl
@@ -1948,7 +1844,7 @@ export function SceneEditorShell({
                       {usesModernAudio ? (
                         <ConfirmSummaryItem
                           label="Audio mappings"
-                          value={usesMappedAudio ? `${audioResponseConfig.mappings.length} saved` : "Saved beat response"}
+                          value={`${audioResponseConfig.mappings.length} saved`}
                         />
                       ) : <>
                       <ConfirmSummaryItem
@@ -2036,10 +1932,12 @@ export function SceneEditorShell({
                     {reviewIssueCount ? <AppIcon aria-hidden="true" name="circle-alert" /> : null}
                     <span>
                       {reviewIssueCount
-                        ? `Fix ${reviewIssueCount === 1 ? "the issue above" : `the ${reviewIssueCount} issues above`} before ${isEditMode ? "updating" : "creating"} this scene.`
-                        : tagsLoading
-                          ? "Wait for scene details to finish loading."
-                          : `Ready to ${isEditMode ? "update" : "create"} this scene.`}
+                        ? `Fix ${reviewIssueCount === 1 ? "the issue above" : `the ${reviewIssueCount} issues above`} before ${hasSavedScene ? "updating" : "creating"} this scene.`
+                        : saveNeedsReview
+                          ? "Check My Scenes before saving again. Your draft is still here."
+                          : tagsLoading
+                            ? "Wait for scene details to finish loading."
+                            : `Ready to ${hasSavedScene ? "update" : "create"} this scene.`}
                     </span>
                   </p>
                   <button
@@ -2051,9 +1949,9 @@ export function SceneEditorShell({
                   >
                     <PendingButtonLabel
                       pending={isSubmitting}
-                      pendingLabel={pendingTagAttachment ? "Retrying tag attachment..." : isEditMode ? "Updating scene..." : "Creating scene..."}
+                      pendingLabel={hasSavedScene ? "Updating scene..." : "Creating scene..."}
                     >
-                      {pendingTagAttachment ? "Retry tag attachment" : isEditMode ? "Update scene" : "Create scene"}
+                      {hasSavedScene ? "Update scene" : "Create scene"}
                     </PendingButtonLabel>
                   </button>
                 </div>

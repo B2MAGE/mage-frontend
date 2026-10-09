@@ -1,5 +1,4 @@
 import { EMBEDDED_SHADER_SCENES } from './embeddedShaderScenes'
-import { ADDITIONAL_SHADER_SCENES } from './additionalShaderScenes'
 import { normalizeAudioResponseMode, normalizeAudioResponseConfig } from '@shared/lib'
 
 export type SceneData = Record<string, unknown>
@@ -160,7 +159,7 @@ export const PASS_LABELS: Record<ScenePassId, string> = {
   toonShader: 'Toon',
 }
 
-export const SHADER_SCENES: ShaderSceneOption[] = [...EMBEDDED_SHADER_SCENES, ...ADDITIONAL_SHADER_SCENES]
+export const SHADER_SCENES: ShaderSceneOption[] = [...EMBEDDED_SHADER_SCENES]
 
 export const TONE_MAPPING_OPTIONS: ToneMappingOption[] = [
   {
@@ -646,8 +645,8 @@ export function sanitizeSceneData(sceneData: SceneData): SceneData {
   const normalizedModel = getSceneEditorModel(sceneData)
   let nextSceneData = { ...sceneData }
 
-  // Keep the versioned opt-in through editing and JSON round trips without
-  // rewriting legacy scene payloads that never had this field.
+  // Preserve explicit response choices without adding metadata when Original
+  // is selected by the current document default.
   if (Object.hasOwn(sceneData, 'audioResponse')) {
     nextSceneData.audioResponse = normalizeAudioResponseMode(sceneData.audioResponse)
   }

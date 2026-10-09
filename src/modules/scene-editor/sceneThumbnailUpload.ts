@@ -16,8 +16,11 @@ async function uploadSceneThumbnail(
   authenticatedFetch: AuthenticatedFetch,
   file: File,
   presignPath: string,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   const presignResponse = await authenticatedFetch(presignPath, {
+    signal,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -36,12 +39,14 @@ async function uploadSceneThumbnail(
 
   const presignedUpload =
     (await presignResponse.json()) as PresignedThumbnailUploadResponse;
+  signal?.throwIfAborted();
 
   if (!presignedUpload.objectKey || !presignedUpload.uploadUrl || !presignedUpload.method) {
     throw new Error("Thumbnail upload response was incomplete.");
   }
 
   const uploadResponse = await fetch(presignedUpload.uploadUrl, {
+    signal,
     method: presignedUpload.method,
     headers: presignedUpload.headers,
     body: file,
@@ -51,27 +56,33 @@ async function uploadSceneThumbnail(
     throw new Error("Failed to upload the thumbnail file to storage.");
   }
 
+  signal?.throwIfAborted();
   return presignedUpload.objectKey;
 }
 
 export async function uploadNewSceneThumbnail(
   authenticatedFetch: AuthenticatedFetch,
   file: File,
+  signal?: AbortSignal,
 ) {
-  return uploadSceneThumbnail(authenticatedFetch, file, "/scenes/thumbnail/presign");
+  return uploadSceneThumbnail(authenticatedFetch, file, "/scenes/thumbnail/presign", signal);
 }
 
 export async function replaceSceneThumbnail(
   authenticatedFetch: AuthenticatedFetch,
   sceneId: number,
   file: File,
+  signal?: AbortSignal,
 ) {
   const objectKey = await uploadSceneThumbnail(
     authenticatedFetch,
     file,
     `/scenes/${sceneId}/thumbnail/presign`,
+    signal,
   );
+  signal?.throwIfAborted();
   const finalizeResponse = await authenticatedFetch(`/scenes/${sceneId}/thumbnail/finalize`, {
+    signal,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ objectKey }),
