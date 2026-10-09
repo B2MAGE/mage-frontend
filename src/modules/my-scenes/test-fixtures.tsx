@@ -1,10 +1,11 @@
 import { render } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { AuthProvider, type AuthenticatedUser } from '@auth'
+import { AuthProvider, ProtectedRoute, type AuthenticatedUser } from '@auth'
 import { LoginPage } from '@modules/auth'
 import { SceneDetailPage } from '@modules/scene-detail'
 import { buildAuthenticatedUser, storeAuthenticatedSession } from '@shared/test/auth'
 import { MyScenesPage } from './MyScenesPage'
+import { MyScenesLoadingState } from './ui'
 
 export function buildMyScenesStoredUser(
   overrides: Partial<AuthenticatedUser> = {},
@@ -53,7 +54,14 @@ export function renderMyScenesPage(initialEntries = ['/my-scenes']) {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/my-scenes" element={<MyScenesPage />} />
+          <Route
+            path="/my-scenes"
+            element={
+              <ProtectedRoute loadingFallback={<MyScenesLoadingState />}>
+                <MyScenesPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/scenes/:id" element={<SceneDetailPage />} />
         </Routes>
       </AuthProvider>

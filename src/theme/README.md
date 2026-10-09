@@ -19,8 +19,6 @@ Exports:
 - `isAppThemeId()`
 - `AppThemeDefinition`
 - `AppThemeId`
-- `AppThemeColorScheme`
-- `AppThemePreviewDefinition`
 
 ## Internal Responsibilities
 

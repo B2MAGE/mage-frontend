@@ -5,6 +5,8 @@
 The frontend uses the published `@notrac/mage@1.0.3` package for scene playback and preview.
 The version is pinned exactly because the checked-in patch targets that release.
 Unreleased GitHub engine changes are not included.
+The pinned package with the checked-in patch applied is the sole supported engine contract.
+Older, newer, and unpatched builds are not supported through runtime fallback branches.
 
 App code should not talk to the engine directly. The intended boundary is:
 
@@ -61,7 +63,6 @@ The adapter is doing more than forwarding calls:
 - it keeps engine imports out of route components
 - it isolates engine patch assumptions behind a frontend-owned infrastructure layer
 - it validates scene blobs before loading
-- it applies the current startup workaround for the published engine so scenes do not stall at time `0`
 - it centralizes scene pause/resume behavior so every embedded `MagePlayer` uses the same playback model
 - it bridges local audio loading, clearing, seeking, and volume into a single frontend-safe controller
 - it explicitly loads saved `audioPath` or compatible root-level audio metadata on demand
@@ -264,7 +265,7 @@ does not rewrite shader source or apply additional scene-wide audio transforms.
 
 ## Current Caveats
 
-- The published package types are still incomplete for the runtime behavior the frontend uses. The adapter keeps a small local bridge type for that gap.
+- The published package declarations still omit the runtime `getEngineFields()` shape and do not model the value returned by `loadPreset()`. The adapter keeps those two narrow type corrections local.
 - The engine bundle still emits `eval` warnings during `vite build`. The build succeeds, but those warnings are coming from the published package.
 - The engine bundle is very large and still triggers Vite chunk-size warnings. That does not block builds, but it is a real startup-cost concern.
 - 1.0.3's native controls bootstrap also installs global listeners, editor shortcuts,

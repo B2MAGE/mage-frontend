@@ -1,4 +1,4 @@
-import type { PersistedPassFlag, SceneData, SceneEditorModel, ScenePassId } from './sceneEditor'
+import type { PersistedPassFlag, SceneData, ScenePassId } from './sceneEditor'
 
 export type CreateSceneFormErrors = Partial<
   Record<'description' | 'form' | 'name' | 'newTag' | 'sceneData' | 'tags' | 'thumbnail', string>
@@ -66,8 +66,3 @@ export type SceneEditorSubmissionMode =
       sceneId: number
       type: 'edit'
     }
-
-export type SceneEditorStateBranchUpdater = <K extends keyof SceneEditorModel>(
-  branch: K,
-  recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
-) => void

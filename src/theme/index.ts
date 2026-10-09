@@ -10,8 +10,6 @@ export {
   isAppThemeId,
 } from './themes'
 export type {
-  AppThemeColorScheme,
   AppThemeDefinition,
   AppThemeId,
-  AppThemePreviewDefinition,
 } from './themes'

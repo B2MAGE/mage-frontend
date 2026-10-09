@@ -76,7 +76,6 @@ Exports:
 - `className?`
 - `initialPlayback?`
 - `renderProfile?` (`full` by default; compact artwork and hover previews use `preview`)
-- `log?`
 
 Optional route-level playlist props:
 
@@ -143,7 +142,7 @@ Current route defaults:
 ## Integration Rules
 
 1. Feature modules should import from `@modules/player`, not from `@notrac/mage` or `infrastructure/engineAdapter.ts`.
-2. Treat the engine adapter as infrastructure. Engine patch assumptions, startup workarounds, and browser/runtime quirks stay behind that layer.
+2. Treat the engine adapter as infrastructure. The exact pinned-and-patched engine is the sole supported contract; patch assumptions and browser/runtime quirks stay behind that layer rather than runtime fallbacks for other engine builds.
 3. Full playback surfaces should embed `MagePlayer` and pass raw backend `sceneData` objects as `sceneBlob`. Controls-free previews may use `createMagePlayer()` with an HTML container and `initialSceneBlob` through this public module boundary, must share renderer instances where practical, await asynchronous `loadSceneBlob()`, and dispose their controller when no preview consumers remain. Bind saved IDs at creation/loading; never use the fixture-level transport to bypass permission or recovery.
 4. Route-owned playlist editing UI may keep its own state, but shared playlist types and helpers come from this module.
 

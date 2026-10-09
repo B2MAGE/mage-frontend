@@ -181,7 +181,6 @@ export function useMagePlayerPlaylist({
 
   return {
     clear,
-    activeSelectedTrackId,
     commitPlaylistTracks,
     commitSelectedTrackId,
     commitTrackDuration,

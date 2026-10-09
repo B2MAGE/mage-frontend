@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@auth'
-import { PageFrame, PageHeader, PageSectionNav, PageState } from '@shared/ui'
+import { PageFrame, PageHeader, PageSectionNav } from '@shared/ui'
 import { changePassword } from './password'
 import { saveUserProfile } from './profile'
 import { getSettingsSection, type SettingsSection } from './sections'
@@ -14,21 +14,10 @@ const sectionLinks: Array<{ id: SettingsSection; label: string }> = [
 ]
 
 export function SettingsPage() {
-  const { authenticatedFetch, updateAuthenticatedUser, user } = useAuth()
+  const { authenticatedFetch, updateAuthenticatedUser, user: authenticatedUser } = useAuth()
+  const user = authenticatedUser!
   const location = useLocation()
   const activeSection = getSettingsSection(location.hash)
-
-  if (!user) {
-    return (
-      <PageFrame className="settings-page" width="form">
-        <PageState
-          description="MAGE could not find the signed-in account details needed to render this page."
-          kind="error"
-          title="Unable to open settings"
-        />
-      </PageFrame>
-    )
-  }
 
   return (
     <PageFrame className="settings-page" width="form">

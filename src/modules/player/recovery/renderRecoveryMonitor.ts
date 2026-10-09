@@ -7,7 +7,7 @@ export const RENDER_PROGRESS_TIMEOUT_MS = 10_000
 /** Counts observed foreground time, never the animation's intentionally editable clock. */
 export function monitorSceneRendering(options: {
   canvas: HTMLCanvasElement
-  subscribe?: (listener: (event: RenderLifecycleEvent) => void) => () => void
+  subscribe: (listener: (event: RenderLifecycleEvent) => void) => () => void
   onFailure: (reason: RenderFailure) => void
 }) {
   let disposed = false
@@ -25,7 +25,7 @@ export function monitorSceneRendering(options: {
     options.onFailure(reason)
   }
 
-  unsubscribe = options.subscribe?.((event) => {
+  unsubscribe = options.subscribe((event) => {
     if (disposed) return
     if (event.type === 'error') fail('runtime')
     else {
@@ -47,9 +47,7 @@ export function monitorSceneRendering(options: {
     document.addEventListener('visibilitychange', onVisibilityChange)
   }
 
-  // Older/adapted renderers without a completed-frame signal must not produce
-  // invented timeouts. Context-loss recovery still works for those renderers.
-  timer = options.subscribe && !disposed ? window.setInterval(() => {
+  timer = !disposed ? window.setInterval(() => {
     const now = performance.now()
     const delta = now - previous
     previous = now

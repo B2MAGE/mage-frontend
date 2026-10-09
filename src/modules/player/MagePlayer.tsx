@@ -48,7 +48,6 @@ export type MagePlayerProps = {
   ariaLabel?: string
   className?: string
   initialPlayback?: MagePlayerPlaybackState
-  log?: boolean
   renderProfile?: RenderProfile
   onAudioResponseCapabilitiesChange?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
   onEngineDiagnosticsChange?: (diagnostics: MageEngineDiagnostics | null) => void
@@ -329,7 +328,6 @@ function MagePlayerRenderer({
   ariaLabel = 'MAGE scene preview',
   className,
   initialPlayback = 'playing',
-  log = false,
   renderProfile = 'full',
   onAudioResponseCapabilitiesChange,
   onEngineDiagnosticsChange,
@@ -521,7 +519,7 @@ function MagePlayerRenderer({
       void (async () => {
         try {
           const initialSceneKey = latestSceneKeyRef.current
-          nextPlayer = await createMagePlayer(canvas, { signal: startup.signal, log, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(initialSceneKey === undefined ? {} : { sceneKey: initialSceneKey }) })
+          nextPlayer = await createMagePlayer(canvas, { signal: startup.signal, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(initialSceneKey === undefined ? {} : { sceneKey: initialSceneKey }) })
 
           if (isDisposed) {
             disposePlayer()
@@ -564,7 +562,7 @@ function MagePlayerRenderer({
       diagnosticsCallbackRef.current?.(null)
       disposePlayer()
     }
-  }, [hasScene, log, renderProfile, requestedPlaybackRef])
+  }, [hasScene, renderProfile, requestedPlaybackRef])
 
   useEffect(() => {
     if (availabilityPending) return
@@ -628,10 +626,10 @@ function MagePlayerRenderer({
           }
 
           // Read capabilities only after this exact document has reached this
-          // player. A missing older-engine API must not make playback fail.
+          // player. A runtime failure must not make playback fail.
           let capabilities: MageAudioResponseCapabilities | null = null
           try {
-            capabilities = player.getAudioResponseCapabilities?.() ?? null
+            capabilities = player.getAudioResponseCapabilities()
           } catch {
             capabilities = null
           }

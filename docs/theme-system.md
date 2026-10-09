@@ -41,8 +41,6 @@ Public exports:
 - `isAppThemeId()`
 - `AppThemeDefinition`
 - `AppThemeId`
-- `AppThemeColorScheme`
-- `AppThemePreviewDefinition`
 
 Internal responsibilities:
 

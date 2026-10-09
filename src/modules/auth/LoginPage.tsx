@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AuthPage, AuthPageHeader, PendingButtonLabel } from '@shared/ui'
 import { emailPattern, parseApiError } from '@shared/lib'
 import { FormNotice } from '@shared/ui'
@@ -8,7 +8,6 @@ import { AuthInput } from './AuthInput'
 import './auth.css'
 import { loginWithCredentials } from './client'
 import { useAuth } from './authContext'
-import { AuthFormLoadingState } from './AuthLoadingState'
 import type { AuthenticatedUser } from './types'
 import { DEFAULT_AVATAR_GRADIENT, normalizeAvatarColor } from '@shared/lib/avatarGradient'
 
@@ -77,7 +76,7 @@ function validateLoginForm(values: LoginFormValues): LoginFormErrors {
 }
 
 export function LoginPage() {
-  const { accessToken, completeLoginSession, isAuthenticated, isRestoringSession } = useAuth()
+  const { completeLoginSession } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const loginLocationState = readLoginLocationState(location.state)
@@ -195,14 +194,6 @@ export function LoginPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  if (isAuthenticated) {
-    return <Navigate replace to="/" />
-  }
-
-  if (isRestoringSession && accessToken) {
-    return <AuthFormLoadingState label="Restoring your saved login" />
   }
 
   return (

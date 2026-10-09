@@ -33,13 +33,28 @@ afterEach(() => { vi.restoreAllMocks(); window.localStorage.clear() })
 function draftScene() {
   expect(screen.getByTestId('music-preview')).toBeInTheDocument()
   const currentSection = document.querySelector('[aria-current="step"]')?.getAttribute('aria-label') ?? 'Details'
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+  fireEvent.click(screen.getByLabelText('Confirm', { selector: 'button' }))
   const open = screen.queryByRole('button', { name: 'Show Raw JSON' })
   if (open) fireEvent.click(open)
   const source = JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value) as SceneData
   if (open) fireEvent.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))
-  fireEvent.click(screen.getByRole('button', { name: currentSection }))
+  fireEvent.click(screen.getByLabelText(currentSection, { selector: 'button' }))
   return source
+}
+
+async function renderSavedBeatScene() {
+  storeSceneEditorSession()
+  const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 1.9, mappings: [
+    { target: 'size', source: 'bass-hit', amount: 1.4, attack: 0.23, release: 0.87 },
+  ] }).config
+  const stored = { ...createDefaultSceneData(), audioResponse: 'transient-v1', audioResponseConfig: config }
+  mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
+    ? jsonResponse(buildSceneEditorApiScene({ sceneData: stored, tags: [] })) : undefined)
+  const user = userEvent.setup()
+  renderEditScenePage(undefined, 'mage-pulse')
+  await screen.findByLabelText(/scene name/i)
+  await user.click(screen.getByRole('button', { name: 'Motion' }))
+  return { config, user }
 }
 
 describe('creator music response workflow', () => {
@@ -51,12 +66,13 @@ describe('creator music response workflow', () => {
     await screen.findByLabelText(/scene name/i)
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Motion' }))
-    expect(draftScene()).not.toHaveProperty('audioResponse')
+    const originalDraft = draftScene()
+    expect(originalDraft).not.toHaveProperty('audioResponse')
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('legacy')
     expect(screen.queryByRole('checkbox', { name: 'Version 2 — Selective' })).not.toBeInTheDocument()
     expect(screen.queryByRole('option', { name: 'Automatic beats' })).not.toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Input gain' })).toBeEnabled()
-    const originalInputGain = getSceneEditorModel(draftScene()).intent.minimizing_factor
+    const originalInputGain = getSceneEditorModel(originalDraft).intent.minimizing_factor
     fireEvent.change(screen.getByRole('slider', { name: 'Input gain' }), { target: { value: '0.77' } })
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Animation speed' }), { target: { value: '0.6' } })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'mapped-v1')
@@ -67,12 +83,13 @@ describe('creator music response workflow', () => {
     expect(screen.queryByRole('slider', { name: 'Hit sensitivity' })).not.toBeInTheDocument()
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Amount numeric value' }), { target: { value: '2.4' } })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response style' }), 'flowing')
-    expect(draftScene()).toMatchObject({
+    const editedDraft = draftScene()
+    expect(editedDraft).toMatchObject({
       audioResponse: 'mapped-v1',
       audioResponseConfig: { version: 1, sensitivity: 1.7, mappings: [{ target: 'size', source: 'bass-level', amount: 2.4, attack: 0.2, release: 1 }] },
     })
     expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
-    const edited = draftScene().audioResponseConfig
+    const edited = editedDraft.audioResponseConfig
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Amount numeric value' }), { target: { value: '0' } })
     expect(draftScene().audioResponseConfig).toMatchObject({ mappings: [
       { target: 'size', source: 'bass-level', amount: 0, attack: 0.2, release: 1 },
@@ -83,21 +100,24 @@ describe('creator music response workflow', () => {
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Amount numeric value' }), { target: { value: '2.4' } })
     expect(draftScene().audioResponseConfig).toEqual(edited)
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'legacy')
-    expect(draftScene().audioResponse).toBe('legacy')
-    expect(draftScene().audioResponseConfig).toEqual(edited)
+    const legacyDraft = draftScene()
+    expect(legacyDraft.audioResponse).toBe('legacy')
+    expect(legacyDraft.audioResponseConfig).toEqual(edited)
     expect(screen.getByRole('slider', { name: 'Input gain' })).toBeEnabled()
     expect(screen.getByRole('slider', { name: 'Input gain' })).toHaveValue('0.77')
     fireEvent.change(screen.getByRole('slider', { name: 'Input gain' }), { target: { value: '1.2' } })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'mapped-v1')
-    expect(draftScene().audioResponse).toBe('mapped-v1')
-    expect(draftScene().audioResponseConfig).toEqual(edited)
-    expect(getSceneEditorModel(draftScene()).intent.minimizing_factor).toBe(1.2)
+    const mappedDraft = draftScene()
+    expect(mappedDraft.audioResponse).toBe('mapped-v1')
+    expect(mappedDraft.audioResponseConfig).toEqual(edited)
+    expect(getSceneEditorModel(mappedDraft).intent.minimizing_factor).toBe(1.2)
     await user.click(screen.getByRole('button', { name: 'Reset music settings' }))
-    expect(draftScene()).not.toHaveProperty('audioResponse')
-    expect(draftScene()).not.toHaveProperty('audioResponseConfig')
+    const resetDraft = draftScene()
+    expect(resetDraft).not.toHaveProperty('audioResponse')
+    expect(resetDraft).not.toHaveProperty('audioResponseConfig')
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('legacy')
-    expect(getSceneEditorModel(draftScene()).intent.minimizing_factor).toBe(originalInputGain)
-    expect(getSceneEditorModel(draftScene()).intent.time_multiplier).toBe(0.6)
+    expect(getSceneEditorModel(resetDraft).intent.minimizing_factor).toBe(originalInputGain)
+    expect(getSceneEditorModel(resetDraft).intent.time_multiplier).toBe(0.6)
     expect(screen.getByRole('button', { name: 'Reset music settings' })).toBeDisabled()
   }, 15000)
 
@@ -144,26 +164,18 @@ describe('creator music response workflow', () => {
     expect(screen.getByRole('slider', { name: 'Fade time' })).toHaveValue('0.73')
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Amount numeric value' }), { target: { value: '3' } })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'legacy')
-    expect(draftScene().audioResponse).toBe('legacy')
-    expect(draftScene().audioResponseConfig).toMatchObject({ mappings: [{ ...startingConfig.mappings[0], source: 'mid-hit', amount: 3 }, startingConfig.mappings[1]] })
+    const legacyDraft = draftScene()
+    expect(legacyDraft.audioResponse).toBe('legacy')
+    expect(legacyDraft.audioResponseConfig).toMatchObject({ mappings: [{ ...startingConfig.mappings[0], source: 'mid-hit', amount: 3 }, startingConfig.mappings[1]] })
     await user.click(screen.getByRole('button', { name: 'Reset music settings' }))
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
-    expect(draftScene().audioResponse).toBe('mapped-v1')
-    expect(draftScene().audioResponseConfig).toEqual(readEditableSceneData(stored).audioResponseConfig)
+    const resetDraft = draftScene()
+    expect(resetDraft.audioResponse).toBe('mapped-v1')
+    expect(resetDraft.audioResponseConfig).toEqual(readEditableSceneData(stored).audioResponseConfig)
   }, 15000)
 
-  it('preserves a saved beat response until a deliberate version switch and restores it on reset', async () => {
-    storeSceneEditorSession()
-    const config = normalizeAudioResponseConfig({ version: 1, sensitivity: 1.9, mappings: [
-      { target: 'size', source: 'bass-hit', amount: 1.4, attack: 0.23, release: 0.87 },
-    ] }).config
-    const stored = { ...createDefaultSceneData(), audioResponse: 'transient-v1', audioResponseConfig: config }
-    mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
-      ? jsonResponse(buildSceneEditorApiScene({ sceneData: stored, tags: [] })) : undefined)
-    const user = userEvent.setup()
-    renderEditScenePage(undefined, 'mage-pulse')
-    await screen.findByLabelText(/scene name/i)
-    await user.click(screen.getByRole('button', { name: 'Motion' }))
+  it('preserves a saved beat response until a deliberate version switch', async () => {
+    const { config } = await renderSavedBeatScene()
     expect(draftScene()).toMatchObject({ audioResponse: 'transient-v1', audioResponseConfig: config })
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('transient-v1')
     expect(screen.getByRole('option', { name: 'Saved beat response' })).toBeDisabled()
@@ -171,6 +183,10 @@ describe('creator music response workflow', () => {
     expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()
     expect(screen.queryByRole('slider', { name: 'Amount' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reset music settings' })).toBeDisabled()
+  })
+
+  it('restores a saved beat response after deliberately switching versions', async () => {
+    const { config, user } = await renderSavedBeatScene()
     await user.selectOptions(screen.getByRole('combobox', { name: 'Response mode' }), 'mapped-v1')
     expect(draftScene()).toMatchObject({ audioResponse: 'mapped-v1', audioResponseConfig: config })
     expect(screen.getByRole('spinbutton', { name: 'Amount numeric value' })).toHaveValue(1.4)

@@ -7,8 +7,7 @@
 .my-scenes-page .my-scenes-row:focus-within .my-scenes-row__description { opacity: 1; transform: none; }
 .my-scenes-page__header { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; gap: 28px; }
 .my-scenes-library-shell { position: relative; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
-.my-scenes-state { min-height: 430px; padding: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
-.my-scenes-state-action, .my-scenes-edit-button { display: inline-flex; align-items: center; justify-content: center; }
+.my-scenes-edit-button { display: inline-flex; align-items: center; justify-content: center; }
 .my-scenes-pagination__rows select { margin-left: 7px; }
 .my-scenes-page-number, .my-scenes-page-button { display: inline-flex; align-items: center; justify-content: center; padding: 0 9px; height: 32px; min-width: 32px; }
 
@@ -65,9 +64,6 @@ html[data-theme='mage-pulse'] :is(.my-scenes-page-button, .my-scenes-page-number
 html[data-theme='mage-pulse'] .my-scenes-page-button { cursor: pointer; }
 html[data-theme='mage-pulse'] .my-scenes-page-button:disabled { opacity: .35; cursor: default; }
 html[data-theme='mage-pulse'] .my-scenes-page-number { color: #090a0d; border-color: #f4f5f7; background: #f4f5f7; }
-html[data-theme='mage-pulse'] .my-scenes-state h2 { margin: 0 0 8px; font-size: 25px; letter-spacing: -.025em; }
-html[data-theme='mage-pulse'] .my-scenes-state p { max-width: 430px; margin: 0 0 20px; color: #757b87; font-size: 12px; }
-html[data-theme='mage-pulse'] .my-scenes-state-action { height: 38px; padding: 0 14px; border: 1px solid rgba(255,255,255,.16); border-radius: 9px; background: #f4f5f7; color: #090a0d; cursor: pointer; font-size: 11px; font-weight: 700; }
 @media (max-width: 780px) {
   html[data-theme='mage-pulse'] .my-scenes-page__header { align-items: flex-start; flex-direction: column; }
   html[data-theme='mage-pulse'] .my-scenes-page__summary { padding-bottom: 0; }

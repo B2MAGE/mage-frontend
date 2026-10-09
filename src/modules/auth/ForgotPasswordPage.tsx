@@ -1,12 +1,11 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { AuthPage, AuthPageHeader, FormNotice, PendingButtonLabel } from '@shared/ui'
 import { AuthInput } from './AuthInput'
 import './auth.css'
 import { emailPattern, parseApiError } from '@shared/lib'
 import { requestPasswordReset } from './client'
-import { useAuth } from './authContext'
 
 type ForgotPasswordFormValues = {
   email: string
@@ -56,7 +55,6 @@ function validateForgotPasswordForm(values: ForgotPasswordFormValues): ForgotPas
 }
 
 export function ForgotPasswordPage() {
-  const { isAuthenticated } = useAuth()
   const location = useLocation()
   const forgotPasswordLocationState = readForgotPasswordLocationState(location.state)
   const [values, setValues] = useState<ForgotPasswordFormValues>(() => ({
@@ -70,10 +68,6 @@ export function ForgotPasswordPage() {
 
   const formNoticeId = useId()
   const titleId = 'forgot-password-title'
-
-  if (isAuthenticated) {
-    return <Navigate replace to="/" />
-  }
 
   function handleChange(nextValue: string) {
     setValues({ email: nextValue })

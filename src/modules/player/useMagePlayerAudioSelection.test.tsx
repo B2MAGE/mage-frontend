@@ -19,7 +19,7 @@ function deferred<T>() {
 function buildPlaylist(): ReturnType<typeof useMagePlayerPlaylist> {
   return {
     clear: vi.fn(),
-    activeSelectedTrackId: null, tracks: [], currentTrack: null, currentTrackIndex: 0,
+    tracks: [], currentTrack: null, currentTrackIndex: 0,
     commitPlaylistTracks: vi.fn(), commitSelectedTrackId: vi.fn(), commitTrackDuration: vi.fn(),
   }
 }
@@ -78,7 +78,7 @@ describe('native audio picker scene ownership', () => {
     const view = render(<Picker identity="scene-a" playlist={playlist} />)
     choose()
     const existing = buildMagePlayerTrack({ id: 'existing', name: 'existing.mp3' })
-    const latestPlaylist = { ...playlist, tracks: [existing], currentTrack: existing, activeSelectedTrackId: existing.id }
+    const latestPlaylist = { ...playlist, tracks: [existing], currentTrack: existing }
     act(() => window.dispatchEvent(new Event('focus')))
     view.rerender(<Picker identity="scene-a" playlist={latestPlaylist} />)
     select()

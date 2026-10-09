@@ -40,12 +40,6 @@
   --nav-control-hover-text: #f3fcfa;
   --nav-focus-border: rgba(99, 240, 214, 0.34);
   --nav-focus-ring: 0 0 0 4px rgba(99, 240, 214, 0.12);
-  --nav-avatar-background:
-    linear-gradient(135deg, rgba(126, 200, 255, 0.88), rgba(99, 240, 214, 0.92));
-  --nav-avatar-color: #062125;
-  --nav-avatar-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
-  --nav-avatar-hover-background: var(--nav-avatar-background);
-  --nav-avatar-hover-shadow: var(--nav-avatar-shadow);
   --nav-chevron-color: var(--muted);
   --nav-menu-radius: 24px;
   --nav-menu-border: rgba(255, 255, 255, 0.12);
@@ -94,17 +88,10 @@
     radial-gradient(circle at 80% 22%, rgba(126, 200, 255, 0.24), transparent 34%),
     radial-gradient(circle at 60% 82%, rgba(255, 122, 151, 0.18), transparent 32%),
     linear-gradient(135deg, rgba(8, 18, 21, 0.98), rgba(4, 10, 12, 1));
-  --card-avatar-border: rgba(99, 240, 214, 0.2);
-  --card-avatar-background:
-    radial-gradient(circle at top left, rgba(99, 240, 214, 0.28), transparent 58%),
-    rgba(13, 24, 28, 0.94);
-  --card-avatar-color: #dffefa;
-  --card-avatar-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   --card-title-color: var(--text);
   --card-title-hover-color: var(--accent);
   --card-meta-color: rgba(187, 201, 196, 0.84);
   --card-meta-hover-color: rgba(213, 228, 223, 0.94);
-  --table-heading-color: rgba(171, 189, 184, 0.78);
   --table-sort-active-color: #dffefa;
   --table-sort-hover-color: #efffff;
   --table-sort-indicator-color: rgba(171, 189, 184, 0.72);
@@ -118,7 +105,6 @@
   --table-thumbnail-fallback-background: var(--card-thumbnail-placeholder-background);
   --table-title-hover-color: var(--accent);
   --table-description-color: var(--muted);
-  --table-description-hover-color: #d7e8e3;
   --table-status-radius: 999px;
   --table-status-border: rgba(99, 240, 214, 0.16);
   --table-status-background: rgba(99, 240, 214, 0.08);
@@ -191,7 +177,6 @@
   --player-overlay-text: var(--text);
   --player-overlay-muted: var(--muted);
 
-  --editor-surface-radius: 32px;
   --editor-surface-background: var(--panel);
   --editor-surface-border: var(--surface-border, var(--border));
   --editor-surface-shadow: var(--surface-shadow);
@@ -241,8 +226,6 @@
   --editor-range-thumb-background: var(--accent);
   --editor-range-thumb-shadow: 0 0 0 4px rgba(99, 240, 214, 0.16);
   --editor-action-bar-border: var(--surface-soft-border);
-  --editor-action-bar-background: var(--bg-soft);
-  --editor-action-bar-shadow: none;
   --editor-dropdown-radius: 18px;
   --editor-dropdown-border: rgba(255, 255, 255, 0.08);
   --editor-dropdown-background: rgba(9, 20, 24, 0.92);
@@ -261,15 +244,6 @@
   --editor-dropdown-create-hover-border: rgba(99, 240, 214, 0.46);
   --editor-dropdown-create-hover-background:
     linear-gradient(135deg, rgba(24, 79, 73, 0.84), rgba(14, 32, 36, 0.98));
-  --editor-choice-radius: 18px;
-  --editor-choice-border: rgba(255, 255, 255, 0.18);
-  --editor-choice-background: rgba(255, 255, 255, 0.03);
-  --editor-choice-hover-border: rgba(99, 240, 214, 0.34);
-  --editor-choice-hover-background: rgba(255, 255, 255, 0.05);
-  --editor-choice-hover-shadow: 0 0 0 1px rgba(99, 240, 214, 0.12);
-  --editor-choice-selected-border: rgba(99, 240, 214, 0.42);
-  --editor-choice-selected-background: rgba(17, 58, 53, 0.42);
-  --editor-choice-selected-shadow: 0 0 0 4px rgba(99, 240, 214, 0.08);
 
   /* Shared page and component primitives. */
   --ui-page-max-width: 1440px;
@@ -345,11 +319,6 @@
   --nav-control-hover-text: #ffffff;
   --nav-focus-border: #ffffff;
   --nav-focus-ring: 0 0 0 2px rgba(255, 255, 255, 0.22);
-  --nav-avatar-background: #d8dfea;
-  --nav-avatar-color: #3b5998;
-  --nav-avatar-shadow: none;
-  --nav-avatar-hover-background: #eef2f7;
-  --nav-avatar-hover-shadow: 0 0 0 2px rgba(255, 255, 255, 0.24);
   --nav-chevron-color: #d8dfea;
   --nav-menu-radius: 0;
   --nav-menu-border: #bcc7d8;
@@ -395,15 +364,10 @@
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Crect x='10' y='10' width='220' height='160' rx='18' ry='18' fill='%23f6f8fb' stroke='%2397a4b8' stroke-width='5'/%3E%3Ccircle cx='182' cy='54' r='20' fill='%23b5bfce'/%3E%3Cpolygon points='28,154 88,70 150,154' fill='%239da7b4'/%3E%3Cpolygon points='104,154 146,96 190,154' fill='%23b2bccb'/%3E%3C/svg%3E")
       center / 80% no-repeat,
     linear-gradient(180deg, #f8f9fb, #eef2f7);
-  --card-avatar-border: #bcc7d8;
-  --card-avatar-background: #d8dfea;
-  --card-avatar-color: #3b5998;
-  --card-avatar-shadow: none;
   --card-title-color: #3b5998;
   --card-title-hover-color: #2d4373;
   --card-meta-color: #7b8cad;
   --card-meta-hover-color: #596b93;
-  --table-heading-color: #6076a8;
   --table-sort-active-color: #2d4373;
   --table-sort-hover-color: #2d4373;
   --table-sort-indicator-color: #7a8eb6;
@@ -417,7 +381,6 @@
   --table-thumbnail-fallback-background: var(--card-thumbnail-placeholder-background);
   --table-title-hover-color: #2d4373;
   --table-description-color: #596b93;
-  --table-description-hover-color: #2d4373;
   --table-status-radius: 2px;
   --table-status-border: #a8b8d9;
   --table-status-background: #e9eff8;
@@ -485,7 +448,6 @@
   --player-overlay-text: #ffffff;
   --player-overlay-muted: #ffffff;
 
-  --editor-surface-radius: 4px;
   --editor-surface-background: #ffffff;
   --editor-surface-border: #bcc7d8;
   --editor-surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
@@ -530,8 +492,6 @@
   --editor-range-thumb-background: #3b5998;
   --editor-range-thumb-shadow: 0 0 0 4px rgba(59, 89, 152, 0.14);
   --editor-action-bar-border: #bcc7d8;
-  --editor-action-bar-background: #f7f8fb;
-  --editor-action-bar-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   --editor-dropdown-radius: 2px;
   --editor-dropdown-border: #bcc7d8;
   --editor-dropdown-background: #ffffff;
@@ -548,15 +508,6 @@
   --editor-dropdown-create-text: #2d4373;
   --editor-dropdown-create-hover-border: #98abd3;
   --editor-dropdown-create-hover-background: #dde6f5;
-  --editor-choice-radius: 4px;
-  --editor-choice-border: #c7d2e5;
-  --editor-choice-background: #f7f8fb;
-  --editor-choice-hover-border: #98abd3;
-  --editor-choice-hover-background: #f1f4f9;
-  --editor-choice-hover-shadow: none;
-  --editor-choice-selected-border: #5b74a8;
-  --editor-choice-selected-background: #e9eff8;
-  --editor-choice-selected-shadow: inset 0 0 0 1px #a8b8d9;
   --ui-border-strong: #9aabc5;
   --ui-border-hover: #6d84b4;
   --ui-focus-color: #3b5998;

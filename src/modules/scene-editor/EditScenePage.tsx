@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '@auth'
 import { hasSceneDocumentMarkers, parseSceneDocument } from '@modules/player'
 import { normalizeSceneAvailability, normalizeSceneListItem, parseApiError, type SceneListResponse } from '@shared/lib'
@@ -55,7 +55,8 @@ function normalizeSceneTagNames(payload: unknown) {
 }
 
 export function EditScenePage() {
-  const { authenticatedFetch, isAuthenticated, isRestoringSession, user } = useAuth()
+  const { authenticatedFetch, user: authenticatedUser } = useAuth()
+  const user = authenticatedUser!
   const navigate = useNavigate()
   const { id } = useParams()
   const sceneId = readSceneIdParam(id)
@@ -64,7 +65,7 @@ export function EditScenePage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (isRestoringSession || !isAuthenticated || sceneId === null) {
+    if (sceneId === null) {
       return
     }
 
@@ -92,7 +93,7 @@ export function EditScenePage() {
         }
 
         if (
-          typeof user?.userId !== 'number' ||
+          typeof user.userId !== 'number' ||
           normalizedScene.ownerUserId !== user.userId
         ) {
           throw new Error('You can only edit scenes created by your account.')
@@ -164,15 +165,7 @@ export function EditScenePage() {
     return () => {
       isCurrent = false
     }
-  }, [authenticatedFetch, isAuthenticated, isRestoringSession, sceneId, user?.userId])
-
-  if (isRestoringSession) {
-    return <SceneEditorLoadingState label="Restoring your session before loading the scene editor" />
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate replace to="/login" />
-  }
+  }, [authenticatedFetch, sceneId, user.userId])
 
   if (sceneId === null) {
     return (
@@ -183,7 +176,7 @@ export function EditScenePage() {
     )
   }
 
-  if (isLoading || (scene && (scene.sceneId !== sceneId || scene.ownerUserId !== user?.userId))) {
+  if (isLoading || (scene && (scene.sceneId !== sceneId || scene.ownerUserId !== user.userId))) {
     return <SceneEditorLoadingState />
   }
 
