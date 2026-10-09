@@ -22,10 +22,12 @@ describe('versioned scene playlist tracks', () => {
     expect(getter).not.toHaveBeenCalled()
   })
 
-  it('preserves saved audio in the explicit custom envelope', () => {
+  it('reads saved audio only from a current custom envelope', () => {
     const source = { visualizer: { shader: 'custom' }, audioPath: '/music/saved.mp3' }
     expect(buildScenePlaylistTrack({ schemaVersion: 1, kind: 'custom', scene: source }))
-      .toEqual(buildScenePlaylistTrack(source))
+      .toEqual({ duration: null, id: 'scene:/music/saved.mp3', name: 'saved.mp3',
+        sourcePath: '/music/saved.mp3', sourceType: 'scene' })
+    expect(buildScenePlaylistTrack(source)).toBeNull()
     expect(buildScenePlaylistTrack({ schemaVersion: 2, kind: 'custom', scene: source })).toBeNull()
   })
 })
