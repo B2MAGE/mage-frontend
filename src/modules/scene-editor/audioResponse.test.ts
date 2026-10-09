@@ -37,18 +37,23 @@ describe('scene audio response persistence', () => {
     },
   )
 
-  it('does not add audio response metadata to older or default scenes', () => {
-    const legacyScene = createDefaultSceneData()
-    expect(sanitizeSceneData(legacyScene)).not.toHaveProperty('audioResponse')
-    expect(parseSceneDataJson(prettyPrintEditorSceneData(legacyScene))).not.toHaveProperty('audioResponse')
+  it('keeps Original implicit when a current scene omits audio response metadata', () => {
+    const defaultScene = createDefaultSceneData()
+    expect(sanitizeSceneData(defaultScene)).not.toHaveProperty('audioResponse')
+    expect(parseSceneDataJson(prettyPrintEditorSceneData(defaultScene))).not.toHaveProperty('audioResponse')
   })
 
-  it.each([null, 1, true, 'transient-v2', ''])('treats unsupported mode %s as legacy', (audioResponse) => {
+  it.each([null, 1, true, 'transient-v1', 'transient-v2', ''])('rejects unsupported mode %s without changing it', (audioResponse) => {
     const scene: SceneData = { ...createDefaultSceneData(), audioResponse }
-    expect(sanitizeSceneData(scene).audioResponse).toBe('legacy')
+    expect(() => sanitizeSceneData(scene)).toThrow('Unsupported music response version.')
+    const imported = validateForm('Unsupported response', JSON.stringify({ schemaVersion: 1, kind: 'custom', scene }))
+    expect(imported.errors.sceneData).toBeTruthy()
+    expect(imported.parsedSceneData).toBeNull()
+    expect(() => buildEffectiveSceneData(scene)).toThrow()
+    expect(scene.audioResponse).toBe(audioResponse)
   })
 
-  it('keeps the response mode in repair data while rejecting retired metadata instead of deleting it', () => {
+  it('keeps the response mode in draft exports while rejecting retired metadata instead of deleting it', () => {
     const original = {
       ...createDefaultSceneData(),
       audioResponse: 'legacy',
