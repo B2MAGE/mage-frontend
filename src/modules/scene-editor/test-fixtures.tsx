@@ -1,3 +1,5 @@
+import { editorSceneDocument } from './utils'
+import type { SceneData } from './sceneEditor'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -152,7 +154,7 @@ export function buildSceneEditorApiScene(
 ) {
   const sceneId = typeof overrides.sceneId === 'number' ? overrides.sceneId : 12
 
-  return {
+  const scene = {
     createdAt: '2026-04-06T14:00:00Z',
     creatorDisplayName: 'Scene Artist',
     description: 'Soft teal bloom with low-end drift.',
@@ -181,6 +183,7 @@ export function buildSceneEditorApiScene(
     thumbnailRef: `thumbnails/scene-${sceneId}.png`,
     ...overrides,
   }
+  return { ...scene, sceneData: editorSceneDocument(scene.sceneData as SceneData) }
 }
 
 export function renderEditScenePage(initialEntries = ['/scenes/12/edit'], themeId: AppThemeId = 'classic-facebook') {

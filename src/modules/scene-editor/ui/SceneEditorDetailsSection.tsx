@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, 
 import { createPortal } from 'react-dom'
 import type { TagResponse } from '@shared/lib'
 import { AppIcon, LoadingRegion, PendingButtonLabel, Skeleton } from '@shared/ui'
-import type { CreateSceneFormErrors, PendingTagAttachment } from '../types'
+import type { CreateSceneFormErrors } from '../types'
 import { FieldGroupLabel } from './SceneEditorLayout'
 import { SceneSection } from './SceneEditorControls'
 
@@ -20,9 +20,6 @@ type SceneEditorDetailsSectionProps = {
   isTagDropdownOpen: boolean
   name: string
   normalizedTagSearchValue: string
-  pendingRetryTags: TagResponse[]
-  pendingTagAttachment: PendingTagAttachment | null
-  playlistValue: string
   selectableTags: TagResponse[]
   selectedTags: TagResponse[]
   tagDropdownRef: RefObject<HTMLDivElement | null>
@@ -35,7 +32,6 @@ type SceneEditorDetailsSectionProps = {
   onDescriptionChange: (description: string) => void
   onNameChange: (name: string) => void
   onOpenTagDropdown: () => void
-  onPlaylistValueChange: (playlistValue: string) => void
   onReloadAvailableTags: () => Promise<void>
   onTagSearchChange: (tagSearchValue: string) => void
   onThumbnailCaptureRequest: () => void
@@ -172,8 +168,6 @@ function TagEditor({
   isExactMatchedTagSelected,
   isTagDropdownOpen,
   normalizedTagSearchValue,
-  pendingRetryTags,
-  pendingTagAttachment,
   selectableTags,
   selectedTags,
   tagDropdownRef,
@@ -260,9 +254,7 @@ function TagEditor({
             meta={`${selectedTags.length} selected`}
             metaLive="polite"
           />
-          {pendingTagAttachment ? (
-            <span className="field-hint">Retry mode for scene #{pendingTagAttachment.sceneId}</span>
-          ) : null}
+
         </div>
 
         <p className="field-hint">Search existing tags. If there is no exact match, add it before saving.</p>
@@ -297,7 +289,7 @@ function TagEditor({
                   aria-describedby={errors.newTag ? 'tag-editor-error' : undefined}
                   aria-expanded={isTagDropdownOpen}
                   aria-invalid={Boolean(errors.newTag)}
-                  disabled={Boolean(pendingTagAttachment) || isCreatingTag}
+                  disabled={isCreatingTag}
                   id={tagSearchInputId}
                   onChange={(event) => onTagSearchChange(event.currentTarget.value)}
                   onClick={onOpenTagDropdown}
@@ -392,7 +384,6 @@ function TagEditor({
                 aria-label={`Remove ${tag.name}`}
                 key={tag.tagId}
                 className="tag-pill tag-pill--active"
-                disabled={Boolean(pendingTagAttachment)}
                 onClick={() => onToggleTagSelection(tag.tagId)}
                 type="button"
               >
@@ -409,11 +400,7 @@ function TagEditor({
           <p className="field-error" id="tag-editor-error" role="alert">{errors.newTag}</p>
         ) : null}
         {errors.tags ? <p className="field-error" role="alert">{errors.tags}</p> : null}
-        {pendingRetryTags.length > 0 ? (
-          <p className="field-hint">
-            Waiting to retry attachment for: <strong>{pendingRetryTags.map((tag) => tag.name).join(', ')}</strong>
-          </p>
-        ) : null}
+
       </div>
     </div>
   )
@@ -433,23 +420,7 @@ export function SceneEditorDetailsSection(props: SceneEditorDetailsSectionProps)
             errors={props.errors}
             onDescriptionChange={props.onDescriptionChange}
           />
-          <div className="field-group scene-editor-details__field-row">
-            <FieldGroupLabel htmlFor="playlists" label="Playlists" meta="Unavailable" />
-            <select
-              aria-describedby="scene-playlist-unavailable"
-              className="mage-select"
-              disabled
-              id="playlists"
-              onChange={(event) => props.onPlaylistValueChange(event.currentTarget.value)}
-              value={props.playlistValue}
-            >
-              <option value="">Playlists coming soon</option>
-            </select>
-            <p className="field-hint scene-editor-details__status-note" id="scene-playlist-unavailable">
-              <span aria-hidden="true" className="scene-editor-details__status-dot" />
-              <span>Saved playlists are not available yet. You can add local audio in the live preview.</span>
-            </p>
-          </div>
+
         </DetailsGroup>
 
         <DetailsGroup id="scene-thumbnail-heading" label="Thumbnail">

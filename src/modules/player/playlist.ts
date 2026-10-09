@@ -1,5 +1,5 @@
 import type { MageSceneBlob } from './infrastructure/engineAdapter'
-import { hasSceneDocumentMarkers, parseSceneDocument } from './templates/sceneContract'
+import { parseSceneDocument } from './templates/sceneContract'
 
 export type MagePlayerPlaylistTrack = {
   album?: string
@@ -26,40 +26,16 @@ function readAudioSource(sceneBlob: MageSceneBlob | null | undefined) {
     return null
   }
 
-  // Playlist discovery runs before the engine effect. Validate envelopes here
-  // too, so forbidden template audio fields cannot be read or loaded early.
-  if (hasSceneDocumentMarkers(sceneBlob)) {
-    try {
-      const document = parseSceneDocument(sceneBlob)
-      if (document.kind !== 'custom') return null
-      sceneBlob = document.scene
-    } catch {
-      return null
-    }
+  // Saved audio is read only from a current custom document. Device tracks are
+  // managed separately and retain their normal local-preview lifecycle.
+  try {
+    const document = parseSceneDocument(sceneBlob)
+    if (document.kind !== 'custom') return null
+    const audioPath = document.scene.audioPath
+    return typeof audioPath === 'string' && audioPath.trim() ? audioPath.trim() : null
+  } catch {
+    return null
   }
-
-  const audioPath = sceneBlob.audioPath
-
-  if (typeof audioPath === 'string' && audioPath.trim()) {
-    return audioPath.trim()
-  }
-
-  const audio = sceneBlob.audio
-
-  if (typeof audio === 'string' && audio.trim()) {
-    return audio.trim()
-  }
-
-  if (audio && typeof audio === 'object') {
-    const audioRecord = audio as Record<string, unknown>
-    const audioSource = audioRecord.path ?? audioRecord.url
-
-    if (typeof audioSource === 'string' && audioSource.trim()) {
-      return audioSource.trim()
-    }
-  }
-
-  return null
 }
 
 export function formatPlaylistTrackName(sourcePath: string) {

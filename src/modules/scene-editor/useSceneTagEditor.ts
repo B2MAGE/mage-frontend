@@ -2,14 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState, type Dispatch, type SetSta
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError, type TagResponse } from '@shared/lib'
 import { MAX_TAG_NAME_LENGTH } from './fixtures'
-import type { CreateSceneFormErrors, PendingTagAttachment } from './types'
+import type { CreateSceneFormErrors } from './types'
 import { loadAvailableTagsFromBackend, normalizeTagName, sortTags, upsertTag } from './utils'
 
 type UseSceneTagEditorArgs = {
   authenticatedFetch: AuthenticatedFetch
   clearErrors: (...fields: Array<keyof CreateSceneFormErrors>) => void
   initialSelectedTagNames?: string[]
-  pendingTagAttachment: PendingTagAttachment | null
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
 }
 
@@ -17,7 +16,6 @@ export function useSceneTagEditor({
   authenticatedFetch,
   clearErrors,
   initialSelectedTagNames = [],
-  pendingTagAttachment,
   setErrors,
 }: UseSceneTagEditorArgs) {
   const [availableTags, setAvailableTags] = useState<TagResponse[]>([])
@@ -57,13 +55,6 @@ export function useSceneTagEditor({
     exactMatchedTag !== null && selectedTagIds.includes(exactMatchedTag.tagId)
   const canCreateTagFromSearch =
     normalizedTagSearchValue.length > 0 && exactMatchedTag === null
-  const pendingRetryTags = useMemo(
-    () =>
-      pendingTagAttachment === null
-        ? []
-        : availableTags.filter((tag) => pendingTagAttachment.tagIds.includes(tag.tagId)),
-    [availableTags, pendingTagAttachment],
-  )
 
   useEffect(() => {
     let isCurrent = true
@@ -142,13 +133,6 @@ export function useSceneTagEditor({
     }
   }, [isTagDropdownOpen])
 
-  useEffect(() => {
-    if (!isTagDropdownOpen || !pendingTagAttachment) {
-      return
-    }
-
-    setIsTagDropdownOpen(false)
-  }, [isTagDropdownOpen, pendingTagAttachment])
 
   async function reloadAvailableTags() {
     setTagsLoading(true)
@@ -170,7 +154,7 @@ export function useSceneTagEditor({
   }
 
   function openTagDropdown() {
-    if (pendingTagAttachment || tagsLoading || isCreatingTag) {
+    if (tagsLoading || isCreatingTag) {
       return
     }
 
@@ -185,7 +169,7 @@ export function useSceneTagEditor({
   }
 
   function toggleTagSelection(tagId: number) {
-    if (pendingTagAttachment || isCreatingTag) {
+    if (isCreatingTag) {
       return
     }
 
@@ -200,7 +184,7 @@ export function useSceneTagEditor({
   }
 
   async function handleCreateTag(requestedTagName = tagSearchValue) {
-    if (pendingTagAttachment || isCreatingTag) {
+    if (isCreatingTag) {
       return
     }
 
@@ -322,7 +306,6 @@ export function useSceneTagEditor({
     isTagDropdownOpen,
     normalizedTagSearchValue,
     openTagDropdown,
-    pendingRetryTags,
     reloadAvailableTags,
     selectableTags,
     selectedTagIds,

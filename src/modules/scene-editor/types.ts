@@ -15,16 +15,6 @@ export type EditorSectionId =
 
 export type EffectCategoryId = 'color' | 'finish' | 'pattern' | 'trail'
 
-export type PendingTagAttachment = {
-  sceneId: number
-  tagIds: number[]
-}
-
-export type TagAttachmentFailure = {
-  tagId: number
-  tagName: string
-}
-
 export type AdditionalPassConfig = {
   category: EffectCategoryId
   description: string
@@ -41,7 +31,6 @@ export type SceneEditorStateSnapshot = {
   availableTags: Array<{ tagId: number; name: string }>
   description: string
   name: string
-  pendingTagAttachment: PendingTagAttachment | null
   sceneData: SceneData
   sceneDataText: string
   selectedTagIds: number[]

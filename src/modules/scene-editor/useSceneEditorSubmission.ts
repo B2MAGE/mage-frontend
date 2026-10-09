@@ -1,16 +1,10 @@
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import { useLayoutEffect, useRef, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
 import { assertSceneRequestBudget } from '@modules/player'
 import { replaceSceneThumbnail, uploadNewSceneThumbnail } from './sceneThumbnailUpload'
-import type {
-  CreateSceneFormErrors,
-  PendingTagAttachment,
-  SceneEditorSubmissionMode,
-  SceneEditorStateSnapshot,
-  TagAttachmentFailure,
-} from './types'
-import { buildSceneSubmissionDocument, parseCreatedSceneId, validateForm } from './utils'
+import type { CreateSceneFormErrors, SceneEditorSubmissionMode, SceneEditorStateSnapshot } from './types'
+import { buildSceneSubmissionDocument, validateForm } from './utils'
 import { describeSceneValidationError, sceneSubmissionErrors } from './sceneValidation'
 
 function serializeSceneRequest(value: Record<string, unknown>) {
@@ -25,344 +19,79 @@ type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   onComplete: () => void
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
   setIsSubmitting: Dispatch<SetStateAction<boolean>>
-  setPendingTagAttachment: Dispatch<SetStateAction<PendingTagAttachment | null>>
 }
 
-async function attachTagsToScene(
-  authenticatedFetch: AuthenticatedFetch,
-  availableTags: Array<{ tagId: number; name: string }>,
-  sceneId: number,
-  tagIds: number[],
-) {
-  const failures: TagAttachmentFailure[] = []
+/** Each attempt saves one immutable draft. Edits and disposal cancel its side effects. */
+export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailIfMissing,
+  description, mode, name, onComplete, sceneData, sceneDataText, selectedTagIds,
+  setErrors, setIsSubmitting, tagsError, tagsLoading, thumbnailFile }: UseSceneEditorSubmissionArgs) {
+  const draftKey = JSON.stringify([mode, name, description, sceneDataText, selectedTagIds])
+  const active = useRef<AbortController | null>(null)
+  useLayoutEffect(() => {
+    setIsSubmitting(false)
+    return () => { active.current?.abort(); active.current = null }
+  }, [draftKey, setIsSubmitting])
 
-  for (const tagId of tagIds) {
-    const tag = availableTags.find((availableTag) => availableTag.tagId === tagId)
-
-    if (!tag) {
-      failures.push({
-        tagId,
-        tagName: `tag ${tagId}`,
-      })
-      continue
-    }
-
-    try {
-      const response = await authenticatedFetch(`/scenes/${sceneId}/tags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tagId,
-        }),
-      })
-
-      if (response.ok) {
-        continue
-      }
-
-      const apiError = await parseApiError(response)
-
-      if (
-        response.status === 409 &&
-        apiError?.code === 'SCENE_TAG_ALREADY_EXISTS'
-      ) {
-        continue
-      }
-
-      failures.push({
-        tagId,
-        tagName: tag.name,
-      })
-    } catch {
-      failures.push({
-        tagId,
-        tagName: tag.name,
-      })
-    }
-  }
-
-  return failures
-}
-
-async function replaceTagsForScene(
-  authenticatedFetch: AuthenticatedFetch,
-  sceneId: number,
-  tagIds: number[],
-) {
-  const response = await authenticatedFetch(`/scenes/${sceneId}/tags`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tagIds }),
-  })
-
-  if (!response.ok) {
-    const apiError = await parseApiError(response)
-
-    return {
-      details: apiError?.details ?? {},
-      message: apiError?.message ?? 'Failed to update scene tags. Please try again.',
-      ok: false as const,
-    }
-  }
-
-  return {
-    ok: true as const,
-  }
-}
-
-export function useSceneEditorSubmission({
-  authenticatedFetch,
-  availableTags,
-  captureThumbnailIfMissing,
-  description,
-  mode,
-  name,
-  onComplete,
-  pendingTagAttachment,
-  sceneData,
-  sceneDataText,
-  selectedTagIds,
-  setErrors,
-  setIsSubmitting,
-  setPendingTagAttachment,
-  tagsError,
-  tagsLoading,
-  thumbnailFile,
-}: UseSceneEditorSubmissionArgs) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
-    if (mode.type === 'edit') {
-      if (tagsLoading || tagsError) {
-        setErrors({
-          tags:
-            tagsError ??
-            'Wait for tags to finish loading before updating the scene.',
-        })
-        return
-      }
-
-      const trimmedName = name.trim()
-      const trimmedDescription = description.trim()
-      const { errors: nextErrors, parsedSceneData } = validateForm(
-        trimmedName,
-        sceneDataText,
-      )
-
-      if (Object.keys(nextErrors).length > 0) {
-        setErrors(nextErrors)
-        return
-      }
-
-      if (parsedSceneData?.kind === 'template' && sceneData.kind !== 'template') {
-        setErrors({ form: 'Confirm replacing the custom scene with this template, or cancel to keep your custom source.' })
-        return
-      }
-
-      let requestBody: string
-      try {
-        requestBody = serializeSceneRequest({ name: trimmedName, description: trimmedDescription || null,
-          sceneData: buildSceneSubmissionDocument(parsedSceneData ?? sceneData) })
-      } catch (error) {
-        setErrors({ form: describeSceneValidationError(error) })
-        return
-      }
-
-      setIsSubmitting(true)
-      setErrors({})
-
-      try {
-        const response = await authenticatedFetch(`/scenes/${mode.sceneId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: requestBody,
-        })
-
-        if (!response.ok) {
-          const apiError = await parseApiError(response)
-          setErrors(sceneSubmissionErrors(response.status, apiError))
-          return
-        }
-
-        const tagResult = await replaceTagsForScene(
-          authenticatedFetch,
-          mode.sceneId,
-          selectedTagIds,
-        )
-
-        if (!tagResult.ok) {
-          setErrors({
-            tags: tagResult.details.tagIds,
-            form: tagResult.message,
-          })
-          return
-        }
-
-        if (thumbnailFile) {
-          await replaceSceneThumbnail(authenticatedFetch, mode.sceneId, thumbnailFile)
-        }
-
-        onComplete()
-      } catch (error) {
-        setErrors({
-          form:
-            error instanceof Error && error.message.trim()
-              ? error.message
-              : 'Scene update is unavailable right now. Please try again in a moment.',
-        })
-      } finally {
-        setIsSubmitting(false)
-      }
-
+    if (active.current) return
+    if (tagsLoading || tagsError) {
+      setErrors({ tags: tagsError ?? 'Wait for tags to finish loading before saving the scene.' })
       return
     }
-
-    if (pendingTagAttachment) {
-      setIsSubmitting(true)
-      setErrors({})
-
-      try {
-        const attachFailures = await attachTagsToScene(
-          authenticatedFetch,
-          availableTags,
-          pendingTagAttachment.sceneId,
-          pendingTagAttachment.tagIds,
-        )
-
-        if (attachFailures.length > 0) {
-          setPendingTagAttachment({
-            sceneId: pendingTagAttachment.sceneId,
-            tagIds: attachFailures.map((failure) => failure.tagId),
-          })
-          setErrors({
-            form: `Scene created, but we still couldn't attach ${attachFailures
-              .map((failure) => failure.tagName)
-              .join(', ')}. Submit again to retry attachment for the existing scene. Additional editor changes will not be saved in this retry state.`,
-          })
-          return
-        }
-
-        setPendingTagAttachment(null)
-        onComplete()
-      } finally {
-        setIsSubmitting(false)
-      }
-
-      return
-    }
-
-    const trimmedName = name.trim()
-    const trimmedDescription = description.trim()
-    const { errors: nextErrors, parsedSceneData } = validateForm(
-      trimmedName,
-      sceneDataText,
-    )
-
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors)
-      return
-    }
-
+    const { errors, parsedSceneData } = validateForm(name.trim(), sceneDataText)
+    if (Object.keys(errors).length) { setErrors(errors); return }
     if (parsedSceneData?.kind === 'template' && sceneData.kind !== 'template') {
       setErrors({ form: 'Confirm replacing the custom scene with this template, or cancel to keep your custom source.' })
       return
     }
-
-    let sceneRequest: Record<string, unknown>
+    let request: Record<string, unknown>
     try {
-      sceneRequest = { name: trimmedName, ...(trimmedDescription ? { description: trimmedDescription } : {}),
-        sceneData: buildSceneSubmissionDocument(parsedSceneData ?? sceneData) }
-      // Fail before thumbnail capture/upload; check the actual key again below.
-      serializeSceneRequest(sceneRequest)
-    } catch (error) {
-      setErrors({ form: describeSceneValidationError(error) })
-      return
-    }
+      request = { name: name.trim(), description: description.trim() || null,
+        sceneData: buildSceneSubmissionDocument(parsedSceneData ?? sceneData), tagIds: [...selectedTagIds] }
+      serializeSceneRequest(request)
+    } catch (error) { setErrors({ form: describeSceneValidationError(error) }); return }
 
-    let effectiveThumbnailFile = thumbnailFile
-
-    if (!effectiveThumbnailFile) {
-      try {
-        effectiveThumbnailFile = await captureThumbnailIfMissing()
-      } catch (error) {
-        setErrors({
-          thumbnail:
-            error instanceof Error && error.message.trim()
-              ? error.message
-              : 'Capture a thumbnail before creating the scene.',
-        })
-        return
-      }
-    }
-
+    const attempt = new AbortController()
+    active.current = attempt
+    const isCurrent = () => active.current === attempt && !attempt.signal.aborted
     setIsSubmitting(true)
     setErrors({})
-
     try {
-      const thumbnailObjectKey =
-        effectiveThumbnailFile
-          ? await uploadNewSceneThumbnail(authenticatedFetch, effectiveThumbnailFile)
-          : undefined
-
-      const response = await authenticatedFetch('/scenes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: serializeSceneRequest({ ...sceneRequest, ...(thumbnailObjectKey ? { thumbnailObjectKey } : {}) }),
-      })
-
-      if (!response.ok) {
-        const apiError = await parseApiError(response)
-        setErrors(sceneSubmissionErrors(response.status, apiError))
-        return
-      }
-
-      const createdScenePayload = (await response.json().catch(() => null)) as
-        | unknown
-        | null
-      const sceneId = parseCreatedSceneId(createdScenePayload)
-
-      if (sceneId === null) {
-        setErrors({
-          form:
-            'Scene was created, but the response did not include the new scene id for tag attachment.',
-        })
-        return
-      }
-
-      if (selectedTagIds.length > 0) {
-        const attachFailures = await attachTagsToScene(
-          authenticatedFetch,
-          availableTags,
-          sceneId,
-          selectedTagIds,
-        )
-
-        if (attachFailures.length > 0) {
-          setPendingTagAttachment({
-            sceneId,
-            tagIds: attachFailures.map((failure) => failure.tagId),
-          })
-          setErrors({
-            form: `Scene created, but we couldn't attach ${attachFailures
-              .map((failure) => failure.tagName)
-              .join(', ')}. Submit again to retry attachment for the existing scene. Additional editor changes will not be saved in this retry state.`,
-          })
-          return
+      if (mode.type === 'create') {
+        let file = thumbnailFile
+        if (!file) {
+          try { file = await captureThumbnailIfMissing() }
+          catch (error) {
+            if (isCurrent()) setErrors({ thumbnail: describeSceneValidationError(error) })
+            return
+          }
         }
+        if (!isCurrent()) return
+        const objectKey = await uploadNewSceneThumbnail(authenticatedFetch, file, attempt.signal)
+        if (!isCurrent()) return
+        request = { ...request, thumbnailObjectKey: objectKey }
       }
-
+      const response = await authenticatedFetch(mode.type === 'edit' ? `/scenes/${mode.sceneId}` : '/scenes', {
+        method: mode.type === 'edit' ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+        body: serializeSceneRequest(request), signal: attempt.signal,
+      })
+      if (!isCurrent()) return
+      if (!response.ok) {
+        const error = await parseApiError(response)
+        if (isCurrent()) setErrors(sceneSubmissionErrors(response.status, error))
+        return
+      }
+      if (mode.type === 'edit' && thumbnailFile) {
+        await replaceSceneThumbnail(authenticatedFetch, mode.sceneId, thumbnailFile, attempt.signal)
+        if (!isCurrent()) return
+      }
       onComplete()
     } catch (error) {
-      setErrors({
-        form:
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : 'Scene creation is unavailable right now. Please try again in a moment.',
-      })
+      if (isCurrent()) setErrors({ form: describeSceneValidationError(error) })
     } finally {
-      setIsSubmitting(false)
+      if (isCurrent()) { active.current = null; setIsSubmitting(false) }
     }
   }
-
   return { handleSubmit }
 }

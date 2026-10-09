@@ -6,7 +6,7 @@ import { useSceneEditorState } from './useSceneEditorState'
 import { useSceneEditorPreview } from './useSceneEditorPreview'
 import type { SceneEditorInitialState } from './types'
 import { createCustomSceneFromTemplate, readTemplateShaderSource } from '@modules/player'
-import { buildSceneSubmissionDocument } from './utils'
+import { buildSceneSubmissionDocument, editorSceneDocument } from './utils'
 
 vi.mock('@shared/lib', async original => ({
   ...await original<typeof import('@shared/lib')>(),
@@ -14,7 +14,7 @@ vi.mock('@shared/lib', async original => ({
 }))
 
 async function state(initialState?: SceneEditorInitialState) {
-  const hook = renderHook(() => useSceneEditorState({ authenticatedFetch: vi.fn(), initialState }))
+  const hook = renderHook(() => useSceneEditorState({ authenticatedFetch: vi.fn(), initialState: initialState?.sceneData ? { ...initialState, sceneData: editorSceneDocument(initialState.sceneData) } : initialState }))
   await waitFor(() => expect(hook.result.current.tagsLoading).toBe(false))
   return hook
 }
@@ -36,7 +36,7 @@ describe('template editor state and preview', () => {
   })
 
   it('converts only a shader change and preserves authored settings and scene details in the custom submission', async () => {
-    const template = createTemplateScene('reaction-rings-v1')
+    const template = createTemplateScene('embedded-scene-0')
     template.parameters = { scale: 42, speed: 2 }
     template.settings.camera.fov = 80
     template.settings.bloom.strength = 1.2
@@ -54,7 +54,7 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     expect(result.current.sceneData).toEqual(custom.scene)
     expect(buildSceneSubmissionDocument(result.current.sceneData)).toEqual(custom)
-    expect(JSON.parse(result.current.sceneDataText)).toEqual(custom.scene)
+    expect(JSON.parse(result.current.sceneDataText)).toEqual(custom)
     expect(result.current.name).toBe('My scene')
     expect(result.current.description).toBe('Keep this')
     expect(result.current.selectedTagIds).toEqual([3])
@@ -213,12 +213,12 @@ describe('template editor state and preview', () => {
 
     // A later explicit custom import establishes its own cancellation baseline.
     act(() => result.current.handleRawSceneDataChange(imported))
-    const replacement = '{ "visualizer": { "shader": "sphere(0.9)" } }'
+    const replacement = '{ "schemaVersion": 1, "kind": "custom", "scene": { "visualizer": { "shader": "sphere(0.9)" } } }'
     act(() => result.current.handleRawSceneDataChange(replacement))
     act(() => result.current.handleRawSceneDataChange(imported))
     act(() => result.current.cancelTemplateImport())
     expect(result.current.sceneDataText).toBe(replacement)
-    expect(result.current.sceneData).toEqual(JSON.parse(replacement))
+    expect(result.current.sceneData).toEqual(JSON.parse(replacement).scene)
   })
 
   it('persists Basic music mappings and resets only saved music settings', async () => {
