@@ -1,5 +1,5 @@
-import engineSource from '@notrac/mage?raw'
-import { describe, expect, it, vi } from 'vitest'
+import { compileShader } from '@notrac/mage/compiler'
+import { describe, expect, it } from 'vitest'
 import { ADDITIONAL_SHADER_SCENES } from './additionalShaderScenes'
 
 function sourceFingerprint(source: string) {
@@ -8,21 +8,6 @@ function sourceFingerprint(source: string) {
     hash = Math.imul(hash ^ source.charCodeAt(index), 16777619) >>> 0
   }
   return `${source.length}:${hash.toString(16)}`
-}
-
-function installedCompiler() {
-  const start = engineSource.indexOf('var require_shader_park_core_umd =')
-  const end = engineSource.indexOf('\n//#endregion', start)
-  if (start < 0 || end <= start) throw new Error('Installed ShaderPark compiler was not found.')
-  type CommonModule = { exports: Record<string, unknown> }
-  const commonJS = (factory: (exports: CommonModule['exports'], module: CommonModule) => void) => () => {
-    const module: CommonModule = { exports: {} }
-    factory(module.exports, module)
-    return module.exports
-  }
-  return new Function('__commonJSMin', 'console', `${engineSource.slice(start, end)}; return require_shader_park_core_umd();`)(commonJS, { log: vi.fn(), warn: vi.fn(), error: vi.fn() }) as {
-    sculptToGLSL: (source: string) => { error?: unknown; geoGLSL: string; colorGLSL: string }
-  }
 }
 
 describe('additional fixed shader presets', () => {
@@ -40,10 +25,8 @@ describe('additional fixed shader presets', () => {
     }
   })
 
-  const compiler = installedCompiler()
   it.each(ADDITIONAL_SHADER_SCENES)('compiles authored geometry for $label', ({ id, shader }) => {
-    const result = compiler.sculptToGLSL(shader)
-    expect(result.error).toBeUndefined()
+    const result = compileShader(shader)
     expect(result.geoGLSL).toContain('surfaceDistance')
     expect(result.geoGLSL).toContain(id === 'reaction-rings-v1' ? '= torus(' : '= cylinder(')
     expect(result.colorGLSL.length).toBeGreaterThan(0)
