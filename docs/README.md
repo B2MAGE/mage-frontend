@@ -13,6 +13,9 @@ README covers setup, scripts, and the high-level project overview.
 
 ## Cross-Cutting Docs
 
+- [auth-verification.md](./auth-verification.md)
+  Real register/login/current-user verification and browser smoke checks.
+
 - [deployment.md](./deployment.md)  
   Supported production deployment strategy, reverse-proxy expectations, and container notes.
 
