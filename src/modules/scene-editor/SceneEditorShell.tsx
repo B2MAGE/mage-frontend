@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
-import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel } from "@shared/ui";
+import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel, usePointerReorder } from "@shared/ui";
 import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
@@ -125,8 +124,6 @@ export function SceneEditorShell({
   const [previewPlaybackStatus, setPreviewPlaybackStatus] = useState<MagePlayerPlaybackStatus>("paused");
   const [isMusicAdvancedOpen, setIsMusicAdvancedOpen] = useState(false);
   const [passOrderAnnouncement, setPassOrderAnnouncement] = useState("");
-  const [draggedPassId, setDraggedPassId] = useState<ScenePassId | null>(null);
-  const [dragOverPassId, setDragOverPassId] = useState<ScenePassId | null>(null);
   const [openReviewSection, setOpenReviewSection] = useState<ReviewSectionId | null>(null);
   const [isBuilderObjectReviewOpen, setIsBuilderObjectReviewOpen] = useState(false);
   const previewHideButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -362,35 +359,15 @@ export function SceneEditorShell({
   const activePassOrder = getActivePassOrder(sceneModel.fx.passOrder, sceneModel.fx);
   const movablePassOrder = activePassOrder.filter((passId) => passId !== "outputPass");
   const enabledOptionalEffects = activePassOrder.filter((passId) => passId !== "outputPass");
-  function passAtPointer(event: ReactPointerEvent<HTMLElement>) {
-    const passId = document.elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>("[data-pass-id]")?.dataset.passId as ScenePassId | undefined;
-    return passId && movablePassOrder.some((movablePassId) => movablePassId === passId) ? passId : null;
-  }
-  function clearPassDrag() {
-    setDraggedPassId(null);
-    setDragOverPassId(null);
-  }
-  function handlePassPointerMove(event: ReactPointerEvent<HTMLElement>) {
-    if (!draggedPassId) return;
-    event.preventDefault();
-    const targetPassId = passAtPointer(event);
-    setDragOverPassId(targetPassId === draggedPassId ? null : targetPassId);
-  }
-  function handlePassPointerUp(event: ReactPointerEvent<HTMLElement>) {
-    if (!draggedPassId) return;
-    const targetPassId = passAtPointer(event);
-    if (targetPassId && targetPassId !== draggedPassId) {
-      movePassTo(draggedPassId, targetPassId);
+  const { listRef: passListRef, draggedId: draggedPassId, overId: dragOverPassId, getHandleProps: getPassHandleProps } = usePointerReorder<ScenePassId>({
+    itemIds: movablePassOrder,
+    onMove: (sourcePassId, targetPassId) => {
+      movePassTo(sourcePassId, targetPassId);
       setPassOrderAnnouncement(
-        `Moved ${PASS_LABELS[draggedPassId]} to position ${movablePassOrder.findIndex((passId) => passId === targetPassId) + 1}.`,
+        `Moved ${PASS_LABELS[sourcePassId]} to position ${movablePassOrder.findIndex(passId => passId === targetPassId) + 1}.`,
       );
-    }
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    clearPassDrag();
-  }
+    },
+  });
   const usesMappedAudio = editorAudioResponseMode === "mapped-v1";
   const usesModernAudio = usesMappedAudio;
   const audioResponseConfig = editorAudioResponseConfig;
@@ -1652,7 +1629,7 @@ export function SceneEditorShell({
                 <FieldValidation id="scene-pass-order">
                   <div className="scene-pass-order__surface" id="scene-pass-order" tabIndex={-1}>
                     {activePassOrder.length ? (
-                      <ol aria-label="Active effect pass order" className="scene-pass-order">
+                      <ol aria-label="Active effect pass order" className="scene-pass-order" ref={passListRef}>
                         {activePassOrder.map((passId, index) => {
                           const isOutputPass = passId === "outputPass";
                           const movableIndex = passId === "outputPass"
@@ -1663,20 +1640,13 @@ export function SceneEditorShell({
                             <li
                               className={`scene-pass-order__item${isOutputPass ? " scene-pass-order__item--pinned" : ""}${draggedPassId === passId ? " scene-pass-order__item--dragging" : ""}${dragOverPassId === passId ? " scene-pass-order__item--drag-target" : ""}`}
                               data-pass-id={passId}
+                              data-reorder-id={passId}
                               key={passId}
                             >
                               <span
                                 aria-label={isOutputPass ? undefined : `Drag ${PASS_LABELS[passId]} to reorder`}
                                 className="scene-pass-order__grip"
-                                onPointerCancel={isOutputPass ? undefined : clearPassDrag}
-                                onPointerDown={isOutputPass ? undefined : (event) => {
-                                  if (event.button !== 0) return;
-                                  event.currentTarget.setPointerCapture(event.pointerId);
-                                  setDraggedPassId(passId);
-                                  setDragOverPassId(null);
-                                }}
-                                onPointerMove={isOutputPass ? undefined : handlePassPointerMove}
-                                onPointerUp={isOutputPass ? undefined : handlePassPointerUp}
+                                {...(isOutputPass ? {} : getPassHandleProps(passId))}
                                 title={isOutputPass ? "Output always stays last" : "Drag to reorder"}
                               >
                                 <AppIcon aria-hidden="true" name="grip-vertical" size={14} />

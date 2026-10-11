@@ -145,7 +145,7 @@ describe('Scene Builder object editor', () => {
     await user.selectOptions(screen.getByLabelText('Shape', { selector: '#builder-add-shape' }), 'box')
     await user.click(screen.getByRole('button', { name: 'Add object' }))
     const objectList = screen.getByRole('group', { name: 'Scene objects' })
-    expect(within(objectList).getAllByRole('button')).toHaveLength(2)
+    expect(within(objectList).getAllByRole('button', { name: /, (Sphere|Box)$/ })).toHaveLength(2)
     await user.click(within(objectList).getByRole('button', { name: /Box 2, Box/ }))
     const name = screen.getByLabelText('Name')
     await user.clear(name)
