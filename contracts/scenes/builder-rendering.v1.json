@@ -1,17 +1,19 @@
 {
   "policyVersion": 1,
-  "description": "Whole-scene compilation limits for Scene Builder version 1. Counts are applied after expansion so future copies, nesting and components cannot bypass the renderer budget.",
+  "description": "Whole-scene compilation limits for Scene Builder version 1, including composition version 1. Counts include arranged copies, object frames, and every group.",
   "limits": {
     "expandedPrimitives": 16,
     "compositionOperations": 15,
-    "transformOperations": 80,
-    "materialOperations": 48,
+    "transformOperations": 200,
+    "materialOperations": 72,
     "modifierOperations": 80,
     "arrangementOperations": 15,
     "animationOperations": 16,
     "liveUniforms": 64,
     "optionalEffects": 4,
-    "generatedSourceBytes": 32768
+    "generatedSourceBytes": 32768,
+    "groups": 8,
+    "groupDepth": 3
   },
   "operationCosts": {
     "sphere": 1,

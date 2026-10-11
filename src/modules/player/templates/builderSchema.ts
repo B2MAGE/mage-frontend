@@ -1,5 +1,6 @@
 import schema from '../../../../contracts/scenes/scene-v1.schema.json'
-import type { JsonRecord, JsonValue, TemplateSceneDocument } from './sceneContract'
+import type { BuilderSceneDocument, JsonRecord, JsonValue, TemplateSceneDocument } from './sceneContract'
+import { validateBuilderComposition } from './builderComposition'
 import { templateOptionalEffectCount } from './templateSettings'
 
 type Rule = {
@@ -102,5 +103,7 @@ export function normalizeBuilderDocument(value: JsonRecord, fail: Fail): JsonRec
     else if (rule.type && !['number', 'integer', 'string', 'boolean'].includes(rule.type)) throw new Error('Unsupported builder schema type.')
     return input
   }
-  return visit(value, schema.$defs.builder as unknown as Rule, 'scene') as JsonRecord
+  const normalized = visit(value, schema.$defs.builder as unknown as Rule, 'scene') as JsonRecord
+  validateBuilderComposition(normalized as BuilderSceneDocument, fail)
+  return normalized
 }

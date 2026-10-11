@@ -74,7 +74,7 @@ test('architecture guard detects runtime imports, evaluation and direct renderer
 
 test('renderer-shared scene definitions only import checked-in contract data at runtime', () => {
   const allowed = new Set(['../../../../contracts/scenes/scene-v1.schema.json', '../../../../contracts/scenes/builder-rendering.v1.json'])
-  for (const file of ['builderDefinitions.ts', 'sceneDefinitions.ts']) {
+  for (const file of ['builderDefinitions.ts', 'builderComposition.ts', 'sceneDefinitions.ts']) {
     const name = `src/modules/player/templates/${file}`
     const source = readFileSync(resolve(root, name), 'utf8')
     const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true)

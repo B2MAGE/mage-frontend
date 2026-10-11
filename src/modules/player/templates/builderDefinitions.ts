@@ -8,6 +8,7 @@ type NumberRule = Readonly<{ minimum: number; maximum: number; default: number }
 type Branch = { properties: Record<string, { const?: string; default?: unknown } | undefined> }
 
 const object = schema.$defs.builder.properties.objects.items.properties
+const group = schema.$defs.builder.properties.composition.properties.groups.items.properties
 
 // These are trusted, checked-in contract branches, not author-supplied handlers.
 function branch(rules: readonly Branch[], type: string) {
@@ -73,10 +74,28 @@ export const BUILDER_LIMITS = {
   modifiers: object.modifiers.maxItems,
   arrangements: object.arrangements.maxItems,
   expandedPrimitives: renderingPolicy.limits.expandedPrimitives,
+  groups: renderingPolicy.limits.groups,
+  groupDepth: renderingPolicy.limits.groupDepth,
 } as const
 
 export const BUILDER_TRANSFORMS = object.transform.properties
 export const BUILDER_MATERIAL = object.material.properties
+export const BUILDER_GROUP_TRANSFORMS = group.transform.properties
+export const BUILDER_GROUP_BLEND = numericField(group.operation.anyOf, 'smooth-union', 'blend')
+export type BuilderGroupTarget = `${'position' | 'rotation'}.${'x' | 'y' | 'z'}` | 'scale' | 'blend'
+  | 'material.metalness' | 'material.shininess'
+export const BUILDER_GROUP_RANGES = {
+  'position.x': BUILDER_GROUP_TRANSFORMS.position.properties.x,
+  'position.y': BUILDER_GROUP_TRANSFORMS.position.properties.y,
+  'position.z': BUILDER_GROUP_TRANSFORMS.position.properties.z,
+  'rotation.x': BUILDER_GROUP_TRANSFORMS.rotation.properties.x,
+  'rotation.y': BUILDER_GROUP_TRANSFORMS.rotation.properties.y,
+  'rotation.z': BUILDER_GROUP_TRANSFORMS.rotation.properties.z,
+  scale: BUILDER_GROUP_TRANSFORMS.scale,
+  blend: BUILDER_GROUP_BLEND,
+  'material.metalness': BUILDER_MATERIAL.metalness,
+  'material.shininess': BUILDER_MATERIAL.shininess,
+} satisfies Record<BuilderGroupTarget, NumberRule>
 
 export const BUILDER_MODIFIERS = {
   expand: { label: 'Expand', amount: numericField(object.modifiers.items.anyOf, 'expand', 'amount') },

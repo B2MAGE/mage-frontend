@@ -9,7 +9,11 @@ the storage-versus-rendering delivery boundary. SB-02 adds the versioned
 `builder-rendering.v1.json` workload policy and trusted compilation inside the
 isolated player. SB-04 adds bounded Expand/Shell/Twist modifiers, nested Line/Ring
 arrangements and per-object spin while applying every rendering budget after
-copy expansion. The same shared schema and
+copy expansion. SB-09 adds the optional composition-version-one forest: ordered
+hard/smooth unions, nested shared transforms, group material overrides, and
+object frames that preserve arranged or animated geometry when ungrouping.
+References must form one bounded forest with no cycles, missing nodes or shared
+ownership. See the Builder format for evaluation order and limits. The same shared schema and
 fixtures cover Builder, template and custom documents; a Builder document is
 never treated as custom source.
 

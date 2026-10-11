@@ -11,7 +11,7 @@ import type { CompilerWorker } from './compiler/client'
 import type { CompileRequest } from './compiler/protocol'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 import { parseSceneDocument, type BuilderSceneDocument } from '../modules/player/templates/sceneContract'
-import { builderUniformName } from '../modules/player/templates/builderCompiler'
+import { compileBuilderPreviewDocument } from '../modules/player/templates/builderCompiler'
 
 type ResponseHarness = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const engineClass = engineSource.slice(engineSource.indexOf('var MAGEEngine = class MAGEEngine {'))
@@ -151,7 +151,7 @@ describe('isolated playback engine', () => {
       bindings: [{ target: 'position.x', source: 'bass-level' }],
     }] }
     const f = fixture(), fields = f.engine.getEngineFields()
-    const uniforms = Object.fromEntries(extractLiveSceneSettings(builder).builderUniforms!.map(value => [builderUniformName(value.objectIndex, value.target), { value: 0 }]))
+    const uniforms = Object.fromEntries(compileBuilderPreviewDocument(parseSceneDocument(builder) as BuilderSceneDocument).uniforms.map(uniform => [uniform.name, { value: 0 }]))
     Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
     f.engine.getEngineFields.mockReturnValue(fields)
     const loading = f.load(builder)
@@ -171,7 +171,7 @@ describe('isolated playback engine', () => {
     const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
       objects: [{ id: 'shape', operation: { type: 'sphere' }, transform: { position: { x: 3 } } }] }) as BuilderSceneDocument
     const f = fixture(), fields = f.engine.getEngineFields()
-    const uniforms = Object.fromEntries(extractLiveSceneSettings(scene).builderUniforms!.map(value => [builderUniformName(value.objectIndex, value.target), { value: 0 }]))
+    const uniforms = Object.fromEntries(compileBuilderPreviewDocument(scene).uniforms.map(uniform => [uniform.name, { value: 0 }]))
     Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
     f.engine.getEngineFields.mockReturnValue(fields)
     const player = await f.ready(scene)
@@ -196,6 +196,45 @@ describe('isolated playback engine', () => {
     expect(() => player.sceneSettings({ ...settings, builderUniforms: settings.builderUniforms!.map(entry => ({ ...entry, objectIndex: 1 })) })).toThrow(/match the loaded/)
     await player.capture({ width: 10, height: 10, quality: 0.9, type: 'image/png' })
     expect(f.engine.captureFramePreview).toHaveBeenCalledOnce()
+    player.dispose()
+  })
+
+  it('updates group transforms and blending atomically without restarting playback', async () => {
+    const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'left', operation: { type: 'sphere' } }, { id: 'right', operation: { type: 'box' } }],
+      composition: { version: 1, roots: ['pair'], groups: [{ id: 'pair', children: ['left', 'right'],
+        operation: { type: 'smooth-union', blend: 0.25 } }] } }) as BuilderSceneDocument
+    const manifest = compileBuilderPreviewDocument(scene).uniforms
+    const f = fixture(), fields = f.engine.getEngineFields()
+    const uniforms = Object.fromEntries(manifest.map(uniform => [uniform.name, { value: 0 }]))
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const player = await f.ready(scene)
+    const groupValue = (target: string) => {
+      const entry = manifest.find(uniform => 'groupIndex' in uniform && uniform.groupIndex === 0 && uniform.target === target)!
+      return uniforms[entry.name].value
+    }
+    expect(groupValue('blend')).toBe(0.25)
+    f.engine.setExternalClock.mockClear(); f.engine.setExternalAudioFrame.mockClear(); f.engine.play.mockClear()
+    const group = scene.composition!.groups[0]
+    group.transform.position.x = 3
+    group.transform.scale = 2
+    group.operation = { type: 'smooth-union', blend: 0 }
+    const settings = extractLiveSceneSettings(scene)
+    player.sceneSettings(settings)
+    expect(groupValue('position.x')).toBe(3)
+    expect(groupValue('scale')).toBe(2)
+    expect(groupValue('blend')).toBe(0)
+    expect(compileInWorker).toHaveBeenCalledOnce()
+    expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce()
+    expect(f.engine.setExternalClock).not.toHaveBeenCalled()
+    expect(f.engine.setExternalAudioFrame).not.toHaveBeenCalled()
+    expect(f.engine.play).not.toHaveBeenCalled()
+    expect(() => player.sceneSettings({ ...settings, intent: { ...settings.intent, fov: 90 },
+      builderUniforms: settings.builderUniforms!.map(entry => 'groupIndex' in entry ? { ...entry, groupIndex: 1 } : entry),
+    })).toThrow(/match the loaded/)
+    expect(groupValue('position.x')).toBe(3)
+    expect(f.engine.updateSettings).not.toHaveBeenCalled()
     player.dispose()
   })
 

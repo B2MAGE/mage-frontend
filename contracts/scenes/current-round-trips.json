@@ -613,6 +613,570 @@
         }
       },
       "valid": false
+    },
+    {
+      "name": "composition-nested-smooth-union-with-outer-material",
+      "valid": true,
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.4
+              },
+              "transform": {
+                "position": {
+                  "x": 2
+                },
+                "rotation": {
+                  "y": 0.5
+                },
+                "scale": 1.5
+              },
+              "material": {
+                "color": "#123456"
+              }
+            },
+            {
+              "id": "outer",
+              "children": [
+                "pair"
+              ],
+              "material": {
+                "color": "#abcdef",
+                "metalness": 0.8
+              }
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.4
+              },
+              "transform": {
+                "position": {
+                  "x": 2,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "y": 0.5,
+                  "x": 0,
+                  "z": 0
+                },
+                "scale": 1.5
+              },
+              "material": {
+                "color": "#123456",
+                "metalness": 0,
+                "shininess": 0.5
+              },
+              "name": "Group"
+            },
+            {
+              "id": "outer",
+              "children": [
+                "pair"
+              ],
+              "material": {
+                "color": "#abcdef",
+                "metalness": 0.8,
+                "shininess": 0.5
+              },
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-preserved-object-frame",
+      "valid": true,
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "frame": {
+              "position": {
+                "y": -2
+              },
+              "rotation": {
+                "z": 0.4
+              },
+              "scale": 2
+            },
+            "arrangements": [
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 3,
+                "radius": 1.5
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.3
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "frame": {
+              "position": {
+                "y": -2,
+                "x": 0,
+                "z": 0
+              },
+              "rotation": {
+                "z": 0.4,
+                "x": 0,
+                "y": 0
+              },
+              "scale": 2
+            },
+            "arrangements": [
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 3,
+                "radius": 1.5
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.3
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-missing-operand",
+      "valid": false,
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "missing"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-excessive-nesting",
+      "valid": false,
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "top"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            },
+            {
+              "id": "middle",
+              "children": [
+                "pair"
+              ]
+            },
+            {
+              "id": "outer",
+              "children": [
+                "middle"
+              ]
+            },
+            {
+              "id": "top",
+              "children": [
+                "outer"
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

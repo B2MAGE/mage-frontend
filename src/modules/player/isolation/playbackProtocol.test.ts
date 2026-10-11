@@ -45,6 +45,21 @@ describe('bounded playback messages', () => {
     }
   })
 
+  it('carries bounded group uniforms without permitting structural edits through the live channel', () => {
+    const settings = extractLiveSceneSettings({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'shape', operation: { type: 'sphere' } }], composition: { version: 1,
+        roots: ['group'], groups: [{ id: 'group', children: ['shape'], operation: { type: 'union' } }],
+      } })
+    const message = playbackMessage('scene-settings', session, 1, 2, settings)
+    expect(isPlaybackMessage(message, ['scene-settings'])).toBe(true)
+    expect(settings.builderUniforms).toContainEqual({ groupIndex: 0, target: 'scale', value: 1 })
+    for (const builderUniforms of [
+      [{ groupIndex: 0, target: 'children', value: 1 }],
+      [{ groupIndex: 0, target: 'scale', value: 21 }],
+      [{ groupIndex: 0, objectIndex: 0, target: 'position.x', value: 0 }],
+    ]) expect(isPlaybackMessage({ ...message, payload: { ...settings, builderUniforms } }, ['scene-settings'])).toBe(false)
+  })
+
   it('accepts bounded response settings and rejects code, duplicate targets, and arbitrary child capabilities', () => {
     const mapping = { target: 'size', source: 'bass-hit', amount: 1, attack: 0, release: 0.2 }
     const payload = { mode: 'mapped-v1', config: { version: 1, sensitivity: 1, mappings: [mapping] } }

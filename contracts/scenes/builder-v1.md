@@ -69,9 +69,11 @@ Transforms use `{x,y,z}` objects. Position is −100–100 (default 0), rotation
 −2π–2π radians (default 0), and positive scale is 0.01–20 (default 1). Geometry is
 centered at the local origin. The specified order is local scale, X/Y/Z rotation,
 then translation. Each object has its own transform/material scope; it cannot
-alter later objects. Objects combine by union in saved array order. There are no
-Boolean-operation scripts or component references; SB-07 must add its own
-bounded validated component structure and expanded-work accounting.
+alter later objects. Without `composition`, objects combine by union in saved
+array order. The optional composition-version-one forest below supplies grouped
+composition. There are no Boolean-operation scripts or reusable component
+references; SB-07 must add its own bounded validated component structure and
+expanded-work accounting.
 
 SB-04 adds ordered `modifiers` and `arrangements` to each object. The initial
 modifier catalog allows one `twist` (X/Y/Z axis, −6–6 radians per local unit),
@@ -88,10 +90,9 @@ must still expand to at most 16 primitives.
 
 Each object also has bounded `motion`: `none`, or `spin` around one X/Y/Z axis at
 −4–4 radians per second. Spin adds to the authored local rotation and applies to
-all arranged copies. Arranged copies form an isolated compiler-owned group; no
-arbitrary child references, formulas, recursive groups or cross-object mutation
-are accepted. This fixes grouping depth at two arrangement stages and prevents
-cycles while still supporting lines, rings and nested layouts.
+all arranged copies. Arranged copies form an isolated compiler-owned group.
+Arrangement depth remains bounded to two stages; composition groups never
+multiply an arrangement or authorize formulas or cross-object mutation.
 
 Material fields are `color` (`#RRGGBB`, default `#8066ff`), `metalness` (0–1,
 default 0), and `shininess` (0–1, default 0.5). No textures, asset URLs, source,
@@ -100,6 +101,68 @@ callbacks, expressions or arbitrary properties are allowed. `parameters` and
 scale, speed, camera, skybox catalog, motion, effects and music controls/defaults.
 The scene-wide scale applies after object composition. Those controls never
 convert a Builder document into custom code.
+
+## Groups and composition (SB-09)
+
+`builderVersion: 1` has an optional, independently versioned `composition`
+extension. Omitting it retains the existing flat union exactly. Only
+`composition.version: 1` is accepted. It contains an ordered `roots` array of
+IDs and a `groups` array. IDs reference existing objects or groups in one shared
+namespace. Each object and group must occur exactly once in the rooted forest:
+unknown references, duplicate ownership, cycles and unreachable nodes are
+rejected. A group cannot be empty. There are at most eight groups, three nested
+group levels, and 24 entries per root/child array. Group storage order has no
+rendering meaning; root order and each group's child order do.
+
+```json
+"composition": {
+  "version": 1,
+  "roots": ["pair"],
+  "groups": [{
+    "id": "pair",
+    "name": "Soft pair",
+    "children": ["orb-1", "orb-2"],
+    "transform": { "position": { "x": 1 }, "scale": 1.5 },
+    "operation": { "type": "smooth-union", "blend": 0.3 },
+    "material": { "color": "#8066ff" }
+  }]
+}
+```
+
+Group names follow object-name bounds and default to `Group`. Group transforms
+apply uniform scale (0.01–20, default 1), then X/Y/Z rotation, then translation;
+rotation and position bounds/defaults match object transforms. A group
+transform applies to the complete child result, including child arrangements,
+modifiers, motion and nested groups. Group transforms introduce no independent
+motion, modifiers, arrangements or bindings.
+
+`operation` defaults to `{ "type": "union" }`. A hard union folds children in
+saved order, retaining the earlier child's material on an exact distance tie.
+`smooth-union` folds in the same order using a blend radius from 0–2 local group
+units (default 0.25); zero is exactly a hard union. At each join, the distance is
+smoothed but material is taken from the nearer input, with the same earlier-input
+tie rule; colors and surface properties are not interpolated. Child order can
+therefore change a smooth composition and is preserved across saves.
+
+An omitted group `material` keeps child materials. A supplied material uses the
+same fields/defaults as an object material and overrides the entire composed
+result. An outer group's override wins over inner group and object materials.
+Evaluation is child geometry/material, ordered group joins, optional group
+material override, group transform, then the next enclosing group. Scene-wide
+scale is applied after root hard-union composition.
+
+Objects may also carry an optional `frame`, with the same position, rotation
+and uniform-scale fields/bounds as a group transform. Its default is absent.
+When present it transforms the entire object result after its existing object
+transform, modifiers, arrangements and spin. This preserves group motion and
+placement when ungrouping without flattening animated or arranged copies into
+static world positions. Ungroup composes an outer group frame with the existing
+object frame. An edit whose resulting frame exceeds the bounds must be rejected
+with feedback rather than clamped or saved with a changed appearance.
+
+The composition extension and frames remain ordinary validated JSON. They are
+saved, exported and imported without compiled artifacts; old flat documents are
+not automatically rewritten simply by loading them.
 
 ## Property bindings
 
@@ -144,11 +207,16 @@ offline import inspection validate before persistence or associated side
 effects. Frontend import/submission uses the same contract and budgets.
 
 The version-one compiler applies `builder-rendering.v1.json` after object
-expansion: at most 16 primitives, 15 union operations, 80 transform operations,
-48 material operations, 80 modifier operations, 15 arrangement operations,
+expansion: at most 16 primitives, 15 composition operations, 200 transform operations,
+72 material operations, 80 modifier operations, 15 arrangement operations,
 16 animation operations, 64 live property uniforms, four optional effects and
 32 KiB of generated trusted source. Copies and nested arrangement stages add
-their expanded costs before compilation. The existing
+their expanded costs before compilation. Transform work includes five operations
+per expanded primitive, object frame and group. Material work includes three
+operations per expanded primitive and group material override. The forest's
+single ownership ensures grouping does not duplicate primitive work; every
+primitive join still counts whether hard or smooth. Existing whole-document
+budgets also count group metadata and materialized defaults. The existing
 runtime quality, resolution, frame-rate, capture and raymarch ceilings still
 apply independently.
 

@@ -2,6 +2,7 @@ import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, it, vi } from 'vitest'
 import fixtureSet from '../../../../contracts/scenes/fixtures.json'
 import schema from '../../../../contracts/scenes/scene-v1.schema.json'
+import { validateBuilderRenderingWorkload } from './builderCompiler'
 import {
   hasSceneDocumentMarkers,
   parseSceneDocument,
@@ -35,13 +36,21 @@ describe('shared scene contract fixtures', () => {
   it.each(fixtureSet.cases)('$name', (fixture) => {
     const document = JSON.parse(JSON.stringify(fixture.document))
     const before = JSON.stringify(document)
-    expect(validate(document), JSON.stringify(validate.errors)).toBe(fixture.valid)
-    if (fixture.valid) {
+    const shapeValid = validate(document)
+    // References, ownership, nesting, and expanded GPU work are semantic
+    // contract checks beyond what the field schema alone can express.
+    const fullContract = () => {
       const parsed = parseSceneDocument(document)
+      if (parsed.kind === 'builder') validateBuilderRenderingWorkload(parsed)
+      return parsed
+    }
+    if (fixture.valid) {
+      expect(shapeValid, JSON.stringify(validate.errors)).toBe(true)
+      const parsed = fullContract()
       expect(validate(parsed), JSON.stringify(validate.errors)).toBe(true)
       if ('normalized' in fixture) expect(parsed).toEqual(fixture.normalized)
     } else {
-      expect(() => parseSceneDocument(document)).toThrow(SceneContractError)
+      expect(fullContract).toThrow()
     }
     expect(JSON.stringify(document)).toBe(before)
   })
