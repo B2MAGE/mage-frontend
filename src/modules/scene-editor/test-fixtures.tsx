@@ -155,6 +155,7 @@ export function buildSceneEditorApiScene(
   const sceneId = typeof overrides.sceneId === 'number' ? overrides.sceneId : 12
 
   const scene = {
+    revision: 0,
     createdAt: '2026-04-06T14:00:00Z',
     creatorDisplayName: 'Scene Artist',
     description: 'Soft teal bloom with low-end drift.',

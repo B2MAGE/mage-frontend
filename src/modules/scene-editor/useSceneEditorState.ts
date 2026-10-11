@@ -25,6 +25,8 @@ import {
 import { useSceneImportExport } from './useSceneImportExport'
 import { changeSceneBranch, mergeChangedValues } from './draftCommands'
 import { useSceneDraftCommands } from './useSceneDraftCommands'
+import { useSceneDraftHistory } from './useSceneDraftHistory'
+import type { SceneDraftSnapshot } from './sceneDraftRecovery'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
@@ -41,22 +43,33 @@ type UseSceneEditorStateArgs = {
   titleId?: string
 }
 
+function reconcileSelection(before: SceneDraftSnapshot, next: SceneData): string | null {
+  if (!isBuilderEditorDocument(next)) return null
+  const previous = isBuilderEditorDocument(before.sceneData) ? before.sceneData.objects : []
+  const added = next.objects.find(object => !previous.some(item => item.id === object.id))
+  if (added) return added.id
+  if (next.objects.some(object => object.id === before.selectedBuilderObjectId)) return before.selectedBuilderObjectId
+  const oldIndex = previous.findIndex(object => object.id === before.selectedBuilderObjectId)
+  return next.objects[Math.min(Math.max(0, oldIndex), next.objects.length - 1)]?.id ?? null
+}
+
 export function useSceneEditorState({
   allowCustomSceneData = true,
   authenticatedFetch,
   initialState,
   titleId: providedTitleId = 'create-scene-title',
 }: UseSceneEditorStateArgs) {
-  const [name, setName] = useState(() => initialState?.name ?? '')
-  const [description, setDescription] = useState(() => initialState?.description ?? '')
+  const history = useSceneDraftHistory(() => {
+    const document = readEditableSceneData(initialState?.sceneData ?? createTemplateScene())
+    return { name: initialState?.name ?? '', description: initialState?.description ?? '',
+      sceneData: document, sceneDataText: prettyPrintEditorSceneData(document), selectedTagIds: [],
+      selectedBuilderObjectId: isBuilderEditorDocument(document) ? document.objects[0]?.id ?? null : null }
+  })
+  const { name, description, sceneData, sceneDataText, selectedTagIds, selectedBuilderObjectId } = history.draft
+  const setSceneDataText = (value: string | ((previous: string) => string)) => history.commit(draft => ({ ...draft,
+    sceneDataText: typeof value === 'function' ? value(draft.sceneDataText) : value }), 'Edit scene JSON')
+  const setDescription = (value: string) => history.commit(draft => ({ ...draft, description: value }), 'Edit description')
   const [capturedThumbnail, setCapturedThumbnail] = useState<{ file: File; previewUrl: string; revision: string } | null>(null)
-  const [sceneData, setSceneData] = useState<SceneData>(
-    () => readEditableSceneData(initialState?.sceneData ?? createTemplateScene()),
-  )
-  const sceneDraftRef = useRef(sceneData)
-  const [sceneDataText, setSceneDataText] = useState(() =>
-    prettyPrintEditorSceneData(initialState?.sceneData ?? createTemplateScene()),
-  )
   const thumbnailFile = capturedThumbnail?.revision === sceneDataText ? capturedThumbnail.file : null
   const thumbnailPreviewUrl = capturedThumbnail?.revision === sceneDataText ? capturedThumbnail.previewUrl : initialState?.thumbnailPreviewUrl ?? null
   const builderRoundTripRef = useRef<{ document: BuilderSceneDocument; customSignature: string } | null>(null)
@@ -97,7 +110,8 @@ export function useSceneEditorState({
   const { cancelTemplateImport, confirmTemplateImport, disabledCustomImportIssue, handleFormatJson,
     handleRawSceneDataChange, pendingTemplateImport, resetPendingTemplateImport } = useSceneImportExport({
     allowCustomSceneData, sceneData, sceneDataText, setSceneDataText, setErrors, clearErrors, applySceneData,
-    onImportDraft: next => { sceneDraftRef.current = next; setSceneData(next) },
+    onImportDraft: (next, text) => history.commit(draft => ({ ...draft, sceneData: next, sceneDataText: text,
+      selectedBuilderObjectId: reconcileSelection(draft, next) }), 'Import scene'),
   })
 
   const formErrorId = useId()
@@ -149,7 +163,6 @@ export function useSceneEditorState({
     openTagDropdown,
     reloadAvailableTags,
     selectableTags,
-    selectedTagIds,
     selectedTags,
     tagDropdownRef,
     tagSearchInputId,
@@ -161,6 +174,10 @@ export function useSceneEditorState({
     authenticatedFetch,
     clearErrors,
     initialSelectedTagNames: initialState?.tagNames,
+    selectedTagIds,
+    setSelectedTagIds: value => history.commit(draft => ({ ...draft,
+      selectedTagIds: typeof value === 'function' ? value(draft.selectedTagIds) : value }), 'Change tags'),
+    initializeSelectedTags: history.initializeTags,
     setErrors,
   })
 
@@ -177,9 +194,8 @@ export function useSceneEditorState({
       setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(nextSceneData)))
     }
     resetPendingTemplateImport()
-    sceneDraftRef.current = nextSceneData
-    setSceneData(nextSceneData)
-    setSceneDataText(nextText)
+    history.commit(draft => ({ ...draft, sceneData: nextSceneData, sceneDataText: nextText,
+      selectedBuilderObjectId: reconcileSelection(draft, nextSceneData) }))
     const validation = validateSceneDataText(nextText)
     setErrors(current => ({ ...current, sceneData: validation.error ?? undefined, form: undefined,
       fields: replaceRawDraft ? undefined : changedField && current.fields
@@ -192,7 +208,7 @@ export function useSceneEditorState({
     branch: K,
     recipe: (currentBranch: SceneEditorModel[K]) => SceneEditorModel[K],
   ) {
-    const current = sceneDraftRef.current
+    const current = history.readDraft().sceneData
     const next = changeSceneBranch(current, branch, recipe)
     applySceneData(next, false, isTemplateEditorDocument(current) && isTemplateEditorDocument(next)
       ? changedTemplateFields(current, next) : undefined)
@@ -264,18 +280,18 @@ export function useSceneEditorState({
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {
-    const current = sceneDraftRef.current
+    const current = history.readDraft().sceneData
     if (isTemplateEditorDocument(current)) applySceneData(changeTemplateValue(current, path, value), false, path)
   }
 
   function updateBuilderValue(path: TemplateFieldPath, value: number | string | boolean) {
-    const current = sceneDraftRef.current
+    const current = history.readDraft().sceneData
     if (isBuilderEditorDocument(current)) applySceneData(changeBuilderValue(current, path, value), false, path)
   }
 
   const { handleAddBuilderObject, handleUpdateBuilderObject, handleDuplicateBuilderObject,
     handleRemoveBuilderObject, handleMoveBuilderObject } = useSceneDraftCommands({
-    readDraft: () => sceneDraftRef.current, applyDraft: applySceneData,
+    readDraft: () => history.readDraft().sceneData, applyDraft: applySceneData,
   })
 
   function handleSwitchToBuilder() {
@@ -353,7 +369,7 @@ export function useSceneEditorState({
   }
 
   function handleNameChange(nextValue: string) {
-    setName(nextValue)
+    history.commit(draft => ({ ...draft, name: nextValue }), 'Edit scene name')
     clearErrors('name', 'form')
   }
 
@@ -390,6 +406,15 @@ export function useSceneEditorState({
   }
 
   return {
+    draftSnapshot: history.draft,
+    initialDraftSnapshot: history.baseline,
+    selectedBuilderObjectId,
+    setSelectedBuilderObjectId: history.selectObject,
+    history,
+    restoreDraft: (draft: SceneDraftSnapshot) => { resetPendingTemplateImport(); clearErrors(); history.restore(draft) },
+    undoDraft: () => { resetPendingTemplateImport(); clearErrors(); history.undo() },
+    redoDraft: () => { resetPendingTemplateImport(); clearErrors(); history.redo() },
+    resetDraft: () => { resetPendingTemplateImport(); clearErrors(); history.reset() },
     canResetAudioResponse,
     availableTags,
     canCreateTagFromSearch,

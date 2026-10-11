@@ -53,5 +53,6 @@ export type SceneEditorSubmissionMode =
     }
   | {
       sceneId: number
+      revision: number
       type: 'edit'
     }
