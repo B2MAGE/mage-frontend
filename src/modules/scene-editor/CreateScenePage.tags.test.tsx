@@ -52,7 +52,7 @@ describe('CreateScenePage tags', () => {
     let createTagBody: Record<string, unknown> | null = null
 
     mockCreateScenePageFetch((input, init) => {
-      if (input === buildApiUrl('/tags')) {
+      if (input === buildApiUrl('/tags') && init?.method === 'POST') {
         createTagBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(new Response(JSON.stringify({ tagId: 7, name: 'late night' }), {
           status: 201,

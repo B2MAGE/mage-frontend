@@ -9,6 +9,9 @@ type UseSceneTagEditorArgs = {
   authenticatedFetch: AuthenticatedFetch
   clearErrors: (...fields: Array<keyof CreateSceneFormErrors>) => void
   initialSelectedTagNames?: string[]
+  selectedTagIds: number[]
+  setSelectedTagIds: Dispatch<SetStateAction<number[]>>
+  initializeSelectedTags: (ids: number[]) => void
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
 }
 
@@ -16,10 +19,12 @@ export function useSceneTagEditor({
   authenticatedFetch,
   clearErrors,
   initialSelectedTagNames = [],
+  selectedTagIds,
+  setSelectedTagIds,
+  initializeSelectedTags,
   setErrors,
 }: UseSceneTagEditorArgs) {
   const [availableTags, setAvailableTags] = useState<TagResponse[]>([])
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
   const [tagSearchValue, setTagSearchValue] = useState('')
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false)
   const [tagsLoading, setTagsLoading] = useState(true)
@@ -54,7 +59,7 @@ export function useSceneTagEditor({
   const isExactMatchedTagSelected =
     exactMatchedTag !== null && selectedTagIds.includes(exactMatchedTag.tagId)
   const canCreateTagFromSearch =
-    normalizedTagSearchValue.length > 0 && exactMatchedTag === null
+    !tagsLoading && !tagsError && normalizedTagSearchValue.length > 0 && exactMatchedTag === null
 
   useEffect(() => {
     let isCurrent = true
@@ -95,7 +100,7 @@ export function useSceneTagEditor({
   }, [])
 
   useEffect(() => {
-    if (hasAppliedInitialSelectedTagsRef.current || tagsLoading) {
+    if (hasAppliedInitialSelectedTagsRef.current || tagsLoading || tagsError) {
       return
     }
 
@@ -105,12 +110,12 @@ export function useSceneTagEditor({
       return
     }
 
-    setSelectedTagIds(
+    initializeSelectedTags(
       availableTags
         .filter((tag) => initialSelectedTagNameSetRef.current.has(normalizeTagName(tag.name)))
         .map((tag) => tag.tagId),
     )
-  }, [availableTags, tagsLoading])
+  }, [availableTags, tagsLoading, tagsError, initializeSelectedTags])
 
   useEffect(() => {
     if (!isTagDropdownOpen) {
@@ -184,7 +189,7 @@ export function useSceneTagEditor({
   }
 
   async function handleCreateTag(requestedTagName = tagSearchValue) {
-    if (isCreatingTag) {
+    if (isCreatingTag || tagsLoading || tagsError) {
       return
     }
 

@@ -274,6 +274,49 @@ describe('EditScenePage workflow', () => {
     expect(await screen.findAllByText(/failed to fetch tags/i)).not.toHaveLength(0)
     expect(updateSceneRequested).toBe(false)
   })
+
+  it('hydrates saved tags after a failed initial tag load is retried and keeps them in the update request', async () => {
+    storeSceneEditorSession()
+    const scene = buildSceneEditorApiScene({ tags: ['ambient', 'focus-friendly'], revision: 4 })
+    let tagLoads = 0
+    let createdTagAttempted = false
+    let submitted: Record<string, unknown> | null = null
+    mockCreateScenePageFetch((input, init) => {
+      const method = String(init?.method ?? 'GET').toUpperCase()
+      if (input === buildApiUrl('/tags') && method === 'POST') {
+        createdTagAttempted = true
+        return jsonResponse({ tagId: 3, name: 'new tag' }, 201)
+      }
+      if (input === buildApiUrl('/scenes/12') && method === 'GET') return jsonResponse(scene)
+      if (input === buildApiUrl('/tags') && method === 'GET') {
+        tagLoads += 1
+        return tagLoads === 1 ? jsonResponse({ message: 'Tag service unavailable.' }, 500)
+          : jsonResponse([{ tagId: 1, name: 'ambient' }, { tagId: 2, name: 'focus-friendly' }])
+      }
+      if (input === buildApiUrl('/scenes/12') && method === 'PUT') {
+        submitted = JSON.parse(String(init?.body))
+        return jsonResponse({ ...scene, revision: 5 })
+      }
+    })
+    const user = userEvent.setup()
+    renderEditScenePage()
+    await screen.findByRole('button', { name: 'Retry tag load' })
+    fireEvent.change(screen.getByLabelText(/scene name/i), { target: { value: 'Draft edited during outage' } })
+    const tagSearch = screen.getByLabelText('Select existing tags')
+    fireEvent.change(tagSearch, { target: { value: 'new tag' } })
+    expect(screen.queryByRole('button', { name: 'Add tag "new tag"' })).not.toBeInTheDocument()
+    fireEvent.keyDown(tagSearch, { key: 'Enter' })
+    expect(createdTagAttempted).toBe(false)
+    await user.click(screen.getByRole('button', { name: 'Retry tag load' }))
+    expect(await screen.findByRole('button', { name: 'Remove ambient' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove focus-friendly' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Draft edited during outage')
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: /update scene/i }))
+    await screen.findByText('My Scenes')
+    expect(submitted).toMatchObject({ tagIds: [1, 2], expectedRevision: 4, name: 'Draft edited during outage' })
+    expect(tagLoads).toBe(2)
+  })
 })
 
 // These editor workflows exercise fields/submission with explicit playback permission.

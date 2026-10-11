@@ -1,7 +1,9 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
 import { buildApiUrl } from '@shared/lib'
+import { createBuilderScene } from './builderEditor'
+import { sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftRecord } from './sceneDraftRecovery'
 import {
   mockCreateScenePageFetch,
   renderCreateScenePage,
@@ -60,6 +62,46 @@ afterEach(() => {
 })
 
 describe('CreateScenePage submission', () => {
+  it('prevents restoring or discarding another tab’s draft until a dispatched create settles', async () => {
+    storeSceneEditorSession()
+    let settle!: (response: Response) => void
+    mockCreateScenePageFetch((input, init) => input === buildApiUrl('/scenes') && init?.method === 'POST'
+      ? new Promise<Response>(resolve => { settle = resolve }) : undefined)
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    fireEvent.change(await screen.findByLabelText(/scene name/i), { target: { value: 'Submitting this scene' } })
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(screen.getByRole('button', { name: /create scene/i }))
+    await waitFor(() => expect(settle).toBeTypeOf('function'))
+    await user.click(screen.getByRole('button', { name: 'Details' }))
+    fireEvent.change(screen.getByLabelText(/scene name/i), { target: { value: 'Newer local changes' } })
+
+    const sceneData = createBuilderScene()
+    const snapshot = { name: 'Another tab’s scene', description: '', sceneData,
+      sceneDataText: JSON.stringify(sceneData), selectedTagIds: [], selectedBuilderObjectId: 'object-1' }
+    const candidate: SceneDraftRecord = { version: 1, savedAt: Date.now(), snapshot,
+      baseFingerprint: sceneDraftFingerprint(snapshot),
+      saveContext: { savedSceneId: 99, expectedRevision: 3, saveNeedsReview: false } }
+    const key = sceneDraftStorageKey(8, null)
+    act(() => {
+      const raw = JSON.stringify(candidate)
+      window.localStorage.setItem(key, raw)
+      window.dispatchEvent(new StorageEvent('storage', { key, newValue: raw, storageArea: window.localStorage }))
+    })
+    const restore = await screen.findByRole('button', { name: 'Restore draft' })
+    expect(restore).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Keep this editor’s draft' })).toBeDisabled()
+    await user.click(restore)
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Newer local changes')
+
+    await act(async () => { settle(new Response('{"sceneId":42,"revision":0}', { status: 201 })) })
+    await waitFor(() => expect(restore).toBeEnabled())
+    expect(screen.getByRole('button', { name: 'Keep this editor’s draft' })).toBeEnabled()
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Newer local changes')
+    await user.click(restore)
+    expect(screen.getByLabelText(/scene name/i)).toHaveValue('Another tab’s scene')
+  })
+
   it('submits a source-free template document with the edited camera setting', async () => {
     storeSceneEditorSession()
 
@@ -81,7 +123,7 @@ describe('CreateScenePage submission', () => {
 
     renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await user.type(screen.getByLabelText(/description/i), 'Soft teal bloom with low-end drift.')
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
     expect(screen.getByRole('heading', { name: /^frame the scene\.$/i })).toBeInTheDocument()
@@ -121,7 +163,7 @@ describe('CreateScenePage submission', () => {
     })
     const user = userEvent.setup()
     renderCreateScenePage()
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
@@ -143,7 +185,7 @@ describe('CreateScenePage submission', () => {
     })
     const user = userEvent.setup()
     renderCreateScenePage()
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await selectExistingTag(user, 'ambient')
     await selectExistingTag(user, 'focus-friendly')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
@@ -222,7 +264,7 @@ describe('CreateScenePage submission', () => {
 
     renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
@@ -265,7 +307,7 @@ describe('CreateScenePage submission', () => {
 
     renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
@@ -299,7 +341,7 @@ describe('CreateScenePage submission', () => {
 
     renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
@@ -343,7 +385,7 @@ describe('CreateScenePage submission', () => {
 
     renderCreateScenePage()
 
-    await user.type(screen.getByLabelText(/scene name/i), 'Aurora Drift')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Aurora Drift')
     await user.click(screen.getByRole('button', { name: /^confirm$/i }))
     await user.click(screen.getByRole('button', { name: /create scene/i }))
 
