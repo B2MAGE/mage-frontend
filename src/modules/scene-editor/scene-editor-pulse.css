@@ -473,6 +473,7 @@ html[data-theme] .scene-editor-page .builder-info-tooltip__trigger:focus-visible
 }
 .builder-control-stage { border-top: 1px solid var(--studio-border); }
 .builder-arrangement-stages,
+.builder-binding-stages,
 .builder-animation-stages,
 .builder-appearance-stages,
 .builder-modifier-stages,

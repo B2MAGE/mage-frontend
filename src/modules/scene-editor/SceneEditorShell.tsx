@@ -45,6 +45,7 @@ import { useSceneDraftRecovery } from "./useSceneDraftRecovery";
 import { sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftSaveContext } from "./sceneDraftRecovery";
 import { createBuilderScene } from "./builderEditor";
 import { builderGroups, builderOrderedNodes, builderParent, isBuilderGroup } from "./builderGroups";
+import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from "./builderBindings";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
@@ -1859,7 +1860,10 @@ export function SceneEditorShell({
                                     <span>Arrangements: {object.arrangements.length ? object.arrangements.map(formatBuilderArrangement).join(" → ") : "None"}</span>
                                     <span>Animation: {formatBuilderMotion(object)}</span>
                                     <span>Appearance: {object.material.color} · Metalness {formatFixed(object.material.metalness)} · Shininess {formatFixed(object.material.shininess)}</span>
-                                    <span>Audio mappings: {object.bindings.length}</span>
+                                    <span>Music &amp; pointer: {object.bindings.length ? `${object.bindings.length} responses` : 'Off'}</span>
+                                    {object.bindings.map(binding => <span key={binding.target}>
+                                      {BUILDER_BINDING_SOURCE_LABELS[binding.source]} → {BUILDER_BINDING_TARGET_LABELS[binding.target]} · {binding.mode === 'add' ? 'Add' : 'Set'} · Strength {formatFixed(binding.amount)} · Offset {formatFixed(binding.offset)} · Rise {formatFixed(binding.attack)}s · Fall {formatFixed(binding.release)}s
+                                    </span>)}
                                   </section>
                                 ))}
                               </div>

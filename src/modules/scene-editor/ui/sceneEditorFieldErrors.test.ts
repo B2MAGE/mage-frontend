@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { builderControlLocation, builderGroupFieldIssues, builderObjectFieldIssues } from './sceneEditorFieldErrors'
 
 describe('Builder field locations', () => {
+  it.each(['target', 'source', 'mode', 'amount', 'offset', 'attack', 'release'])('maps binding %s errors into the selected object response', field => {
+    expect(builderControlLocation(`sceneData.objects[2].bindings[1].${field}`)).toMatchObject({ id: `builder-binding-1-${field}`, objectIndex: 2, section: 'scene' })
+  })
   it('maps group controls separately from leaf inspector controls', () => {
     const groupIssue = { path: 'composition.groups[1].transform.scale', message: 'Group scale is too high.' }
     const objectIssue = { path: 'objects[1].transform.scale.x', message: 'Object scale is too high.' }
