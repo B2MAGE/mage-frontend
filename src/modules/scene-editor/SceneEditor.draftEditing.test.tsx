@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockCreateScenePageFetch, renderCreateScenePage, storeSceneEditorSession } from './test-fixtures'
 import { parseSceneDraftRecord, sceneDraftStorageKey } from './sceneDraftRecovery'
 
@@ -12,7 +12,12 @@ vi.mock('@modules/player/availability/sceneAvailability', async () => ({
   sceneAvailabilityStore: (await import('@shared/test/sceneAvailability')).allowedSceneAvailability,
 }))
 
-beforeEach(() => { storeSceneEditorSession(); mockCreateScenePageFetch() })
+beforeEach(() => {
+  storeSceneEditorSession()
+  mockCreateScenePageFetch()
+  vi.stubGlobal('ResizeObserver', class { observe = vi.fn(); disconnect = vi.fn() })
+})
+afterEach(() => vi.unstubAllGlobals())
 const preview = () => JSON.parse(screen.getByTestId('draft-preview').getAttribute('data-scene')!)
 
 describe('draft editing through the shared editor', () => {
@@ -86,6 +91,7 @@ describe('draft editing through the shared editor', () => {
     await waitFor(() => expect(preview().objects).toHaveLength(2))
     expect(screen.getByLabelText('Name')).toHaveValue('Sphere 2')
     const beforeReset = preview()
+    await user.click(screen.getByRole('button', { name: 'Draft options' }))
     await user.click(screen.getByRole('button', { name: 'Reset draft' }))
     await waitFor(() => expect(preview().kind).toBe('template'))
     await user.click(screen.getByRole('button', { name: 'Undo' }))
@@ -108,7 +114,7 @@ describe('draft editing through the shared editor', () => {
     expect(parseSceneDraftRecord(persisted!)?.snapshot.name).toBe('Unfinished constellation')
 
     renderCreateScenePage()
-    await screen.findByRole('button', { name: 'Restore draft' })
+    await user.click(await screen.findByRole('button', { name: 'Draft available' }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('')
     await user.click(screen.getByRole('button', { name: 'Restore draft' }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Unfinished constellation')

@@ -33,6 +33,7 @@ import {
 } from "./ui/SceneEditorLayout";
 import { SceneEditorStepper } from "./ui/SceneEditorStepper";
 import { BuilderSceneControls } from "./ui/BuilderSceneControls";
+import { SceneDraftHeader } from "./ui/SceneDraftHeader";
 import { BUILDER_SHADER_TEMPLATE_VALUE, SceneSetupControls } from "./ui/SceneSetupControls";
 import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEditorFieldValidation";
 import { builderControlLocation, templateControlLocation } from "./ui/sceneEditorFieldErrors";
@@ -904,24 +905,6 @@ export function SceneEditorShell({
           if (event.target instanceof HTMLInputElement && event.target.type === 'range') history.endEdit();
         }}
       >
-        <div aria-label="Draft editing" className="scene-draft-actions" role="group">
-          <button className="scene-secondary-button" disabled={!history.canUndo} onClick={undoDraft} title="Undo (Ctrl/Cmd+Z)" type="button">Undo</button>
-          <button className="scene-secondary-button" disabled={!history.canRedo} onClick={redoDraft} title="Redo (Ctrl/Cmd+Shift+Z)" type="button">Redo</button>
-          <button className="scene-secondary-button" disabled={!history.canReset} onClick={resetDraft} type="button">Reset draft</button>
-          <span className="field-hint">Reset returns to the draft you opened. You can undo it.</span>
-        </div>
-        {draftRecovery.status.message ? <div className="scene-draft-recovery" role="status">
-          <p>{draftRecovery.status.message}</p>
-          {draftRecovery.candidate?.baseChanged ? <p>The saved scene has changed since this draft began. Restoring keeps your draft; saving will check for a conflict.</p> : null}
-          {draftRecovery.requiresResolution ? <div className="scene-draft-actions">
-            {draftRecovery.candidate ? <button className="scene-secondary-button" disabled={isSubmitting} onClick={restoreBrowserDraft} type="button">Restore draft</button> : null}
-            <button className="scene-secondary-button" disabled={isSubmitting} onClick={() => { if (!isSubmitting) draftRecovery.discard(); }} type="button">
-              {draftRecovery.status.kind === 'conflict' ? 'Keep this editor’s draft' : 'Discard browser draft'}
-            </button>
-          </div> : null}
-          {draftRecovery.requiresResolution && isSubmitting ? <p>Wait for the current save to finish before choosing a browser draft.</p> : null}
-        </div> : null}
-        {saveNeedsReview ? <p className="field-hint"><a href="/my-scenes" target="_blank" rel="noopener noreferrer">Open My Scenes</a> to check the saved version. Your current draft stays in this editor.</p> : null}
         <div className={`scene-editor-layout${isPreviewCollapsed ? " scene-editor-layout--preview-hidden" : ""}`}>
           <aside className="scene-editor-stepper-rail">
             <div className="scene-editor-stepper-rail__label">Scene setup</div>
@@ -941,6 +924,16 @@ export function SceneEditorShell({
           </aside>
 
           <SceneEditorFieldErrorsProvider fields={isTemplate || isBuilder ? { ...templateFieldErrors, ...errors.fields } : {}} mode={isBuilder ? 'builder' : 'template'}>
+          <div className="scene-editor-workspace">
+          <SceneDraftHeader
+            canUndo={history.canUndo} canRedo={history.canRedo} canReset={history.canReset}
+            onUndo={undoDraft} onRedo={redoDraft} onReset={resetDraft}
+            status={draftRecovery.status} hasCandidate={Boolean(draftRecovery.candidate)}
+            baseChanged={Boolean(draftRecovery.candidate?.baseChanged)}
+            requiresResolution={draftRecovery.requiresResolution} isSubmitting={isSubmitting}
+            saveNeedsReview={saveNeedsReview} onRestore={restoreBrowserDraft}
+            onDiscard={() => { if (!isSubmitting) draftRecovery.discard(); }}
+          />
           <div className="scene-editor-main" ref={editorScrollRef}>
             {errors.form ? (
               <div className="form-alert" id={formErrorId} role="alert">
@@ -2030,7 +2023,7 @@ export function SceneEditorShell({
               </SceneSection>
             ) : null}
           </div>
-
+          </div>
           </SceneEditorFieldErrorsProvider>
 
           <aside
