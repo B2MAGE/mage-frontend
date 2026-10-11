@@ -88,15 +88,23 @@ const builderObjectControlIds: Record<string, string> = {
   'motion.speed': 'builder-motion-speed',
 }
 
-export function builderControlLocation(rawPath: string): { path: string; id: string; objectIndex?: number; section: EditorSectionId } | null {
+export function builderControlLocation(rawPath: string): { path: string; id: string; objectIndex?: number; groupIndex?: number; section: EditorSectionId } | null {
   const path = rawPath.replace(/^sceneData\./, '').replace(/^scene\./, '')
+  const groupMatch = /^composition\.groups(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(path)
+  if (groupMatch) {
+    const field = groupMatch[3] ?? ''
+    const groupFields: Record<string, string> = { 'operation.type': 'builder-group-operation', 'operation.blend': 'builder-group-blend', 'transform.scale': 'builder-scale' }
+    return { path, id: groupFields[field] ?? builderObjectControlIds[field] ?? 'builder-object-list', groupIndex: Number(groupMatch[1] ?? groupMatch[2]), section: 'scene' }
+  }
+  if (path.startsWith('composition')) return { path, id: 'builder-object-list', section: 'scene' }
   const objectMatch = /^objects(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(path)
   if (objectMatch) {
     const objectIndex = Number(objectMatch[1] ?? objectMatch[2])
     const field = objectMatch[3] ?? ''
     const stage = /^(modifiers|arrangements)(?:\[(\d+)\]|\.(\d+))\.(amount|thickness|axis|count|spacing|radius)$/.exec(field)
     const stageId = stage ? `builder-${stage[1] === 'modifiers' ? 'modifier' : 'arrangement'}-${stage[2] ?? stage[3]}-${stage[4]}` : undefined
-    const id = builderObjectControlIds[field] ?? stageId ?? 'builder-object-list'
+    const frame = /^frame\.(position\.[xyz]|rotation\.[xyz]|scale)$/.exec(field)
+    const id = builderObjectControlIds[field] ?? stageId ?? (frame ? `builder-frame-${frame[1].replace('.', '-')}` : 'builder-object-list')
     return { path, id, objectIndex, section: 'scene' }
   }
   if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }
@@ -111,6 +119,15 @@ export function builderObjectFieldIssues(issues: FieldIssues, objectIndex: numbe
   for (const issue of Object.values(issues)) {
     const location = builderControlLocation(issue.path)
     if (location?.objectIndex === objectIndex) selected[location.id] = issue
+  }
+  return selected
+}
+
+export function builderGroupFieldIssues(issues: FieldIssues, groupIndex: number): FieldIssues {
+  const selected: FieldIssues = {}
+  for (const issue of Object.values(issues)) {
+    const location = builderControlLocation(issue.path)
+    if (location?.groupIndex === groupIndex) selected[location.id] = issue
   }
   return selected
 }

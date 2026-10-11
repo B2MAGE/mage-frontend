@@ -1,7 +1,8 @@
 import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
 import { templateOptionalEffectCount } from './templateSettings'
-import { BUILDER_BINDING_RANGES } from './builderDefinitions'
-import type { BuilderArrangement, BuilderBinding, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
+import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, type BuilderGroupTarget } from './builderDefinitions'
+import { builderCompositionNodes, builderCompositionRoots, validateBuilderComposition } from './builderComposition'
+import type { BuilderArrangement, BuilderBinding, BuilderFrame, BuilderGroup, BuilderMaterial, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
 export const BUILDER_COMPILER_VERSION = 1 as const
 export const BUILDER_RENDERING_POLICY = Object.freeze({
@@ -21,17 +22,21 @@ export type BuilderWorkload = Readonly<{
   liveUniforms: number
   optionalEffects: number
   generatedSourceBytes: number
+  groups: number
+  groupDepth: number
 }>
 
-export type BuilderUniform = Readonly<{
-  objectId: string
-  objectIndex: number
-  target: BuilderBinding['target']
+type UniformValue = {
   name: string
   initialValue: number
   minimum: number
   maximum: number
-}>
+}
+export type BuilderUniform = Readonly<UniformValue & ({
+  objectId: string
+  objectIndex: number
+  target: BuilderBinding['target']
+} | { groupId: string; groupIndex: number; target: BuilderGroupTarget })>
 
 export type BuilderCompilation = Readonly<{
   compilerVersion: typeof BUILDER_COMPILER_VERSION
@@ -73,12 +78,26 @@ function propertyValue(object: BuilderObject, target: BuilderBinding['target']):
   return object.transform[branch][field as 'x' | 'y' | 'z']
 }
 
+function groupPropertyValue(group: BuilderGroup, target: BuilderGroupTarget): number {
+  if (target === 'scale') return group.transform.scale
+  if (target === 'blend') return group.operation.type === 'smooth-union' ? group.operation.blend : 0
+  const [branch, field] = target.split('.') as ['position' | 'rotation' | 'material', string]
+  if (branch === 'material') return group.material![field as 'metalness' | 'shininess']
+  return group.transform[branch][field as 'x' | 'y' | 'z']
+}
+
 /** Uniform names depend only on the validated object position and target enum. */
 export function builderUniformName(objectIndex: number, target: BuilderBinding['target']): string {
   if (!Number.isSafeInteger(objectIndex) || objectIndex < 0 || objectIndex >= policy.limits.expandedPrimitives) {
     fail('sceneData.objects', 'Object index exceeds the Builder rendering budget.')
   }
   return `builder_o${objectIndex}_${TARGET_TOKENS[target]}`
+}
+
+export function builderGroupUniformName(groupIndex: number, target: BuilderGroupTarget): string {
+  if (!Number.isSafeInteger(groupIndex) || groupIndex < 0 || groupIndex >= policy.limits.groups
+    || !Object.hasOwn(BUILDER_GROUP_RANGES, target)) fail('sceneData.composition.groups', 'Invalid group live property.')
+  return `builder_g${groupIndex}_${target.replace('.', '_')}`
 }
 
 function colorChannels(color: string): [number, number, number] {
@@ -172,11 +191,18 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
   const expandedCounts = document.objects.map(object => object.arrangements
     .reduce((count, arrangement) => count * arrangement.count, 1))
   const expandedPrimitives = expandedCounts.reduce((sum, count) => sum + count, 0)
+  const groups = document.composition?.groups ?? []
+  const nodes = builderCompositionNodes(document)
+  const depth = (id: string): number => {
+    const node = nodes.get(id)!
+    return node.kind === 'object' ? 0 : 1 + Math.max(0, ...node.group.children.map(depth))
+  }
   return {
     expandedPrimitives,
     compositionOperations: Math.max(0, expandedPrimitives - 1) * policy.operationCosts.compositionPerAdditionalObject,
-    transformOperations: expandedPrimitives * policy.operationCosts.transformPerObject,
-    materialOperations: expandedPrimitives * policy.operationCosts.materialPerObject,
+    transformOperations: (expandedPrimitives + groups.length + document.objects.filter(object => object.frame).length)
+      * policy.operationCosts.transformPerObject,
+    materialOperations: (expandedPrimitives + groups.filter(group => group.material).length) * policy.operationCosts.materialPerObject,
     modifierOperations: document.objects.reduce((sum, object, index) => sum + expandedCounts[index] * object.modifiers.reduce((cost, modifier) =>
       cost + policy.operationCosts[modifier.type === 'expand' ? 'expandModifier'
         : modifier.type === 'shell' ? 'shellModifier' : 'twistModifier'], 0), 0),
@@ -186,6 +212,8 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
       sum + (object.motion.type === 'spin' ? expandedCounts[index] * policy.operationCosts.spinPerPrimitive : 0), 0),
     liveUniforms: document.objects.reduce((sum, object) => sum + object.bindings.length * policy.operationCosts.liveUniformPerBinding, 0),
     optionalEffects: templateOptionalEffectCount(document.settings),
+    groups: groups.length,
+    groupDepth: Math.max(0, ...builderCompositionRoots(document).map(depth)),
   }
 }
 
@@ -198,6 +226,7 @@ function assertBudget(workload: Omit<BuilderWorkload, 'generatedSourceBytes'> & 
 
 /** Shared preflight for storage and compilation; normalized data is required. */
 export function validateBuilderRenderingWorkload(document: BuilderSceneDocument) {
+  validateBuilderComposition(document, (path, detail) => fail(path.replace(/^scene\./, 'sceneData.'), detail))
   const workload = initialWorkload(document)
   assertBudget(workload)
   return workload
@@ -212,12 +241,29 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
   const baseWorkload = validateBuilderRenderingWorkload(document)
   const uniforms: BuilderUniform[] = []
   const declarations: string[] = []
-  const objects: string[] = []
+  const groups = document.composition?.groups ?? []
 
   // Saved compilation stays deterministic under version one's shared contract.
   // Playback can spend its remaining uniform budget on editor numeric values.
   // Authored bindings reserve their slots first; overflow stays structural.
   let remaining = policy.limits.liveUniforms - baseWorkload.liveUniforms
+  const groupValues = groups.map((group, groupIndex) => {
+    const values = new Map<BuilderGroupTarget, string>()
+    if (options.livePreview && !options.bindingUniformsOnly) {
+      for (const target of Object.keys(BUILDER_GROUP_RANGES) as BuilderGroupTarget[]) {
+        if (!remaining || (target === 'blend' && group.operation.type !== 'smooth-union')
+          || (target.startsWith('material.') && !group.material)) continue
+        const range = BUILDER_GROUP_RANGES[target]
+        const name = builderGroupUniformName(groupIndex, target)
+        const initialValue = groupPropertyValue(group, target)
+        declarations.push(`let ${name}=input(${literal(range.default)},${literal(range.minimum)},${literal(range.maximum)});`)
+        uniforms.push({ groupId: group.id, groupIndex, target, name, initialValue, minimum: range.minimum, maximum: range.maximum })
+        values.set(target, name)
+        remaining--
+      }
+    }
+    return values
+  })
   const liveTargets = document.objects.map(object => {
     const targets = new Set(object.bindings.map(binding => binding.target))
     if (options.livePreview && !options.bindingUniformsOnly) for (const target of Object.keys(BUILDER_BINDING_RANGES) as BuilderBinding['target'][]) {
@@ -226,7 +272,7 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
     return targets
   })
 
-  document.objects.forEach((object, objectIndex) => {
+  const objectValues = document.objects.map((object, objectIndex) => {
     const values = new Map<BuilderBinding['target'], string>()
     liveTargets[objectIndex].forEach(target => {
       const range = BUILDER_BINDING_RANGES[target]
@@ -240,16 +286,43 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
         minimum: range.minimum, maximum: range.maximum })
       values.set(target, name)
     })
-    const read = (target: BuilderBinding['target']) => values.get(target) ?? literal(propertyValue(object, target))
-    const [red, green, blue] = colorChannels(object.material.color)
+    return values
+  })
+  const objectRead = (index: number, target: BuilderBinding['target']) => objectValues[index].get(target)
+    ?? literal(propertyValue(document.objects[index], target))
+  const groupRead = (index: number, target: BuilderGroupTarget) => groupValues[index].get(target)
+    ?? literal(groupPropertyValue(groups[index], target))
+
+  /** New parent frames use conventional forward scale → X/Y/Z rotation → translation. */
+  const frameSource = (suffix: string, read: (target: Exclude<BuilderGroupTarget, 'blend' | `material.${string}`>) => string) => [
+    `displace(${read('position.x')},${read('position.y')},${read('position.z')});`,
+    // Shader Park rotates coordinates rather than the surface, with its Y
+    // helper using the XZ plane. Reverse order/sign yields Rz*Ry*Rx forward.
+    `rotateZ(${read('rotation.z')});rotateY(-(${read('rotation.y')}));rotateX(${read('rotation.x')});`,
+    `let builder_frame_${suffix}=getSpace();setSpace(builder_frame_${suffix}/${read('scale')});`,
+  ].join('')
+  const constantFrameRead = (frame: BuilderFrame, target: Exclude<BuilderGroupTarget, 'blend' | `material.${string}`>) => {
+    if (target === 'scale') return literal(frame.scale)
+    const [branch, axis] = target.split('.') as ['position' | 'rotation', 'x' | 'y' | 'z']
+    return literal(frame[branch][axis])
+  }
+  const multiply = (left: string, right: string) => left === '1' ? right : right === '1' ? left : `(${left}*${right})`
+  type MaterialOverride = { material: BuilderMaterial; index: number }
+  const objectSource = (objectIndex: number, distanceScale = '1', override?: MaterialOverride) => {
+    const object = document.objects[objectIndex]
+    const read = (target: BuilderBinding['target']) => objectRead(objectIndex, target)
+    const [red, green, blue] = colorChannels(override?.material.color ?? object.material.color)
     const scaleX = read('scale.x'), scaleY = read('scale.y'), scaleZ = read('scale.z')
-    expandedOffsets(object).forEach((offset, copyIndex) => {
+    const scale = multiply(`min(${scaleX},min(${scaleY},${scaleZ}))`, distanceScale)
+    const materialRead = (target: 'material.metalness' | 'material.shininess') => override
+      ? groupRead(override.index, target) : read(target)
+    return expandedOffsets(object).map((offset, copyIndex) => {
       const suffix = `${objectIndex}_${copyIndex}`
       const spin = object.motion.type === 'spin' ? object.motion : null
       const rotation = (axis: 'x' | 'y' | 'z') => spin?.axis === axis
         ? `(${read(`rotation.${axis}`)}+time*${literal(spin.speed)})`
         : read(`rotation.${axis}`)
-      objects.push([
+      return [
         `let builder_object_${suffix}=shape(()=>{`,
         `displace((${read('position.x')}+${literal(offset.x)}),(${read('position.y')}+${literal(offset.y)}),(${read('position.z')}+${literal(offset.z)}));`,
         `rotateX(${rotation('x')});rotateY(${rotation('y')});rotateZ(${rotation('z')});`,
@@ -257,13 +330,60 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
         `setSpace(vec3(builder_space_${suffix}.x/${scaleX},builder_space_${suffix}.y/${scaleY},builder_space_${suffix}.z/${scaleZ}));`,
         coordinateModifierSource(object, suffix),
         `color(${literal(red)},${literal(green)},${literal(blue)});`,
-        `metal(${read('material.metalness')});shine(${read('material.shininess')});`,
+        `metal(${materialRead('material.metalness')});shine(${materialRead('material.shininess')});`,
         primitiveDistanceSource(object, suffix),
-        `setSDF(${modifierExpression(object, `builder_distance_${suffix}`)}*min(${scaleX},min(${scaleY},${scaleZ})));`,
+        `setSDF(${modifierExpression(object, `builder_distance_${suffix}`)}*${scale});`,
         `});builder_object_${suffix}();`,
-      ].join(''))
-    })
-  })
+      ].join('')
+    }).join('\n')
+  }
+
+  const nodes = builderCompositionNodes(document)
+  const nodeSource = (id: string, parentScale: string, inherited?: MaterialOverride): { source: string; name: string } => {
+    const node = nodes.get(id)!
+    if (node.kind === 'object') {
+      const frame = node.object.frame
+      const name = `builder_leaf_${node.index}`
+      return { name, source: [
+        `let ${name}=shape(()=>{`,
+        frame ? frameSource(`o${node.index}`, target => constantFrameRead(frame, target)) : '',
+        objectSource(node.index, frame ? multiply(parentScale, literal(frame.scale)) : parentScale, inherited),
+        'return getSDF();});',
+      ].join('') }
+    }
+    const { group, index } = node
+    const name = `builder_group_${index}`
+    const scale = multiply(parentScale, groupRead(index, 'scale'))
+    const override = inherited ?? (group.material ? { material: group.material, index } : undefined)
+    const children = group.children.map(child => nodeSource(child, scale, override))
+    const blend = group.operation.type === 'smooth-union' ? multiply(groupRead(index, 'blend'), scale) : null
+    const source = [
+      `let ${name}=shape(()=>{`,
+      frameSource(`g${index}`, target => groupRead(index, target)),
+      ...children.flatMap((child, childIndex) => {
+        if (!blend || childIndex === 0) return [child.source, `${child.name}();`]
+        const suffix = `${index}_${childIndex}`
+        const prior = `builder_prior_${suffix}`, next = `builder_next_${suffix}`, amount = `builder_blend_${suffix}`, h = `builder_h_${suffix}`
+        return [
+          // getSDF returns a reference. Addition captures its value before the
+          // next child updates the group's distance/material accumulator.
+          `let ${prior}=getSDF()+0;`, child.source, `let ${next}=${child.name}();`,
+          `let ${amount}=${blend};`,
+          // The denominator is one at zero and exactly k otherwise. This is
+          // polynomial smooth minimum, with exact hard union at k=0.
+          `let ${h}=max(${amount}-abs(${prior}-${next}),0)/(${amount}+(1-sign(${amount})));`,
+          // Keep the nearer child material selected by the union above. The
+          // smooth distance adjustment must not recolor the whole group.
+          `mixMat(1);setSDF(min(${prior},${next})-${amount}*${h}*${h}*0.25);resetMixColor();`,
+        ]
+      }),
+      'return getSDF();});',
+    ].join('')
+    return { source, name }
+  }
+  const objects = !document.composition && !document.objects.some(object => object.frame)
+    ? document.objects.map((_object, index) => objectSource(index))
+    : builderCompositionRoots(document).map(id => { const node = nodeSource(id, '1'); return `${node.source}${node.name}();` })
 
   const shader = [`setMaxIterations(96);setStepSize(0.7);`, ...declarations, ...objects].join('\n')
   const workload: BuilderWorkload = { ...baseWorkload, liveUniforms: uniforms.length, generatedSourceBytes: encoder.encode(shader).byteLength }

@@ -10,6 +10,7 @@ export function SceneEditorFieldErrorsProvider({ fields, mode = 'template', chil
       issues[location.id] = issue
       // Keep both objects' issues when their inspectors reuse the same IDs.
       if ('objectIndex' in location && location.objectIndex !== undefined) issues[`${location.objectIndex}:${location.id}`] = issue
+      if ('groupIndex' in location && location.groupIndex !== undefined) issues[`group:${location.groupIndex}:${location.id}`] = issue
     }
   }
   return <FieldErrorsContext.Provider value={issues}>{children}</FieldErrorsContext.Provider>

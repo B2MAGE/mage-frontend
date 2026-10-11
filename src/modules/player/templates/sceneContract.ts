@@ -41,6 +41,15 @@ export type BuilderOperation =
   | { type: 'torus'; radius: number; tube: number }
   | { type: 'cylinder'; radius: number; height: number }
 export type BuilderVector = { x: number; y: number; z: number }
+/** A uniform parent frame preserves the child's local geometry and animation. */
+export type BuilderFrame = { position: BuilderVector; rotation: BuilderVector; scale: number }
+export type BuilderMaterial = { color: string; metalness: number; shininess: number }
+export type BuilderGroup = {
+  id: string; name: string; children: string[]; transform: BuilderFrame
+  operation: { type: 'union' } | { type: 'smooth-union'; blend: number }
+  material?: BuilderMaterial
+}
+export type BuilderComposition = { version: 1; roots: string[]; groups: BuilderGroup[] }
 export type BuilderModifier =
   | { type: 'expand'; amount: number }
   | { type: 'shell'; thickness: number }
@@ -60,7 +69,8 @@ export type BuilderBinding = {
 export type BuilderObject = {
   id: string; name: string; operation: BuilderOperation
   transform: { position: BuilderVector; rotation: BuilderVector; scale: BuilderVector }
-  material: { color: string; metalness: number; shininess: number }
+  material: BuilderMaterial
+  frame?: BuilderFrame
   modifiers: BuilderModifier[]
   arrangements: BuilderArrangement[]
   motion: BuilderMotion
@@ -68,6 +78,7 @@ export type BuilderObject = {
 }
 export type BuilderSceneDocument = {
   schemaVersion: 1; kind: 'builder'; builderVersion: 1; objects: BuilderObject[]
+  composition?: BuilderComposition
   parameters: TemplateSceneDocument['parameters']
   settings: TemplateSceneDocument['settings']
 }

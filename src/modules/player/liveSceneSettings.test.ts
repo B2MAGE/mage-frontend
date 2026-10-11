@@ -24,6 +24,29 @@ describe('bounded live scene settings', () => {
     expect(scenePlaybackIdentity(next)).not.toBe(scenePlaybackIdentity(initial))
   })
 
+  it('keeps group transforms and blend live while ordered membership stays structural', () => {
+    const initial = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'left', operation: { type: 'sphere' } }, { id: 'right', operation: { type: 'box' } }],
+      composition: { version: 1, roots: ['pair'], groups: [{ id: 'pair', children: ['left', 'right'],
+        operation: { type: 'smooth-union', blend: 0.3 } }] } }) as BuilderSceneDocument
+    const next = structuredClone(initial), group = next.composition!.groups[0]
+    group.transform.position.x = 2
+    group.transform.rotation.z = 0.6
+    group.transform.scale = 1.5
+    group.operation = { type: 'smooth-union', blend: 0 }
+    expect(scenePlaybackIdentity(next)).toBe(scenePlaybackIdentity(initial))
+    const settings = extractLiveSceneSettings(next)
+    expect(settings.builderUniforms).toEqual(expect.arrayContaining([
+      { groupIndex: 0, target: 'position.x', value: 2 },
+      { groupIndex: 0, target: 'rotation.z', value: 0.6 },
+      { groupIndex: 0, target: 'scale', value: 1.5 },
+      { groupIndex: 0, target: 'blend', value: 0 },
+    ]))
+    expect(validateLiveSceneSettings(settings)).toEqual(settings)
+    group.children.reverse()
+    expect(scenePlaybackIdentity(next)).not.toBe(scenePlaybackIdentity(initial))
+  })
+
   it.each([
     [{ objectIndex: 0, target: 'position.x', value: 101 }],
     [{ objectIndex: 16, target: 'position.x', value: 0 }],
@@ -32,6 +55,12 @@ describe('bounded live scene settings', () => {
     [{ objectIndex: 0, target: 'position.x', value: 1, name: 'other' }],
     Array.from({ length: 65 }, () => ({ objectIndex: 0, target: 'position.x', value: 0 })),
     [{ objectIndex: 0, target: 'position.x', value: 0 }, { objectIndex: 0, target: 'position.x', value: 1 }],
+    [{ groupIndex: 8, target: 'position.x', value: 0 }],
+    [{ groupIndex: 0, target: 'scale', value: 0 }],
+    [{ groupIndex: 0, target: 'blend', value: 2.1 }],
+    [{ groupIndex: 0, objectIndex: 0, target: 'position.x', value: 1 }],
+    [{ groupIndex: 0, target: 'children', value: 0 }],
+    [{ groupIndex: 0, target: 'scale', value: 1 }, { groupIndex: 0, target: 'scale', value: 2 }],
   ])('rejects malformed Builder snapshots atomically', (...builderUniforms) => {
     expect(() => validateLiveSceneSettings({ ...extractLiveSceneSettings(builder()), builderUniforms })).toThrow()
   })

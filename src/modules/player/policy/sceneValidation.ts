@@ -113,6 +113,11 @@ function boundedJson(value: unknown, budget: Budget = sceneBudget): JsonRecord {
   return holder.value as JsonRecord
 }
 
+/** Check structural editing costs without rejecting scalar values the user is repairing. */
+export function assertSceneDocumentBudget(value: unknown): void {
+  boundedJson(value)
+}
+
 type Rule = {
   type: string; fields?: Record<string, Rule>; required?: string[]; items?: Rule
   maxItems?: number; unique?: boolean; uniqueBy?: string; minimum?: number; maximum?: number; values?: JsonValue[]

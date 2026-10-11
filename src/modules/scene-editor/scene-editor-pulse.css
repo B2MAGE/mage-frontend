@@ -480,13 +480,13 @@ html[data-theme] .scene-editor-page .builder-info-tooltip__trigger:focus-visible
 .builder-transform-stages { display: grid; gap: 0; }
 .builder-control-stage__header {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto 9px;
+  grid-template-columns: 22px minmax(0, 1fr) auto 20px;
   align-items: center;
   gap: 8px;
   min-height: 58px;
   padding: 10px 12px;
 }
-.builder-control-stage--unnumbered .builder-control-stage__header { grid-template-columns: minmax(0, 1fr) auto 9px; }
+.builder-control-stage--unnumbered .builder-control-stage__header { grid-template-columns: minmax(0, 1fr) auto 20px; }
 html[data-theme] .scene-editor-page .builder-control-stage__toggle {
   display: grid;
   place-items: center;
@@ -2150,7 +2150,6 @@ html[data-theme] .scene-editor-page .builder-object-list__item:hover { backgroun
 html[data-theme] .scene-editor-page .builder-object-list__item[data-selected] {
   border-color: var(--studio-accent-border);
   background: var(--studio-accent-fill);
-  box-shadow: inset 3px 0 var(--studio-accent);
 }
 
 .builder-object-list__instructions { margin: 0; padding: 0 12px 12px; font-size: 10px; }
@@ -2210,6 +2209,24 @@ html[data-theme] .scene-editor-page .builder-object-list__item[data-dragging] .b
 .builder-object-list__item[data-drop-position="before"]::after { top: -5px; }
 .builder-object-list__item[data-drop-position="after"]::after { bottom: -5px; }
 .builder-object-list__announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.builder-object-list__branch { min-width: 0; }
+html[data-theme] .scene-editor-page .builder-object-list--nested { margin-top: 7px; padding: 0 0 0 12px; border-left: 1px solid var(--studio-border); }
+html[data-theme] .scene-editor-page .builder-object-list__item.builder-object-list__item--checkable { grid-template-columns: 14px 16px minmax(0, 1fr) auto; }
+html[data-theme] .scene-editor-page .builder-object-list__actions { flex: 0 0 auto; flex-wrap: nowrap; }
+html[data-theme] .scene-editor-page .builder-object-list .builder-object-list__arrow { flex: 0 0 28px; }
+html[data-theme] .scene-editor-page .builder-object-list__checkbox { width: 13px; height: 13px; margin: 0; padding: 0; accent-color: var(--studio-accent); }
+.builder-group-selection { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+html[data-theme] .scene-editor-page .builder-group-selection .scene-secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 4px 8px; font-size: 10px; }
+.builder-command-error { margin: 0 12px 12px; color: var(--studio-error, #e77c83); font-size: 11px; line-height: 1.5; }
+.builder-parent-control { display: grid; gap: 6px; }
+.builder-parent-control .field-hint { margin: 0; }
+.builder-group-material-toggle { display: flex; align-items: center; gap: 8px; color: var(--studio-text); font-size: 12px; }
+.builder-group-material-toggle input { width: 15px; height: 15px; margin: 0; accent-color: var(--studio-accent); }
+@container editor (max-width: 650px) {
+  html[data-theme] .scene-editor-page .builder-object-list .builder-object-list__item--checkable .builder-object-list__select { grid-template-columns: 24px minmax(0, 1fr); gap: 5px; }
+  .builder-object-list__item--checkable :is(.builder-object-list__index, .builder-object-list__editing) { display: none; }
+}
 
 .builder-object-list__icon {
   display: grid;

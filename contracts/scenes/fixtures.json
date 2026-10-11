@@ -4390,6 +4390,2136 @@
           "audioResponse": "transient-v1"
         }
       }
+    },
+    {
+      "name": "composition-ordered-union-defaults",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-empty-forest",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [],
+        "composition": {
+          "version": 1,
+          "roots": [],
+          "groups": []
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [],
+        "composition": {
+          "version": 1,
+          "roots": [],
+          "groups": []
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-nested-smooth-union-with-outer-material",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.4
+              },
+              "transform": {
+                "position": {
+                  "x": 2
+                },
+                "rotation": {
+                  "y": 0.5
+                },
+                "scale": 1.5
+              },
+              "material": {
+                "color": "#123456"
+              }
+            },
+            {
+              "id": "outer",
+              "children": [
+                "pair"
+              ],
+              "material": {
+                "color": "#abcdef",
+                "metalness": 0.8
+              }
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.4
+              },
+              "transform": {
+                "position": {
+                  "x": 2,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "y": 0.5,
+                  "x": 0,
+                  "z": 0
+                },
+                "scale": 1.5
+              },
+              "material": {
+                "color": "#123456",
+                "metalness": 0,
+                "shininess": 0.5
+              },
+              "name": "Group"
+            },
+            {
+              "id": "outer",
+              "children": [
+                "pair"
+              ],
+              "material": {
+                "color": "#abcdef",
+                "metalness": 0.8,
+                "shininess": 0.5
+              },
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-zero-blend-is-valid",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0
+              }
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0
+              },
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-preserved-object-frame",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "frame": {
+              "position": {
+                "y": -2
+              },
+              "rotation": {
+                "z": 0.4
+              },
+              "scale": 2
+            },
+            "arrangements": [
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 3,
+                "radius": 1.5
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.3
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "frame": {
+              "position": {
+                "y": -2,
+                "x": 0,
+                "z": 0
+              },
+              "rotation": {
+                "z": 0.4,
+                "x": 0,
+                "y": 0
+              },
+              "scale": 2
+            },
+            "arrangements": [
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 3,
+                "radius": 1.5
+              }
+            ],
+            "motion": {
+              "type": "spin",
+              "axis": "z",
+              "speed": 0.3
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-unknown-version",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 2,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-unknown-operation",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "difference"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-invalid-blend",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 2.01
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-hard-union-does-not-accept-blend",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "union",
+                "blend": 0.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-missing-operand",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "missing"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-missing-root",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "missing"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-orphan-object",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-orphan-group",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            },
+            {
+              "id": "orphan",
+              "children": [
+                "orb"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-self-cycle",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block",
+                "pair"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-disconnected-cycle",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            },
+            {
+              "id": "cycle-a",
+              "children": [
+                "cycle-b"
+              ]
+            },
+            {
+              "id": "cycle-b",
+              "children": [
+                "cycle-a"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-duplicate-operand",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block",
+                "orb"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-duplicate-root",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair",
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-multiple-parents",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair",
+            "orb"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-group-id-collides-with-object",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "orb"
+          ],
+          "groups": [
+            {
+              "id": "orb",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-empty-group",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-three-level-nesting",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            },
+            {
+              "id": "middle",
+              "children": [
+                "pair"
+              ]
+            },
+            {
+              "id": "outer",
+              "children": [
+                "middle"
+              ]
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            },
+            {
+              "id": "middle",
+              "children": [
+                "pair"
+              ],
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            },
+            {
+              "id": "outer",
+              "children": [
+                "middle"
+              ],
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "composition-excessive-nesting",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "top"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            },
+            {
+              "id": "middle",
+              "children": [
+                "pair"
+              ]
+            },
+            {
+              "id": "outer",
+              "children": [
+                "middle"
+              ]
+            },
+            {
+              "id": "top",
+              "children": [
+                "outer"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-too-many-groups",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            },
+            {
+              "id": "extra-0",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-1",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-2",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-3",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-4",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-5",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-6",
+              "children": [
+                "orb"
+              ]
+            },
+            {
+              "id": "extra-7",
+              "children": [
+                "orb"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-nonuniform-group-scale",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "transform": {
+                "scale": {
+                  "x": 1,
+                  "y": 2,
+                  "z": 1
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-invalid-frame-scale",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "frame": {
+              "scale": 0
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-unknown-frame-field",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "frame": {
+              "matrix": []
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "composition-expanded-arrangement-overflow",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "arrangements": [
+              {
+                "type": "linear",
+                "axis": "x",
+                "count": 8,
+                "spacing": 1
+              },
+              {
+                "type": "radial",
+                "axis": "y",
+                "count": 3,
+                "radius": 2
+              }
+            ]
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "pair"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }
