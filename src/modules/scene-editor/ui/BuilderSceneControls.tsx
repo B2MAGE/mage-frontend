@@ -13,6 +13,7 @@ import {
 } from '../builderEditor'
 import { NumberField, SelectField, SliderField, Vector3Field } from './SceneEditorControls'
 import { FieldValidation } from './SceneEditorFieldValidation'
+import { BuilderObjectList } from './BuilderObjectList'
 import { builderObjectFieldIssues, FieldErrorsContext, useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 
 type Props = {
@@ -290,7 +291,6 @@ function BuilderObjectActions({ canDuplicate, onDuplicate, onRemove }: { canDupl
 }
 
 const shapeLabel = (object: BuilderObject) => BUILDER_OPERATIONS[object.operation.type].label
-const shapeGlyph = (object: BuilderObject) => BUILDER_OPERATIONS[object.operation.type].glyph
 
 function sizeSummary(object: BuilderObject) {
   const operation = object.operation
@@ -490,28 +490,14 @@ export function BuilderSceneControls({
       <aside className="builder-object-section builder-object-rail" aria-labelledby="builder-objects-title">
         <div className="builder-object-rail__header">
           <h3 className="builder-object-section__title" id="builder-objects-title">Objects</h3>
-          <p className="field-hint">Keep the object list visible while editing.</p>
         </div>
 
         <FieldValidation id="builder-object-list">
         {document.objects.length === 0 ? <p className="builder-object-empty">Add a shape to start building this scene.</p> : (
-          <div className="builder-object-list" id="builder-object-list" role="group" aria-label="Scene objects" tabIndex={-1}>
-            {document.objects.map(object => <button key={object.id} className="builder-object-list__item" type="button"
-              aria-label={`${object.name}, ${shapeLabel(object)}`}
-              aria-pressed={object.id === selectedObjectId} onClick={() => onSelectObject(object.id)}>
-              <span className="builder-object-list__icon" aria-hidden="true">{shapeGlyph(object)}</span>
-              <span className="builder-object-list__copy"><strong>{object.name}</strong><span>{shapeLabel(object)}</span></span>
-            </button>)}
-          </div>
+          <BuilderObjectList objects={document.objects} selectedObjectId={selectedObjectId}
+            onSelectObject={onSelectObject} onMoveObject={onMoveObject} />
         )}
         </FieldValidation>
-
-        {document.objects.length > 1 ? <div aria-label="Reorder selected object" className="builder-object-reorder" role="group">
-          <button className="scene-secondary-button" type="button" disabled={selectedIndex <= 0}
-            onClick={() => { if (selected) onMoveObject(selected.id, document.objects[selectedIndex - 1].id) }}>Move up</button>
-          <button className="scene-secondary-button" type="button" disabled={selectedIndex < 0 || selectedIndex === document.objects.length - 1}
-            onClick={() => { if (selected) onMoveObject(selected.id, document.objects[selectedIndex + 1].id) }}>Move down</button>
-        </div> : null}
 
         <div className="builder-object-section__add">
           <select aria-label="Shape" className="mage-select" id="builder-add-shape" value={newShape}

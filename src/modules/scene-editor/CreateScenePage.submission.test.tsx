@@ -52,11 +52,13 @@ vi.mock('@modules/player', async (importOriginal) => {
 })
 
 beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class { observe = vi.fn(); disconnect = vi.fn() })
   mockCaptureFramePreview.mockReset()
   mockCaptureFramePreview.mockResolvedValue(CAPTURED_THUMBNAIL_DATA_URL)
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
   window.localStorage.clear()
 })
@@ -88,7 +90,8 @@ describe('CreateScenePage submission', () => {
       window.localStorage.setItem(key, raw)
       window.dispatchEvent(new StorageEvent('storage', { key, newValue: raw, storageArea: window.localStorage }))
     })
-    const restore = await screen.findByRole('button', { name: 'Restore draft' })
+    await user.click(await screen.findByRole('button', { name: 'Draft conflict' }))
+    const restore = screen.getByRole('button', { name: 'Restore draft' })
     expect(restore).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Keep this editor’s draft' })).toBeDisabled()
     await user.click(restore)

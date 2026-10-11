@@ -1,9 +1,9 @@
 import {
   ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, Check,
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
-  CircleAlert, GripVertical, Heart, Images, Info, Layers, ListMusic,
+  CircleAlert, Ellipsis, GripVertical, Heart, Images, Info, Layers, ListMusic,
   LogOut, Maximize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
-  Search, Settings, Shuffle, User, Volume2, VolumeX, X,
+  Redo2, Search, Settings, Shuffle, Undo2, User, Volume2, VolumeX, X,
   type LucideProps,
 } from 'lucide-react'
 import './appIcon.css'
@@ -23,6 +23,7 @@ const icons = {
   'chevron-right': ChevronRight,
   'chevron-up': ChevronUp,
   'circle-alert': CircleAlert,
+  ellipsis: Ellipsis,
   'grip-vertical': GripVertical,
   heart: Heart,
   images: Images,
@@ -36,10 +37,12 @@ const icons = {
   play: Play,
   plus: Plus,
   repeat: Repeat,
+  'redo-2': Redo2,
   'rotate-ccw': RotateCcw,
   search: Search,
   settings: Settings,
   shuffle: Shuffle,
+  'undo-2': Undo2,
   user: User,
   'volume-2': Volume2,
   'volume-x': VolumeX,

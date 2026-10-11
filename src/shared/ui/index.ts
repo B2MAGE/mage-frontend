@@ -1,6 +1,7 @@
 export { AuthPage, AuthPageHeader } from './AuthPage'
 export { ActionButton } from './ActionButton'
 export { AppIcon } from './AppIcon'
+export { usePointerReorder } from './usePointerReorder'
 export type { AppIconName } from './AppIcon'
 export { EditorFieldShell, SliderFieldShell } from './EditorFieldShell'
 export { EngagementButton } from './EngagementButton'

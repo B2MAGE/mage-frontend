@@ -508,11 +508,6 @@
     gap: 10px;
   }
 
-  .mage-player__volume-panel {
-    left: 0;
-    right: auto;
-  }
-
   .mage-player__control-button {
     width: 44px;
     height: 44px;
