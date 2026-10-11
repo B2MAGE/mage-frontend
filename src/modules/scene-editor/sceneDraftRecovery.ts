@@ -132,7 +132,7 @@ type RecoveryInput = {
   baseFingerprint: string
   saveContext?: SceneDraftSaveContext
 }
-type RecoveryView = { candidate: SceneDraftCandidate | null; status: SceneDraftStatus }
+type RecoveryView = { candidate: SceneDraftCandidate | null; status: SceneDraftStatus; requiresResolution: boolean }
 type StorageAccess = () => Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
 /** Small controller keeps debounce, unload, and async-save comparisons on the same latest draft. */
@@ -143,14 +143,15 @@ export function createSceneDraftRecovery(storageKey: string | null, getStorage: 
   let baseline = ''
   let expectedRaw: string | null = null
   let blocked = false
+  let requiresResolution = false
   let initialized = false
   let clearedContext = ''
   let timer: ReturnType<typeof setTimeout> | undefined
-  let view: RecoveryView = { candidate: null, status: { kind: 'idle', message: '' } }
+  let view: RecoveryView = { candidate: null, status: { kind: 'idle', message: '' }, requiresResolution: false }
   const listeners = new Set<() => void>()
 
   function publish(status: SceneDraftStatus, record: SceneDraftRecord | null = null) {
-    view = { status, candidate: record ? { ...record, baseChanged: record.baseFingerprint !== baseline } : null }
+    view = { status, candidate: record ? { ...record, baseChanged: record.baseFingerprint !== baseline } : null, requiresResolution }
     listeners.forEach(listener => listener())
   }
 
@@ -164,6 +165,7 @@ export function createSceneDraftRecovery(storageKey: string | null, getStorage: 
   function offer(raw: string | null, conflict: boolean) {
     expectedRaw = raw
     blocked = conflict || raw !== null
+    requiresResolution = blocked
     const record = raw === null ? null : parseSceneDraftRecord(raw)
     publish({ kind: conflict ? 'conflict' : record ? 'available' : raw === null ? 'idle' : 'error',
       message: conflict
@@ -260,6 +262,7 @@ export function createSceneDraftRecovery(storageKey: string | null, getStorage: 
         inputSignature = JSON.stringify(input)
       }
       blocked = false
+      requiresResolution = false
       publish({ kind: 'saved', message: 'Browser draft restored. Review it before saving.' })
       return record
     } catch (error) { storageError(error); return null }
@@ -272,6 +275,7 @@ export function createSceneDraftRecovery(storageKey: string | null, getStorage: 
       getStorage().removeItem(storageKey)
       expectedRaw = null
       blocked = false
+      requiresResolution = false
       publish({ kind: 'idle', message: '' })
       flush()
     } catch (error) { storageError(error) }

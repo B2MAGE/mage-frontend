@@ -33,7 +33,7 @@ describe('template editor API round trips', () => {
     mockCreateScenePageFetch((url, init) => {
       if (url === buildApiUrl('/scenes') && init?.method === 'POST') {
         submitted = JSON.parse(String(init.body))
-        return jsonResponse({ sceneId: 12 })
+        return jsonResponse({ sceneId: 12, revision: 0 })
       }
       if (url === buildApiUrl('/scenes/12')) return jsonResponse(buildSceneEditorApiScene({ sceneData: submitted?.sceneData }))
     })

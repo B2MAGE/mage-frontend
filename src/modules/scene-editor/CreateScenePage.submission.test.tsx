@@ -69,7 +69,7 @@ describe('CreateScenePage submission', () => {
       if (input === buildApiUrl('/scenes')) {
         submittedBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
+          new Response(JSON.stringify({ sceneId: 18, revision: 0 }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
           }),
@@ -116,7 +116,7 @@ describe('CreateScenePage submission', () => {
     const fetcher = mockCreateScenePageFetch((input, init) => {
       if (input === buildApiUrl('/scenes')) {
         createBody = JSON.parse(String(init?.body))
-        return new Response(JSON.stringify({ sceneId: 18 }), { status: 201 })
+        return new Response(JSON.stringify({ sceneId: 18, revision: 0 }), { status: 201 })
       }
     })
     const user = userEvent.setup()
@@ -139,7 +139,7 @@ describe('CreateScenePage submission', () => {
       saves.push(JSON.parse(String(init?.body)))
       return saves.length === 1
         ? new Response(JSON.stringify({ message: 'Choose current tags.', details: { tagIds: 'The selected tag is unavailable.' } }), { status: 400 })
-        : new Response(JSON.stringify({ sceneId: 18 }), { status: 201 })
+        : new Response(JSON.stringify({ sceneId: 18, revision: 0 }), { status: 201 })
     })
     const user = userEvent.setup()
     renderCreateScenePage()
@@ -210,7 +210,7 @@ describe('CreateScenePage submission', () => {
       if (input === buildApiUrl('/scenes')) {
         createBody = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
         return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
+          new Response(JSON.stringify({ sceneId: 18, revision: 0 }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
           }),
@@ -253,7 +253,7 @@ describe('CreateScenePage submission', () => {
       if (input === buildApiUrl('/scenes')) {
         createAttempted = true
         return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
+          new Response(JSON.stringify({ sceneId: 18, revision: 0 }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
           }),
@@ -287,7 +287,7 @@ describe('CreateScenePage submission', () => {
       if (input === buildApiUrl('/scenes')) {
         createAttempted = true
         return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
+          new Response(JSON.stringify({ sceneId: 18, revision: 0 }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
           }),
@@ -331,7 +331,7 @@ describe('CreateScenePage submission', () => {
       if (input === buildApiUrl('/scenes')) {
         createAttempted = true
         return Promise.resolve(
-          new Response(JSON.stringify({ sceneId: 18 }), {
+          new Response(JSON.stringify({ sceneId: 18, revision: 0 }), {
             status: 201,
             headers: { 'Content-Type': 'application/json' },
           }),

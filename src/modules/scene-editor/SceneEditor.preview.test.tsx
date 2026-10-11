@@ -259,7 +259,7 @@ describe('scene editor presets and beat preview', () => {
     mockCreateScenePageFetch((input, init) => {
       if (input === buildApiUrl('/scenes') && init?.method === 'POST') {
         created = JSON.parse(String(init.body)) as SceneWritePayload
-        return jsonResponse({ sceneId: 18 }, 201)
+        return jsonResponse({ sceneId: 18, revision: 0 }, 201)
       }
     })
     const user = userEvent.setup()
