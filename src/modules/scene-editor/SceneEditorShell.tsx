@@ -912,6 +912,13 @@ export function SceneEditorShell({
             history.beginEdit(target.id || target.getAttribute('aria-label') || target.type);
           } else history.endEdit();
         }}
+        onInputCapture={event => {
+          const target = event.target;
+          // Keyboard undo keeps focus in the field; the next input begins a new grouped edit.
+          if (target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && ['text', 'number', 'range', 'color'].includes(target.type))) {
+            history.beginEdit(target.id || target.getAttribute('aria-label') || target.type);
+          }
+        }}
         onBlurCapture={history.endEdit}
         onPointerDown={event => {
           if (event.target instanceof HTMLInputElement && event.target.type === 'range') history.beginEdit(event.target.id);

@@ -34,6 +34,13 @@ describe('draft editing through the shared editor', () => {
     await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}')
     await waitFor(() => expect(preview().objects.map((object: { id: string }) => object.id)).toEqual(['object-2', 'object-1']))
 
+    await user.type(screen.getByLabelText('Name'), 'xy')
+    await user.keyboard('{Control>}z{/Control}')
+    expect(screen.getByLabelText('Name')).toHaveValue('Sphere 2')
+    await user.type(screen.getByLabelText('Name'), 'ab')
+    await user.keyboard('{Control>}z{/Control}')
+    expect(screen.getByLabelText('Name')).toHaveValue('Sphere 2')
+
     await user.click(screen.getByRole('button', { name: 'Object options' }))
     await user.click(screen.getByRole('menuitem', { name: 'Remove' }))
     await waitFor(() => expect(preview().objects).toHaveLength(1))
