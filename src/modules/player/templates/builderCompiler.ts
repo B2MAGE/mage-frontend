@@ -208,23 +208,37 @@ export function validateBuilderRenderingWorkload(document: BuilderSceneDocument)
  * IDs, names and binding sources never enter generated source. Only validated
  * numeric values and fixed operation tokens are emitted.
  */
-export function compileBuilderDocument(document: BuilderSceneDocument): BuilderCompilation {
+export function compileBuilderDocument(document: BuilderSceneDocument, options: { livePreview?: boolean; bindingUniformsOnly?: boolean } = {}): BuilderCompilation {
   const baseWorkload = validateBuilderRenderingWorkload(document)
   const uniforms: BuilderUniform[] = []
   const declarations: string[] = []
   const objects: string[] = []
 
+  // Saved compilation stays deterministic under version one's shared contract.
+  // Playback can spend its remaining uniform budget on editor numeric values.
+  // Authored bindings reserve their slots first; overflow stays structural.
+  let remaining = policy.limits.liveUniforms - baseWorkload.liveUniforms
+  const liveTargets = document.objects.map(object => {
+    const targets = new Set(object.bindings.map(binding => binding.target))
+    if (options.livePreview && !options.bindingUniformsOnly) for (const target of Object.keys(BUILDER_BINDING_RANGES) as BuilderBinding['target'][]) {
+      if (remaining > 0 && !targets.has(target)) { targets.add(target); remaining-- }
+    }
+    return targets
+  })
+
   document.objects.forEach((object, objectIndex) => {
     const values = new Map<BuilderBinding['target'], string>()
-    object.bindings.forEach(binding => {
-      const range = BUILDER_BINDING_RANGES[binding.target]
+    liveTargets[objectIndex].forEach(target => {
+      const range = BUILDER_BINDING_RANGES[target]
       if (!range) fail(`sceneData.objects[${objectIndex}].bindings`, 'Unsupported live property target.')
-      const name = builderUniformName(objectIndex, binding.target)
-      const initialValue = propertyValue(object, binding.target)
-      declarations.push(`let ${name}=input(${literal(initialValue)},${literal(range.minimum)},${literal(range.maximum)});`)
-      uniforms.push({ objectId: object.id, objectIndex, target: binding.target, name, initialValue,
+      const name = builderUniformName(objectIndex, target)
+      const initialValue = propertyValue(object, target)
+      // Stable defaults keep supported edits on the same compiled program.
+      // The trusted renderer applies actual values before its first frame.
+      declarations.push(`let ${name}=input(${literal(options.livePreview ? range.default : initialValue)},${literal(range.minimum)},${literal(range.maximum)});`)
+      uniforms.push({ objectId: object.id, objectIndex, target, name, initialValue,
         minimum: range.minimum, maximum: range.maximum })
-      values.set(binding.target, name)
+      values.set(target, name)
     })
     const read = (target: BuilderBinding['target']) => values.get(target) ?? literal(propertyValue(object, target))
     const [red, green, blue] = colorChannels(object.material.color)
@@ -252,8 +266,17 @@ export function compileBuilderDocument(document: BuilderSceneDocument): BuilderC
   })
 
   const shader = [`setMaxIterations(96);setStepSize(0.7);`, ...declarations, ...objects].join('\n')
-  const workload: BuilderWorkload = { ...baseWorkload, generatedSourceBytes: encoder.encode(shader).byteLength }
+  const workload: BuilderWorkload = { ...baseWorkload, liveUniforms: uniforms.length, generatedSourceBytes: encoder.encode(shader).byteLength }
   assertBudget(workload)
   return Object.freeze({ compilerVersion: BUILDER_COMPILER_VERSION, shader,
     uniforms: Object.freeze(uniforms.map(uniform => Object.freeze(uniform))), workload: Object.freeze(workload) })
+}
+
+/** Extra editor uniforms must never make a valid saved scene exceed its source budget. */
+export function compileBuilderPreviewDocument(document: BuilderSceneDocument): BuilderCompilation {
+  try { return compileBuilderDocument(document, { livePreview: true }) }
+  catch (error) {
+    if (!(error instanceof BuilderCompilationError) || !error.message.includes('generatedSourceBytes requires')) throw error
+    return compileBuilderDocument(document, { livePreview: true, bindingUniformsOnly: true })
+  }
 }

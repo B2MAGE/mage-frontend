@@ -2,11 +2,39 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { describe, expect, it, vi } from 'vitest'
 import { diffLiveSceneSettings, extractLiveSceneSettings, validateLiveSceneSettings } from './liveSceneSettings'
 import { scenePlaybackIdentity } from './scenePlaybackIdentity'
+import { parseSceneDocument, type BuilderSceneDocument } from './templates/sceneContract'
 
 const raw = customDocument({ visualizer: { shader: 'sphere(.5)', skyboxPreset: 6 } })
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 
 describe('bounded live scene settings', () => {
+  const builder = () => parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+    objects: [{ id: 'shape', operation: { type: 'sphere' } }] }) as BuilderSceneDocument
+
+  it('keeps supported Builder edits live and geometry changes structural', () => {
+    const initial = builder(), next = structuredClone(initial)
+    next.objects[0].transform.position.x = 4
+    next.objects[0].material.metalness = 0.7
+    expect(scenePlaybackIdentity(next)).toBe(scenePlaybackIdentity(initial))
+    const settings = extractLiveSceneSettings(next)
+    expect(settings.builderUniforms).toContainEqual({ objectIndex: 0, target: 'position.x', value: 4 })
+    expect(settings.builderUniforms).toContainEqual({ objectIndex: 0, target: 'material.metalness', value: 0.7 })
+    expect(diffLiveSceneSettings(extractLiveSceneSettings(initial), settings)).toEqual({})
+    next.objects[0].operation = { type: 'sphere', radius: 2 }
+    expect(scenePlaybackIdentity(next)).not.toBe(scenePlaybackIdentity(initial))
+  })
+
+  it.each([
+    [{ objectIndex: 0, target: 'position.x', value: 101 }],
+    [{ objectIndex: 16, target: 'position.x', value: 0 }],
+    [{ objectIndex: 0, target: 'shader.source', value: 0 }],
+    [{ objectIndex: 0, target: 'position.x', value: NaN }],
+    [{ objectIndex: 0, target: 'position.x', value: 1, name: 'other' }],
+    Array.from({ length: 65 }, () => ({ objectIndex: 0, target: 'position.x', value: 0 })),
+    [{ objectIndex: 0, target: 'position.x', value: 0 }, { objectIndex: 0, target: 'position.x', value: 1 }],
+  ])('rejects malformed Builder snapshots atomically', (...builderUniforms) => {
+    expect(() => validateLiveSceneSettings({ ...extractLiveSceneSettings(builder()), builderUniforms })).toThrow()
+  })
   it('normalizes optional settings, including removing a previously authored value', () => {
     const start = extractLiveSceneSettings(raw)
     const changed = extractLiveSceneSettings(customDocument({ ...raw.scene, intent: { fov: 100 }, fx: { passes: { rgbShift: true } } }))

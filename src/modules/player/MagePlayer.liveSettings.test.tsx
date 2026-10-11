@@ -14,7 +14,11 @@ vi.mock('@modules/player/availability/sceneAvailability', async () => {
 
 const template = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
 const custom = buildMagePlayerSceneBlob()
+const builder = { schemaVersion: 1, kind: 'builder', builderVersion: 1,
+  objects: [{ id: 'shape', operation: { type: 'sphere' } }] }
 const fixtures = [
+  { name: 'Builder object', initial: builder, next: { ...builder,
+    objects: [{ ...builder.objects[0], transform: { position: { x: 3 } }, material: { metalness: 0.7 } }] } },
   { name: 'current custom', initial: custom, next: customDocument({ ...custom.scene, intent: { fov: 96, autoRotateSpeed: 0.8 },
     fx: { bloom: { enabled: true, strength: 0.4 }, passes: { rgbShift: true } } }) },
   { name: 'template', initial: template, next: { ...template, settings: { camera: { fov: 96, orbitSpeed: 0.8 },

@@ -10,6 +10,8 @@ import { compileShader } from '@notrac/mage/compiler'
 import type { CompilerWorker } from './compiler/client'
 import type { CompileRequest } from './compiler/protocol'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
+import { parseSceneDocument, type BuilderSceneDocument } from '../modules/player/templates/sceneContract'
+import { builderUniformName } from '../modules/player/templates/builderCompiler'
 
 type ResponseHarness = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const engineClass = engineSource.slice(engineSource.indexOf('var MAGEEngine = class MAGEEngine {'))
@@ -148,16 +150,53 @@ describe('isolated playback engine', () => {
       transform: { position: { x: 1 } },
       bindings: [{ target: 'position.x', source: 'bass-level' }],
     }] }
-    const f = fixture(), loading = f.load(builder)
+    const f = fixture(), fields = f.engine.getEngineFields()
+    const uniforms = Object.fromEntries(extractLiveSceneSettings(builder).builderUniforms!.map(value => [builderUniformName(value.objectIndex, value.target), { value: 0 }]))
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const loading = f.load(builder)
     await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     const generated = compileInWorker.mock.calls[0][0] as string
     expect(generated).toContain('extractSDF(sphere)(0.7)')
-    expect(generated).toContain('builder_o0_position_x=input(1,-100,100)')
+    expect(generated).toContain('builder_o0_position_x=input(0,-100,100)')
+    expect(uniforms.builder_o0_position_x.value).toBe(1)
     expect(generated).not.toContain(builder.objects[0].name)
     expect(compileInWorker).toHaveBeenCalledWith(generated,
       { signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200 })
     expect(f.engine.loadCompiledPreset.mock.calls[0][0]).toMatchObject({ visualizer: { shader: generated, scale: 10 } })
     f.emit('frame'); (await loading).dispose()
+  })
+
+  it('applies the exact Builder manifest before frame/capture without recompilation or clock/audio changes', async () => {
+    const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'shape', operation: { type: 'sphere' }, transform: { position: { x: 3 } } }] }) as BuilderSceneDocument
+    const f = fixture(), fields = f.engine.getEngineFields()
+    const uniforms = Object.fromEntries(extractLiveSceneSettings(scene).builderUniforms!.map(value => [builderUniformName(value.objectIndex, value.target), { value: 0 }]))
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const player = await f.ready(scene)
+    expect(uniforms.builder_o0_position_x.value).toBe(3)
+    f.engine.setExternalAudioFrame.mockClear(); f.engine.setExternalClock.mockClear(); f.engine.play.mockClear()
+    scene.objects[0].transform.position.x = 7
+    scene.objects[0].material.metalness = 0.8
+    const settings = extractLiveSceneSettings(scene)
+    player.sceneSettings(settings)
+    expect(uniforms.builder_o0_position_x.value).toBe(7)
+    expect(uniforms.builder_o0_material_metalness.value).toBe(0.8)
+    expect(compileInWorker).toHaveBeenCalledOnce()
+    expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce()
+    expect(f.engine.updateSettings).not.toHaveBeenCalled()
+    expect(f.engine.setExternalAudioFrame).not.toHaveBeenCalled()
+    expect(f.engine.setExternalClock).not.toHaveBeenCalled()
+    expect(f.engine.play).not.toHaveBeenCalled()
+    const wrong = { ...settings, intent: { ...settings.intent, fov: 96 }, builderUniforms: settings.builderUniforms!.slice(1) }
+    expect(() => player.sceneSettings(wrong)).toThrow(/match the loaded/)
+    expect(f.engine.updateSettings).not.toHaveBeenCalled()
+    expect(uniforms.builder_o0_position_x.value).toBe(7)
+    expect(() => player.sceneSettings({ ...settings, builderUniforms: settings.builderUniforms!.map(entry => ({ ...entry, objectIndex: 1 })) })).toThrow(/match the loaded/)
+    await player.capture({ width: 10, height: 10, quality: 0.9, type: 'image/png' })
+    expect(f.engine.captureFramePreview).toHaveBeenCalledOnce()
+    player.dispose()
   })
 
   it('does not allocate a renderer or fall back when worker compilation fails or is cancelled', async () => {

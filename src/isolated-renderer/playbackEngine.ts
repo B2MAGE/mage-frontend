@@ -10,6 +10,8 @@ import { createPointerOrbit, type OrbitFields } from './pointerOrbit'
 import { compileInWorker } from './compiler/client'
 import type { CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
 import { diffLiveSceneSettings, extractLiveSceneSettings, validateLiveSceneSettings, type SceneLiveSettingsPatch } from '../modules/player/liveSceneSettings'
+import { compileBuilderPreviewDocument } from '../modules/player/templates/builderCompiler'
+import { assertBuilderUniformManifest, type BuilderUniformValue } from '../modules/player/templates/builderUniformValues'
 
 export type PlaybackEngine = {
   dispose: () => void
@@ -42,7 +44,10 @@ const noShortcuts: InputState = { requestToggleUI: false, requestResetVisualizer
 
 /** Only validated scene data and numbers enter this engine; no media loader is exposed. */
 export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, sceneRevision = 1, onError, onFrame }) => {
-  const resolved = resolveSceneForPlayback(validateSceneForPlayback(scene)).engineScene
+  const document = validateSceneForPlayback(scene)
+  const resolved = resolveSceneForPlayback(document).engineScene
+  const builder = document.kind === 'builder' ? compileBuilderPreviewDocument(document) : null
+  if (builder) (resolved.visualizer as { shader: string }).shader = builder.shader
   validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: resolved })
   // Defense in depth for callers other than the protocol validator.
   if (Object.hasOwn(resolved, 'audio') || Object.hasOwn(resolved, 'audioPath')) throw new Error('Media is parent-owned.')
@@ -77,6 +82,24 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     ? JSON.stringify(normalizeAudioResponseConfig(resolved.audioResponseConfig).config) : null
   let playing = true
   let currentZoom = 1
+  function prepareBuilderValues(values: readonly BuilderUniformValue[] | undefined) {
+    if (!builder) {
+      if (values !== undefined) throw new Error('Builder settings require a Builder scene.')
+      return () => {}
+    }
+    assertBuilderUniformManifest(values ?? [], builder.uniforms)
+    const material = engine.getEngineFields().visualizer.mesh?.material
+    if (!material || Array.isArray(material)) throw new Error('Builder material is unavailable.')
+    const updates = builder.uniforms.map((uniform, index) => {
+      const slot = material.uniforms?.[uniform.name]
+      if (!slot || typeof slot.value !== 'number') throw new Error('Builder uniform is unavailable.')
+      return { slot, value: values![index].value }
+    })
+    return () => {
+      for (const { slot, value } of updates) slot.value = value
+      material.uniformsNeedUpdate = true
+    }
+  }
   function onContextLost() {
     if (disposed) return
     try { onError() } finally { dispose() }
@@ -118,6 +141,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         passes: { ...Object.fromEntries(SCENE_POLICY.optionalEffectFlags.map(flag => [flag, SCENE_POLICY.defaults.optionalEffects])),
           outputPass: SCENE_POLICY.defaults.outputPass, ...(fx.passes as object ?? {}) },
       } } as MAGEPreset, artifact)) throw new Error('Scene could not load.')
+      prepareBuilderValues(appliedSettings.builderUniforms)()
       orbit = createPointerOrbit(fields)
       deformation = attachViewerPointerDeformation(fields.visualizer.mesh, fields.visualizer.getActiveShader() ?? '')
       loaded = true
@@ -176,11 +200,17 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         if (disposed) return
         // Direct engine clients receive the same atomic validation as the port.
         const next = validateLiveSceneSettings(value)
+        // Validate every manifest entry and material slot before changing either
+        // global settings or uniforms. Names never arrive over the bridge.
+        const applyBuilderValues = prepareBuilderValues(next.builderUniforms)
         const delta = diffLiveSceneSettings(appliedSettings, next)
-        if (!Object.keys(delta).length) return
+        if (!Object.keys(delta).length) {
+          applyBuilderValues(); appliedSettings = next; return
+        }
         const nextSpeed = next.intent.time_multiplier
         const currentTime = nextSpeed === speed ? null : boundTime(engine.getEngineTime())
         if (!engine.updateSettings(delta)) throw new Error('Rendering stopped.')
+        applyBuilderValues()
         if (currentTime !== null) {
           clockAnchorParent = parentTime; clockAnchorScene = currentTime; speed = nextSpeed
           engine.setExternalClock({ time: currentTime, rate: speed, playing })

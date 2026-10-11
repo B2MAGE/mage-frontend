@@ -648,6 +648,9 @@ describe('isolated live scene settings', () => {
 
   it.each([
     { name: 'current custom', initial: custom, next: cameraAndEffects },
+    { name: 'Builder object', initial: { schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'shape', operation: { type: 'sphere' } }] }, next: { schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'shape', operation: { type: 'sphere' }, transform: { position: { x: 3 } }, material: { metalness: 0.7 } }] } },
     { name: 'template', initial: template, next: { ...template, parameters: { speed: 1.3, scale: 90 },
       settings: { camera: { fov: 96, autoRotate: false }, bloom: { enabled: true, strength: 0.4 } } } },
   ])('updates camera and effects for $name while music and playback keep their state', async ({ initial, next }) => {
