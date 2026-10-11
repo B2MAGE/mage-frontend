@@ -77,6 +77,7 @@ describe('CreateScenePage workflow', () => {
     mockCreateScenePageFetch()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     expect(screen.getByRole('heading', { name: /create a scene/i })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /basic/i })).not.toBeInTheDocument()
@@ -104,6 +105,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     fireEvent.change(screen.getByLabelText(/description/i), {
       target: { value: 'A soft drifting scene for night scenes.' },
@@ -131,6 +133,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     const sceneInformation = screen.getByRole('region', { name: 'Scene information' })
     const thumbnail = screen.getByRole('region', { name: 'Thumbnail' })
@@ -158,6 +161,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     await user.click(screen.getByRole('button', { name: /capture thumbnail/i }))
 
@@ -176,6 +180,7 @@ describe('CreateScenePage workflow', () => {
     mockCreateScenePageFetch()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     const nameField = screen.getByLabelText(/scene name/i)
     const descriptionField = screen.getByLabelText(/description/i)
@@ -211,6 +216,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     await user.click(screen.getByRole('button', { name: /capture thumbnail/i }))
 
@@ -228,6 +234,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     await importCustomScene(user)
 
     await user.click(screen.getByRole('button', { name: /^motion$/i }))
@@ -253,6 +260,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     const detailsStep = screen.getByRole('button', { name: /^details$/i })
     const sceneStep = screen.getByRole('button', { name: /^scene$/i })
@@ -281,6 +289,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     await importCustomScene(user)
 
     await user.click(screen.getByRole('button', { name: /^scene$/i }))
@@ -302,6 +311,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
 
     const detailsStep = screen.getByRole('button', { name: /^details$/i })
 
@@ -320,6 +330,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     await importCustomScene(user)
 
     await user.click(screen.getByRole('button', { name: /^effects$/i }))
@@ -351,6 +362,7 @@ describe('CreateScenePage workflow', () => {
     const user = userEvent.setup()
 
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     await importCustomScene(user)
 
     await user.click(screen.getByRole('button', { name: /^camera$/i }))
@@ -406,6 +418,7 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage(themeId)
+    await screen.findByLabelText(/scene name/i)
 
     const emptyThumbnail = screen.getByText('No thumbnail captured')
     const thumbnailFrame = emptyThumbnail.closest('.scene-editor-thumbnail__frame')
@@ -445,6 +458,7 @@ describe.each(['mage-pulse', 'classic-facebook'] as const)('%s scene studio', (t
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage(themeId)
+    await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     expect(screen.getByRole('button', { name: /^create scene$/i })).toBeDisabled()
     expect(screen.getByText('1 issue')).toBeInTheDocument()

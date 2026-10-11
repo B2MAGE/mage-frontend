@@ -95,6 +95,7 @@ describe('scene editor resource preflight', () => {
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
     const imported = await rawEditor(user)
     fireEvent.change(imported, { target: { value: JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: createDefaultSceneData() }) } })
     await user.click(screen.getByRole('button', { name: 'Hide Raw JSON' }))

@@ -95,6 +95,7 @@ describe('Basic template editor controls', () => {
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage()
+    await screen.findByTestId('template-preview')
     const originalPreview = previewDocument()
     const raw = await openRawJson(user)
 

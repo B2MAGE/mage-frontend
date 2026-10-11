@@ -83,7 +83,7 @@ describe('responsive Scene Studio frame', () => {
     mockEditor('create')
     renderCreateScenePage('mage-pulse')
     const user = userEvent.setup()
-    const navigation = screen.getByRole('navigation', { name: 'Section navigation' })
+    const navigation = await screen.findByRole('navigation', { name: 'Section navigation' })
     const details = within(navigation).getByRole('button', { name: 'Details' })
     const scene = within(navigation).getByRole('button', { name: 'Scene' })
     const confirm = within(navigation).getByRole('button', { name: 'Confirm' })
@@ -111,7 +111,7 @@ describe('responsive Scene Studio frame', () => {
     renderCreateScenePage('mage-pulse')
     const user = userEvent.setup()
 
-    await user.type(screen.getByLabelText('Scene Name'), 'Kept draft')
+    await user.type(await screen.findByLabelText('Scene Name'), 'Kept draft')
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     const player = screen.getByTestId('studio-player')
     const playerInstanceBefore = player.getAttribute('data-instance')
