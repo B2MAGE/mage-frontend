@@ -2150,7 +2150,6 @@ html[data-theme] .scene-editor-page .builder-object-list__item:hover { backgroun
 html[data-theme] .scene-editor-page .builder-object-list__item[data-selected] {
   border-color: var(--studio-accent-border);
   background: var(--studio-accent-fill);
-  box-shadow: inset 3px 0 var(--studio-accent);
 }
 
 .builder-object-list__instructions { margin: 0; padding: 0 12px 12px; font-size: 10px; }
