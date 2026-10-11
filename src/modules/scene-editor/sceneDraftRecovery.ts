@@ -1,5 +1,6 @@
 import type { SceneData } from './sceneEditor'
 import sceneSchema from '../../../contracts/scenes/scene-v1.schema.json'
+import { validateBuilderComposition, type BuilderSceneDocument } from '@modules/player'
 
 export type SceneDraftSnapshot = {
   name: string
@@ -88,6 +89,12 @@ function isCurrentSceneData(value: unknown): value is SceneData {
   if (markers.some(key => key in value)) {
     if (value.kind !== 'builder' && value.kind !== 'template') return false
     if (!matchesEditorShape(value, sceneSchema.$defs[value.kind] as ShapeRule)) return false
+    if (value.kind === 'builder') {
+      try {
+        // Scalar errors remain editable; broken group references cannot enter a tree UI.
+        validateBuilderComposition(value as BuilderSceneDocument, () => { throw new Error('Invalid group structure') })
+      } catch { return false }
+    }
   } else if (!isObject(value.visualizer) || typeof value.visualizer.shader !== 'string') return false
   // Recovery preserves authored validation errors. Publishing still uses the normal validator.
   const pending = [{ value: value as unknown, depth: 0 }]

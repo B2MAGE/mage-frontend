@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { builderControlLocation, builderObjectFieldIssues } from './sceneEditorFieldErrors'
+import { builderControlLocation, builderGroupFieldIssues, builderObjectFieldIssues } from './sceneEditorFieldErrors'
 
 describe('Builder field locations', () => {
+  it('maps group controls separately from leaf inspector controls', () => {
+    const groupIssue = { path: 'composition.groups[1].transform.scale', message: 'Group scale is too high.' }
+    const objectIssue = { path: 'objects[1].transform.scale.x', message: 'Object scale is too high.' }
+    const issues = { 'builder-scale': groupIssue, 'group:1:builder-scale': groupIssue, '1:builder-scale-x': objectIssue }
+    expect(builderControlLocation(groupIssue.path)).toMatchObject({ id: 'builder-scale', groupIndex: 1, section: 'scene' })
+    expect(builderGroupFieldIssues(issues, 1)).toEqual({ 'builder-scale': groupIssue })
+    expect(builderObjectFieldIssues(issues, 1)).toEqual({ 'builder-scale-x': objectIssue })
+    expect(builderControlLocation('composition.groups.0.operation.blend')).toMatchObject({ id: 'builder-group-blend', groupIndex: 0 })
+  })
   it.each([
     ['objects[2].modifiers[0].amount', 'builder-modifier-0-amount'],
     ['sceneData.objects.2.modifiers.1.thickness', 'builder-modifier-1-thickness'],

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from './builderEditor'
 import { createTemplateScene } from './templateEditor'
+import { parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
 import { createSceneDraftRecovery, parseSceneDraftRecord, SCENE_DRAFT_MAX_CHARACTERS,
   sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftRecord, type SceneDraftSnapshot } from './sceneDraftRecovery'
 
@@ -68,6 +69,20 @@ describe('current browser draft format', () => {
     for (const object of malformedObjects) {
       const damaged = { ...valid, snapshot: { ...valid.snapshot, sceneData: { ...scene, objects: [object] } } }
       expect(parseSceneDraftRecord(JSON.stringify(damaged))).toBeNull()
+    }
+  })
+
+  it('restores selected groups and repairable scalar edits but never cyclic or dangling trees', () => {
+    const scene = parseSceneDocument({ ...createBuilderScene(), composition: { version: 1,
+      roots: ['group-1'], groups: [{ id: 'group-1', children: ['object-1'], operation: { type: 'union' } }],
+    } }) as BuilderSceneDocument
+    scene.composition!.groups[0].transform.scale = -1
+    const draft = { ...snapshot(), sceneData: scene, selectedBuilderObjectId: 'group-1' }
+    expect(parseSceneDraftRecord(JSON.stringify(record(draft)))?.snapshot).toEqual(draft)
+    for (const children of [['missing'], ['group-1'], ['object-1', 'object-1']]) {
+      const broken = structuredClone(draft)
+      broken.sceneData.composition!.groups[0].children = children
+      expect(parseSceneDraftRecord(JSON.stringify(record(broken)))).toBeNull()
     }
   })
 })

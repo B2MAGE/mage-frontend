@@ -35,6 +35,7 @@ import { createCustomSceneFromTemplate, readTemplateShaderSource, resolveSceneFo
 import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
+import { builderOrderedNodes } from './builderGroups'
 
 type UseSceneEditorStateArgs = {
   allowCustomSceneData?: boolean
@@ -45,12 +46,13 @@ type UseSceneEditorStateArgs = {
 
 function reconcileSelection(before: SceneDraftSnapshot, next: SceneData): string | null {
   if (!isBuilderEditorDocument(next)) return null
-  const previous = isBuilderEditorDocument(before.sceneData) ? before.sceneData.objects : []
-  const added = next.objects.find(object => !previous.some(item => item.id === object.id))
+  const previous = isBuilderEditorDocument(before.sceneData) ? builderOrderedNodes(before.sceneData) : []
+  const nodes = builderOrderedNodes(next)
+  const added = nodes.find(object => !previous.some(item => item.id === object.id))
   if (added) return added.id
-  if (next.objects.some(object => object.id === before.selectedBuilderObjectId)) return before.selectedBuilderObjectId
+  if (nodes.some(object => object.id === before.selectedBuilderObjectId)) return before.selectedBuilderObjectId
   const oldIndex = previous.findIndex(object => object.id === before.selectedBuilderObjectId)
-  return next.objects[Math.min(Math.max(0, oldIndex), next.objects.length - 1)]?.id ?? null
+  return nodes[Math.min(Math.max(0, oldIndex), nodes.length - 1)]?.id ?? null
 }
 
 export function useSceneEditorState({
@@ -63,7 +65,7 @@ export function useSceneEditorState({
     const document = readEditableSceneData(initialState?.sceneData ?? createTemplateScene())
     return { name: initialState?.name ?? '', description: initialState?.description ?? '',
       sceneData: document, sceneDataText: prettyPrintEditorSceneData(document), selectedTagIds: [],
-      selectedBuilderObjectId: isBuilderEditorDocument(document) ? document.objects[0]?.id ?? null : null }
+      selectedBuilderObjectId: isBuilderEditorDocument(document) ? builderOrderedNodes(document)[0]?.id ?? null : null }
   })
   const { name, description, sceneData, sceneDataText, selectedTagIds, selectedBuilderObjectId } = history.draft
   const setSceneDataText = (value: string | ((previous: string) => string)) => history.commit(draft => ({ ...draft,
@@ -290,7 +292,8 @@ export function useSceneEditorState({
   }
 
   const { handleAddBuilderObject, handleUpdateBuilderObject, handleDuplicateBuilderObject,
-    handleRemoveBuilderObject, handleMoveBuilderObject } = useSceneDraftCommands({
+    handleRemoveBuilderObject, handleMoveBuilderObject, handleGroupBuilderNodes, handleUngroupBuilderNode,
+    handleReparentBuilderNode, handleUpdateBuilderGroup, builderCommandError } = useSceneDraftCommands({
     readDraft: () => history.readDraft().sceneData, applyDraft: applySceneData,
   })
 
@@ -409,6 +412,11 @@ export function useSceneEditorState({
     draftSnapshot: history.draft,
     initialDraftSnapshot: history.baseline,
     selectedBuilderObjectId,
+    builderCommandError,
+    handleGroupBuilderNodes,
+    handleUngroupBuilderNode,
+    handleReparentBuilderNode,
+    handleUpdateBuilderGroup,
     setSelectedBuilderObjectId: history.selectObject,
     history,
     restoreDraft: (draft: SceneDraftSnapshot) => { resetPendingTemplateImport(); clearErrors(); history.restore(draft) },

@@ -11,6 +11,7 @@ import {
   type TemplateId,
 } from '@modules/player'
 import type { SceneData, SceneEditorModel } from './sceneEditor'
+import { duplicateBuilderNode, moveBuilderNode, removeBuilderNode } from './builderGroups'
 import {
   changeAuthoredBranch,
   changeAuthoredMusicSettings,
@@ -68,7 +69,7 @@ function applyStartingStyle(objects: readonly BuilderObject[], templateId: Templ
   }))
 }
 
-function nextObjectNumber(objects: readonly BuilderObject[]) {
+function nextObjectNumber(objects: readonly Pick<BuilderObject, 'id'>[]) {
   const ids = new Set(objects.map(object => object.id))
   const largest = objects.reduce((current, object) => {
     const match = /^object-(\d+)$/.exec(object.id)
@@ -172,9 +173,12 @@ export function applyBuilderTemplate(document: BuilderSceneDocument, templateId:
 
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape, objectId?: string) {
   if (document.objects.length >= BUILDER_LIMITS.objects || builderSceneExpandedCount(document) >= BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
-  if (objectId && document.objects.some(object => object.id === objectId)) return document
+  if (objectId && [...document.objects, ...(document.composition?.groups ?? [])].some(object => object.id === objectId)) return document
   const object = createBuilderObject(type, document.objects)
-  return { ...document, objects: [...document.objects, objectId ? { ...object, id: objectId } : object] }
+  if (!objectId) object.id = `object-${nextObjectNumber([...document.objects, ...(document.composition?.groups ?? [])])}`
+  const added = objectId ? { ...object, id: objectId } : object
+  return { ...document, objects: [...document.objects, added],
+    ...(document.composition ? { composition: { ...document.composition, roots: [...document.composition.roots, added.id] } } : {}) }
 }
 
 export function updateBuilderObject(
@@ -191,29 +195,20 @@ export function updateBuilderObject(
 }
 
 export function duplicateBuilderObject(document: BuilderSceneDocument, objectId: string, copyId?: string) {
-  if (document.objects.length >= BUILDER_LIMITS.objects) return document
-  if (copyId && document.objects.some(object => object.id === copyId)) return document
-  const source = document.objects.find(object => object.id === objectId)
-  if (!source || builderSceneExpandedCount(document) + builderObjectExpandedCount(source) > BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
-  const number = nextObjectNumber(document.objects)
-  const copy = structuredClone(source)
-  copy.id = copyId ?? `object-${number}`
-  copy.name = `${source.name} copy`.slice(0, BUILDER_LIMITS.nameLength)
-  return { ...document, objects: [...document.objects, copy] }
+  if (!document.objects.some(object => object.id === objectId)) return document
+  const ids = [...document.objects, ...(document.composition?.groups ?? [])]
+  if (copyId && ids.some(object => object.id === copyId)) return document
+  let next = nextObjectNumber(ids)
+  try {
+    return duplicateBuilderNode(document, objectId, kind => copyId && kind === 'object' ? copyId : `${kind}-${next++}`)
+  } catch { return document }
 }
 
 export function removeBuilderObject(document: BuilderSceneDocument, objectId: string) {
-  if (!document.objects.some(object => object.id === objectId)) return document
-  return { ...document, objects: document.objects.filter(object => object.id !== objectId) }
+  return removeBuilderNode(document, objectId)
 }
 
 /** Object references and selection stay attached to IDs as positions change. */
 export function moveBuilderObject(document: BuilderSceneDocument, objectId: string, targetId: string) {
-  const from = document.objects.findIndex(object => object.id === objectId)
-  const to = document.objects.findIndex(object => object.id === targetId)
-  if (from < 0 || to < 0 || from === to) return document
-  const objects = [...document.objects]
-  const [object] = objects.splice(from, 1)
-  objects.splice(to, 0, object)
-  return { ...document, objects }
+  return moveBuilderNode(document, objectId, targetId)
 }

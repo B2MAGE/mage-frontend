@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
-import { BUILDER_OPERATIONS, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_MATERIAL, BUILDER_MODIFIERS,
+import { BUILDER_OPERATIONS, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_MATERIAL, BUILDER_MODIFIERS,
   BUILDER_ARRANGEMENTS, BUILDER_SPIN, builderOperationFields, createBuilderModifier, createBuilderArrangement,
-  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument } from '@modules/player'
+  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame } from '@modules/player'
 import { AppIcon, EditorFieldShell } from '@shared/ui'
 import {
   BUILDER_EXPANDED_PRIMITIVE_LIMIT,
@@ -14,7 +14,8 @@ import {
 import { NumberField, SelectField, SliderField, Vector3Field } from './SceneEditorControls'
 import { FieldValidation } from './SceneEditorFieldValidation'
 import { BuilderObjectList } from './BuilderObjectList'
-import { builderObjectFieldIssues, FieldErrorsContext, useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
+import { builderGroupFieldIssues, builderObjectFieldIssues, FieldErrorsContext, useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
+import { builderGroups, builderGroupingIssue, builderParent, findBuilderNode } from '../builderGroups'
 
 type Props = {
   document: BuilderSceneDocument
@@ -25,6 +26,11 @@ type Props = {
   onSelectObject: (objectId: string) => void
   onUpdateObject: (objectId: string, recipe: (object: BuilderObject) => BuilderObject) => void
   selectedObjectId: string | null
+  onGroupNodes: (ids: string[]) => void
+  onUngroupNode: (id: string) => void
+  onReparentNode: (id: string, parentId: string | null) => void
+  onUpdateGroup: (id: string, recipe: (group: BuilderGroup) => BuilderGroup) => void
+  commandError: string | null
 }
 
 const axes = [{ label: 'X', value: 'x' }, { label: 'Y', value: 'y' }, { label: 'Z', value: 'z' }]
@@ -245,7 +251,7 @@ function SizeControls({ object, update }: { object: BuilderObject; update: (oper
   </div>
 }
 
-function BuilderObjectActions({ canDuplicate, onDuplicate, onRemove }: { canDuplicate: boolean; onDuplicate: () => void; onRemove: () => void }) {
+function BuilderObjectActions({ canDuplicate, onDuplicate, onRemove, onUngroup }: { canDuplicate: boolean; onDuplicate: () => void; onRemove: () => void; onUngroup?: () => void }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const root = useRef<HTMLDivElement>(null)
@@ -285,6 +291,7 @@ function BuilderObjectActions({ canDuplicate, onDuplicate, onRemove }: { canDupl
     </button>
     {open ? <div className="builder-object-actions__menu" id={id} role="menu" aria-label="Object options">
       <button type="button" role="menuitem" disabled={!canDuplicate} onClick={() => run(onDuplicate)}>Duplicate</button>
+      {onUngroup ? <button type="button" role="menuitem" onClick={() => run(onUngroup)}>Ungroup</button> : null}
       <button className="builder-object-actions__remove" type="button" role="menuitem" onClick={() => run(onRemove)}>Remove</button>
     </div> : null}
   </div>
@@ -308,37 +315,40 @@ function conciseVector(vector: { x: number; y: number; z: number }) {
   return `${conciseNumber(vector.x)}, ${conciseNumber(vector.y)}, ${conciseNumber(vector.z)}`
 }
 
-function vectorSummary(object: BuilderObject) {
+function vectorSummary(object: { transform: BuilderObject['transform'] | BuilderFrame }) {
   const { position, rotation, scale } = object.transform
   const parts = [`Position ${conciseVector(position)}`]
   if (rotation.x !== 0 || rotation.y !== 0 || rotation.z !== 0) parts.push(`Rotation ${conciseVector(rotation)}`)
-  parts.push(scale.x === scale.y && scale.y === scale.z
+  parts.push(typeof scale === 'number' ? `Scale ${conciseNumber(scale)}×` : scale.x === scale.y && scale.y === scale.z
     ? `Scale ${conciseNumber(scale.x)}×`
     : `Scale ${conciseNumber(scale.x)} × ${conciseNumber(scale.y)} × ${conciseNumber(scale.z)}`)
   return parts.join(' · ')
 }
 
-function TransformControls({ object, update }: { object: BuilderObject; update: (object: BuilderObject) => void }) {
+function TransformControls<T extends BuilderObject['transform'] | BuilderFrame>({ transform, update, idPrefix = 'builder', labelPrefix = '' }: {
+  transform: T; update: (transform: T) => void; idPrefix?: string; labelPrefix?: string
+}) {
   const [openStage, setOpenStage] = useState<'position' | 'rotation' | 'scale' | null>(null)
   const toggle = (stage: 'position' | 'rotation' | 'scale') => setOpenStage(current => current === stage ? null : stage)
   return <div className="builder-transform-stages">
-    <BuilderControlStage description="Move the object through the scene." fieldPrefix="builder-position-" onToggle={() => toggle('position')}
-      open={openStage === 'position'} summary={[conciseVector(object.transform.position)]} title="Position"
-      toggleLabel={`${openStage === 'position' ? 'Collapse' : 'Expand'} Position transform`}>
-      <Vector3Field id="builder-position" label="Position" min={BUILDER_TRANSFORMS.position.properties.x.minimum} max={BUILDER_TRANSFORMS.position.properties.x.maximum} value={object.transform.position}
-        onChange={position => update({ ...object, transform: { ...object.transform, position } })} />
+    <BuilderControlStage description="Move through the scene." fieldPrefix={`${idPrefix}-position-`} onToggle={() => toggle('position')}
+      open={openStage === 'position'} summary={[conciseVector(transform.position)]} title="Position"
+      toggleLabel={`${openStage === 'position' ? 'Collapse' : 'Expand'} ${labelPrefix}Position transform`}>
+      <Vector3Field id={`${idPrefix}-position`} label={`${labelPrefix}Position`} min={BUILDER_TRANSFORMS.position.properties.x.minimum} max={BUILDER_TRANSFORMS.position.properties.x.maximum} value={transform.position}
+        onChange={position => update({ ...transform, position })} />
     </BuilderControlStage>
-    <BuilderControlStage description="Turn the object around each axis." fieldPrefix="builder-rotation-" onToggle={() => toggle('rotation')}
-      open={openStage === 'rotation'} summary={[conciseVector(object.transform.rotation)]} title="Rotation"
-      toggleLabel={`${openStage === 'rotation' ? 'Collapse' : 'Expand'} Rotation transform`}>
-      <Vector3Field id="builder-rotation" label="Rotation" min={BUILDER_TRANSFORMS.rotation.properties.x.minimum} max={BUILDER_TRANSFORMS.rotation.properties.x.maximum} step={0.01} value={object.transform.rotation}
-        onChange={rotation => update({ ...object, transform: { ...object.transform, rotation } })} />
+    <BuilderControlStage description="Turn the object around each axis." fieldPrefix={`${idPrefix}-rotation-`} onToggle={() => toggle('rotation')}
+      open={openStage === 'rotation'} summary={[conciseVector(transform.rotation)]} title="Rotation"
+      toggleLabel={`${openStage === 'rotation' ? 'Collapse' : 'Expand'} ${labelPrefix}Rotation transform`}>
+      <Vector3Field id={`${idPrefix}-rotation`} label={`${labelPrefix}Rotation`} min={BUILDER_TRANSFORMS.rotation.properties.x.minimum} max={BUILDER_TRANSFORMS.rotation.properties.x.maximum} step={0.01} value={transform.rotation}
+        onChange={rotation => update({ ...transform, rotation })} />
     </BuilderControlStage>
-    <BuilderControlStage description="Resize the object along each axis." fieldPrefix="builder-scale-" onToggle={() => toggle('scale')}
-      open={openStage === 'scale'} summary={[conciseVector(object.transform.scale)]} title="Scale"
-      toggleLabel={`${openStage === 'scale' ? 'Collapse' : 'Expand'} Scale transform`}>
-      <Vector3Field id="builder-scale" label="Scale" min={BUILDER_TRANSFORMS.scale.properties.x.minimum} max={BUILDER_TRANSFORMS.scale.properties.x.maximum} value={object.transform.scale}
-        onChange={scale => update({ ...object, transform: { ...object.transform, scale } })} />
+    <BuilderControlStage description={typeof transform.scale === 'number' ? 'Resize together, keeping proportions.' : 'Resize the object along each axis.'} fieldPrefix={`${idPrefix}-scale`} onToggle={() => toggle('scale')}
+      open={openStage === 'scale'} summary={[typeof transform.scale === 'number' ? `${conciseNumber(transform.scale)}×` : conciseVector(transform.scale)]} title="Scale"
+      toggleLabel={`${openStage === 'scale' ? 'Collapse' : 'Expand'} ${labelPrefix}Scale transform`}>
+      {typeof transform.scale === 'number' ? <SliderField id={`${idPrefix}-scale`} label={`${labelPrefix}Scale`} min={BUILDER_GROUP_TRANSFORMS.scale.minimum} max={BUILDER_GROUP_TRANSFORMS.scale.maximum} step={.01} value={transform.scale}
+        onChange={scale => update({ ...transform, scale })} /> : <Vector3Field id={`${idPrefix}-scale`} label={`${labelPrefix}Scale`} min={BUILDER_TRANSFORMS.scale.properties.x.minimum} max={BUILDER_TRANSFORMS.scale.properties.x.maximum} value={transform.scale}
+        onChange={scale => update({ ...transform, scale })} />}
     </BuilderControlStage>
   </div>
 }
@@ -422,7 +432,7 @@ function AnimationControls({ object, update }: { object: BuilderObject; update: 
   </div>
 }
 
-function AppearanceControls({ object, update }: { object: BuilderObject; update: (object: BuilderObject) => void }) {
+function AppearanceControls<T extends Pick<BuilderObject, 'id' | 'material'>>({ object, update }: { object: T; update: (object: T) => void }) {
   const [openControl, setOpenControl] = useState<'color' | 'metalness' | 'shininess' | null>(null)
   const toggle = (control: 'color' | 'metalness' | 'shininess') => setOpenControl(current => current === control ? null : control)
   return <div className="builder-appearance-stages">
@@ -451,6 +461,70 @@ function AppearanceControls({ object, update }: { object: BuilderObject; update:
   </div>
 }
 
+function BuilderParentControl({ document, id, onMove }: { document: BuilderSceneDocument; id: string; onMove: Props['onReparentNode'] }) {
+  const groups = builderGroups(document)
+  const isDescendant = (candidateId: string): boolean => {
+    if (candidateId === id) return true
+    const parent = builderParent(document, candidateId)
+    return parent ? isDescendant(parent.id) : false
+  }
+  if (!groups.length) return null
+  return <div className="builder-parent-control">
+    <SelectField id="builder-parent" label="Move to group" value={builderParent(document, id)?.id ?? ''}
+      options={[{ label: 'Scene level', value: '' }, ...groups.filter(group => !isDescendant(group.id)).map(group => ({ label: group.name, value: group.id }))]}
+      onChange={value => onMove(id, value || null)} />
+    <p className="field-hint">Keeps its placement. The destination group's join and material apply.</p>
+  </div>
+}
+
+function BuilderGroupInspector({ document, group, issues, onDuplicate, onRemove, onUngroup, onMove, onUpdate }: {
+  document: BuilderSceneDocument; group: BuilderGroup; issues: ReturnType<typeof builderGroupFieldIssues>
+  onDuplicate: Props['onDuplicateObject']; onRemove: Props['onRemoveObject']; onUngroup: Props['onUngroupNode']
+  onMove: Props['onReparentNode']; onUpdate: Props['onUpdateGroup']
+}) {
+  const update = (recipe: (group: BuilderGroup) => BuilderGroup) => onUpdate(group.id, recipe)
+  const material = group.material
+  return <FieldErrorsContext.Provider value={issues}>
+    <section className="builder-object-editor builder-object-inspector" aria-labelledby="builder-group-editor-title">
+      <header className="builder-object-editor__heading">
+        <div><h3 className="builder-object-editor__title" id="builder-group-editor-title">Selected group</h3><p>{group.name} · {group.children.length} items</p></div>
+        <BuilderObjectActions canDuplicate={document.objects.length < BUILDER_LIMITS.objects && builderGroups(document).length < BUILDER_LIMITS.groups}
+          onDuplicate={() => onDuplicate(group.id)} onRemove={() => onRemove(group.id)} onUngroup={() => onUngroup(group.id)} />
+      </header>
+      <div className="builder-object-inspector__body">
+        <FieldValidation id="builder-object-name"><EditorFieldShell htmlFor="builder-object-name" label="Name">
+          <input className="scene-text-input" id="builder-object-name" maxLength={BUILDER_LIMITS.nameLength} value={group.name}
+            aria-invalid={Boolean(issues['builder-object-name'])} aria-describedby={issues['builder-object-name'] ? 'builder-object-name-error' : undefined}
+            onChange={event => update(current => ({ ...current, name: event.currentTarget.value }))} />
+        </EditorFieldShell></FieldValidation>
+        <BuilderParentControl document={document} id={group.id} onMove={onMove} />
+        <InspectorSection title="Transform" fieldPrefixes={['builder-position-', 'builder-rotation-', 'builder-scale']} description="Move, rotate, and resize all children" status={vectorSummary(group)}>
+          <TransformControls key={group.id} transform={group.transform} update={transform => update(current => ({ ...current, transform }))} />
+        </InspectorSection>
+        <InspectorSection title="Composition" fieldPrefixes={['builder-group-operation', 'builder-group-blend']} description="How the children's surfaces join"
+          status={group.operation.type === 'union' ? 'Union' : `Smooth union · ${conciseNumber(group.operation.blend)}`}>
+          <SelectField id="builder-group-operation" label="Join surfaces" value={group.operation.type}
+            options={[{ label: 'Union', value: 'union' }, { label: 'Smooth union', value: 'smooth-union' }]}
+            onChange={value => update(current => ({ ...current, operation: value === 'union' ? { type: 'union' } : { type: 'smooth-union', blend: .25 } }))} />
+          <p className="field-hint">Union keeps distinct edges. Smooth union blends nearby surfaces in the order shown.</p>
+          {group.operation.type === 'smooth-union' ? <SliderField id="builder-group-blend" label="Blend radius" min={BUILDER_GROUP_BLEND.minimum} max={BUILDER_GROUP_BLEND.maximum} step={.01}
+            value={group.operation.blend} onChange={blend => update(current => ({ ...current, operation: { type: 'smooth-union', blend } }))} /> : null}
+        </InspectorSection>
+        <InspectorSection title="Appearance" fieldPrefixes={['builder-color', 'builder-metalness', 'builder-shininess']} description="Use child materials or one group material" status={material ? material.color.toUpperCase() : 'Child materials'}>
+          <label className="builder-group-material-toggle"><input type="checkbox" checked={Boolean(material)}
+            onChange={event => update(current => {
+              if (event.currentTarget.checked) return { ...current, material: { color: BUILDER_MATERIAL.color.default, metalness: BUILDER_MATERIAL.metalness.default, shininess: BUILDER_MATERIAL.shininess.default } }
+              const next = { ...current }; delete next.material; return next
+            })} /> Use one material for this group</label>
+          <p className="field-hint">An outer group's material overrides its children. Turn it off to restore their own materials.</p>
+          {material ? <AppearanceControls key={group.id} object={{ id: group.id, material }} update={value => update(current => ({ ...current, material: value.material }))} /> : null}
+        </InspectorSection>
+        <p className="field-hint">Ungroup keeps placement and colors. This group's smooth join is removed; the parent join applies.</p>
+      </div>
+    </section>
+  </FieldErrorsContext.Provider>
+}
+
 export function BuilderSceneControls({
   document,
   onAddObject,
@@ -460,14 +534,20 @@ export function BuilderSceneControls({
   onSelectObject,
   onUpdateObject,
   selectedObjectId,
+  onGroupNodes, onUngroupNode, onReparentNode, onUpdateGroup, commandError,
 }: Props) {
   const [newShape, setNewShape] = useState<BuilderShape>('sphere')
+  const [checkedIds, setCheckedIds] = useState<string[]>([])
+  const checked = checkedIds.filter(id => findBuilderNode(document, id))
+  const groupingIssue = builderGroupingIssue(document, checked)
   const selected = document.objects.find(object => object.id === selectedObjectId) ?? null
+  const selectedGroup = builderGroups(document).find(group => group.id === selectedObjectId) ?? null
   const selectedIndex = document.objects.findIndex(object => object.id === selectedObjectId)
   const update = (recipe: (object: BuilderObject) => BuilderObject) => {
     if (selected) onUpdateObject(selected.id, recipe)
   }
-  const selectedIssues = builderObjectFieldIssues(useSceneEditorFieldErrors(), selectedIndex)
+  const allIssues = useSceneEditorFieldErrors()
+  const selectedIssues = builderObjectFieldIssues(allIssues, selectedIndex)
   selected?.arrangements.forEach((arrangement, index) => {
     const maximum = arrangementLimit(document, selected, index)
     if (arrangement.count > maximum) selectedIssues[`builder-arrangement-${index}-count`] ??= {
@@ -483,19 +563,28 @@ export function BuilderSceneControls({
         <h3 id="builder-workspace-title">Builder workspace</h3>
         <span>{document.objects.length} of {BUILDER_LIMITS.objects} objects</span>
       </div>
-      <p className="field-hint">Select an object to edit it.</p>
+      <p className="field-hint">Select an object or group to edit it.</p>
     </header>
 
     <div className="builder-layout">
       <aside className="builder-object-section builder-object-rail" aria-labelledby="builder-objects-title">
         <div className="builder-object-rail__header">
           <h3 className="builder-object-section__title" id="builder-objects-title">Objects</h3>
+          <div className="builder-group-selection">
+            <button className="scene-secondary-button" type="button" disabled={Boolean(groupingIssue)} title={groupingIssue ?? 'Group selected items'}
+              onClick={() => { onGroupNodes(checked); setCheckedIds([]) }}><AppIcon name="layers" size={14} /> Group selected{checked.length ? ` (${checked.length})` : ''}</button>
+            {checked.length ? <button className="scene-secondary-button" type="button" onClick={() => setCheckedIds([])}>Clear</button> : null}
+          </div>
+          {checked.length > 1 && groupingIssue ? <p className="field-hint">{groupingIssue}</p> : null}
         </div>
+
+        {commandError ? <p className="builder-command-error" role="alert">{commandError}</p> : null}
 
         <FieldValidation id="builder-object-list">
         {document.objects.length === 0 ? <p className="builder-object-empty">Add a shape to start building this scene.</p> : (
-          <BuilderObjectList objects={document.objects} selectedObjectId={selectedObjectId}
-            onSelectObject={onSelectObject} onMoveObject={onMoveObject} />
+          <BuilderObjectList objects={document.objects} composition={document.composition} selectedObjectId={selectedObjectId}
+            onSelectObject={onSelectObject} onMoveObject={onMoveObject} checkedIds={checked}
+            onToggleChecked={id => setCheckedIds(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id])} />
         )}
         </FieldValidation>
 
@@ -510,18 +599,24 @@ export function BuilderSceneControls({
         </div>
       </aside>
 
+      {selectedGroup ? <BuilderGroupInspector document={document} group={selectedGroup}
+        issues={builderGroupFieldIssues(allIssues, builderGroups(document).findIndex(group => group.id === selectedGroup.id))}
+        onDuplicate={onDuplicateObject} onRemove={onRemoveObject} onUngroup={onUngroupNode} onMove={onReparentNode} onUpdate={onUpdateGroup} /> : null}
+
       {selected ? <FieldErrorsContext.Provider value={selectedIssues}><section className="builder-object-editor builder-object-inspector" aria-labelledby="builder-object-editor-title">
         <header className="builder-object-editor__heading">
           <div>
             <h3 className="builder-object-editor__title" id="builder-object-editor-title">Selected object</h3>
             <p>{selected.name} · {shapeLabel(selected)}</p>
           </div>
+
           <BuilderObjectActions canDuplicate={document.objects.length < BUILDER_LIMITS.objects
             && builderSceneExpandedCount(document) + builderObjectExpandedCount(selected) <= BUILDER_EXPANDED_PRIMITIVE_LIMIT}
             onDuplicate={() => onDuplicateObject(selected.id)} onRemove={() => onRemoveObject(selected.id)} />
         </header>
 
         <div className="builder-object-inspector__body">
+          <BuilderParentControl document={document} id={selected.id} onMove={onReparentNode} />
           <div className="builder-object-identity">
             <FieldValidation id="builder-object-name">
               <EditorFieldShell htmlFor="builder-object-name" label="Name">
@@ -540,8 +635,14 @@ export function BuilderSceneControls({
           </InspectorSection>
 
           <InspectorSection title="Transform" fieldPrefixes={['builder-position-', 'builder-rotation-', 'builder-scale-']} description="Position, rotation, and scale" status={vectorSummary(selected)}>
-            <TransformControls key={selected.id} object={selected} update={object => update(() => object)} />
+            <TransformControls key={selected.id} transform={selected.transform} update={transform => update(object => ({ ...object, transform }))} />
           </InspectorSection>
+
+          {selected.frame ? <InspectorSection title="Placement" fieldPrefixes={['builder-frame-']} description="Placement retained from a group" status={vectorSummary({ transform: selected.frame })}>
+            <p className="field-hint">Moving or ungrouping preserves placement here, so arrangements and animation stay intact.</p>
+            <TransformControls key={selected.id} idPrefix="builder-frame" labelPrefix="Placement " transform={selected.frame}
+              update={frame => update(object => ({ ...object, frame }))} />
+          </InspectorSection> : null}
 
           <InspectorSection title="Modifiers" fieldPrefixes={['builder-modifier-']} description="Expand, Shell, or Twist"
             status={selected.modifiers.length ? selected.modifiers.map(modifier => modifier.type).join(', ') : 'None'}>

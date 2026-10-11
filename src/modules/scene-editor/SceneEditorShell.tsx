@@ -44,6 +44,7 @@ import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { useSceneDraftRecovery } from "./useSceneDraftRecovery";
 import { sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftSaveContext } from "./sceneDraftRecovery";
 import { createBuilderScene } from "./builderEditor";
+import { builderGroups, builderOrderedNodes, builderParent, isBuilderGroup } from "./builderGroups";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
@@ -167,6 +168,11 @@ export function SceneEditorShell({
     redoDraft,
     resetDraft,
     selectedBuilderObjectId,
+    builderCommandError,
+    handleGroupBuilderNodes,
+    handleUngroupBuilderNode,
+    handleReparentBuilderNode,
+    handleUpdateBuilderGroup,
     setSelectedBuilderObjectId,
     canResetAudioResponse,
     availableTags,
@@ -287,6 +293,9 @@ export function SceneEditorShell({
     if (fieldErrorLocation) {
       if (isBuilder && 'objectIndex' in fieldErrorLocation && typeof fieldErrorLocation.objectIndex === 'number') {
         setSelectedBuilderObjectId(builderDocument?.objects[fieldErrorLocation.objectIndex]?.id ?? null);
+      }
+      if (isBuilder && 'groupIndex' in fieldErrorLocation && typeof fieldErrorLocation.groupIndex === 'number') {
+        setSelectedBuilderObjectId(builderDocument?.composition?.groups[fieldErrorLocation.groupIndex]?.id ?? null);
       }
       handleSectionJump(fieldErrorLocation.section);
     }
@@ -570,6 +579,7 @@ export function SceneEditorShell({
         .find(location => location?.section === 'scene');
       if (firstIssue) {
         if (firstIssue.objectIndex !== undefined) setSelectedBuilderObjectId(builderDocument?.objects[firstIssue.objectIndex]?.id ?? null);
+        if (firstIssue.groupIndex !== undefined) setSelectedBuilderObjectId(builderDocument?.composition?.groups[firstIssue.groupIndex]?.id ?? null);
         focusId = firstIssue.id;
       }
     }
@@ -966,6 +976,11 @@ export function SceneEditorShell({
               {isBuilder && builderDocument ? <BuilderSceneControls
                   document={builderDocument}
                   selectedObjectId={selectedBuilderObjectId}
+                  commandError={builderCommandError}
+                  onGroupNodes={handleGroupBuilderNodes}
+                  onUngroupNode={handleUngroupBuilderNode}
+                  onReparentNode={handleReparentBuilderNode}
+                  onUpdateGroup={handleUpdateBuilderGroup}
                   onSelectObject={setSelectedBuilderObjectId}
                   onAddObject={handleAddBuilderObject}
                   onDuplicateObject={handleDuplicateBuilderObject}
@@ -1799,15 +1814,17 @@ export function SceneEditorShell({
                           <dt className="scene-confirm-section__term">Builder objects</dt>
                           <dd className="scene-confirm-section__value scene-confirm-objects__count">
                             {builderDocument.objects.length} {builderDocument.objects.length === 1 ? "object" : "objects"}
+                            {builderGroups(builderDocument).length ? ` · ${builderGroups(builderDocument).length} groups` : ""}
                           </dd>
                           <dd className="scene-confirm-objects__content">
                             <div className="scene-confirm-objects">
                               <div className="scene-confirm-objects__list">
-                                {builderDocument.objects.map((object) => (
+                                {builderOrderedNodes(builderDocument).map((object) => (
                                   <div className="scene-confirm-object" key={object.id}>
                                     <span>
-                                      <strong>{object.name} · {BUILDER_OPERATIONS[object.operation.type].label}</strong>
-                                      <small>{object.modifiers.length} modifier{object.modifiers.length === 1 ? "" : "s"} · {object.arrangements.length} arrangement{object.arrangements.length === 1 ? "" : "s"} · {formatBuilderMotion(object)}</small>
+                                      <strong>{object.name} · {isBuilderGroup(object) ? "Group" : BUILDER_OPERATIONS[object.operation.type].label}</strong>
+                                      {isBuilderGroup(object) ? <small>{object.children.length} items · {object.operation.type === 'union' ? 'Union' : `Smooth union ${object.operation.blend}`} · {object.material ? 'Group material' : 'Child materials'}</small>
+                                        : <small>{object.modifiers.length} modifier{object.modifiers.length === 1 ? "" : "s"} · {object.arrangements.length} arrangement{object.arrangements.length === 1 ? "" : "s"} · {formatBuilderMotion(object)}</small>}
                                     </span>
                                   </div>
                                 ))}
@@ -1823,9 +1840,18 @@ export function SceneEditorShell({
                                 <span aria-hidden="true">{isBuilderObjectReviewOpen ? "⌃" : "⌄"}</span>
                               </button>
                               <div className="scene-confirm-object-details" hidden={!isBuilderObjectReviewOpen} id="confirm-builder-object-details">
+                                {builderGroups(builderDocument).map(group => <section key={group.id}>
+                                  <strong>{group.name} · Group</strong>
+                                  <span>Inside: {builderParent(builderDocument, group.id)?.name ?? 'Scene level'} · {group.children.length} items</span>
+                                  <span>Composition: {group.operation.type === 'union' ? 'Union' : `Smooth union · Blend ${formatFixed(group.operation.blend)}`}</span>
+                                  <span>Position: {formatFixed(group.transform.position.x)}, {formatFixed(group.transform.position.y)}, {formatFixed(group.transform.position.z)}</span>
+                                  <span>Rotation: {formatFixed(group.transform.rotation.x)}, {formatFixed(group.transform.rotation.y)}, {formatFixed(group.transform.rotation.z)} · Scale: {formatFixed(group.transform.scale)}</span>
+                                  <span>Appearance: {group.material ? `${group.material.color} · Metalness ${formatFixed(group.material.metalness)} · Shininess ${formatFixed(group.material.shininess)}` : 'Child materials'}</span>
+                                </section>)}
                                 {builderDocument.objects.map((object) => (
                                   <section key={object.id}>
                                     <strong>{object.name}</strong>
+                                    {builderDocument.composition ? <span>Inside: {builderParent(builderDocument, object.id)?.name ?? 'Scene level'}</span> : null}
                                     <span>Shape: {BUILDER_OPERATIONS[object.operation.type].label} · {formatBuilderOperation(object)}</span>
                                     <span>Position: {formatFixed(object.transform.position.x)}, {formatFixed(object.transform.position.y)}, {formatFixed(object.transform.position.z)}</span>
                                     <span>Rotation: {formatFixed(object.transform.rotation.x)}, {formatFixed(object.transform.rotation.y)}, {formatFixed(object.transform.rotation.z)} · Scale: {formatFixed(object.transform.scale.x)}, {formatFixed(object.transform.scale.y)}, {formatFixed(object.transform.scale.z)}</span>
