@@ -18,7 +18,7 @@ type Args = {
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
   clearErrors: (...fields: Array<keyof CreateSceneFormErrors>) => void
   applySceneData: (next: SceneData, replaceRawDraft?: boolean) => void
-  onImportDraft: (next: SceneData) => void
+  onImportDraft: (next: SceneData, text: string) => void
 }
 
 /** Raw JSON is always a current document; invalid text remains a visible draft. */
@@ -39,24 +39,26 @@ export function useSceneImportExport({ allowCustomSceneData, sceneData, sceneDat
       setErrors(current => ({ ...current, sceneData: 'Custom Code is disabled for MAGE. This saved custom scene is read-only.' }))
       return
     }
-    setSceneDataText(nextValue)
     setPendingImport(null)
     clearErrors('sceneData', 'form', 'fields')
 
     try {
       const document = parseSceneImport(nextValue)
       if (!allowCustomSceneData && document.kind === 'custom') {
+        setSceneDataText(nextValue)
         setErrors(current => ({ ...current, sceneData: CUSTOM_SCENE_DATA_DISABLED_MESSAGE }))
         return
       }
       if (!isTemplate && document.kind === 'template') {
+        setSceneDataText(nextValue)
         templateImportPreviousTextRef.current ??= sceneDataText
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
       } else {
         templateImportPreviousTextRef.current = null
-        onImportDraft(readEditableSceneData(document))
+        onImportDraft(readEditableSceneData(document), nextValue)
       }
     } catch (error) {
+      setSceneDataText(nextValue)
       setErrors(current => ({ ...current, sceneData: describeSceneValidationError(error) }))
     }
   }

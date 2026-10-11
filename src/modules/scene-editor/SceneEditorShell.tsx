@@ -41,6 +41,8 @@ import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
 import { useSceneThumbnailCapture } from "./useSceneThumbnailCapture";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
+import { useSceneDraftRecovery } from "./useSceneDraftRecovery";
+import { sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftSaveContext } from "./sceneDraftRecovery";
 import { createBuilderScene } from "./builderEditor";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
@@ -100,6 +102,7 @@ function formatBuilderMotion(object: BuilderObject) {
 
 type SceneEditorShellProps = {
   authenticatedFetch: AuthenticatedFetch;
+  userId?: number | null;
   initialState?: SceneEditorInitialState;
   mode?: SceneEditorSubmissionMode;
   onComplete: () => void;
@@ -107,6 +110,7 @@ type SceneEditorShellProps = {
 
 export function SceneEditorShell({
   authenticatedFetch,
+  userId,
   initialState,
   mode = { type: "create" },
   onComplete,
@@ -138,10 +142,10 @@ export function SceneEditorShell({
   const [audioResponseCapabilities, setAudioResponseCapabilities] = useState<MagePlayerAudioResponseCapabilitiesSnapshot | null>(null);
   const [customTimingDrafts, setCustomTimingDrafts] = useState<Partial<Record<AudioResponseTarget, { attack: number; release: number }>>>({});
   const editorScrollRef = useRef<HTMLDivElement | null>(null);
+  const editorFormRef = useRef<HTMLFormElement | null>(null);
   const reviewFocusTargetRef = useRef<string | null>(null);
   const [isReplacementPending, setIsReplacementPending] = useState(false);
   const [pendingBuilderTemplateId, setPendingBuilderTemplateId] = useState<TemplateId | null>(null);
-  const [requestedBuilderObjectId, setSelectedBuilderObjectId] = useState<string | null>(null);
   const customCodeAvailability = useSceneAvailability('custom');
 
   useEffect(() => {
@@ -157,6 +161,15 @@ export function SceneEditorShell({
   const builderTemplateCancelRef = useRef<HTMLButtonElement | null>(null);
   const importCancelRef = useRef<HTMLButtonElement | null>(null);
   const {
+    draftSnapshot,
+    initialDraftSnapshot,
+    restoreDraft,
+    history,
+    undoDraft,
+    redoDraft,
+    resetDraft,
+    selectedBuilderObjectId,
+    setSelectedBuilderObjectId,
     canResetAudioResponse,
     availableTags,
     canCreateTagFromSearch,
@@ -175,6 +188,7 @@ export function SceneEditorShell({
     handleAddBuilderObject,
     handleDuplicateBuilderObject,
     handleRemoveBuilderObject,
+    handleMoveBuilderObject,
     handleSwitchBuilderToCustom,
     handleSwitchToBuilder,
     handleSwitchToTemplate,
@@ -239,8 +253,18 @@ export function SceneEditorShell({
     initialState,
     titleId: isEditMode ? "edit-scene-title" : "create-scene-title",
   });
-  const selectedBuilderObjectId = builderDocument?.objects.some(object => object.id === requestedBuilderObjectId)
-    ? requestedBuilderObjectId : builderDocument?.objects[0]?.id ?? null;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.defaultPrevented) return;
+      // A reorder button can become disabled and release focus. Keep shortcuts working there too.
+      if (document.activeElement !== document.body && !editorFormRef.current?.contains(document.activeElement)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z' && !event.shiftKey && history.canUndo) { event.preventDefault(); undoDraft(); }
+      else if ((key === 'y' || (key === 'z' && event.shiftKey)) && history.canRedo) { event.preventDefault(); redoDraft(); }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [history.canUndo, history.canRedo, undoDraft, redoDraft]);
   const availabilityTarget = useMemo(() => getSceneAvailabilityTarget(mode.type === 'edit' ? mode.sceneId : undefined, sceneData), [mode, sceneData]);
   const availability = useSceneAvailability(availabilityTarget);
   useEffect(() => { if (isReplacementPending) replacementCancelRef.current?.focus(); }, [isReplacementPending]);
@@ -281,7 +305,7 @@ export function SceneEditorShell({
     if (editorScrollRef.current) editorScrollRef.current.scrollTop = 0;
     const focusTargetId = reviewFocusTargetRef.current;
     if (focusTargetId) {
-      document.getElementById(focusTargetId)?.focus();
+      (document.getElementById(`${focusTargetId}-number`) ?? document.getElementById(focusTargetId))?.focus();
       reviewFocusTargetRef.current = null;
     }
   }, [sectionMenuValue]);
@@ -563,6 +587,14 @@ export function SceneEditorShell({
   }
 
   function editReviewSection(sectionId: ReviewSectionId, focusId: string) {
+    if (sectionId === 'scene' && isBuilder) {
+      const firstIssue = Object.keys({ ...templateFieldErrors, ...errors.fields }).map(builderControlLocation)
+        .find(location => location?.section === 'scene');
+      if (firstIssue) {
+        if (firstIssue.objectIndex !== undefined) setSelectedBuilderObjectId(builderDocument?.objects[firstIssue.objectIndex]?.id ?? null);
+        focusId = firstIssue.id;
+      }
+    }
     reviewFocusTargetRef.current = focusId;
     handleSectionJump(sectionId);
   }
@@ -573,6 +605,23 @@ export function SceneEditorShell({
     ));
   }
 
+  const [saveContext, setSaveContext] = useState<SceneDraftSaveContext>(() => ({
+    savedSceneId: null, expectedRevision: mode.type === 'edit' ? mode.revision : null, saveNeedsReview: false,
+  }));
+  const draftRecovery = useSceneDraftRecovery({
+    storageKey: userId != null && !tagsLoading && !tagsError
+      ? sceneDraftStorageKey(userId, mode.type === 'edit' ? mode.sceneId : null) : null,
+    snapshot: draftSnapshot,
+    baseFingerprint: sceneDraftFingerprint(initialDraftSnapshot),
+    saveContext,
+  });
+  function restoreBrowserDraft() {
+    if (isSubmitting) return;
+    const record = draftRecovery.restore();
+    if (!record) return;
+    restoreDraft(record.snapshot);
+    setSaveContext(record.saveContext);
+  }
   const { handleSubmit, hasSavedScene, saveNeedsReview } = useSceneEditorSubmission({
     authenticatedFetch,
     availableTags,
@@ -580,7 +629,15 @@ export function SceneEditorShell({
     description,
     mode,
     name,
-    onComplete,
+    onComplete: () => {
+      draftRecovery.clearAfterSave(draftSnapshot);
+      onComplete();
+    },
+    saveContext,
+    onSaveContextChange: context => {
+      draftRecovery.persistSaveContext(context);
+      setSaveContext(context);
+    },
     sceneData,
     sceneDataText,
     selectedTagIds,
@@ -671,7 +728,7 @@ export function SceneEditorShell({
   const passOrderReviewSummary = activePassOrder.length
     ? `Active output: ${activePassOrder.map((passId) => PASS_LABELS[passId]).join(" → ")}`
     : "No active passes";
-  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0 || saveNeedsReview;
+  const reviewSubmitDisabled = isSubmitting || tagsLoading || reviewIssueCount > 0 || saveNeedsReview || draftRecovery.requiresResolution;
   const shaderEditor = (
     <div className="field-group">
       <FieldGroupLabel
@@ -814,7 +871,7 @@ export function SceneEditorShell({
       <section className="scene-editor-modal" role="alertdialog" aria-modal="true" aria-labelledby="replace-builder-title"
         aria-describedby="replace-builder-description" onKeyDown={event => trapModalFocus(event, cancelBuilderTemplateReplacement)}>
         <h2 id="replace-builder-title">Replace your Builder scene?</h2>
-        <p id="replace-builder-description">Switching to {pendingBuilderTemplate.label} discards every Builder object and any unsaved Builder changes. This cannot be undone.</p>
+        <p id="replace-builder-description">Switching to {pendingBuilderTemplate.label} discards every Builder object and any unsaved Builder changes. You can undo this change while the editor stays open.</p>
         <div className="auth-actions">
           <button className="scene-editor-confirm-submit" type="button" onClick={confirmBuilderTemplateReplacement}>Use {pendingBuilderTemplate.label}</button>
           <button className="scene-secondary-button" type="button" ref={builderTemplateCancelRef} onClick={cancelBuilderTemplateReplacement}>Cancel</button>
@@ -841,11 +898,53 @@ export function SceneEditorShell({
       />
 
       <form
+        ref={editorFormRef}
         aria-describedby={errors.form ? formErrorId : undefined}
         className="scene-editor-form"
         noValidate
-        onSubmit={handleSubmit}
+        onSubmit={event => {
+          if (draftRecovery.requiresResolution) { event.preventDefault(); return; }
+          void handleSubmit(event);
+        }}
+        onFocusCapture={event => {
+          const target = event.target;
+          if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+            history.beginEdit(target.id || target.getAttribute('aria-label') || target.type);
+          } else history.endEdit();
+        }}
+        onInputCapture={event => {
+          const target = event.target;
+          // Keyboard undo keeps focus in the field; the next input begins a new grouped edit.
+          if (target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && ['text', 'number', 'range', 'color'].includes(target.type))) {
+            history.beginEdit(target.id || target.getAttribute('aria-label') || target.type);
+          }
+        }}
+        onBlurCapture={history.endEdit}
+        onPointerDown={event => {
+          if (event.target instanceof HTMLInputElement && event.target.type === 'range') history.beginEdit(event.target.id);
+        }}
+        onPointerUp={event => {
+          if (event.target instanceof HTMLInputElement && event.target.type === 'range') history.endEdit();
+        }}
       >
+        <div aria-label="Draft editing" className="scene-draft-actions" role="group">
+          <button className="scene-secondary-button" disabled={!history.canUndo} onClick={undoDraft} title="Undo (Ctrl/Cmd+Z)" type="button">Undo</button>
+          <button className="scene-secondary-button" disabled={!history.canRedo} onClick={redoDraft} title="Redo (Ctrl/Cmd+Shift+Z)" type="button">Redo</button>
+          <button className="scene-secondary-button" disabled={!history.canReset} onClick={resetDraft} type="button">Reset draft</button>
+          <span className="field-hint">Reset returns to the draft you opened. You can undo it.</span>
+        </div>
+        {draftRecovery.status.message ? <div className="scene-draft-recovery" role="status">
+          <p>{draftRecovery.status.message}</p>
+          {draftRecovery.candidate?.baseChanged ? <p>The saved scene has changed since this draft began. Restoring keeps your draft; saving will check for a conflict.</p> : null}
+          {draftRecovery.requiresResolution ? <div className="scene-draft-actions">
+            {draftRecovery.candidate ? <button className="scene-secondary-button" disabled={isSubmitting} onClick={restoreBrowserDraft} type="button">Restore draft</button> : null}
+            <button className="scene-secondary-button" disabled={isSubmitting} onClick={() => { if (!isSubmitting) draftRecovery.discard(); }} type="button">
+              {draftRecovery.status.kind === 'conflict' ? 'Keep this editor’s draft' : 'Discard browser draft'}
+            </button>
+          </div> : null}
+          {draftRecovery.requiresResolution && isSubmitting ? <p>Wait for the current save to finish before choosing a browser draft.</p> : null}
+        </div> : null}
+        {saveNeedsReview ? <p className="field-hint"><a href="/my-scenes" target="_blank" rel="noopener noreferrer">Open My Scenes</a> to check the saved version. Your current draft stays in this editor.</p> : null}
         <div className={`scene-editor-layout${isPreviewCollapsed ? " scene-editor-layout--preview-hidden" : ""}`}>
           <aside className="scene-editor-stepper-rail">
             <div className="scene-editor-stepper-rail__label">Scene setup</div>
@@ -901,6 +1000,7 @@ export function SceneEditorShell({
                   onAddObject={handleAddBuilderObject}
                   onDuplicateObject={handleDuplicateBuilderObject}
                   onRemoveObject={handleRemoveBuilderObject}
+                  onMoveObject={handleMoveBuilderObject}
                   onUpdateObject={handleUpdateBuilderObject}
                 /> : null}
               {isCustomCodeVisible ? shaderEditor : null}
@@ -1935,6 +2035,8 @@ export function SceneEditorShell({
                         ? `Fix ${reviewIssueCount === 1 ? "the issue above" : `the ${reviewIssueCount} issues above`} before ${hasSavedScene ? "updating" : "creating"} this scene.`
                         : saveNeedsReview
                           ? "Check My Scenes before saving again. Your draft is still here."
+                          : draftRecovery.requiresResolution
+                            ? "Restore or discard the browser draft before saving."
                           : tagsLoading
                             ? "Wait for scene details to finish loading."
                             : `Ready to ${hasSavedScene ? "update" : "create"} this scene.`}

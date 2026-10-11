@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useLayoutEffect, useRef, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import { parseApiError } from '@shared/lib'
 import { assertSceneRequestBudget } from '@modules/player'
@@ -6,6 +6,7 @@ import { replaceSceneThumbnail, uploadNewSceneThumbnail } from './sceneThumbnail
 import type { CreateSceneFormErrors, SceneEditorSubmissionMode, SceneEditorStateSnapshot } from './types'
 import { buildSceneSubmissionDocument, validateForm } from './utils'
 import { describeSceneValidationError, sceneSubmissionErrors } from './sceneValidation'
+import type { SceneDraftSaveContext } from './sceneDraftRecovery'
 
 function serializeSceneRequest(value: Record<string, unknown>) {
   assertSceneRequestBudget(value)
@@ -17,6 +18,8 @@ type UseSceneEditorSubmissionArgs = SceneEditorStateSnapshot & {
   captureThumbnailIfMissing: () => Promise<File>
   mode: SceneEditorSubmissionMode
   onComplete: () => void
+  saveContext: SceneDraftSaveContext
+  onSaveContextChange: (context: SceneDraftSaveContext) => void
   setErrors: Dispatch<SetStateAction<CreateSceneFormErrors>>
   setIsSubmitting: Dispatch<SetStateAction<boolean>>
 }
@@ -31,12 +34,11 @@ type SaveAttempt = {
 /** A dispatched save must settle: cancellation cannot roll back a server transaction. */
 export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailIfMissing,
   description, mode, name, onComplete, sceneData, sceneDataText, selectedTagIds,
-  setErrors, setIsSubmitting, tagsError, tagsLoading, thumbnailFile }: UseSceneEditorSubmissionArgs) {
+  setErrors, setIsSubmitting, tagsError, tagsLoading, thumbnailFile, saveContext, onSaveContextChange }: UseSceneEditorSubmissionArgs) {
   const draftKey = JSON.stringify([mode, name, description, sceneDataText, selectedTagIds])
   const latestDraftKey = useRef(draftKey)
   const active = useRef<SaveAttempt | null>(null)
-  const [createdSceneId, setCreatedSceneId] = useState<number | null>(null)
-  const [saveNeedsReview, setSaveNeedsReview] = useState(false)
+  const { savedSceneId: createdSceneId, expectedRevision, saveNeedsReview } = saveContext
   useLayoutEffect(() => {
     latestDraftKey.current = draftKey
     const attempt = active.current
@@ -80,6 +82,12 @@ export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailI
     const isCurrent = () => isOwned() && latestDraftKey.current === attempt.draftKey
     const savedSceneId = mode.type === 'edit' ? mode.sceneId : createdSceneId
     const isCreate = savedSceneId === null
+    if (!isCreate && (expectedRevision === null || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) {
+      active.current = null
+      setErrors({ form: 'Reopen the saved scene to load its current revision. Your draft has been kept.' })
+      return
+    }
+    if (!isCreate) request = { ...request, expectedRevision }
     let sceneSaved = false
     const retainNewerDraft = () => setErrors(current => ({ ...current,
       form: 'Your earlier version was saved. Your newer changes are still here; save again to update the scene.' }))
@@ -101,6 +109,8 @@ export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailI
         request = { ...request, thumbnailObjectKey: objectKey }
       }
       attempt.dispatched = true
+      // Persist the uncertain create before dispatch: a page interruption must not permit a second POST.
+      if (isCreate) onSaveContextChange({ savedSceneId: null, expectedRevision: null, saveNeedsReview: true })
       const response = await authenticatedFetch(isCreate ? '/scenes' : `/scenes/${savedSceneId}`, {
         method: isCreate ? 'POST' : 'PUT', headers: { 'Content-Type': 'application/json' },
         body: serializeSceneRequest(request), signal: attempt.controller.signal,
@@ -108,24 +118,30 @@ export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailI
       if (!isOwned()) return
       if (!response.ok) {
         const error = await parseApiError(response)
+        if (isCreate) onSaveContextChange(saveContext)
+        if (response.status === 409 && error?.code === 'SCENE_EDIT_CONFLICT') {
+          onSaveContextChange({ ...saveContext, saveNeedsReview: true })
+          setErrors(current => ({ ...current, form: 'This scene was changed in another editor. Your draft is still here. Export it or open the latest saved scene before saving again.' }))
+          return
+        }
         if (isCurrent()) setErrors(sceneSubmissionErrors(response.status, error))
         else if (isOwned()) setErrors(current => ({ ...current,
           form: 'The earlier save was rejected. Your newer changes are still here; save again to submit them.' }))
         return
       }
       sceneSaved = true
-      if (isCreate) {
-        const payload: unknown = await response.json().catch(() => null)
-        if (!isOwned()) return
-        const id = payload && typeof payload === 'object' && 'sceneId' in payload ? payload.sceneId : null
-        if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) setCreatedSceneId(id)
-        else if (!isCurrent()) {
-          setSaveNeedsReview(true)
-          setErrors(current => ({ ...current,
-            form: 'Your earlier version was saved, but its scene reference was missing. Your newer draft is still here. Open My Scenes to review the saved scene before saving again.' }))
-          return
-        }
+      const payload: unknown = await response.json().catch(() => null)
+      if (!isOwned()) return
+      const id = payload && typeof payload === 'object' && 'sceneId' in payload ? payload.sceneId : null
+      const revision = payload && typeof payload === 'object' && 'revision' in payload ? payload.revision : null
+      if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0
+        || (!isCreate && id !== savedSceneId) || typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0) {
+        onSaveContextChange({ ...saveContext, saveNeedsReview: true })
+        setErrors(current => ({ ...current,
+          form: 'The scene was saved, but its current reference was missing. Your draft is still here. Open My Scenes to review the saved scene before saving again.' }))
+        return
       }
+      onSaveContextChange({ savedSceneId: mode.type === 'edit' ? null : id, expectedRevision: revision, saveNeedsReview: false })
       if (!isCurrent()) { retainNewerDraft(); return }
       if (!isCreate && thumbnailFile) {
         attempt.thumbnailController = new AbortController()
@@ -138,7 +154,7 @@ export function useSceneEditorSubmission({ authenticatedFetch, captureThumbnailI
       if (sceneSaved && !isCurrent()) retainNewerDraft()
       else if (isCreate && attempt.dispatched) {
         // A lost response does not prove that POST failed; a second POST can duplicate it.
-        setSaveNeedsReview(true)
+        onSaveContextChange({ ...saveContext, saveNeedsReview: true })
         setErrors(current => ({ ...current,
           form: 'We could not confirm whether the scene was created. Your draft is still here. Check My Scenes before creating another scene.' }))
       } else if (isCurrent()) setErrors({ form: describeSceneValidationError(error) })

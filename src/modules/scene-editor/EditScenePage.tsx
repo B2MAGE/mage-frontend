@@ -8,6 +8,7 @@ import { SceneEditorShell } from './SceneEditorShell'
 import { readEditableSceneData } from './utils'
 
 type EditableScene = Omit<SceneListResponse, 'sceneData'> & {
+  revision: number
   sceneData: Record<string, unknown>
   tagNames: string[]
   unsupportedDocument?: boolean
@@ -88,7 +89,8 @@ export function EditScenePage() {
         if (!isCurrent) return
         const normalizedScene = normalizeSceneListItem(payload)
 
-        if (!normalizedScene || normalizedScene.sceneId !== sceneId) {
+        if (!normalizedScene || normalizedScene.sceneId !== sceneId || !isRecord(payload)
+          || !Number.isSafeInteger(payload.revision) || Number(payload.revision) < 0) {
           throw new Error('This scene could not be opened for editing.')
         }
 
@@ -118,6 +120,7 @@ export function EditScenePage() {
           if (!isCurrent) return
           if (
             !isRecord(repair) || repair.sceneId !== sceneId || repair.ownerUserId !== user.userId ||
+            repair.revision !== payload.revision ||
             repair.playable !== false || !isRecord(repair.sceneData) ||
             !normalizeSceneAvailability(repair.availability, normalizedScene.sceneId)
           ) {
@@ -142,6 +145,7 @@ export function EditScenePage() {
         if (isCurrent) {
           setScene({
             ...normalizedScene,
+            revision: Number(payload.revision),
             sceneData,
             tagNames: normalizeSceneTagNames(payload),
             ...(unsupportedDocument ? { unsupportedDocument: true } : {}),
@@ -216,6 +220,7 @@ export function EditScenePage() {
     <SceneEditorShell
       key={`${scene.sceneId}:${scene.ownerUserId}`}
       authenticatedFetch={authenticatedFetch}
+      userId={user.userId}
       initialState={{
         description: scene.description,
         name: scene.name,
@@ -223,7 +228,7 @@ export function EditScenePage() {
         tagNames: scene.tagNames,
         thumbnailPreviewUrl: scene.thumbnailRef,
       }}
-      mode={{ sceneId, type: 'edit' }}
+      mode={{ sceneId, revision: scene.revision, type: 'edit' }}
       onComplete={() => navigate('/my-scenes')}
     />
   )

@@ -63,6 +63,39 @@ envelope can still fail write validation, for example when its shader is blank.
 The rendering workload assertions are frontend compiler expectations; they do
 not add a test-only field to the API.
 
+## Builder editing and recovery (SB-08)
+
+`useSceneDraftHistory` owns the editor draft: details, tags, the current document,
+raw JSON, and selected object. Commands share this owner; selection alone does
+not create an undo step. A continuous field edit is one step. Undo/redo works
+through the buttons and Ctrl/Cmd+Z, Ctrl+Y, or Ctrl/Cmd+Shift+Z. History is bounded
+to 50 steps and approximately 4 MiB. Reset returns to the document opened in this
+editor, and can itself be undone. New and duplicated objects are selected;
+removing an object selects its neighbour. Reordering preserves IDs and bindings.
+
+Browser backup stores one current-format draft per account and create/edit route.
+It backs up after a short pause and flushes on page hide/unmount. Reopening offers
+Restore or Discard; it never silently replaces a saved scene. Another tab changing
+the same browser draft pauses backup until the user chooses which draft to keep.
+Storage failure leaves the editor usable and offers JSON export as a fallback.
+Recovery preserves invalid raw text and repairable numeric values, not uploaded
+audio or an in-memory thumbnail; capture a fresh thumbnail after restoring.
+
+Scene API responses supply `revision`. Full updates send `expectedRevision`,
+and `409 SCENE_EDIT_CONFLICT` preserves the open draft instead of overwriting a
+newer saved version. An earlier save finishing during editing retains its new
+revision while leaving newer edits untouched. A create with an uncertain outcome
+requires checking My Scenes before submitting again; its pending status is backed
+up before POST. A successful save clears only the matching browser draft.
+
+The preview compiler can use up to the existing 64 live uniform slots for bounded
+position, rotation, scale, metalness and shininess changes, with authored bindings
+taking priority. Unsupported values, dimensions, colour, modifiers, arrangements,
+and motion remain structural changes. Structural updates use the existing coalesced
+preview path; invalid drafts leave the last valid preview visible. The persisted
+document and normal export compiler remain unchanged. The isolated renderer checks
+the loaded uniform manifest before applying updates.
+
 Builder copy counts are checked before allocating expanded copies. Nested
 arrangements multiply, so two copies repeated eight times use the sixteen-copy
 budget; adding another object is rejected consistently by the frontend and API.

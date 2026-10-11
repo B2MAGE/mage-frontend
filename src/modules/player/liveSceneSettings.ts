@@ -1,8 +1,11 @@
 import { assertSceneRequestBudget, validateSceneForPlayback } from './policy/sceneValidation'
 import { resolveSceneForPlayback } from './templates/resolveScene'
+import { compileBuilderPreviewDocument } from './templates/builderCompiler'
+import { builderUniformValues, validateBuilderUniformValues, type BuilderUniformValue } from './templates/builderUniformValues'
 
 type Vector = { x: number; y: number; z: number }
 export type SceneLiveSettings = {
+  builderUniforms?: BuilderUniformValue[]
   visualizer: { scale: number }
   controls: { position0: Vector; target0: Vector; zoom0: number }
   intent: {
@@ -67,10 +70,13 @@ function completeShape(value: unknown, shape: unknown): boolean {
 export function validateLiveSceneSettings(value: unknown): SceneLiveSettings {
   // Inspect descriptors before reading/spreading fields: no getters or toJSON.
   assertSceneRequestBudget(value)
-  if (!completeShape(value, defaults) || JSON.stringify(value).length > 8192) {
+  const { builderUniforms, ...globalSettings } = isObject(value) ? value : {}
+  if (!completeShape(globalSettings, defaults) || JSON.stringify(value).length > 8192
+    || (isObject(value) && Object.hasOwn(value, 'builderUniforms') && builderUniforms === undefined)) {
     throw new Error('Unsupported live scene settings.')
   }
-  const settings = value as SceneLiveSettings
+  const settings = globalSettings as SceneLiveSettings
+  const builder = builderUniforms === undefined ? undefined : validateBuilderUniformValues(builderUniforms)
   // Reuse the scene contract's numeric, enum, color, uniqueness and effect-count
   // policy. The fixed source is validation scaffolding and is never executed.
   const document = validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: { ...settings,
@@ -80,7 +86,8 @@ export function validateLiveSceneSettings(value: unknown): SceneLiveSettings {
   delete (copy.visualizer as Record<string, unknown>).shader
   // Canonical field order makes repeated validated snapshots stable for the
   // bridge's no-change comparison, independent of incoming JSON key order.
-  return selectWithDefaults(defaults, copy) as SceneLiveSettings
+  return { ...selectWithDefaults(defaults, copy) as SceneLiveSettings,
+    ...(builder === undefined ? {} : { builderUniforms: builder }) }
 }
 
 function selectWithDefaults(shape: unknown, source: unknown): unknown {
@@ -92,8 +99,11 @@ function selectWithDefaults(shape: unknown, source: unknown): unknown {
 
 /** Validate the entire document before selecting fields; never hide forbidden data. */
 export function extractLiveSceneSettings(scene: unknown): SceneLiveSettings {
-  const resolved = resolveSceneForPlayback(validateSceneForPlayback(scene)).engineScene
-  return validateLiveSceneSettings(selectWithDefaults(defaults, resolved))
+  const document = validateSceneForPlayback(scene)
+  const resolved = resolveSceneForPlayback(document).engineScene
+  const settings = selectWithDefaults(defaults, resolved) as SceneLiveSettings
+  if (document.kind === 'builder') settings.builderUniforms = builderUniformValues(compileBuilderPreviewDocument(document).uniforms)
+  return validateLiveSceneSettings(settings)
 }
 
 /** Only changed leaves reach the engine, preserving camera movement by the viewer. */
@@ -107,13 +117,18 @@ export function diffLiveSceneSettings(before: SceneLiveSettings, next: SceneLive
     })
     return entries.length ? Object.fromEntries(entries) : undefined
   }
-  return (diff(before, next) ?? {}) as SceneLiveSettingsPatch
+  // Builder uniforms have their own exact-manifest application in the child;
+  // they never enter the engine's global-settings API.
+  return (diff(selectWithDefaults(defaults, before), selectWithDefaults(defaults, next)) ?? {}) as SceneLiveSettingsPatch
 }
 
 /** The validated remainder identifies work that still requires a complete load. */
 export function sceneStructuralContent(scene: unknown) {
   const document = validateSceneForPlayback(scene)
   const resolved = resolveSceneForPlayback(document).engineScene
+  if (document.kind === 'builder') {
+    (resolved.visualizer as { shader: string }).shader = compileBuilderPreviewDocument(document).shader
+  }
   // The resolver returns new data from validation, never caller-owned objects.
   // Strip only audited leaves. Any future scene-contract fields stay structural
   // until explicitly added to the live settings contract.

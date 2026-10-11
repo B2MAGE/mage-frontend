@@ -13,13 +13,14 @@ import {
 } from '../builderEditor'
 import { NumberField, SelectField, SliderField, Vector3Field } from './SceneEditorControls'
 import { FieldValidation } from './SceneEditorFieldValidation'
-import { useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
+import { builderObjectFieldIssues, FieldErrorsContext, useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 
 type Props = {
   document: BuilderSceneDocument
   onAddObject: (shape: BuilderShape) => void
   onDuplicateObject: (objectId: string) => void
   onRemoveObject: (objectId: string) => void
+  onMoveObject: (objectId: string, targetId: string) => void
   onSelectObject: (objectId: string) => void
   onUpdateObject: (objectId: string, recipe: (object: BuilderObject) => BuilderObject) => void
   selectedObjectId: string | null
@@ -37,9 +38,10 @@ function BuilderInfoTooltip({ children, label }: { children: ReactNode; label: s
   </span>
 }
 
-function BuilderControlStage({ children, description, index, onRemove, onToggle, open, removeLabel, summary, title, titleAddon, toggleLabel }: {
+function BuilderControlStage({ children, description, fieldPrefix, index, onRemove, onToggle, open, removeLabel, summary, title, titleAddon, toggleLabel }: {
   children: ReactNode
   description: string
+  fieldPrefix: string
   index?: number
   onRemove?: () => void
   onToggle: () => void
@@ -52,7 +54,12 @@ function BuilderControlStage({ children, description, index, onRemove, onToggle,
 }) {
   const headingId = useId()
   const contentId = useId()
-  return <section aria-label={`${title} controls`} className={`builder-control-stage${index === undefined ? ' builder-control-stage--unnumbered' : ''}${open ? ' is-open' : ''}`}>
+  const issues = useSceneEditorFieldErrors()
+  const hasError = Object.keys(issues).some(id => id.startsWith(fieldPrefix))
+  const [revealedError, setRevealedError] = useState(false)
+  if (hasError && !revealedError) setRevealedError(true)
+  const expanded = open || revealedError
+  return <section aria-label={`${title} controls`} className={`builder-control-stage${index === undefined ? ' builder-control-stage--unnumbered' : ''}${expanded ? ' is-open' : ''}`}>
     <header className="builder-control-stage__header">
       {index === undefined ? null : <span className="builder-control-stage__number">{index + 1}</span>}
       <span className="builder-control-stage__identity">
@@ -62,12 +69,15 @@ function BuilderControlStage({ children, description, index, onRemove, onToggle,
       <span className="builder-control-stage__summary" aria-label={`${title} summary`}>
         {summary.map(item => <span key={item}>{item}</span>)}
       </span>
-      <button aria-controls={contentId} aria-expanded={open} aria-label={toggleLabel}
-        className="builder-control-stage__toggle" type="button" onClick={onToggle}>
+      <button aria-controls={contentId} aria-expanded={expanded} aria-label={toggleLabel.replace(/^(Expand|Collapse)/, expanded ? 'Collapse' : 'Expand')}
+        className="builder-control-stage__toggle" disabled={hasError} type="button" onClick={() => {
+          setRevealedError(false)
+          if (open || !revealedError) onToggle()
+        }}>
         <span className="builder-control-stage__chevron" aria-hidden="true" />
       </button>
     </header>
-    {open ? <div className="builder-control-stage__content" id={contentId}>
+    {expanded ? <div className="builder-control-stage__content" id={contentId}>
       {children}
       {onRemove ? <button aria-label={removeLabel} className="builder-control-stage__remove" type="button" onClick={onRemove}>Remove</button> : null}
     </div> : null}
@@ -100,13 +110,13 @@ function ArrangementStage({ arrangement, index, maxCount, object, onRemove, onTo
   const replace = (next: BuilderArrangement) => update({ ...object,
     arrangements: object.arrangements.map((item, itemIndex) => itemIndex === index ? next : item) })
 
-  return <BuilderControlStage description={description} index={index} onRemove={onRemove} onToggle={onToggle} open={open}
+  return <BuilderControlStage description={description} fieldPrefix={`builder-arrangement-${index}-`} index={index} onRemove={onRemove} onToggle={onToggle} open={open}
     removeLabel={`Remove ${title} arrangement ${index + 1}`}
     summary={[`Count: ${arrangement.count}`, arrangement.type === 'linear' ? `Spacing: ${arrangement.spacing}` : `Radius: ${arrangement.radius}`]}
     title={title} toggleLabel={`${open ? 'Collapse' : 'Expand'} ${title} arrangement ${index + 1}`}>
       <div className="scene-editor-grid scene-editor-grid--3">
         <NumberField id={`builder-arrangement-${index}-count`} label="Count" min={definition.count.minimum} max={maxCount} step={1} value={arrangement.count}
-          onChange={count => replace({ ...arrangement, count: Math.min(count, maxCount) })} />
+          onChange={count => replace({ ...arrangement, count })} />
         {arrangement.type === 'linear'
           ? <NumberField id={`builder-arrangement-${index}-spacing`} label="Spacing" min={BUILDER_ARRANGEMENTS.linear.spacing.minimum} max={BUILDER_ARRANGEMENTS.linear.spacing.maximum} step={0.1} value={arrangement.spacing}
             onChange={spacing => replace({ ...arrangement, spacing })} />
@@ -144,7 +154,7 @@ function ModifierControls({ object, update }: { object: BuilderObject; update: (
             : [`Axis: ${modifier.axis.toUpperCase()}`, `Amount: ${modifier.amount}`]
         const description = modifier.type === 'expand' ? 'Move the surface outward or inward.'
           : modifier.type === 'shell' ? 'Turn the surface into a hollow shell.' : 'Rotate the shape progressively along an axis.'
-        return <BuilderControlStage description={description} index={index} key={modifier.type}
+        return <BuilderControlStage description={description} fieldPrefix={`builder-modifier-${index}-`} index={index} key={modifier.type}
           onRemove={() => {
             if (open) setOpenType(null)
             update({ ...object, modifiers: object.modifiers.filter((_, itemIndex) => itemIndex !== index) })
@@ -223,7 +233,7 @@ function SizeControls({ object, update }: { object: BuilderObject; update: (oper
   return <div className="builder-size-stages">
     {controls.map(control => {
       const open = openControl === control.key
-      return <BuilderControlStage description={control.description} key={control.key}
+      return <BuilderControlStage description={control.description} fieldPrefix={`builder-${control.key}`} key={control.key}
         onToggle={() => setOpenControl(current => current === control.key ? null : control.key)} open={open}
         summary={[conciseNumber(control.value)]} title={control.title}
         toggleLabel={`${open ? 'Collapse' : 'Expand'} ${control.title} size`}>
@@ -312,19 +322,19 @@ function TransformControls({ object, update }: { object: BuilderObject; update: 
   const [openStage, setOpenStage] = useState<'position' | 'rotation' | 'scale' | null>(null)
   const toggle = (stage: 'position' | 'rotation' | 'scale') => setOpenStage(current => current === stage ? null : stage)
   return <div className="builder-transform-stages">
-    <BuilderControlStage description="Move the object through the scene." onToggle={() => toggle('position')}
+    <BuilderControlStage description="Move the object through the scene." fieldPrefix="builder-position-" onToggle={() => toggle('position')}
       open={openStage === 'position'} summary={[conciseVector(object.transform.position)]} title="Position"
       toggleLabel={`${openStage === 'position' ? 'Collapse' : 'Expand'} Position transform`}>
       <Vector3Field id="builder-position" label="Position" min={BUILDER_TRANSFORMS.position.properties.x.minimum} max={BUILDER_TRANSFORMS.position.properties.x.maximum} value={object.transform.position}
         onChange={position => update({ ...object, transform: { ...object.transform, position } })} />
     </BuilderControlStage>
-    <BuilderControlStage description="Turn the object around each axis." onToggle={() => toggle('rotation')}
+    <BuilderControlStage description="Turn the object around each axis." fieldPrefix="builder-rotation-" onToggle={() => toggle('rotation')}
       open={openStage === 'rotation'} summary={[conciseVector(object.transform.rotation)]} title="Rotation"
       toggleLabel={`${openStage === 'rotation' ? 'Collapse' : 'Expand'} Rotation transform`}>
       <Vector3Field id="builder-rotation" label="Rotation" min={BUILDER_TRANSFORMS.rotation.properties.x.minimum} max={BUILDER_TRANSFORMS.rotation.properties.x.maximum} step={0.01} value={object.transform.rotation}
         onChange={rotation => update({ ...object, transform: { ...object.transform, rotation } })} />
     </BuilderControlStage>
-    <BuilderControlStage description="Resize the object along each axis." onToggle={() => toggle('scale')}
+    <BuilderControlStage description="Resize the object along each axis." fieldPrefix="builder-scale-" onToggle={() => toggle('scale')}
       open={openStage === 'scale'} summary={[conciseVector(object.transform.scale)]} title="Scale"
       toggleLabel={`${openStage === 'scale' ? 'Collapse' : 'Expand'} Scale transform`}>
       <Vector3Field id="builder-scale" label="Scale" min={BUILDER_TRANSFORMS.scale.properties.x.minimum} max={BUILDER_TRANSFORMS.scale.properties.x.maximum} value={object.transform.scale}
@@ -333,13 +343,21 @@ function TransformControls({ object, update }: { object: BuilderObject; update: 
   </div>
 }
 
-function InspectorSection({ children, description, status, title }: {
+function InspectorSection({ children, description, fieldPrefixes, status, title }: {
   children: ReactNode
   description: string
+  fieldPrefixes: string[]
   status: string
   title: string
 }) {
-  return <details className="builder-inspector-section">
+  const issues = useSceneEditorFieldErrors()
+  const hasError = Object.keys(issues).some(id => fieldPrefixes.some(prefix => id.startsWith(prefix)))
+  const [open, setOpen] = useState(false)
+  return <details className="builder-inspector-section" open={open || hasError}
+    onToggle={event => {
+      if (hasError && !event.currentTarget.open) event.currentTarget.open = true
+      setOpen(event.currentTarget.open)
+    }}>
     <summary>
       <span className="builder-inspector-section__title">
         <h4 className="builder-object-editor__subheading">{title}</h4>
@@ -385,7 +403,7 @@ function AnimationControls({ object, update }: { object: BuilderObject; update: 
   const [open, setOpen] = useState(false)
   const spinMotion = object.motion.type === 'spin' ? object.motion : null
   return <div className="builder-animation-stages">
-    <BuilderControlStage description="Rotate the object continuously around one axis." onToggle={() => setOpen(value => !value)} open={open}
+    <BuilderControlStage description="Rotate the object continuously around one axis." fieldPrefix="builder-motion-" onToggle={() => setOpen(value => !value)} open={open}
       summary={spinMotion ? [`Axis: ${spinMotion.axis.toUpperCase()}`, `Speed: ${conciseNumber(spinMotion.speed)}`] : ['Off']}
       title="Spin"
       titleAddon={object.operation.type === 'sphere'
@@ -408,7 +426,7 @@ function AppearanceControls({ object, update }: { object: BuilderObject; update:
   const [openControl, setOpenControl] = useState<'color' | 'metalness' | 'shininess' | null>(null)
   const toggle = (control: 'color' | 'metalness' | 'shininess') => setOpenControl(current => current === control ? null : control)
   return <div className="builder-appearance-stages">
-    <BuilderControlStage description="Choose the object's base color." onToggle={() => toggle('color')}
+    <BuilderControlStage description="Choose the object's base color." fieldPrefix="builder-color" onToggle={() => toggle('color')}
       open={openControl === 'color'} summary={[object.material.color.toUpperCase()]} title="Color"
       toggleLabel={`${openControl === 'color' ? 'Collapse' : 'Expand'} Color appearance`}>
       <FieldValidation id="builder-color">
@@ -418,13 +436,13 @@ function AppearanceControls({ object, update }: { object: BuilderObject; update:
         </EditorFieldShell>
       </FieldValidation>
     </BuilderControlStage>
-    <BuilderControlStage description="Control how strongly the surface reflects its environment." onToggle={() => toggle('metalness')}
+    <BuilderControlStage description="Control how strongly the surface reflects its environment." fieldPrefix="builder-metalness" onToggle={() => toggle('metalness')}
       open={openControl === 'metalness'} summary={[conciseNumber(object.material.metalness)]} title="Metalness"
       toggleLabel={`${openControl === 'metalness' ? 'Collapse' : 'Expand'} Metalness appearance`}>
       <SliderField id="builder-metalness" label="Metalness" min={BUILDER_MATERIAL.metalness.minimum} max={BUILDER_MATERIAL.metalness.maximum} step={0.01} value={object.material.metalness}
         onChange={metalness => update({ ...object, material: { ...object.material, metalness } })} />
     </BuilderControlStage>
-    <BuilderControlStage description="Control the brightness and focus of highlights." onToggle={() => toggle('shininess')}
+    <BuilderControlStage description="Control the brightness and focus of highlights." fieldPrefix="builder-shininess" onToggle={() => toggle('shininess')}
       open={openControl === 'shininess'} summary={[conciseNumber(object.material.shininess)]} title="Shininess"
       toggleLabel={`${openControl === 'shininess' ? 'Collapse' : 'Expand'} Shininess appearance`}>
       <SliderField id="builder-shininess" label="Shininess" min={BUILDER_MATERIAL.shininess.minimum} max={BUILDER_MATERIAL.shininess.maximum} step={0.01} value={object.material.shininess}
@@ -438,16 +456,26 @@ export function BuilderSceneControls({
   onAddObject,
   onDuplicateObject,
   onRemoveObject,
+  onMoveObject,
   onSelectObject,
   onUpdateObject,
   selectedObjectId,
 }: Props) {
   const [newShape, setNewShape] = useState<BuilderShape>('sphere')
   const selected = document.objects.find(object => object.id === selectedObjectId) ?? null
+  const selectedIndex = document.objects.findIndex(object => object.id === selectedObjectId)
   const update = (recipe: (object: BuilderObject) => BuilderObject) => {
     if (selected) onUpdateObject(selected.id, recipe)
   }
-  const nameIssue = useSceneEditorFieldIssue('builder-object-name')
+  const selectedIssues = builderObjectFieldIssues(useSceneEditorFieldErrors(), selectedIndex)
+  selected?.arrangements.forEach((arrangement, index) => {
+    const maximum = arrangementLimit(document, selected, index)
+    if (arrangement.count > maximum) selectedIssues[`builder-arrangement-${index}-count`] ??= {
+      path: `objects[${selectedIndex}].arrangements[${index}].count`,
+      message: `Use ${Math.max(0, maximum)} copies or fewer to stay within ${BUILDER_EXPANDED_PRIMITIVE_LIMIT} rendered copies.`,
+    }
+  })
+  const nameIssue = selectedIssues['builder-object-name']
 
   return <section className="builder-workspace" aria-labelledby="builder-workspace-title">
     <header className="builder-workspace__header">
@@ -465,8 +493,9 @@ export function BuilderSceneControls({
           <p className="field-hint">Keep the object list visible while editing.</p>
         </div>
 
+        <FieldValidation id="builder-object-list">
         {document.objects.length === 0 ? <p className="builder-object-empty">Add a shape to start building this scene.</p> : (
-          <div className="builder-object-list" id="builder-object-list" role="group" aria-label="Scene objects">
+          <div className="builder-object-list" id="builder-object-list" role="group" aria-label="Scene objects" tabIndex={-1}>
             {document.objects.map(object => <button key={object.id} className="builder-object-list__item" type="button"
               aria-label={`${object.name}, ${shapeLabel(object)}`}
               aria-pressed={object.id === selectedObjectId} onClick={() => onSelectObject(object.id)}>
@@ -475,6 +504,14 @@ export function BuilderSceneControls({
             </button>)}
           </div>
         )}
+        </FieldValidation>
+
+        {document.objects.length > 1 ? <div aria-label="Reorder selected object" className="builder-object-reorder" role="group">
+          <button className="scene-secondary-button" type="button" disabled={selectedIndex <= 0}
+            onClick={() => { if (selected) onMoveObject(selected.id, document.objects[selectedIndex - 1].id) }}>Move up</button>
+          <button className="scene-secondary-button" type="button" disabled={selectedIndex < 0 || selectedIndex === document.objects.length - 1}
+            onClick={() => { if (selected) onMoveObject(selected.id, document.objects[selectedIndex + 1].id) }}>Move down</button>
+        </div> : null}
 
         <div className="builder-object-section__add">
           <select aria-label="Shape" className="mage-select" id="builder-add-shape" value={newShape}
@@ -487,7 +524,7 @@ export function BuilderSceneControls({
         </div>
       </aside>
 
-      {selected ? <section className="builder-object-editor builder-object-inspector" aria-labelledby="builder-object-editor-title">
+      {selected ? <FieldErrorsContext.Provider value={selectedIssues}><section className="builder-object-editor builder-object-inspector" aria-labelledby="builder-object-editor-title">
         <header className="builder-object-editor__heading">
           <div>
             <h3 className="builder-object-editor__title" id="builder-object-editor-title">Selected object</h3>
@@ -502,7 +539,8 @@ export function BuilderSceneControls({
           <div className="builder-object-identity">
             <FieldValidation id="builder-object-name">
               <EditorFieldShell htmlFor="builder-object-name" label="Name">
-                <input {...nameIssue.attributes} className="scene-text-input" id="builder-object-name" maxLength={BUILDER_LIMITS.nameLength} value={selected.name}
+                <input aria-invalid={Boolean(nameIssue)} aria-describedby={nameIssue ? 'builder-object-name-error' : undefined}
+                  className="scene-text-input" id="builder-object-name" maxLength={BUILDER_LIMITS.nameLength} value={selected.name}
                   onChange={event => update(object => ({ ...object, name: event.currentTarget.value }))} />
               </EditorFieldShell>
             </FieldValidation>
@@ -510,35 +548,35 @@ export function BuilderSceneControls({
               options={BUILDER_SHAPES} onChange={value => update(object => ({ ...object, operation: createBuilderOperation(value as BuilderShape) }))} />
           </div>
 
-          <InspectorSection title="Size" description="Shape dimensions" status={sizeSummary(selected)}>
+          <InspectorSection title="Size" fieldPrefixes={['builder-radius', 'builder-width', 'builder-height', 'builder-depth', 'builder-tube']} description="Shape dimensions" status={sizeSummary(selected)}>
             <SizeControls key={`${selected.id}-${selected.operation.type}`} object={selected}
               update={operation => update(object => ({ ...object, operation }))} />
           </InspectorSection>
 
-          <InspectorSection title="Transform" description="Position, rotation, and scale" status={vectorSummary(selected)}>
+          <InspectorSection title="Transform" fieldPrefixes={['builder-position-', 'builder-rotation-', 'builder-scale-']} description="Position, rotation, and scale" status={vectorSummary(selected)}>
             <TransformControls key={selected.id} object={selected} update={object => update(() => object)} />
           </InspectorSection>
 
-          <InspectorSection title="Modifiers" description="Expand, Shell, or Twist"
+          <InspectorSection title="Modifiers" fieldPrefixes={['builder-modifier-']} description="Expand, Shell, or Twist"
             status={selected.modifiers.length ? selected.modifiers.map(modifier => modifier.type).join(', ') : 'None'}>
             <ModifierControls key={selected.id} object={selected} update={object => update(() => object)} />
           </InspectorSection>
 
-          <InspectorSection title="Arrangement" description="Repeat the object in a line or ring"
+          <InspectorSection title="Arrangement" fieldPrefixes={['builder-arrangement-']} description="Repeat the object in a line or ring"
             status={selected.arrangements.length ? selected.arrangements.map(arrangement => arrangement.type === 'linear' ? 'Line' : 'Ring').join(', ') : 'Single copy'}>
             <ArrangementControls document={document} key={selected.id} object={selected} update={object => update(() => object)} />
           </InspectorSection>
 
-          <InspectorSection title="Animation" description="Object-specific movement"
+          <InspectorSection title="Animation" fieldPrefixes={['builder-motion-']} description="Object-specific movement"
             status={selected.motion.type === 'spin' ? `Spin ${selected.motion.axis.toUpperCase()}` : 'Off'}>
             <AnimationControls key={selected.id} object={selected} update={object => update(() => object)} />
           </InspectorSection>
 
-          <InspectorSection title="Appearance" description="Color and material response" status={selected.material.color.toUpperCase()}>
+          <InspectorSection title="Appearance" fieldPrefixes={['builder-color', 'builder-metalness', 'builder-shininess']} description="Color and material response" status={selected.material.color.toUpperCase()}>
             <AppearanceControls key={selected.id} object={selected} update={object => update(() => object)} />
           </InspectorSection>
         </div>
-      </section> : null}
+      </section></FieldErrorsContext.Provider> : null}
     </div>
   </section>
 }

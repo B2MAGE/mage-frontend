@@ -16,12 +16,12 @@ vi.mock('./SceneEditorShell', () => ({ SceneEditorShell: (props: {
 
 const availability = { sceneId: 23, available: false, code: 'SCENE_DISABLED', message: 'Scene playback is unavailable.' }
 const metadata = {
-  sceneId: 23, ownerUserId: 8, creatorDisplayName: 'Scene Artist', name: 'Saved scene',
+  sceneId: 23, revision: 0, ownerUserId: 8, creatorDisplayName: 'Scene Artist', name: 'Saved scene',
   description: 'Original description', sceneData: null, availability, thumbnailRef: '/saved.png',
   createdAt: '2026-10-03T00:00:00Z', tags: ['ambient'],
 }
 const source = { schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(1)' }, audioResponse: 'mapped-v1', state: { size: 0.3 } } }
-const repair = { sceneId: 23, ownerUserId: 8, name: 'Saved scene', description: 'Original description',
+const repair = { sceneId: 23, revision: 0, ownerUserId: 8, name: 'Saved scene', description: 'Original description',
   sceneData: source, thumbnailRef: '/saved.png', availability, playable: false }
 
 function page() {
@@ -55,7 +55,7 @@ describe('owner repair loading', () => {
     expect(await screen.findByTestId('editor')).toHaveAttribute('data-source', JSON.stringify(builder))
     expect(mocks.editor).toHaveBeenCalledWith(expect.objectContaining({
       initialState: expect.objectContaining({ sceneData: builder }),
-      mode: { type: 'edit', sceneId: 23 },
+      mode: { type: 'edit', sceneId: 23, revision: 0 },
     }))
   })
 
@@ -67,7 +67,7 @@ describe('owner repair loading', () => {
     expect(mocks.editor).toHaveBeenLastCalledWith(expect.objectContaining({
       initialState: { name: 'Saved scene', description: 'Original description', sceneData: source,
         tagNames: ['ambient'], thumbnailPreviewUrl: '/saved.png' },
-      mode: { type: 'edit', sceneId: 23 },
+      mode: { type: 'edit', sceneId: 23, revision: 0 },
     }))
   })
 
@@ -153,6 +153,9 @@ describe('owner repair loading', () => {
 
   it.each([
     { ...metadata, sceneId: 24 },
+    { ...metadata, revision: undefined },
+    { ...metadata, revision: -1 },
+    { ...metadata, revision: '0' },
     { ...metadata, availability: undefined },
     { ...metadata, sceneData: undefined },
     { ...metadata, sceneData: [] },
@@ -166,6 +169,8 @@ describe('owner repair loading', () => {
 
   it.each([
     { ...repair, sceneId: 24 },
+    { ...repair, revision: 1 },
+    { ...repair, revision: undefined },
     { ...repair, ownerUserId: 9 },
     { ...repair, playable: true },
     { ...repair, playable: undefined },

@@ -112,4 +112,30 @@ describe('compileBuilderDocument', () => {
     expect(compiled.workload.expandedPrimitives).toBe(0)
     expect(() => compileShader(compiled.shader)).not.toThrow()
   })
+
+  it('uses stable bounded preview uniforms without changing saved compilation', () => {
+    const initial = document(1)
+    const before = compileBuilderDocument(initial, { livePreview: true })
+    const next = structuredClone(initial)
+    next.objects[0].transform.position.x = 4
+    next.objects[0].material.shininess = 0.25
+    const after = compileBuilderDocument(next, { livePreview: true })
+    expect(after.shader).toBe(before.shader)
+    expect(after.uniforms).toHaveLength(11)
+    expect(after.uniforms).toContainEqual(expect.objectContaining({ target: 'position.x', initialValue: 4 }))
+    expect(after.uniforms).toContainEqual(expect.objectContaining({ target: 'material.shininess', initialValue: 0.25 }))
+    expect(compileBuilderDocument(next).shader).not.toBe(compileBuilderDocument(initial).shader)
+    expect(() => normalizeCompiledShader(compileShader(after.shader))).not.toThrow()
+  })
+
+  it('reserves authored bindings and keeps numeric overflow structural at the existing limit', () => {
+    const input = document(16)
+    const before = compileBuilderDocument(input, { livePreview: true })
+    expect(before.uniforms).toHaveLength(64)
+    expect(before.workload.liveUniforms).toBe(64)
+    input.objects[15].transform.position.x = 7
+    expect(compileBuilderDocument(input, { livePreview: true }).shader).toBe(before.shader)
+    input.objects[15].material.shininess = 0.6
+    expect(compileBuilderDocument(input, { livePreview: true }).shader).not.toBe(before.shader)
+  })
 })

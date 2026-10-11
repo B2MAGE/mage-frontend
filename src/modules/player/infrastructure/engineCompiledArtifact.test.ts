@@ -32,13 +32,14 @@ function fixture() {
 describe('installed compiled-artifact rendering', () => {
   it('keeps source inert, preserves its metadata and updates trusted audio/time/pointer uniforms', () => {
     const f = fixture()
-    const artifact = compileShader('let bass=input(0.2,0,1); let pointerDown=input(0); sphere(0.5+bass+time*0.01);')
+    const artifact = compileShader('let bass=input(0.2,0,1); let pointerDown=input(0); let builder_o0_position_x=input(0,-100,100); displace(builder_o0_position_x,0,0); sphere(0.5+bass+time*0.01);')
     const source = 'throw new Error("source must never be evaluated in the renderer");'
     const preset = { visualizer: { shader: source } }
     expect(f.loadCompiled.call(f.engine, preset, artifact)).toBe(preset)
     expect(f.visualizer.getActiveShader()).toBe(source)
     expect(f.visualizer.shaders).toHaveLength(1)
     const material = f.visualizer.mesh.material
+    material.uniforms.builder_o0_position_x.value = 3
     expect(material.fragmentShader).toContain('MAX_ITERATIONS = 48;')
     const fields = f.real.getEngineFields()
     fields.state.time = 3
@@ -48,6 +49,7 @@ describe('installed compiled-artifact rendering', () => {
     expect(material.uniforms.time.value).toBe(3)
     expect(material.uniforms.bass.value).toBe(0.8)
     expect(material.uniforms.pointerDown.value).toBe(0.7)
+    expect(material.uniforms.builder_o0_position_x.value).toBe(3)
     expect(f.engine._updateVisualizer).toHaveBeenCalledOnce()
   })
 

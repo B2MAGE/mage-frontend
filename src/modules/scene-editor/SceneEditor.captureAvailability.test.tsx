@@ -73,9 +73,9 @@ describe('editor thumbnail availability', () => {
 
   it('keeps the saved thumbnail and allows editing and saving a disabled scene', async () => {
     setAllowed(false)
-    const fetcher = vi.fn(async () => new Response('{}'))
+    const fetcher = vi.fn(async () => new Response('{"sceneId":23,"revision":1}'))
     const complete = vi.fn()
-    render(<SceneEditorShell authenticatedFetch={fetcher} onComplete={complete} mode={{ type: 'edit', sceneId: 23 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: editorSceneDocument(createDefaultSceneData()) }} />)
+    render(<SceneEditorShell authenticatedFetch={fetcher} onComplete={complete} mode={{ type: 'edit', sceneId: 23, revision: 0 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: editorSceneDocument(createDefaultSceneData()) }} />)
     expect(screen.getByRole('button', { name: 'Recapture Thumbnail' })).toBeDisabled()
     expect(permission.targets).toHaveBeenCalledWith(23)
     expect(screen.getByAltText('Captured thumbnail preview')).toHaveAttribute('src', '/saved.png')
@@ -89,7 +89,7 @@ describe('editor thumbnail availability', () => {
   it('cancels pending capture and discards its result even if playback is re-enabled', async () => {
     let finish!: (value: string) => void
     permission.capture.mockImplementationOnce(() => new Promise<string>((resolve) => { finish = resolve }))
-    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} mode={{ type: 'edit', sceneId: 23 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: createTemplateScene() }} />)
+    render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} mode={{ type: 'edit', sceneId: 23, revision: 0 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: createTemplateScene() }} />)
     expect(permission.targets).toHaveBeenCalledWith('template:23')
     fireEvent.click(screen.getByRole('button', { name: 'Recapture Thumbnail' }))
     expect(screen.getByRole('button', { name: 'Capturing...' })).toBeDisabled()

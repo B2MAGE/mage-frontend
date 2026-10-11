@@ -95,7 +95,7 @@ html[data-theme] .scene-editor-page .auth-header { flex: 0 0 auto; margin: 0 0 2
 html[data-theme] .scene-editor-page .auth-header > .eyebrow { display: none; }
 html[data-theme] .scene-editor-page .auth-title { margin: 0; max-width: none; font-size: clamp(34px, 4vw, 52px); line-height: 1; letter-spacing: -.045em; }
 html[data-theme] .scene-editor-page .auth-copy { margin: 13px 0 0; max-width: 700px; color: var(--studio-muted); font-size: 14px; line-height: 1.5; }
-html[data-theme] .scene-editor-page .scene-editor-form { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; margin: 0; gap: 0; }
+html[data-theme] .scene-editor-page .scene-editor-form { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; margin: 0; gap: 0; }
 html[data-theme] .scene-editor-page .scene-editor-layout { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: 180px minmax(500px, 1fr) minmax(410px, .92fr); gap: 0; border: 1px solid var(--studio-border); border-radius: 20px; overflow: hidden; background: var(--studio-panel); box-shadow: 0 24px 70px var(--studio-shadow); }
 html[data-theme] .scene-editor-page .scene-editor-stepper-rail { min-height: 0; padding: 22px 14px; overflow-y: auto; border-right: 1px solid var(--studio-border); background: var(--studio-rail); }
 html[data-theme] .scene-editor-page .scene-editor-stepper-rail__label { padding: 0 10px 12px; color: var(--studio-subtle); font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
@@ -144,6 +144,12 @@ html[data-theme] .scene-editor-page textarea { height: auto; min-height: 116px; 
 html[data-theme] .scene-editor-page #description { height: 116px; }
 html[data-theme] .scene-editor-page textarea.scene-textarea--code { min-height: 220px; font: 10px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 html[data-theme] .scene-editor-page .scene-secondary-button, html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle { min-height: 34px; padding: 0 12px; border: 1px solid var(--studio-border-strong); border-radius: 8px; background: var(--studio-control); color: var(--studio-text); font-size: 11px; font-weight: 650; cursor: pointer; transition: background-color .18s ease, border-color .18s ease, color .18s ease; }
+html[data-theme] .scene-editor-page :is(.scene-draft-actions, .builder-object-reorder) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+html[data-theme] .scene-editor-page .scene-draft-actions { margin-bottom: 12px; }
+html[data-theme] .scene-editor-page .scene-draft-actions .field-hint { margin: 0; flex: 1 1 220px; }
+html[data-theme] .scene-editor-page .scene-draft-recovery { margin-bottom: 10px; color: var(--studio-muted); font-size: 12px; }
+html[data-theme] .scene-editor-page .scene-draft-recovery p { margin: 0 0 8px; }
+html[data-theme] .scene-editor-page .builder-object-reorder { padding: 8px 0; }
 html[data-theme] .scene-editor-page :is(.scene-secondary-button, .scene-editor-collapsible__toggle):not(:disabled):hover { border-color: var(--editor-button-hover-border); background: var(--editor-button-hover-background); color: var(--studio-accent); }
 html[data-theme] .scene-editor-page :is(.scene-secondary-button, .scene-editor-collapsible__toggle):disabled { opacity: .55; cursor: default; }
 html[data-theme] .scene-editor-page .scene-editor-collapsible {

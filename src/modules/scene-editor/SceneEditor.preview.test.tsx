@@ -151,6 +151,7 @@ describe('scene editor presets and beat preview', () => {
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage('mage-pulse')
+    await screen.findByTestId('scene-preview')
     const before = previewScene()
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption(label).id)
@@ -259,12 +260,12 @@ describe('scene editor presets and beat preview', () => {
     mockCreateScenePageFetch((input, init) => {
       if (input === buildApiUrl('/scenes') && init?.method === 'POST') {
         created = JSON.parse(String(init.body)) as SceneWritePayload
-        return jsonResponse({ sceneId: 18 }, 201)
+        return jsonResponse({ sceneId: 18, revision: 0 }, 201)
       }
     })
     const user = userEvent.setup()
     renderCreateScenePage('mage-pulse')
-    await user.type(screen.getByLabelText(/scene name/i), 'Quiet Rings')
+    await user.type(await screen.findByLabelText(/scene name/i), 'Quiet Rings')
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption('Rose Circuit').id)
     await user.click(screen.getByRole('button', { name: 'Motion' }))

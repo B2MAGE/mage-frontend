@@ -23,6 +23,18 @@ describe('bounded playback messages', () => {
       Object.assign(Object.create({ inherited: true }), settings), getter,
     ]) expect(isPlaybackMessage({ ...message, payload }, ['scene-settings'])).toBe(false)
   })
+  it('accepts bounded Builder numeric snapshots but rejects paths, duplicates and oversized values', () => {
+    const settings = extractLiveSceneSettings({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'shape', operation: { type: 'sphere' } }] })
+    const message = playbackMessage('scene-settings', session, 1, 2, settings)
+    expect(isPlaybackMessage(message, ['scene-settings'])).toBe(true)
+    for (const builderUniforms of [
+      [{ objectIndex: 0, target: 'position.x', value: 101 }],
+      [{ objectIndex: 0, target: 'position.x', value: 1, name: 'arbitraryUniform' }],
+      [{ objectIndex: 0, target: 'visualizer.shader', value: 0 }],
+      [settings.builderUniforms![0], settings.builderUniforms![0]],
+    ]) expect(isPlaybackMessage({ ...message, payload: { ...settings, builderUniforms } }, ['scene-settings'])).toBe(false)
+  })
   it('accepts only a fixed compile failure code without arbitrary compiler text or source', () => {
     const message = playbackMessage('error', session, 1, 2, { code: 'compile' })
     expect(message.version).toBe(2)
