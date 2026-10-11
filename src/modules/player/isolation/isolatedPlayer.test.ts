@@ -86,6 +86,24 @@ afterEach(() => {
 })
 
 describe('isolated player parent integration', () => {
+  it('marks audio discontinuities without restarting the scene or its audio for binding edits', async () => {
+    const f = fixture()
+    await f.start()
+    const epoch = () => f.host.update.mock.calls.at(-1)![0].audioEpoch!
+    const initial = epoch()
+    await f.player.loadAudio(new Blob(['audio']))
+    expect(epoch()).toBe(initial + 1)
+    f.player.seek(40)
+    expect(epoch()).toBe(initial + 2)
+    await f.tick()
+    expect(epoch()).toBe(initial + 2)
+    f.player.clearAudio()
+    expect(epoch()).toBe(initial + 3)
+    f.player.reset()
+    expect(epoch()).toBe(initial + 4)
+    expect(f.host.loadScene).toHaveBeenCalledOnce()
+  })
+
   it('stages replacement with its cancellation and permission gate, using playback intent at commit', async () => {
     const f = fixture()
     await f.start()

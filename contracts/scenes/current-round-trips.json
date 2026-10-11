@@ -1177,6 +1177,204 @@
           ]
         }
       }
+    },
+    {
+      "name": "bindings-independent-music-and-pointer-round-trip",
+      "valid": true,
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "bass-orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "amount": 0.8
+              },
+              {
+                "target": "position.y",
+                "source": "pointer-y",
+                "amount": 2,
+                "attack": 0,
+                "release": 0
+              }
+            ]
+          },
+          {
+            "id": "treble-box",
+            "operation": {
+              "type": "box"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "treble-hit",
+                "mode": "replace",
+                "amount": 0.4,
+                "offset": 1,
+                "attack": 0.02,
+                "release": 0.5
+              },
+              {
+                "target": "material.metalness",
+                "source": "pointer-down",
+                "amount": 1
+              }
+            ]
+          }
+        ],
+        "settings": {
+          "audioResponse": "mapped-v1"
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "bass-orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "amount": 0.8,
+                "mode": "add",
+                "offset": 0,
+                "attack": 0.04,
+                "release": 0.35
+              },
+              {
+                "target": "position.y",
+                "source": "pointer-y",
+                "amount": 2,
+                "attack": 0,
+                "release": 0,
+                "mode": "add",
+                "offset": 0
+              }
+            ],
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
+          },
+          {
+            "id": "treble-box",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "treble-hit",
+                "mode": "replace",
+                "amount": 0.4,
+                "offset": 1,
+                "attack": 0.02,
+                "release": 0.5
+              },
+              {
+                "target": "material.metalness",
+                "source": "pointer-down",
+                "amount": 1,
+                "mode": "add",
+                "offset": 0,
+                "attack": 0.04,
+                "release": 0.35
+              }
+            ],
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
+          }
+        ],
+        "settings": {
+          "audioResponse": "mapped-v1",
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        }
+      }
     }
   ]
 }

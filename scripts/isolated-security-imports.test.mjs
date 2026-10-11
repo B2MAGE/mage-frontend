@@ -99,3 +99,15 @@ test('Builder uniform validation shares only audited numeric definitions and com
   }
   assert.deepEqual(violations(source, name), [])
 })
+
+test('Builder binding metadata cannot import application state or an analyzer', () => {
+  const name = 'src/modules/player/templates/builderBindings.ts'
+  const source = readFileSync(resolve(root, name), 'utf8')
+  const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true)
+  const allowed = new Set(['./builderDefinitions', '../../../../contracts/scenes/builder-rendering.v1.json'])
+  for (const node of ast.statements) {
+    if (!ts.isImportDeclaration(node) || node.importClause?.isTypeOnly) continue
+    assert.ok(ts.isStringLiteral(node.moduleSpecifier) && allowed.has(node.moduleSpecifier.text))
+  }
+  assert.deepEqual(violations(source, name), [])
+})

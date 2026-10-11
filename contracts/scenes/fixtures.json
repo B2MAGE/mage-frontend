@@ -6520,6 +6520,280 @@
           ]
         }
       }
+    },
+    {
+      "name": "bindings-independent-original-mode-boundaries",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "bass-orb",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "mode": "add",
+                "amount": -4,
+                "offset": -4,
+                "attack": 0,
+                "release": 0
+              },
+              {
+                "target": "position.y",
+                "source": "pointer-y",
+                "amount": 2,
+                "attack": 0,
+                "release": 0
+              }
+            ]
+          },
+          {
+            "id": "treble-box",
+            "operation": {
+              "type": "box"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "treble-hit",
+                "mode": "replace",
+                "amount": 4,
+                "offset": 4,
+                "attack": 2,
+                "release": 5
+              },
+              {
+                "target": "material.metalness",
+                "source": "pointer-down",
+                "amount": 1
+              }
+            ]
+          }
+        ],
+        "settings": {
+          "audioResponse": "legacy"
+        }
+      }
+    },
+    {
+      "name": "bindings-reject-amount--4.001",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "amount": -4.001
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-offset--4.001",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "offset": -4.001
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-offset-4.001",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "offset": 4.001
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-attack--0.001",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "attack": -0.001
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-release--0.001",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "release": -0.001
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-release-5.001",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "release": 5.001
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-amount-1",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "bass-level",
+                "amount": "1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-source-pointer-z",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "scale.x",
+                "source": "pointer-z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "bindings-reject-target-objects[1].scale.x",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "shape",
+            "operation": {
+              "type": "sphere"
+            },
+            "bindings": [
+              {
+                "target": "objects[1].scale.x",
+                "source": "bass-level"
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

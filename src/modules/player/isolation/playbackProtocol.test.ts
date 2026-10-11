@@ -7,6 +7,14 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('allows only a finite integer audio reset marker', () => {
+    const message = playbackMessage('input', session, 1, 2, { ...input, audioEpoch: 3 })
+    expect(isPlaybackMessage(message, ['input'])).toBe(true)
+    for (const audioEpoch of [-1, Infinity, NaN, 0.5, '3', undefined]) {
+      expect(isPlaybackMessage({ ...message, payload: { ...input, audioEpoch } }, ['input'])).toBe(false)
+    }
+  })
+
   it('accepts only bounded data-only complete live settings', () => {
     const settings = extractLiveSceneSettings(customDocument({ visualizer: { shader: 'sphere(1);' } }))
     const message = playbackMessage('scene-settings', session, 1, 2, settings)

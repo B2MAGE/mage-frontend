@@ -282,7 +282,8 @@ export function createIsolatedPlaybackHost(options: {
       const previous = queuedInput?.audio.frame
       const next = input.audio.frame
       let frame = next
-      if (input.audio.playing && previous && previous.time <= input.audio.audioTime && input.audio.audioTime - previous.time <= 1) {
+      if (queuedInput?.audioEpoch === input.audioEpoch && input.audio.playing && previous
+        && previous.time <= input.audio.audioTime && input.audio.audioTime - previous.time <= 1) {
         frame = next ? { ...next, hits: [...(previous.sequence === next.sequence ? [] : previous.hits), ...next.hits]
           .filter(hit => hit.time <= next.time && next.time - hit.time <= 1).slice(-BRIDGE_LIMITS.maxHits) } : previous
       }

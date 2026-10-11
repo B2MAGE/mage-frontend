@@ -2,6 +2,7 @@ import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
 import { templateOptionalEffectCount } from './templateSettings'
 import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, type BuilderGroupTarget } from './builderDefinitions'
 import { builderCompositionNodes, builderCompositionRoots, validateBuilderComposition } from './builderComposition'
+import { builderLiveBindings, type BuilderLiveBinding } from './builderBindings'
 import type { BuilderArrangement, BuilderBinding, BuilderFrame, BuilderGroup, BuilderMaterial, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
 export const BUILDER_COMPILER_VERSION = 1 as const
@@ -42,6 +43,7 @@ export type BuilderCompilation = Readonly<{
   compilerVersion: typeof BUILDER_COMPILER_VERSION
   shader: string
   uniforms: readonly BuilderUniform[]
+  bindings: readonly BuilderLiveBinding[]
   workload: BuilderWorkload
 }>
 
@@ -226,6 +228,7 @@ function assertBudget(workload: Omit<BuilderWorkload, 'generatedSourceBytes'> & 
 
 /** Shared preflight for storage and compilation; normalized data is required. */
 export function validateBuilderRenderingWorkload(document: BuilderSceneDocument) {
+  builderLiveBindings(document)
   validateBuilderComposition(document, (path, detail) => fail(path.replace(/^scene\./, 'sceneData.'), detail))
   const workload = initialWorkload(document)
   assertBudget(workload)
@@ -274,7 +277,8 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
 
   const objectValues = document.objects.map((object, objectIndex) => {
     const values = new Map<BuilderBinding['target'], string>()
-    liveTargets[objectIndex].forEach(target => {
+    const targets = (Object.keys(BUILDER_BINDING_RANGES) as BuilderBinding['target'][]).filter(target => liveTargets[objectIndex].has(target))
+    targets.forEach(target => {
       const range = BUILDER_BINDING_RANGES[target]
       if (!range) fail(`sceneData.objects[${objectIndex}].bindings`, 'Unsupported live property target.')
       const name = builderUniformName(objectIndex, target)
@@ -389,6 +393,7 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
   const workload: BuilderWorkload = { ...baseWorkload, liveUniforms: uniforms.length, generatedSourceBytes: encoder.encode(shader).byteLength }
   assertBudget(workload)
   return Object.freeze({ compilerVersion: BUILDER_COMPILER_VERSION, shader,
+    bindings: Object.freeze(builderLiveBindings(document).map(binding => Object.freeze(binding))),
     uniforms: Object.freeze(uniforms.map(uniform => Object.freeze(uniform))), workload: Object.freeze(workload) })
 }
 

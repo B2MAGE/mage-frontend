@@ -19,7 +19,7 @@ export type PlaybackPayloads = {
   resize: { width: number; height: number; pixelRatio: number }
   playback: { playing: boolean }
   zoom: { factor: number }
-  input: { time: number; audio: AudioInput; pointer: { x: number; y: number; down: boolean; inside?: boolean } }
+  input: { time: number; audio: AudioInput; audioEpoch?: number; pointer: { x: number; y: number; down: boolean; inside?: boolean } }
   synthetic: { enabled: boolean; seed: number; tempoScale: number }
   'audio-response': { mode: SceneAudioResponseMode; config: AudioResponseConfig | null }
   'scene-settings': SceneLiveSettings
@@ -108,7 +108,8 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     case 'zoom': return record(p, ['factor']) && numberIn(p.factor, 0.4, 2.5)
     case 'synthetic': return record(p, ['enabled', 'seed', 'tempoScale']) && bool(p.enabled)
       && numberIn(p.seed, 0, 4294967295) && Number.isInteger(p.seed) && numberIn(p.tempoScale, 0.25, 4)
-    case 'input': return record(p, ['time', 'audio', 'pointer']) && time(p.time) && isAudioInput(p.audio)
+    case 'input': return (record(p, ['time', 'audio', 'pointer'])
+      || (record(p, ['time', 'audio', 'audioEpoch', 'pointer']) && uint(p.audioEpoch))) && time(p.time) && isAudioInput(p.audio)
       && (record(p.pointer, ['x', 'y', 'down']) || (record(p.pointer, ['x', 'y', 'down', 'inside']) && bool(p.pointer.inside)))
       && numberIn(p.pointer.x, -1, 1) && numberIn(p.pointer.y, -1, 1) && bool(p.pointer.down)
     case 'capture': return record(p, ['width', 'height', 'type', 'quality']) && rasterType(p.type)
