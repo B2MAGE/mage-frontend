@@ -30,7 +30,6 @@ html[data-theme] .mage-player:fullscreen .mage-player__controls {align-self:end;
   html[data-theme] .mage-player__controls > .mage-player__control-button--playback{justify-self:auto;order:-1;}
   html[data-theme] .mage-player__control-button{width:34px;height:34px;min-width:34px;min-height:34px;}
   html[data-theme] .mage-player__control-button--text{width:34px;min-width:34px;padding:0;}
-  html[data-theme] .mage-player__volume-panel{left:0;right:auto;}
 }
 
 @container mage-player (max-width:380px){
