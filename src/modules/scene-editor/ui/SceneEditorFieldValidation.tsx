@@ -5,7 +5,12 @@ export function SceneEditorFieldErrorsProvider({ fields, mode = 'template', chil
   const issues: FieldIssues = {}
   for (const [path, message] of Object.entries(fields)) {
     const location = mode === 'builder' ? builderControlLocation(path) : templateControlLocation(path)
-    if (location) issues[location.id] = { path: location.path, message }
+    if (location) {
+      const issue = { path: location.path, message }
+      issues[location.id] = issue
+      // Keep both objects' issues when their inspectors reuse the same IDs.
+      if ('objectIndex' in location && location.objectIndex !== undefined) issues[`${location.objectIndex}:${location.id}`] = issue
+    }
   }
   return <FieldErrorsContext.Provider value={issues}>{children}</FieldErrorsContext.Provider>
 }

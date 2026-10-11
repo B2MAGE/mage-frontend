@@ -26,6 +26,44 @@ afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 const preview = () => JSON.parse(screen.getByTestId('builder-preview').getAttribute('data-scene')!)
 
 describe('Scene Builder object editor', () => {
+  it('retains invalid modifier, arrangement and spin drafts while keeping the last valid preview', async () => {
+    const builder = createBuilderScene()
+    builder.objects[0].modifiers = [{ type: 'shell', thickness: 0.1 }]
+    builder.objects[0].arrangements = [{ type: 'linear', axis: 'x', count: 2, spacing: 1 }]
+    builder.objects[0].motion = { type: 'spin', axis: 'y', speed: 1 }
+    mockCreateScenePageFetch(url => url === buildApiUrl('/scenes/12')
+      ? jsonResponse(buildSceneEditorApiScene({ sceneData: builder })) : undefined)
+    const user = userEvent.setup()
+    renderEditScenePage()
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    const validPreview = preview()
+    for (const [section, toggle, label, invalid, repaired] of [
+      ['Modifiers', 'Expand Shell modifier 1', 'Thickness', '-1', '0.1'],
+      ['Arrangement', null, 'Count', '33', '2'],
+      ['Animation', 'Expand Spin animation', 'Speed numeric value', '100', '1'],
+    ] as const) {
+      await user.click(screen.getByRole('heading', { name: section, level: 4 }).closest('summary')!)
+      if (toggle) await user.click(screen.getByRole('button', { name: toggle }))
+      const input = screen.getByLabelText(label)
+      fireEvent.change(input, { target: { value: invalid } })
+      expect(input).toHaveValue(Number(invalid))
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(document.getElementById(input.getAttribute('aria-describedby')!)).toHaveTextContent(/expected|must|between|maximum|copies/i)
+      expect(preview()).toEqual(validPreview)
+      await user.click(screen.getByRole('button', { name: 'Camera' }))
+      await user.click(screen.getByRole('button', { name: 'Scene' }))
+      const restored = screen.getByLabelText(label)
+      expect(restored).toBeVisible()
+      expect(restored).toHaveValue(Number(invalid))
+      restored.focus()
+      expect(restored).toHaveFocus()
+      fireEvent.change(restored, { target: { value: repaired } })
+      expect(screen.getByLabelText(label)).toHaveAttribute('aria-invalid', 'false')
+    }
+    await waitFor(() => expect(preview()).toEqual(validPreview))
+  }, 60_000)
+
   it('keeps shared scene controls above the mode selector and guards replacing a Builder scene with a template', async () => {
     const user = userEvent.setup()
     renderCreateScenePage()
@@ -134,7 +172,7 @@ describe('Scene Builder object editor', () => {
     await user.click(screen.getByRole('button', { name: 'Object options' }))
     await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }))
     await waitFor(() => expect(preview().objects.map((object: { id: string }) => object.id)).toEqual(['object-1', 'object-2', 'object-3']))
-    expect(within(screen.getByRole('group', { name: 'Scene objects' })).getByRole('button', { name: /^Backdrop, Box$/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(screen.getByRole('group', { name: 'Scene objects' })).getByRole('button', { name: /^Backdrop copy, Box$/ })).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'Camera' }))
     fireEvent.change(screen.getByLabelText('Camera Position X'), { target: { value: '8' } })

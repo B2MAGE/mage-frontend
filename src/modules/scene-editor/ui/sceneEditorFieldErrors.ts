@@ -83,6 +83,9 @@ const builderObjectControlIds: Record<string, string> = {
   'material.color': 'builder-color',
   'material.metalness': 'builder-metalness',
   'material.shininess': 'builder-shininess',
+  'motion.type': 'builder-motion-axis',
+  'motion.axis': 'builder-motion-axis',
+  'motion.speed': 'builder-motion-speed',
 }
 
 export function builderControlLocation(rawPath: string): { path: string; id: string; objectIndex?: number; section: EditorSectionId } | null {
@@ -90,13 +93,26 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
   const objectMatch = /^objects(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(path)
   if (objectMatch) {
     const objectIndex = Number(objectMatch[1] ?? objectMatch[2])
-    const id = builderObjectControlIds[objectMatch[3] ?? ''] ?? 'builder-object-list'
+    const field = objectMatch[3] ?? ''
+    const stage = /^(modifiers|arrangements)(?:\[(\d+)\]|\.(\d+))\.(amount|thickness|axis|count|spacing|radius)$/.exec(field)
+    const stageId = stage ? `builder-${stage[1] === 'modifiers' ? 'modifier' : 'arrangement'}-${stage[2] ?? stage[3]}-${stage[4]}` : undefined
+    const id = builderObjectControlIds[field] ?? stageId ?? 'builder-object-list'
     return { path, id, objectIndex, section: 'scene' }
   }
   if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }
   if (path === 'parameters.scale') return { path, id: 'builder-scene-scale', section: 'scene' }
   if (path === 'settings.skybox') return { path, id: 'builder-skybox', section: 'scene' }
   return templateControlLocation(path)
+}
+
+/** Reused inspector IDs represent only the selected object's validation. */
+export function builderObjectFieldIssues(issues: FieldIssues, objectIndex: number): FieldIssues {
+  const selected: FieldIssues = {}
+  for (const issue of Object.values(issues)) {
+    const location = builderControlLocation(issue.path)
+    if (location?.objectIndex === objectIndex) selected[location.id] = issue
+  }
+  return selected
 }
 
 export function useSceneEditorFieldErrors() { return useContext(FieldErrorsContext) }
