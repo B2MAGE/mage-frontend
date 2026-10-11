@@ -86,3 +86,16 @@ test('renderer-shared scene definitions only import checked-in contract data at 
     assert.deepEqual(violations(source, name), [])
   }
 })
+
+test('Builder uniform validation shares only audited numeric definitions and compiler metadata', () => {
+  const name = 'src/modules/player/templates/builderUniformValues.ts'
+  const source = readFileSync(resolve(root, name), 'utf8')
+  const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true)
+  const allowed = new Set(['./builderDefinitions', './builderCompiler'])
+  for (const node of ast.statements) {
+    if (!ts.isImportDeclaration(node) || node.importClause?.isTypeOnly) continue
+    assert.ok(ts.isStringLiteral(node.moduleSpecifier) && allowed.has(node.moduleSpecifier.text),
+      'Builder uniform snapshots cannot import app state, storage, UI or the runtime engine into the renderer')
+  }
+  assert.deepEqual(violations(source, name), [])
+})
