@@ -2,6 +2,8 @@ import type { TemplateDefinition } from '../../templateRegistry'
 
 // Immutable version 1 snapshots of the 16 presets available when PP-B01 shipped.
 // Never edit these definitions for a catalog refresh; add a new template version.
+// Rendering correctness repairs must keep geometry intact and update the shared
+// catalog fingerprint, so existing scenes receive the same repair as new ones.
 export const TEMPLATE_DEFINITIONS_V1: readonly TemplateDefinition[] = Object.freeze([
   Object.freeze({
     templateId: 'embedded-scene-0',
@@ -207,13 +209,15 @@ export const TEMPLATE_DEFINITIONS_V1: readonly TemplateDefinition[] = Object.fre
     `,
   }),
   Object.freeze({
+    // The original 0.0459 step exhausted all 56 samples without reaching a
+    // surface. Use a convergent step while keeping the geometry and work cap.
     templateId: 'embedded-scene-5',
     templateVersion: 1 as const,
     label: 'Alloy Capsule',
     description: 'Bundled engine scene combining a metallic cylinder shell with a central sphere.',
     shader: `
       setMaxIterations(56);
-      setStepSize(0.04586632133333666);
+      setStepSize(0.7);
 
       let size = input();
       let pointerDown = input();

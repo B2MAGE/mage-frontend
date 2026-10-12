@@ -205,7 +205,7 @@ export const EMBEDDED_SHADER_SCENES: ShaderSceneOption[] = [
     description: 'Bundled engine scene combining a metallic cylinder shell with a central sphere.',
     shader: `
       setMaxIterations(56);
-      setStepSize(0.04586632133333666);
+      setStepSize(0.7);
 
       let size = input();
       let pointerDown = input();
