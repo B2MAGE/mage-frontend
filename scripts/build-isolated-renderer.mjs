@@ -27,6 +27,8 @@ export async function buildIsolatedRenderer({ production = false, diagnostics = 
     `${sourcePrefix}modules/player/templates/builderCompiler.ts`,
     `${sourcePrefix}modules/player/templates/builderComposition.ts`,
     `${sourcePrefix}modules/player/templates/builderDefinitions.ts`,
+    `${sourcePrefix}modules/player/templates/builderDrivers.ts`,
+    `${sourcePrefix}modules/player/templates/builderDriverCompiler.ts`,
     `${sourcePrefix}modules/player/templates/builderUniformValues.ts`,
     `${sourcePrefix}modules/player/templates/builderBindings.ts`,
     `${sourcePrefix}modules/player/templates/builderSchema.ts`,

@@ -51,6 +51,15 @@ describe('bounded Builder driver contract', () => {
     expect(builderDriverTargetRange(group, 'scale.x')).toBeNull()
   })
 
+  it('rejects coerced enum values at independent compiler preflight without calling them', () => {
+    const toString = vi.fn(() => 'x')
+    expect(() => validateBuilderDriverExpression({ type: 'component', input: { type: 'input', source: 'view-ray' }, axis: { toString } })).toThrow(/x, y, or z/)
+    const document = scene([driver(scalar())])
+    ;(document.objects[0].drivers![0] as unknown as { mode: unknown }).mode = { toString }
+    expect(() => validateBuilderDrivers(document)).toThrow(/composition mode/)
+    expect(toString).not.toHaveBeenCalled()
+  })
+
   it('rejects expression depth and node overflow before expansion', () => {
     let expression = scalar()
     for (let depth = 1; depth < 8; depth++) expression = { type: 'sin', input: expression }

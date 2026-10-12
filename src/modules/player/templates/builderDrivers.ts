@@ -93,7 +93,7 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
         return visit(expression.input, `${at}.input`, depth + 1)
       }
       case 'component': {
-        if (!axes.includes(String(expression.axis))) return fail(`${at}.axis`, 'expected x, y, or z')
+        if (typeof expression.axis !== 'string' || !axes.includes(expression.axis)) return fail(`${at}.axis`, 'expected x, y, or z')
         if (visit(expression.input, `${at}.input`, depth + 1) !== 'vector') return fail(at, 'component requires a vector input')
         return 'scalar'
       }
@@ -114,7 +114,7 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
       const at = `${path}[${index}]`
       const data = plain(driver, at, ['target', 'mode', 'expression'], fail)
       if (typeof data.target !== 'string' || !builderDriverTargetRange(node, data.target)) return fail(`${at}.target`, 'property is unavailable on this object or group')
-      if (!['add', 'replace', 'multiply'].includes(String(data.mode))) return fail(`${at}.mode`, 'unsupported driver composition mode')
+      if (typeof data.mode !== 'string' || !['add', 'replace', 'multiply'].includes(data.mode)) return fail(`${at}.mode`, 'unsupported driver composition mode')
       const info = validateBuilderDriverExpression(data.expression, `${at}.expression`, fail)
       if (info.type !== 'scalar') return fail(`${at}.expression`, 'this property requires a scalar value; select a vector component')
       driverOperations += info.nodes * copies

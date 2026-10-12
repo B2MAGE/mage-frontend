@@ -46,7 +46,8 @@ describe('compileBuilderDocument', () => {
     expect(first.workload).toEqual({ expandedPrimitives: 4, compositionOperations: 3,
       transformOperations: 20, materialOperations: 12, liveUniforms: 16,
       modifierOperations: 0, arrangementOperations: 0, animationOperations: 0,
-      optionalEffects: 0, groups: 0, groupDepth: 0, generatedSourceBytes: new TextEncoder().encode(first.shader).byteLength })
+      optionalEffects: 0, groups: 0, groupDepth: 0, driverOperations: 0, authoredDrivers: 0,
+      generatedSourceBytes: new TextEncoder().encode(first.shader).byteLength })
   })
 
   it('expands nested bounded arrangements and applies modifiers and spin to every copy', () => {

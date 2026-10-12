@@ -108,7 +108,8 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       else bindingController = createBuilderBindingController(builder.uniforms, bindings ?? [], values ?? [], write)
       const fields = engine.getEngineFields()
       // An explicitly bound pointer must not also warp every object through the viewer fallback.
-      if (bindings?.some(binding => binding.source.startsWith('pointer-'))) {
+      if (bindings?.some(binding => binding.source.startsWith('pointer-'))
+        || builder.uniforms.some(uniform => uniform.target === 'driver-signal' && uniform.source.startsWith('pointer-'))) {
         deformation?.dispose(); deformation = null
       } else deformation = attachViewerPointerDeformation(fields.visualizer.mesh, fields.visualizer.getActiveShader() ?? '')
     }

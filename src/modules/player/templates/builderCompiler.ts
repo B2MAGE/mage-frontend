@@ -3,6 +3,8 @@ import { templateOptionalEffectCount } from './templateSettings'
 import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, type BuilderGroupTarget } from './builderDefinitions'
 import { builderCompositionNodes, builderCompositionRoots, validateBuilderComposition } from './builderComposition'
 import { builderLiveBindings, type BuilderLiveBinding } from './builderBindings'
+import { validateBuilderDrivers } from './builderDrivers'
+import { createBuilderDriverCompilation } from './builderDriverCompiler'
 import type { BuilderArrangement, BuilderBinding, BuilderFrame, BuilderGroup, BuilderMaterial, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
 export const BUILDER_COMPILER_VERSION = 1 as const
@@ -25,6 +27,8 @@ export type BuilderWorkload = Readonly<{
   generatedSourceBytes: number
   groups: number
   groupDepth: number
+  driverOperations: number
+  authoredDrivers: number
 }>
 
 type UniformValue = {
@@ -37,7 +41,9 @@ export type BuilderUniform = Readonly<UniformValue & ({
   objectId: string
   objectIndex: number
   target: BuilderBinding['target']
-} | { groupId: string; groupIndex: number; target: BuilderGroupTarget })>
+} | { groupId: string; groupIndex: number; target: BuilderGroupTarget }
+  | { driverSlot: number; target: 'driver-value' }
+  | { driverSlot: number; target: 'driver-signal'; source: BuilderBinding['source'] })>
 
 export type BuilderCompilation = Readonly<{
   compilerVersion: typeof BUILDER_COMPILER_VERSION
@@ -107,10 +113,11 @@ function colorChannels(color: string): [number, number, number] {
   return [(value >> 16) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255]
 }
 
-function primitiveDistanceSource(object: BuilderObject, suffix: string): string {
+function primitiveDistanceSource(object: BuilderObject, suffix: string, read: (target: string, base: string) => string = (_target, base) => base): string {
   const operation = object.operation
+  const dimension = (key: string, value: number) => read(`operation.${key}`, literal(value))
   switch (operation.type) {
-    case 'sphere': return `let builder_distance_${suffix}=extractSDF(sphere)(${literal(operation.radius)});`
+    case 'sphere': return `let builder_distance_${suffix}=extractSDF(sphere)(${dimension('radius', operation.radius)});`
     case 'box': {
       // Shader Park's generated compiler does not expose its `box` helper inside
       // a dedicated browser Worker. Emit the equivalent allowlisted SDF math so
@@ -120,13 +127,13 @@ function primitiveDistanceSource(object: BuilderObject, suffix: string): string 
       const outside = `builder_box_outside_${suffix}`
       return [
         `let ${space}=getSpace();`,
-        `let ${delta}=abs(${space})-vec3(${literal(operation.width)},${literal(operation.height)},${literal(operation.depth)});`,
+        `let ${delta}=abs(${space})-vec3(${dimension('width', operation.width)},${dimension('height', operation.height)},${dimension('depth', operation.depth)});`,
         `let ${outside}=vec3(max(${delta}.x,0),max(${delta}.y,0),max(${delta}.z,0));`,
         `let builder_distance_${suffix}=min(max(${delta}.x,max(${delta}.y,${delta}.z)),0)+length(${outside});`,
       ].join('')
     }
-    case 'torus': return `let builder_distance_${suffix}=extractSDF(torus)(${literal(operation.radius)},${literal(operation.tube)});`
-    case 'cylinder': return `let builder_distance_${suffix}=extractSDF(cylinder)(${literal(operation.radius)},${literal(operation.height)});`
+    case 'torus': return `let builder_distance_${suffix}=extractSDF(torus)(${dimension('radius', operation.radius)},${dimension('tube', operation.tube)});`
+    case 'cylinder': return `let builder_distance_${suffix}=extractSDF(cylinder)(${dimension('radius', operation.radius)},${dimension('height', operation.height)});`
     default: return fail('sceneData.objects.operation.type', 'Unsupported Builder operation.')
   }
 }
@@ -188,6 +195,8 @@ function coordinateModifierSource(object: BuilderObject, suffix: string): string
 }
 
 function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 'generatedSourceBytes'> {
+  const drivers = validateBuilderDrivers(document, fail)
+  const driverCompilation = createBuilderDriverCompilation(document, false)
   // Count before allocating copies or emitting source. Every stage repeats the
   // result of the previous stage, so counts multiply rather than add.
   const expandedCounts = document.objects.map(object => object.arrangements
@@ -202,7 +211,9 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
   return {
     expandedPrimitives,
     compositionOperations: Math.max(0, expandedPrimitives - 1) * policy.operationCosts.compositionPerAdditionalObject,
-    transformOperations: (expandedPrimitives + groups.length + document.objects.filter(object => object.frame).length)
+    transformOperations: (expandedPrimitives + groups.length + document.objects.filter(object => object.frame).length
+      + document.objects.reduce((sum, object, index) => sum + (driverCompilation.hasLocal(object) ? expandedCounts[index] : 0), 0)
+      + groups.filter(group => driverCompilation.hasLocal(group)).length)
       * policy.operationCosts.transformPerObject,
     materialOperations: (expandedPrimitives + groups.filter(group => group.material).length) * policy.operationCosts.materialPerObject,
     modifierOperations: document.objects.reduce((sum, object, index) => sum + expandedCounts[index] * object.modifiers.reduce((cost, modifier) =>
@@ -212,10 +223,12 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
       sum + Math.max(0, expandedCounts[index] - 1) * policy.operationCosts.arrangementPerAdditionalCopy, 0),
     animationOperations: document.objects.reduce((sum, object, index) =>
       sum + (object.motion.type === 'spin' ? expandedCounts[index] * policy.operationCosts.spinPerPrimitive : 0), 0),
-    liveUniforms: document.objects.reduce((sum, object) => sum + object.bindings.length * policy.operationCosts.liveUniformPerBinding, 0),
+    liveUniforms: document.objects.reduce((sum, object) => sum + object.bindings.length * policy.operationCosts.liveUniformPerBinding, driverCompilation.uniforms.length),
     optionalEffects: templateOptionalEffectCount(document.settings),
     groups: groups.length,
     groupDepth: Math.max(0, ...builderCompositionRoots(document).map(depth)),
+    driverOperations: drivers.driverOperations,
+    authoredDrivers: drivers.authoredDrivers,
   }
 }
 
@@ -242,8 +255,9 @@ export function validateBuilderRenderingWorkload(document: BuilderSceneDocument)
  */
 export function compileBuilderDocument(document: BuilderSceneDocument, options: { livePreview?: boolean; bindingUniformsOnly?: boolean } = {}): BuilderCompilation {
   const baseWorkload = validateBuilderRenderingWorkload(document)
-  const uniforms: BuilderUniform[] = []
-  const declarations: string[] = []
+  const drivers = createBuilderDriverCompilation(document, !!options.livePreview)
+  const uniforms: BuilderUniform[] = [...drivers.uniforms]
+  const declarations: string[] = [...drivers.declarations]
   const groups = document.composition?.groups ?? []
 
   // Saved compilation stays deterministic under version one's shared contract.
@@ -311,23 +325,36 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
     return literal(frame[branch][axis])
   }
   const multiply = (left: string, right: string) => left === '1' ? right : right === '1' ? left : `(${left}*${right})`
-  type MaterialOverride = { material: BuilderMaterial; index: number }
-  const objectSource = (objectIndex: number, distanceScale = '1', override?: MaterialOverride) => {
+  type MaterialOverride = { material: BuilderMaterial; read: (target: 'material.metalness' | 'material.shininess') => string }
+  const objectSource = (objectIndex: number, distanceScale = '1', override?: MaterialOverride, parentGroup = 'builder_world_position') => {
     const object = document.objects[objectIndex]
-    const read = (target: BuilderBinding['target']) => objectRead(objectIndex, target)
     const [red, green, blue] = colorChannels(override?.material.color ?? object.material.color)
-    const scaleX = read('scale.x'), scaleY = read('scale.y'), scaleZ = read('scale.z')
-    const scale = multiply(`min(${scaleX},min(${scaleY},${scaleZ}))`, distanceScale)
-    const materialRead = (target: 'material.metalness' | 'material.shininess') => override
-      ? groupRead(override.index, target) : read(target)
     return expandedOffsets(object).map((offset, copyIndex) => {
       const suffix = `${objectIndex}_${copyIndex}`
+      const base = (target: BuilderBinding['target']) => objectRead(objectIndex, target)
+      const localName = `builder_local_position_${suffix}`
+      const driven = drivers.owner(object, `o${suffix}`, { world: 'builder_world_position', group: parentGroup, local: localName })
+      const read = (target: BuilderBinding['target']) => driven.apply(target, base(target))
+      const scaleX = read('scale.x'), scaleY = read('scale.y'), scaleZ = read('scale.z')
+      const scale = multiply(`min(${scaleX},min(${scaleY},${scaleZ}))`, distanceScale)
+      const materialRead = (target: 'material.metalness' | 'material.shininess') => override
+        ? override.read(target) : read(target)
       const spin = object.motion.type === 'spin' ? object.motion : null
+      const baselineRotation = (axis: 'x' | 'y' | 'z') => spin?.axis === axis
+        ? `(${base(`rotation.${axis}`)}+time*${literal(spin.speed)})` : base(`rotation.${axis}`)
       const rotation = (axis: 'x' | 'y' | 'z') => spin?.axis === axis
         ? `(${read(`rotation.${axis}`)}+time*${literal(spin.speed)})`
         : read(`rotation.${axis}`)
       return [
         `let builder_object_${suffix}=shape(()=>{`,
+        drivers.hasLocal(object) ? [
+          `let builder_parent_${suffix}=getSpace()+vec3(0);`,
+          `displace((${base('position.x')}+${literal(offset.x)}),(${base('position.y')}+${literal(offset.y)}),(${base('position.z')}+${literal(offset.z)}));`,
+          `rotateX(${baselineRotation('x')});rotateY(${baselineRotation('y')});rotateZ(${baselineRotation('z')});`,
+          `let ${localName}=getSpace()/vec3(${base('scale.x')},${base('scale.y')},${base('scale.z')});`,
+          `setSpace(builder_parent_${suffix});`,
+        ].join('') : '',
+        '__BUILDER_DRIVER_DECLARATIONS__',
         `displace((${read('position.x')}+${literal(offset.x)}),(${read('position.y')}+${literal(offset.y)}),(${read('position.z')}+${literal(offset.z)}));`,
         `rotateX(${rotation('x')});rotateY(${rotation('y')});rotateZ(${rotation('z')});`,
         `let builder_space_${suffix}=getSpace();`,
@@ -335,15 +362,15 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
         coordinateModifierSource(object, suffix),
         `color(${literal(red)},${literal(green)},${literal(blue)});`,
         `metal(${materialRead('material.metalness')});shine(${materialRead('material.shininess')});`,
-        primitiveDistanceSource(object, suffix),
+        primitiveDistanceSource(object, suffix, driven.apply),
         `setSDF(${modifierExpression(object, `builder_distance_${suffix}`)}*${scale});`,
         `});builder_object_${suffix}();`,
-      ].join('')
+      ].join('').replace('__BUILDER_DRIVER_DECLARATIONS__', driven.declarations)
     }).join('\n')
   }
 
   const nodes = builderCompositionNodes(document)
-  const nodeSource = (id: string, parentScale: string, inherited?: MaterialOverride): { source: string; name: string } => {
+  const nodeSource = (id: string, parentScale: string, inherited?: MaterialOverride, parentGroup = 'builder_world_position'): { source: string; name: string } => {
     const node = nodes.get(id)!
     if (node.kind === 'object') {
       const frame = node.object.frame
@@ -351,19 +378,30 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
       return { name, source: [
         `let ${name}=shape(()=>{`,
         frame ? frameSource(`o${node.index}`, target => constantFrameRead(frame, target)) : '',
-        objectSource(node.index, frame ? multiply(parentScale, literal(frame.scale)) : parentScale, inherited),
+        objectSource(node.index, frame ? multiply(parentScale, literal(frame.scale)) : parentScale, inherited, parentGroup),
         'return getSDF();});',
       ].join('') }
     }
     const { group, index } = node
     const name = `builder_group_${index}`
-    const scale = multiply(parentScale, groupRead(index, 'scale'))
-    const override = inherited ?? (group.material ? { material: group.material, index } : undefined)
-    const children = group.children.map(child => nodeSource(child, scale, override))
-    const blend = group.operation.type === 'smooth-union' ? multiply(groupRead(index, 'blend'), scale) : null
+    const localName = `builder_local_group_${index}`
+    const groupPosition = `builder_group_position_${index}`
+    const driven = drivers.owner(group, `g${index}`, { world: 'builder_world_position', group: parentGroup, local: localName })
+    const read = (target: BuilderGroupTarget) => driven.apply(target, groupRead(index, target))
+    const scale = multiply(parentScale, read('scale'))
+    const override = inherited ?? (group.material ? { material: group.material, read } : undefined)
+    const children = group.children.map(child => nodeSource(child, scale, override, groupPosition))
+    const blend = group.operation.type === 'smooth-union' ? multiply(read('blend'), scale) : null
     const source = [
       `let ${name}=shape(()=>{`,
-      frameSource(`g${index}`, target => groupRead(index, target)),
+      drivers.hasLocal(group) ? [
+        `let builder_group_parent_${index}=getSpace()+vec3(0);`,
+        frameSource(`base_g${index}`, target => groupRead(index, target)),
+        `let ${localName}=getSpace()+vec3(0);setSpace(builder_group_parent_${index});`,
+      ].join('') : '',
+      '__BUILDER_DRIVER_DECLARATIONS__',
+      frameSource(`g${index}`, read),
+      drivers.spatial ? `let ${groupPosition}=getSpace()+vec3(0);` : '',
       ...children.flatMap((child, childIndex) => {
         if (!blend || childIndex === 0) return [child.source, `${child.name}();`]
         const suffix = `${index}_${childIndex}`
@@ -382,14 +420,15 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
         ]
       }),
       'return getSDF();});',
-    ].join('')
+    ].join('').replace('__BUILDER_DRIVER_DECLARATIONS__', driven.declarations)
     return { source, name }
   }
   const objects = !document.composition && !document.objects.some(object => object.frame)
     ? document.objects.map((_object, index) => objectSource(index))
     : builderCompositionRoots(document).map(id => { const node = nodeSource(id, '1'); return `${node.source}${node.name}();` })
 
-  const shader = [`setMaxIterations(96);setStepSize(0.7);`, ...declarations, ...objects].join('\n')
+  const shader = [`setMaxIterations(96);setStepSize(0.7);`, ...declarations,
+    ...(drivers.spatial ? ['let builder_world_position=getSpace()+vec3(0);'] : []), ...objects].join('\n')
   const workload: BuilderWorkload = { ...baseWorkload, liveUniforms: uniforms.length, generatedSourceBytes: encoder.encode(shader).byteLength }
   assertBudget(workload)
   return Object.freeze({ compilerVersion: BUILDER_COMPILER_VERSION, shader,

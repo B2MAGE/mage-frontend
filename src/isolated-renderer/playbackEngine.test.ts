@@ -238,6 +238,36 @@ describe('isolated playback engine', () => {
     player.dispose()
   })
 
+  it('applies driver vector constants and clamp edits to real material slots without reloading a paused preview', async () => {
+    const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'shape', operation: { type: 'sphere' }, drivers: [{ target: 'position.x', mode: 'replace', expression: {
+        type: 'clamp', min: -2, max: 4, input: { type: 'component', axis: 'y', input: { type: 'constant', value: { x: 1, y: 2, z: 3 } } },
+      } }] }],
+    }) as BuilderSceneDocument
+    const manifest = compileBuilderPreviewDocument(scene).uniforms
+    const f = fixture(), fields = f.engine.getEngineFields()
+    const uniforms = Object.fromEntries(manifest.map(uniform => [uniform.name, { value: 0 }]))
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const player = await f.ready(scene)
+    const driverValues = () => manifest.filter(uniform => uniform.target === 'driver-value').map(uniform => uniforms[uniform.name].value)
+    expect(driverValues()).toEqual([1, 2, 3, -2, 4])
+    player.playback(false)
+    f.engine.play.mockClear(); f.engine.setExternalClock.mockClear(); f.engine.setExternalAudioFrame.mockClear()
+    scene.objects[0].drivers![0].expression = { type: 'clamp', min: -1, max: 5,
+      input: { type: 'component', axis: 'y', input: { type: 'constant', value: { x: 1, y: 4, z: 3 } } } }
+    player.sceneSettings(extractLiveSceneSettings(scene))
+    expect(driverValues()).toEqual([1, 4, 3, -1, 5])
+    expect(compileInWorker).toHaveBeenCalledOnce()
+    expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce()
+    expect(f.engine.play).not.toHaveBeenCalled()
+    expect(f.engine.setExternalClock).not.toHaveBeenCalled()
+    expect(f.engine.setExternalAudioFrame).not.toHaveBeenCalled()
+    await player.capture({ width: 10, height: 10, quality: 0.9, type: 'image/png' })
+    expect(driverValues()).toEqual([1, 4, 3, -1, 5])
+    player.dispose()
+  })
+
   it.each(['legacy', 'mapped-v1'] as const)('updates independent real binding uniforms in %s mode and edits responses without restarting playback', async mode => {
     const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
       settings: { audioResponse: mode }, objects: [
