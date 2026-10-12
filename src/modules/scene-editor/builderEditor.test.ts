@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { parseSceneDocument } from '@modules/player'
 import {
   addBuilderObject,
-  applyBuilderTemplate,
   changeBuilderBranch,
   createBuilderScene,
   duplicateBuilderObject,
@@ -19,7 +18,8 @@ describe('Builder editor document helpers', () => {
     expect(document).toMatchObject({
       kind: 'builder',
       parameters: { scale: 1 },
-      objects: [{ id: 'object-1', name: 'Sphere 1', operation: { type: 'sphere', radius: 1 } }],
+      objects: [{ id: 'object-1', name: 'Sphere 1', operation: { type: 'sphere', radius: 1 },
+        material: { color: '#8066ff', metalness: 0.5, shininess: 0.8 } }],
     })
     expect(JSON.stringify(document)).not.toContain('shader')
   })
@@ -50,18 +50,12 @@ describe('Builder editor document helpers', () => {
     expect(parseSceneDocument(duplicated)).toEqual(duplicated)
   })
 
-  it('keeps objects while applying a starting style and scene-wide controls', () => {
+  it('keeps objects and their materials while changing scene-wide controls', () => {
     const withHero = updateBuilderObject(createBuilderScene(), 'object-1', object => ({ ...object, name: 'Hero' }))
     const original = { ...addBuilderObject(withHero, 'box'), parameters: { scale: 3, speed: 1 } }
-    const styled = applyBuilderTemplate(original, 'embedded-scene-0')
-    const model = getBuilderEditorModel(styled)
-    const changed = changeBuilderBranch(styled, 'intent', { ...model.intent, autoRotate: false, fov: 90 })
-    expect(changed.objects.map(object => ({ name: object.name, operation: object.operation, transform: object.transform })))
-      .toEqual(original.objects.map(object => ({ name: object.name, operation: object.operation, transform: object.transform })))
-    expect(changed.objects.map(object => object.material)).toEqual([
-      { color: '#8066ff', metalness: 0.5, shininess: 0.8 },
-      { color: '#55d6ff', metalness: 0.5, shininess: 0.8 },
-    ])
+    const model = getBuilderEditorModel(original)
+    const changed = changeBuilderBranch(original, 'intent', { ...model.intent, autoRotate: false, fov: 90 })
+    expect(changed.objects).toEqual(original.objects)
     expect(changed.parameters.scale).toBe(3)
     expect(changed.settings.camera).toMatchObject({ autoRotate: false, fov: 90 })
     expect(changed.kind).toBe('builder')

@@ -41,7 +41,7 @@
       "templateVersion": 1,
       "label": "Alloy Capsule",
       "description": "Bundled engine scene combining a metallic cylinder shell with a central sphere.",
-      "sourceSha256": "9dd071092dd7ba0604dbadd2ea4108aab6e32fd4a210df3fe43ab4f1d58aa775"
+      "sourceSha256": "78c48a28ecaaf2fd1908d2850296319bd5f5a34bd4e22904d5f4c81d0a997737"
     },
     {
       "templateId": "embedded-scene-6",

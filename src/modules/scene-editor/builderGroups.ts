@@ -1,4 +1,4 @@
-import { BUILDER_LIMITS, BUILDER_GROUP_TRANSFORMS, builderCompositionRoots, type BuilderFrame, type BuilderGroup, type BuilderObject, type BuilderSceneDocument } from '@modules/player'
+import { BUILDER_LIMITS, BUILDER_GROUP_TRANSFORMS, builderCompositionRoots, builderDriverTargetRange, type BuilderFrame, type BuilderGroup, type BuilderObject, type BuilderSceneDocument } from '@modules/player'
 
 export const BUILDER_GROUP_LIMIT = BUILDER_LIMITS.groups
 export const BUILDER_GROUP_DEPTH = BUILDER_LIMITS.groupDepth
@@ -152,7 +152,12 @@ function replaceNode(document: BuilderSceneDocument, node: BuilderNode): Builder
 
 export function updateBuilderGroup(document: BuilderSceneDocument, id: string, recipe: (group: BuilderGroup) => BuilderGroup) {
   const group = builderGroups(document).find(item => item.id === id)
-  return group ? replaceNode(document, { ...recipe(structuredClone(group)), id: group.id, children: group.children }) : document
+  if (!group) return document
+  const next = { ...recipe(structuredClone(group)), id: group.id, children: group.children }
+  if (next.drivers && (group.operation.type !== next.operation.type || Boolean(group.material) !== Boolean(next.material))) {
+    next.drivers = next.drivers.filter(driver => builderDriverTargetRange(next, driver.target))
+  }
+  return replaceNode(document, next)
 }
 export function ungroupBuilderNode(document: BuilderSceneDocument, id: string): BuilderSceneDocument {
   const group = builderGroups(document).find(item => item.id === id)

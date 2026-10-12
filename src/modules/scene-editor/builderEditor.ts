@@ -4,6 +4,7 @@ import {
   BUILDER_OPERATIONS,
   BUILDER_TRANSFORMS,
   createBuilderOperation,
+  builderDriverTargetRange,
   parseSceneDocument,
   type BuilderObject,
   type BuilderShape,
@@ -32,41 +33,6 @@ export function builderObjectExpandedCount(object: BuilderObject) {
 
 export function builderSceneExpandedCount(document: BuilderSceneDocument) {
   return document.objects.reduce((count, object) => count + builderObjectExpandedCount(object), 0)
-}
-
-type BuilderStartingStyle = Readonly<{
-  colors: readonly string[]
-  metalness: number
-  shininess: number
-}>
-
-const BUILDER_STARTING_STYLES = {
-  'embedded-scene-0': { colors: ['#8066ff', '#55d6ff', '#f4f0ff'], metalness: 0.5, shininess: 0.8 },
-  'embedded-scene-1': { colors: ['#6e7e7b', '#b5c2bf', '#3a4543'], metalness: 0.59, shininess: 0.67 },
-  'embedded-scene-2': { colors: ['#15c7c3', '#6bf3dd', '#0d7186'], metalness: 0.57, shininess: 0.37 },
-  'embedded-scene-3': { colors: ['#267910', '#70d45a', '#b5ff80'], metalness: 0.64, shininess: 0.34 },
-  'embedded-scene-4': { colors: ['#e42743', '#ff7a5c', '#8d1027'], metalness: 0.51, shininess: 0.48 },
-  'embedded-scene-5': { colors: ['#3d4437', '#9da89a', '#d8dfd3'], metalness: 0.63, shininess: 0.62 },
-  'embedded-scene-6': { colors: ['#f31b00', '#ff8a00', '#6b0800'], metalness: 0.55, shininess: 0.5 },
-  'embedded-scene-7': { colors: ['#1d0277', '#6d45ff', '#bf77ff'], metalness: 0.57, shininess: 0.56 },
-  'embedded-scene-8': { colors: ['#67c673', '#b5f7ae', '#2a7668'], metalness: 0.66, shininess: 0.66 },
-  'embedded-scene-9': { colors: ['#ff4d00', '#ffb13b', '#8c1e00'], metalness: 0.48, shininess: 0.49 },
-  'embedded-scene-10': { colors: ['#32e93f', '#a7ff62', '#087f42'], metalness: 0.32, shininess: 0.38 },
-  'embedded-scene-11': { colors: ['#55aaff', '#ff5bd6', '#58ffd5'], metalness: 0.1, shininess: 0.6 },
-  'embedded-scene-12': { colors: ['#ff5bd6', '#6b5cff', '#40e8ff'], metalness: 0.2, shininess: 0.7 },
-  'embedded-scene-13': { colors: ['#be3f9c', '#ff85c8', '#7235bb'], metalness: 0.64, shininess: 0.41 },
-} satisfies Record<TemplateId, BuilderStartingStyle>
-
-function applyStartingStyle(objects: readonly BuilderObject[], templateId: TemplateId): BuilderObject[] {
-  const style = BUILDER_STARTING_STYLES[templateId]
-  return objects.map((object, index) => ({
-    ...object,
-    material: {
-      color: style.colors[index % style.colors.length],
-      metalness: style.metalness,
-      shininess: style.shininess,
-    },
-  }))
 }
 
 function nextObjectNumber(objects: readonly Pick<BuilderObject, 'id'>[]) {
@@ -107,30 +73,15 @@ export function createBuilderObject(type: BuilderShape, objects: readonly Builde
 
 export function createBuilderScene(templateId: TemplateId = 'embedded-scene-0'): BuilderSceneDocument {
   const template = createTemplateScene(templateId)
-  const objects = applyStartingStyle([createBuilderObject('sphere')], templateId)
+  const object = createBuilderObject('sphere')
+  object.material = { color: '#8066ff', metalness: 0.5, shininess: 0.8 }
   const document = parseSceneDocument({
     schemaVersion: 1,
     kind: 'builder',
     builderVersion: 1,
-    objects,
+    objects: [object],
     parameters: { ...template.parameters, scale: 1 },
     settings: template.settings,
-  })
-  if (document.kind !== 'builder') throw new Error('A Builder scene is required.')
-  return document
-}
-
-export function createBuilderSceneFromSettings(
-  source: Pick<BuilderSceneDocument, 'parameters' | 'settings'>,
-  templateId: TemplateId = 'embedded-scene-0',
-): BuilderSceneDocument {
-  const document = parseSceneDocument({
-    schemaVersion: 1,
-    kind: 'builder',
-    builderVersion: 1,
-    objects: applyStartingStyle([createBuilderObject('sphere')], templateId),
-    parameters: { ...source.parameters, scale: 1 },
-    settings: source.settings,
   })
   if (document.kind !== 'builder') throw new Error('A Builder scene is required.')
   return document
@@ -167,10 +118,6 @@ export function changeBuilderValue(document: BuilderSceneDocument, path: Templat
   return changeAuthoredValue(document, path, value)
 }
 
-export function applyBuilderTemplate(document: BuilderSceneDocument, templateId: TemplateId) {
-  return { ...document, objects: applyStartingStyle(document.objects, templateId) }
-}
-
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape, objectId?: string) {
   if (document.objects.length >= BUILDER_LIMITS.objects || builderSceneExpandedCount(document) >= BUILDER_EXPANDED_PRIMITIVE_LIMIT) return document
   if (objectId && [...document.objects, ...(document.composition?.groups ?? [])].some(object => object.id === objectId)) return document
@@ -189,8 +136,14 @@ export function updateBuilderObject(
   if (!document.objects.some(object => object.id === objectId)) return document
   return {
     ...document,
-    objects: document.objects.map(object => object.id === objectId
-      ? { ...recipe(structuredClone(object)), id: object.id } : object),
+    objects: document.objects.map(object => {
+      if (object.id !== objectId) return object
+      const next = { ...recipe(structuredClone(object)), id: object.id }
+      if (next.drivers && next.operation.type !== object.operation.type) {
+        next.drivers = next.drivers.filter(driver => builderDriverTargetRange(next, driver.target))
+      }
+      return next
+    }),
   }
 }
 

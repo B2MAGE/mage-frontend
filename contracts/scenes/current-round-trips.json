@@ -1375,6 +1375,1783 @@
           "speed": 1
         }
       }
+    },
+    {
+      "name": "drivers-ordered-time-audio-and-spatial-round-trip",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "cylinder",
+            "operation": {
+              "type": "cylinder"
+            },
+            "drivers": [
+              {
+                "target": "rotation.y",
+                "mode": "replace",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "input",
+                    "source": "time"
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0.5
+                  }
+                }
+              },
+              {
+                "target": "rotation.y",
+                "mode": "add",
+                "expression": {
+                  "type": "input",
+                  "source": "bass-hit"
+                }
+              },
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "clamp",
+                  "min": 0.5,
+                  "max": 1.5,
+                  "input": {
+                    "type": "component",
+                    "axis": "x",
+                    "input": {
+                      "type": "sin",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": {
+                            "x": 1,
+                            "y": 2,
+                            "z": 3
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "cylinder",
+            "name": "Object",
+            "operation": {
+              "type": "cylinder",
+              "radius": 1,
+              "height": 2
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "rotation.y",
+                "mode": "replace",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "input",
+                    "source": "time"
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0.5
+                  }
+                }
+              },
+              {
+                "target": "rotation.y",
+                "mode": "add",
+                "expression": {
+                  "type": "input",
+                  "source": "bass-hit"
+                }
+              },
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "clamp",
+                  "min": 0.5,
+                  "max": 1.5,
+                  "input": {
+                    "type": "component",
+                    "axis": "x",
+                    "input": {
+                      "type": "sin",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": {
+                            "x": 1,
+                            "y": 2,
+                            "z": 3
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "drivers-group-transform-and-blend-round-trip",
+      "valid": true,
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere"
+            }
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box"
+            },
+            "transform": {
+              "position": {
+                "x": 1
+              }
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.4
+              },
+              "transform": {
+                "position": {
+                  "x": 2
+                },
+                "rotation": {
+                  "y": 0.5
+                },
+                "scale": 1.5
+              },
+              "material": {
+                "color": "#123456"
+              },
+              "drivers": [
+                {
+                  "target": "scale",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "constant",
+                      "value": 1
+                    },
+                    "right": {
+                      "type": "input",
+                      "source": "pointer-down"
+                    }
+                  }
+                },
+                {
+                  "target": "blend",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "clamp",
+                    "min": 0,
+                    "max": 1,
+                    "input": {
+                      "type": "sin",
+                      "input": {
+                        "type": "input",
+                        "source": "time"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "outer",
+              "children": [
+                "pair"
+              ],
+              "material": {
+                "color": "#abcdef",
+                "metalness": 0.8
+              }
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "orb",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "block",
+            "operation": {
+              "type": "box",
+              "width": 1,
+              "height": 1,
+              "depth": 1
+            },
+            "transform": {
+              "position": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "name": "Object",
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "outer"
+          ],
+          "groups": [
+            {
+              "id": "pair",
+              "children": [
+                "orb",
+                "block"
+              ],
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.4
+              },
+              "transform": {
+                "position": {
+                  "x": 2,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "y": 0.5,
+                  "x": 0,
+                  "z": 0
+                },
+                "scale": 1.5
+              },
+              "material": {
+                "color": "#123456",
+                "metalness": 0,
+                "shininess": 0.5
+              },
+              "name": "Group",
+              "drivers": [
+                {
+                  "target": "scale",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "constant",
+                      "value": 1
+                    },
+                    "right": {
+                      "type": "input",
+                      "source": "pointer-down"
+                    }
+                  }
+                },
+                {
+                  "target": "blend",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "clamp",
+                    "min": 0,
+                    "max": 1,
+                    "input": {
+                      "type": "sin",
+                      "input": {
+                        "type": "input",
+                        "source": "time"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "outer",
+              "children": [
+                "pair"
+              ],
+              "material": {
+                "color": "#abcdef",
+                "metalness": 0.8,
+                "shininess": 0.5
+              },
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "drivers-rejects-vector-final-value",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "cylinder",
+            "operation": {
+              "type": "cylinder"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "add",
+                "expression": {
+                  "type": "input",
+                  "source": "world-position"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "drivers-rejects-mixed-addition",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "cylinder",
+            "operation": {
+              "type": "cylinder"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "add",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "constant",
+                    "value": 1
+                  },
+                  "right": {
+                    "type": "input",
+                    "source": "view-ray"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "drivers-rejects-reversed-range",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "cylinder",
+            "operation": {
+              "type": "cylinder"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "add",
+                "expression": {
+                  "type": "clamp",
+                  "min": 2,
+                  "max": 1,
+                  "input": {
+                    "type": "input",
+                    "source": "time"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "drivers-rejects-executable-input",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "cylinder",
+            "operation": {
+              "type": "cylinder"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "add",
+                "expression": {
+                  "type": "input",
+                  "source": "NEVER_EXECUTE()"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "drivers-editable-alloy-capsule-current-recipe",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "capsule-cylinder",
+            "name": "Cylinder shell",
+            "operation": {
+              "type": "cylinder",
+              "radius": 0.5668043175572711,
+              "height": 0.5668043175572711
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#3d4437",
+              "metalness": 0.3782977757304475,
+              "shininess": 0.6210181878056416
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "capsule-outer-sphere",
+            "name": "Outer sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 0.4214209567244572
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#3d4437",
+              "metalness": 0.3782977757304475,
+              "shininess": 0.6210181878056416
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "capsule-inner-sphere",
+            "name": "Inner sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 0.19999999999999998
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#3d4437",
+              "metalness": 0.3782977757304475,
+              "shininess": 0.6210181878056416
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 1,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        },
+        "composition": {
+          "version": 1,
+          "roots": [
+            "capsule-motion"
+          ],
+          "groups": [
+            {
+              "id": "capsule-motion",
+              "name": "Shared motion",
+              "children": [
+                "capsule-view"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0.1
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "pointer-y"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "pointer-x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "scale",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "overall-level"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.35
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1
+                      }
+                    },
+                    "min": 0.7,
+                    "max": 1.35
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.15
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                }
+              ]
+            },
+            {
+              "id": "capsule-view",
+              "name": "View shaping",
+              "children": [
+                "capsule-body",
+                "capsule-inner-sphere"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.05
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "view-ray"
+                          },
+                          "axis": "y"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 1.959900687
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "view-ray"
+                          },
+                          "axis": "x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 1.959900687
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.z",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "view-ray"
+                          },
+                          "axis": "z"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 1.959900687
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.z",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "blend",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "cos",
+                          "input": {
+                            "type": "add",
+                            "left": {
+                              "type": "multiply",
+                              "left": {
+                                "type": "input",
+                                "source": "time"
+                              },
+                              "right": {
+                                "type": "constant",
+                                "value": 0.06
+                              }
+                            },
+                            "right": {
+                              "type": "constant",
+                              "value": -1.5707963267948966
+                            }
+                          }
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.05717725580507397
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.05717725580507397
+                      }
+                    },
+                    "min": 0,
+                    "max": 0.15
+                  }
+                }
+              ]
+            },
+            {
+              "id": "capsule-body",
+              "name": "Cylinder and sphere",
+              "children": [
+                "capsule-cylinder",
+                "capsule-outer-sphere"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        }
+      },
+      "valid": true,
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "capsule-cylinder",
+            "name": "Cylinder shell",
+            "operation": {
+              "type": "cylinder",
+              "radius": 0.5668043175572711,
+              "height": 0.5668043175572711
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#3d4437",
+              "metalness": 0.3782977757304475,
+              "shininess": 0.6210181878056416
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "capsule-outer-sphere",
+            "name": "Outer sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 0.4214209567244572
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#3d4437",
+              "metalness": 0.3782977757304475,
+              "shininess": 0.6210181878056416
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          },
+          {
+            "id": "capsule-inner-sphere",
+            "name": "Inner sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 0.19999999999999998
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#3d4437",
+              "metalness": 0.3782977757304475,
+              "shininess": 0.6210181878056416
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": []
+          }
+        ],
+        "parameters": {
+          "scale": 1,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        },
+        "composition": {
+          "version": 1,
+          "roots": [
+            "capsule-motion"
+          ],
+          "groups": [
+            {
+              "id": "capsule-motion",
+              "name": "Shared motion",
+              "children": [
+                "capsule-view"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0.1
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "pointer-y"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "pointer-x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "scale",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "overall-level"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.35
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1
+                      }
+                    },
+                    "min": 0.7,
+                    "max": 1.35
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.15
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                }
+              ]
+            },
+            {
+              "id": "capsule-view",
+              "name": "View shaping",
+              "children": [
+                "capsule-body",
+                "capsule-inner-sphere"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.05
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "view-ray"
+                          },
+                          "axis": "y"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 1.959900687
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "view-ray"
+                          },
+                          "axis": "x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 1.959900687
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.z",
+                  "mode": "add",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "view-ray"
+                          },
+                          "axis": "z"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 1.959900687
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0
+                      }
+                    },
+                    "min": -10,
+                    "max": 10
+                  }
+                },
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.z",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0
+                    }
+                  }
+                },
+                {
+                  "target": "blend",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "clamp",
+                    "input": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "cos",
+                          "input": {
+                            "type": "add",
+                            "left": {
+                              "type": "multiply",
+                              "left": {
+                                "type": "input",
+                                "source": "time"
+                              },
+                              "right": {
+                                "type": "constant",
+                                "value": 0.06
+                              }
+                            },
+                            "right": {
+                              "type": "constant",
+                              "value": -1.5707963267948966
+                            }
+                          }
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.05717725580507397
+                        }
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.05717725580507397
+                      }
+                    },
+                    "min": 0,
+                    "max": 0.15
+                  }
+                }
+              ]
+            },
+            {
+              "id": "capsule-body",
+              "name": "Cylinder and sphere",
+              "children": [
+                "capsule-cylinder",
+                "capsule-outer-sphere"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }

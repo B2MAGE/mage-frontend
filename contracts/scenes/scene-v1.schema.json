@@ -1185,6 +1185,53 @@
                     "default": 1
                   }
                 }
+              },
+              "drivers": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "target": {
+                      "type": "string",
+                      "enum": [
+                        "position.x",
+                        "position.y",
+                        "position.z",
+                        "rotation.x",
+                        "rotation.y",
+                        "rotation.z",
+                        "scale.x",
+                        "scale.y",
+                        "scale.z",
+                        "material.metalness",
+                        "material.shininess",
+                        "operation.radius",
+                        "operation.width",
+                        "operation.height",
+                        "operation.depth",
+                        "operation.tube"
+                      ]
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "add",
+                        "replace",
+                        "multiply"
+                      ]
+                    },
+                    "expression": {
+                      "$ref": "#/$defs/builderDriverExpression"
+                    }
+                  },
+                  "required": [
+                    "target",
+                    "mode",
+                    "expression"
+                  ]
+                }
               }
             }
           }
@@ -1858,6 +1905,47 @@
                         "default": 0.5
                       }
                     }
+                  },
+                  "drivers": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "target": {
+                          "type": "string",
+                          "enum": [
+                            "position.x",
+                            "position.y",
+                            "position.z",
+                            "rotation.x",
+                            "rotation.y",
+                            "rotation.z",
+                            "material.metalness",
+                            "material.shininess",
+                            "scale",
+                            "blend"
+                          ]
+                        },
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "add",
+                            "replace",
+                            "multiply"
+                          ]
+                        },
+                        "expression": {
+                          "$ref": "#/$defs/builderDriverExpression"
+                        }
+                      },
+                      "required": [
+                        "target",
+                        "mode",
+                        "expression"
+                      ]
+                    }
                   }
                 }
               }
@@ -1865,6 +1953,217 @@
           }
         }
       }
+    },
+    "builderDriverExpression": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "constant"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": -1000,
+                  "maximum": 1000
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    },
+                    "z": {
+                      "type": "number",
+                      "minimum": -1000,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y",
+                    "z"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "input"
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "time",
+                "bass-level",
+                "bass-hit",
+                "mid-level",
+                "mid-hit",
+                "treble-level",
+                "treble-hit",
+                "overall-level",
+                "overall-hit",
+                "pointer-x",
+                "pointer-y",
+                "pointer-down",
+                "local-position",
+                "group-position",
+                "world-position",
+                "view-ray"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "source"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "add"
+            },
+            "left": {
+              "$ref": "#/$defs/builderDriverExpression"
+            },
+            "right": {
+              "$ref": "#/$defs/builderDriverExpression"
+            }
+          },
+          "required": [
+            "type",
+            "left",
+            "right"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "multiply"
+            },
+            "left": {
+              "$ref": "#/$defs/builderDriverExpression"
+            },
+            "right": {
+              "$ref": "#/$defs/builderDriverExpression"
+            }
+          },
+          "required": [
+            "type",
+            "left",
+            "right"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "sin"
+            },
+            "input": {
+              "$ref": "#/$defs/builderDriverExpression"
+            }
+          },
+          "required": [
+            "type",
+            "input"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "cos"
+            },
+            "input": {
+              "$ref": "#/$defs/builderDriverExpression"
+            }
+          },
+          "required": [
+            "type",
+            "input"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "clamp"
+            },
+            "input": {
+              "$ref": "#/$defs/builderDriverExpression"
+            },
+            "min": {
+              "type": "number",
+              "minimum": -1000,
+              "maximum": 1000
+            },
+            "max": {
+              "type": "number",
+              "minimum": -1000,
+              "maximum": 1000
+            }
+          },
+          "required": [
+            "type",
+            "input",
+            "min",
+            "max"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "component"
+            },
+            "input": {
+              "$ref": "#/$defs/builderDriverExpression"
+            },
+            "axis": {
+              "type": "string",
+              "enum": [
+                "x",
+                "y",
+                "z"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "input",
+            "axis"
+          ]
+        }
+      ]
     }
   }
 }

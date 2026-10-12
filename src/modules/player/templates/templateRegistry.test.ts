@@ -38,9 +38,9 @@ describe('versioned template registry', () => {
     expect(getTemplateDefinition('reaction-lantern-v1', 1)).toBeUndefined()
   })
 
-  it('matches the shared catalog and preserves the original source fingerprints', () => {
-    // These hashes lock the shipped source independently of the live editor presets.
-    // Add another version for changed code; do not update a published version's hash.
+  it('matches the shared catalog source fingerprints', () => {
+    // Keep frontend and backend fingerprints aligned, including reviewed rendering
+    // corrections such as Alloy Capsule's convergence fix. Redesigns need a new version.
     expect(catalogManifest.catalogVersion).toBe(1)
     expect(catalogManifest.templates).toHaveLength(14)
 

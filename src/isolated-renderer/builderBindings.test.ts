@@ -34,6 +34,39 @@ function fixture(bindings: BuilderBinding[][]) {
 }
 
 describe('Builder object response controller', () => {
+  it('feeds shared driver inputs from mapped music and pointer data while constants remain live', () => {
+    const document = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: ['first', 'second'].map(id => ({ id, operation: { type: 'sphere' }, drivers: [
+        { target: 'scale.x', mode: 'add', expression: { type: 'multiply', left: { type: 'input', source: 'bass-level' }, right: { type: 'constant', value: 0.5 } } },
+        { target: 'position.x', mode: 'add', expression: { type: 'input', source: 'pointer-x' } },
+      ] })),
+    }) as BuilderSceneDocument
+    const compiled = compileBuilderPreviewDocument(document), baseline = builderUniformValues(compiled.uniforms)
+    expect(compiled.uniforms.filter(uniform => uniform.target === 'driver-signal')).toHaveLength(2)
+    const write = vi.fn<(values: readonly number[]) => void>()
+    let now = 1
+    const controller = createBuilderBindingController(compiled.uniforms, compiled.bindings, baseline, write, () => now)
+    const read = (source: 'bass-level' | 'pointer-x') => write.mock.calls.at(-1)![0][compiled.uniforms.findIndex(uniform =>
+      uniform.target === 'driver-signal' && uniform.source === source)]
+    controller.input({ time: now, pointer: { x: -0.8, y: 0, down: false, inside: true }, audio: {
+      ...silence, audioTime: now, playing: true, loaded: true,
+      frame: { sequence: 1, time: now, levels: { bass: 0.7, mid: 0, treble: 0, overall: 0 }, hits: [] },
+    } })
+    now = 1.4; controller.advance()
+    expect(read('bass-level')).toBeCloseTo(0.7, 2)
+    expect(read('pointer-x')).toBeCloseTo(-0.8, 2)
+    const envelope = read('bass-level')
+    controller.configure([], baseline.map(value => value.target === 'driver-value' ? { ...value, value: 0.8 } : value))
+    expect(read('bass-level')).toBeCloseTo(envelope)
+    const constantIndex = compiled.uniforms.findIndex(uniform => uniform.target === 'driver-value')
+    expect(write.mock.calls.at(-1)![0][constantIndex]).toBe(0.8)
+    now = 2.1; controller.advance()
+    expect(read('bass-level')).toBe(0)
+    controller.playback(false)
+    expect(read('pointer-x')).toBe(0)
+    controller.dispose()
+  })
+
   it('drives separate object properties from the same existing analysis frame', () => {
     const f = fixture([[response('bass-level')], [response('treble-level', 'scale.y', { amount: 2 })]])
     f.input({ audio: f.audio(1, { bass: 0.7, treble: 0.2 }) })

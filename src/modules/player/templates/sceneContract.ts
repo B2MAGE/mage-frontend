@@ -41,6 +41,23 @@ export type BuilderOperation =
   | { type: 'torus'; radius: number; tube: number }
   | { type: 'cylinder'; radius: number; height: number }
 export type BuilderVector = { x: number; y: number; z: number }
+/** Bounded data expressions; authored strings are never executable shader code. */
+export type BuilderDriverSource = BuilderBinding['source'] | 'time'
+  | 'local-position' | 'group-position' | 'world-position' | 'view-ray'
+export type BuilderDriverExpression =
+  | { type: 'constant'; value: number | BuilderVector }
+  | { type: 'input'; source: BuilderDriverSource }
+  | { type: 'add' | 'multiply'; left: BuilderDriverExpression; right: BuilderDriverExpression }
+  | { type: 'sin' | 'cos'; input: BuilderDriverExpression }
+  | { type: 'clamp'; input: BuilderDriverExpression; min: number; max: number }
+  | { type: 'component'; input: BuilderDriverExpression; axis: 'x' | 'y' | 'z' }
+export type BuilderDriverTarget = BuilderBinding['target'] | 'scale' | 'blend'
+  | `operation.${'radius' | 'width' | 'height' | 'depth' | 'tube'}`
+export type BuilderDriver = {
+  target: BuilderDriverTarget
+  mode: 'add' | 'replace' | 'multiply'
+  expression: BuilderDriverExpression
+}
 /** A uniform parent frame preserves the child's local geometry and animation. */
 export type BuilderFrame = { position: BuilderVector; rotation: BuilderVector; scale: number }
 export type BuilderMaterial = { color: string; metalness: number; shininess: number }
@@ -48,6 +65,7 @@ export type BuilderGroup = {
   id: string; name: string; children: string[]; transform: BuilderFrame
   operation: { type: 'union' } | { type: 'smooth-union'; blend: number }
   material?: BuilderMaterial
+  drivers?: BuilderDriver[]
 }
 export type BuilderComposition = { version: 1; roots: string[]; groups: BuilderGroup[] }
 export type BuilderModifier =
@@ -75,6 +93,7 @@ export type BuilderObject = {
   arrangements: BuilderArrangement[]
   motion: BuilderMotion
   bindings: BuilderBinding[]
+  drivers?: BuilderDriver[]
 }
 export type BuilderSceneDocument = {
   schemaVersion: 1; kind: 'builder'; builderVersion: 1; objects: BuilderObject[]

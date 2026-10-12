@@ -94,7 +94,7 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
   if (groupMatch) {
     const field = groupMatch[3] ?? ''
     const groupFields: Record<string, string> = { 'operation.type': 'builder-group-operation', 'operation.blend': 'builder-group-blend', 'transform.scale': 'builder-scale' }
-    return { path, id: groupFields[field] ?? builderObjectControlIds[field] ?? 'builder-object-list', groupIndex: Number(groupMatch[1] ?? groupMatch[2]), section: 'scene' }
+    return { path, id: driverControlId(field) ?? groupFields[field] ?? builderObjectControlIds[field] ?? 'builder-object-list', groupIndex: Number(groupMatch[1] ?? groupMatch[2]), section: 'scene' }
   }
   if (path.startsWith('composition')) return { path, id: 'builder-object-list', section: 'scene' }
   const objectMatch = /^objects(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(path)
@@ -106,13 +106,24 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
     const frame = /^frame\.(position\.[xyz]|rotation\.[xyz]|scale)$/.exec(field)
     const binding = /^bindings(?:\[(\d+)\]|\.(\d+))(?:\.(target|source|mode|amount|offset|attack|release))?$/.exec(field)
     const bindingId = binding ? `builder-binding-${binding[1] ?? binding[2]}-${binding[3] ?? 'target'}` : field === 'bindings' ? 'builder-bindings' : undefined
-    const id = builderObjectControlIds[field] ?? stageId ?? bindingId ?? (frame ? `builder-frame-${frame[1].replace('.', '-')}` : 'builder-object-list')
+    const id = driverControlId(field) ?? builderObjectControlIds[field] ?? stageId ?? bindingId ?? (frame ? `builder-frame-${frame[1].replace('.', '-')}` : 'builder-object-list')
     return { path, id, objectIndex, section: 'scene' }
   }
   if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }
   if (path === 'parameters.scale') return { path, id: 'builder-scene-scale', section: 'scene' }
   if (path === 'settings.skybox') return { path, id: 'builder-skybox', section: 'scene' }
   return templateControlLocation(path)
+}
+
+function driverControlId(field: string): string | undefined {
+  if (field === 'drivers') return 'builder-drivers'
+  const driver = /^drivers(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(field)
+  if (!driver) return undefined
+  const suffix = driver[3] ?? 'target'
+  const control = suffix === 'mode' || suffix === 'target' ? suffix
+    : suffix === 'expression.min' ? 'minimum' : suffix === 'expression.max' ? 'maximum'
+    : suffix.endsWith('.source') ? 'source' : 'target'
+  return `builder-driver-${driver[1] ?? driver[2]}-${control}`
 }
 
 /** Reused inspector IDs represent only the selected object's validation. */

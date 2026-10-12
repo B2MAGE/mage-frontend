@@ -2376,6 +2376,8 @@ html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] 
   border-top: 1px solid var(--studio-border);
 }
 
+.builder-recipe-action { display: grid; justify-items: start; gap: 8px; margin-top: 14px; }
+
 html[data-theme] .scene-editor-page .builder-inspector-section .builder-size-controls,
 html[data-theme] .scene-editor-page .builder-inspector-section .builder-composition-card {
   padding: 0;

@@ -16,6 +16,7 @@ import { FieldValidation } from './SceneEditorFieldValidation'
 import { BuilderObjectList } from './BuilderObjectList'
 import { BuilderControlStage, InspectorSection } from './BuilderInspector'
 import { BuilderBindingControls } from './BuilderBindingControls'
+import { BuilderDriverControls } from './BuilderDriverControls'
 import { builderGroupFieldIssues, builderObjectFieldIssues, FieldErrorsContext, useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 import { builderGroups, builderGroupingIssue, builderParent, findBuilderNode } from '../builderGroups'
 
@@ -402,7 +403,7 @@ function BuilderParentControl({ document, id, onMove }: { document: BuilderScene
     <SelectField id="builder-parent" label="Move to group" value={builderParent(document, id)?.id ?? ''}
       options={[{ label: 'Scene level', value: '' }, ...groups.filter(group => !isDescendant(group.id)).map(group => ({ label: group.name, value: group.id }))]}
       onChange={value => onMove(id, value || null)} />
-    <p className="field-hint">Keeps its placement. The destination group's join and material apply.</p>
+    <p className="field-hint">Keeps its authored placement. The destination group's movement, join, and material apply.</p>
   </div>
 }
 
@@ -430,6 +431,9 @@ function BuilderGroupInspector({ document, group, issues, onDuplicate, onRemove,
         <InspectorSection title="Transform" fieldPrefixes={['builder-position-', 'builder-rotation-', 'builder-scale']} description="Move, rotate, and resize all children" status={vectorSummary(group)}>
           <TransformControls key={group.id} transform={group.transform} update={transform => update(current => ({ ...current, transform }))} />
         </InspectorSection>
+        <InspectorSection title="Animation" fieldPrefixes={['builder-driver-', 'builder-drivers']} description="Shared movement and responses" status={group.drivers?.length ? `${group.drivers.length} influences` : 'Off'}>
+          <BuilderDriverControls key={group.id} node={group} onChange={update} />
+        </InspectorSection>
         <InspectorSection title="Composition" fieldPrefixes={['builder-group-operation', 'builder-group-blend']} description="How the children's surfaces join"
           status={group.operation.type === 'union' ? 'Union' : `Smooth union · ${conciseNumber(group.operation.blend)}`}>
           <SelectField id="builder-group-operation" label="Join surfaces" value={group.operation.type}
@@ -448,7 +452,7 @@ function BuilderGroupInspector({ document, group, issues, onDuplicate, onRemove,
           <p className="field-hint">An outer group's material overrides its children. Turn it off to restore their own materials.</p>
           {material ? <AppearanceControls key={group.id} object={{ id: group.id, material }} update={value => update(current => ({ ...current, material: value.material }))} /> : null}
         </InspectorSection>
-        <p className="field-hint">Ungroup keeps placement and colors. This group's smooth join is removed; the parent join applies.</p>
+        <p className="field-hint">Ungroup keeps authored placement and colors. This group's animation and smooth join are removed; the parent behavior applies.</p>
       </div>
     </section>
   </FieldErrorsContext.Provider>
@@ -583,9 +587,10 @@ export function BuilderSceneControls({
             <ArrangementControls document={document} key={selected.id} object={selected} update={object => update(() => object)} />
           </InspectorSection>
 
-          <InspectorSection title="Animation" fieldPrefixes={['builder-motion-']} description="Object-specific movement"
-            status={selected.motion.type === 'spin' ? `Spin ${selected.motion.axis.toUpperCase()}` : 'Off'}>
-            <AnimationControls key={selected.id} object={selected} update={object => update(() => object)} />
+          <InspectorSection title="Animation" fieldPrefixes={['builder-motion-', 'builder-driver-', 'builder-drivers']} description="Pulse, wobble, spin, and combine inputs"
+            status={selected.drivers?.length ? `${selected.drivers.length} influences` : selected.motion.type === 'spin' ? `Spin ${selected.motion.axis.toUpperCase()}` : 'Off'}>
+            {selected.motion.type === 'spin' ? <AnimationControls key={selected.id} object={selected} update={object => update(() => object)} /> : null}
+            <BuilderDriverControls key={`drivers-${selected.id}`} node={selected} onChange={update} />
           </InspectorSection>
 
           <BuilderBindingControls key={selected.id} object={selected} document={document} onChange={update} />

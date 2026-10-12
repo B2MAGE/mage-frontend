@@ -36,6 +36,7 @@ import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
 import { builderOrderedNodes } from './builderGroups'
+import { createBuilderRecipe } from './builderRecipes'
 
 type UseSceneEditorStateArgs = {
   allowCustomSceneData?: boolean
@@ -310,6 +311,15 @@ export function useSceneEditorState({
     setMusicResponseDefaults(readMusicResponseDefaults(getTemplateEditorSceneData(next)))
   }
 
+  function handleCustomizeTemplate(templateId: TemplateId) {
+    const current = history.readDraft().sceneData
+    const settings = isTemplateEditorDocument(current) || isBuilderEditorDocument(current) ? current.settings : undefined
+    const next = createBuilderRecipe(templateId, settings)
+    builderRoundTripRef.current = null
+    applySceneData(next, true)
+    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
+  }
+
   function handleRestoreBuilder() {
     const roundTrip = builderRoundTripRef.current
     if (!roundTrip || isTemplate || isBuilder || roundTrip.customSignature !== JSON.stringify(sceneData)) return false
@@ -451,6 +461,7 @@ export function useSceneEditorState({
     handleSwitchBuilderToCustom,
     handleSwitchToBuilder,
     handleSwitchToTemplate,
+    handleCustomizeTemplate,
     handleUpdateBuilderObject,
     handleMotionAdvancedToggle,
     handleNameChange,

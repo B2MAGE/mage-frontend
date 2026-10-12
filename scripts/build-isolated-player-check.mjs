@@ -31,6 +31,8 @@ const allowedModules = new Set([
   'src/modules/player/templates/builderCompiler.ts',
   'src/modules/player/templates/builderComposition.ts',
   'src/modules/player/templates/builderDefinitions.ts',
+  'src/modules/player/templates/builderDrivers.ts',
+  'src/modules/player/templates/builderDriverCompiler.ts',
   'src/modules/player/templates/builderUniformValues.ts',
   'src/modules/player/templates/builderBindings.ts',
   'src/modules/player/templates/builderSchema.ts',

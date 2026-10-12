@@ -7,6 +7,7 @@ import type { PlaybackPayloads } from '../modules/player/isolation/playbackProto
 
 type Input = PlaybackPayloads['input']
 type Channel = { binding: BuilderLiveBinding; index: number; mapper: AudioResponseMapper | null; pointerValue: number }
+type SignalChannel = Omit<Channel, 'binding'> & { binding: Pick<BuilderLiveBinding, 'source' | 'attack' | 'release'> & { mode?: never; offset?: never; amount?: never } }
 const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value))
 const key = (binding: BuilderLiveBinding) => `${binding.objectIndex}:${binding.target}`
 const envelopeKey = (binding: BuilderLiveBinding) => `${binding.source}:${binding.attack}:${binding.release}`
@@ -18,6 +19,11 @@ export function createBuilderBindingController(
   now: () => number = () => performance.now() / 1000,
 ) {
   let channels: Channel[] = [], baseline: number[] = []
+  const signalChannels: SignalChannel[] = manifest.flatMap((uniform, index) => uniform.target === 'driver-signal' ? [{
+    index, binding: { source: uniform.source, attack: 0.05, release: 0.2 }, pointerValue: 0,
+    mapper: uniform.source.startsWith('pointer-') ? null : new AudioResponseMapper({ version: 1, sensitivity: 1,
+      mappings: [{ target: 'size', source: uniform.source, amount: 1, attack: 0.05, release: 0.2 }] }),
+  }] : [])
   let disposed = false, playing = true, lastTick: number | null = null
   let receivedAt = now(), input: Input | null = null
   let frames: AudioAnalysisFrame[] = []
@@ -28,7 +34,7 @@ export function createBuilderBindingController(
 
   function reset() {
     frames = []
-    for (const channel of channels) { channel.mapper?.reset(); channel.pointerValue = 0 }
+    for (const channel of [...channels, ...signalChannels]) { channel.mapper?.reset(); channel.pointerValue = 0 }
     lastTick = null
     lastAudioTime = null
     source = 'none'
@@ -48,14 +54,14 @@ export function createBuilderBindingController(
     const audioTime = nextSource === source && lastAudioTime !== null ? Math.max(lastAudioTime, projectedTime) : projectedTime
     lastAudioTime = audioTime
     if (nextSource !== source) {
-      for (const channel of channels) channel.mapper?.reset()
+      for (const channel of [...channels, ...signalChannels]) channel.mapper?.reset()
       synthetic.configure(simulation.seed, simulation.tempoScale, audioTime)
       source = nextSource
     }
     const sampled = source === 'audio' ? frames : source === 'synthetic' ? synthetic.process(audioTime) : []
     frames = []
     const values = [...baseline]
-    for (const channel of channels) {
+    for (const channel of [...channels, ...signalChannels]) {
       const { binding, index, mapper } = channel
       let signal = 0
       if (mapper) {
@@ -69,8 +75,9 @@ export function createBuilderBindingController(
         signal = channel.pointerValue
       }
       const uniform = manifest[index]
-      values[index] = clamp((binding.mode === 'add' ? baseline[index] : 0) + binding.offset + binding.amount * signal,
-        uniform.minimum, uniform.maximum)
+      values[index] = binding.mode !== undefined
+        ? clamp((binding.mode === 'add' ? baseline[index] : 0) + binding.offset + binding.amount * signal, uniform.minimum, uniform.maximum)
+        : clamp(signal, uniform.minimum, uniform.maximum)
     }
     write(values)
   }
