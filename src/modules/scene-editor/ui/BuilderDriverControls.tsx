@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { BUILDER_DRIVER_LIMITS, builderDriverResultRange, type BuilderDriver, type BuilderGroup, type BuilderObject } from '@modules/player'
 import { AppIcon } from '@shared/ui'
 import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RANGE, DRIVER_PRESETS, DRIVER_SOURCES, driverTargets,
@@ -6,6 +6,8 @@ import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RAN
 import { BuilderControlStage } from './BuilderInspector'
 import { NumberField, SelectField, SliderField } from './SceneEditorControls'
 import { FieldValidation } from './SceneEditorFieldValidation'
+import { BuilderExpressionControls } from './BuilderExpressionControls'
+import { useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 
 type Node = BuilderObject | BuilderGroup
 type Props<T extends Node> = { node: T; onChange: (recipe: (current: T) => T) => void }
@@ -42,6 +44,7 @@ function inputDescription(values: DriverPresetValues) {
 
 export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<T>) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
+  const [formulaIndices, setFormulaIndices] = useState<number[]>([])
   const targets = driverTargets(node)
   const drivers = node.drivers ?? []
   return <>
@@ -52,8 +55,10 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
         const preset = readDriverPreset(driver.expression)
         // The same linear expression is valid on other numeric properties, but
         // only rotation is a Spin control with wrapping and rotation targets.
-        const values = preset?.preset === 'spin' && !driver.target.startsWith('rotation.') ? null : preset
-        const title = values ? DRIVER_PRESETS.find(item => item.value === values.preset)!.label : 'Combined inputs'
+        const values: DriverPresetValues | null = preset?.preset === 'spin' && !driver.target.startsWith('rotation.')
+          ? { ...preset, preset: 'follow', amount: preset.speed, offset: preset.phase, ...DRIVER_INFLUENCE_RANGE, unclamped: true } : preset
+        const showFormula = !values || formulaIndices.includes(index)
+        const title = showFormula ? 'Combined inputs' : DRIVER_PRESETS.find(item => item.value === values!.preset)!.label
         const fullMotion = values?.minimum === DRIVER_INFLUENCE_RANGE.minimum && values?.maximum === DRIVER_INFLUENCE_RANGE.maximum
         const audioDriven = values?.audioDriven === true
         const timeDriven = values?.source === 'time' || values?.preset === 'spin'
@@ -66,19 +71,24 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
         const move = (direction: -1 | 1) => {
           onChange(current => moveBuilderDriver(current, index, direction))
           setOpenIndex(index + direction)
+          setFormulaIndices(indices => indices.map(item => item === index ? index + direction : item === index + direction ? index : item))
         }
         return <BuilderControlStage key={index} index={index} title={title} description={target?.label ?? driver.target}
           fieldPrefix={`${prefix}-`} summary={[driver.mode === 'replace' ? 'Set' : driver.mode === 'multiply' ? 'Multiply' : 'Add']}
           open={openIndex === index} onToggle={() => setOpenIndex(current => current === index ? null : index)}
           toggleLabel={`${openIndex === index ? 'Collapse' : 'Expand'} ${title} influence ${index + 1}`}
-          onRemove={() => onChange(current => ({ ...current, drivers: (current.drivers ?? []).filter((_entry, currentIndex) => currentIndex !== index) }))}
+          onRemove={() => {
+            onChange(current => ({ ...current, drivers: (current.drivers ?? []).filter((_entry, currentIndex) => currentIndex !== index) }))
+            setFormulaIndices(indices => indices.filter(item => item !== index).map(item => item > index ? item - 1 : item))
+          }}
           removeLabel={`Remove influence ${index + 1}`}>
-          <SelectField id={`${prefix}-target`} label="Property" value={driver.target} options={values?.preset === 'spin' ? targets.filter(item => item.value.startsWith('rotation.')) : targets}
+          <SelectField id={`${prefix}-target`} label="Property" value={driver.target} options={!showFormula && values?.preset === 'spin' ? targets.filter(item => item.value.startsWith('rotation.')) : targets}
             onChange={value => change({ target: value as BuilderDriver['target'] })} />
           <SelectField id={`${prefix}-mode`} label="Apply influence" value={driver.mode}
             options={[{ value: 'add', label: 'Add to the current value' }, { value: 'replace', label: 'Set the value' }, { value: 'multiply', label: 'Multiply the current value' }]}
             onChange={value => change({ mode: value as BuilderDriver['mode'] })} />
-          {values ? <>
+          <DriverExpressionValidation id={`${prefix}-expression`}>
+          {values && !showFormula ? <>
             {values.preset !== 'spin' ? <SelectField id={`${prefix}-source`} label="Input" value={values.source} options={DRIVER_SOURCES}
               onChange={source => updatePreset({ source })} description={inputDescription(values)} /> : null}
             {isAudioPulse(values) && !audioDriven ? <div>
@@ -110,7 +120,13 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
               </div> : null}
             </>}
             {values.preset === 'spin' && !('children' in node) && node.operation.type === 'sphere' ? <p className="field-hint">A plain sphere has no obvious orientation, so it can look stationary while rotating. Try a less symmetrical shape to see the spin.</p> : null}
-          </> : <p className="field-hint">This imported influence combines supported inputs. It is preserved as authored; you can change its property, application and order, or remove it.</p>}
+          </> : <BuilderExpressionControls id={`${prefix}-formula`} value={driver.expression} onChange={expression => {
+            setFormulaIndices(indices => indices.includes(index) ? indices : [...indices, index])
+            change({ expression })
+          }} />}
+          {values ? <button className="scene-secondary-button" type="button" onClick={() => setFormulaIndices(indices => showFormula
+            ? indices.filter(item => item !== index) : [...indices, index])}>{showFormula ? 'Use simple controls' : 'Edit combined inputs'}</button> : null}
+          </DriverExpressionValidation>
           {target ? <p className="field-hint">Final {target.label.toLowerCase()} stays between {Number(resultRange.minimum.toFixed(2))} and {Number(resultRange.maximum.toFixed(2))}{driver.target.startsWith('rotation.') ? ' radians; rotation wraps through full turns' : ''}.</p> : null}
           <div className="builder-group-selection">
             <button className="scene-secondary-button" type="button" disabled={index === 0} aria-label={`Move influence ${index + 1} earlier`} onClick={() => move(-1)}><AppIcon name="arrow-up" size={14} /> Earlier</button>
@@ -125,7 +141,21 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
           setOpenIndex(drivers.length)
           onChange(current => ({ ...current, drivers: [...(current.drivers ?? []), defaultDriverPreset(current, preset.value).driver] }))
         }}>Add {preset.label.toLowerCase()}</button>)}
+      <button className="scene-secondary-button" type="button" disabled={drivers.length >= BUILDER_DRIVER_LIMITS.perNode} onClick={() => {
+        setOpenIndex(drivers.length)
+        setFormulaIndices(indices => [...indices, drivers.length])
+        onChange(current => ({ ...current, drivers: [...(current.drivers ?? []), {
+          target: 'children' in current ? 'scale' : 'scale.x', mode: 'add', expression: {
+            type: 'add', left: { type: 'input', source: 'bass-level' }, right: { type: 'constant', value: 0 },
+          },
+        }] }))
+      }}>Add combined inputs</button>
     </div></FieldValidation>
     {'children' in node ? <p className="field-hint">Group movement is shared by every child. The closest parent defines group-position inputs.</p> : null}
   </>
+}
+
+function DriverExpressionValidation({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes } = useSceneEditorFieldIssue(id)
+  return <FieldValidation id={id}><div className="builder-expression-fields" id={id} tabIndex={-1} {...attributes}>{children}</div></FieldValidation>
 }

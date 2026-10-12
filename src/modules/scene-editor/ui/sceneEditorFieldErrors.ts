@@ -126,8 +126,7 @@ function driverControlId(field: string): string | undefined {
   if (!driver) return undefined
   const suffix = driver[3] ?? 'target'
   const control = suffix === 'mode' || suffix === 'target' ? suffix
-    : suffix === 'expression.min' ? 'minimum' : suffix === 'expression.max' ? 'maximum'
-    : suffix.endsWith('.source') ? 'source' : 'target'
+    : suffix === 'expression' || suffix.startsWith('expression.') ? 'expression' : 'target'
   return `builder-driver-${driver[1] ?? driver[2]}-${control}`
 }
 

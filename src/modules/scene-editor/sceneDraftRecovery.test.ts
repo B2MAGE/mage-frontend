@@ -101,6 +101,46 @@ describe('browser draft recovery controller', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
+  it('restores exact nested combined inputs and group selection, including a repairable invalid clamp', () => {
+    const base = snapshot()
+    const valid = parseSceneDocument({ ...createBuilderScene(), composition: { version: 1,
+      roots: ['group-1'], groups: [{ id: 'group-1', children: ['object-1'], operation: { type: 'union' },
+        drivers: [{ target: 'rotation.y', mode: 'add', expression: { type: 'sin', input: {
+          type: 'multiply', left: { type: 'input', source: 'time' }, right: {
+            type: 'clamp', input: { type: 'input', source: 'scene-size' }, min: 0, max: 1,
+          },
+        } } }],
+      }],
+    } }) as BuilderSceneDocument
+
+    for (const invalidClamp of [false, true]) {
+      const sceneData = structuredClone(valid)
+      const expression = sceneData.composition!.groups[0].drivers![0].expression
+      if (expression.type !== 'sin' || expression.input.type !== 'multiply' || expression.input.right.type !== 'clamp') {
+        throw new Error('Expected the authored nested clamp')
+      }
+      if (invalidClamp) expression.input.right.min = 2
+      const draft = { ...base, sceneData, sceneDataText: JSON.stringify(sceneData), selectedBuilderObjectId: 'group-1' }
+      const storage = memoryStorage()
+      const recovery = createSceneDraftRecovery('combined', () => storage)
+      recovery.update({ snapshot: base, baseFingerprint: sceneDraftFingerprint(base) })
+      recovery.update({ snapshot: draft, baseFingerprint: sceneDraftFingerprint(base) })
+      vi.advanceTimersByTime(400)
+      expect(parseSceneDraftRecord(storage.getItem('combined')!)?.snapshot).toEqual(draft)
+      recovery.dispose()
+
+      const reloaded = createSceneDraftRecovery('combined', () => storage)
+      reloaded.update({ snapshot: base, baseFingerprint: sceneDraftFingerprint(base) })
+      expect(reloaded.getSnapshot().candidate?.snapshot).toEqual(draft)
+      const restored = reloaded.restore()!.snapshot
+      expect(restored).toEqual(draft)
+      expect(restored.selectedBuilderObjectId).toBe('group-1')
+      if (invalidClamp) expect(() => parseSceneDocument(restored.sceneData)).toThrow()
+      else expect(parseSceneDocument(restored.sceneData)).toEqual(valid)
+      reloaded.dispose()
+    }
+  })
+
   it('debounces edits, keeps the latest draft, and offers it after reload', () => {
     const storage = memoryStorage()
     const base = snapshot()

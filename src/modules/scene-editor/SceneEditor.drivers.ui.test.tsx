@@ -21,6 +21,20 @@ afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 const preview = () => JSON.parse(screen.getByTestId('driver-preview').getAttribute('data-scene')!)
 
 describe('Builder property drivers and editable recipes', () => {
+  it('opens a Spin calculation without rewriting it and permits other numeric targets in combined controls', async () => {
+    const object = createBuilderScene().objects[0]
+    object.drivers = [defaultDriverPreset(object, 'spin').driver]
+    const original = structuredClone(object)
+    const user = userEvent.setup(), onChange = vi.fn()
+    render(<BuilderDriverControls node={object} onChange={onChange} />)
+    await user.click(screen.getByRole('button', { name: 'Expand Spin influence 1' }))
+    await user.click(screen.getByRole('button', { name: 'Edit combined inputs' }))
+    expect(onChange).not.toHaveBeenCalled()
+    await user.selectOptions(screen.getByLabelText('Property'), 'operation.radius')
+    expect(onChange.mock.calls[0][0](object).drivers[0]).toEqual({ ...original.drivers![0], target: 'operation.radius' })
+    expect(object).toEqual(original)
+  })
+
   it('uses full motion by default and releases a custom cap without resetting the animation or losing undo', async () => {
     const user = userEvent.setup()
     renderCreateScenePage()
@@ -94,7 +108,7 @@ describe('Builder property drivers and editable recipes', () => {
     const property = screen.getByLabelText('Property')
     expect(property).toHaveValue('rotation.x')
     expect(within(property).getByRole('option', { name: 'Overall scale' })).toBeInTheDocument()
-    expect(screen.getByText(/this imported influence combines supported inputs/i)).toBeVisible()
+    expect(screen.getByText(/open each value to edit it/i)).toBeVisible()
     await user.selectOptions(property, 'rotation.z')
     await waitFor(() => expect(preview().composition.groups[0].drivers[0]).toEqual({
       ...builder.composition.groups[0].drivers[0], target: 'rotation.z',
@@ -151,8 +165,11 @@ describe('Builder property drivers and editable recipes', () => {
     const onChange = vi.fn()
     const user = userEvent.setup()
     render(<BuilderDriverControls node={object} onChange={onChange} />)
-    await user.click(screen.getByRole('button', { name: 'Expand Combined inputs influence 1' }))
+    await user.click(screen.getByRole('button', { name: 'Expand Follow input influence 1' }))
     expect(screen.getByLabelText('Property')).toHaveValue('operation.radius')
+    expect(screen.getByLabelText('Input')).toHaveValue('time')
+    expect(screen.getByLabelText('Amount numeric value')).toHaveValue(.25)
+    expect(screen.getByLabelText('Offset numeric value')).toHaveValue(1)
     expect(screen.queryByText('Rotation wraps naturally through full turns.')).not.toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('Apply influence'), 'multiply')
     const update = onChange.mock.calls[0][0]
