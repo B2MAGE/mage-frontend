@@ -100,7 +100,7 @@ export function driverTargets(node: BuilderObject | BuilderGroup) {
   return [
     ...Object.entries(BUILDER_BINDING_RANGES).map(([value, range]) => ({ value: value as BuilderDriverTarget,
       label: BUILDER_BINDING_TARGET_LABELS[value as keyof typeof BUILDER_BINDING_TARGET_LABELS], ...range })),
-    ...builderOperationFields(node.operation).map(field => ({ value: `operation.${field.key}` as BuilderDriverTarget, label: field.title,
+    ...builderOperationFields(node.operation).filter(field => field.animatable).map(field => ({ value: `operation.${field.key}` as BuilderDriverTarget, label: field.title,
       minimum: field.minimum, maximum: field.maximum, default: field.default })),
   ]
 }

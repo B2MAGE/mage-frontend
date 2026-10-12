@@ -39,7 +39,7 @@ import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEdito
 import { builderControlLocation, templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
-import { BUILDER_RECIPES } from "./builderRecipes";
+import { BUILDER_RECIPES, builderRecipeReference } from "./builderRecipes";
 import { useSceneThumbnailCapture } from "./useSceneThumbnailCapture";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { useSceneDraftRecovery } from "./useSceneDraftRecovery";
@@ -863,6 +863,7 @@ export function SceneEditorShell({
         aria-describedby="replace-builder-description" onKeyDown={event => trapModalFocus(event, cancelBuilderTemplateReplacement)}>
         <h2 id="replace-builder-title">Replace your Builder scene?</h2>
         <p id="replace-builder-description">Switching to {pendingBuilderTemplate.label} discards every Builder object and any unsaved Builder changes. You can undo this change while the editor stays open.</p>
+        {builderRecipeReference(pendingBuilderTemplate.templateId as TemplateId) ? <p className="field-hint">{builderRecipeReference(pendingBuilderTemplate.templateId as TemplateId)?.note}</p> : null}
         <div className="auth-actions">
           <button className="scene-editor-confirm-submit" type="button" onClick={confirmBuilderTemplateReplacement}>Use {pendingBuilderTemplate.label}</button>
           {BUILDER_RECIPES.some(recipe => recipe.templateId === pendingBuilderTemplate.templateId) ? <button className="scene-secondary-button" type="button" onClick={() => {
@@ -984,6 +985,7 @@ export function SceneEditorShell({
                     setIsTemplateSourceVisible(false);
                   }}>Customize in Builder</button>
                   <p className="field-hint">Start an editable {templateCatalog.find(template => template.templateId === templateDocument.templateId)?.label} with individual shapes and animation controls. Your camera, effects, and music settings stay; Undo returns to the original template.</p>
+                  {builderRecipeReference(templateDocument.templateId) ? <p className="field-hint">{builderRecipeReference(templateDocument.templateId)?.note}</p> : null}
                 </div> : null}
               </section>
               {creationMode}
