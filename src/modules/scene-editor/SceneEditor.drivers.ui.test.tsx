@@ -60,7 +60,7 @@ describe('Builder property drivers and editable recipes', () => {
     const user = userEvent.setup(), onChange = vi.fn()
     render(<BuilderDriverControls node={object} onChange={onChange} />)
     await user.click(screen.getByRole('button', { name: 'Expand Pulse influence 1' }))
-    expect(screen.getByLabelText('Speed numeric value')).toHaveValue(5.45)
+    expect(screen.getByLabelText('Pattern frequency numeric value')).toHaveValue(5.45)
     await user.click(screen.getByRole('button', { name: 'Follow audio signal' }))
     const next = onChange.mock.calls[0][0](object)
     expect(readDriverPreset(next.drivers[0].expression)).toMatchObject({ preset: 'pulse', source, amount: 2.45,

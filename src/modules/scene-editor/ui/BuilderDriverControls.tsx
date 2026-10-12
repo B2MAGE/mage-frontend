@@ -10,6 +10,34 @@ import { FieldValidation } from './SceneEditorFieldValidation'
 type Node = BuilderObject | BuilderGroup
 type Props<T extends Node> = { node: T; onChange: (recipe: (current: T) => T) => void }
 
+function inputDescription(values: DriverPresetValues) {
+  const { source, preset, audioDriven } = values
+  if (source === 'time') return 'Elapsed scene time drives continuous movement while playback runs.'
+  if (source.startsWith('pointer-')) {
+    const range = source === 'pointer-x' ? 'Left is −1, center is 0, right is +1.'
+      : source === 'pointer-y' ? 'Bottom is −1, center is 0, top is +1.' : 'Released is 0; pressed is 1.'
+    const response = preset === 'pulse'
+      ? source === 'pointer-down' ? 'At Phase 0, Pulse peaks when released. Use Follow input for a direct press response.'
+        : 'At Phase 0, Pulse peaks at the center and decreases in both directions. Use Follow input for a directional response.'
+      : preset === 'wobble' ? 'Movement samples a wave; it does not keep wobbling while the pointer is still.'
+        : 'Positive Amount follows this direction; negative Amount reverses it.'
+    return `${range} Move or touch the preview. ${response}`
+  }
+  const space = source.split('.')[0]
+  const spaces: Record<string, string> = {
+    'local-position': 'Surface coordinates relative to this object or group, before its animation influences. The pattern moves with it.',
+    'group-position': 'Surface coordinates in the nearest parent group, before this node’s transform. Without a parent group, this matches World position.',
+    'world-position': 'Surface coordinates in the scene. Moving the object through the scene changes which part of the pattern it samples.',
+    'view-ray': 'Direction from the camera through each preview pixel, from −1 to +1. Change the camera angle to see it respond; pointer movement alone does not drive it.',
+  }
+  const spatial = spaces[space]
+  if (spatial) return `${spatial} This shapes the surface rather than advancing with time.`
+  if (audioDriven) return source.endsWith('-hit')
+    ? 'Each detected hit drives the pulse, then it settles as the hit fades. The music controls the timing.'
+    : 'Follows the selected music level continuously. Whole mix measures all sound; quieter bands produce smaller changes.'
+  return 'The selected music value drives this influence. It changes with the music rather than elapsed time.'
+}
+
 export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<T>) {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const targets = driverTargets(node)
@@ -26,7 +54,7 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
         const title = values ? DRIVER_PRESETS.find(item => item.value === values.preset)!.label : 'Combined inputs'
         const fullMotion = values?.minimum === DRIVER_INFLUENCE_RANGE.minimum && values?.maximum === DRIVER_INFLUENCE_RANGE.maximum
         const audioDriven = values?.audioDriven === true
-        const hitInput = values?.source.endsWith('-hit') === true
+        const timeDriven = values?.source === 'time' || values?.preset === 'spin'
         const target = targets.find(item => item.value === driver.target)
         const change = (next: Partial<BuilderDriver>) => onChange(current => updateBuilderDriver(current, index, next))
         const updatePreset = (next: Partial<DriverPresetValues>) => {
@@ -49,21 +77,21 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
             onChange={value => change({ mode: value as BuilderDriver['mode'] })} />
           {values ? <>
             {values.preset !== 'spin' ? <SelectField id={`${prefix}-source`} label="Input" value={values.source} options={DRIVER_SOURCES}
-              onChange={source => updatePreset({ source })} description={audioDriven
-                ? hitInput ? 'Each detected hit drives the pulse, then it settles as the hit fades. The music controls the timing.'
-                  : 'Follows the selected music level continuously. Whole mix measures all sound; quieter bands produce smaller changes.'
-                : 'Time, music and pointer affect the whole object. Position and view-ray inputs vary across its surface.'} /> : null}
+              onChange={source => updatePreset({ source })} description={inputDescription(values)} /> : null}
             {isAudioPulse(values) && !audioDriven ? <div>
               <p className="field-hint">This pulse cycles through a wave as the audio value changes. Follow the audio signal directly to respond to its strength.</p>
               <button className="scene-secondary-button" type="button" onClick={() => updatePreset({})}>Follow audio signal</button>
             </div> : null}
-            {values.preset !== 'follow' && !audioDriven ? <SliderField id={`${prefix}-speed`} label="Speed" min={-10} max={10} step={.05}
+            {values.preset !== 'follow' && !audioDriven ? <SliderField id={`${prefix}-speed`} label={timeDriven ? 'Speed' : 'Pattern frequency'} min={-10} max={10} step={.05}
               value={values.speed} onChange={speed => updatePreset({ speed })}
-              description={values.preset === 'spin' ? 'Radians per second. Negative speed reverses direction.' : 'How quickly the pattern repeats as the input changes.'} /> : null}
+              description={values.preset === 'spin' ? 'Radians per second. Negative speed reverses direction.' : timeDriven
+                ? 'How quickly the pattern repeats over time.' : 'How tightly the wave repeats across input values. This does not add motion over time.'} /> : null}
             {values.preset !== 'spin' ? <SliderField id={`${prefix}-amount`} label="Amount" min={-10} max={10} step={.05} value={values.amount}
-              onChange={amount => updatePreset({ amount })} description={audioDriven ? 'Response strength. Increase this for quieter bands; negative amounts reverse the response.' : values.preset === 'pulse' ? 'Pulse moves between zero and this amount.' : 'Negative values reverse the influence.'} /> : null}
+              onChange={amount => updatePreset({ amount })} description={audioDriven ? 'Response strength. Increase this for quieter bands; negative amounts reverse the response.' : values.preset === 'pulse'
+                ? 'Pulse ranges from zero to this amount, plus Offset. At input 0 and Phase 0, it starts at the full amount.' : 'Negative values reverse the influence.'} /> : null}
             {values.preset !== 'follow' && !audioDriven ? <SliderField id={`${prefix}-phase`} label="Phase" min={-Math.PI * 2} max={Math.PI * 2} step={.05}
-              value={values.phase} onChange={phase => updatePreset({ phase })} description="Shift the starting point of the movement, in radians." /> : null}
+              value={values.phase} onChange={phase => updatePreset({ phase })} description={timeDriven
+                ? 'Shift the starting point of the movement, in radians.' : 'Shift the wave across the input range, in radians.'} /> : null}
             {values.preset !== 'spin' ? <SliderField id={`${prefix}-offset`} label="Offset" min={-10} max={10} step={.05} value={values.offset}
               onChange={offset => updatePreset({ offset })} description="Shift the whole influence up or down." /> : null}
             {values.preset === 'spin' ? <p className="field-hint">Rotation wraps naturally through full turns.</p> : <>
