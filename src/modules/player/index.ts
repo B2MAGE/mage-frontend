@@ -22,6 +22,8 @@ export { BUILDER_OPERATIONS, BUILDER_SHAPES, BUILDER_LIMITS, BUILDER_TRANSFORMS,
   createBuilderOperation, createBuilderModifier, createBuilderArrangement, createBuilderMotion,
   BUILDER_BINDING_RULES, BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, createBuilderBinding } from './templates/builderDefinitions'
 export type { BuilderShape, BuilderDimension, BuilderGroupTarget } from './templates/builderDefinitions'
+export type { BuilderDriver, BuilderDriverExpression, BuilderDriverSource, BuilderDriverTarget } from './templates/sceneContract'
+export { BUILDER_DRIVER_LIMITS, builderDriverTargetRange, validateBuilderDriverExpression } from './templates/builderDrivers'
 export { SceneValidationError, validateSceneDocument, validateSceneForStorage, validateSceneForPlayback, parseSceneImport, assertSceneRequestBudget, assertSceneDocumentBudget, SCENE_POLICY, SCENE_LIMITS, SCENE_RUNTIME_CEILINGS } from './policy/sceneValidation'
 export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'
 export type { RenderBudget, RenderProfile } from './policy/renderBudget'

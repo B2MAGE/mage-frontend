@@ -13,7 +13,9 @@
     "optionalEffects": 4,
     "generatedSourceBytes": 32768,
     "groups": 8,
-    "groupDepth": 3
+    "groupDepth": 3,
+    "driverOperations": 192,
+    "authoredDrivers": 32
   },
   "operationCosts": {
     "sphere": 1,
@@ -29,5 +31,13 @@
     "spinPerPrimitive": 1,
     "compositionPerAdditionalObject": 1,
     "liveUniformPerBinding": 1
+  },
+  "driverLimits": {
+    "perNode": 8,
+    "expressionDepth": 8,
+    "expressionNodes": 32,
+    "constantMagnitude": 1000,
+    "intermediateMagnitude": 1000000,
+    "clockPeriod": 86400
   }
 }

@@ -1,6 +1,7 @@
 import schema from '../../../../contracts/scenes/scene-v1.schema.json'
 import type { BuilderSceneDocument, JsonRecord, JsonValue, TemplateSceneDocument } from './sceneContract'
 import { validateBuilderComposition } from './builderComposition'
+import { validateBuilderDrivers } from './builderDrivers'
 import { templateOptionalEffectCount } from './templateSettings'
 
 type Rule = {
@@ -105,5 +106,6 @@ export function normalizeBuilderDocument(value: JsonRecord, fail: Fail): JsonRec
   }
   const normalized = visit(value, schema.$defs.builder as unknown as Rule, 'scene') as JsonRecord
   validateBuilderComposition(normalized as BuilderSceneDocument, fail)
+  validateBuilderDrivers(normalized as BuilderSceneDocument, fail)
   return normalized
 }
