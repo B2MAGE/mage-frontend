@@ -50,22 +50,23 @@ describe('Builder property drivers and editable recipes', () => {
     expect(screen.getByLabelText('Influence limits')).toHaveValue('custom')
   }, 30_000)
 
-  it('converts an existing input-phase Pulse to hit timing without changing its strength or limits', async () => {
+  it.each(['bass-hit', 'bass-level', 'mid-level', 'treble-level', 'overall-level'])('converts an existing input-phase Pulse to %s response without changing its strength or limits', async source => {
     const object = createBuilderScene().objects[0]
     const { driver, values } = defaultDriverPreset(object, 'pulse')
     // Existing saved expressions use the same cosine wave for Time and hits.
     const oldWave = createDriverPresetExpression({ ...values, source: 'time', speed: 5.45, phase: .116, amount: 2.45, offset: -.2 })
-    object.drivers = [{ ...driver, expression: JSON.parse(JSON.stringify(oldWave).replace('"source":"time"', '"source":"bass-hit"')) }]
+    const oldExpression = JSON.parse(JSON.stringify(oldWave).replace('"source":"time"', `"source":"${source}"`))
+    object.drivers = [{ ...driver, expression: oldExpression }]
     const user = userEvent.setup(), onChange = vi.fn()
     render(<BuilderDriverControls node={object} onChange={onChange} />)
     await user.click(screen.getByRole('button', { name: 'Expand Pulse influence 1' }))
     expect(screen.getByLabelText('Speed numeric value')).toHaveValue(5.45)
-    await user.click(screen.getByRole('button', { name: 'Sync pulse to hits' }))
+    await user.click(screen.getByRole('button', { name: 'Follow audio signal' }))
     const next = onChange.mock.calls[0][0](object)
-    expect(readDriverPreset(next.drivers[0].expression)).toMatchObject({ preset: 'pulse', source: 'bass-hit', amount: 2.45,
-      offset: -.2, beatSynced: true, ...DRIVER_INFLUENCE_RANGE })
+    expect(readDriverPreset(next.drivers[0].expression)).toMatchObject({ preset: 'pulse', source, amount: 2.45,
+      offset: -.2, audioDriven: true, ...DRIVER_INFLUENCE_RANGE })
     expect({ ...next.drivers[0], expression: null }).toEqual({ ...driver, expression: null })
-    expect(object.drivers[0].expression).toEqual(JSON.parse(JSON.stringify(oldWave).replace('"source":"time"', '"source":"bass-hit"')))
+    expect(object.drivers[0].expression).toEqual(oldExpression)
   })
 
   it('opens Alloy as editable constituent objects, edits group animation, and can undo back to the original template', async () => {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { BUILDER_DRIVER_LIMITS, type BuilderDriver, type BuilderGroup, type BuilderObject } from '@modules/player'
 import { AppIcon } from '@shared/ui'
 import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RANGE, DRIVER_PRESETS, DRIVER_SOURCES, driverTargets,
-  isHitPulse, moveBuilderDriver, readDriverPreset, updateBuilderDriver, type DriverPresetValues } from '../builderDrivers'
+  isAudioPulse, moveBuilderDriver, readDriverPreset, updateBuilderDriver, type DriverPresetValues } from '../builderDrivers'
 import { BuilderControlStage } from './BuilderInspector'
 import { NumberField, SelectField, SliderField } from './SceneEditorControls'
 import { FieldValidation } from './SceneEditorFieldValidation'
@@ -25,7 +25,8 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
         const values = preset?.preset === 'spin' && !driver.target.startsWith('rotation.') ? null : preset
         const title = values ? DRIVER_PRESETS.find(item => item.value === values.preset)!.label : 'Combined inputs'
         const fullMotion = values?.minimum === DRIVER_INFLUENCE_RANGE.minimum && values?.maximum === DRIVER_INFLUENCE_RANGE.maximum
-        const beatSynced = values?.beatSynced === true
+        const audioDriven = values?.audioDriven === true
+        const hitInput = values?.source.endsWith('-hit') === true
         const target = targets.find(item => item.value === driver.target)
         const change = (next: Partial<BuilderDriver>) => onChange(current => updateBuilderDriver(current, index, next))
         const updatePreset = (next: Partial<DriverPresetValues>) => {
@@ -48,17 +49,20 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
             onChange={value => change({ mode: value as BuilderDriver['mode'] })} />
           {values ? <>
             {values.preset !== 'spin' ? <SelectField id={`${prefix}-source`} label="Input" value={values.source} options={DRIVER_SOURCES}
-              onChange={source => updatePreset({ source })} description={beatSynced ? 'Each detected hit drives the pulse, then it settles as the hit fades. The music controls the timing.' : 'Time, music and pointer affect the whole object. Position and view-ray inputs vary across its surface.'} /> : null}
-            {isHitPulse(values) && !beatSynced ? <div>
-              <p className="field-hint">This pulse cycles through a wave as hit strength changes. Sync it to hits for one response per beat.</p>
-              <button className="scene-secondary-button" type="button" onClick={() => updatePreset({})}>Sync pulse to hits</button>
+              onChange={source => updatePreset({ source })} description={audioDriven
+                ? hitInput ? 'Each detected hit drives the pulse, then it settles as the hit fades. The music controls the timing.'
+                  : 'Follows the selected music level continuously. Whole mix measures all sound; quieter bands produce smaller changes.'
+                : 'Time, music and pointer affect the whole object. Position and view-ray inputs vary across its surface.'} /> : null}
+            {isAudioPulse(values) && !audioDriven ? <div>
+              <p className="field-hint">This pulse cycles through a wave as the audio value changes. Follow the audio signal directly to respond to its strength.</p>
+              <button className="scene-secondary-button" type="button" onClick={() => updatePreset({})}>Follow audio signal</button>
             </div> : null}
-            {values.preset !== 'follow' && !beatSynced ? <SliderField id={`${prefix}-speed`} label="Speed" min={-10} max={10} step={.05}
+            {values.preset !== 'follow' && !audioDriven ? <SliderField id={`${prefix}-speed`} label="Speed" min={-10} max={10} step={.05}
               value={values.speed} onChange={speed => updatePreset({ speed })}
               description={values.preset === 'spin' ? 'Radians per second. Negative speed reverses direction.' : 'How quickly the pattern repeats as the input changes.'} /> : null}
             {values.preset !== 'spin' ? <SliderField id={`${prefix}-amount`} label="Amount" min={-10} max={10} step={.05} value={values.amount}
-              onChange={amount => updatePreset({ amount })} description={beatSynced ? 'Strength of each hit. Negative amounts reverse the response.' : values.preset === 'pulse' ? 'Pulse moves between zero and this amount.' : 'Negative values reverse the influence.'} /> : null}
-            {values.preset !== 'follow' && !beatSynced ? <SliderField id={`${prefix}-phase`} label="Phase" min={-Math.PI * 2} max={Math.PI * 2} step={.05}
+              onChange={amount => updatePreset({ amount })} description={audioDriven ? 'Response strength. Increase this for quieter bands; negative amounts reverse the response.' : values.preset === 'pulse' ? 'Pulse moves between zero and this amount.' : 'Negative values reverse the influence.'} /> : null}
+            {values.preset !== 'follow' && !audioDriven ? <SliderField id={`${prefix}-phase`} label="Phase" min={-Math.PI * 2} max={Math.PI * 2} step={.05}
               value={values.phase} onChange={phase => updatePreset({ phase })} description="Shift the starting point of the movement, in radians." /> : null}
             {values.preset !== 'spin' ? <SliderField id={`${prefix}-offset`} label="Offset" min={-10} max={10} step={.05} value={values.offset}
               onChange={offset => updatePreset({ offset })} description="Shift the whole influence up or down." /> : null}
