@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockCreateScenePageFetch, renderCreateScenePage, storeSceneEditorSession } from './test-fixtures'
 import { createBuilderScene } from './builderEditor'
 import { BuilderDriverControls } from './ui/BuilderDriverControls'
-import { DRIVER_INFLUENCE_RANGE, readDriverPreset } from './builderDrivers'
+import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RANGE, readDriverPreset } from './builderDrivers'
 
 vi.mock('@modules/player', async original => {
   const actual = await original<typeof import('@modules/player')>()
@@ -32,6 +32,8 @@ describe('Builder property drivers and editable recipes', () => {
     expect(screen.getByLabelText('Influence limits')).toHaveValue('full')
     expect(screen.queryByLabelText('Maximum influence')).not.toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('Input'), 'bass-hit')
+    expect(screen.queryByLabelText('Speed numeric value')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Phase numeric value')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Amount numeric value'), { target: { value: '5.55' } })
     await waitFor(() => expect(readDriverPreset(preview().objects[0].drivers[0].expression)).toMatchObject({ amount: 5.55, source: 'bass-hit', ...DRIVER_INFLUENCE_RANGE }))
     await user.selectOptions(screen.getByLabelText('Influence limits'), 'custom')
@@ -47,6 +49,24 @@ describe('Builder property drivers and editable recipes', () => {
     await waitFor(() => expect(preview()).toEqual(capped))
     expect(screen.getByLabelText('Influence limits')).toHaveValue('custom')
   }, 30_000)
+
+  it('converts an existing input-phase Pulse to hit timing without changing its strength or limits', async () => {
+    const object = createBuilderScene().objects[0]
+    const { driver, values } = defaultDriverPreset(object, 'pulse')
+    // Existing saved expressions use the same cosine wave for Time and hits.
+    const oldWave = createDriverPresetExpression({ ...values, source: 'time', speed: 5.45, phase: .116, amount: 2.45, offset: -.2 })
+    object.drivers = [{ ...driver, expression: JSON.parse(JSON.stringify(oldWave).replace('"source":"time"', '"source":"bass-hit"')) }]
+    const user = userEvent.setup(), onChange = vi.fn()
+    render(<BuilderDriverControls node={object} onChange={onChange} />)
+    await user.click(screen.getByRole('button', { name: 'Expand Pulse influence 1' }))
+    expect(screen.getByLabelText('Speed numeric value')).toHaveValue(5.45)
+    await user.click(screen.getByRole('button', { name: 'Sync pulse to hits' }))
+    const next = onChange.mock.calls[0][0](object)
+    expect(readDriverPreset(next.drivers[0].expression)).toMatchObject({ preset: 'pulse', source: 'bass-hit', amount: 2.45,
+      offset: -.2, beatSynced: true, ...DRIVER_INFLUENCE_RANGE })
+    expect({ ...next.drivers[0], expression: null }).toEqual({ ...driver, expression: null })
+    expect(object.drivers[0].expression).toEqual(JSON.parse(JSON.stringify(oldWave).replace('"source":"time"', '"source":"bass-hit"')))
+  })
 
   it('opens Alloy as editable constituent objects, edits group animation, and can undo back to the original template', async () => {
     const user = userEvent.setup()

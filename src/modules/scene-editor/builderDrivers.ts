@@ -5,7 +5,10 @@ import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from './
 export type DriverPreset = 'pulse' | 'wobble' | 'spin' | 'follow'
 export type DriverPresetValues = {
   preset: DriverPreset; source: string; speed: number; amount: number; phase: number; offset: number; minimum: number; maximum: number
+  beatSynced?: boolean
 }
+export const isHitPulse = (values: Pick<DriverPresetValues, 'preset' | 'source'>) => values.preset === 'pulse'
+  && ['bass-hit', 'mid-hit', 'treble-hit', 'overall-hit'].includes(values.source)
 // Artistic limits are optional; the compiler still bounds every final property.
 // Keep the clamp wrapper so Follow(Time) remains distinct from a Spin expression.
 export const DRIVER_INFLUENCE_RANGE = {
@@ -37,6 +40,10 @@ export function driverInput(source: string): BuilderDriverExpression {
 export function createDriverPresetExpression(values: DriverPresetValues): BuilderDriverExpression {
   const input = driverInput(values.preset === 'spin' ? 'time' : values.source)
   if (values.preset === 'spin') return add(multiply(input, constant(values.speed)), constant(values.phase))
+  // Hits already have an attack/release envelope on the audio clock. Feeding
+  // their strength into cosine makes silence the peak and cycles as hits fade.
+  if (isHitPulse(values)) return { type: 'clamp', min: values.minimum, max: values.maximum,
+    input: add(multiply({ type: 'clamp', input, min: 0, max: 1 }, constant(values.amount)), constant(values.offset)) }
   let signal: BuilderDriverExpression = input
   if (values.preset !== 'follow') {
     signal = add(multiply(input, constant(values.speed)), constant(values.phase))
@@ -69,6 +76,10 @@ export function readDriverPreset(expression: BuilderDriverExpression): DriverPre
   if (offset === undefined || amount === undefined) return null
   const signal = expression.input.left.left
   const values = { amount, offset, minimum: expression.min, maximum: expression.max, speed: 1, phase: 0 }
+  if (signal.type === 'clamp' && signal.min === 0 && signal.max === 1) {
+    const source = sourceName(signal.input)
+    if (source && isHitPulse({ preset: 'pulse', source })) return { ...values, preset: 'pulse', source, beatSynced: true }
+  }
   const source = sourceName(signal)
   if (source) return { ...values, preset: 'follow', source }
   const periodic = signal.type === 'sin' || signal.type === 'cos'

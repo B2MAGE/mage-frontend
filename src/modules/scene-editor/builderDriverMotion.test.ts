@@ -37,16 +37,16 @@ describe('Builder animation influence range', () => {
     }
   })
 
-  it('lets Bass hits vary a large Pulse instead of flattening every input to one', () => {
+  it('makes a positive Bass-hit Pulse rise with the hit and rest at baseline in silence', () => {
     const sample = sampler(presetDriver('pulse', { source: 'bass-hit', amount: 5.55 }))
     const quiet = sample(0, { 'bass-hit': 0 }).influence
     const partial = sample(0, { 'bass-hit': .5 }).influence
     const peak = sample(0, { 'bass-hit': 1 }).influence
-    expect(quiet).toBeCloseTo(5.55)
-    expect(partial).toBeCloseTo(2.775 * (1 + Math.cos(.5)))
-    expect(peak).toBeCloseTo(2.775 * (1 + Math.cos(1)))
-    expect(quiet).toBeGreaterThan(partial)
-    expect(partial).toBeGreaterThan(peak)
+    expect(quiet).toBe(0)
+    expect(partial).toBeCloseTo(2.775)
+    expect(peak).toBeCloseTo(5.55)
+    expect(quiet).toBeLessThan(partial)
+    expect(partial).toBeLessThan(peak)
   })
 
   it('retains the full Wobble amplitude beyond the previous full-turn influence cap', () => {
@@ -125,8 +125,8 @@ describe('Builder animation influence range', () => {
     const restoredDriver = restored.objects[0].drivers![0]
     expect(readDriverPreset(restoredDriver.expression)).toMatchObject({ source: 'bass-hit', amount: 5.55, ...DRIVER_INFLUENCE_RANGE })
     const sample = sampler(restoredDriver)
-    expect(sample(0, { 'bass-hit': 0 }).influence).toBeCloseTo(5.55)
-    expect(sample(0, { 'bass-hit': 1 }).influence).toBeCloseTo(2.775 * (1 + Math.cos(1)))
+    expect(sample(0, { 'bass-hit': 0 }).influence).toBe(0)
+    expect(sample(0, { 'bass-hit': 1 }).influence).toBeCloseTo(5.55)
   })
 
   it('keeps Spin un-clamped and wraps its final rotation through repeated turns', () => {
