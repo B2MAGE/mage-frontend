@@ -144,3 +144,12 @@ export const BUILDER_BINDING_RANGES = {
   'material.metalness': BUILDER_MATERIAL.metalness,
   'material.shininess': BUILDER_MATERIAL.shininess,
 } satisfies Record<BuilderBinding['target'], NumberRule>
+
+export const BUILDER_BINDING_RULES = object.bindings.items.properties
+export const BUILDER_BINDING_LIMIT = object.bindings.maxItems
+
+export function createBuilderBinding(target: BuilderBinding['target'] = 'scale.x', source: BuilderBinding['source'] = 'bass-level'): BuilderBinding {
+  return { target, source, mode: BUILDER_BINDING_RULES.mode.default as BuilderBinding['mode'],
+    amount: BUILDER_BINDING_RULES.amount.default, offset: BUILDER_BINDING_RULES.offset.default,
+    attack: BUILDER_BINDING_RULES.attack.default, release: BUILDER_BINDING_RULES.release.default }
+}

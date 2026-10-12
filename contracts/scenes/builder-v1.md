@@ -179,13 +179,50 @@ not a formula language or a reference to arbitrary uniforms.
 
 Every binding has `mode` (`add`, the default, or `replace`), `amount` (−4–4,
 default 1), `offset` (−4–4, default 0), `attack` (0–2 seconds, default 0.04), and
-`release` (0–5 seconds, default 0.35). SB-05 will implement the bounded signal
+`release` (0–5 seconds, default 0.35). The player applies the bounded signal
 envelope followed by `offset + amount * signal`; add mode adds it to the authored
 property, replace mode replaces the authored property. The result must be
 clamped to that property's declared range before uniform delivery. Shape
 dimensions, colors, other object IDs and source text are not binding targets.
-These are persisted definitions in SB-01, not a claim that the current player
-already animates Builder objects.
+The editor's **Music & pointer** section shows the resulting clamped range and
+at-rest value. Negative amounts reverse the response. Attack and release are
+labelled Rise and Fall; they control how quickly the signal changes, not how
+often the shader compiles.
+
+SB-05 uses the existing parent-owned audio analyzer and the engine package's
+mapped signal envelopes. All object bindings consume the same analysis frames;
+they never open another audio source or analyzer. Duplicate hit frames are not
+retriggered. Seek, track replacement, clear, pause and clock discontinuities
+reset the response state. Missing/stale audio becomes zero, and the authored
+property is never overwritten by animated output. At zero input, add mode yields
+the authored value plus offset; replace mode yields offset, within property bounds.
+The Simulate beat control in Motion supplies the existing deterministic test
+signals when real music is not playing. Real music takes priority.
+
+Pointer axes use canvas-local coordinates (left/bottom −1, right/top +1), and
+press is 1 while the primary pointer is held. Leaving the canvas supplies zero;
+pause and pointer cancellation release held input. Mouse, pen and touch share
+this path. Explicit pointer bindings suppress the viewer's generic whole-scene
+pointer deformation so only the authored properties deform; camera orbit still
+follows the existing scene controls.
+
+Bindings affect local object properties before parent group transforms. Object
+spin adds to bound rotation, and scene speed still controls spin and scene time.
+Scene-wide scale and Original/Selective music behavior remain available and
+apply after local composition. These are complementary controls over the same
+audio input. An outer group material override wins over an object's material
+binding; the editor identifies that override. Groups do not have bindings.
+
+Trusted compilation returns bounded binding metadata and property uniforms,
+separate from generated source. Full live snapshots carry authored values and
+bindings together; only object-index/property addresses matching the loaded
+compiler manifest can update slots. Source, strength, offset and smoothing edits
+do not reload the scene or restart music. Adding a target also stays live when
+its preview uniform exists; structural changes still use the normal compiler.
+No source is generated or evaluated per frame. Bindings belong to their object,
+so duplication gives the object a new ID and copies its responses; deletion
+removes those responses without leaving cross-object references. History,
+browser drafts, normal save/reopen and JSON import/export preserve the same data.
 
 ## Limits and errors
 
@@ -229,8 +266,6 @@ Object IDs, names and binding source labels are never interpolated into source.
 Each declared bound property receives a stable object-index/property uniform,
 so later time, music and pointer updates can change values without regenerating
 or evaluating source on every frame. Individual scene blocks and owner
-authorization remain effective. The normal editor retains its repair/export
-path for Builder data until SB-03 provides object editing. Raw JSON import must
-not silently replace Builder data with legacy control defaults. The data-level
-import/export and create/update APIs are available for contract integration,
-while the visible Builder authoring interface follows in later stories.
+authorization remain effective. The normal editor provides object, group and
+response editing alongside repair/export. Raw JSON import preserves Builder
+data through the same current-format validation used by create/update APIs.

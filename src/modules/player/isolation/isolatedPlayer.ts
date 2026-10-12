@@ -37,6 +37,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   let playing = true, renderingSuspended = false, elapsed = 0, previousTick = now()
   const visualsSuspended = () => renderingSuspended || document.visibilityState === 'hidden'
   let sceneGeneration = 0, audioGeneration = 0
+  let audioEpoch = 0
   let timer: ReturnType<typeof setInterval> | null = null
   let observer: ResizeObserver | null = null
   let host: IsolatedPlaybackHost | null = null
@@ -172,7 +173,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
     if (playing && !visualsSuspended()) elapsed = Math.min(BRIDGE_LIMITS.maxTime, elapsed + Math.max(0, Math.min(0.25, (current - previousTick) / 1000)))
     previousTick = current
     try {
-      host.update({ time: elapsed, audio: audio.sample(), pointer: { ...pointer } })
+      host.update({ time: elapsed, audio: audio.sample(), audioEpoch, pointer: { ...pointer } })
     } catch {
       fail('runtime')
       host.dispose()
@@ -270,6 +271,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       assertActive()
       if (signal?.aborted) throw new DOMException('Audio loading was cancelled.', 'AbortError')
       if (current !== audioGeneration) throw new Error('Audio changed.')
+      audioEpoch++; update()
     },
     async play(): Promise<void> {
       assertActive()
@@ -300,9 +302,9 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       if (available && sceneLoaded) host!.setPlayback(false)
       update()
     },
-    seek(seconds: number) { assertActive(); audio.seek(seconds); update() },
+    seek(seconds: number) { assertActive(); audio.seek(seconds); audioEpoch++; update() },
     setVolume(value: number) { assertActive(); audio.setVolume(value) },
-    clearAudio() { assertActive(); audioGeneration++; audio.clear(); update() },
+    clearAudio() { assertActive(); audioGeneration++; audio.clear(); audioEpoch++; update() },
     reset() {
       assertActive()
       playing = false
@@ -311,6 +313,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       previousTick = now()
       audio.pause()
       audio.seek(0)
+      audioEpoch++
       releasePointer()
       if (available && sceneLoaded) { host!.setPlayback(false); host!.setZoom(zoom) }
       update()

@@ -104,7 +104,9 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
     const stage = /^(modifiers|arrangements)(?:\[(\d+)\]|\.(\d+))\.(amount|thickness|axis|count|spacing|radius)$/.exec(field)
     const stageId = stage ? `builder-${stage[1] === 'modifiers' ? 'modifier' : 'arrangement'}-${stage[2] ?? stage[3]}-${stage[4]}` : undefined
     const frame = /^frame\.(position\.[xyz]|rotation\.[xyz]|scale)$/.exec(field)
-    const id = builderObjectControlIds[field] ?? stageId ?? (frame ? `builder-frame-${frame[1].replace('.', '-')}` : 'builder-object-list')
+    const binding = /^bindings(?:\[(\d+)\]|\.(\d+))(?:\.(target|source|mode|amount|offset|attack|release))?$/.exec(field)
+    const bindingId = binding ? `builder-binding-${binding[1] ?? binding[2]}-${binding[3] ?? 'target'}` : field === 'bindings' ? 'builder-bindings' : undefined
+    const id = builderObjectControlIds[field] ?? stageId ?? bindingId ?? (frame ? `builder-frame-${frame[1].replace('.', '-')}` : 'builder-object-list')
     return { path, id, objectIndex, section: 'scene' }
   }
   if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }

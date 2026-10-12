@@ -36,6 +36,20 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('does not replay a queued hit after an audio seek or replacement',async()=>{
+    const s=setup();await s.load()
+    const audio={audioTime:1,legacyAmplitude:0,playing:true,loaded:true,
+      frame:{sequence:1,time:1,levels:{bass:1,mid:0,treble:0,overall:1},hits:[{band:'bass' as const,time:1,strength:1}]}}
+    s.host.update({time:1,audioEpoch:1,audio,pointer:{x:0,y:0,down:false}})
+    s.host.update({time:1.01,audioEpoch:2,audio:{...audio,audioTime:1.01,frame:null},pointer:{x:0,y:0,down:false}})
+    await vi.advanceTimersByTimeAsync(34)
+    const sent=s.port.postMessage.mock.calls.filter(([message])=>message.type==='input')
+    expect(sent).toHaveLength(1)
+    expect(sent[0][0].payload.audio.frame).toBeNull()
+    expect(sent[0][0].payload.audioEpoch).toBe(2)
+    s.host.dispose()
+  })
+
   it('coalesces complete settings, snapshots their data, and rejects invalid edits without changing the queue',async()=>{
     const s=setup();await s.load()
     const settings=extractLiveSceneSettings(customDocument({visualizer:{shader:'sphere(1);'}}))

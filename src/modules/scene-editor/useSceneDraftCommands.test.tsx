@@ -4,8 +4,9 @@ import { useSceneEditorState } from './useSceneEditorState'
 import { addBuilderObject, createBuilderScene } from './builderEditor'
 import { buildSceneSubmissionDocument } from './utils'
 import { createTemplateScene } from './templateEditor'
-import { assertSceneDocumentBudget, BUILDER_LIMITS, parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
+import { assertSceneDocumentBudget, BUILDER_LIMITS, createBuilderBinding, parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
 import { groupBuilderNodes, ungroupBuilderNode, updateBuilderGroup } from './builderGroups'
+import { updateBuilderBinding } from './builderBindings'
 
 vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@shared/lib')>(), fetchAvailableTags: async () => [] }))
 
@@ -16,6 +17,36 @@ async function draft(sceneData = createBuilderScene()) {
 }
 
 describe('scene draft commands and current document round trips', () => {
+  it.each(['legacy', 'mapped-v1'] as const)('preserves independent responses through %s scene settings, group duplication, deletion, Undo, and export/import', async mode => {
+    const { result } = await draft()
+    act(() => result.current.handleAddBuilderObject('box'))
+    act(() => result.current.handleAudioResponseModeChange(mode, ['size']))
+    act(() => {
+      result.current.handleUpdateBuilderObject('object-1', object => ({ ...object, bindings: [createBuilderBinding('scale.x', 'bass-level'), createBuilderBinding('rotation.z', 'pointer-x')] }))
+      result.current.handleUpdateBuilderObject('object-2', object => ({ ...object, bindings: [createBuilderBinding('position.y', 'treble-hit')] }))
+      result.current.handleGroupBuilderNodes(['object-1', 'object-2'])
+    })
+    const before = structuredClone(result.current.builderDocument!)
+    act(() => result.current.handleDuplicateBuilderObject('group-1'))
+    const copied = result.current.builderDocument!
+    expect(copied.objects.map(object => object.id)).toEqual(['object-1', 'object-2', 'object-3', 'object-4'])
+    expect(copied.objects[2].bindings).toEqual(before.objects[0].bindings)
+    expect(copied.objects[3].bindings).toEqual(before.objects[1].bindings)
+    act(() => result.current.handleUpdateBuilderObject('object-3', object => updateBuilderBinding(object, 'scale.x', { source: 'mid-hit', amount: -.4 })))
+    expect(result.current.builderDocument?.objects[0].bindings[0].source).toBe('bass-level')
+    expect(result.current.builderDocument?.objects[2].bindings[0]).toMatchObject({ source: 'mid-hit', amount: -.4 })
+    const saved = buildSceneSubmissionDocument(result.current.sceneData)
+    expect(saved).toMatchObject({ kind: 'builder', settings: { audioResponse: mode } })
+    act(() => result.current.handleRemoveBuilderObject('group-1'))
+    expect(result.current.builderDocument?.objects.map(object => object.id)).toEqual(['object-3', 'object-4'])
+    expect(result.current.builderDocument?.composition?.groups[0].children).toEqual(['object-3', 'object-4'])
+    act(() => result.current.undoDraft())
+    expect(buildSceneSubmissionDocument(result.current.sceneData)).toEqual(saved)
+    act(() => result.current.handleRawSceneDataChange(JSON.stringify(saved)))
+    act(() => result.current.handleFormatJson())
+    expect(buildSceneSubmissionDocument(result.current.sceneData)).toEqual(saved)
+    expect(JSON.parse(result.current.sceneDataText)).toEqual(saved)
+  })
   it('groups, nests, duplicates, ungroups, and removes through one shared undo history with stable selection', async () => {
     const { result } = await draft()
     act(() => { result.current.handleAddBuilderObject('box'); result.current.handleAddBuilderObject('torus') })

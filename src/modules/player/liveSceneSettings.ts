@@ -2,10 +2,12 @@ import { assertSceneRequestBudget, validateSceneForPlayback } from './policy/sce
 import { resolveSceneForPlayback } from './templates/resolveScene'
 import { compileBuilderPreviewDocument } from './templates/builderCompiler'
 import { builderUniformValues, validateBuilderUniformValues, type BuilderUniformValue } from './templates/builderUniformValues'
+import { assertBuilderBindingManifest, validateBuilderLiveBindings, type BuilderLiveBinding } from './templates/builderBindings'
 
 type Vector = { x: number; y: number; z: number }
 export type SceneLiveSettings = {
   builderUniforms?: BuilderUniformValue[]
+  builderBindings?: BuilderLiveBinding[]
   visualizer: { scale: number }
   controls: { position0: Vector; target0: Vector; zoom0: number }
   intent: {
@@ -70,13 +72,20 @@ function completeShape(value: unknown, shape: unknown): boolean {
 export function validateLiveSceneSettings(value: unknown): SceneLiveSettings {
   // Inspect descriptors before reading/spreading fields: no getters or toJSON.
   assertSceneRequestBudget(value)
-  const { builderUniforms, ...globalSettings } = isObject(value) ? value : {}
-  if (!completeShape(globalSettings, defaults) || JSON.stringify(value).length > 8192
-    || (isObject(value) && Object.hasOwn(value, 'builderUniforms') && builderUniforms === undefined)) {
+  const { builderUniforms, builderBindings, ...globalSettings } = isObject(value) ? value : {}
+  if (!completeShape(globalSettings, defaults) || JSON.stringify(value).length > 32768
+    || (isObject(value) && Object.hasOwn(value, 'builderUniforms') && builderUniforms === undefined)
+    || (isObject(value) && Object.hasOwn(value, 'builderBindings') && builderBindings === undefined)
+    || (builderBindings !== undefined && builderUniforms === undefined)) {
     throw new Error('Unsupported live scene settings.')
   }
   const settings = globalSettings as SceneLiveSettings
   const builder = builderUniforms === undefined ? undefined : validateBuilderUniformValues(builderUniforms)
+  const bindings = builderBindings === undefined ? undefined : validateBuilderLiveBindings(builderBindings)
+  if (bindings?.some(binding => !builder?.some(uniform => 'objectIndex' in uniform
+    && uniform.objectIndex === binding.objectIndex && uniform.target === binding.target))) {
+    throw new Error('Builder response does not match the live values.')
+  }
   // Reuse the scene contract's numeric, enum, color, uniqueness and effect-count
   // policy. The fixed source is validation scaffolding and is never executed.
   const document = validateSceneForPlayback({ schemaVersion: 1, kind: 'custom', scene: { ...settings,
@@ -87,7 +96,8 @@ export function validateLiveSceneSettings(value: unknown): SceneLiveSettings {
   // Canonical field order makes repeated validated snapshots stable for the
   // bridge's no-change comparison, independent of incoming JSON key order.
   return { ...selectWithDefaults(defaults, copy) as SceneLiveSettings,
-    ...(builder === undefined ? {} : { builderUniforms: builder }) }
+    ...(builder === undefined ? {} : { builderUniforms: builder }),
+    ...(bindings === undefined ? {} : { builderBindings: bindings }) }
 }
 
 function selectWithDefaults(shape: unknown, source: unknown): unknown {
@@ -102,7 +112,12 @@ export function extractLiveSceneSettings(scene: unknown): SceneLiveSettings {
   const document = validateSceneForPlayback(scene)
   const resolved = resolveSceneForPlayback(document).engineScene
   const settings = selectWithDefaults(defaults, resolved) as SceneLiveSettings
-  if (document.kind === 'builder') settings.builderUniforms = builderUniformValues(compileBuilderPreviewDocument(document).uniforms)
+  if (document.kind === 'builder') {
+    const compiled = compileBuilderPreviewDocument(document)
+    assertBuilderBindingManifest(compiled.bindings, compiled.uniforms)
+    settings.builderUniforms = builderUniformValues(compiled.uniforms)
+    settings.builderBindings = [...compiled.bindings]
+  }
   return validateLiveSceneSettings(settings)
 }
 

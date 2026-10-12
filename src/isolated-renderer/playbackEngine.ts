@@ -12,6 +12,8 @@ import type { CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
 import { diffLiveSceneSettings, extractLiveSceneSettings, validateLiveSceneSettings, type SceneLiveSettingsPatch } from '../modules/player/liveSceneSettings'
 import { compileBuilderPreviewDocument } from '../modules/player/templates/builderCompiler'
 import { assertBuilderUniformManifest, type BuilderUniformValue } from '../modules/player/templates/builderUniformValues'
+import { assertBuilderBindingManifest, type BuilderLiveBinding } from '../modules/player/templates/builderBindings'
+import { createBuilderBindingController } from './builderBindings'
 
 export type PlaybackEngine = {
   dispose: () => void
@@ -71,6 +73,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   let capturePending = false
   let orbit: ReturnType<typeof createPointerOrbit> | null = null
   let deformation: ReturnType<typeof attachViewerPointerDeformation> | null = null
+  let bindingController: ReturnType<typeof createBuilderBindingController> | null = null
   const intent = resolved.intent as Record<string, unknown> | undefined
   const state = resolved.state as Record<string, unknown> | undefined
   let speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
@@ -82,22 +85,32 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     ? JSON.stringify(normalizeAudioResponseConfig(resolved.audioResponseConfig).config) : null
   let playing = true
   let currentZoom = 1
-  function prepareBuilderValues(values: readonly BuilderUniformValue[] | undefined) {
+  function prepareBuilderValues(values: readonly BuilderUniformValue[] | undefined, bindings: readonly BuilderLiveBinding[] | undefined) {
     if (!builder) {
-      if (values !== undefined) throw new Error('Builder settings require a Builder scene.')
+      if (values !== undefined || bindings !== undefined) throw new Error('Builder settings require a Builder scene.')
       return () => {}
     }
     assertBuilderUniformManifest(values ?? [], builder.uniforms)
+    assertBuilderBindingManifest(bindings ?? [], builder.uniforms)
     const material = engine.getEngineFields().visualizer.mesh?.material
     if (!material || Array.isArray(material)) throw new Error('Builder material is unavailable.')
     const updates = builder.uniforms.map((uniform, index) => {
       const slot = material.uniforms?.[uniform.name]
       if (!slot || typeof slot.value !== 'number') throw new Error('Builder uniform is unavailable.')
-      return { slot, value: values![index].value }
+      return { slot, index }
     })
     return () => {
-      for (const { slot, value } of updates) slot.value = value
-      material.uniformsNeedUpdate = true
+      const write = (animatedValues: readonly number[]) => {
+        for (const { slot, index } of updates) slot.value = animatedValues[index]
+        material.uniformsNeedUpdate = true
+      }
+      if (bindingController) bindingController.configure(bindings ?? [], values ?? [])
+      else bindingController = createBuilderBindingController(builder.uniforms, bindings ?? [], values ?? [], write)
+      const fields = engine.getEngineFields()
+      // An explicitly bound pointer must not also warp every object through the viewer fallback.
+      if (bindings?.some(binding => binding.source.startsWith('pointer-'))) {
+        deformation?.dispose(); deformation = null
+      } else deformation = attachViewerPointerDeformation(fields.visualizer.mesh, fields.visualizer.getActiveShader() ?? '')
     }
   }
   function onContextLost() {
@@ -110,6 +123,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     signal.removeEventListener('abort', dispose)
     canvas.removeEventListener('webglcontextlost', onContextLost)
     orbit?.dispose(); deformation?.dispose(); orbit = deformation = null
+    bindingController?.dispose(); bindingController = null
     try { unsubscribe() } catch { /* Continue releasing graphics after listener cleanup. */ }
     try { engine.dispose() } catch { /* Removing the iframe is the final cleanup boundary. */ }
     rejectStartup(new Error('Rendering stopped.'))
@@ -123,7 +137,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       unsubscribe = engine.subscribeRenderLifecycle(event => {
         if (disposed) return
         if (event.type === 'error') { onError(); dispose(); reject(new Error('Rendering failed.')); return }
-        if (loaded) { onFrame(); resolve() }
+        if (loaded) { bindingController?.advance(); onFrame(); resolve() }
       })
       // External silence prevents the renderer from ever starting its internal audio source.
       engine.setExternalAudioFrame(silence)
@@ -141,9 +155,9 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         passes: { ...Object.fromEntries(SCENE_POLICY.optionalEffectFlags.map(flag => [flag, SCENE_POLICY.defaults.optionalEffects])),
           outputPass: SCENE_POLICY.defaults.outputPass, ...(fx.passes as object ?? {}) },
       } } as MAGEPreset, artifact)) throw new Error('Scene could not load.')
-      prepareBuilderValues(appliedSettings.builderUniforms)()
+      prepareBuilderValues(appliedSettings.builderUniforms, appliedSettings.builderBindings)()
       orbit = createPointerOrbit(fields)
-      deformation = attachViewerPointerDeformation(fields.visualizer.mesh, fields.visualizer.getActiveShader() ?? '')
+      if (!builder) deformation = attachViewerPointerDeformation(fields.visualizer.mesh, fields.visualizer.getActiveShader() ?? '')
       loaded = true
       engine.setExternalClock({ time: Math.min(BRIDGE_LIMITS.maxTime, Math.max(0, initialTime)), rate: speed, playing })
       // Startup must submit a real frame even when the parent intends a paused scene.
@@ -162,6 +176,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       playback(value) {
         if (disposed) return
         playing = value
+        bindingController?.playback(value)
         engine.setExternalClock({ time: engine.getEngineTime(), rate: speed, playing })
         if (playing) engine.play(); else engine.pause()
       },
@@ -173,6 +188,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         parentTime = value.time
         engine.setExternalClock({ time: boundTime(clockAnchorScene + (parentTime - clockAnchorParent) * speed), rate: speed, playing })
         engine.setExternalAudioFrame(value.audio)
+        bindingController?.input(value)
         const rect = canvas.getBoundingClientRect()
         const inside = value.pointer.inside ?? true
         orbit?.update(value.pointer, rect.width, rect.height)
@@ -181,7 +197,11 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
           clientX: rect.left + (value.pointer.x + 1) * rect.width / 2,
           clientY: rect.top + (1 - value.pointer.y) * rect.height / 2 })
       },
-      synthetic(value) { if (!disposed) engine.setSyntheticPreview(value.enabled, value.seed, value.tempoScale) },
+      synthetic(value) {
+        if (disposed) return
+        engine.setSyntheticPreview(value.enabled, value.seed, value.tempoScale)
+        bindingController?.synthetic(value)
+      },
       audioResponse(value) {
         if (disposed) return
         const modeChanged = value.mode !== appliedResponseMode
@@ -202,7 +222,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         const next = validateLiveSceneSettings(value)
         // Validate every manifest entry and material slot before changing either
         // global settings or uniforms. Names never arrive over the bridge.
-        const applyBuilderValues = prepareBuilderValues(next.builderUniforms)
+        const applyBuilderValues = prepareBuilderValues(next.builderUniforms, next.builderBindings)
         const delta = diffLiveSceneSettings(appliedSettings, next)
         if (!Object.keys(delta).length) {
           applyBuilderValues(); appliedSettings = next; return
@@ -231,6 +251,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         if (disposed || capturePending) throw new Error('Capture is unavailable.')
         capturePending = true
         try {
+          bindingController?.advance()
           const dimensions = boundCaptureSize(value.width, value.height)
           const url = await engine.captureFramePreview({ ...value, ...dimensions })
           signal.throwIfAborted()

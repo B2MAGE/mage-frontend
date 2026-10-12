@@ -19,7 +19,8 @@ export type { BuilderCompositionNode } from './templates/builderComposition'
 export { BUILDER_OPERATIONS, BUILDER_SHAPES, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_MATERIAL,
   BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_GROUP_RANGES,
   BUILDER_MODIFIERS, BUILDER_ARRANGEMENTS, BUILDER_SPIN, builderOperationFields,
-  createBuilderOperation, createBuilderModifier, createBuilderArrangement, createBuilderMotion } from './templates/builderDefinitions'
+  createBuilderOperation, createBuilderModifier, createBuilderArrangement, createBuilderMotion,
+  BUILDER_BINDING_RULES, BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, createBuilderBinding } from './templates/builderDefinitions'
 export type { BuilderShape, BuilderDimension, BuilderGroupTarget } from './templates/builderDefinitions'
 export { SceneValidationError, validateSceneDocument, validateSceneForStorage, validateSceneForPlayback, parseSceneImport, assertSceneRequestBudget, assertSceneDocumentBudget, SCENE_POLICY, SCENE_LIMITS, SCENE_RUNTIME_CEILINGS } from './policy/sceneValidation'
 export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'

@@ -238,6 +238,56 @@ describe('isolated playback engine', () => {
     player.dispose()
   })
 
+  it.each(['legacy', 'mapped-v1'] as const)('updates independent real binding uniforms in %s mode and edits responses without restarting playback', async mode => {
+    const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      settings: { audioResponse: mode }, objects: [
+        { id: 'bass', operation: { type: 'sphere' }, transform: { position: { x: 1 } },
+          bindings: [{ target: 'position.x', source: 'bass-level', attack: 0, release: 0 }] },
+        { id: 'highs', operation: { type: 'sphere' },
+          bindings: [{ target: 'scale.y', source: 'treble-level', amount: 2, attack: 0, release: 0 }] },
+      ] }) as BuilderSceneDocument
+    const manifest = compileBuilderPreviewDocument(scene).uniforms
+    const f = fixture(), fields = f.engine.getEngineFields()
+    const uniforms = Object.fromEntries(manifest.map(uniform => [uniform.name, { value: 0 }]))
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const player = await f.ready(scene)
+    const sample = { time: 2, audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
+      frame: { sequence: 1, time: 2, levels: { bass: 0.8, mid: 0, treble: 0.25, overall: 0.5 }, hits: [] } },
+      pointer: { x: -0.4, y: 0.6, down: true, inside: true } }
+    player.input(sample)
+    expect(uniforms.builder_o0_position_x.value).toBeCloseTo(1.8)
+    expect(uniforms.builder_o1_scale_y.value).toBeCloseTo(1.5)
+    f.engine.setExternalAudioFrame.mockClear(); f.engine.setExternalClock.mockClear()
+    f.engine.setAudioResponseMode.mockClear(); f.engine.play.mockClear(); f.engine.pause.mockClear()
+    scene.objects[0].bindings[0].source = 'pointer-x'
+    scene.objects[0].bindings[0].amount = 2
+    scene.objects[1].bindings[0].amount = -1
+    player.sceneSettings(extractLiveSceneSettings(scene))
+    expect(uniforms.builder_o0_position_x.value).toBeCloseTo(0.2)
+    expect(uniforms.builder_o1_scale_y.value).toBeCloseTo(0.75)
+    expect(compileInWorker).toHaveBeenCalledOnce(); expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce()
+    expect(f.engine.setExternalAudioFrame).not.toHaveBeenCalled(); expect(f.engine.setExternalClock).not.toHaveBeenCalled()
+    expect(f.engine.setAudioResponseMode).not.toHaveBeenCalled(); expect(f.engine.play).not.toHaveBeenCalled(); expect(f.engine.pause).not.toHaveBeenCalled()
+    player.playback(false)
+    expect(uniforms.builder_o0_position_x.value).toBe(1); expect(uniforms.builder_o1_scale_y.value).toBe(1)
+    player.dispose()
+  })
+
+  it('rejects a binding to an absent object before applying any global or uniform edits', async () => {
+    const scene = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
+      objects: [{ id: 'one', operation: { type: 'sphere' }, bindings: [{ target: 'position.x', source: 'bass-level' }] }] }) as BuilderSceneDocument
+    const f = fixture(), fields = f.engine.getEngineFields()
+    const uniforms = Object.fromEntries(compileBuilderPreviewDocument(scene).uniforms.map(uniform => [uniform.name, { value: 0 }]))
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms } } }); f.engine.getEngineFields.mockReturnValue(fields)
+    const player = await f.ready(scene), settings = extractLiveSceneSettings(scene)
+    const next = { ...settings, intent: { ...settings.intent, fov: 95 },
+      builderBindings: settings.builderBindings!.map(binding => ({ ...binding, objectIndex: 1 })) }
+    expect(() => player.sceneSettings(next)).toThrow()
+    expect(f.engine.updateSettings).not.toHaveBeenCalled(); expect(uniforms.builder_o0_position_x.value).toBe(0)
+    player.dispose()
+  })
+
   it('does not allocate a renderer or fall back when worker compilation fails or is cancelled', async () => {
     const f = fixture()
     compileInWorker.mockRejectedValue(new Error('Worker unavailable'))

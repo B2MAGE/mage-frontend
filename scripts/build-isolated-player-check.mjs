@@ -32,6 +32,7 @@ const allowedModules = new Set([
   'src/modules/player/templates/builderComposition.ts',
   'src/modules/player/templates/builderDefinitions.ts',
   'src/modules/player/templates/builderUniformValues.ts',
+  'src/modules/player/templates/builderBindings.ts',
   'src/modules/player/templates/builderSchema.ts',
   'src/modules/player/templates/sceneDefinitions.ts',
   'src/modules/player/templates/templateRegistry.ts',
