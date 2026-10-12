@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BUILDER_DRIVER_LIMITS, type BuilderDriver, type BuilderGroup, type BuilderObject } from '@modules/player'
 import { AppIcon } from '@shared/ui'
-import { createDriverPresetExpression, defaultDriverPreset, DRIVER_PRESETS, DRIVER_SOURCES, driverTargets,
+import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RANGE, DRIVER_PRESETS, DRIVER_SOURCES, driverTargets,
   moveBuilderDriver, readDriverPreset, updateBuilderDriver, type DriverPresetValues } from '../builderDrivers'
 import { BuilderControlStage } from './BuilderInspector'
 import { NumberField, SelectField, SliderField } from './SceneEditorControls'
@@ -24,6 +24,7 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
         // only rotation is a Spin control with wrapping and rotation targets.
         const values = preset?.preset === 'spin' && !driver.target.startsWith('rotation.') ? null : preset
         const title = values ? DRIVER_PRESETS.find(item => item.value === values.preset)!.label : 'Combined inputs'
+        const fullMotion = values?.minimum === DRIVER_INFLUENCE_RANGE.minimum && values?.maximum === DRIVER_INFLUENCE_RANGE.maximum
         const target = targets.find(item => item.value === driver.target)
         const change = (next: Partial<BuilderDriver>) => onChange(current => updateBuilderDriver(current, index, next))
         const updatePreset = (next: Partial<DriverPresetValues>) => {
@@ -56,12 +57,18 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
               value={values.phase} onChange={phase => updatePreset({ phase })} description="Shift the starting point of the movement, in radians." /> : null}
             {values.preset !== 'spin' ? <SliderField id={`${prefix}-offset`} label="Offset" min={-10} max={10} step={.05} value={values.offset}
               onChange={offset => updatePreset({ offset })} description="Shift the whole influence up or down." /> : null}
-            {values.preset === 'spin' ? <p className="field-hint">Rotation wraps naturally through full turns.</p> : <div className="scene-editor-grid scene-editor-grid--2">
+            {values.preset === 'spin' ? <p className="field-hint">Rotation wraps naturally through full turns.</p> : <>
+              <SelectField id={`${prefix}-limits`} label="Influence limits" value={fullMotion ? 'full' : 'custom'}
+                options={[{ value: 'full', label: 'Full motion' }, { value: 'custom', label: 'Custom range' }]}
+                onChange={value => updatePreset(value === 'full' ? DRIVER_INFLUENCE_RANGE : { minimum: -1, maximum: 1 })}
+                description={fullMotion ? 'Amount and Offset use their full range. Final property limits still apply.' : 'Values outside this range are clipped. Narrow limits can flatten the motion; choose Full motion to remove them.'} />
+              {!fullMotion ? <div className="scene-editor-grid scene-editor-grid--2">
               <NumberField id={`${prefix}-minimum`} label="Minimum influence" min={-1000} max={1000} value={values.minimum}
                 onChange={minimum => updatePreset({ minimum })} />
               <NumberField id={`${prefix}-maximum`} label="Maximum influence" min={-1000} max={1000} value={values.maximum}
                 onChange={maximum => updatePreset({ maximum })} />
-            </div>}
+              </div> : null}
+            </>}
             {values.preset === 'spin' && !('children' in node) && node.operation.type === 'sphere' ? <p className="field-hint">A plain sphere has no obvious orientation, so it can look stationary while rotating. Try a less symmetrical shape to see the spin.</p> : null}
           </> : <p className="field-hint">This imported influence combines supported inputs. It is preserved as authored; you can change its property, application and order, or remove it.</p>}
           {target ? <p className="field-hint">Final {target.label.toLowerCase()} stays between {Number(target.minimum.toFixed(2))} and {Number(target.maximum.toFixed(2))}{driver.target.startsWith('rotation.') ? ' radians; rotation wraps through full turns' : ''}.</p> : null}

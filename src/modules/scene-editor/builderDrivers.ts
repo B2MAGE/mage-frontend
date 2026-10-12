@@ -1,10 +1,16 @@
-import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, builderOperationFields,
+import { BUILDER_BINDING_RANGES, BUILDER_DRIVER_LIMITS, BUILDER_GROUP_RANGES, builderOperationFields,
   type BuilderDriver, type BuilderDriverExpression, type BuilderDriverTarget, type BuilderGroup, type BuilderObject } from '@modules/player'
 import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from './builderBindings'
 
 export type DriverPreset = 'pulse' | 'wobble' | 'spin' | 'follow'
 export type DriverPresetValues = {
   preset: DriverPreset; source: string; speed: number; amount: number; phase: number; offset: number; minimum: number; maximum: number
+}
+// Artistic limits are optional; the compiler still bounds every final property.
+// Keep the clamp wrapper so Follow(Time) remains distinct from a Spin expression.
+export const DRIVER_INFLUENCE_RANGE = {
+  minimum: -BUILDER_DRIVER_LIMITS.constantMagnitude,
+  maximum: BUILDER_DRIVER_LIMITS.constantMagnitude,
 }
 export const DRIVER_PRESETS = [
   { value: 'pulse', label: 'Pulse' }, { value: 'wobble', label: 'Wobble' },
@@ -92,7 +98,7 @@ export function defaultDriverPreset(node: BuilderObject | BuilderGroup, preset: 
   const targets = driverTargets(node)
   const target = targets.find(item => item.value === (preset === 'spin' || preset === 'wobble' ? 'rotation.y' : 'children' in node ? 'scale' : 'scale.x'))!
   const values: DriverPresetValues = { preset, source: preset === 'follow' ? 'bass-level' : 'time', speed: preset === 'spin' ? .25 : 1, amount: preset === 'spin' ? 1 : .25,
-    phase: 0, offset: 0, minimum: preset === 'spin' || preset === 'wobble' ? -Math.PI * 2 : -1, maximum: preset === 'spin' || preset === 'wobble' ? Math.PI * 2 : 1 }
+    phase: 0, offset: 0, ...DRIVER_INFLUENCE_RANGE }
   return { driver: { target: target.value, mode: 'add', expression: createDriverPresetExpression(values) }, values }
 }
 

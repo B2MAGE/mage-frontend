@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockCreateScenePageFetch, renderCreateScenePage, storeSceneEditorSession } from './test-fixtures'
 import { createBuilderScene } from './builderEditor'
 import { BuilderDriverControls } from './ui/BuilderDriverControls'
+import { DRIVER_INFLUENCE_RANGE, readDriverPreset } from './builderDrivers'
 
 vi.mock('@modules/player', async original => {
   const actual = await original<typeof import('@modules/player')>()
@@ -20,6 +21,33 @@ afterEach(() => { vi.restoreAllMocks(); localStorage.clear() })
 const preview = () => JSON.parse(screen.getByTestId('driver-preview').getAttribute('data-scene')!)
 
 describe('Builder property drivers and editable recipes', () => {
+  it('uses full motion by default and releases a custom cap without resetting the animation or losing undo', async () => {
+    const user = userEvent.setup()
+    renderCreateScenePage()
+    await screen.findByLabelText(/scene name/i)
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    await user.click(screen.getByRole('heading', { name: 'Animation', level: 4 }).closest('summary')!)
+    await user.click(screen.getByRole('button', { name: 'Add pulse' }))
+    expect(screen.getByLabelText('Influence limits')).toHaveValue('full')
+    expect(screen.queryByLabelText('Maximum influence')).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Input'), 'bass-hit')
+    fireEvent.change(screen.getByLabelText('Amount numeric value'), { target: { value: '5.55' } })
+    await waitFor(() => expect(readDriverPreset(preview().objects[0].drivers[0].expression)).toMatchObject({ amount: 5.55, source: 'bass-hit', ...DRIVER_INFLUENCE_RANGE }))
+    await user.selectOptions(screen.getByLabelText('Influence limits'), 'custom')
+    await waitFor(() => expect(preview().objects[0].drivers[0].expression.max).toBe(1))
+    // An intentionally authored cap survives Amount edits until explicitly released.
+    fireEvent.change(screen.getByLabelText('Amount numeric value'), { target: { value: '5.65' } })
+    await waitFor(() => expect(readDriverPreset(preview().objects[0].drivers[0].expression)).toMatchObject({ amount: 5.65, minimum: -1, maximum: 1 }))
+    const capped = preview()
+    await user.selectOptions(screen.getByLabelText('Influence limits'), 'full')
+    await waitFor(() => expect(readDriverPreset(preview().objects[0].drivers[0].expression)).toMatchObject({ amount: 5.65, source: 'bass-hit', ...DRIVER_INFLUENCE_RANGE }))
+    expect({ ...preview().objects[0], drivers: [] }).toEqual({ ...capped.objects[0], drivers: [] })
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(preview()).toEqual(capped))
+    expect(screen.getByLabelText('Influence limits')).toHaveValue('custom')
+  }, 30_000)
+
   it('opens Alloy as editable constituent objects, edits group animation, and can undo back to the original template', async () => {
     const user = userEvent.setup()
     renderCreateScenePage()
@@ -55,6 +83,8 @@ describe('Builder property drivers and editable recipes', () => {
     await waitFor(() => expect(preview().objects[0].drivers).toHaveLength(1))
     await user.selectOptions(screen.getByLabelText('Property'), 'operation.radius')
     await waitFor(() => expect(preview().objects[0].drivers[0].target).toBe('operation.radius'))
+    await user.selectOptions(screen.getByLabelText('Influence limits'), 'custom')
+    await waitFor(() => expect(preview().objects[0].drivers[0].expression.max).toBe(1))
     const valid = preview()
     fireEvent.change(screen.getByLabelText('Minimum influence'), { target: { value: '2' } })
     expect(screen.getByLabelText('Minimum influence')).toHaveValue(2)
