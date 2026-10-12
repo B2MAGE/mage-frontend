@@ -2372,11 +2372,9 @@ html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] 
 .builder-inspector-section__content {
   display: grid;
   gap: 13px;
-  padding: 0 12px 13px;
+  padding: 12px 12px 13px;
   border-top: 1px solid var(--studio-border);
 }
-
-.builder-inspector-section__content > :first-child { margin-top: 12px; }
 
 html[data-theme] .scene-editor-page .builder-inspector-section .builder-size-controls,
 html[data-theme] .scene-editor-page .builder-inspector-section .builder-composition-card {
