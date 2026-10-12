@@ -5,7 +5,7 @@ import { builderCompositionNodes, builderCompositionRoots, validateBuilderCompos
 import { builderLiveBindings, type BuilderLiveBinding } from './builderBindings'
 import { validateBuilderDrivers } from './builderDrivers'
 import { createBuilderDriverCompilation } from './builderDriverCompiler'
-import type { BuilderArrangement, BuilderBinding, BuilderFrame, BuilderGroup, BuilderMaterial, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
+import type { BuilderArrangement, BuilderBinding, BuilderDriverExpression, BuilderFrame, BuilderGroup, BuilderMaterial, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
 export const BUILDER_COMPILER_VERSION = 1 as const
 export const BUILDER_RENDERING_POLICY = Object.freeze({
@@ -136,6 +136,59 @@ function primitiveDistanceSource(object: BuilderObject, suffix: string, read: (t
     case 'cylinder': return `let builder_distance_${suffix}=extractSDF(cylinder)(${dimension('radius', operation.radius)},${dimension('height', operation.height)});`
     default: return fail('sceneData.objects.operation.type', 'Unsupported Builder operation.')
   }
+}
+
+/** Position-driven frames vary along the march; their bounds cannot be treated as fixed geometry. */
+function hasPositionDriver(node: BuilderObject | BuilderGroup): boolean {
+  const visit = (expression: BuilderDriverExpression): boolean => {
+    switch (expression.type) {
+      case 'input': return ['local-position', 'group-position', 'world-position'].includes(expression.source)
+      case 'add': case 'multiply': return visit(expression.left) || visit(expression.right)
+      case 'component': case 'sin': case 'cos': case 'clamp': return visit(expression.input)
+      default: return false
+    }
+  }
+  return node.drivers?.some(driver => visit(driver.expression)) ?? false
+}
+
+/**
+ * An enclosing box is also a conservative distance bound. Taking the larger
+ * lower bound lets thin objects skip empty space without shrinking every step
+ * by their smallest scale. Primitive surfaces and authored scale limits stay
+ * unchanged. Twists preserve radius in their rotation plane, so reverse those
+ * coordinate stages after padding the primitive for expand/shell modifiers.
+ */
+function objectBoundSource(object: BuilderObject, suffix: string, scale: [string, string, string], read: (target: string, base: string) => string): string {
+  const operation = object.operation
+  const dimension = (key: string, value: number) => read(`operation.${key}`, literal(value))
+  let bounds: [string, string, string]
+  switch (operation.type) {
+    case 'sphere': bounds = Array(3).fill(dimension('radius', operation.radius)) as [string, string, string]; break
+    case 'box': bounds = [dimension('width', operation.width), dimension('height', operation.height), dimension('depth', operation.depth)]; break
+    case 'torus': {
+      const radius = dimension('radius', operation.radius), tube = dimension('tube', operation.tube)
+      bounds = [`(${radius}+${tube})`, tube, `(${radius}+${tube})`]; break
+    }
+    case 'cylinder': bounds = [dimension('radius', operation.radius), dimension('height', operation.height), dimension('radius', operation.radius)]; break
+  }
+  const padding = object.modifiers.reduce((total, modifier) => total
+    + (modifier.type === 'expand' ? Math.max(0, modifier.amount) : modifier.type === 'shell' ? modifier.thickness : 0), 0)
+  if (padding) bounds = bounds.map(value => `(${value}+${literal(padding)})`) as typeof bounds
+  const declarations: string[] = []
+  for (let index = object.modifiers.length - 1; index >= 0; index--) {
+    const modifier = object.modifiers[index]
+    if (modifier.type !== 'twist') continue
+    const axes = modifier.axis === 'x' ? [1, 2] : modifier.axis === 'y' ? [0, 2] : [0, 1]
+    const name = `builder_bound_radius_${suffix}_${index}`
+    declarations.push(`let ${name}=length(vec3(${bounds[axes[0]]},${bounds[axes[1]]},0));`)
+    bounds[axes[0]] = name; bounds[axes[1]] = name
+  }
+  const delta = `builder_bound_delta_${suffix}`, outside = `builder_bound_outside_${suffix}`
+  return [...declarations,
+    `let ${delta}=abs(builder_space_${suffix})-vec3(${bounds.map((value, index) => `(${value}*${scale[index]})`).join(',')});`,
+    `let ${outside}=vec3(max(${delta}.x,0),max(${delta}.y,0),max(${delta}.z,0));`,
+    `let builder_bound_distance_${suffix}=length(${outside})+min(max(${delta}.x,max(${delta}.y,${delta}.z)),0);`,
+  ].join('')
 }
 
 function addVector(left: BuilderVector, right: BuilderVector): BuilderVector {
@@ -326,8 +379,9 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
   }
   const multiply = (left: string, right: string) => left === '1' ? right : right === '1' ? left : `(${left}*${right})`
   type MaterialOverride = { material: BuilderMaterial; read: (target: 'material.metalness' | 'material.shininess') => string }
-  const objectSource = (objectIndex: number, distanceScale = '1', override?: MaterialOverride, parentGroup = 'builder_world_position') => {
+  const objectSource = (objectIndex: number, distanceScale = '1', override?: MaterialOverride, parentGroup = 'builder_world_position', parentHasFixedBounds = true) => {
     const object = document.objects[objectIndex]
+    const hasFixedBounds = parentHasFixedBounds && !hasPositionDriver(object)
     const [red, green, blue] = colorChannels(override?.material.color ?? object.material.color)
     return expandedOffsets(object).map((offset, copyIndex) => {
       const suffix = `${objectIndex}_${copyIndex}`
@@ -357,20 +411,22 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
         '__BUILDER_DRIVER_DECLARATIONS__',
         `displace((${read('position.x')}+${literal(offset.x)}),(${read('position.y')}+${literal(offset.y)}),(${read('position.z')}+${literal(offset.z)}));`,
         `rotateX(${rotation('x')});rotateY(${rotation('y')});rotateZ(${rotation('z')});`,
-        `let builder_space_${suffix}=getSpace();`,
+        `let builder_space_${suffix}=getSpace()${hasFixedBounds ? '+vec3(0)' : ''};`,
         `setSpace(vec3(builder_space_${suffix}.x/${scaleX},builder_space_${suffix}.y/${scaleY},builder_space_${suffix}.z/${scaleZ}));`,
         coordinateModifierSource(object, suffix),
         `color(${literal(red)},${literal(green)},${literal(blue)});`,
         `metal(${materialRead('material.metalness')});shine(${materialRead('material.shininess')});`,
         primitiveDistanceSource(object, suffix, driven.apply),
-        `setSDF(${modifierExpression(object, `builder_distance_${suffix}`)}*${scale});`,
+        hasFixedBounds ? objectBoundSource(object, suffix, [scaleX, scaleY, scaleZ], driven.apply) : '',
+        `setSDF(${hasFixedBounds ? `max(${modifierExpression(object, `builder_distance_${suffix}`)}*${scale},${multiply(`builder_bound_distance_${suffix}`, distanceScale)})`
+          : `${modifierExpression(object, `builder_distance_${suffix}`)}*${scale}`});`,
         `});builder_object_${suffix}();`,
       ].join('').replace('__BUILDER_DRIVER_DECLARATIONS__', driven.declarations)
     }).join('\n')
   }
 
   const nodes = builderCompositionNodes(document)
-  const nodeSource = (id: string, parentScale: string, inherited?: MaterialOverride, parentGroup = 'builder_world_position'): { source: string; name: string } => {
+  const nodeSource = (id: string, parentScale: string, inherited?: MaterialOverride, parentGroup = 'builder_world_position', parentHasFixedBounds = true): { source: string; name: string } => {
     const node = nodes.get(id)!
     if (node.kind === 'object') {
       const frame = node.object.frame
@@ -378,7 +434,7 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
       return { name, source: [
         `let ${name}=shape(()=>{`,
         frame ? frameSource(`o${node.index}`, target => constantFrameRead(frame, target)) : '',
-        objectSource(node.index, frame ? multiply(parentScale, literal(frame.scale)) : parentScale, inherited, parentGroup),
+        objectSource(node.index, frame ? multiply(parentScale, literal(frame.scale)) : parentScale, inherited, parentGroup, parentHasFixedBounds),
         'return getSDF();});',
       ].join('') }
     }
@@ -390,7 +446,7 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
     const read = (target: BuilderGroupTarget) => driven.apply(target, groupRead(index, target))
     const scale = multiply(parentScale, read('scale'))
     const override = inherited ?? (group.material ? { material: group.material, read } : undefined)
-    const children = group.children.map(child => nodeSource(child, scale, override, groupPosition))
+    const children = group.children.map(child => nodeSource(child, scale, override, groupPosition, parentHasFixedBounds && !hasPositionDriver(group)))
     const blend = group.operation.type === 'smooth-union' ? multiply(read('blend'), scale) : null
     const source = [
       `let ${name}=shape(()=>{`,
