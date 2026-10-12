@@ -45,6 +45,7 @@ export type BuilderOperation =
 export type BuilderVector = { x: number; y: number; z: number }
 /** Bounded data expressions; authored strings are never executable shader code. */
 export type BuilderDriverSource = BuilderBinding['source'] | 'time'
+  | 'scene-size' | 'scene-pointer-down' | 'scene-pointer'
   | 'local-position' | 'group-position' | 'world-position' | 'view-ray'
 export type BuilderDriverExpression =
   | { type: 'constant'; value: number | BuilderVector }
@@ -100,9 +101,11 @@ export type BuilderObject = {
   bindings: BuilderBinding[]
   drivers?: BuilderDriver[]
 }
+export type BuilderRenderSettings = { maxIterations: number; stepSize: number }
 export type BuilderSceneDocument = {
   schemaVersion: 1; kind: 'builder'; builderVersion: 1; objects: BuilderObject[]
   composition?: BuilderComposition
+  rendering?: BuilderRenderSettings
   parameters: TemplateSceneDocument['parameters']
   settings: TemplateSceneDocument['settings']
 }

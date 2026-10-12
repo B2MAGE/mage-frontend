@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { BUILDER_OPERATIONS, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_MATERIAL, BUILDER_MODIFIERS,
-  BUILDER_ARRANGEMENTS, BUILDER_SPIN, builderOperationFields, createBuilderModifier, createBuilderArrangement,
-  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame } from '@modules/player'
+  BUILDER_ARRANGEMENTS, BUILDER_SPIN, BUILDER_RENDER_SETTINGS, builderOperationFields, createBuilderModifier, createBuilderArrangement,
+  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame, type BuilderRenderSettings } from '@modules/player'
 import { AppIcon, EditorFieldShell } from '@shared/ui'
 import {
   BUILDER_EXPANDED_PRIMITIVE_LIMIT,
@@ -28,6 +28,7 @@ type Props = {
   onMoveObject: (objectId: string, targetId: string) => void
   onSelectObject: (objectId: string) => void
   onUpdateObject: (objectId: string, recipe: (object: BuilderObject) => BuilderObject) => void
+  onUpdateDocument: (recipe: (document: BuilderSceneDocument) => BuilderSceneDocument, changedField?: string) => void
   selectedObjectId: string | null
   onGroupNodes: (ids: string[]) => void
   onUngroupNode: (id: string) => void
@@ -476,6 +477,7 @@ export function BuilderSceneControls({
   onMoveObject,
   onSelectObject,
   onUpdateObject,
+  onUpdateDocument,
   selectedObjectId,
   onGroupNodes, onUngroupNode, onReparentNode, onUpdateGroup, commandError,
 }: Props) {
@@ -499,6 +501,13 @@ export function BuilderSceneControls({
     }
   })
   const nameIssue = selectedIssues['builder-object-name']
+  const rendering = document.rendering ?? {
+    maxIterations: BUILDER_RENDER_SETTINGS.maxIterations.default,
+    stepSize: BUILDER_RENDER_SETTINGS.stepSize.default,
+  }
+  const updateRendering = (field: keyof BuilderRenderSettings, value: number) => onUpdateDocument(current => ({
+    ...current, rendering: { ...rendering, ...current.rendering, [field]: value },
+  }), `rendering.${field}`)
 
   return <section className="builder-workspace" aria-labelledby="builder-workspace-title">
     <header className="builder-workspace__header">
@@ -610,6 +619,19 @@ export function BuilderSceneControls({
           </InspectorSection>
         </div>
       </section></FieldErrorsContext.Provider> : null}
+    </div>
+    <div className="builder-object-inspector__body">
+      <InspectorSection title="Rendering" fieldPrefixes={['builder-rendering-']} description="Advanced detail and raymarch settings"
+        status={`${rendering.maxIterations} steps · ${conciseNumber(rendering.stepSize)} step size`}>
+        <SliderField id="builder-rendering-maxIterations" label="Maximum steps" min={BUILDER_RENDER_SETTINGS.maxIterations.minimum}
+          max={BUILDER_RENDER_SETTINGS.maxIterations.maximum} step={1} value={rendering.maxIterations}
+          description="More steps can reveal fine details, but take more work to render."
+          onChange={value => updateRendering('maxIterations', value)} />
+        <SliderField id="builder-rendering-stepSize" label="Step size" min={BUILDER_RENDER_SETTINGS.stepSize.minimum}
+          max={BUILDER_RENDER_SETTINGS.stepSize.maximum} step={.005} numericStep="any" value={rendering.stepSize}
+          description="Smaller steps can improve thin surfaces, but may need a higher maximum to reach them."
+          onChange={value => updateRendering('stepSize', value)} />
+      </InspectorSection>
     </div>
   </section>
 }

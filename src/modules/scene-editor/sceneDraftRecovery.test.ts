@@ -40,6 +40,16 @@ describe('current browser draft format', () => {
     expect(sceneDraftFingerprint(snapshot())).toBe(sceneDraftFingerprint({ ...snapshot(), selectedBuilderObjectId: null }))
   })
 
+  it('recovers editor-only template identity and includes it in draft change detection', () => {
+    const draft = { ...snapshot(), templateSourceId: 'embedded-scene-5' as const }
+    expect(parseSceneDraftRecord(JSON.stringify(record(draft)))?.snapshot).toEqual(draft)
+    expect(sceneDraftFingerprint(draft)).not.toBe(sceneDraftFingerprint(snapshot()))
+    expect(sceneDraftFingerprint({ ...snapshot(), templateSourceId: null })).toBe(sceneDraftFingerprint(snapshot()))
+    for (const templateSourceId of ['missing-template', 5, {}]) {
+      expect(parseSceneDraftRecord(JSON.stringify({ ...record(draft), snapshot: { ...draft, templateSourceId } }))).toBeNull()
+    }
+  })
+
   it('recovers normalized Template and internal Custom editor documents', () => {
     for (const sceneData of [createTemplateScene(), { visualizer: { shader: 'sphere(1)' } }]) {
       const draft = { ...snapshot(), sceneData, sceneDataText: '{ invalid JSON' }

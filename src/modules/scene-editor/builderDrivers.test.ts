@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseSceneDocument, validateBuilderDriverExpression, type BuilderDriverExpression } from '@modules/player'
 import { createBuilderScene, updateBuilderObject } from './builderEditor'
 import { createDriverPresetExpression, defaultDriverPreset, driverTargets, moveBuilderDriver, readDriverPreset, type DriverPresetValues } from './builderDrivers'
-import { ALLOY_CAPSULE_REFERENCE_SIZE, createBuilderRecipe } from './builderRecipes'
+import { BUILDER_RECIPE_REFERENCE_SIZE, createBuilderRecipe } from './builderRecipes'
 import { updateBuilderGroup } from './builderGroups'
 import roundTrips from '../../../contracts/scenes/current-round-trips.json'
 
@@ -48,28 +48,41 @@ describe('Builder animation controls', () => {
     expect(box.objects[0].drivers?.map(driver => driver.target)).toEqual(['rotation.y'])
     expect(scene.objects[0].drivers).toHaveLength(2)
     const recipe = createBuilderRecipe('embedded-scene-5')
-    const next = updateBuilderGroup(recipe, 'capsule-view', group => ({ ...group, operation: { type: 'union' } }))
-    expect(next.composition!.groups.find(group => group.id === 'capsule-view')!.drivers?.some(driver => driver.target === 'blend')).toBe(false)
-    expect(driverTargets(next.composition!.groups[0]).some(target => target.value === 'material.metalness')).toBe(false)
+    const next = updateBuilderGroup(recipe, 'recipe-5-view', group => ({ ...group, operation: { type: 'union' } }))
+    expect(next.composition!.groups.find(group => group.id === 'recipe-5-view')!.drivers?.some(driver => driver.target === 'blend')).toBe(false)
+    expect(driverTargets(next.composition!.groups.find(group => group.id === 'recipe-5-view')!).some(target => target.value === 'material.metalness')).toBe(false)
+    expect(driverTargets(next.composition!.groups[0]).some(target => target.value === 'material.metalness')).toBe(true)
   })
 })
 
 describe('editable Alloy Capsule recipe', () => {
-  it('matches the same current reference used by API persistence tests', () => {
+  it('preserves an already saved current-format recipe without rewriting its expressions', () => {
     const fixture = roundTrips.cases.find(item => item.name === 'drivers-editable-alloy-capsule-current-recipe')
-    expect(fixture?.normalized).toEqual(createBuilderRecipe('embedded-scene-5'))
+    expect(fixture).toBeDefined()
+    expect(parseSceneDocument(fixture!.input)).toEqual(fixture!.normalized)
+    expect(parseSceneDocument(JSON.parse(JSON.stringify(fixture!.normalized)))).toEqual(fixture!.normalized)
   })
 
   it('creates independent cylinder/sphere documents with concrete editable time, music, pointer and view controls', () => {
     const first = createBuilderRecipe('embedded-scene-5'), second = createBuilderRecipe('embedded-scene-5')
     expect(first.objects.map(object => object.operation.type)).toEqual(['cylinder', 'sphere', 'sphere'])
-    expect(first.objects[0].material.metalness).toBeCloseTo(.6304962928840792 * ALLOY_CAPSULE_REFERENCE_SIZE)
-    expect(readDriverPreset(first.composition!.groups[0].drivers![1].expression)).toMatchObject({ preset: 'spin', speed: -.1, phase: .1 })
-    const blend = first.composition!.groups.find(group => group.id === 'capsule-view')!.drivers!.find(driver => driver.target === 'blend')!
-    expect(readDriverPreset(blend.expression)).toMatchObject({ preset: 'pulse', phase: -Math.PI / 2, speed: .06 })
-    expect(first.composition!.groups.flatMap(group => group.drivers ?? []).every(driver => readDriverPreset(driver.expression))).toBe(true)
+    expect(first.objects[0].material.metalness).toBeCloseTo(.6304962928840792 * BUILDER_RECIPE_REFERENCE_SIZE)
+    expect(first.parameters.scale).toBe(10)
+    expect(first.rendering).toEqual({ maxIterations: 56, stepSize: .7 })
+    const [motion, view, body] = first.composition!.groups
+    expect(motion.id).toBe('recipe-5-motion')
+    expect(view.id).toBe('recipe-5-view')
+    expect(body.id).toBe('recipe-5-body')
+    expect(view.transform.rotationOrder).toBe('zyx')
+    expect(view.drivers!.find(driver => driver.target === 'blend')!.mode).toBe('multiply')
+    for (const owner of [...first.objects, ...first.composition!.groups]) {
+      for (const driver of owner.drivers ?? []) expect(validateBuilderDriverExpression(driver.expression).type).toBe('scalar')
+    }
     expect(JSON.stringify(first)).toContain('view-ray')
-    expect(JSON.stringify(first)).toContain('overall-level')
+    expect(JSON.stringify(first)).toContain('scene-size')
+    expect(JSON.stringify(first)).toContain('scene-pointer-down')
+    expect(JSON.stringify(first)).toContain('scene-pointer')
+    expect(JSON.stringify(first)).not.toContain('overall-level')
     expect(first).not.toHaveProperty('templateId')
     first.objects[0].material.color = '#123456'
     expect(second.objects[0].material.color).toBe('#3d4437')

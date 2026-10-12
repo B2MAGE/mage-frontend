@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BUILDER_DRIVER_LIMITS, type BuilderDriver, type BuilderGroup, type BuilderObject } from '@modules/player'
+import { BUILDER_DRIVER_LIMITS, builderDriverResultRange, type BuilderDriver, type BuilderGroup, type BuilderObject } from '@modules/player'
 import { AppIcon } from '@shared/ui'
 import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RANGE, DRIVER_PRESETS, DRIVER_SOURCES, driverTargets,
   isAudioPulse, moveBuilderDriver, readDriverPreset, updateBuilderDriver, type DriverPresetValues } from '../builderDrivers'
@@ -13,6 +13,8 @@ type Props<T extends Node> = { node: T; onChange: (recipe: (current: T) => T) =>
 function inputDescription(values: DriverPresetValues) {
   const { source, preset, audioDriven } = values
   if (source === 'time') return 'Elapsed scene time drives continuous movement while playback runs.'
+  if (source === 'scene-size') return 'The shared size response from Motion, using the same music settings as templates.'
+  if (source.startsWith('scene-pointer')) return 'The shared, smoothed pointer response used by templates. Move or press on the preview.'
   if (source.startsWith('pointer-')) {
     const range = source === 'pointer-x' ? 'Left is −1, center is 0, right is +1.'
       : source === 'pointer-y' ? 'Bottom is −1, center is 0, top is +1.' : 'Released is 0; pressed is 1.'
@@ -56,6 +58,7 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
         const audioDriven = values?.audioDriven === true
         const timeDriven = values?.source === 'time' || values?.preset === 'spin'
         const target = targets.find(item => item.value === driver.target)
+        const resultRange = builderDriverResultRange(node, driver)
         const change = (next: Partial<BuilderDriver>) => onChange(current => updateBuilderDriver(current, index, next))
         const updatePreset = (next: Partial<DriverPresetValues>) => {
           if (values) change({ expression: createDriverPresetExpression({ ...values, ...next }) })
@@ -108,7 +111,7 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
             </>}
             {values.preset === 'spin' && !('children' in node) && node.operation.type === 'sphere' ? <p className="field-hint">A plain sphere has no obvious orientation, so it can look stationary while rotating. Try a less symmetrical shape to see the spin.</p> : null}
           </> : <p className="field-hint">This imported influence combines supported inputs. It is preserved as authored; you can change its property, application and order, or remove it.</p>}
-          {target ? <p className="field-hint">Final {target.label.toLowerCase()} stays between {Number(target.minimum.toFixed(2))} and {Number(target.maximum.toFixed(2))}{driver.target.startsWith('rotation.') ? ' radians; rotation wraps through full turns' : ''}.</p> : null}
+          {target ? <p className="field-hint">Final {target.label.toLowerCase()} stays between {Number(resultRange.minimum.toFixed(2))} and {Number(resultRange.maximum.toFixed(2))}{driver.target.startsWith('rotation.') ? ' radians; rotation wraps through full turns' : ''}.</p> : null}
           <div className="builder-group-selection">
             <button className="scene-secondary-button" type="button" disabled={index === 0} aria-label={`Move influence ${index + 1} earlier`} onClick={() => move(-1)}><AppIcon name="arrow-up" size={14} /> Earlier</button>
             <button className="scene-secondary-button" type="button" disabled={index === drivers.length - 1} aria-label={`Move influence ${index + 1} later`} onClick={() => move(1)}><AppIcon name="arrow-down" size={14} /> Later</button>

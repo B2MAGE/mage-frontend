@@ -92,6 +92,7 @@ export const BUILDER_LIMITS = {
 } as const
 
 export const BUILDER_TRANSFORMS = object.transform.properties
+export const BUILDER_RENDER_SETTINGS = schema.$defs.builder.properties.rendering.properties
 export const BUILDER_MATERIAL = object.material.properties
 export const BUILDER_GROUP_TRANSFORMS = group.transform.properties
 export const BUILDER_GROUP_BLEND = numericField(group.operation.anyOf, 'smooth-union', 'blend')

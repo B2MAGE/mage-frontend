@@ -1,16 +1,19 @@
 # Editable frames and lattices
 
 SB-11 adds concrete Builder recipes for Steel Lattice, Verdant Frames, Redline
-Core, Violet Matrix, Mint Halo, Ember Grid, and Emerald Ring. Each conversion is
+Core, Violet Matrix, Mint Halo, Ember Grid, and Emerald Ring, and brings the
+existing Alloy Capsule recipe onto the same exact conversion path. Each conversion is
 an ordinary editable document: individual shapes, three named groups, property
 drivers, and current scene settings. There is no embedded template code or
 template lookup in the saved Builder document.
 
 The reference is the executable shader in
-`src/modules/player/templates/versions/v1/definitions.ts`, at `size = 0.6`, clock
-zero, and centered/released pointer. The recipe fixes the constituent dimensions
-at that reference and uses scene scale `1`. Copying the template's default mesh
-scale `10` would enlarge dimensions already materialized for Builder.
+`src/modules/player/templates/versions/v1/definitions.ts`. Visible dimensions
+start at `size = 0.6`, clock zero and a centered/released pointer, then ordinary
+property influences apply the original engine size and pointer formulas. The
+conversion retains the template's mesh scale (normally `10`) or the user's
+customized scale and speed. The visible reference is an editing baseline, not a
+fixed replacement for the changing original size.
 
 ## Geometry semantics
 
@@ -34,7 +37,7 @@ it does not materialize an object for every lattice cell. Each fold and the fram
 distance work still count toward the existing workload budget. Integer `n` gives
 `2^n` cells on each axis. A fractional value keeps the original loop semantics:
 `1.99` executes once with exponent `.99`, not twice and not at exponent `1`.
-These seven recipes use integer values, but the operation supports fractional
+The seven frame/lattice recipes use integer values, but the operation supports fractional
 editing without rounding its meaning away.
 
 The lattice thickness minimum is `0.0001`, because the original Redline, Mint,
@@ -61,6 +64,7 @@ order. The final constituent after it joins using the animated smooth blend.
 | --- | --- |
 | Steel Lattice | `G(3,.7174867540818692)`, `F(.6287507765216367)`, `F(.6816361304019778)`; `boxFrame(vec3(.7*s), .05*s)` |
 | Verdant Frames | `F(.8239408771788657)`, `F(.9606847874663808)`; `B(2)` |
+| Alloy Capsule | `C(.9446738625954518)`, `S(.7023682612074287)`; `sphere(s/3)` |
 | Redline Core | `S(.9935175302558173)`, `C(.9289837692896183)`, `G(5,.5167759726831176)`; `B(2)` |
 | Violet Matrix | `G(5,.7173114499365616)`, `G(4,.6514999435141519)`, `S(.7684034276974527)`; `sphere(s/3)` |
 | Mint Halo | `T(.7885283144721178)`, `G(3,.5103440758834754)`, `F(.57344769639438)`, `G(3,.5749414312428847)`, `S(.6151950610078535)`; `B(1)` |
@@ -75,7 +79,7 @@ its executable shader has no noise call, so its recipe does not add one.
 
 ## Motion, grouping, and materials
 
-All seven original shaders use `t = .1*time`, followed by these coordinate
+All eight original shaders use `t = .1*time`, followed by these coordinate
 rotations, in this exact order:
 
 ```text
@@ -96,14 +100,15 @@ hidden groups or exceeding the existing group-depth limit.
 
 The **Main shapes** group contains every constituent except the last, using
 union. The view group joins that whole body with the final constituent using
-`blend = b * (.5 + .5*sin(.1*time*.6))`. This is the original
-`b*nsin(t*s)` at the fixed-size reference, represented by an editable Pulse
-driver. The join is not mistakenly applied between every constituent.
+`blend = b * (.5 + .5*sin(.1*time*s))`, exactly the original `b*nsin(t*s)`.
+The ordinary blend field remains editable: its baseline is `b/2`, multiplied by
+`1 + sin(.1*time*s)`. The join is not applied between every constituent.
 
 | Recipe | Original RGB | Metal coefficient (`metal = coefficient*s`) | Shine | Ray coefficient `k` | Blend coefficient `b` |
 | --- | --- | --- | --- | --- | --- |
 | Steel Lattice | `.43262751221303614, .4925493880484813, .4820048306239232` | `.5870582642599769` | `.6708057727257557` | `1.2506225601940093` | `.22812291319767167` |
 | Verdant Frames | `.14998612477802592, .47642472828922455, .0644383761978728` | `.6434036988763767` | `.34486068234140727` | `2.9789122078821793` | `.25980941491680876` |
+| Alloy Capsule | `.24020625518667676, .2651915227911193, .21629480224767128` | `.6304962928840792` | `.6210181878056416` | `1.9599006869721014` | `.11435451161014794` |
 | Redline Core | `.9514769334666449, .1077350724621205, 0` | `.7125574975041655` | `.5774589834819871` | `2.1969051528600634` | `.22861033952631743` |
 | Violet Matrix | `.11460860093209857, .007694076675091144, .4671766017485241` | `.5711799571404537` | `.5590513531439385` | `2.0857194147559914` | `.1017060511129565` |
 | Mint Halo | `.4050203196259186, .7752881097617492, .451950921258232` | `.6607251320316083` | `.6646852498948923` | `1.4049960809220177` | `.19517422836065718` |
@@ -111,17 +116,24 @@ driver. The join is not mistakenly applied between every constituent.
 | Emerald Ring | `.19651749597261697, .914203219207783, .24550611194053884` | `.31594207653292694` | `.3832572948846391` | `1.9938824658616179` | `.11214341939632295` |
 
 The current material editor stores six-digit hexadecimal color, so RGB values
-are rounded to the nearest 8-bit channel. Each object retains its own material.
-The recipes preserve the user's supported scene camera, skybox, audio mode, and
-effects settings when converting.
+are rounded to the nearest 8-bit channel. A shared group material preserves the
+common source color, shine and size-dependent metalness; each object also has
+an ordinary material ready if it is moved outside that group. The recipes
+preserve the user's scale, speed, camera, skybox, audio mode, and effects when
+converting.
 
-The fixed-size recipe is not a replay of the old engine-controlled `size` input.
-Music uses an editable bounded whole-mix scale influence on the shared group.
-Pointer movement and pressed rotation remain live, but pointer-down geometry
-shrinkage and size-dependent metalness are not pre-authored for every object.
-Those per-property responses can be edited using the same supported controls.
-This deliberate difference avoids treating one historical audio algorithm as
-an invisible recipe dependency.
+The influences read the same engine `size`, smoothed `pointerDown`, and `mouse`
+values as the original templates. They do not run those values through a second
+music or pointer smoother. Independent per-object music and pointer inputs remain
+available alongside these general scene-response inputs. Shape dimensions use
+multipliers relative to their visible reference values, so editing Width, Cell
+size, Rod thickness, radius, or other ordinary fields still changes the result.
+
+Every expression is saved as ordinary bounded Builder data. There is no hidden
+shader or template callback. Existing per-object scale safety remains positive;
+only signed dimension results from native scene-size/pointer expressions preserve
+the source distance-field behavior, including sub-`0.0001` rods at quiet sizes and
+rods that disappear under a press. These values remain finite and bounded.
 
 ## Rendering profile and verification
 
@@ -131,43 +143,68 @@ The original shaders use different authored sampling settings:
 | --- | --- | --- |
 | Steel Lattice | 101 | `.7260629659452175` |
 | Verdant Frames | 71 | `.4414923770441956` |
+| Alloy Capsule | 56 | `.7` |
 | Redline Core | 198 | `.8838993805155669` |
 | Violet Matrix | 193 | `.7999169963821687` |
 | Mint Halo | 186 | `.8615043142034936` |
 | Ember Grid | 56 | `.7549446257595138` |
 | Emerald Ring | 151 | `.26597607104610804` |
 
-Builder retains 96 iterations and step size `.7`. Both full and preview hosts
-retain their existing policy ceiling of 200 iterations; Builder's own request
-remains 96. The preview remains limited to 640 pixels on its longest edge,
+Each recipe now stores these original sampling settings in its editable rendering
+fields. New empty Builder documents still default to 96 iterations and step size
+`.7`. Both full and preview hosts retain the existing ceiling of 200 iterations.
+The preview remains limited to 640 pixels on its longest edge,
 230,400 pixels, and 30 fps. Full playback remains limited to a 1,920-pixel longest
 edge, 2,073,600 pixels, device-pixel ratio 1.5, and 60 fps. No ceiling is raised
 to hide a difficult lattice ray. Rays that do not converge within their budget
 remain misses rather than generating the old false distorted surfaces.
 
-All seven recipes fit the existing 16-object, 8-group, depth-3, 64-live-uniform,
+All eight recipes fit the existing 16-object, 8-group, depth-3, 64-live-uniform,
 192-driver-operation, and 80-modifier-operation limits. Recipe tests check
 reference geometry, exact constituent order, group scopes and Y signs, current
 document round trips, settings preservation, and compilation through the shipped
 engine.
 
-The bounded JSON transport field ceiling is 768. The previous 512-field ceiling
-rejected Mint Halo after ordinary camera, effects, and audio settings were
-materialized: its unedited normalized document contains 494 fields, and the
-same six-object document with every supported settings section and all six
-audio mappings contains 583. An additional default Spin uses 16 more fields,
-bringing that example to 599. This measured document-size adjustment does not
-change object, driver, shader, pixel, frame-rate, or raymarch budgets. Artist
-influence limits and the existing audio formulas stay intact. Tests submit all
-seven recipes through actual player and storage validation with these populated
-settings, an additional influence, and a serialized round trip; testing only the
-compiler would miss this transport rejection.
+The bounded JSON transport field ceiling is 1,024. Exact native response
+expressions make the bare normalized six-object Mint Halo document 725 fields;
+materializing all supported camera/effects/motion settings and six music mappings
+uses 813. Adding an ordinary Spin influence brings it to 829 fields, 891 JSON
+values, 13,174 UTF-8 bytes and scalar depth 12 (container depth 11). This full
+example uses 52 live input slots including the two native engine values, 21
+drivers and 170 expression operations, within the existing 32-driver and
+192-operation limits (20 drivers and 165 operations before that extra Spin). No object, shader-work, pixel,
+frame-rate, or raymarch ceiling changed. Tests submit all eight recipes through
+actual player and storage validation with these populated settings, an additional
+influence, and serialized round trips. The boundary regression accepts the
+transport walk at 1,024 fields and rejects 1,025.
 
-Local browser comparisons at the fixed reference found visibly less complete
-centers in Redline Core and Violet Matrix under Builder's 96-step profile than
-their original 198- and 193-step profiles. This difference is stronger than a
-minor color or edge change; the recipes retain the source geometry, but the
-current profile does not promise the same filled-in appearance for every ray.
-No renderer ceiling was raised to conceal that difference. Desktop and narrow
-preview checks do not establish physical-phone performance or pixel-identical
-animation with the historical changing-size templates.
+Formula regression tests execute the immutable template definitions with recording
+geometry functions, then compare each Builder dimension, rotation, material
+response and blend at 144 combinations of size, pointer strength and time per
+recipe. The cases include quiet `.006`/`.02` sizes and pressed-pointer dimensions.
+Both saved and preview shaders compile through the packaged engine at the
+existing host ceiling. This proves the formulas and contract bounds; it is not a
+claim of pixel-identical GPU output. Six-digit color quantization, floating-point
+rounding and ray-march convergence can still produce small visual differences.
+Physical-phone performance must be checked separately from desktop/narrow-window
+preview checks.
+
+A local browser comparison after restoring the native inputs and authored
+rendering profile found Steel Lattice visually matching its original at the
+fixed reference. The earlier incomplete Redline/Violet comparison used the old
+96-step conversion and does not describe the current source-matched profiles.
+That observation does not replace mobile-device performance checks or a
+pixel-by-pixel image comparison.
+
+Local visual verification (2026-10-12) compared all seven originals and converted
+recipes through the isolated renderer with matched camera, clock, size and scale.
+Steel, Redline, Ember and Emerald were checked at size .6 / scale 1 / time 0;
+Violet at size .02 / scale 10 / time 12; Mint and Verdant at size .08 / scale 10 /
+time 12. Their rendered structures and joins matched visually. This checks desktop
+rendering, not physical-phone GPU performance. The temporary comparison harness
+can require Retry after background throttling; it is not a deployed app route.
+
+Alloy Capsule now follows these same source formulas, native inputs, group
+rotation rules and authored rendering settings; see
+[the Alloy reference](builder-alloy-reference.md) for its separate local browser
+comparison at three matched input states and the remaining device-test limits.

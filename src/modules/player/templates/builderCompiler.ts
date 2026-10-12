@@ -1,9 +1,9 @@
 import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
 import { templateOptionalEffectCount } from './templateSettings'
-import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, type BuilderGroupTarget } from './builderDefinitions'
+import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, BUILDER_RENDER_SETTINGS, type BuilderGroupTarget } from './builderDefinitions'
 import { builderCompositionNodes, builderCompositionRoots, validateBuilderComposition } from './builderComposition'
 import { builderLiveBindings, type BuilderLiveBinding } from './builderBindings'
-import { validateBuilderDrivers } from './builderDrivers'
+import { usesSceneDimensions, validateBuilderDrivers } from './builderDrivers'
 import { createBuilderDriverCompilation } from './builderDriverCompiler'
 import type { BuilderArrangement, BuilderBinding, BuilderDriverExpression, BuilderFrame, BuilderGroup, BuilderMaterial, BuilderObject, BuilderSceneDocument, BuilderVector } from './sceneContract'
 
@@ -310,7 +310,7 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
       sum + Math.max(0, expandedCounts[index] - 1) * policy.operationCosts.arrangementPerAdditionalCopy, 0),
     animationOperations: document.objects.reduce((sum, object, index) =>
       sum + (object.motion.type === 'spin' ? expandedCounts[index] * policy.operationCosts.spinPerPrimitive : 0), 0),
-    liveUniforms: document.objects.reduce((sum, object) => sum + object.bindings.length * policy.operationCosts.liveUniformPerBinding, driverCompilation.uniforms.length),
+    liveUniforms: document.objects.reduce((sum, object) => sum + object.bindings.length * policy.operationCosts.liveUniformPerBinding, drivers.driverUniforms),
     optionalEffects: templateOptionalEffectCount(document.settings),
     groups: groups.length,
     groupDepth: Math.max(0, ...builderCompositionRoots(document).map(depth)),
@@ -328,6 +328,13 @@ function assertBudget(workload: Omit<BuilderWorkload, 'generatedSourceBytes'> & 
 
 /** Shared preflight for storage and compilation; normalized data is required. */
 export function validateBuilderRenderingWorkload(document: BuilderSceneDocument) {
+  if (document.rendering) for (const key of ['maxIterations', 'stepSize'] as const) {
+    const value = document.rendering[key], rule = BUILDER_RENDER_SETTINGS[key]
+    if (!Number.isFinite(value) || value < rule.minimum || value > rule.maximum
+      || (key === 'maxIterations' && !Number.isInteger(value))) {
+      fail(`sceneData.rendering.${key}`, `Expected ${key === 'maxIterations' ? 'an integer' : 'a finite number'} from ${rule.minimum} to ${rule.maximum}.`)
+    }
+  }
   builderLiveBindings(document)
   validateBuilderComposition(document, (path, detail) => fail(path.replace(/^scene\./, 'sceneData.'), detail))
   const workload = initialWorkload(document)
@@ -416,7 +423,9 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
   type MaterialOverride = { material: BuilderMaterial; read: (target: 'material.metalness' | 'material.shininess') => string }
   const objectSource = (objectIndex: number, distanceScale = '1', override?: MaterialOverride, parentGroup = 'builder_world_position', parentHasFixedBounds = true) => {
     const object = document.objects[objectIndex]
-    const hasFixedBounds = parentHasFixedBounds && !hasPositionDriver(object)
+    // Signed scene-response dimensions can collapse or invert an SDF primitive.
+    // The authored positive-size box is not a valid bound during that motion.
+    const hasFixedBounds = parentHasFixedBounds && !hasPositionDriver(object) && !object.drivers?.some(usesSceneDimensions)
     const [red, green, blue] = colorChannels(override?.material.color ?? object.material.color)
     return expandedOffsets(object).map((offset, copyIndex) => {
       const suffix = `${objectIndex}_${copyIndex}`
@@ -518,9 +527,11 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
     ? document.objects.map((_object, index) => objectSource(index))
     : builderCompositionRoots(document).map(id => { const node = nodeSource(id, '1'); return `${node.source}${node.name}();` })
 
-  const shader = [`setMaxIterations(96);setStepSize(0.7);`, ...declarations,
+  const iterations = document.rendering?.maxIterations ?? BUILDER_RENDER_SETTINGS.maxIterations.default
+  const stepSize = document.rendering?.stepSize ?? BUILDER_RENDER_SETTINGS.stepSize.default
+  const shader = [`setMaxIterations(${literal(iterations)});setStepSize(${literal(stepSize)});`, ...declarations,
     ...(drivers.spatial ? ['let builder_world_position=getSpace()+vec3(0);'] : []), ...objects].join('\n')
-  const workload: BuilderWorkload = { ...baseWorkload, liveUniforms: uniforms.length, generatedSourceBytes: encoder.encode(shader).byteLength }
+  const workload: BuilderWorkload = { ...baseWorkload, liveUniforms: uniforms.length + drivers.nativeUniformCount, generatedSourceBytes: encoder.encode(shader).byteLength }
   assertBudget(workload)
   return Object.freeze({ compilerVersion: BUILDER_COMPILER_VERSION, shader,
     bindings: Object.freeze(builderLiveBindings(document).map(binding => Object.freeze(binding))),

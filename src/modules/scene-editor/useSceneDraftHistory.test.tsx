@@ -2,6 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from './builderEditor'
 import { useSceneEditorState } from './useSceneEditorState'
+import { useSceneDraftHistory } from './useSceneDraftHistory'
+import type { SceneDraftSnapshot } from './sceneDraftRecovery'
 
 vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@shared/lib')>(), fetchAvailableTags: async () => [] }))
 
@@ -13,6 +15,24 @@ async function editor() {
 }
 
 describe('Builder draft history', () => {
+  it('undoes, redoes, and restores editor template identity with its document', () => {
+    const sceneData = createBuilderScene()
+    const initial: SceneDraftSnapshot = { name: '', description: '', sceneData,
+      sceneDataText: JSON.stringify(sceneData), selectedTagIds: [], selectedBuilderObjectId: 'object-1', templateSourceId: null }
+    const { result } = renderHook(() => useSceneDraftHistory(() => initial))
+    act(() => result.current.commit(draft => ({ ...draft, templateSourceId: 'embedded-scene-5' })))
+    expect(result.current.draft.templateSourceId).toBe('embedded-scene-5')
+    expect(result.current.canUndo).toBe(true)
+    act(() => result.current.undo())
+    expect(result.current.draft.templateSourceId).toBeNull()
+    act(() => result.current.redo())
+    expect(result.current.draft.templateSourceId).toBe('embedded-scene-5')
+    act(() => result.current.restore({ ...initial, templateSourceId: 'embedded-scene-8' }))
+    expect(result.current.draft.templateSourceId).toBe('embedded-scene-8')
+    act(() => result.current.undo())
+    expect(result.current.draft.templateSourceId).toBe('embedded-scene-5')
+  })
+
   it('undoes duplicate, reorder and delete with the same identities, bindings and selection', async () => {
     const { result } = await editor()
     act(() => result.current.handleAddBuilderObject('box'))

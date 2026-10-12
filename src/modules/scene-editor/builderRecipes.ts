@@ -1,7 +1,7 @@
-import { parseSceneDocument, type BuilderDriver, type BuilderDriverTarget, type BuilderOperation, type BuilderSceneDocument, type TemplateId } from '@modules/player'
+import { parseSceneDocument, type BuilderDriver, type BuilderDriverExpression, type BuilderDriverTarget, type BuilderOperation, type BuilderSceneDocument, type TemplateId } from '@modules/player'
 import { createBuilderObject, createBuilderScene } from './builderEditor'
-import { createDriverPresetExpression, type DriverPresetValues } from './builderDrivers'
 import { identityBuilderFrame } from './builderGroups'
+import { createTemplateScene } from './templateEditor'
 
 export const BUILDER_RECIPES = [
   { templateId: 'embedded-scene-1', label: 'Steel Lattice', description: 'A folded lattice and three box frames with shared motion and an animated outer join.' },
@@ -14,61 +14,10 @@ export const BUILDER_RECIPES = [
   { templateId: 'embedded-scene-10', label: 'Emerald Ring', description: 'A green ring and frame over a wide supporting lattice.' },
 ] as const satisfies readonly { templateId: TemplateId; label: string; description: string }[]
 
-/** Current reference: size .6, clock zero, centered/released pointer, and no audio. */
-export const ALLOY_CAPSULE_REFERENCE_SIZE = .6
-export const FRAME_LATTICE_REFERENCE_SIZE = .6
+/** Visible editing baseline; native influences retain the original live response. */
+export const BUILDER_RECIPE_REFERENCE_SIZE = .6
 
-function influence(target: BuilderDriverTarget, values: Partial<DriverPresetValues>, mode: BuilderDriver['mode'] = 'add'): BuilderDriver {
-  return { target, mode, expression: createDriverPresetExpression({ preset: 'follow', source: 'time', speed: .1, amount: 1,
-    phase: 0, offset: 0, minimum: -10, maximum: 10, ...values }) }
-}
-
-/** A fresh concrete document, never a template alias or embedded shader. */
-export function createBuilderRecipe(templateId: TemplateId, settings?: BuilderSceneDocument['settings']): BuilderSceneDocument {
-  if (templateId !== 'embedded-scene-5') return createFrameLatticeRecipe(templateId, settings)
-  const scene = createBuilderScene(templateId)
-  const cylinder = createBuilderObject('cylinder')
-  cylinder.id = 'capsule-cylinder'; cylinder.name = 'Cylinder shell'
-  cylinder.operation = { type: 'cylinder', radius: ALLOY_CAPSULE_REFERENCE_SIZE * .9446738625954518, height: ALLOY_CAPSULE_REFERENCE_SIZE * .9446738625954518 }
-  const outer = createBuilderObject('sphere', [cylinder])
-  outer.id = 'capsule-outer-sphere'; outer.name = 'Outer sphere'; outer.operation = { type: 'sphere', radius: ALLOY_CAPSULE_REFERENCE_SIZE * .7023682612074287 }
-  const inner = createBuilderObject('sphere', [cylinder, outer])
-  inner.id = 'capsule-inner-sphere'; inner.name = 'Inner sphere'; inner.operation = { type: 'sphere', radius: ALLOY_CAPSULE_REFERENCE_SIZE / 3 }
-  for (const object of [cylinder, outer, inner]) object.material = { color: '#3d4437', metalness: ALLOY_CAPSULE_REFERENCE_SIZE * .6304962928840792, shininess: .6210181878056416 }
-
-  const document = {
-    ...scene, ...(settings ? { settings: structuredClone(settings) } : {}),
-    objects: [cylinder, outer, inner],
-    composition: { version: 1, roots: ['capsule-motion'], groups: [
-      { id: 'capsule-motion', name: 'Shared motion', children: ['capsule-view'], transform: identityBuilderFrame(), operation: { type: 'union' },
-        drivers: [
-          influence('rotation.x', { preset: 'spin', speed: .1 }),
-          influence('rotation.y', { preset: 'spin', speed: -.1, phase: .1 }),
-          influence('rotation.x', { source: 'pointer-y', amount: Math.PI * 2.5 }),
-          influence('rotation.y', { source: 'pointer-x', amount: Math.PI * 2.5 }),
-          influence('scale', { source: 'overall-level', amount: .35, offset: 1, minimum: .7, maximum: 1.35 }, 'multiply'),
-          influence('rotation.y', { source: 'pointer-down', amount: .15 }),
-        ] },
-      { id: 'capsule-view', name: 'View shaping', children: ['capsule-body', inner.id], transform: identityBuilderFrame(),
-        operation: { type: 'smooth-union', blend: .05 },
-        drivers: [
-          influence('rotation.x', { source: 'view-ray.y', amount: 1.959900687 }),
-          influence('rotation.y', { source: 'view-ray.x', amount: 1.959900687 }),
-          influence('rotation.z', { source: 'view-ray.z', amount: 1.959900687 }),
-          influence('rotation.x', { preset: 'spin', speed: .1 }),
-          influence('rotation.y', { preset: 'spin', speed: .1 }),
-          influence('rotation.z', { preset: 'spin', speed: .1 }),
-          influence('blend', { preset: 'pulse', source: 'time', speed: .1 * ALLOY_CAPSULE_REFERENCE_SIZE, phase: -Math.PI / 2, amount: .11435451161014794, minimum: 0, maximum: .15 }, 'replace'),
-        ] },
-      { id: 'capsule-body', name: 'Cylinder and sphere', children: [cylinder.id, outer.id], transform: identityBuilderFrame(), operation: { type: 'union' } },
-    ] },
-  }
-  const parsed = parseSceneDocument(document)
-  if (parsed.kind !== 'builder') throw new Error('Expected a Builder recipe.')
-  return parsed
-}
-
-type FrameLatticeReference = {
+type RecipeReference = {
   color: string
   metalness: number
   shininess: number
@@ -79,7 +28,7 @@ type FrameLatticeReference = {
   objects: readonly { name: string; operation: BuilderOperation }[]
 }
 
-const referenceSize = FRAME_LATTICE_REFERENCE_SIZE
+const referenceSize = BUILDER_RECIPE_REFERENCE_SIZE
 const frame = (coefficient: number, thicknessCoefficient = coefficient): BuilderOperation => ({
   type: 'box-frame', width: referenceSize * coefficient, height: referenceSize * coefficient,
   depth: referenceSize * coefficient, thickness: referenceSize * thicknessCoefficient,
@@ -97,7 +46,7 @@ const torus = (coefficient: number): BuilderOperation => ({ type: 'torus', radiu
 
 // These coefficients are the executable version-one definitions, not their
 // marketing descriptions. In particular, Mint Halo contains no noise call.
-const FRAME_LATTICE_REFERENCES = {
+const RECIPE_REFERENCES = {
   'embedded-scene-1': {
     color: '#6e7e7b', metalness: .5870582642599769, shininess: .6708057727257557,
     rayRotation: 1.2506225601940093, blend: .22812291319767167,
@@ -117,6 +66,16 @@ const FRAME_LATTICE_REFERENCES = {
       { name: 'Inner green frame', operation: frame(.8239408771788657) },
       { name: 'Outer green frame', operation: frame(.9606847874663808) },
       { name: 'Supporting lattice', operation: supportLattice(2) },
+    ],
+  },
+  'embedded-scene-5': {
+    color: '#3d4437', metalness: .6304962928840792, shininess: .6210181878056416,
+    rayRotation: 1.9599006869721014, blend: .11435451161014794,
+    sourceIterations: 56, sourceStepSize: .7,
+    objects: [
+      { name: 'Cylinder shell', operation: { type: 'cylinder', radius: referenceSize * .9446738625954518, height: referenceSize * .9446738625954518 } },
+      { name: 'Outer sphere', operation: sphere(.7023682612074287) },
+      { name: 'Inner sphere', operation: sphere(1 / 3) },
     ],
   },
   'embedded-scene-6': {
@@ -174,51 +133,94 @@ const FRAME_LATTICE_REFERENCES = {
       { name: 'Supporting lattice', operation: supportLattice(1) },
     ],
   },
-} as const satisfies Partial<Record<TemplateId, FrameLatticeReference>>
+} as const satisfies Partial<Record<TemplateId, RecipeReference>>
 
-/** Inform authors about deliberate conversion differences before replacing their document. */
+/** Describe the shared conversion before replacing an authored document. */
 export function builderRecipeReference(templateId: TemplateId) {
-  if (!Object.hasOwn(FRAME_LATTICE_REFERENCES, templateId)) return null
-  const reference = FRAME_LATTICE_REFERENCES[templateId as keyof typeof FRAME_LATTICE_REFERENCES]
+  if (!Object.hasOwn(RECIPE_REFERENCES, templateId)) return null
+  const reference = RECIPE_REFERENCES[templateId as keyof typeof RECIPE_REFERENCES]
   return {
     size: referenceSize, sourceIterations: reference.sourceIterations, sourceStepSize: reference.sourceStepSize,
-    note: 'Keeps the original shapes, proportions, and rotation order. Music response and fine lattice detail may look different in Builder.',
+    note: 'Keeps the original shapes, scene response, rotation order, and rendering detail as editable objects and influences.',
   }
 }
 
-function createFrameLatticeRecipe(templateId: TemplateId, settings?: BuilderSceneDocument['settings']): BuilderSceneDocument {
-  if (!Object.hasOwn(FRAME_LATTICE_REFERENCES, templateId)) throw new Error('This template does not have an editable Builder version yet.')
-  const reference = FRAME_LATTICE_REFERENCES[templateId as keyof typeof FRAME_LATTICE_REFERENCES]
+type Expression = BuilderDriverExpression
+const constant = (value: number): Expression => ({ type: 'constant', value })
+const input = (source: Extract<Expression, { type: 'input' }>['source']): Expression => ({ type: 'input', source })
+const add = (left: Expression, right: Expression): Expression => ({ type: 'add', left, right })
+const multiply = (left: Expression, right: Expression): Expression => ({ type: 'multiply', left, right })
+const component = (source: 'scene-pointer' | 'view-ray', axis: 'x' | 'y' | 'z'): Expression => ({ type: 'component', input: input(source), axis })
+const scaled = (expression: Expression, factor: number) => multiply(expression, constant(factor))
+const sceneSize = () => input('scene-size')
+const scenePointerDown = () => input('scene-pointer-down')
+const clock = (speed = .1) => scaled(input('time'), speed)
+const driver = (target: BuilderDriverTarget, expression: Expression, mode: BuilderDriver['mode'] = 'multiply'): BuilderDriver => ({ target, mode, expression })
+
+/** Ratios preserve the original formula while leaving the visible base field editable. */
+function dimensionRatio(baseline: number, pointerCoefficient = 0): Expression {
+  const size = scaled(sceneSize(), 1 / referenceSize)
+  return pointerCoefficient ? add(size, scaled(scenePointerDown(), -pointerCoefficient / baseline)) : size
+}
+
+function geometryDrivers(operation: BuilderOperation, final: boolean): BuilderDriver[] {
+  switch (operation.type) {
+    case 'box-frame': return [
+      ...(['width', 'height', 'depth'] as const).map(axis => driver(`operation.${axis}`, dimensionRatio(operation[axis], final ? 0 : .05))),
+      driver('operation.thickness', dimensionRatio(operation.thickness, final ? 0 : .005)),
+    ]
+    case 'sphere': return [driver('operation.radius', dimensionRatio(operation.radius, final ? 0 : .025))]
+    case 'cylinder': return [driver('operation.radius', dimensionRatio(operation.radius, .0125)),
+      driver('operation.height', dimensionRatio(operation.height, .05))]
+    case 'torus': return [driver('operation.radius', dimensionRatio(operation.radius, .05)),
+      driver('operation.tube', dimensionRatio(operation.tube, .0125))]
+    case 'lattice': {
+      const spacingRatio = dimensionRatio(operation.spacing, final ? 0 : .05 / 3)
+      const roundness = final
+        ? { type: 'clamp' as const, input: scaled(sceneSize(), .003), min: .001, max: 1000 }
+        : add(scaled(sceneSize(), .01 * operation.spacing / referenceSize), scaled(scenePointerDown(), -.05))
+      // Original grid radius is its roundness ratio multiplied by cell size.
+      // Keep both authored Cell size and Rod thickness independently editable.
+      const roundnessAtReference = operation.thickness / operation.spacing
+      const thicknessRatio = multiply(spacingRatio, scaled(roundness, 1 / roundnessAtReference))
+      return [driver('operation.spacing', spacingRatio), driver('operation.thickness', thicknessRatio)]
+    }
+    default: throw new Error('Unsupported editable recipe operation.')
+  }
+}
+
+/** A fresh concrete document, never a template alias or embedded shader. */
+export function createBuilderRecipe(templateId: TemplateId, settings?: BuilderSceneDocument['settings'], parameters?: BuilderSceneDocument['parameters']): BuilderSceneDocument {
+  if (!Object.hasOwn(RECIPE_REFERENCES, templateId)) throw new Error('This template does not have an editable Builder version yet.')
+  const reference = RECIPE_REFERENCES[templateId as keyof typeof RECIPE_REFERENCES]
   const scene = createBuilderScene(templateId)
+  const template = createTemplateScene(templateId)
   const prefix = templateId.replace('embedded-scene-', 'recipe-')
+  const material = { color: reference.color, metalness: referenceSize * reference.metalness, shininess: reference.shininess }
   const objects = reference.objects.map(({ name, operation }, index) => ({
     ...createBuilderObject(operation.type), id: `${prefix}-object-${index + 1}`, name,
-    operation: structuredClone(operation),
-    material: { color: reference.color, metalness: referenceSize * reference.metalness, shininess: reference.shininess },
+    operation: structuredClone(operation), material: { ...material },
+    drivers: geometryDrivers(operation, index === reference.objects.length - 1),
   }))
   const document = {
-    ...scene, ...(settings ? { settings: structuredClone(settings) } : {}), objects,
+    ...scene, parameters: structuredClone(parameters ?? template.parameters),
+    settings: structuredClone(settings ?? template.settings), objects,
+    rendering: { maxIterations: reference.sourceIterations, stepSize: reference.sourceStepSize },
     composition: { version: 1, roots: [`${prefix}-motion`], groups: [
       { id: `${prefix}-motion`, name: 'Shared motion', children: [`${prefix}-view`], transform: identityBuilderFrame(), operation: { type: 'union' },
+        material,
         drivers: [
-          influence('rotation.x', { preset: 'spin', speed: .1 }),
-          influence('rotation.y', { preset: 'spin', speed: -.1, phase: .1 }),
-          influence('rotation.x', { source: 'pointer-y', amount: Math.PI * 2.5 }),
-          influence('rotation.y', { source: 'pointer-x', amount: Math.PI * 2.5 }),
-          influence('scale', { source: 'overall-level', amount: .35, offset: 1, minimum: .7, maximum: 1.35 }, 'multiply'),
-          influence('rotation.y', { source: 'pointer-down', amount: 1 }),
+          driver('rotation.x', add(clock(), scaled(component('scene-pointer', 'y'), Math.PI * 2.5)), 'add'),
+          driver('rotation.y', add(add(clock(-.1), scaled(component('scene-pointer', 'x'), Math.PI * 2.5)), add(scenePointerDown(), constant(.1))), 'add'),
+          driver('material.metalness', dimensionRatio(material.metalness)),
         ] },
       { id: `${prefix}-view`, name: 'View shaping and join', children: [`${prefix}-body`, objects.at(-1)!.id],
         transform: { ...identityBuilderFrame(), rotationOrder: 'zyx' }, operation: { type: 'smooth-union', blend: reference.blend / 2 },
         drivers: [
-          influence('rotation.x', { source: 'view-ray.y', amount: reference.rayRotation }),
-          influence('rotation.y', { source: 'view-ray.x', amount: -reference.rayRotation }),
-          influence('rotation.z', { source: 'view-ray.z', amount: reference.rayRotation }),
-          influence('rotation.x', { preset: 'spin', speed: .1 }),
-          influence('rotation.y', { preset: 'spin', speed: -.1 }),
-          influence('rotation.z', { preset: 'spin', speed: .1 }),
-          influence('blend', { preset: 'pulse', source: 'time', speed: .1 * referenceSize, phase: -Math.PI / 2,
-            amount: reference.blend, minimum: 0, maximum: reference.blend }, 'replace'),
+          driver('rotation.x', add(scaled(component('view-ray', 'y'), reference.rayRotation), clock()), 'add'),
+          driver('rotation.y', add(scaled(component('view-ray', 'x'), -reference.rayRotation), clock(-.1)), 'add'),
+          driver('rotation.z', add(scaled(component('view-ray', 'z'), reference.rayRotation), clock()), 'add'),
+          driver('blend', add({ type: 'sin', input: multiply(clock(), sceneSize()) }, constant(1))),
         ] },
       { id: `${prefix}-body`, name: 'Main shapes', children: objects.slice(0, -1).map(object => object.id),
         transform: identityBuilderFrame(), operation: { type: 'union' } },

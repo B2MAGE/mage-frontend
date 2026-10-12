@@ -97,7 +97,12 @@ describe('scene draft commands and current document round trips', () => {
     let objects = addBuilderObject(createBuilderScene(), 'sphere')
     let large: BuilderSceneDocument | undefined
     for (let count = 2; count <= BUILDER_LIMITS.objects; count++) {
-      const document = updateBuilderGroup(groupBuilderNodes(objects, objects.objects.map(object => object.id), 'group-1'), 'group-1', group => ({ ...group, transform: { ...group.transform, scale: 2 } }))
+      // Authored music responses bring a valid scene near the current shared JSON
+      // budget. Ungrouping copies the inherited frame onto every child.
+      const responsive = { ...objects, objects: objects.objects.map(object => ({ ...object,
+        bindings: [createBuilderBinding('position.x', 'bass-level'), createBuilderBinding('position.y', 'mid-level'),
+          createBuilderBinding('position.z', 'treble-level'), createBuilderBinding('rotation.z', 'pointer-x')] })) }
+      const document = updateBuilderGroup(groupBuilderNodes(responsive, responsive.objects.map(object => object.id), 'group-1'), 'group-1', group => ({ ...group, transform: { ...group.transform, scale: 2 } }))
       try {
         assertSceneDocumentBudget(document)
         try { assertSceneDocumentBudget(ungroupBuilderNode(document, 'group-1')) }
@@ -106,6 +111,9 @@ describe('scene draft commands and current document round trips', () => {
       objects = addBuilderObject(objects, 'sphere')
     }
     expect(large).toBeDefined()
+    expect(() => parseSceneDocument(large)).not.toThrow()
+    expect(() => assertSceneDocumentBudget(large)).not.toThrow()
+    expect(() => assertSceneDocumentBudget(ungroupBuilderNode(large!, 'group-1'))).toThrow(/total object fields/)
     const { result } = await draft(large!)
     act(() => result.current.handleNameChange('Changed title'))
     const before = structuredClone(result.current.draftSnapshot)

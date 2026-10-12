@@ -26,7 +26,7 @@ describe('Builder group controls', () => {
     renderCreateScenePage()
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    await user.click(screen.getByRole('button', { name: 'Builder' }))
+    await user.click(screen.getByRole('button', { name: 'Add new template' }))
     await user.click(screen.getByRole('button', { name: 'Add object' }))
     await user.click(screen.getByRole('checkbox', { name: 'Include Sphere 1 in group selection' }))
     await user.click(screen.getByRole('checkbox', { name: 'Include Sphere 2 in group selection' }))

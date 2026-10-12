@@ -73,7 +73,7 @@ describe('live Confirm review', () => {
     await user.click(review.getByRole('button', { name: /^2 Scene/ }))
 
     expect(valueFor('Creation mode')).toHaveTextContent('Builder')
-    expect(valueFor('Source')).toHaveTextContent('Builder Shader')
+    expect(valueFor('Source')).toHaveTextContent('New Template')
     expect(valueFor('Builder objects')).toHaveTextContent('2 objects')
     expect(screen.queryByText(/inactive while builder/i)).not.toBeInTheDocument()
     const objectDetails = screen.getByRole('button', { name: 'Show saved object details' })

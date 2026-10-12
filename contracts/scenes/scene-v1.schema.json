@@ -2041,6 +2041,24 @@
               }
             }
           }
+        },
+        "rendering": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxIterations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 96
+            },
+            "stepSize": {
+              "type": "number",
+              "minimum": 0.005,
+              "maximum": 1,
+              "default": 0.7
+            }
+          }
         }
       }
     },
@@ -2119,7 +2137,10 @@
                 "local-position",
                 "group-position",
                 "world-position",
-                "view-ray"
+                "view-ray",
+                "scene-size",
+                "scene-pointer-down",
+                "scene-pointer"
               ]
             }
           },

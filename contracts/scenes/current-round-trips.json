@@ -3741,7 +3741,89 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.10568210653173696
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.tube",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.02642052663293424
+                    }
+                  }
+                }
+              },
+              {
+                "target": "rotation.y",
+                "mode": "add",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "time"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0.25
+                    }
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-2",
@@ -3779,7 +3861,102 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.05442950960034295
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.05442950960034295
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.0051034407588347545
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 326.5770576020577
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-3",
@@ -3818,7 +3995,125 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.width",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.height",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.depth",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.014531985019261827
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-4",
@@ -3856,7 +4151,102 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.048314099955762316
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.048314099955762316
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.005749414312428847
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 289.8845997345739
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-5",
@@ -3892,7 +4282,38 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.06772919567723051
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-6",
@@ -3930,11 +4351,69 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "input",
+                    "source": "scene-size"
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 1.6666666666666667
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "clamp",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.003
+                        }
+                      },
+                      "min": 0.001,
+                      "max": 1000
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 555.5555555555555
+                    }
+                  }
+                }
+              }
+            ]
           }
         ],
         "parameters": {
-          "scale": 1,
+          "scale": 10,
           "speed": 1
         },
         "settings": {
@@ -4115,6 +4594,11 @@
               "operation": {
                 "type": "union"
               },
+              "material": {
+                "color": "#67c673",
+                "metalness": 0.396435079218965,
+                "shininess": 0.6646852498948923
+              },
               "drivers": [
                 {
                   "target": "rotation.x",
@@ -4133,8 +4617,19 @@
                       }
                     },
                     "right": {
-                      "type": "constant",
-                      "value": 0
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "scene-pointer"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 7.853981633974483
+                      }
                     }
                   }
                 },
@@ -4144,128 +4639,60 @@
                   "expression": {
                     "type": "add",
                     "left": {
-                      "type": "multiply",
+                      "type": "add",
                       "left": {
-                        "type": "input",
-                        "source": "time"
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "time"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.1
+                        }
                       },
                       "right": {
-                        "type": "constant",
-                        "value": -0.1
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "scene-pointer"
+                          },
+                          "axis": "x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
                       }
                     },
                     "right": {
-                      "type": "constant",
-                      "value": 0.1
+                      "type": "add",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
                     }
                   }
                 },
                 {
-                  "target": "rotation.x",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "pointer-y"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 7.853981633974483
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.y",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "pointer-x"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 7.853981633974483
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "scale",
+                  "target": "material.metalness",
                   "mode": "multiply",
                   "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "overall-level"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 0.35
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 1
-                      }
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
                     },
-                    "min": 0.7,
-                    "max": 1.35
-                  }
-                },
-                {
-                  "target": "rotation.y",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "pointer-down"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 1
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
                   }
                 }
               ]
@@ -4300,101 +4727,23 @@
                   "target": "rotation.x",
                   "mode": "add",
                   "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "component",
-                          "input": {
-                            "type": "input",
-                            "source": "view-ray"
-                          },
-                          "axis": "y"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 1.4049960809220177
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.y",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "component",
-                          "input": {
-                            "type": "input",
-                            "source": "view-ray"
-                          },
-                          "axis": "x"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": -1.4049960809220177
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.z",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "component",
-                          "input": {
-                            "type": "input",
-                            "source": "view-ray"
-                          },
-                          "axis": "z"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 1.4049960809220177
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.x",
-                  "mode": "add",
-                  "expression": {
                     "type": "add",
                     "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
                       "type": "multiply",
                       "left": {
                         "type": "input",
@@ -4404,10 +4753,6 @@
                         "type": "constant",
                         "value": 0.1
                       }
-                    },
-                    "right": {
-                      "type": "constant",
-                      "value": 0
                     }
                   }
                 },
@@ -4417,6 +4762,21 @@
                   "expression": {
                     "type": "add",
                     "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "x"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -1.4049960809220177
+                      }
+                    },
+                    "right": {
                       "type": "multiply",
                       "left": {
                         "type": "input",
@@ -4426,10 +4786,6 @@
                         "type": "constant",
                         "value": -0.1
                       }
-                    },
-                    "right": {
-                      "type": "constant",
-                      "value": 0
                     }
                   }
                 },
@@ -4441,6 +4797,21 @@
                     "left": {
                       "type": "multiply",
                       "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "z"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
                         "type": "input",
                         "source": "time"
                       },
@@ -4448,55 +4819,39 @@
                         "type": "constant",
                         "value": 0.1
                       }
-                    },
-                    "right": {
-                      "type": "constant",
-                      "value": 0
                     }
                   }
                 },
                 {
                   "target": "blend",
-                  "mode": "replace",
+                  "mode": "multiply",
                   "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "sin",
+                      "input": {
                         "type": "multiply",
                         "left": {
-                          "type": "cos",
-                          "input": {
-                            "type": "add",
-                            "left": {
-                              "type": "multiply",
-                              "left": {
-                                "type": "input",
-                                "source": "time"
-                              },
-                              "right": {
-                                "type": "constant",
-                                "value": 0.06
-                              }
-                            },
-                            "right": {
-                              "type": "constant",
-                              "value": -1.5707963267948966
-                            }
+                          "type": "multiply",
+                          "left": {
+                            "type": "input",
+                            "source": "time"
+                          },
+                          "right": {
+                            "type": "constant",
+                            "value": 0.1
                           }
                         },
                         "right": {
-                          "type": "constant",
-                          "value": 0.09758711418032859
+                          "type": "input",
+                          "source": "scene-size"
                         }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0.09758711418032859
                       }
                     },
-                    "min": 0,
-                    "max": 0.19517422836065718
+                    "right": {
+                      "type": "constant",
+                      "value": 1
+                    }
                   }
                 }
               ]
@@ -4529,15 +4884,28 @@
               }
             }
           ]
+        },
+        "rendering": {
+          "maxIterations": 186,
+          "stepSize": 0.8615043142034936
         }
       },
       "valid": true,
       "renderingWorkload": {
         "expandedPrimitives": 6,
+        "compositionOperations": 5,
+        "transformOperations": 45,
+        "materialOperations": 21,
         "modifierOperations": 19,
-        "liveUniforms": 48,
-        "driverOperations": 81,
-        "optionalEffects": 4
+        "arrangementOperations": 0,
+        "animationOperations": 0,
+        "liveUniforms": 52,
+        "optionalEffects": 4,
+        "groups": 3,
+        "groupDepth": 3,
+        "driverOperations": 170,
+        "authoredDrivers": 21,
+        "generatedSourceBytes": 17031
       },
       "normalized": {
         "schemaVersion": 1,
@@ -4579,7 +4947,89 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.10568210653173696
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.tube",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.02642052663293424
+                    }
+                  }
+                }
+              },
+              {
+                "target": "rotation.y",
+                "mode": "add",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "time"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0.25
+                    }
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-2",
@@ -4617,7 +5067,102 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.05442950960034295
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.05442950960034295
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.0051034407588347545
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 326.5770576020577
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-3",
@@ -4656,7 +5201,125 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.width",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.height",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.depth",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.014531985019261827
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-4",
@@ -4694,7 +5357,102 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.048314099955762316
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.048314099955762316
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.005749414312428847
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 289.8845997345739
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-5",
@@ -4730,7 +5488,38 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.06772919567723051
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "recipe-8-object-6",
@@ -4768,11 +5557,69 @@
             "motion": {
               "type": "none"
             },
-            "bindings": []
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "input",
+                    "source": "scene-size"
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 1.6666666666666667
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "clamp",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.003
+                        }
+                      },
+                      "min": 0.001,
+                      "max": 1000
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 555.5555555555555
+                    }
+                  }
+                }
+              }
+            ]
           }
         ],
         "parameters": {
-          "scale": 1,
+          "scale": 10,
           "speed": 1
         },
         "settings": {
@@ -4953,6 +5800,11 @@
               "operation": {
                 "type": "union"
               },
+              "material": {
+                "color": "#67c673",
+                "metalness": 0.396435079218965,
+                "shininess": 0.6646852498948923
+              },
               "drivers": [
                 {
                   "target": "rotation.x",
@@ -4971,8 +5823,19 @@
                       }
                     },
                     "right": {
-                      "type": "constant",
-                      "value": 0
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "scene-pointer"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 7.853981633974483
+                      }
                     }
                   }
                 },
@@ -4982,128 +5845,60 @@
                   "expression": {
                     "type": "add",
                     "left": {
-                      "type": "multiply",
+                      "type": "add",
                       "left": {
-                        "type": "input",
-                        "source": "time"
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "time"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.1
+                        }
                       },
                       "right": {
-                        "type": "constant",
-                        "value": -0.1
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "scene-pointer"
+                          },
+                          "axis": "x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
                       }
                     },
                     "right": {
-                      "type": "constant",
-                      "value": 0.1
+                      "type": "add",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
                     }
                   }
                 },
                 {
-                  "target": "rotation.x",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "pointer-y"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 7.853981633974483
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.y",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "pointer-x"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 7.853981633974483
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "scale",
+                  "target": "material.metalness",
                   "mode": "multiply",
                   "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "overall-level"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 0.35
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 1
-                      }
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
                     },
-                    "min": 0.7,
-                    "max": 1.35
-                  }
-                },
-                {
-                  "target": "rotation.y",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "input",
-                          "source": "pointer-down"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 1
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
                   }
                 }
               ]
@@ -5138,101 +5933,23 @@
                   "target": "rotation.x",
                   "mode": "add",
                   "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "component",
-                          "input": {
-                            "type": "input",
-                            "source": "view-ray"
-                          },
-                          "axis": "y"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 1.4049960809220177
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.y",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "component",
-                          "input": {
-                            "type": "input",
-                            "source": "view-ray"
-                          },
-                          "axis": "x"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": -1.4049960809220177
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.z",
-                  "mode": "add",
-                  "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
-                        "type": "multiply",
-                        "left": {
-                          "type": "component",
-                          "input": {
-                            "type": "input",
-                            "source": "view-ray"
-                          },
-                          "axis": "z"
-                        },
-                        "right": {
-                          "type": "constant",
-                          "value": 1.4049960809220177
-                        }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0
-                      }
-                    },
-                    "min": -10,
-                    "max": 10
-                  }
-                },
-                {
-                  "target": "rotation.x",
-                  "mode": "add",
-                  "expression": {
                     "type": "add",
                     "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
                       "type": "multiply",
                       "left": {
                         "type": "input",
@@ -5242,10 +5959,6 @@
                         "type": "constant",
                         "value": 0.1
                       }
-                    },
-                    "right": {
-                      "type": "constant",
-                      "value": 0
                     }
                   }
                 },
@@ -5255,6 +5968,21 @@
                   "expression": {
                     "type": "add",
                     "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "x"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -1.4049960809220177
+                      }
+                    },
+                    "right": {
                       "type": "multiply",
                       "left": {
                         "type": "input",
@@ -5264,10 +5992,6 @@
                         "type": "constant",
                         "value": -0.1
                       }
-                    },
-                    "right": {
-                      "type": "constant",
-                      "value": 0
                     }
                   }
                 },
@@ -5279,6 +6003,21 @@
                     "left": {
                       "type": "multiply",
                       "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "z"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
                         "type": "input",
                         "source": "time"
                       },
@@ -5286,55 +6025,39 @@
                         "type": "constant",
                         "value": 0.1
                       }
-                    },
-                    "right": {
-                      "type": "constant",
-                      "value": 0
                     }
                   }
                 },
                 {
                   "target": "blend",
-                  "mode": "replace",
+                  "mode": "multiply",
                   "expression": {
-                    "type": "clamp",
-                    "input": {
-                      "type": "add",
-                      "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "sin",
+                      "input": {
                         "type": "multiply",
                         "left": {
-                          "type": "cos",
-                          "input": {
-                            "type": "add",
-                            "left": {
-                              "type": "multiply",
-                              "left": {
-                                "type": "input",
-                                "source": "time"
-                              },
-                              "right": {
-                                "type": "constant",
-                                "value": 0.06
-                              }
-                            },
-                            "right": {
-                              "type": "constant",
-                              "value": -1.5707963267948966
-                            }
+                          "type": "multiply",
+                          "left": {
+                            "type": "input",
+                            "source": "time"
+                          },
+                          "right": {
+                            "type": "constant",
+                            "value": 0.1
                           }
                         },
                         "right": {
-                          "type": "constant",
-                          "value": 0.09758711418032859
+                          "type": "input",
+                          "source": "scene-size"
                         }
-                      },
-                      "right": {
-                        "type": "constant",
-                        "value": 0.09758711418032859
                       }
                     },
-                    "min": 0,
-                    "max": 0.19517422836065718
+                    "right": {
+                      "type": "constant",
+                      "value": 1
+                    }
                   }
                 }
               ]
@@ -5367,6 +6090,10 @@
               }
             }
           ]
+        },
+        "rendering": {
+          "maxIterations": 186,
+          "stepSize": 0.8615043142034936
         }
       }
     }

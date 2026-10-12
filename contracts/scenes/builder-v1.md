@@ -247,8 +247,9 @@ Expressions are closed data, not executable strings:
 
 - `constant` supplies a scalar `value` or a complete `{x,y,z}` vector; each
   component is finite and within −1,000–1,000.
-- `input` selects `time`, an existing approved audio/pointer source, or one of
-  `local-position`, `group-position`, `world-position`, and `view-ray`.
+- `input` selects `time`, an existing approved audio/pointer source, the native
+  scene responses `scene-size`, `scene-pointer-down`, and `scene-pointer`, or
+  one of `local-position`, `group-position`, `world-position`, and `view-ray`.
 - `add` has matching scalar/scalar or vector/vector `left` and `right` inputs.
   `multiply` also supports scalar/vector broadcasting and componentwise vectors.
 - `sin` and `cos` have one scalar or vector `input` and bounded outputs.
@@ -260,6 +261,11 @@ Expressions are closed data, not executable strings:
 Time is a scene clock, wrapped at 86,400 seconds. Audio and pointer input ranges
 match bindings and reuse the existing analysis/pointer path. Driver signals use
 the existing mapped envelopes with a 0.05-second attack and 0.2-second release.
+The native `scene-size` and `scene-pointer-down` scalar inputs retain the shared
+size and smoothed pointer-press responses used by templates. `scene-pointer`
+reads the engine's smoothed mouse vector (`x`/`y`, with `z` equal to zero).
+These allow editable recipes to preserve their original scene-wide music and
+pointer behavior; they do not replace the independent mapped inputs.
 Spatial inputs
 are actual renderer coordinates or the per-pixel view ray; a camera position
 is not accepted as a substitute for a view ray. `local-position` is the current
@@ -283,8 +289,10 @@ scene, eight expression levels and 32 nodes per expression. The scene's total
 driver-operation budget is 192 nodes, counting object arrangement copies;
 group expressions count once for their composed result. Numeric constants each
 require one live uniform (three for a vector), clamp bounds require two, and
-each distinct audio/pointer signal requires one shared uniform. Time/spatial
-inputs do not add live slots. Driver slots and existing binding slots together
+each distinct audio/pointer signal requires one shared uniform. Each distinct
+native scalar scene input also requires one shared uniform. Time, spatial
+inputs and the built-in `scene-pointer` vector do not add live slots. Driver
+slots and existing binding slots together
 remain within the 64-uniform budget. Whole-document and other rendering limits
 continue to apply.
 
@@ -333,6 +341,16 @@ forward surface rotation order; the compiler reverses it for the coordinate
 transform. It allows editable template recipes to retain their authored
 rotation sequence without adding hidden template behavior.
 
+An optional top-level `rendering` object preserves authored march settings:
+`maxIterations` is an integer from 1 to 200, and `stepSize` is a number from
+0.005 to 1. These are the existing isolated engine bounds. Omitted rendering
+data stays absent and compiles with the established 96 iterations and 0.7
+step size; a present partial object fills only its missing rendering defaults.
+Editable template conversions can therefore retain their original march
+settings as ordinary saved controls. Imported values outside the finite bounds
+are rejected, and the renderer independently enforces the same 200-iteration
+ceiling. No global rendering or document limit changes for this setting.
+
 The existing 80-operation modifier budget also accounts for procedural shape
 work: a box frame costs 3, and a lattice costs `3 + floor(iterations)`, each
 multiplied by arrangement copies. No workload, raymarch, resolution or runtime
@@ -346,20 +364,25 @@ existing unbounded-coordinate path instead of an invalid fixed box bound.
 There are at most 16 objects, one shape operation each, and four bindings per
 object. Disabled/unused data still counts. The existing whole-document policy
 also applies before recursive validation and again after defaults: 256 KiB
-serialized UTF-8, depth 16, 64 items per array, 64 keys per object, 768 total
+serialized UTF-8, depth 16, 64 items per array, 64 keys per object, 1,024 total
 keys, 2,048 total values, and 64 UTF-8 bytes per key. API request limit remains
 512 KiB. No Builder-specific budget bypass is introduced; rich object settings
 can exhaust the shared total budget before the object-count ceiling. At most
 four optional scene effects can be enabled, including bloom and tint.
 
-SB-11 raises only the transport field count from 512 to 768. The unmodified
-six-object Mint Halo recipe with fully authored camera, effects, motion and
-six audio mappings contains 583 keys, 637 values and 8,741 UTF-8 bytes. Its
-geometry and drivers already fit every rendering budget. This adjustment lets
-the actual editable document pass through storage and playback without
-discarding controls or changing animation. Document bytes/depth/array sizes,
-total values, shader work and runtime ceilings remain unchanged; 769 fields
-still fail transport validation before the contract parser runs.
+SB-11 raises only the transport field count from 512 to 1,024. The exact
+six-object Mint Halo recipe contains 725 keys before optional settings; with
+fully authored camera, effects, motion and six audio mappings it uses 813 keys.
+An additional Spin uses 16 more keys, bringing it to 829 keys, 891 JSON values,
+13,174 UTF-8 bytes and scalar depth 12 (container depth 11). It uses 52 live
+input slots including two native engine values, 21 drivers and 170 expression
+operations. The original 512 and
+intermediate 768 ceilings both rejected a valid editable document even though
+its geometry and expressions fit every rendering-work budget (20 drivers and
+165 expression operations before the extra Spin). This measured document-size
+adjustment preserves the ordinary dimensions and their native scene responses.
+Document bytes/depth/array sizes, total values, shader work and runtime ceilings
+remain unchanged; 1,025 fields still fail the transport walk before parsing.
 
 All numbers must be finite and in range. Wrong types are rejected, not coerced
 or clamped during storage. Duplicate IDs/targets, prototype-related fields,

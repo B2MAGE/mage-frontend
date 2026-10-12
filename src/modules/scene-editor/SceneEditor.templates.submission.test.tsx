@@ -28,7 +28,7 @@ const template = () => parseSceneDocument({ schemaVersion: 1, kind: 'template', 
   parameters: { scale: 8, speed: 0.7 }, settings: { skybox: 3, camera: { fov: 65, autoRotate: false }, tint: { enabled: true, color: '#abc123' } } })
 
 describe('template editor API round trips', () => {
-  it('creates a template with adjusted settings and reopens the saved document without introducing source', async () => {
+  it('saves an editable template as a Builder scene and reopens its objects and settings without template metadata', async () => {
     let submitted: Record<string, unknown> | undefined
     mockCreateScenePageFetch((url, init) => {
       if (url === buildApiUrl('/scenes') && init?.method === 'POST') {
@@ -60,12 +60,14 @@ describe('template editor API round trips', () => {
     await screen.findByText('My Scenes')
     const saved = parseSceneDocument(submitted?.sceneData)
     expect(saved).toEqual(expected)
-    expect(saved).toMatchObject({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-1', templateVersion: 1,
+    expect(saved).toMatchObject({ schemaVersion: 1, kind: 'builder', builderVersion: 1, objects: expected.objects,
       parameters: { scale: 12, speed: 1.8 }, settings: {
         controls: { position0: { x: 15 }, zoom0: 2 }, motion: { minimizing_factor: 0.7 },
         effects: { passes: { rgbShift: true }, params: { rgbShift: { amount: 0.02 } } },
       } })
     expect(JSON.stringify(saved)).not.toContain('shader')
+    expect(submitted).not.toHaveProperty('templateSourceId')
+    expect(submitted?.sceneData).not.toHaveProperty('templateSourceId')
     expect(capture).toHaveBeenCalledTimes(1)
     view.unmount()
     renderEditScenePage()

@@ -21,6 +21,10 @@ export const DRIVER_PRESETS = [
 ] as const
 export const DRIVER_SOURCES = [
   { value: 'time', label: 'Time' },
+  { value: 'scene-size', label: 'Scene size response' },
+  { value: 'scene-pointer-down', label: 'Scene pointer press' },
+  { value: 'scene-pointer.x', label: 'Scene pointer horizontal' },
+  { value: 'scene-pointer.y', label: 'Scene pointer vertical' },
   ...Object.entries(BUILDER_BINDING_SOURCE_LABELS).map(([value, label]) => ({ value, label })),
   ...(['local-position', 'group-position', 'world-position', 'view-ray'] as const).flatMap(source =>
     (['x', 'y', 'z'] as const).map(axis => ({ value: `${source}.${axis}`,

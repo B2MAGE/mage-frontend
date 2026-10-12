@@ -1,7 +1,7 @@
 import schema from '../../../../contracts/scenes/scene-v1.schema.json'
 import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
 import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, builderOperationFields } from './builderDefinitions'
-import type { BuilderDriverExpression, BuilderGroup, BuilderObject, BuilderSceneDocument } from './sceneContract'
+import type { BuilderDriver, BuilderDriverExpression, BuilderGroup, BuilderObject, BuilderSceneDocument } from './sceneContract'
 
 type Fail = (path: string, detail: string) => never
 type ValueType = 'scalar' | 'vector'
@@ -47,12 +47,13 @@ function bounded(value: unknown, path: string, fail: Fail): number {
   return value
 }
 
-export type BuilderDriverExpressionInfo = { type: ValueType; nodes: number; constants: number; signals: Set<string>; spatial: boolean }
+export type BuilderDriverExpressionInfo = { type: ValueType; nodes: number; constants: number; signals: Set<string>; nativeInputs: Set<string>; spatial: boolean }
 
 /** Independent compiler validation runs before expansion or source allocation. */
 export function validateBuilderDriverExpression(value: unknown, path = 'expression', fail: Fail = defaultFail): BuilderDriverExpressionInfo {
   let nodes = 0, constants = 0, spatial = false
   const signals = new Set<string>()
+  const nativeInputs = new Set<string>()
   const visit = (input: unknown, at: string, depth: number): ValueType => {
     if (depth > BUILDER_DRIVER_LIMITS.expressionDepth) return fail(at, `driver expression depth exceeds ${BUILDER_DRIVER_LIMITS.expressionDepth}`)
     if (++nodes > BUILDER_DRIVER_LIMITS.expressionNodes) return fail(at, `driver expression exceeds ${BUILDER_DRIVER_LIMITS.expressionNodes} nodes`)
@@ -74,8 +75,10 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
       }
       case 'input': {
         if (typeof expression.source !== 'string' || !sources.has(expression.source)) return fail(`${at}.source`, 'unsupported driver input')
+        if (expression.source === 'scene-pointer') return 'vector'
         if (spatialSources.has(expression.source)) { spatial = true; return 'vector' }
-        if (expression.source !== 'time') signals.add(expression.source)
+        if (expression.source === 'scene-size' || expression.source === 'scene-pointer-down') nativeInputs.add(expression.source)
+        if (!['time', 'scene-size', 'scene-pointer-down'].includes(expression.source)) signals.add(expression.source)
         return 'scalar'
       }
       case 'add': case 'multiply': {
@@ -101,12 +104,13 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
     }
   }
   const type = visit(value, path, 1)
-  return { type, nodes, constants, signals, spatial }
+  return { type, nodes, constants, signals, nativeInputs, spatial }
 }
 
 export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fail = defaultFail) {
   let driverOperations = 0, authoredDrivers = 0, constants = 0
   const signals = new Set<string>()
+  const nativeInputs = new Set<string>()
   const visitNode = (node: BuilderObject | BuilderGroup, path: string, copies: number) => {
     if (node.drivers === undefined) return
     if (!Array.isArray(node.drivers) || node.drivers.length > BUILDER_DRIVER_LIMITS.perNode) return fail(path, `expected at most ${BUILDER_DRIVER_LIMITS.perNode} drivers`)
@@ -121,6 +125,7 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
       authoredDrivers++
       constants += info.constants
       info.signals.forEach(source => signals.add(source))
+      info.nativeInputs.forEach(source => nativeInputs.add(source))
       if (authoredDrivers > policy.limits.authoredDrivers) return fail(path, `scene exceeds ${policy.limits.authoredDrivers} drivers`)
       if (driverOperations > policy.limits.driverOperations) return fail(path, `expanded driver work exceeds ${policy.limits.driverOperations} operations`)
     })
@@ -128,7 +133,7 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
   document.objects.forEach((node, index) => visitNode(node, `scene.objects[${index}].drivers`,
     node.arrangements.reduce((count, arrangement) => count * arrangement.count, 1)))
   document.composition?.groups.forEach((node, index) => visitNode(node, `scene.composition.groups[${index}].drivers`, 1))
-  const driverUniforms = constants + signals.size
+  const driverUniforms = constants + signals.size + nativeInputs.size
   const bindings = document.objects.reduce((count, object) => count + object.bindings.length, 0)
   if (driverUniforms + bindings > policy.limits.liveUniforms) fail('scene.objects.drivers', `required live values exceed ${policy.limits.liveUniforms} uniforms`)
   return { driverOperations, authoredDrivers, driverUniforms }
@@ -137,4 +142,25 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
 /** Exposed for typed editors without turning imported expressions into source. */
 export function builderDriverExpressionIsSpatial(expression: BuilderDriverExpression): boolean {
   return validateBuilderDriverExpression(expression).spatial
+}
+
+/** Scene response can collapse a distance primitive; it must not flatten at the UI's size step. */
+export function usesSceneDimensions(driver: BuilderDriver): boolean {
+  if (!driver.target.startsWith('operation.')) return false
+  const visit = (expression: BuilderDriverExpression): boolean => {
+    switch (expression.type) {
+      case 'input': return expression.source === 'scene-size' || expression.source === 'scene-pointer-down'
+      case 'add': case 'multiply': return visit(expression.left) || visit(expression.right)
+      case 'sin': case 'cos': case 'clamp': case 'component': return visit(expression.input)
+      default: return false
+    }
+  }
+  return visit(driver.expression)
+}
+
+export function builderDriverResultRange(node: BuilderObject | BuilderGroup, driver: BuilderDriver) {
+  const range = builderDriverTargetRange(node, driver.target)!
+  // Signed SDF dimensions remain finite and never divide coordinates. Transform
+  // scales still use the existing strictly positive limits that prevent distortion.
+  return usesSceneDimensions(driver) ? { minimum: -range.maximum, maximum: range.maximum } : range
 }

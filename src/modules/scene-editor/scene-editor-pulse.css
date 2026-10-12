@@ -262,15 +262,8 @@ html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle:not(:disab
   color: var(--studio-text);
 }
 html[data-theme] .scene-editor-page .scene-editor-collapsible__content { width: 100%; }
-.scene-creation-mode { display: grid; gap: 8px; }
-.scene-creation-mode > :is(h3, p) { margin: 0; }
 .scene-settings-group { display: grid; gap: 14px; }
 .scene-settings-group > h3 { margin: 0; }
-.scene-creation-mode__options { display: flex; width: fit-content; max-width: 100%; }
-html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button { min-width: 100px; width: auto; min-height: 38px; border-radius: 0; }
-html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:first-child { border-radius: var(--editor-button-radius) 0 0 var(--editor-button-radius); }
-html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button:last-child { margin-left: -1px; border-radius: 0 var(--editor-button-radius) var(--editor-button-radius) 0; }
-html[data-theme] .scene-editor-page .scene-creation-mode__options .scene-secondary-button[aria-pressed="true"] { position: relative; border-color: var(--studio-accent-border); background: var(--studio-accent-fill); color: var(--studio-accent); opacity: 1; }
 html[data-theme] .scene-editor-page .scene-setup-controls {
   display: grid;
   grid-template-columns: 1fr;
@@ -280,6 +273,17 @@ html[data-theme] .scene-editor-page .scene-setup-controls {
   border: 1px solid var(--studio-border);
   border-radius: 12px;
   background: var(--studio-panel);
+}
+.scene-template-picker { display: flex; align-items: stretch; gap: 8px; min-width: 0; }
+.scene-template-picker > select { min-width: 0; flex: 1; }
+html[data-theme] .scene-editor-page .scene-template-picker__add {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
 }
 html[data-theme] .scene-editor-page .scene-setup-controls__scale { grid-column: auto; }
 html[data-theme] .scene-editor-page .scene-setup-controls > [data-template-field] {
@@ -2375,8 +2379,6 @@ html[data-theme] .scene-editor-page .scene-editor-section[data-section="Scene"] 
   padding: 12px 12px 13px;
   border-top: 1px solid var(--studio-border);
 }
-
-.builder-recipe-action { display: grid; justify-items: start; gap: 8px; margin-top: 14px; }
 
 html[data-theme] .scene-editor-page .builder-inspector-section .builder-size-controls,
 html[data-theme] .scene-editor-page .builder-inspector-section .builder-composition-card {

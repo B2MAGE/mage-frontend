@@ -116,6 +116,7 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
   if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }
   if (path === 'parameters.scale') return { path, id: 'builder-scene-scale', section: 'scene' }
   if (path === 'settings.skybox') return { path, id: 'builder-skybox', section: 'scene' }
+  if (path === 'rendering.maxIterations' || path === 'rendering.stepSize') return { path, id: `builder-rendering-${path.slice('rendering.'.length)}`, section: 'scene' }
   return templateControlLocation(path)
 }
 

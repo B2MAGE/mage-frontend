@@ -137,14 +137,14 @@ describe('shared scene submission preflight', () => {
   })
 
   it('keeps the transport field ceiling bounded independently from rendering work', () => {
-    expect(SCENE_LIMITS.totalKeys).toBe(768)
-    const atLimit = { items: Array.from({ length: 13 }, (_, row) => Object.fromEntries(
-      Array.from({ length: row === 12 ? 47 : 60 }, (_, column) => [`key${column}`, column]))) }
-    // 1 array property + 12 * 60 fields + 47 fields = 768. Schema validation
+    expect(SCENE_LIMITS.totalKeys).toBe(1024)
+    const atLimit = { items: Array.from({ length: 18 }, (_, row) => Object.fromEntries(
+      Array.from({ length: row === 17 ? 3 : 60 }, (_, column) => [`key${column}`, column]))) }
+    // 1 array property + 17 * 60 fields + 3 fields = 1024. Schema validation
     // still rejects this unknown envelope, but the transport walk permits it.
     expect(() => validateSceneDocument(atLimit)).not.toThrow('total object fields')
-    atLimit.items[12].extra = 1
-    rejects(atLimit, 'sceneData', 'maximum is 768')
+    atLimit.items[17].extra = 1
+    rejects(atLimit, 'sceneData', 'maximum is 1024')
     expect(SCENE_LIMITS).toMatchObject({ sceneBytes: 262144, sceneDepth: 16, arrayItems: 64,
       objectKeys: 64, totalNodes: 2048, sourceBytes: 65536, optionalEffects: 4 })
   })

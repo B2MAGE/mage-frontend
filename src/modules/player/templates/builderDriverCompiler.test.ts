@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { compileShader } from '@notrac/mage/compiler'
 import { normalizeCompiledShader } from '@notrac/mage/compiled-shader'
 import { compileBuilderDocument, compileBuilderPreviewDocument } from './builderCompiler'
+import { createBuilderDriverCompilation } from './builderDriverCompiler'
+import { getTemplateDefinition } from './templateRegistry'
 import { parseSceneDocument, type BuilderDriver, type BuilderDriverExpression, type BuilderSceneDocument } from './sceneContract'
 import { extractLiveSceneSettings, sceneStructuralContent, validateLiveSceneSettings } from '../liveSceneSettings'
 import { assertBuilderUniformManifest } from './builderUniformValues'
@@ -82,23 +84,34 @@ describe('bounded Builder driver compilation', () => {
     expect(() => compileShader(compiled.shader)).not.toThrow()
   })
 
-  it('compiles the editable Alloy Capsule recipe within the existing mobile and uniform budgets', () => {
+  it('compiles Alloy with the original template scale and rendering profile inside existing budgets', () => {
     const scene = createBuilderRecipe('embedded-scene-5')
-    const compiled = compileBuilderPreviewDocument(scene)
-    expect(compiled.workload.expandedPrimitives).toBe(3)
-    expect(compiled.workload.liveUniforms).toBeLessThanOrEqual(64)
-    expect(compiled.workload.driverOperations).toBeLessThanOrEqual(192)
-    expect(() => normalizeCompiledShader(compileShader(compiled.shader, { maxRaymarchIterations: 96 }), { maxRaymarchIterations: 96 })).not.toThrow()
-    expect(compiled.shader).toContain('getRayDirection().y')
-    expect(compiled.shader).not.toContain('embedded-scene-5')
+    const original = normalizeCompiledShader(compileShader(getTemplateDefinition('embedded-scene-5', 1)!.shader))
+    expect(scene.parameters.scale).toBe(10)
+    expect(scene.rendering).toEqual({ maxIterations: 56, stepSize: .7 })
+    for (const compile of [compileBuilderDocument, compileBuilderPreviewDocument]) {
+      const compiled = compile(scene)
+      expect(compiled.workload.expandedPrimitives).toBe(3)
+      expect(compiled.workload.liveUniforms).toBeLessThanOrEqual(64)
+      expect(compiled.workload.driverOperations).toBeLessThanOrEqual(192)
+      expect(compiled.uniforms.filter(uniform => uniform.target === 'driver-signal')).toHaveLength(0)
+      const artifact = normalizeCompiledShader(compileShader(compiled.shader))
+      for (const declaration of [/const int MAX_ITERATIONS = [^;]+;/, /const float STEP_SIZE_CONSTANT = [^;]+;/]) {
+        expect(artifact.frag.match(declaration)?.[0]).toBe(original.frag.match(declaration)?.[0])
+      }
+      expect(artifact.frag).toContain('const int MAX_ITERATIONS = 56;')
+      expect(compiled.shader).toContain('getRayDirection().y')
+      expect(compiled.shader).toMatch(/let size\s*=\s*input\(\);/)
+      expect(compiled.shader).toMatch(/let pointerDown\s*=\s*input\(\);/)
+      expect(compiled.shader).not.toContain('embedded-scene-5')
+    }
   })
 
   it('preserves Alloy constituent proportions and material at the documented size 0.6 reference', () => {
     // Fixed coefficients come from the checked-in version-one Alloy template.
-    // Current Builder motion is intentionally measured using its own frame convention.
     const scene = createBuilderRecipe('embedded-scene-5')
     const referenceSize = 0.6
-    expect(scene.parameters.scale).toBe(1)
+    expect(scene.parameters.scale).toBe(10)
     expect(scene.objects[0].operation).toMatchObject({ type: 'cylinder' })
     const cylinder = scene.objects[0].operation as { radius: number; height: number }
     expect(cylinder.radius).toBeCloseTo(0.9446738625954518 * referenceSize, 8)
@@ -111,15 +124,48 @@ describe('bounded Builder driver compilation', () => {
       expect(object.material.metalness).toBeCloseTo(0.6304962928840792 * referenceSize, 8)
       expect(object.material.shininess).toBeCloseTo(0.6210181878056416, 8)
     }
-    expect(scene.composition!.roots).toEqual(['capsule-motion'])
-    expect(scene.composition!.groups[0].children).toEqual(['capsule-view'])
-    expect(scene.composition!.groups[1].children).toEqual(['capsule-body', 'capsule-inner-sphere'])
-    expect(scene.composition!.groups[2].children).toEqual(['capsule-cylinder', 'capsule-outer-sphere'])
+    const [motion, view, body] = scene.composition!.groups
+    expect(scene.composition!.roots).toEqual([motion.id])
+    expect(motion.children).toEqual([view.id])
+    expect(view.children).toEqual([body.id, scene.objects[2].id])
+    expect(body.children).toEqual([scene.objects[0].id, scene.objects[1].id])
+    expect(motion.operation.type).toBe('union')
+    expect(view.operation).toEqual({ type: 'smooth-union', blend: .11435451161014794 / 2 })
+    expect(body.operation.type).toBe('union')
+    expect(view.transform.rotationOrder).toBe('zyx')
     const shader = compileBuilderPreviewDocument(scene).shader
     expect(shader.indexOf('builder_frame_g0')).toBeLessThan(shader.indexOf('builder_frame_g1'))
     expect(shader.indexOf('builder_frame_g1')).toBeLessThan(shader.indexOf('builder_frame_g2'))
     expect(shader.indexOf('builder_frame_g2')).toBeLessThan(shader.indexOf('extractSDF(cylinder)'))
     expect(shader.indexOf('extractSDF(cylinder)')).toBeLessThan(shader.indexOf('extractSDF(sphere)'))
+    const viewSource = shader.slice(shader.indexOf('let builder_group_1=shape('), shader.indexOf('let builder_frame_g1='))
+    expect(viewSource.indexOf('rotateX(')).toBeLessThan(viewSource.indexOf('rotateY('))
+    expect(viewSource.indexOf('rotateY(')).toBeLessThan(viewSource.indexOf('rotateZ('))
+  })
+
+  it('retains Alloy native size and press formulas at quiet, active and collapsed dimensions', () => {
+    const scene = createBuilderRecipe('embedded-scene-5')
+    const compilation = createBuilderDriverCompilation(scene, false)
+    const uniforms = compilation.uniforms.map(uniform => uniform.name)
+    const values = compilation.uniforms.map(uniform => uniform.initialValue)
+    const [cylinder, outer, inner] = scene.objects
+    const expected = [
+      { object: cylinder, target: 'operation.radius', baseline: .9446738625954518 * .6, coefficient: .9446738625954518, press: .05 / 4 },
+      { object: cylinder, target: 'operation.height', baseline: .9446738625954518 * .6, coefficient: .9446738625954518, press: .05 },
+      { object: outer, target: 'operation.radius', baseline: .7023682612074287 * .6, coefficient: .7023682612074287, press: .05 / 2 },
+      { object: inner, target: 'operation.radius', baseline: .6 / 3, coefficient: 1 / 3, press: 0 },
+    ]
+    for (const [index, property] of expected.entries()) {
+      const owner = compilation.owner(property.object, `alloy_${index}`, { local: 'local', group: 'group', world: 'world' })
+      const result = owner.apply(property.target, String(property.baseline))
+      // Execute only trusted generated scalar assignments, with explicit engine
+      // inputs, and compare against the checked-in template's dimension formulas.
+      const evaluate = new Function(...uniforms, 'size', 'pointerDown', 'max', 'min', `${owner.declarations}return ${result};`)
+      for (const size of [.006, .02, .6]) for (const press of [0, .4, 1]) {
+        expect(evaluate(...values, size, press, Math.max, Math.min), `${property.target}, size ${size}, press ${press}`)
+          .toBeCloseTo(size * property.coefficient - press * property.press, 10)
+      }
+    }
   })
 
   it('emits a linear sequence for eight influences on the same property', () => {
