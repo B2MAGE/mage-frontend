@@ -83,11 +83,17 @@ export function groupBuilderNodes(document: BuilderSceneDocument, ids: readonly 
   return { ...next, composition: { ...next.composition!, groups: [...next.composition!.groups, group] } }
 }
 
-// Forward rotations match the compiler: local X, then Y, then Z.
+// Forward rotations match the selected frame order. Composition retains the
+// child's order so moving a driven group does not reorder its animated axes.
 type Matrix3 = [number, number, number, number, number, number, number, number, number]
-function rotationMatrix({ x, y, z }: BuilderFrame['rotation']): Matrix3 {
+function rotationMatrix({ x, y, z }: BuilderFrame['rotation'], order: BuilderFrame['rotationOrder'] = 'xyz'): Matrix3 {
   const a = Math.cos(x), b = Math.sin(x), c = Math.cos(y), d = Math.sin(y), e = Math.cos(z), f = Math.sin(z)
-  return [e * c, e * d * b - f * a, e * d * a + f * b, f * c, f * d * b + e * a, f * d * a - e * b, -d, c * b, c * a]
+  const axes: Record<string, Matrix3> = {
+    x: [1, 0, 0, 0, a, -b, 0, b, a],
+    y: [c, 0, d, 0, 1, 0, -d, 0, c],
+    z: [e, -f, 0, f, e, 0, 0, 0, 1],
+  }
+  return [...order].reduce<Matrix3>((matrix, axis) => multiply(axes[axis], matrix), [1, 0, 0, 0, 1, 0, 0, 0, 1])
 }
 function multiply(a: Matrix3, b: Matrix3): Matrix3 {
   return Array.from({ length: 9 }, (_, index) => {
@@ -96,24 +102,60 @@ function multiply(a: Matrix3, b: Matrix3): Matrix3 {
   }) as Matrix3
 }
 const clean = (value: number) => Math.abs(value) < 1e-10 ? 0 : value
-function matrixRotation(m: Matrix3): BuilderFrame['rotation'] {
-  const y = Math.asin(Math.max(-1, Math.min(1, -m[6])))
-  return { x: clean(Math.abs(m[6]) < .9999999 ? Math.atan2(m[7], m[8]) : 0), y: clean(y),
-    z: clean(Math.abs(m[6]) < .9999999 ? Math.atan2(m[3], m[0]) : Math.atan2(-m[1], m[4])) }
+function matrixRotation(m: Matrix3, order: BuilderFrame['rotationOrder'] = 'xyz'): BuilderFrame['rotation'] {
+  const asin = (value: number) => Math.asin(Math.max(-1, Math.min(1, value)))
+  const regular = (value: number) => Math.abs(value) < 1 - 1e-12
+  let x = 0, y = 0, z = 0
+  // Extrinsic forward orders use the reversed intrinsic Euler decomposition.
+  // At gimbal lock the remaining pair is represented by one equivalent angle.
+  switch (order) {
+    case 'xyz':
+      y = asin(-m[6])
+      if (regular(m[6])) { x = Math.atan2(m[7], m[8]); z = Math.atan2(m[3], m[0]) }
+      else z = Math.atan2(-m[1], m[4])
+      break
+    case 'xzy':
+      z = asin(m[3])
+      if (regular(m[3])) { x = Math.atan2(-m[5], m[4]); y = Math.atan2(-m[6], m[0]) }
+      else y = Math.atan2(m[2], m[8])
+      break
+    case 'yxz':
+      x = asin(m[7])
+      if (regular(m[7])) { y = Math.atan2(-m[6], m[8]); z = Math.atan2(-m[1], m[4]) }
+      else z = Math.atan2(m[3], m[0])
+      break
+    case 'yzx':
+      z = asin(-m[1])
+      if (regular(m[1])) { x = Math.atan2(m[7], m[4]); y = Math.atan2(m[2], m[0]) }
+      else x = Math.atan2(-m[5], m[8])
+      break
+    case 'zxy':
+      x = asin(-m[5])
+      if (regular(m[5])) { y = Math.atan2(m[2], m[8]); z = Math.atan2(m[3], m[4]) }
+      else y = Math.atan2(-m[6], m[0])
+      break
+    case 'zyx':
+      y = asin(m[2])
+      if (regular(m[2])) { x = Math.atan2(-m[5], m[8]); z = Math.atan2(-m[1], m[0]) }
+      else x = Math.atan2(m[7], m[4])
+      break
+  }
+  return { x: clean(x), y: clean(y), z: clean(z) }
 }
 function rotate(m: Matrix3, p: BuilderFrame['position']) {
   return { x: m[0] * p.x + m[1] * p.y + m[2] * p.z,
     y: m[3] * p.x + m[4] * p.y + m[5] * p.z, z: m[6] * p.x + m[7] * p.y + m[8] * p.z }
 }
 export function composeBuilderFrames(parent: BuilderFrame, child: BuilderFrame): BuilderFrame {
-  const matrix = rotationMatrix(parent.rotation)
+  const matrix = rotationMatrix(parent.rotation, parent.rotationOrder)
   const translated = rotate(matrix, child.position)
   return { position: { x: clean(parent.position.x + parent.scale * translated.x),
     y: clean(parent.position.y + parent.scale * translated.y), z: clean(parent.position.z + parent.scale * translated.z) },
-    rotation: matrixRotation(multiply(matrix, rotationMatrix(child.rotation))), scale: parent.scale * child.scale }
+    rotation: matrixRotation(multiply(matrix, rotationMatrix(child.rotation, child.rotationOrder)), child.rotationOrder), scale: parent.scale * child.scale,
+    ...(child.rotationOrder ? { rotationOrder: child.rotationOrder } : {}) }
 }
 function inverseFrame(frame: BuilderFrame): BuilderFrame {
-  const m = rotationMatrix(frame.rotation)
+  const m = rotationMatrix(frame.rotation, frame.rotationOrder)
   const transpose: Matrix3 = [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]]
   const p = rotate(transpose, frame.position)
   return { position: { x: -p.x / frame.scale, y: -p.y / frame.scale, z: -p.z / frame.scale },

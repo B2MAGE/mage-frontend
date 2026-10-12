@@ -90,13 +90,14 @@ exactly once on save. Their original envelope shape remains part of local failur
 identity, so switching from Watch to Edit cannot clear a remembered failure.
 
 Malformed document markers and unsupported versions never fall back to raw custom
-source. Template documents retain their envelope through editing, preview, submission,
-and JSON export. Unsupported stored formats are exportable by their owner without opening a preview.
+source. Templates with editable representations open as concrete Builder documents;
+other templates retain their template envelope. Unsupported stored formats are
+exportable by their owner without opening a preview.
 
 Historical raw scenes and retired template/audio formats cannot be repaired or upgraded by
 this editor. The owner-only source endpoint remains available for current documents whose
 playback is disabled; ownership retrieval never grants playback permission or converts formats.
-Current template, Builder, and custom documents preserve their respective envelopes on import,
+Existing authored Builder and custom documents preserve their content on import,
 export, preview, create, and update. Both Original and Selective music responses remain supported.
 
 Deploy this frontend together with the PP-B02 API. The earlier API rejects the
@@ -144,7 +145,7 @@ library in place of shader source selection/editing. Safe field updates map back
 document, so changing effects or motion never converts it into custom source. The additive
 settings contract keeps the original template defaults and requires the matching backend update.
 
-Template selection preserves supported settings. Replacing custom content with a template
+Template selection preserves supported settings but uses the selected template's default scale. Replacing custom content with a template
 requires explicit confirmation, including JSON imports. Cancel preserves the source. Valid
 custom imports remain custom repair documents, never trusted templates. Advanced authoring
 stays disabled until isolation is released; no custom editor renderer is created in this story.
@@ -152,3 +153,23 @@ stays disabled until isolation is released; no custom editor renderer is created
 Server errors retain a field map so the editor can open and focus the affected template control.
 Drafts survive validation/API failures. See [template scenes](../../../docs/template-scenes.md)
 for the contract, lifecycle, rollout, and verification boundaries.
+
+## Template-first Builder workflow
+
+The Scene section has one template picker and an adjacent Add button. Supported
+catalog templates open their Builder workspace automatically; other templates
+keep it hidden. Add starts a one-sphere New Template with default settings.
+Editing a catalog recipe's objects, composition, or rendering profile labels it
+`Template Name Adaptation`. Camera, effects, and scene-wide music settings do not
+change that label. New Template and Adaptation replacements require confirmation;
+unchanged premade templates switch immediately. Undo restores the document and label.
+
+Catalog selection uses the template's default scene scale, avoiding New Template's
+unit scale carrying into the next recipe. Opening saved scenes, imports, and
+recovered drafts retains authored settings. Template source labels are editor-only
+draft/history metadata, never extra fields in the saved scene contract.
+
+There is no creation-mode toggle or new custom-code entry point. Existing custom
+documents and moderator controls still follow their existing policy. Edits save
+with the scene only: reusable personal template storage is deferred to frontend
+#314 and backend #167, while the custom-code direction remains a future decision.

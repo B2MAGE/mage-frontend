@@ -2,10 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createDefaultSceneData } from './sceneEditor'
 import { createTemplateScene } from './templateEditor'
+import { createBuilderRecipe } from './builderRecipes'
 import { useSceneEditorState } from './useSceneEditorState'
 import { useSceneEditorPreview } from './useSceneEditorPreview'
 import type { SceneEditorInitialState } from './types'
-import { createCustomSceneFromTemplate, readTemplateShaderSource } from '@modules/player'
+import { createCustomSceneFromTemplate, listSceneTemplates, readTemplateShaderSource } from '@modules/player'
 import { buildSceneSubmissionDocument, editorSceneDocument } from './utils'
 
 vi.mock('@shared/lib', async original => ({
@@ -20,6 +21,51 @@ async function state(initialState?: SceneEditorInitialState) {
 }
 
 describe('template editor state and preview', () => {
+  it.each(listSceneTemplates().filter(template => template.templateVersion === 1))(
+    'opens $templateId at its catalog scale after a New Template, with undo preserving the draft', async ({ templateId }) => {
+      const { result } = await state({ name: 'Keep my scene' })
+      act(() => result.current.handleSwitchToBuilder())
+      act(() => result.current.updateBuilderValue('parameters.speed', 1.7))
+      act(() => result.current.updateBuilderValue('settings.camera.fov', 82))
+      act(() => result.current.updateBuilderValue('settings.bloom.strength', 1.2))
+      const before = result.current.sceneData
+      expect(result.current.builderDocument?.parameters.scale).toBe(1)
+      act(() => result.current.handleTemplateSelection(templateId))
+      expect(result.current.sceneData).toMatchObject({
+        parameters: { scale: createTemplateScene(templateId).parameters.scale, speed: 1.7 },
+        settings: { camera: { fov: 82 }, bloom: { strength: 1.2 } },
+      })
+      expect(result.current.name).toBe('Keep my scene')
+      act(() => result.current.undoDraft())
+      expect(result.current.sceneData).toEqual(before)
+    },
+  )
+
+  it('opens a saved supported template directly in Builder with its scene settings', async () => {
+    const template = createTemplateScene('embedded-scene-5')
+    template.settings.skybox = 3
+    template.parameters.scale = 23
+    const { result } = await state({ sceneData: template })
+    expect(result.current.sceneData).toEqual(createBuilderRecipe(template.templateId, template.settings, template.parameters))
+    expect(result.current.builderTemplateSourceId).toBe(template.templateId)
+    expect(result.current.isBuilderAdapted).toBe(false)
+    expect(result.current.history.canUndo).toBe(false)
+  })
+
+  it('restores supported template drafts into Builder without discarding pending raw JSON repairs', async () => {
+    const { result } = await state()
+    const template = createTemplateScene('embedded-scene-5')
+    const snapshot = { ...result.current.draftSnapshot, sceneData: template,
+      sceneDataText: JSON.stringify(template, null, 2), templateSourceId: template.templateId }
+    act(() => result.current.restoreDraft(snapshot))
+    expect(result.current.isBuilder).toBe(true)
+    expect(result.current.builderTemplateSourceId).toBe(template.templateId)
+    expect(JSON.parse(result.current.sceneDataText)).toEqual(result.current.sceneData)
+    act(() => result.current.restoreDraft({ ...snapshot, sceneDataText: '{ invalid draft' }))
+    expect(result.current.isBuilder).toBe(true)
+    expect(result.current.sceneDataText).toBe('{ invalid draft')
+  })
+
   it('imports and formats Builder JSON without changing scene details', async () => {
     const { result } = await state({ name: 'Keep my draft' })
     const builder = JSON.stringify({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
@@ -84,7 +130,6 @@ describe('template editor state and preview', () => {
     expect(result.current.sceneData).toEqual(createTemplateScene())
     expect(result.current.editorSections.map(section => section.id)).toEqual(['details', 'scene', 'camera', 'motion', 'effects', 'pass-order', 'confirm'])
     act(() => result.current.updateBranch('visualizer', branch => ({ ...branch, shader: 'sphere(50)' })))
-    act(() => result.current.handleShaderSelection('embedded-scene-1'))
     act(() => result.current.handleAudioResponseModeChange('legacy'))
     act(() => result.current.handleAudioResponseReset())
     expect(result.current.sceneData).toEqual(createTemplateScene())
@@ -99,14 +144,7 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     act(() => result.current.handleSectionJump('pass-order'))
     act(() => result.current.handleTemplateSelection('embedded-scene-1'))
-    expect(result.current.sceneData).toMatchObject({
-      audioResponse: 'mapped-v1',
-      intent: custom.intent,
-      visualizer: { shader: readTemplateShaderSource(createTemplateScene('embedded-scene-1')) },
-    })
-    expect(result.current.currentSection.id).toBe('pass-order')
-    act(() => result.current.handleTemplateSelection('embedded-scene-1', true))
-    expect(result.current.sceneData).toEqual(createTemplateScene('embedded-scene-1'))
+    expect(result.current.sceneData).toEqual(createBuilderRecipe('embedded-scene-1'))
     expect(result.current.currentSection.id).toBe('pass-order')
     expect(result.current.name).toBe('My scene')
     expect(result.current.description).toBe('Keep this')
@@ -189,9 +227,7 @@ describe('template editor state and preview', () => {
     expect(result.current.isTemplate).toBe(false)
     expect(result.current.editorSections.some(section => section.id === 'pass-order')).toBe(true)
     act(() => result.current.handleTemplateSelection('embedded-scene-0'))
-    expect(result.current.sceneData).toMatchObject({ visualizer: {
-      shader: readTemplateShaderSource(createTemplateScene('embedded-scene-0')),
-    } })
+    expect(result.current.sceneData).toEqual(createTemplateScene('embedded-scene-0'))
   })
 
   it('restores exact custom text after an imported template passes through invalid edits', async () => {

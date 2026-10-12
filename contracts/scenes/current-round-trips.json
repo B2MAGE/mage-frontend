@@ -116,13 +116,25 @@
             "operation": {
               "type": "cylinder"
             }
+          },
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            }
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice"
+            }
           }
         ]
       },
       "valid": true,
       "renderingWorkload": {
-        "expandedPrimitives": 4,
-        "modifierOperations": 0,
+        "expandedPrimitives": 6,
+        "modifierOperations": 8,
         "arrangementOperations": 0,
         "animationOperations": 0,
         "liveUniforms": 0
@@ -279,6 +291,83 @@
               "type": "none"
             },
             "bindings": []
+          },
+          {
+            "id": "frame",
+            "name": "Object",
+            "operation": {
+              "type": "box-frame",
+              "width": 1,
+              "height": 1,
+              "depth": 1,
+              "thickness": 0.08
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
+          },
+          {
+            "id": "grid",
+            "name": "Object",
+            "operation": {
+              "type": "lattice",
+              "iterations": 2,
+              "spacing": 0.3,
+              "thickness": 0.02
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
           }
         ],
         "parameters": {
@@ -3150,6 +3239,2861 @@
               }
             }
           ]
+        }
+      }
+    },
+    {
+      "name": "builder-write-frame-and-lattice-defaults",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            }
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice"
+            }
+          }
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "name": "Object",
+            "operation": {
+              "type": "box-frame",
+              "width": 1,
+              "height": 1,
+              "depth": 1,
+              "thickness": 0.08
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
+          },
+          {
+            "id": "grid",
+            "name": "Object",
+            "operation": {
+              "type": "lattice",
+              "iterations": 2,
+              "spacing": 0.3,
+              "thickness": 0.02
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            }
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      },
+      "renderingWorkload": {
+        "expandedPrimitives": 2,
+        "modifierOperations": 8,
+        "arrangementOperations": 0,
+        "animationOperations": 0,
+        "liveUniforms": 0
+      }
+    },
+    {
+      "name": "builder-write-fractional-lattice-and-geometry-drivers",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            },
+            "drivers": [
+              {
+                "target": "operation.thickness",
+                "expression": {
+                  "type": "input",
+                  "source": "bass-level"
+                },
+                "mode": "add"
+              }
+            ]
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice",
+              "iterations": 1.99,
+              "spacing": 0.4,
+              "thickness": 0.0001
+            },
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "constant",
+                  "value": 0.8
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": true,
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "name": "Object",
+            "operation": {
+              "type": "box-frame",
+              "width": 1,
+              "height": 1,
+              "depth": 1,
+              "thickness": 0.08
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "drivers": [
+              {
+                "target": "operation.thickness",
+                "expression": {
+                  "type": "input",
+                  "source": "bass-level"
+                },
+                "mode": "add"
+              }
+            ]
+          },
+          {
+            "id": "grid",
+            "name": "Object",
+            "operation": {
+              "type": "lattice",
+              "iterations": 1.99,
+              "spacing": 0.4,
+              "thickness": 0.0001
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#8066ff",
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "bindings": [],
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "constant",
+                  "value": 0.8
+                }
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      },
+      "renderingWorkload": {
+        "expandedPrimitives": 2,
+        "modifierOperations": 7,
+        "driverOperations": 2,
+        "authoredDrivers": 2,
+        "liveUniforms": 2
+      }
+    },
+    {
+      "name": "builder-write-lattice-density-exceeds-five",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            }
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice",
+              "iterations": 5.01
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-write-lattice-nonpositive-spacing",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            }
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice",
+              "spacing": 0
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-write-lattice-negative-rod-radius",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            }
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice",
+              "thickness": -0.01
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-write-lattice-source-injection",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            }
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice",
+              "shader": "NEVER_EXECUTE()"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-write-lattice-density-is-structural",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "frame",
+            "operation": {
+              "type": "box-frame"
+            },
+            "drivers": [
+              {
+                "target": "operation.thickness",
+                "expression": {
+                  "type": "input",
+                  "source": "bass-level"
+                },
+                "mode": "add"
+              }
+            ]
+          },
+          {
+            "id": "grid",
+            "operation": {
+              "type": "lattice",
+              "iterations": 1.99,
+              "spacing": 0.4,
+              "thickness": 0.0001
+            },
+            "drivers": [
+              {
+                "target": "operation.iterations",
+                "mode": "multiply",
+                "expression": {
+                  "type": "constant",
+                  "value": 0.8
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "builder-mint-halo-with-full-camera-effects-and-audio-settings",
+      "input": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "recipe-8-object-1",
+            "name": "Mint ring",
+            "operation": {
+              "type": "torus",
+              "radius": 0.4731169886832707,
+              "tube": 0.4731169886832707
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.10568210653173696
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.tube",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.02642052663293424
+                    }
+                  }
+                }
+              },
+              {
+                "target": "rotation.y",
+                "mode": "add",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "time"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0.25
+                    }
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-2",
+            "name": "Inner lattice",
+            "operation": {
+              "type": "lattice",
+              "iterations": 3,
+              "spacing": 0.30620644553008525,
+              "thickness": 0.0009376238728416906
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.05442950960034295
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.05442950960034295
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.0051034407588347545
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 326.5770576020577
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-3",
+            "name": "Mint frame",
+            "operation": {
+              "type": "box-frame",
+              "width": 0.34406861783662795,
+              "height": 0.34406861783662795,
+              "depth": 0.34406861783662795,
+              "thickness": 0.34406861783662795
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.width",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.height",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.depth",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.014531985019261827
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-4",
+            "name": "Outer lattice",
+            "operation": {
+              "type": "lattice",
+              "iterations": 3,
+              "spacing": 0.3449648587457308,
+              "thickness": 0.00119000753769462
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.048314099955762316
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.048314099955762316
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.005749414312428847
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 289.8845997345739
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-5",
+            "name": "Center sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 0.36911703660471207
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.06772919567723051
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-6",
+            "name": "Supporting lattice",
+            "operation": {
+              "type": "lattice",
+              "iterations": 1,
+              "spacing": 2.4,
+              "thickness": 0.00432
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "input",
+                    "source": "scene-size"
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 1.6666666666666667
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "clamp",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.003
+                        }
+                      },
+                      "min": 0.001,
+                      "max": 1000
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 555.5555555555555
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2,
+            "tilt": 0.3,
+            "orientationMode": 1,
+            "orientationSpeed": 0.7
+          },
+          "bloom": {
+            "enabled": true,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": true,
+            "color": "#ffffff"
+          },
+          "controls": {
+            "position0": {
+              "x": 0,
+              "y": 0,
+              "z": 5.5
+            },
+            "target0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "zoom0": 1
+          },
+          "motion": {
+            "minimizing_factor": 0.8,
+            "power_factor": 8,
+            "pointerDownMultiplier": 1,
+            "base_speed": 0.2,
+            "easing_speed": 0.6
+          },
+          "effects": {
+            "passOrder": [
+              "glitchPass",
+              "bloom",
+              "RGBShift",
+              "dotShader",
+              "technicolorShader",
+              "luminosityShader",
+              "afterImagePass",
+              "sobelShader",
+              "colorifyShader",
+              "halftonePass",
+              "gammaCorrectionShader",
+              "kaleidoShader",
+              "copyShader",
+              "bleachBypassShader",
+              "toonShader",
+              "outputPass"
+            ],
+            "toneMapping": {
+              "method": 0,
+              "exposure": 1.5
+            },
+            "passes": {
+              "rgbShift": true,
+              "dot": false,
+              "technicolor": false,
+              "luminosity": false,
+              "afterImage": false,
+              "sobel": false,
+              "glitch": false,
+              "halftone": false,
+              "gammaCorrection": false,
+              "kaleid": true,
+              "bleachBypass": false,
+              "toon": false,
+              "outputPass": true
+            },
+            "params": {
+              "rgbShift": {
+                "amount": 0.005,
+                "angle": 0
+              },
+              "afterImage": {
+                "damp": 0.96
+              },
+              "kaleid": {
+                "sides": 6,
+                "angle": 0
+              }
+            }
+          },
+          "state": {
+            "size": 0,
+            "pointerDown": 0,
+            "currPointerDown": 0,
+            "currAudio": 0,
+            "time": 0,
+            "volume_multiplier": 0
+          },
+          "audioResponse": "mapped-v1",
+          "audioResponseConfig": {
+            "version": 1,
+            "sensitivity": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "overall-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "bass",
+                "source": "bass-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "mid",
+                "source": "mid-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "treble",
+                "source": "treble-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "audioLevel",
+                "source": "overall-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "audioHit",
+                "source": "overall-hit",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              }
+            ]
+          }
+        },
+        "composition": {
+          "version": 1,
+          "roots": [
+            "recipe-8-motion"
+          ],
+          "groups": [
+            {
+              "id": "recipe-8-motion",
+              "name": "Shared motion",
+              "children": [
+                "recipe-8-view"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              },
+              "material": {
+                "color": "#67c673",
+                "metalness": 0.396435079218965,
+                "shininess": 0.6646852498948923
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "scene-pointer"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 7.853981633974483
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "time"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.1
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "scene-pointer"
+                          },
+                          "axis": "x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "add",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "material.metalness",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "recipe-8-view",
+              "name": "View shaping and join",
+              "children": [
+                "recipe-8-body",
+                "recipe-8-object-6"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1,
+                "rotationOrder": "zyx"
+              },
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.09758711418032859
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "x"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.z",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "z"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "blend",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "sin",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "multiply",
+                          "left": {
+                            "type": "input",
+                            "source": "time"
+                          },
+                          "right": {
+                            "type": "constant",
+                            "value": 0.1
+                          }
+                        },
+                        "right": {
+                          "type": "input",
+                          "source": "scene-size"
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "recipe-8-body",
+              "name": "Main shapes",
+              "children": [
+                "recipe-8-object-1",
+                "recipe-8-object-2",
+                "recipe-8-object-3",
+                "recipe-8-object-4",
+                "recipe-8-object-5"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "rendering": {
+          "maxIterations": 186,
+          "stepSize": 0.8615043142034936
+        }
+      },
+      "valid": true,
+      "renderingWorkload": {
+        "expandedPrimitives": 6,
+        "compositionOperations": 5,
+        "transformOperations": 45,
+        "materialOperations": 21,
+        "modifierOperations": 19,
+        "arrangementOperations": 0,
+        "animationOperations": 0,
+        "liveUniforms": 52,
+        "optionalEffects": 4,
+        "groups": 3,
+        "groupDepth": 3,
+        "driverOperations": 170,
+        "authoredDrivers": 21,
+        "generatedSourceBytes": 17031
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "recipe-8-object-1",
+            "name": "Mint ring",
+            "operation": {
+              "type": "torus",
+              "radius": 0.4731169886832707,
+              "tube": 0.4731169886832707
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.10568210653173696
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.tube",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.02642052663293424
+                    }
+                  }
+                }
+              },
+              {
+                "target": "rotation.y",
+                "mode": "add",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "time"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 0.25
+                    }
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-2",
+            "name": "Inner lattice",
+            "operation": {
+              "type": "lattice",
+              "iterations": 3,
+              "spacing": 0.30620644553008525,
+              "thickness": 0.0009376238728416906
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.05442950960034295
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.05442950960034295
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.0051034407588347545
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 326.5770576020577
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-3",
+            "name": "Mint frame",
+            "operation": {
+              "type": "box-frame",
+              "width": 0.34406861783662795,
+              "height": 0.34406861783662795,
+              "depth": 0.34406861783662795,
+              "thickness": 0.34406861783662795
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.width",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.height",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.depth",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.14531985019261828
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.014531985019261827
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-4",
+            "name": "Outer lattice",
+            "operation": {
+              "type": "lattice",
+              "iterations": 3,
+              "spacing": 0.3449648587457308,
+              "thickness": 0.00119000753769462
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.048314099955762316
+                    }
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-size"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.6666666666666667
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.048314099955762316
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.005749414312428847
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-pointer-down"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.05
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 289.8845997345739
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-5",
+            "name": "Center sphere",
+            "operation": {
+              "type": "sphere",
+              "radius": 0.36911703660471207
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.radius",
+                "mode": "multiply",
+                "expression": {
+                  "type": "add",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-pointer-down"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": -0.06772919567723051
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "recipe-8-object-6",
+            "name": "Supporting lattice",
+            "operation": {
+              "type": "lattice",
+              "iterations": 1,
+              "spacing": 2.4,
+              "thickness": 0.00432
+            },
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": "#67c673",
+              "metalness": 0.396435079218965,
+              "shininess": 0.6646852498948923
+            },
+            "modifiers": [],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "operation.spacing",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "input",
+                    "source": "scene-size"
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 1.6666666666666667
+                  }
+                }
+              },
+              {
+                "target": "operation.thickness",
+                "mode": "multiply",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  },
+                  "right": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "clamp",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "scene-size"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 0.003
+                        }
+                      },
+                      "min": 0.001,
+                      "max": 1000
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 555.5555555555555
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2,
+            "tilt": 0.3,
+            "orientationMode": 1,
+            "orientationSpeed": 0.7
+          },
+          "bloom": {
+            "enabled": true,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": true,
+            "color": "#ffffff"
+          },
+          "controls": {
+            "position0": {
+              "x": 0,
+              "y": 0,
+              "z": 5.5
+            },
+            "target0": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "zoom0": 1
+          },
+          "motion": {
+            "minimizing_factor": 0.8,
+            "power_factor": 8,
+            "pointerDownMultiplier": 1,
+            "base_speed": 0.2,
+            "easing_speed": 0.6
+          },
+          "effects": {
+            "passOrder": [
+              "glitchPass",
+              "bloom",
+              "RGBShift",
+              "dotShader",
+              "technicolorShader",
+              "luminosityShader",
+              "afterImagePass",
+              "sobelShader",
+              "colorifyShader",
+              "halftonePass",
+              "gammaCorrectionShader",
+              "kaleidoShader",
+              "copyShader",
+              "bleachBypassShader",
+              "toonShader",
+              "outputPass"
+            ],
+            "toneMapping": {
+              "method": 0,
+              "exposure": 1.5
+            },
+            "passes": {
+              "rgbShift": true,
+              "dot": false,
+              "technicolor": false,
+              "luminosity": false,
+              "afterImage": false,
+              "sobel": false,
+              "glitch": false,
+              "halftone": false,
+              "gammaCorrection": false,
+              "kaleid": true,
+              "bleachBypass": false,
+              "toon": false,
+              "outputPass": true
+            },
+            "params": {
+              "rgbShift": {
+                "amount": 0.005,
+                "angle": 0
+              },
+              "afterImage": {
+                "damp": 0.96
+              },
+              "kaleid": {
+                "sides": 6,
+                "angle": 0
+              }
+            }
+          },
+          "state": {
+            "size": 0,
+            "pointerDown": 0,
+            "currPointerDown": 0,
+            "currAudio": 0,
+            "time": 0,
+            "volume_multiplier": 0
+          },
+          "audioResponse": "mapped-v1",
+          "audioResponseConfig": {
+            "version": 1,
+            "sensitivity": 1,
+            "mappings": [
+              {
+                "target": "size",
+                "source": "overall-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "bass",
+                "source": "bass-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "mid",
+                "source": "mid-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "treble",
+                "source": "treble-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "audioLevel",
+                "source": "overall-level",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              },
+              {
+                "target": "audioHit",
+                "source": "overall-hit",
+                "amount": 1,
+                "attack": 0.1,
+                "release": 0.2
+              }
+            ]
+          }
+        },
+        "composition": {
+          "version": 1,
+          "roots": [
+            "recipe-8-motion"
+          ],
+          "groups": [
+            {
+              "id": "recipe-8-motion",
+              "name": "Shared motion",
+              "children": [
+                "recipe-8-view"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              },
+              "material": {
+                "color": "#67c673",
+                "metalness": 0.396435079218965,
+                "shininess": 0.6646852498948923
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "scene-pointer"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 7.853981633974483
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "add",
+                      "left": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "input",
+                          "source": "time"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": -0.1
+                        }
+                      },
+                      "right": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "component",
+                          "input": {
+                            "type": "input",
+                            "source": "scene-pointer"
+                          },
+                          "axis": "x"
+                        },
+                        "right": {
+                          "type": "constant",
+                          "value": 7.853981633974483
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "add",
+                      "left": {
+                        "type": "input",
+                        "source": "scene-pointer-down"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "material.metalness",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "multiply",
+                    "left": {
+                      "type": "input",
+                      "source": "scene-size"
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1.6666666666666667
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "recipe-8-view",
+              "name": "View shaping and join",
+              "children": [
+                "recipe-8-body",
+                "recipe-8-object-6"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1,
+                "rotationOrder": "zyx"
+              },
+              "operation": {
+                "type": "smooth-union",
+                "blend": 0.09758711418032859
+              },
+              "drivers": [
+                {
+                  "target": "rotation.x",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "y"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.y",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "x"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": -0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "rotation.z",
+                  "mode": "add",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "component",
+                        "input": {
+                          "type": "input",
+                          "source": "view-ray"
+                        },
+                        "axis": "z"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 1.4049960809220177
+                      }
+                    },
+                    "right": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "time"
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1
+                      }
+                    }
+                  }
+                },
+                {
+                  "target": "blend",
+                  "mode": "multiply",
+                  "expression": {
+                    "type": "add",
+                    "left": {
+                      "type": "sin",
+                      "input": {
+                        "type": "multiply",
+                        "left": {
+                          "type": "multiply",
+                          "left": {
+                            "type": "input",
+                            "source": "time"
+                          },
+                          "right": {
+                            "type": "constant",
+                            "value": 0.1
+                          }
+                        },
+                        "right": {
+                          "type": "input",
+                          "source": "scene-size"
+                        }
+                      }
+                    },
+                    "right": {
+                      "type": "constant",
+                      "value": 1
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "recipe-8-body",
+              "name": "Main shapes",
+              "children": [
+                "recipe-8-object-1",
+                "recipe-8-object-2",
+                "recipe-8-object-3",
+                "recipe-8-object-4",
+                "recipe-8-object-5"
+              ],
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              }
+            }
+          ]
+        },
+        "rendering": {
+          "maxIterations": 186,
+          "stepSize": 0.8615043142034936
         }
       }
     }

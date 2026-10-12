@@ -1,6 +1,6 @@
 import type { BuilderUniform } from './builderCompiler'
-import { builderDriverTargetRange } from './builderDrivers'
-import type { BuilderBinding, BuilderDriverExpression, BuilderGroup, BuilderObject, BuilderSceneDocument } from './sceneContract'
+import { builderDriverResultRange } from './builderDrivers'
+import type { BuilderBinding, BuilderDriver, BuilderDriverExpression, BuilderGroup, BuilderObject, BuilderSceneDocument } from './sceneContract'
 
 type Owner = BuilderObject | BuilderGroup
 export type BuilderDriverContext = { local: string; group: string; world: string }
@@ -14,6 +14,7 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
   const uniforms: BuilderUniform[] = []
   const declarations: string[] = []
   const signals = new Map<BuilderBinding['source'], string>()
+  const sceneInputs = new Set<string>()
   let spatial = false
   const slot = (value: number, source?: BuilderBinding['source']) => {
     const driverSlot = uniforms.length
@@ -41,6 +42,15 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
       }
       case 'input': {
         if (node.source === 'time') return () => '(time-floor(time/86400)*86400)'
+        // These are the existing engine inputs used by platform templates. Read
+        // them directly so conversion preserves the engine's audio and pointer
+        // smoothing rather than running those values through a second mapper.
+        if (node.source === 'scene-pointer') return (_context, axis) => axis === 'z' ? '0' : `mouse.${axis}`
+        if (node.source === 'scene-size' || node.source === 'scene-pointer-down') {
+          const name = node.source === 'scene-size' ? 'size' : 'pointerDown'
+          if (!sceneInputs.has(name)) { sceneInputs.add(name); declarations.push(`let ${name} = input();`) }
+          return () => name
+        }
         if (node.source === 'view-ray') { spatial = true; return (_context, axis) => `getRayDirection().${axis}` }
         if (node.source === 'world-position') { spatial = true; return (context, axis) => bound(`${context.world}.${axis}`) }
         if (node.source === 'group-position') { spatial = true; return (context, axis) => bound(`${context.group}.${axis}`) }
@@ -66,12 +76,12 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
       }
     }
   }
-  const owners = new Map<Owner, { source: ExpressionSource; target: string; mode: string }[]>()
+  const owners = new Map<Owner, (BuilderDriver & { source: ExpressionSource })[]>()
   for (const owner of [...(document.composition?.groups ?? []), ...document.objects]) {
     owners.set(owner, (owner.drivers ?? []).map(driver => ({ ...driver, source: expression(driver.expression) })))
   }
   return {
-    uniforms, declarations, spatial,
+    uniforms, declarations, spatial, nativeUniformCount: sceneInputs.size,
     hasLocal(owner: Owner) { return JSON.stringify(owner.drivers ?? []).includes('"local-position"') },
     owner(owner: Owner, suffix: string, context: BuilderDriverContext) {
       const drivers = owners.get(owner) ?? []
@@ -89,7 +99,7 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
             if (driver.target !== target) return
             const next = driver.mode === 'replace' ? names[index]
               : `(${value}${driver.mode === 'multiply' ? '*' : '+'}${names[index]})`
-            const range = builderDriverTargetRange(owner, target)!
+            const range = builderDriverResultRange(owner, driver)
             // Angle-equivalent wrapping keeps a time-driven spin moving indefinitely.
             const result = target.startsWith('rotation.')
               ? `(${next}-floor((${next}+${Math.PI})/${Math.PI * 2})*${Math.PI * 2})`

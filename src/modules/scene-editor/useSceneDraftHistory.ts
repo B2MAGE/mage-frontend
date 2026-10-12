@@ -7,7 +7,8 @@ const HISTORY_LIMIT = 50
 const HISTORY_BYTES = 4 * 1024 * 1024
 
 export function draftContentKey(snapshot: SceneDraftSnapshot) {
-  return JSON.stringify([snapshot.name, snapshot.description, snapshot.sceneData, snapshot.sceneDataText, snapshot.selectedTagIds])
+  return JSON.stringify([snapshot.name, snapshot.description, snapshot.sceneData, snapshot.sceneDataText, snapshot.selectedTagIds,
+    snapshot.templateSourceId ?? null])
 }
 
 function bounded(entries: Entry[]) {

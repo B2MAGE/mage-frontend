@@ -1,6 +1,6 @@
 import type { SceneData } from './sceneEditor'
 import sceneSchema from '../../../contracts/scenes/scene-v1.schema.json'
-import { validateBuilderComposition, type BuilderSceneDocument } from '@modules/player'
+import { listSceneTemplates, validateBuilderComposition, type BuilderSceneDocument, type TemplateId } from '@modules/player'
 
 export type SceneDraftSnapshot = {
   name: string
@@ -9,6 +9,8 @@ export type SceneDraftSnapshot = {
   sceneDataText: string
   selectedTagIds: number[]
   selectedBuilderObjectId: string | null
+  /** Editor-only origin; it is not part of the saved scene or a reusable template. */
+  templateSourceId?: TemplateId | null
 }
 
 export type SceneDraftSaveContext = { savedSceneId: number | null; expectedRevision: number | null; saveNeedsReview: boolean }
@@ -37,7 +39,8 @@ export function sceneDraftStorageKey(userId: string | number, sceneId: number | 
 /** Selection is recoverable UI state, but selecting an object does not dirty a scene. */
 export function sceneDraftFingerprint(snapshot: SceneDraftSnapshot) {
   return JSON.stringify({ name: snapshot.name, description: snapshot.description,
-    sceneData: snapshot.sceneData, sceneDataText: snapshot.sceneDataText, selectedTagIds: snapshot.selectedTagIds })
+    sceneData: snapshot.sceneData, sceneDataText: snapshot.sceneDataText, selectedTagIds: snapshot.selectedTagIds,
+    ...(snapshot.templateSourceId ? { templateSourceId: snapshot.templateSourceId } : {}) })
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -125,6 +128,8 @@ export function parseSceneDraftRecord(raw: string): SceneDraftRecord | null {
       || !Array.isArray(snapshot.selectedTagIds) || snapshot.selectedTagIds.length > 1000
       || !snapshot.selectedTagIds.every(id => Number.isSafeInteger(id) && id > 0)
       || !(snapshot.selectedBuilderObjectId === null || typeof snapshot.selectedBuilderObjectId === 'string')
+      || !(snapshot.templateSourceId === undefined || snapshot.templateSourceId === null
+        || (typeof snapshot.templateSourceId === 'string' && listSceneTemplates().some(template => template.templateId === snapshot.templateSourceId)))
       || !(saveContext.savedSceneId === null || (Number.isSafeInteger(saveContext.savedSceneId) && Number(saveContext.savedSceneId) > 0))
       || !(saveContext.expectedRevision === null || (Number.isSafeInteger(saveContext.expectedRevision) && Number(saveContext.expectedRevision) >= 0))
       || typeof saveContext.saveNeedsReview !== 'boolean') return null

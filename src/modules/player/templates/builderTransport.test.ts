@@ -59,7 +59,7 @@ describe('builder storage and playback boundaries', () => {
   it('counts materialized defaults in the budget and accepts the full sixteen-object minimum', () => {
     expect(validateSceneForStorage({ ...builder, objects: Array.from({ length: 16 }, (_, id) => ({ id: `ball-${id}`, operation: { type: 'sphere' } })) }))
       .toHaveProperty('objects.length', 16)
-    const full = { ...builder, objects: Array.from({ length: 16 }, (_, id) => ({ id: `ball-${id}`, operation: { type: 'sphere' },
+    const full = { ...builder, objects: Array.from({ length: 16 }, (_, id) => ({ id: `ball-${id}`, operation: { type: 'sphere' }, frame: {},
       bindings: ['position.x', 'position.y', 'position.z', 'scale.x'].map(target => ({ target, source: 'bass-hit' })),
     })) }
     expect(() => validateSceneForStorage(full)).toThrow('Too many total object fields')

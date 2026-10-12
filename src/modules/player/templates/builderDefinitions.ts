@@ -3,7 +3,7 @@ import renderingPolicy from '../../../../contracts/scenes/builder-rendering.v1.j
 import type { BuilderArrangement, BuilderBinding, BuilderModifier, BuilderMotion, BuilderOperation } from './sceneContract'
 
 export type BuilderShape = BuilderOperation['type']
-export type BuilderDimension = 'width' | 'height' | 'depth' | 'radius' | 'tube'
+export type BuilderDimension = 'width' | 'height' | 'depth' | 'radius' | 'tube' | 'iterations' | 'spacing' | 'thickness'
 type NumberRule = Readonly<{ minimum: number; maximum: number; default: number }>
 type Branch = { properties: Record<string, { const?: string; default?: unknown } | undefined> }
 
@@ -29,6 +29,7 @@ type OperationPresentation<T extends BuilderShape> = {
     title: string
     summaryLabel: string
     description: string
+    animatable?: boolean
   }[]
 }
 
@@ -50,6 +51,17 @@ export const BUILDER_OPERATIONS = {
     { key: 'radius', title: 'Radius', summaryLabel: 'Radius', description: 'Set the distance from the center to the side.' },
     { key: 'height', title: 'Height', summaryLabel: 'Height', description: 'Set the shape from bottom to top.' },
   ] },
+  'box-frame': { label: 'Box frame', glyph: '◇', fields: [
+    { key: 'width', title: 'Width', summaryLabel: 'Width', description: 'Set the frame from left to right.' },
+    { key: 'height', title: 'Height', summaryLabel: 'Height', description: 'Set the frame from bottom to top.' },
+    { key: 'depth', title: 'Depth', summaryLabel: 'Depth', description: 'Set the frame from front to back.' },
+    { key: 'thickness', title: 'Frame thickness', summaryLabel: 'Thickness', description: 'Thicken the edges inward. Thick edges can fill the frame.' },
+  ] },
+  lattice: { label: 'Lattice', glyph: '▦', fields: [
+    { key: 'iterations', title: 'Repetition levels', summaryLabel: 'Levels', description: 'Each full level doubles the pattern along all three axes. Fractional levels adjust its spacing.', animatable: false },
+    { key: 'spacing', title: 'Cell size', summaryLabel: 'Cell size', description: 'Set the distance from a cell center to its edge.' },
+    { key: 'thickness', title: 'Rod thickness', summaryLabel: 'Thickness', description: 'Set the radius of the rods that form the lattice.' },
+  ] },
 } as const satisfies { [T in BuilderShape]: OperationPresentation<T> }
 
 export const BUILDER_SHAPES = (Object.keys(BUILDER_OPERATIONS) as BuilderShape[])
@@ -58,6 +70,7 @@ export const BUILDER_SHAPES = (Object.keys(BUILDER_OPERATIONS) as BuilderShape[]
 export function builderOperationFields(operation: BuilderOperation) {
   return BUILDER_OPERATIONS[operation.type].fields.map(field => ({
     ...field,
+    animatable: !('animatable' in field) || field.animatable !== false,
     ...numericField(object.operation.anyOf, operation.type, field.key),
     value: (operation as unknown as Record<BuilderDimension, number>)[field.key],
   }))
@@ -79,6 +92,7 @@ export const BUILDER_LIMITS = {
 } as const
 
 export const BUILDER_TRANSFORMS = object.transform.properties
+export const BUILDER_RENDER_SETTINGS = schema.$defs.builder.properties.rendering.properties
 export const BUILDER_MATERIAL = object.material.properties
 export const BUILDER_GROUP_TRANSFORMS = group.transform.properties
 export const BUILDER_GROUP_BLEND = numericField(group.operation.anyOf, 'smooth-union', 'blend')

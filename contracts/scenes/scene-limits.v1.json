@@ -8,7 +8,7 @@
     "sceneDepth": 16,
     "arrayItems": 64,
     "objectKeys": 64,
-    "totalKeys": 512,
+    "totalKeys": 1024,
     "totalNodes": 2048,
     "keyBytes": 64,
     "optionalEffects": 4

@@ -71,6 +71,10 @@ const builderObjectControlIds: Record<string, string> = {
   'operation.height': 'builder-height',
   'operation.depth': 'builder-depth',
   'operation.tube': 'builder-tube',
+  'operation.thickness': 'builder-thickness',
+  'operation.spacing': 'builder-spacing',
+  'operation.iterations': 'builder-iterations',
+  'transform.rotationOrder': 'builder-rotation-order',
   'transform.position.x': 'builder-position-x',
   'transform.position.y': 'builder-position-y',
   'transform.position.z': 'builder-position-z',
@@ -103,15 +107,16 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
     const field = objectMatch[3] ?? ''
     const stage = /^(modifiers|arrangements)(?:\[(\d+)\]|\.(\d+))\.(amount|thickness|axis|count|spacing|radius)$/.exec(field)
     const stageId = stage ? `builder-${stage[1] === 'modifiers' ? 'modifier' : 'arrangement'}-${stage[2] ?? stage[3]}-${stage[4]}` : undefined
-    const frame = /^frame\.(position\.[xyz]|rotation\.[xyz]|scale)$/.exec(field)
+    const frame = /^frame\.(position\.[xyz]|rotation\.[xyz]|rotationOrder|scale)$/.exec(field)
     const binding = /^bindings(?:\[(\d+)\]|\.(\d+))(?:\.(target|source|mode|amount|offset|attack|release))?$/.exec(field)
     const bindingId = binding ? `builder-binding-${binding[1] ?? binding[2]}-${binding[3] ?? 'target'}` : field === 'bindings' ? 'builder-bindings' : undefined
-    const id = driverControlId(field) ?? builderObjectControlIds[field] ?? stageId ?? bindingId ?? (frame ? `builder-frame-${frame[1].replace('.', '-')}` : 'builder-object-list')
+    const id = driverControlId(field) ?? builderObjectControlIds[field] ?? stageId ?? bindingId ?? (frame ? `builder-frame-${frame[1] === 'rotationOrder' ? 'rotation-order' : frame[1].replace('.', '-')}` : 'builder-object-list')
     return { path, id, objectIndex, section: 'scene' }
   }
   if (path === 'objects') return { path, id: 'builder-object-list', section: 'scene' }
   if (path === 'parameters.scale') return { path, id: 'builder-scene-scale', section: 'scene' }
   if (path === 'settings.skybox') return { path, id: 'builder-skybox', section: 'scene' }
+  if (path === 'rendering.maxIterations' || path === 'rendering.stepSize') return { path, id: `builder-rendering-${path.slice('rendering.'.length)}`, section: 'scene' }
   return templateControlLocation(path)
 }
 

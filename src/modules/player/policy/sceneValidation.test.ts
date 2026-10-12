@@ -131,9 +131,22 @@ describe('shared scene submission preflight', () => {
     expect(() => validateSceneDocument(deep)).toThrow('nesting')
     rejects({ items: Array(65).fill(0) }, 'sceneData.items', 'array items')
     rejects(Object.fromEntries(Array.from({ length: 65 }, (_, i) => [`k${i}`, i])), 'sceneData', 'object fields')
-    rejects({ items: Array.from({ length: 9 }, () => Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`k${i}`, i]))) }, 'sceneData', 'total object fields')
+    rejects({ items: Array.from({ length: Math.ceil(SCENE_LIMITS.totalKeys / 60) }, () => Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`k${i}`, i]))) }, 'sceneData', 'total object fields')
     rejects({ items: Array.from({ length: 64 }, () => Array(64).fill(0)) }, 'sceneData', 'JSON values')
     rejects({ ['é'.repeat(33)]: 1 }, 'sceneData', 'Field names')
+  })
+
+  it('keeps the transport field ceiling bounded independently from rendering work', () => {
+    expect(SCENE_LIMITS.totalKeys).toBe(1024)
+    const atLimit = { items: Array.from({ length: 18 }, (_, row) => Object.fromEntries(
+      Array.from({ length: row === 17 ? 3 : 60 }, (_, column) => [`key${column}`, column]))) }
+    // 1 array property + 17 * 60 fields + 3 fields = 1024. Schema validation
+    // still rejects this unknown envelope, but the transport walk permits it.
+    expect(() => validateSceneDocument(atLimit)).not.toThrow('total object fields')
+    atLimit.items[17].extra = 1
+    rejects(atLimit, 'sceneData', 'maximum is 1024')
+    expect(SCENE_LIMITS).toMatchObject({ sceneBytes: 262144, sceneDepth: 16, arrayItems: 64,
+      objectKeys: 64, totalNodes: 2048, sourceBytes: 65536, optionalEffects: 4 })
   })
 
   it('does not invoke getters or toJSON while rejecting unsafe object shapes', () => {

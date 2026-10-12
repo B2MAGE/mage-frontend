@@ -738,6 +738,72 @@
                         "default": 2
                       }
                     }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "box-frame"
+                      },
+                      "width": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 10,
+                        "default": 1
+                      },
+                      "height": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 10,
+                        "default": 1
+                      },
+                      "depth": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 10,
+                        "default": 1
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "minimum": 0.001,
+                        "maximum": 3,
+                        "default": 0.08
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "type"
+                    ],
+                    "properties": {
+                      "type": {
+                        "const": "lattice"
+                      },
+                      "iterations": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "default": 2
+                      },
+                      "spacing": {
+                        "type": "number",
+                        "minimum": 0.01,
+                        "maximum": 10,
+                        "default": 0.3
+                      },
+                      "thickness": {
+                        "type": "number",
+                        "minimum": 0.0001,
+                        "maximum": 3,
+                        "default": 0.02
+                      }
+                    }
                   }
                 ]
               },
@@ -1183,6 +1249,17 @@
                     "minimum": 0.01,
                     "maximum": 20,
                     "default": 1
+                  },
+                  "rotationOrder": {
+                    "type": "string",
+                    "enum": [
+                      "xyz",
+                      "xzy",
+                      "yxz",
+                      "yzx",
+                      "zxy",
+                      "zyx"
+                    ]
                   }
                 }
               },
@@ -1211,7 +1288,9 @@
                         "operation.width",
                         "operation.height",
                         "operation.depth",
-                        "operation.tube"
+                        "operation.tube",
+                        "operation.spacing",
+                        "operation.thickness"
                       ]
                     },
                     "mode": {
@@ -1840,6 +1919,17 @@
                         "minimum": 0.01,
                         "maximum": 20,
                         "default": 1
+                      },
+                      "rotationOrder": {
+                        "type": "string",
+                        "enum": [
+                          "xyz",
+                          "xzy",
+                          "yxz",
+                          "yzx",
+                          "zxy",
+                          "zyx"
+                        ]
                       }
                     },
                     "default": {}
@@ -1951,6 +2041,24 @@
               }
             }
           }
+        },
+        "rendering": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maxIterations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 96
+            },
+            "stepSize": {
+              "type": "number",
+              "minimum": 0.005,
+              "maximum": 1,
+              "default": 0.7
+            }
+          }
         }
       }
     },
@@ -2029,7 +2137,10 @@
                 "local-position",
                 "group-position",
                 "world-position",
-                "view-ray"
+                "view-ray",
+                "scene-size",
+                "scene-pointer-down",
+                "scene-pointer"
               ]
             }
           },

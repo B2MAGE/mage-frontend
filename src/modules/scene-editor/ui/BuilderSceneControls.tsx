@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { BUILDER_OPERATIONS, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_MATERIAL, BUILDER_MODIFIERS,
-  BUILDER_ARRANGEMENTS, BUILDER_SPIN, builderOperationFields, createBuilderModifier, createBuilderArrangement,
-  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame } from '@modules/player'
+  BUILDER_ARRANGEMENTS, BUILDER_SPIN, BUILDER_RENDER_SETTINGS, builderOperationFields, createBuilderModifier, createBuilderArrangement,
+  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame, type BuilderRenderSettings } from '@modules/player'
 import { AppIcon, EditorFieldShell } from '@shared/ui'
 import {
   BUILDER_EXPANDED_PRIMITIVE_LIMIT,
@@ -28,6 +28,7 @@ type Props = {
   onMoveObject: (objectId: string, targetId: string) => void
   onSelectObject: (objectId: string) => void
   onUpdateObject: (objectId: string, recipe: (object: BuilderObject) => BuilderObject) => void
+  onUpdateDocument: (recipe: (document: BuilderSceneDocument) => BuilderSceneDocument, changedField?: string) => void
   selectedObjectId: string | null
   onGroupNodes: (ids: string[]) => void
   onUngroupNode: (id: string) => void
@@ -201,7 +202,7 @@ function SizeControls({ object, update }: { object: BuilderObject; update: (oper
         onToggle={() => setOpenControl(current => current === control.key ? null : control.key)} open={open}
         summary={[conciseNumber(control.value)]} title={control.title}
         toggleLabel={`${open ? 'Collapse' : 'Expand'} ${control.title} size`}>
-        <NumberField id={`builder-${control.key}`} label={control.title} min={control.minimum} max={control.maximum} value={control.value}
+        <NumberField id={`builder-${control.key}`} label={control.title} min={control.minimum} max={control.maximum} step={control.minimum < .001 ? .0001 : .01} value={control.value}
           onChange={value => change(control, value)} />
       </BuilderControlStage>
     })}
@@ -258,14 +259,18 @@ const shapeLabel = (object: BuilderObject) => BUILDER_OPERATIONS[object.operatio
 
 function sizeSummary(object: BuilderObject) {
   const operation = object.operation
-  if (operation.type === 'box') return `${operation.width} × ${operation.height} × ${operation.depth}`
-  if (operation.type === 'torus') return `Radius ${operation.radius} · Tube ${operation.tube}`
-  if (operation.type === 'cylinder') return `Radius ${operation.radius} · Height ${operation.height}`
-  return `Radius ${operation.radius}`
+  if (operation.type === 'box' || operation.type === 'box-frame') {
+    const dimensions = [operation.width, operation.height, operation.depth].map(conciseNumber).join(' × ')
+    return operation.type === 'box-frame' ? `${dimensions} · Edge ${conciseNumber(operation.thickness)}` : dimensions
+  }
+  if (operation.type === 'lattice') return `${conciseNumber(operation.iterations)} repetitions · Spacing ${conciseNumber(operation.spacing)} · Rod ${conciseNumber(operation.thickness)}`
+  if (operation.type === 'torus') return `Radius ${conciseNumber(operation.radius)} · Tube ${conciseNumber(operation.tube)}`
+  if (operation.type === 'cylinder') return `Radius ${conciseNumber(operation.radius)} · Height ${conciseNumber(operation.height)}`
+  return `Radius ${conciseNumber(operation.radius)}`
 }
 
 function conciseNumber(value: number) {
-  return Number(value.toFixed(2)).toString()
+  return Number(value !== 0 && Math.abs(value) < .01 ? value.toPrecision(3) : value.toFixed(2)).toString()
 }
 
 function conciseVector(vector: { x: number; y: number; z: number }) {
@@ -299,6 +304,12 @@ function TransformControls<T extends BuilderObject['transform'] | BuilderFrame>(
       toggleLabel={`${openStage === 'rotation' ? 'Collapse' : 'Expand'} ${labelPrefix}Rotation transform`}>
       <Vector3Field id={`${idPrefix}-rotation`} label={`${labelPrefix}Rotation`} min={BUILDER_TRANSFORMS.rotation.properties.x.minimum} max={BUILDER_TRANSFORMS.rotation.properties.x.maximum} step={0.01} value={transform.rotation}
         onChange={rotation => update({ ...transform, rotation })} />
+      {typeof transform.scale === 'number' ? <>
+        <SelectField id={`${idPrefix}-rotation-order`} label="Rotation order" value={(transform as BuilderFrame).rotationOrder ?? 'xyz'}
+          options={BUILDER_GROUP_TRANSFORMS.rotationOrder.enum.map(value => ({ value, label: value.toUpperCase().split('').join(' → ') }))}
+          onChange={rotationOrder => update({ ...transform, rotationOrder: rotationOrder as BuilderFrame['rotationOrder'] })} />
+        <p className="field-hint">Changing the order changes the result when more than one axis turns.</p>
+      </> : null}
     </BuilderControlStage>
     <BuilderControlStage description={typeof transform.scale === 'number' ? 'Resize together, keeping proportions.' : 'Resize the object along each axis.'} fieldPrefix={`${idPrefix}-scale`} onToggle={() => toggle('scale')}
       open={openStage === 'scale'} summary={[typeof transform.scale === 'number' ? `${conciseNumber(transform.scale)}×` : conciseVector(transform.scale)]} title="Scale"
@@ -466,6 +477,7 @@ export function BuilderSceneControls({
   onMoveObject,
   onSelectObject,
   onUpdateObject,
+  onUpdateDocument,
   selectedObjectId,
   onGroupNodes, onUngroupNode, onReparentNode, onUpdateGroup, commandError,
 }: Props) {
@@ -489,6 +501,13 @@ export function BuilderSceneControls({
     }
   })
   const nameIssue = selectedIssues['builder-object-name']
+  const rendering = document.rendering ?? {
+    maxIterations: BUILDER_RENDER_SETTINGS.maxIterations.default,
+    stepSize: BUILDER_RENDER_SETTINGS.stepSize.default,
+  }
+  const updateRendering = (field: keyof BuilderRenderSettings, value: number) => onUpdateDocument(current => ({
+    ...current, rendering: { ...rendering, ...current.rendering, [field]: value },
+  }), `rendering.${field}`)
 
   return <section className="builder-workspace" aria-labelledby="builder-workspace-title">
     <header className="builder-workspace__header">
@@ -562,7 +581,7 @@ export function BuilderSceneControls({
               options={BUILDER_SHAPES} onChange={value => update(object => ({ ...object, operation: createBuilderOperation(value as BuilderShape) }))} />
           </div>
 
-          <InspectorSection title="Size" fieldPrefixes={['builder-radius', 'builder-width', 'builder-height', 'builder-depth', 'builder-tube']} description="Shape dimensions" status={sizeSummary(selected)}>
+          <InspectorSection title="Size" fieldPrefixes={builderOperationFields(selected.operation).map(field => `builder-${field.key}`)} description="Shape dimensions" status={sizeSummary(selected)}>
             <SizeControls key={`${selected.id}-${selected.operation.type}`} object={selected}
               update={operation => update(object => ({ ...object, operation }))} />
           </InspectorSection>
@@ -600,6 +619,19 @@ export function BuilderSceneControls({
           </InspectorSection>
         </div>
       </section></FieldErrorsContext.Provider> : null}
+    </div>
+    <div className="builder-object-inspector__body">
+      <InspectorSection title="Rendering" fieldPrefixes={['builder-rendering-']} description="Advanced detail and raymarch settings"
+        status={`${rendering.maxIterations} steps · ${conciseNumber(rendering.stepSize)} step size`}>
+        <SliderField id="builder-rendering-maxIterations" label="Maximum steps" min={BUILDER_RENDER_SETTINGS.maxIterations.minimum}
+          max={BUILDER_RENDER_SETTINGS.maxIterations.maximum} step={1} value={rendering.maxIterations}
+          description="More steps can reveal fine details, but take more work to render."
+          onChange={value => updateRendering('maxIterations', value)} />
+        <SliderField id="builder-rendering-stepSize" label="Step size" min={BUILDER_RENDER_SETTINGS.stepSize.minimum}
+          max={BUILDER_RENDER_SETTINGS.stepSize.maximum} step={.005} numericStep="any" value={rendering.stepSize}
+          description="Smaller steps can improve thin surfaces, but may need a higher maximum to reach them."
+          onChange={value => updateRendering('stepSize', value)} />
+      </InspectorSection>
     </div>
   </section>
 }

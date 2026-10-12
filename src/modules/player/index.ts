@@ -13,17 +13,17 @@ export { hasSceneDocumentMarkers, parseSceneDocument, SceneContractError } from 
 export { SCENE_PARAMETER_RULES, SCENE_SETTING_RULES } from './templates/sceneDefinitions'
 export type { SceneDocument, PlayableSceneDocument, TemplateSceneDocument, CustomSceneDocument, BuilderSceneDocument, BuilderObject,
   BuilderOperation, BuilderVector, BuilderBinding, BuilderModifier, BuilderArrangement, BuilderMotion,
-  BuilderFrame, BuilderMaterial, BuilderGroup, BuilderComposition, TemplateId } from './templates/sceneContract'
+  BuilderFrame, BuilderMaterial, BuilderGroup, BuilderComposition, BuilderRenderSettings, TemplateId } from './templates/sceneContract'
 export { builderCompositionRoots, builderCompositionNodes, validateBuilderComposition } from './templates/builderComposition'
 export type { BuilderCompositionNode } from './templates/builderComposition'
 export { BUILDER_OPERATIONS, BUILDER_SHAPES, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_MATERIAL,
-  BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_GROUP_RANGES,
+  BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_GROUP_RANGES, BUILDER_RENDER_SETTINGS,
   BUILDER_MODIFIERS, BUILDER_ARRANGEMENTS, BUILDER_SPIN, builderOperationFields,
   createBuilderOperation, createBuilderModifier, createBuilderArrangement, createBuilderMotion,
   BUILDER_BINDING_RULES, BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, createBuilderBinding } from './templates/builderDefinitions'
 export type { BuilderShape, BuilderDimension, BuilderGroupTarget } from './templates/builderDefinitions'
 export type { BuilderDriver, BuilderDriverExpression, BuilderDriverSource, BuilderDriverTarget } from './templates/sceneContract'
-export { BUILDER_DRIVER_LIMITS, builderDriverTargetRange, validateBuilderDriverExpression } from './templates/builderDrivers'
+export { BUILDER_DRIVER_LIMITS, builderDriverTargetRange, builderDriverResultRange, validateBuilderDriverExpression } from './templates/builderDrivers'
 export { SceneValidationError, validateSceneDocument, validateSceneForStorage, validateSceneForPlayback, parseSceneImport, assertSceneRequestBudget, assertSceneDocumentBudget, SCENE_POLICY, SCENE_LIMITS, SCENE_RUNTIME_CEILINGS } from './policy/sceneValidation'
 export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'
 export type { RenderBudget, RenderProfile } from './policy/renderBudget'

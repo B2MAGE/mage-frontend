@@ -291,7 +291,7 @@ describe('scene editor presets and beat preview', () => {
     expect(original).toHaveProperty('reactions')
     expect(original).toHaveProperty('mageTemplate')
   })
-  it('preserves mapped settings through JSON import, shader selection, current custom update requests, and reopening', async () => {
+  it('preserves mapped settings through JSON import, edits to an existing custom shader, update requests, and reopening', async () => {
     storeSceneEditorSession()
     const config = normalizeAudioResponseConfig({ sensitivity: 1.7, mappings: [
       { target: 'size', source: 'bass-hit', amount: 0.8, attack: 0.02, release: 0.4 },
@@ -318,7 +318,7 @@ describe('scene editor presets and beat preview', () => {
     await user.click(screen.getByRole('button', { name: 'Format JSON' }))
     expect(readEditableSceneData(JSON.parse((screen.getByRole('textbox', { name: 'Scene Data JSON' }) as HTMLTextAreaElement).value)).audioResponseConfig).toEqual(config)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption('Rose Circuit').id)
+    fireEvent.change(screen.getByLabelText('Custom Shader'), { target: { value: shaderOption('Rose Circuit').shader } })
     expect(draftScene().audioResponseConfig).toEqual(config)
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
@@ -330,7 +330,7 @@ describe('scene editor presets and beat preview', () => {
     await screen.findByLabelText(/scene name/i)
     expect(draftScene().audioResponseConfig).toEqual(config)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption('Chroma Storm').id)
+    fireEvent.change(screen.getByLabelText('Custom Shader'), { target: { value: shaderOption('Chroma Storm').shader } })
     await user.click(screen.getByRole('button', { name: 'Motion' }))
     expect(screen.getByRole('combobox', { name: 'Response mode' })).toHaveValue('mapped-v1')
     expect(screen.queryByRole('slider', { name: 'Input gain' })).not.toBeInTheDocument()

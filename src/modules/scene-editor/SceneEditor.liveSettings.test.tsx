@@ -74,7 +74,7 @@ describe('real scene editor live preview updates', () => {
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), 'embedded-scene-1')
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
-    expect(vi.mocked(controller.loadSceneBlob).mock.lastCall?.[0]).toMatchObject({ kind: 'template', templateId: 'embedded-scene-1' })
+    expect(vi.mocked(controller.loadSceneBlob).mock.lastCall?.[0]).toMatchObject({ kind: 'builder', objects: expect.arrayContaining([expect.objectContaining({ id: 'recipe-1-object-1' })]), settings: { camera: { fov: 82 } } })
     const skybox = screen.getByRole('combobox', { name: 'Skybox' }) as HTMLSelectElement
     const nextSkybox = [...skybox.options].find(option => option.value !== skybox.value)!.value
     await user.selectOptions(skybox, nextSkybox)

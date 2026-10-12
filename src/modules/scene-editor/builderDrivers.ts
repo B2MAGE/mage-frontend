@@ -21,6 +21,10 @@ export const DRIVER_PRESETS = [
 ] as const
 export const DRIVER_SOURCES = [
   { value: 'time', label: 'Time' },
+  { value: 'scene-size', label: 'Scene size response' },
+  { value: 'scene-pointer-down', label: 'Scene pointer press' },
+  { value: 'scene-pointer.x', label: 'Scene pointer horizontal' },
+  { value: 'scene-pointer.y', label: 'Scene pointer vertical' },
   ...Object.entries(BUILDER_BINDING_SOURCE_LABELS).map(([value, label]) => ({ value, label })),
   ...(['local-position', 'group-position', 'world-position', 'view-ray'] as const).flatMap(source =>
     (['x', 'y', 'z'] as const).map(axis => ({ value: `${source}.${axis}`,
@@ -100,7 +104,7 @@ export function driverTargets(node: BuilderObject | BuilderGroup) {
   return [
     ...Object.entries(BUILDER_BINDING_RANGES).map(([value, range]) => ({ value: value as BuilderDriverTarget,
       label: BUILDER_BINDING_TARGET_LABELS[value as keyof typeof BUILDER_BINDING_TARGET_LABELS], ...range })),
-    ...builderOperationFields(node.operation).map(field => ({ value: `operation.${field.key}` as BuilderDriverTarget, label: field.title,
+    ...builderOperationFields(node.operation).filter(field => field.animatable).map(field => ({ value: `operation.${field.key}` as BuilderDriverTarget, label: field.title,
       minimum: field.minimum, maximum: field.maximum, default: field.default })),
   ]
 }

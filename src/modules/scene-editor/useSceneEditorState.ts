@@ -1,8 +1,7 @@
-import { useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import {
   getSceneEditorModel,
-  SHADER_SCENES,
   type SceneData,
   type SceneEditorModel,
   type ScenePassId,
@@ -31,12 +30,12 @@ import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
 import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicResponseDefaults } from './musicResponseSettings'
-import { createCustomSceneFromTemplate, readTemplateShaderSource, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderSceneDocument, type TemplateId } from '@modules/player'
+import { createCustomSceneFromTemplate, readTemplateShaderSource, SceneValidationError, validateSceneDocument, type BuilderSceneDocument, type TemplateId } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
-import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
+import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
 import { builderOrderedNodes } from './builderGroups'
-import { createBuilderRecipe } from './builderRecipes'
+import { openTemplateWorkspace, builderWorkspaceAdapted } from './templateWorkspace'
 
 type UseSceneEditorStateArgs = {
   allowCustomSceneData?: boolean
@@ -63,9 +62,9 @@ export function useSceneEditorState({
   titleId: providedTitleId = 'create-scene-title',
 }: UseSceneEditorStateArgs) {
   const history = useSceneDraftHistory(() => {
-    const document = readEditableSceneData(initialState?.sceneData ?? createTemplateScene())
+    const { document, templateSourceId } = openTemplateWorkspace(readEditableSceneData(initialState?.sceneData ?? createTemplateScene()))
     return { name: initialState?.name ?? '', description: initialState?.description ?? '',
-      sceneData: document, sceneDataText: prettyPrintEditorSceneData(document), selectedTagIds: [],
+      sceneData: document, sceneDataText: prettyPrintEditorSceneData(document), templateSourceId, selectedTagIds: [],
       selectedBuilderObjectId: isBuilderEditorDocument(document) ? builderOrderedNodes(document)[0]?.id ?? null : null }
   })
   const { name, description, sceneData, sceneDataText, selectedTagIds, selectedBuilderObjectId } = history.draft
@@ -75,7 +74,6 @@ export function useSceneEditorState({
   const [capturedThumbnail, setCapturedThumbnail] = useState<{ file: File; previewUrl: string; revision: string } | null>(null)
   const thumbnailFile = capturedThumbnail?.revision === sceneDataText ? capturedThumbnail.file : null
   const thumbnailPreviewUrl = capturedThumbnail?.revision === sceneDataText ? capturedThumbnail.previewUrl : initialState?.thumbnailPreviewUrl ?? null
-  const builderRoundTripRef = useRef<{ document: BuilderSceneDocument; customSignature: string } | null>(null)
   const [musicResponseDefaults, setMusicResponseDefaults] = useState(() => readMusicResponseDefaults(
     isTemplateEditorDocument(sceneData) ? getTemplateEditorSceneData(sceneData)
       : isBuilderEditorDocument(sceneData) ? getBuilderEditorSceneData(sceneData) : sceneData))
@@ -83,8 +81,9 @@ export function useSceneEditorState({
   const templateDocument = isTemplate ? sceneData : null
   const isBuilder = isBuilderEditorDocument(sceneData)
   const builderDocument = isBuilder ? sceneData : null
-  const isUnmodifiedBuilderCustom = !isTemplate && !isBuilder
-    && builderRoundTripRef.current?.customSignature === JSON.stringify(sceneData)
+  const builderTemplateSourceId = isBuilder ? history.draft.templateSourceId ?? null : null
+  const isBuilderAdapted = useMemo(() => builderDocument
+    ? builderWorkspaceAdapted(builderDocument, builderTemplateSourceId) : false, [builderDocument, builderTemplateSourceId])
   const authoredFieldErrors = useMemo(() => {
     const document = templateDocument ?? builderDocument
     if (document) {
@@ -112,9 +111,17 @@ export function useSceneEditorState({
 
   const { cancelTemplateImport, confirmTemplateImport, disabledCustomImportIssue, handleFormatJson,
     handleRawSceneDataChange, pendingTemplateImport, resetPendingTemplateImport } = useSceneImportExport({
-    allowCustomSceneData, sceneData, sceneDataText, setSceneDataText, setErrors, clearErrors, applySceneData,
-    onImportDraft: (next, text) => history.commit(draft => ({ ...draft, sceneData: next, sceneDataText: text,
-      selectedBuilderObjectId: reconcileSelection(draft, next) }), 'Import scene'),
+    allowCustomSceneData, sceneData, sceneDataText, setSceneDataText, setErrors, clearErrors, applySceneData: (next, replace) => {
+      const workspace = openTemplateWorkspace(next)
+      applySceneData(workspace.document, replace, undefined, workspace.templateSourceId)
+    },
+    onImportDraft: (next, text) => {
+      const workspace = openTemplateWorkspace(next)
+      history.commit(draft => ({ ...draft, sceneData: workspace.document,
+        sceneDataText: workspace.document === next ? text : prettyPrintEditorSceneData(workspace.document),
+        templateSourceId: workspace.templateSourceId,
+        selectedBuilderObjectId: reconcileSelection(draft, workspace.document) }), 'Import scene')
+    },
   })
 
   const formErrorId = useId()
@@ -184,11 +191,11 @@ export function useSceneEditorState({
     setErrors,
   })
 
-  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false, changedField?: string | string[]) {
+  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false, changedField?: string | string[], templateSourceId?: TemplateId | null) {
     if (!replaceRawDraft && confirmSectionIssueMessage && sceneDataText !== prettyPrintEditorSceneData(sceneData)) {
       setErrors(current => ({ ...current, sceneData: confirmSectionIssueMessage ?? undefined,
         form: 'Fix the Scene Data JSON before changing other controls. Your imported draft has been kept.' }))
-      return
+      return false
     }
     const nextText = prettyPrintEditorSceneData(nextSceneData)
     if (replaceRawDraft && !isTemplate && isTemplateEditorDocument(nextSceneData)) {
@@ -198,6 +205,8 @@ export function useSceneEditorState({
     }
     resetPendingTemplateImport()
     history.commit(draft => ({ ...draft, sceneData: nextSceneData, sceneDataText: nextText,
+      templateSourceId: templateSourceId !== undefined ? templateSourceId : isBuilderEditorDocument(nextSceneData)
+        ? draft.templateSourceId : isTemplateEditorDocument(nextSceneData) ? nextSceneData.templateId : null,
       selectedBuilderObjectId: reconcileSelection(draft, nextSceneData) }))
     const validation = validateSceneDataText(nextText)
     setErrors(current => ({ ...current, sceneData: validation.error ?? undefined, form: undefined,
@@ -205,6 +214,7 @@ export function useSceneEditorState({
         ? Object.fromEntries(Object.entries(current.fields).filter(([path]) => !(Array.isArray(changedField) ? changedField : [changedField])
           .some(field => path === field || path.startsWith(`${field}.`) || path.startsWith(`${field}[`))))
         : current.fields }))
+    return true
   }
 
   function updateBranch<K extends keyof SceneEditorModel>(
@@ -266,20 +276,20 @@ export function useSceneEditorState({
 
   const canResetAudioResponse = JSON.stringify(readMusicResponseDefaults(editorSceneData)) !== JSON.stringify(musicResponseDefaults)
 
-  function handleTemplateSelection(templateId: string, replaceCustom = false) {
-    if (builderDocument) return
-    if (!templateDocument) {
-      if (replaceCustom) {
-        applySceneData(createTemplateScene(templateId), true, 'templateId')
-        return
-      }
-      const template = createTemplateScene(templateId)
-      const shader = readTemplateShaderSource(template)
-      updateBranch('visualizer', current => ({ ...current, shader }))
-      return
+  function handleTemplateSelection(templateId: string) {
+    const current = history.readDraft().sceneData
+    const template = createTemplateScene(templateId)
+    if (isTemplateEditorDocument(current) || isBuilderEditorDocument(current)) {
+      template.settings = structuredClone(current.settings)
+      // A catalog selection starts at that template's intended size. In
+      // particular, New Template's unit scale must not shrink every starter.
+      template.parameters = { ...current.parameters, scale: template.parameters.scale }
     }
-    const next = changeTemplateSelection(sceneData, templateId, replaceCustom)
-    if (next !== sceneData) applySceneData(next, !isTemplate && replaceCustom, 'templateId')
+    const workspace = openTemplateWorkspace(template)
+    if (applySceneData(workspace.document, false, 'templateId', workspace.templateSourceId)) {
+      setMusicResponseDefaults(readMusicResponseDefaults(isBuilderEditorDocument(workspace.document)
+        ? getBuilderEditorSceneData(workspace.document) : getTemplateEditorSceneData(template)))
+    }
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {
@@ -292,6 +302,11 @@ export function useSceneEditorState({
     if (isBuilderEditorDocument(current)) applySceneData(changeBuilderValue(current, path, value), false, path)
   }
 
+  function handleUpdateBuilderDocument(recipe: (document: BuilderSceneDocument) => BuilderSceneDocument, changedField?: string) {
+    const current = history.readDraft().sceneData
+    if (isBuilderEditorDocument(current)) applySceneData(recipe(current), false, changedField)
+  }
+
   const { handleAddBuilderObject, handleUpdateBuilderObject, handleDuplicateBuilderObject,
     handleRemoveBuilderObject, handleMoveBuilderObject, handleGroupBuilderNodes, handleUngroupBuilderNode,
     handleReparentBuilderNode, handleUpdateBuilderGroup, builderCommandError } = useSceneDraftCommands({
@@ -300,61 +315,13 @@ export function useSceneEditorState({
 
   function handleSwitchToBuilder() {
     const next = createBuilderScene()
-    applySceneData(next, true)
-    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
-  }
-
-  function handleSwitchToTemplate(templateId: TemplateId = 'embedded-scene-0') {
-    const next = createTemplateScene(templateId)
-    builderRoundTripRef.current = null
-    applySceneData(next, true)
-    setMusicResponseDefaults(readMusicResponseDefaults(getTemplateEditorSceneData(next)))
-  }
-
-  function handleCustomizeTemplate(templateId: TemplateId) {
-    const current = history.readDraft().sceneData
-    const settings = isTemplateEditorDocument(current) || isBuilderEditorDocument(current) ? current.settings : undefined
-    const next = createBuilderRecipe(templateId, settings)
-    builderRoundTripRef.current = null
-    applySceneData(next, true)
-    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
-  }
-
-  function handleRestoreBuilder() {
-    const roundTrip = builderRoundTripRef.current
-    if (!roundTrip || isTemplate || isBuilder || roundTrip.customSignature !== JSON.stringify(sceneData)) return false
-    const next = structuredClone(roundTrip.document)
-    builderRoundTripRef.current = null
-    applySceneData(next, true)
-    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
-    return true
-  }
-
-  function handleSwitchBuilderToCustom() {
-    if (!builderDocument) return
-    try {
-      const compiled = resolveSceneForPlayback(builderDocument).engineScene
-      const custom = readEditableSceneData({ schemaVersion: 1, kind: 'custom', scene: compiled })
-      builderRoundTripRef.current = { document: structuredClone(builderDocument), customSignature: JSON.stringify(custom) }
-      applySceneData(custom, true)
-    } catch (error) {
-      setErrors(current => ({ ...current, sceneData: describeSceneValidationError(error),
-        form: 'Fix the Builder scene before switching to Custom Code.' }))
+    if (applySceneData(next, false, undefined, null)) {
+      setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
     }
   }
 
   function handleCameraAdvancedToggle(nextValue: boolean) {
     setIsCameraAdvancedEnabled(nextValue)
-  }
-
-  function handleShaderSelection(shaderId: string) {
-    if (isTemplate) return
-    const shader = SHADER_SCENES.find((option) => option.id === shaderId)
-    if (!shader) return
-    updateBranch('visualizer', current => ({
-      ...current,
-      shader: shader.shader,
-    }))
   }
 
   function handleShaderSourceChange(shader: string) {
@@ -429,7 +396,18 @@ export function useSceneEditorState({
     handleUpdateBuilderGroup,
     setSelectedBuilderObjectId: history.selectObject,
     history,
-    restoreDraft: (draft: SceneDraftSnapshot) => { resetPendingTemplateImport(); clearErrors(); history.restore(draft) },
+    restoreDraft: (draft: SceneDraftSnapshot) => {
+      const workspace = openTemplateWorkspace(draft.sceneData)
+      const converted = workspace.document !== draft.sceneData
+      resetPendingTemplateImport()
+      clearErrors()
+      history.restore({ ...draft, sceneData: workspace.document,
+        templateSourceId: draft.templateSourceId ?? workspace.templateSourceId,
+        // Preserve pending JSON repairs instead of silently replacing their text.
+        sceneDataText: converted && draft.sceneDataText === prettyPrintEditorSceneData(draft.sceneData)
+          ? prettyPrintEditorSceneData(workspace.document) : draft.sceneDataText,
+        selectedBuilderObjectId: converted ? reconcileSelection(draft, workspace.document) : draft.selectedBuilderObjectId })
+    },
     undoDraft: () => { resetPendingTemplateImport(); clearErrors(); history.undo() },
     redoDraft: () => { resetPendingTemplateImport(); clearErrors(); history.redo() },
     resetDraft: () => { resetPendingTemplateImport(); clearErrors(); history.reset() },
@@ -457,16 +435,12 @@ export function useSceneEditorState({
     handleDuplicateBuilderObject,
     handleRemoveBuilderObject,
     handleMoveBuilderObject,
-    handleRestoreBuilder,
-    handleSwitchBuilderToCustom,
     handleSwitchToBuilder,
-    handleSwitchToTemplate,
-    handleCustomizeTemplate,
     handleUpdateBuilderObject,
+    handleUpdateBuilderDocument,
     handleMotionAdvancedToggle,
     handleNameChange,
     handleRawSceneDataChange,
-    handleShaderSelection,
     handleShaderSourceChange,
     handleTemplateSelection,
     handleSectionJump,
@@ -480,7 +454,6 @@ export function useSceneEditorState({
     isSubmitting,
     isTemplate,
     isBuilder,
-    isUnmodifiedBuilderCustom,
     isTagDropdownOpen,
     movePass,
     movePassTo,
@@ -509,6 +482,8 @@ export function useSceneEditorState({
     thumbnailPreviewUrl,
     templateDocument,
     builderDocument,
+    builderTemplateSourceId,
+    isBuilderAdapted,
     templateFieldErrors,
     titleId,
     toggleTagSelection,

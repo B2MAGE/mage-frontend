@@ -1,6 +1,6 @@
 {
   "policyVersion": 1,
-  "description": "Whole-scene compilation limits for Scene Builder version 1, including composition version 1. Counts include arranged copies, object frames, and every group.",
+  "description": "Whole-scene compilation limits for Scene Builder version 1, including composition version 1. Counts include arranged copies, object frames, and every group. Procedural frame distance work and lattice coordinate folds use the existing modifier budget, per arranged copy.",
   "limits": {
     "expandedPrimitives": 16,
     "compositionOperations": 15,
@@ -30,7 +30,10 @@
     "arrangementPerAdditionalCopy": 1,
     "spinPerPrimitive": 1,
     "compositionPerAdditionalObject": 1,
-    "liveUniformPerBinding": 1
+    "liveUniformPerBinding": 1,
+    "box-frame": 3,
+    "lattice": 3,
+    "latticePerFold": 1
   },
   "driverLimits": {
     "perNode": 8,

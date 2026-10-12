@@ -1,5 +1,5 @@
 import { listSceneTemplates, listSelectableSceneTemplates } from '@modules/player'
-import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
+import { AppIcon, EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import { SKYBOX_OPTIONS } from '../sceneEditor'
 
 export const BUILDER_SHADER_TEMPLATE_VALUE = '__builder-shader__'
@@ -7,8 +7,8 @@ export const BUILDER_SHADER_TEMPLATE_VALUE = '__builder-shader__'
 type Props = {
   fields?: Record<string, string>
   isBuilder: boolean
-  isTemplateDisabled?: boolean
-  templateDisabledDescription?: string
+  builderTemplateLabel: string
+  onAddTemplate: () => void
   onScaleChange: (value: number) => void
   onSkyboxChange: (value: number) => void
   onTemplateChange: (templateId: string) => void
@@ -38,8 +38,8 @@ function sliderPositionToSceneScale(position: number) {
 export function SceneSetupControls({
   fields = {},
   isBuilder,
-  isTemplateDisabled = false,
-  templateDisabledDescription,
+  builderTemplateLabel,
+  onAddTemplate,
   onScaleChange,
   onSkyboxChange,
   onTemplateChange,
@@ -64,30 +64,33 @@ export function SceneSetupControls({
         htmlFor={fieldId('templateId')}
         label="Template"
         description={isBuilder
-          ? 'Builder Shader is generated from the objects in this workspace.'
-          : isTemplateDisabled
-            ? templateDisabledDescription
-            : 'Choose the visual to use as-is or open in Custom Code.'}
+          ? 'Edits are saved with this scene. Templates are not saved separately.'
+          : 'Choose a template or add a new one. Editable templates open below.'}
       >
-        <select
-          aria-describedby={describedBy('templateId')}
-          aria-invalid={Boolean(error('templateId'))}
-          className="mage-select"
-          disabled={isTemplateDisabled}
-          id={fieldId('templateId')}
-          onChange={event => onTemplateChange(event.currentTarget.value)}
-          value={templateId}
-        >
-          {isBuilder ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>Builder Shader</option> : null}
-          {templateId === 'custom' ? <option value="custom" disabled>Custom shader</option> : null}
-          {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>
-            {selectedRetiredTemplate.label} (unavailable)
-          </option> : null}
-          {selectableTemplates.map(template => <option
-            key={`${template.templateId}:${template.templateVersion}`}
-            value={template.templateId}
-          >{template.label}</option>)}
-        </select>
+        <div className="scene-template-picker">
+          <select
+            aria-describedby={describedBy('templateId')}
+            aria-invalid={Boolean(error('templateId'))}
+            className="mage-select"
+            id={fieldId('templateId')}
+            onChange={event => onTemplateChange(event.currentTarget.value)}
+            value={templateId}
+          >
+            {templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>{builderTemplateLabel}</option> : null}
+            {templateId === 'custom' ? <option value="custom" disabled>Custom shader</option> : null}
+            {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>
+              {selectedRetiredTemplate.label} (unavailable)
+            </option> : null}
+            {selectableTemplates.map(template => <option
+              key={`${template.templateId}:${template.templateVersion}`}
+              value={template.templateId}
+            >{template.label}</option>)}
+          </select>
+          <button aria-label="Add new template" className="scene-secondary-button scene-template-picker__add"
+            id="scene-add-template" onClick={onAddTemplate} title="Add new template" type="button">
+            <AppIcon name="plus" size={18} />
+          </button>
+        </div>
       </EditorFieldShell>
       {issue('templateId')}
     </div>
