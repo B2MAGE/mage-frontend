@@ -245,17 +245,18 @@ describe('Scene Builder object editor', () => {
     await user.click(screen.getByRole('button', { name: 'Expand Ring arrangement 2' }))
     await user.click(screen.getByRole('button', { name: 'Remove Ring arrangement 2' }))
     await user.click(screen.getByRole('heading', { name: 'Animation', level: 4 }).closest('summary')!)
-    expect(screen.getByRole('button', { name: 'Why Spin may be hard to see on a sphere' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Expand Spin animation' }))
-    await user.selectOptions(screen.getByLabelText('Axis', { selector: '#builder-motion-axis' }), 'z')
+    expect(screen.queryByRole('button', { name: 'Expand Spin animation' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add spin' }))
+    await user.selectOptions(screen.getByLabelText('Property'), 'rotation.z')
     fireEvent.change(screen.getByLabelText('Speed numeric value'), { target: { value: '1.25' } })
-    expect(screen.getByRole('button', { name: 'Why Spin may be hard to see on a sphere' })).toBeInTheDocument()
+    expect(screen.getByText(/A plain sphere has no obvious orientation/)).toBeInTheDocument()
     expect(screen.queryByText('Spin speed is capped and stays inside this object’s isolated transform.')).not.toBeInTheDocument()
 
     await waitFor(() => expect(preview().objects[0]).toMatchObject({
       modifiers: [{ type: 'shell', thickness: 0.2 }, { type: 'twist', axis: 'z', amount: 1.5 }],
       arrangements: [{ type: 'linear', axis: 'x', count: 4, spacing: 2.5 }],
-      motion: { type: 'spin', axis: 'z', speed: 1.25 },
+      motion: { type: 'none' },
+      drivers: [{ target: 'rotation.z', mode: 'add', expression: { type: 'add', left: { type: 'multiply', left: { type: 'input', source: 'time' }, right: { type: 'constant', value: 1.25 } } } }],
     }))
     expect(screen.getByText('4 of 16 rendered copies used. Two arrangement stages may be nested.')).toBeInTheDocument()
   }, 60_000)

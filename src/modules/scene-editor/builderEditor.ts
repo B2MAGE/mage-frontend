@@ -4,6 +4,7 @@ import {
   BUILDER_OPERATIONS,
   BUILDER_TRANSFORMS,
   createBuilderOperation,
+  builderDriverTargetRange,
   parseSceneDocument,
   type BuilderObject,
   type BuilderShape,
@@ -168,7 +169,10 @@ export function changeBuilderValue(document: BuilderSceneDocument, path: Templat
 }
 
 export function applyBuilderTemplate(document: BuilderSceneDocument, templateId: TemplateId) {
-  return { ...document, objects: applyStartingStyle(document.objects, templateId) }
+  const style = BUILDER_STARTING_STYLES[templateId]
+  return { ...document, objects: applyStartingStyle(document.objects, templateId),
+    ...(document.composition ? { composition: { ...document.composition, groups: document.composition.groups.map(group => group.material
+      ? { ...group, material: { color: style.colors[0], metalness: style.metalness, shininess: style.shininess } } : group) } } : {}) }
 }
 
 export function addBuilderObject(document: BuilderSceneDocument, type: BuilderShape, objectId?: string) {
@@ -189,8 +193,14 @@ export function updateBuilderObject(
   if (!document.objects.some(object => object.id === objectId)) return document
   return {
     ...document,
-    objects: document.objects.map(object => object.id === objectId
-      ? { ...recipe(structuredClone(object)), id: object.id } : object),
+    objects: document.objects.map(object => {
+      if (object.id !== objectId) return object
+      const next = { ...recipe(structuredClone(object)), id: object.id }
+      if (next.drivers && next.operation.type !== object.operation.type) {
+        next.drivers = next.drivers.filter(driver => builderDriverTargetRange(next, driver.target))
+      }
+      return next
+    }),
   }
 }
 

@@ -96,7 +96,7 @@ multiply an arrangement or authorize formulas or cross-object mutation.
 
 Material fields are `color` (`#RRGGBB`, default `#8066ff`), `metalness` (0–1,
 default 0), and `shininess` (0–1, default 0.5). No textures, asset URLs, source,
-callbacks, expressions or arbitrary properties are allowed. `parameters` and
+callbacks, free-text expressions or arbitrary properties are allowed. `parameters` and
 `settings` use exactly the template document's existing bounded scene-wide
 scale, speed, camera, skybox catalog, motion, effects and music controls/defaults.
 The scene-wide scale applies after object composition. Those controls never
@@ -134,7 +134,8 @@ apply uniform scale (0.01–20, default 1), then X/Y/Z rotation, then translatio
 rotation and position bounds/defaults match object transforms. A group
 transform applies to the complete child result, including child arrangements,
 modifiers, motion and nested groups. Group transforms introduce no independent
-motion, modifiers, arrangements or bindings.
+motion stages, modifiers, arrangements or bindings. Their optional bounded
+property drivers are described below.
 
 `operation` defaults to `{ "type": "union" }`. A hard union folds children in
 saved order, retaining the earlier child's material on an exact distance tie.
@@ -223,6 +224,84 @@ No source is generated or evaluated per frame. Bindings belong to their object,
 so duplication gives the object a new ID and copies its responses; deletion
 removes those responses without leaving cross-object references. History,
 browser drafts, normal save/reopen and JSON import/export preserve the same data.
+
+## Bounded property drivers (SB-10)
+
+Objects and groups may contain an optional ordered `drivers` array. Each entry
+contains `target`, `mode` (`add`, `replace`, or `multiply`) and a typed
+`expression`. Repeated targets intentionally apply in array order: each driver
+uses the result of the previous one. Object drivers begin with the authored
+property after its music/pointer binding; existing spin adds to driven rotation.
+Group drivers modify the group's local transform, blend or material before its
+composition is evaluated. Authored values and expressions remain the saved data;
+animated output never overwrites them.
+
+Object targets include the existing binding targets and dimensions available on
+the selected primitive: `operation.radius`, `operation.width`,
+`operation.height`, `operation.depth`, or `operation.tube`. Group targets are
+`position.x/y/z`, `rotation.x/y/z`, uniform `scale`, `blend` for smooth-union,
+and `material.metalness`/`material.shininess` when the group has a material
+override. A target unavailable on that object or group is rejected.
+
+Expressions are closed data, not executable strings:
+
+- `constant` supplies a scalar `value` or a complete `{x,y,z}` vector; each
+  component is finite and within −1,000–1,000.
+- `input` selects `time`, an existing approved audio/pointer source, or one of
+  `local-position`, `group-position`, `world-position`, and `view-ray`.
+- `add` has matching scalar/scalar or vector/vector `left` and `right` inputs.
+  `multiply` also supports scalar/vector broadcasting and componentwise vectors.
+- `sin` and `cos` have one scalar or vector `input` and bounded outputs.
+- `clamp` applies scalar `min` and `max` bounds to a scalar or each vector
+  component. Bounds lie within −1,000–1,000 and `min` must not exceed `max`.
+- `component` extracts the selected `axis` (`x`, `y`, or `z`) from a vector
+  `input`. The final value of every property driver must be scalar.
+
+Time is a scene clock, wrapped at 86,400 seconds. Audio and pointer input ranges
+match bindings and reuse the existing analysis/pointer path. Driver signals use
+the existing mapped envelopes with a 0.05-second attack and 0.2-second release.
+Spatial inputs
+are actual renderer coordinates or the per-pixel view ray; a camera position
+is not accepted as a substitute for a view ray. `local-position` is the current
+object/group baseline local coordinate before its own drivers (including its
+existing binding and spin values), avoiding a circular reference to its driven
+transform. `group-position` is the coordinate after the immediate parent group's
+driven transform, and `world-position` is the scene coordinate before any
+object/group transforms. These spatial inputs are evaluated in the trusted shader, not
+converted into a whole-object CPU signal. Vector inputs require a component
+selection before use as a scalar target.
+
+Each arithmetic intermediate is clamped to ±1,000,000; trigonometric arguments
+use the same bounded interval. Each driven property is constrained after every
+step: dimensions, position, scale, material and blend use their declared finite
+ranges, while rotation wraps to an equivalent angle in −π–π to allow continuous
+spinning. Independent API and compiler validation reject unknown operations,
+inputs, targets and incompatible types before compilation or persistence.
+
+There are at most eight drivers per object/group, 32 authored drivers per
+scene, eight expression levels and 32 nodes per expression. The scene's total
+driver-operation budget is 192 nodes, counting object arrangement copies;
+group expressions count once for their composed result. Numeric constants each
+require one live uniform (three for a vector), clamp bounds require two, and
+each distinct audio/pointer signal requires one shared uniform. Time/spatial
+inputs do not add live slots. Driver slots and existing binding slots together
+remain within the 64-uniform budget. Whole-document and other rendering limits
+continue to apply.
+
+The compiler assigns deterministic slots by owner, driver and expression path.
+Numeric edits update those slots without recompilation; structural expression,
+target or mode changes use normal stale-work cancellation. Source generation is
+never performed per frame. The UI's Pulse, Wobble, Spin, Speed, Amount, Phase,
+Offset and range controls edit this same data without exposing a formula box.
+Original and Selective scene-wide audio modes remain supported alongside these
+per-object/group drivers.
+
+The editable Alloy Capsule recipe is a concrete cylinder and two spheres in
+ordered composition groups, with shared rotation, pointer/music response and
+view-ray shaping. `drivers-editable-alloy-capsule-current-recipe` in the shared
+round-trip fixtures pins the current recipe as ordinary editable data. API
+create/update/read tests use this exact document; the saved scene has no template
+alias or hidden source dependency.
 
 ## Limits and errors
 
