@@ -303,16 +303,63 @@ round-trip fixtures pins the current recipe as ordinary editable data. API
 create/update/read tests use this exact document; the saved scene has no template
 alias or hidden source dependency.
 
+## Frames and procedural lattices
+
+`box-frame` is the engine's actual box-frame distance function, with independent
+`width`, `height`, and `depth` from 0.01 to 10 and `thickness` from 0.001 to 3.
+Dimensions default to 1 and thickness to 0.08. The edges grow inward; a thick
+frame can fill its interior. It is not a hollow-box shell approximation.
+
+`lattice` repeats an edge frame procedurally with `iterations` from 1 to 5
+(default 2), `spacing` from 0.01 to 10 (default 0.3), and `thickness` from
+0.0001 to 3 (default 0.02). Spacing is a cell half-size; thickness is the actual
+rod radius, independently editable from spacing. Each fold mirrors all three
+coordinates and subtracts `spacing * 2^i`, for `i = iterations - 1` down to zero.
+This retains the engine's fractional behavior: 1.99 performs one fold at
+exponent 0.99. It does not round the document to two folds. The final frame has
+zero edge thickness and is expanded by the authored rod radius.
+
+Frames and lattices remain one editable object per arrangement copy. They use
+the same transforms, materials, modifiers, grouping, saving and driver system
+as the other shapes. Frame dimensions/thickness and lattice spacing/thickness
+are driver targets. Repetition levels are structural and cannot be animated.
+Drivers retain each property's finite range. Generated source contains only
+trusted arithmetic for these operations, so production compilation does not
+depend on dynamically resolving a `boxFrame` or `grid` function.
+
+Object parent frames and group transforms may specify `rotationOrder` as one
+of `xyz`, `xzy`, `yxz`, `yzx`, `zxy`, or `zyx`. Omission keeps `xyz`. This is the
+forward surface rotation order; the compiler reverses it for the coordinate
+transform. It allows editable template recipes to retain their authored
+rotation sequence without adding hidden template behavior.
+
+The existing 80-operation modifier budget also accounts for procedural shape
+work: a box frame costs 3, and a lattice costs `3 + floor(iterations)`, each
+multiplied by arrangement copies. No workload, raymarch, resolution or runtime
+limits increase. Conservative outer bounds include every lattice fold, rod
+radius, and later shell/expand modifier so thin or scaled geometry retains its
+surface without slow empty-space marching. Spatially varying drivers use the
+existing unbounded-coordinate path instead of an invalid fixed box bound.
+
 ## Limits and errors
 
 There are at most 16 objects, one shape operation each, and four bindings per
 object. Disabled/unused data still counts. The existing whole-document policy
 also applies before recursive validation and again after defaults: 256 KiB
-serialized UTF-8, depth 16, 64 items per array, 64 keys per object, 512 total
+serialized UTF-8, depth 16, 64 items per array, 64 keys per object, 768 total
 keys, 2,048 total values, and 64 UTF-8 bytes per key. API request limit remains
 512 KiB. No Builder-specific budget bypass is introduced; rich object settings
 can exhaust the shared total budget before the object-count ceiling. At most
 four optional scene effects can be enabled, including bloom and tint.
+
+SB-11 raises only the transport field count from 512 to 768. The unmodified
+six-object Mint Halo recipe with fully authored camera, effects, motion and
+six audio mappings contains 583 keys, 637 values and 8,741 UTF-8 bytes. Its
+geometry and drivers already fit every rendering budget. This adjustment lets
+the actual editable document pass through storage and playback without
+discarding controls or changing animation. Document bytes/depth/array sizes,
+total values, shader work and runtime ceilings remain unchanged; 769 fields
+still fail transport validation before the contract parser runs.
 
 All numbers must be finite and in range. Wrong types are rejected, not coerced
 or clamped during storage. Duplicate IDs/targets, prototype-related fields,

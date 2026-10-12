@@ -40,6 +40,8 @@ export type BuilderOperation =
   | { type: 'box'; width: number; height: number; depth: number }
   | { type: 'torus'; radius: number; tube: number }
   | { type: 'cylinder'; radius: number; height: number }
+  | { type: 'box-frame'; width: number; height: number; depth: number; thickness: number }
+  | { type: 'lattice'; iterations: number; spacing: number; thickness: number }
 export type BuilderVector = { x: number; y: number; z: number }
 /** Bounded data expressions; authored strings are never executable shader code. */
 export type BuilderDriverSource = BuilderBinding['source'] | 'time'
@@ -52,14 +54,17 @@ export type BuilderDriverExpression =
   | { type: 'clamp'; input: BuilderDriverExpression; min: number; max: number }
   | { type: 'component'; input: BuilderDriverExpression; axis: 'x' | 'y' | 'z' }
 export type BuilderDriverTarget = BuilderBinding['target'] | 'scale' | 'blend'
-  | `operation.${'radius' | 'width' | 'height' | 'depth' | 'tube'}`
+  | `operation.${'radius' | 'width' | 'height' | 'depth' | 'tube' | 'spacing' | 'thickness'}`
 export type BuilderDriver = {
   target: BuilderDriverTarget
   mode: 'add' | 'replace' | 'multiply'
   expression: BuilderDriverExpression
 }
 /** A uniform parent frame preserves the child's local geometry and animation. */
-export type BuilderFrame = { position: BuilderVector; rotation: BuilderVector; scale: number }
+export type BuilderFrame = {
+  position: BuilderVector; rotation: BuilderVector; scale: number
+  rotationOrder?: 'xyz' | 'xzy' | 'yxz' | 'yzx' | 'zxy' | 'zyx'
+}
 export type BuilderMaterial = { color: string; metalness: number; shininess: number }
 export type BuilderGroup = {
   id: string; name: string; children: string[]; transform: BuilderFrame

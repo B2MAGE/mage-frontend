@@ -113,6 +113,25 @@ function colorChannels(color: string): [number, number, number] {
   return [(value >> 16) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255]
 }
 
+/** Shader Park's mirrorN keeps the fractional exponent, rather than rounding levels. */
+function latticeOffsets(iterations: number): number[] {
+  return Array.from({ length: Math.floor(iterations) }, (_, index) => 2 ** (iterations - 1 - index))
+}
+
+/** The exact box-frame distance uses three edge families, including thick/filled frames. */
+function frameDistanceSource(suffix: string, dimensions: [string, string, string], thickness: string, expansion = '0'): string {
+  const p = `builder_frame_delta_${suffix}`, q = `builder_frame_edges_${suffix}`
+  const edge = (components: string[]) => {
+    const outside = `vec3(${components.map(value => `max(${value},0)`).join(',')})`
+    return `(length(${outside})+min(max(${components[0]},max(${components[1]},${components[2]})),0))`
+  }
+  return [
+    `let ${p}=abs(getSpace())-vec3(${dimensions.join(',')});`,
+    `let ${q}=abs(${p}+vec3(${thickness}))-vec3(${thickness});`,
+    `let builder_distance_${suffix}=min(min(${edge([`${p}.x`, `${q}.y`, `${q}.z`])},${edge([`${q}.x`, `${p}.y`, `${q}.z`])}),${edge([`${q}.x`, `${q}.y`, `${p}.z`])})-${expansion};`,
+  ].join('')
+}
+
 function primitiveDistanceSource(object: BuilderObject, suffix: string, read: (target: string, base: string) => string = (_target, base) => base): string {
   const operation = object.operation
   const dimension = (key: string, value: number) => read(`operation.${key}`, literal(value))
@@ -134,6 +153,14 @@ function primitiveDistanceSource(object: BuilderObject, suffix: string, read: (t
     }
     case 'torus': return `let builder_distance_${suffix}=extractSDF(torus)(${dimension('radius', operation.radius)},${dimension('tube', operation.tube)});`
     case 'cylinder': return `let builder_distance_${suffix}=extractSDF(cylinder)(${dimension('radius', operation.radius)},${dimension('height', operation.height)});`
+    case 'box-frame': return frameDistanceSource(suffix,
+      [dimension('width', operation.width), dimension('height', operation.height), dimension('depth', operation.depth)], dimension('thickness', operation.thickness))
+    case 'lattice': {
+      const spacing = dimension('spacing', operation.spacing)
+      return latticeOffsets(operation.iterations).map(offset =>
+        `setSpace(abs(getSpace())-vec3(${spacing}*${literal(offset)}));`).join('')
+        + frameDistanceSource(suffix, [spacing, spacing, spacing], '0', dimension('thickness', operation.thickness))
+    }
     default: return fail('sceneData.objects.operation.type', 'Unsupported Builder operation.')
   }
 }
@@ -164,12 +191,16 @@ function objectBoundSource(object: BuilderObject, suffix: string, scale: [string
   let bounds: [string, string, string]
   switch (operation.type) {
     case 'sphere': bounds = Array(3).fill(dimension('radius', operation.radius)) as [string, string, string]; break
-    case 'box': bounds = [dimension('width', operation.width), dimension('height', operation.height), dimension('depth', operation.depth)]; break
+    case 'box': case 'box-frame': bounds = [dimension('width', operation.width), dimension('height', operation.height), dimension('depth', operation.depth)]; break
     case 'torus': {
       const radius = dimension('radius', operation.radius), tube = dimension('tube', operation.tube)
       bounds = [`(${radius}+${tube})`, tube, `(${radius}+${tube})`]; break
     }
     case 'cylinder': bounds = [dimension('radius', operation.radius), dimension('height', operation.height), dimension('radius', operation.radius)]; break
+    case 'lattice': {
+      const extent = `(${dimension('spacing', operation.spacing)}*${literal(1 + latticeOffsets(operation.iterations).reduce((sum, offset) => sum + offset, 0))}+${dimension('thickness', operation.thickness)})`
+      bounds = [extent, extent, extent]; break
+    }
   }
   const padding = object.modifiers.reduce((total, modifier) => total
     + (modifier.type === 'expand' ? Math.max(0, modifier.amount) : modifier.type === 'shell' ? modifier.thickness : 0), 0)
@@ -271,7 +302,10 @@ function initialWorkload(document: BuilderSceneDocument): Omit<BuilderWorkload, 
     materialOperations: (expandedPrimitives + groups.filter(group => group.material).length) * policy.operationCosts.materialPerObject,
     modifierOperations: document.objects.reduce((sum, object, index) => sum + expandedCounts[index] * object.modifiers.reduce((cost, modifier) =>
       cost + policy.operationCosts[modifier.type === 'expand' ? 'expandModifier'
-        : modifier.type === 'shell' ? 'shellModifier' : 'twistModifier'], 0), 0),
+        : modifier.type === 'shell' ? 'shellModifier' : 'twistModifier'],
+    object.operation.type === 'box-frame' ? policy.operationCosts['box-frame']
+      : object.operation.type === 'lattice' ? policy.operationCosts.lattice
+        + Math.floor(object.operation.iterations) * policy.operationCosts.latticePerFold : 0), 0),
     arrangementOperations: document.objects.reduce((sum, _object, index) =>
       sum + Math.max(0, expandedCounts[index] - 1) * policy.operationCosts.arrangementPerAdditionalCopy, 0),
     animationOperations: document.objects.reduce((sum, object, index) =>
@@ -364,12 +398,13 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
   const groupRead = (index: number, target: BuilderGroupTarget) => groupValues[index].get(target)
     ?? literal(groupPropertyValue(groups[index], target))
 
-  /** New parent frames use conventional forward scale → X/Y/Z rotation → translation. */
-  const frameSource = (suffix: string, read: (target: Exclude<BuilderGroupTarget, 'blend' | `material.${string}`>) => string) => [
+  /** Parent frames use forward scale → chosen rotation order → translation. */
+  const frameSource = (suffix: string, read: (target: Exclude<BuilderGroupTarget, 'blend' | `material.${string}`>) => string, order: BuilderFrame['rotationOrder'] = 'xyz') => [
     `displace(${read('position.x')},${read('position.y')},${read('position.z')});`,
     // Shader Park rotates coordinates rather than the surface, with its Y
-    // helper using the XZ plane. Reverse order/sign yields Rz*Ry*Rx forward.
-    `rotateZ(${read('rotation.z')});rotateY(-(${read('rotation.y')}));rotateX(${read('rotation.x')});`,
+    // helper using the XZ plane. Reverse order/sign yields the chosen forward frame.
+    [...order].reverse().map(axis => axis === 'y' ? `rotateY(-(${read('rotation.y')}));`
+      : axis === 'x' ? `rotateX(${read('rotation.x')});` : `rotateZ(${read('rotation.z')});`).join(''),
     `let builder_frame_${suffix}=getSpace();setSpace(builder_frame_${suffix}/${read('scale')});`,
   ].join('')
   const constantFrameRead = (frame: BuilderFrame, target: Exclude<BuilderGroupTarget, 'blend' | `material.${string}`>) => {
@@ -433,7 +468,7 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
       const name = `builder_leaf_${node.index}`
       return { name, source: [
         `let ${name}=shape(()=>{`,
-        frame ? frameSource(`o${node.index}`, target => constantFrameRead(frame, target)) : '',
+        frame ? frameSource(`o${node.index}`, target => constantFrameRead(frame, target), frame.rotationOrder) : '',
         objectSource(node.index, frame ? multiply(parentScale, literal(frame.scale)) : parentScale, inherited, parentGroup, parentHasFixedBounds),
         'return getSDF();});',
       ].join('') }
@@ -452,11 +487,11 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
       `let ${name}=shape(()=>{`,
       drivers.hasLocal(group) ? [
         `let builder_group_parent_${index}=getSpace()+vec3(0);`,
-        frameSource(`base_g${index}`, target => groupRead(index, target)),
+        frameSource(`base_g${index}`, target => groupRead(index, target), group.transform.rotationOrder),
         `let ${localName}=getSpace()+vec3(0);setSpace(builder_group_parent_${index});`,
       ].join('') : '',
       '__BUILDER_DRIVER_DECLARATIONS__',
-      frameSource(`g${index}`, read),
+      frameSource(`g${index}`, read, group.transform.rotationOrder),
       drivers.spatial ? `let ${groupPosition}=getSpace()+vec3(0);` : '',
       ...children.flatMap((child, childIndex) => {
         if (!blend || childIndex === 0) return [child.source, `${child.name}();`]

@@ -21,7 +21,7 @@ export function builderDriverTargetRange(node: BuilderObject | BuilderGroup, tar
       ? BUILDER_GROUP_RANGES[target as keyof typeof BUILDER_GROUP_RANGES] : null
   }
   if (target.startsWith('operation.')) {
-    return builderOperationFields(node.operation).find(field => `operation.${field.key}` === target) ?? null
+    return builderOperationFields(node.operation).find(field => field.animatable && `operation.${field.key}` === target) ?? null
   }
   return Object.hasOwn(BUILDER_BINDING_RANGES, target)
     ? BUILDER_BINDING_RANGES[target as keyof typeof BUILDER_BINDING_RANGES] : null

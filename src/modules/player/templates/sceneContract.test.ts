@@ -70,7 +70,7 @@ describe('shared scene contract fixtures', () => {
     expect(builderCases.length).toBeGreaterThanOrEqual(48)
     const operations = builderCases.flatMap(fixture => fixture.valid && 'objects' in fixture.document
       ? (fixture.document.objects ?? []).flatMap(object => 'operation' in object && object.operation ? [object.operation.type] : []) : [])
-    expect(new Set(operations)).toEqual(new Set(['sphere', 'box', 'torus', 'cylinder']))
+    expect(new Set(operations)).toEqual(new Set(['sphere', 'box', 'torus', 'cylinder', 'box-frame', 'lattice']))
   })
 
   it('materializes exactly the defaults published for other contract consumers', () => {
