@@ -34,7 +34,7 @@ import { changeMusicResponseMode, readMusicResponseDefaults, restoreMusicRespons
 import { createCustomSceneFromTemplate, readTemplateShaderSource, resolveSceneForPlayback, SceneValidationError, validateSceneDocument, type BuilderSceneDocument, type TemplateId } from '@modules/player'
 import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateSelection, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
-import { applyBuilderTemplate, changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
+import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
 import { builderOrderedNodes } from './builderGroups'
 import { createBuilderRecipe } from './builderRecipes'
 
@@ -320,11 +320,6 @@ export function useSceneEditorState({
     setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(next)))
   }
 
-  function handleApplyTemplatePalette(templateId: TemplateId) {
-    const current = history.readDraft().sceneData
-    if (isBuilderEditorDocument(current)) applySceneData(applyBuilderTemplate(current, templateId))
-  }
-
   function handleRestoreBuilder() {
     const roundTrip = builderRoundTripRef.current
     if (!roundTrip || isTemplate || isBuilder || roundTrip.customSignature !== JSON.stringify(sceneData)) return false
@@ -467,7 +462,6 @@ export function useSceneEditorState({
     handleSwitchToBuilder,
     handleSwitchToTemplate,
     handleCustomizeTemplate,
-    handleApplyTemplatePalette,
     handleUpdateBuilderObject,
     handleMotionAdvancedToggle,
     handleNameChange,

@@ -250,7 +250,6 @@ export function SceneEditorShell({
     editorAudioResponseConfig,
     handleTemplateSelection,
     handleCustomizeTemplate,
-    handleApplyTemplatePalette,
     editorSections,
     pendingTemplateImport,
     confirmTemplateImport,
@@ -864,18 +863,12 @@ export function SceneEditorShell({
         aria-describedby="replace-builder-description" onKeyDown={event => trapModalFocus(event, cancelBuilderTemplateReplacement)}>
         <h2 id="replace-builder-title">Replace your Builder scene?</h2>
         <p id="replace-builder-description">Switching to {pendingBuilderTemplate.label} discards every Builder object and any unsaved Builder changes. You can undo this change while the editor stays open.</p>
-        <p>Apply palette only keeps your objects and animation, and changes their colors and material settings.</p>
         <div className="auth-actions">
           <button className="scene-editor-confirm-submit" type="button" onClick={confirmBuilderTemplateReplacement}>Use {pendingBuilderTemplate.label}</button>
           {BUILDER_RECIPES.some(recipe => recipe.templateId === pendingBuilderTemplate.templateId) ? <button className="scene-secondary-button" type="button" onClick={() => {
             handleCustomizeTemplate(pendingBuilderTemplate.templateId as TemplateId);
             setPendingBuilderTemplateId(null);
           }}>Customize in Builder</button> : null}
-          <button className="scene-secondary-button" type="button" onClick={() => {
-            handleApplyTemplatePalette(pendingBuilderTemplate.templateId as TemplateId);
-            setPendingBuilderTemplateId(null);
-            focusTemplateSelect();
-          }}>Apply palette only</button>
           <button className="scene-secondary-button" type="button" ref={builderTemplateCancelRef} onClick={cancelBuilderTemplateReplacement}>Cancel</button>
         </div>
       </section>
