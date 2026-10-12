@@ -80,6 +80,37 @@ Current limitations:
 
 Coverage lives in the colocated scene-editor specs under `src/modules/scene-editor/`.
 
+## Builder combined inputs
+
+Under an object's or group's **Animation** section, **Add combined inputs** creates
+an influence whose calculation can be edited through nested controls. Existing recipe
+influences expose the same controls. Open **First value**, **Second value**, or
+**Incoming value** to inspect each input and coefficient. **Calculation** supports
+fixed values, inputs, addition, multiplication, sine/cosine, range limits, and selecting
+one component of an XYZ value. Selecting a wrapper keeps the current calculation as
+its child; **Use … value only** removes a wrapper or unwanted branch.
+
+For example, to make a wave whose frequency follows the shared scene size response:
+
+1. Add combined inputs and choose a property, such as Position Y.
+2. Set Calculation to Input, then choose Time.
+3. Set Calculation to Multiply two values. The first value remains Time.
+4. Open Second value, set Calculation to Input, and choose Scene size response.
+5. Set the outer Calculation to Sine wave. The result is `sin(time × scene-size)`.
+
+Simple single-input formulas also expose **Follow input** controls. **Edit combined
+inputs** opens their exact expression without rewriting it; **Use simple controls**
+is available when the expression matches a supported preset. Input formulas that
+originally had no range clamp remain unclamped unless custom limits are selected.
+
+`builderExpressions.ts` owns structural authoring helpers and
+`ui/BuilderExpressionControls.tsx` renders the shared editor for all recipes. The
+existing player contract/compiler still validates types, ranges and whole-scene
+budgets; the editor additionally prevents exceeding expression depth/node limits.
+Invalid numeric drafts remain repairable, with the last valid preview retained and
+saving blocked. Edits use the existing undo, draft recovery, capture and save flows.
+No new expression schema, renderer behavior or backend format is introduced.
+
 ## Current versioned transport
 
 The custom editor exposes its existing controls and current custom-envelope JSON.

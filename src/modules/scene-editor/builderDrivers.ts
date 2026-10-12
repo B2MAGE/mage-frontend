@@ -6,6 +6,8 @@ export type DriverPreset = 'pulse' | 'wobble' | 'spin' | 'follow'
 export type DriverPresetValues = {
   preset: DriverPreset; source: string; speed: number; amount: number; phase: number; offset: number; minimum: number; maximum: number
   audioDriven?: boolean
+  /** Imported affine inputs retain their absent influence clamp until limits are explicitly added. */
+  unclamped?: boolean
 }
 export const isAudioPulse = (values: Pick<DriverPresetValues, 'preset' | 'source'>) => values.preset === 'pulse'
   && /^(bass|mid|treble|overall)-(hit|level)$/.test(values.source)
@@ -57,6 +59,12 @@ export function createDriverPresetExpression(values: DriverPresetValues): Builde
   const amount = values.preset === 'pulse' ? values.amount / 2 : values.amount
   const offset = values.preset === 'pulse' ? values.offset + values.amount / 2 : values.offset
   const result = add(multiply(signal, constant(amount)), constant(offset))
+  if (values.preset === 'follow' && values.unclamped
+    && values.minimum === DRIVER_INFLUENCE_RANGE.minimum && values.maximum === DRIVER_INFLUENCE_RANGE.maximum) {
+    // Keep an unbounded Follow(Time) distinct from the existing Spin form. Both
+    // have the same arithmetic, but expose different controls in the inspector.
+    return add(constant(offset), multiply(signal, constant(amount)))
+  }
   return { type: 'clamp', input: result, min: values.minimum, max: values.maximum }
 }
 
@@ -68,8 +76,7 @@ function sourceName(expression: BuilderDriverExpression): string | undefined {
   if (expression.type === 'component' && expression.input.type === 'input') return `${expression.input.source}.${expression.axis}`
 }
 
-/** Only our exact presets are simplified into controls; imported expressions are never rewritten silently. */
-export function readDriverPreset(expression: BuilderDriverExpression): DriverPresetValues | null {
+function readNamedPreset(expression: BuilderDriverExpression): DriverPresetValues | null {
   if (expression.type === 'add') {
     if (expression.left.type !== 'multiply' || sourceName(expression.left.left) !== 'time') return null
     const speed = scalar(expression.left.right), phase = scalar(expression.right)
@@ -94,6 +101,38 @@ export function readDriverPreset(expression: BuilderDriverExpression): DriverPre
   if (!timedSource || speed === undefined || phase === undefined || (!periodic && timedSource !== 'time')) return null
   return { ...values, speed, phase, source: timedSource, preset: signal.type === 'cos' ? 'pulse' : 'wobble',
     ...(signal.type === 'cos' ? { amount: amount * 2, offset: Number((offset - amount).toPrecision(12)) } : {}) }
+}
+
+/** Recognize a single scalar input, optionally scaled and offset, without flattening a combined formula. */
+function readAffineFollow(expression: BuilderDriverExpression): DriverPresetValues | null {
+  let signal = expression.type === 'clamp' ? expression.input : expression
+  let offset = 0, amount = 1
+  if (signal.type === 'add') {
+    const left = scalar(signal.left), right = scalar(signal.right)
+    if (left !== undefined) { offset = left; signal = signal.right }
+    else if (right !== undefined) { offset = right; signal = signal.left }
+    else return null
+  }
+  if (signal.type === 'multiply') {
+    const left = scalar(signal.left), right = scalar(signal.right)
+    if (left !== undefined) { amount = left; signal = signal.right }
+    else if (right !== undefined) { amount = right; signal = signal.left }
+    else return null
+  }
+  const source = sourceName(signal)
+  // Vector inputs need a component, and the inert scene-pointer Z component
+  // has no source control. Do not turn either into an unusable scalar preset.
+  if (!source || !DRIVER_SOURCES.some(option => option.value === source)) return null
+  return {
+    preset: 'follow', source, amount, offset, speed: 1, phase: 0,
+    ...(expression.type === 'clamp' ? { minimum: expression.min, maximum: expression.max }
+      : { ...DRIVER_INFLUENCE_RANGE, unclamped: true }),
+  }
+}
+
+/** Reading controls never rewrites the authored expression or folds a combined formula into a preset. */
+export function readDriverPreset(expression: BuilderDriverExpression): DriverPresetValues | null {
+  return readNamedPreset(expression) ?? readAffineFollow(expression)
 }
 
 export function driverTargets(node: BuilderObject | BuilderGroup) {

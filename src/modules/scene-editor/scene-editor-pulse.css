@@ -476,6 +476,22 @@ html[data-theme] .scene-editor-page .builder-info-tooltip__trigger:focus-visible
   transform: none;
 }
 .builder-control-stage { border-top: 1px solid var(--studio-border); }
+.builder-expression-fields,
+.builder-expression-editor,
+.builder-expression-node__fields { display: grid; gap: 14px; min-width: 0; }
+.builder-expression-node { min-width: 0; border: 1px solid var(--studio-border); border-radius: 8px; background: var(--studio-field); }
+.builder-expression-node > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; padding: 12px; cursor: pointer; list-style: none; }
+.builder-expression-node > summary::-webkit-details-marker { display: none; }
+.builder-expression-node > summary::after { content: '+'; grid-column: 2; grid-row: 1; color: var(--studio-muted); }
+.builder-expression-node[open] > summary::after { content: '−'; }
+.builder-expression-node > summary strong { color: var(--studio-text); font-size: 11px; }
+.builder-expression-node > summary span { grid-column: 1 / -1; color: var(--studio-muted); font-size: 11px; overflow-wrap: anywhere; }
+.builder-expression-node__fields { padding: 0 10px 12px; }
+.builder-expression-vector { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 600px) {
+  .builder-expression-node > summary { padding: 10px 6px; }
+  .builder-expression-node__fields { padding: 0 4px 10px; }
+}
 .builder-arrangement-stages,
 .builder-binding-stages,
 .builder-animation-stages,
