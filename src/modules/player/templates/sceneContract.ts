@@ -49,13 +49,15 @@ export type BuilderDriverSource = BuilderBinding['source'] | 'time'
   | 'local-position' | 'group-position' | 'world-position' | 'view-ray'
 export type BuilderDriverExpression =
   | { type: 'constant'; value: number | BuilderVector }
-  | { type: 'input'; source: BuilderDriverSource }
+  | { type: 'input'; source: BuilderDriverSource; ancestor?: number }
   | { type: 'add' | 'multiply'; left: BuilderDriverExpression; right: BuilderDriverExpression }
   | { type: 'sin' | 'cos'; input: BuilderDriverExpression }
+  | { type: 'noise'; input: BuilderDriverExpression }
   | { type: 'clamp'; input: BuilderDriverExpression; min: number; max: number }
   | { type: 'component'; input: BuilderDriverExpression; axis: 'x' | 'y' | 'z' }
 export type BuilderDriverTarget = BuilderBinding['target'] | 'scale' | 'blend'
   | `operation.${'radius' | 'width' | 'height' | 'depth' | 'tube' | 'spacing' | 'thickness'}`
+  | `material.color.${'r' | 'g' | 'b'}` | 'modifier.expand.amount' | 'modifier.shell.thickness'
 export type BuilderDriver = {
   target: BuilderDriverTarget
   mode: 'add' | 'replace' | 'multiply'
@@ -66,17 +68,21 @@ export type BuilderFrame = {
   position: BuilderVector; rotation: BuilderVector; scale: number
   rotationOrder?: 'xyz' | 'xzy' | 'yxz' | 'yzx' | 'zxy' | 'zyx'
 }
-export type BuilderMaterial = { color: string; metalness: number; shininess: number }
+/** Numeric channels are shader-linear, including signed view-ray colors; hex is an explicit color choice. */
+export type BuilderColor = string | BuilderVector
+export type BuilderMaterial = { color: BuilderColor; metalness: number; shininess: number }
 export type BuilderGroup = {
   id: string; name: string; children: string[]; transform: BuilderFrame
   operation: { type: 'union' } | { type: 'smooth-union'; blend: number }
   material?: BuilderMaterial
+  modifiers?: BuilderDistanceModifier[]
   drivers?: BuilderDriver[]
 }
 export type BuilderComposition = { version: 1; roots: string[]; groups: BuilderGroup[] }
-export type BuilderModifier =
+export type BuilderDistanceModifier =
   | { type: 'expand'; amount: number }
   | { type: 'shell'; thickness: number }
+export type BuilderModifier = BuilderDistanceModifier
   | { type: 'twist'; axis: 'x' | 'y' | 'z'; amount: number }
 export type BuilderArrangement =
   | { type: 'linear'; axis: 'x' | 'y' | 'z'; count: number; spacing: number }

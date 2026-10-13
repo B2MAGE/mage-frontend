@@ -24,6 +24,8 @@ export { BUILDER_OPERATIONS, BUILDER_SHAPES, BUILDER_LIMITS, BUILDER_TRANSFORMS,
 export type { BuilderShape, BuilderDimension, BuilderGroupTarget } from './templates/builderDefinitions'
 export type { BuilderDriver, BuilderDriverExpression, BuilderDriverSource, BuilderDriverTarget } from './templates/sceneContract'
 export { BUILDER_DRIVER_LIMITS, builderDriverTargetRange, builderDriverResultRange, validateBuilderDriverExpression } from './templates/builderDrivers'
+export { builderColorChannels, builderColorHex } from './templates/builderColor'
+export type { BuilderColor, BuilderDistanceModifier } from './templates/sceneContract'
 export { SceneValidationError, validateSceneDocument, validateSceneForStorage, validateSceneForPlayback, parseSceneImport, assertSceneRequestBudget, assertSceneDocumentBudget, SCENE_POLICY, SCENE_LIMITS, SCENE_RUNTIME_CEILINGS } from './policy/sceneValidation'
 export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'
 export type { RenderBudget, RenderProfile } from './policy/renderBudget'

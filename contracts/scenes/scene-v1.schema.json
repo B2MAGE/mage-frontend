@@ -894,10 +894,40 @@
                 "additionalProperties": false,
                 "properties": {
                   "color": {
-                    "type": "string",
-                    "pattern": "^#[0-9a-fA-F]{6}$",
-                    "minLength": 7,
-                    "maxLength": 7,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^#[0-9a-fA-F]{6}$",
+                        "minLength": 7,
+                        "maxLength": 7
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "x": {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          "y": {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          },
+                          "z": {
+                            "type": "number",
+                            "minimum": -1,
+                            "maximum": 1
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y",
+                          "z"
+                        ]
+                      }
+                    ],
                     "default": "#8066ff"
                   },
                   "metalness": {
@@ -1290,7 +1320,12 @@
                         "operation.depth",
                         "operation.tube",
                         "operation.spacing",
-                        "operation.thickness"
+                        "operation.thickness",
+                        "material.color.r",
+                        "material.color.g",
+                        "material.color.b",
+                        "modifier.expand.amount",
+                        "modifier.shell.thickness"
                       ]
                     },
                     "mode": {
@@ -1976,10 +2011,40 @@
                     "additionalProperties": false,
                     "properties": {
                       "color": {
-                        "type": "string",
-                        "pattern": "^#[0-9a-fA-F]{6}$",
-                        "minLength": 7,
-                        "maxLength": 7,
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "minLength": 7,
+                            "maxLength": 7
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "x": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              },
+                              "y": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              },
+                              "z": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          }
+                        ],
                         "default": "#8066ff"
                       },
                       "metalness": {
@@ -2015,7 +2080,12 @@
                             "material.metalness",
                             "material.shininess",
                             "scale",
-                            "blend"
+                            "blend",
+                            "material.color.r",
+                            "material.color.g",
+                            "material.color.b",
+                            "modifier.expand.amount",
+                            "modifier.shell.thickness"
                           ]
                         },
                         "mode": {
@@ -2034,6 +2104,51 @@
                         "target",
                         "mode",
                         "expression"
+                      ]
+                    }
+                  },
+                  "modifiers": {
+                    "type": "array",
+                    "maxItems": 2,
+                    "x-uniqueBy": "type",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "type"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "expand"
+                            },
+                            "amount": {
+                              "type": "number",
+                              "minimum": -2,
+                              "maximum": 2,
+                              "default": 0.2
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "type"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "shell"
+                            },
+                            "thickness": {
+                              "type": "number",
+                              "minimum": 0.01,
+                              "maximum": 1,
+                              "default": 0.1
+                            }
+                          }
+                        }
                       ]
                     }
                   }
@@ -2142,6 +2257,11 @@
                 "scene-pointer-down",
                 "scene-pointer"
               ]
+            },
+            "ancestor": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
             }
           },
           "required": [
@@ -2272,6 +2392,22 @@
             "type",
             "input",
             "axis"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "noise"
+            },
+            "input": {
+              "$ref": "#/$defs/builderDriverExpression"
+            }
+          },
+          "required": [
+            "type",
+            "input"
           ]
         }
       ]

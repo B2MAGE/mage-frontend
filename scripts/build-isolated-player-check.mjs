@@ -29,6 +29,7 @@ const allowedModules = new Set([
   'src/modules/player/templates/templateSettings.ts',
   'src/modules/player/templates/resolveScene.ts',
   'src/modules/player/templates/builderCompiler.ts',
+  'src/modules/player/templates/builderColor.ts',
   'src/modules/player/templates/builderComposition.ts',
   'src/modules/player/templates/builderDefinitions.ts',
   'src/modules/player/templates/builderDrivers.ts',

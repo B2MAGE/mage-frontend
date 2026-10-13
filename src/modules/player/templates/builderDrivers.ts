@@ -14,6 +14,13 @@ const defaultFail: Fail = (path, detail) => { throw new Error(`${path}: ${detail
 
 /** Targets refer to actual editable properties, never generated uniform names. */
 export function builderDriverTargetRange(node: BuilderObject | BuilderGroup, target: string): { minimum: number; maximum: number } | null {
+  if (['material.color.r', 'material.color.g', 'material.color.b'].includes(target)) {
+    return node.material ? { minimum: -1, maximum: 1 } : null
+  }
+  if (target === 'modifier.expand.amount') return node.modifiers?.some(modifier => modifier.type === 'expand')
+    ? { minimum: -2, maximum: 2 } : null
+  if (target === 'modifier.shell.thickness') return node.modifiers?.some(modifier => modifier.type === 'shell')
+    ? { minimum: 0.001, maximum: 2 } : null
   if ('children' in node) {
     if (target === 'blend' && node.operation.type !== 'smooth-union') return null
     if (target.startsWith('material.') && !node.material) return null
@@ -47,21 +54,22 @@ function bounded(value: unknown, path: string, fail: Fail): number {
   return value
 }
 
-export type BuilderDriverExpressionInfo = { type: ValueType; nodes: number; constants: number; signals: Set<string>; nativeInputs: Set<string>; spatial: boolean }
+export type BuilderDriverExpressionInfo = { type: ValueType; nodes: number; operations: number; constants: number; signals: Set<string>; nativeInputs: Set<string>; spatial: boolean }
 
 /** Independent compiler validation runs before expansion or source allocation. */
 export function validateBuilderDriverExpression(value: unknown, path = 'expression', fail: Fail = defaultFail): BuilderDriverExpressionInfo {
-  let nodes = 0, constants = 0, spatial = false
+  let nodes = 0, operations = 0, constants = 0, spatial = false
   const signals = new Set<string>()
   const nativeInputs = new Set<string>()
   const visit = (input: unknown, at: string, depth: number): ValueType => {
     if (depth > BUILDER_DRIVER_LIMITS.expressionDepth) return fail(at, `driver expression depth exceeds ${BUILDER_DRIVER_LIMITS.expressionDepth}`)
     if (++nodes > BUILDER_DRIVER_LIMITS.expressionNodes) return fail(at, `driver expression exceeds ${BUILDER_DRIVER_LIMITS.expressionNodes} nodes`)
+    operations++
     // Inspect the discriminant as a data descriptor before reading any authored value.
     const type = input && typeof input === 'object' ? Object.getOwnPropertyDescriptor(input, 'type')?.value : undefined
     const fields: Record<string, readonly string[]> = {
-      constant: ['type', 'value'], input: ['type', 'source'], add: ['type', 'left', 'right'], multiply: ['type', 'left', 'right'],
-      sin: ['type', 'input'], cos: ['type', 'input'], clamp: ['type', 'input', 'min', 'max'], component: ['type', 'input', 'axis'],
+      constant: ['type', 'value'], input: ['type', 'source', 'ancestor'], add: ['type', 'left', 'right'], multiply: ['type', 'left', 'right'],
+      sin: ['type', 'input'], cos: ['type', 'input'], noise: ['type', 'input'], clamp: ['type', 'input', 'min', 'max'], component: ['type', 'input', 'axis'],
     }
     if (typeof type !== 'string' || !Object.hasOwn(fields, type)) return fail(at, 'unsupported driver operation')
     const expression = plain(input, at, fields[type], fail)
@@ -75,6 +83,10 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
       }
       case 'input': {
         if (typeof expression.source !== 'string' || !sources.has(expression.source)) return fail(`${at}.source`, 'unsupported driver input')
+        if (expression.ancestor !== undefined && (expression.source !== 'group-position'
+          || !Number.isInteger(expression.ancestor) || (expression.ancestor as number) < 1 || (expression.ancestor as number) > 6)) {
+          return fail(`${at}.ancestor`, 'only group-position accepts an ancestor from 1 to 6')
+        }
         if (expression.source === 'scene-pointer') return 'vector'
         if (spatialSources.has(expression.source)) { spatial = true; return 'vector' }
         if (expression.source === 'scene-size' || expression.source === 'scene-pointer-down') nativeInputs.add(expression.source)
@@ -88,6 +100,11 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
         return left === 'vector' || right === 'vector' ? 'vector' : 'scalar'
       }
       case 'sin': case 'cos': return visit(expression.input, `${at}.input`, depth + 1)
+      case 'noise': {
+        operations += policy.operationCosts.noise - 1
+        if (visit(expression.input, `${at}.input`, depth + 1) !== 'vector') return fail(at, 'noise requires a vector input')
+        return 'scalar'
+      }
       case 'clamp': {
         const minimum = bounded(expression.min, `${at}.min`, fail)
         const maximum = bounded(expression.max, `${at}.max`, fail)
@@ -104,7 +121,7 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
     }
   }
   const type = visit(value, path, 1)
-  return { type, nodes, constants, signals, nativeInputs, spatial }
+  return { type, nodes, operations, constants, signals, nativeInputs, spatial }
 }
 
 export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fail = defaultFail) {
@@ -121,7 +138,7 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
       if (typeof data.mode !== 'string' || !['add', 'replace', 'multiply'].includes(data.mode)) return fail(`${at}.mode`, 'unsupported driver composition mode')
       const info = validateBuilderDriverExpression(data.expression, `${at}.expression`, fail)
       if (info.type !== 'scalar') return fail(`${at}.expression`, 'this property requires a scalar value; select a vector component')
-      driverOperations += info.nodes * copies
+      driverOperations += info.operations * copies
       authoredDrivers++
       constants += info.constants
       info.signals.forEach(source => signals.add(source))
@@ -151,7 +168,7 @@ export function usesSceneDimensions(driver: BuilderDriver): boolean {
     switch (expression.type) {
       case 'input': return expression.source === 'scene-size' || expression.source === 'scene-pointer-down'
       case 'add': case 'multiply': return visit(expression.left) || visit(expression.right)
-      case 'sin': case 'cos': case 'clamp': case 'component': return visit(expression.input)
+      case 'sin': case 'cos': case 'noise': case 'clamp': case 'component': return visit(expression.input)
       default: return false
     }
   }
