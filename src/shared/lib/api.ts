@@ -200,7 +200,7 @@ export function normalizeSceneList(payload: unknown): SceneListResponse[] {
 
 export async function fetchAvailableTags(options?: FetchTagsOptions): Promise<TagResponse[]> {
   const query = options?.attachedOnly ? '?attachedOnly=true' : ''
-  const response = await fetch(buildApiUrl(`/tags${query}`))
+  const response = await fetch(buildApiUrl(`/tags${query}`), { cache: 'no-store' })
 
   if (!response.ok) {
     throw new Error(`Failed to fetch tags (${response.status})`)

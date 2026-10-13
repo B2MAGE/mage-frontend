@@ -124,7 +124,7 @@ describe('fetchTags', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchTags({ attachedOnly: true })).resolves.toEqual(tags)
-    expect(fetchMock).toHaveBeenCalledWith('/api/tags?attachedOnly=true')
+    expect(fetchMock).toHaveBeenCalledWith('/api/tags?attachedOnly=true', { cache: 'no-store' })
   })
 
   it.each(['network', 'server'] as const)('returns no tags on a %s failure instead of hardcoded options', async failure => {
