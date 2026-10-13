@@ -15,6 +15,8 @@ type Props = {
   scale: number
   skybox: number
   templateId: string
+  personalTemplates?: { templateId: number; name: string }[]
+  templatesBusy?: boolean
 }
 
 const fieldId = (path: string) => `template-${path.replaceAll('.', '-')}`
@@ -46,6 +48,8 @@ export function SceneSetupControls({
   scale,
   skybox,
   templateId,
+  personalTemplates = [],
+  templatesBusy = false,
 }: Props) {
   const selectableTemplates = listSelectableSceneTemplates()
   const selectedRetiredTemplate = !isBuilder && templateId !== 'custom'
@@ -64,7 +68,7 @@ export function SceneSetupControls({
         htmlFor={fieldId('templateId')}
         label="Template"
         description={isBuilder
-          ? 'Edits are saved with this scene. Templates are not saved separately.'
+          ? 'Edit this scene, or save its whole setup as your own reusable template.'
           : 'Choose a template or add a new one. Editable templates open below.'}
       >
         <div className="scene-template-picker">
@@ -73,6 +77,7 @@ export function SceneSetupControls({
             aria-invalid={Boolean(error('templateId'))}
             className="mage-select"
             id={fieldId('templateId')}
+            disabled={templatesBusy}
             onChange={event => onTemplateChange(event.currentTarget.value)}
             value={templateId}
           >
@@ -81,13 +86,16 @@ export function SceneSetupControls({
             {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>
               {selectedRetiredTemplate.label} (unavailable)
             </option> : null}
-            {selectableTemplates.map(template => <option
+            <optgroup label="Built-in templates">{selectableTemplates.map(template => <option
               key={`${template.templateId}:${template.templateVersion}`}
               value={template.templateId}
-            >{template.label}</option>)}
+            >{template.label}</option>)}</optgroup>
+            {personalTemplates.length > 0 ? <optgroup label="Your templates">
+              {personalTemplates.map(template => <option key={template.templateId} value={`personal:${template.templateId}`}>{template.name}</option>)}
+            </optgroup> : null}
           </select>
           <button aria-label="Add new template" className="scene-secondary-button scene-template-picker__add"
-            id="scene-add-template" onClick={onAddTemplate} title="Add new template" type="button">
+            id="scene-add-template" disabled={templatesBusy} onClick={onAddTemplate} title="Add new template" type="button">
             <AppIcon name="plus" size={18} />
           </button>
         </div>

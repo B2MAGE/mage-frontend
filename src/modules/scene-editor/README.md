@@ -80,6 +80,44 @@ Current limitations:
 
 Coverage lives in the colocated scene-editor specs under `src/modules/scene-editor/`.
 
+## Personal whole templates (SB-14)
+
+In **Scene**, signed-in users can choose **Save as template** for any Builder setup.
+The required name is separate from the scene title, trimmed, limited to 100 characters,
+and unique within that account without regard to case. The Template selector separates
+**Built-in templates** from **Your templates**. Built-ins are never overwritten.
+Selecting a personal template copies its complete document, including camera, skybox,
+effects/pass order, motion and music responses. Edited or new work requires confirmation
+before replacement; Cancel retains it and Undo restores the previous document and selection.
+
+A selected personal template offers **Update template**, **Rename template**,
+**Save as new template**, and **Delete template**. Updating is explicit; ordinary scene
+edits and scene saves do not change the library. Existing scenes and browser drafts own
+their document copies and continue working after the source template is updated or deleted.
+Scene title/description, tags, account/social fields, local audio files, and playback state
+are excluded. Template provenance lives only in editor history/browser recovery, never
+in the saved scene document or compiler input.
+
+Every create/content update captures a fresh preview frame and uploads it through
+`/api/builder-templates/thumbnail/presign`. If capture is unavailable, a visible placeholder
+is saved; an old scene thumbnail is never substituted. Storage or write failures keep the
+dialog and draft intact. Rename retains the existing image. The backend atomically saves
+document/image reference and owns cleanup in a namespace separate from scene images.
+
+`personalTemplates.ts` owns the owner-only `/api/builder-templates` transport;
+`usePersonalTemplates.ts` owns account-scoped requests/list state;
+`usePersonalTemplateWorkspace.ts` coordinates capture and editor revision checks.
+`PersonalTemplateActions` uses the editor's existing theme and modal styling. Revision
+conflicts require deliberate reloading of the saved template or saving a new copy; they
+never silently overwrite the other edit. No public sharing, custom code, version browser,
+or reusable object/component graph is introduced.
+
+Requires backend #167 (additive Flyway V23). Existing databases and object-storage data
+remain intact. For review, check save/reload, update with a changed camera/effect, duplicate
+names, rename, replacement Cancel/Undo, and deletion while a copied scene remains open.
+The colocated personal-template tests cover these paths, fresh capture, request failures,
+account changes, and publishing/reopening a scene after its source template is deleted.
+
 ## Builder combined inputs
 
 Under an object's or group's **Animation** section, **Add combined inputs** creates

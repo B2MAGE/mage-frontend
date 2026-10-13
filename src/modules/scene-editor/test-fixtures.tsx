@@ -77,6 +77,10 @@ export function mockCreateScenePageFetch(
       return Promise.resolve(nextResponse)
     }
 
+    if (input === buildApiUrl('/builder-templates') && method === 'GET') {
+      return Promise.resolve(jsonResponse([]))
+    }
+
     if (input === buildApiUrl('/tags') && method === 'GET') {
       return Promise.resolve(jsonResponse(tagsResponse))
     }
