@@ -204,5 +204,5 @@ the same expression in the general editor. **Appearance** provides exact RGB
 channels plus editable view-ray and animated-color influences. Expand/Shell
 on a group deform the joined children, in the listed modifier order.
 
-This work is on `codex/sb12-deformation-materials` for local review. It has not
-been merged or deployed to production.
+The implementation was reviewed locally on `codex/sb12-deformation-materials`.
+Merge and deployment evidence is recorded in [SB-12 #300](https://github.com/B2MAGE/mage-frontend/issues/300).
