@@ -9,7 +9,6 @@ export type PersonalTemplateSource = {
   name: string
   revision: number
   documentKey: string
-  thumbnailRef: string | null
 }
 
 export type SceneDraftSnapshot = {
@@ -140,7 +139,6 @@ export function parseSceneDraftRecord(raw: string): SceneDraftRecord | null {
       || !Number.isSafeInteger(source.templateId) || Number(source.templateId) < 1
       || !Number.isSafeInteger(source.revision) || Number(source.revision) < 0
       || typeof source.name !== 'string' || !source.name.trim() || source.name.length > 100
-      || !(source.thumbnailRef === null || typeof source.thumbnailRef === 'string')
       || typeof source.documentKey !== 'string')) return null
     if (isObject(source)) {
       const design = parseSceneDocument(JSON.parse(source.documentKey as string))

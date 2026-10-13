@@ -38,7 +38,7 @@ export function useSceneThumbnailCapture({ availabilityTarget, revision, canPrev
     return () => { unsubscribe(); generation.current += 1; inFlight.current = false }
   }, [availabilityTarget, revision, sceneDraftError, isPreviewPending])
 
-  async function captureThumbnailFromPreview(applyToScene = true) {
+  async function captureThumbnailFromPreview() {
     if (!canPreviewScene) throw new Error('Load a valid scene before capturing a new thumbnail.')
     if (sceneDraftError) throw new Error('Fix the scene settings before capturing a thumbnail.')
     if (isPreviewPending || !captureFrame.current) throw new Error('Wait for the live preview to finish loading before capturing a thumbnail.')
@@ -52,7 +52,7 @@ export function useSceneThumbnailCapture({ availabilityTarget, revision, canPrev
     const file = buildCapturedThumbnailFile(previewUrl)
     const error = validateThumbnailFile(file)
     if (error) throw new Error(error)
-    if (applyToScene) onCapture(file, previewUrl)
+    onCapture(file, previewUrl)
     return file
   }
 

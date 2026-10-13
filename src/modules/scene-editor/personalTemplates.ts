@@ -8,7 +8,6 @@ export type PersonalTemplate = {
   templateId: number
   name: string
   sceneData: BuilderDesign
-  thumbnailRef: string | null
   revision: number
   createdAt: string
   updatedAt: string
@@ -50,55 +49,24 @@ export async function fetchPersonalTemplate(authenticatedFetch: AuthenticatedFet
   return response.json()
 }
 
-async function discardPendingThumbnail(authenticatedFetch: AuthenticatedFetch, objectKey: string) {
-  // The server only deletes unclaimed uploads. Never pass a scene or template's saved thumbnail here.
-  try { await authenticatedFetch(`/builder-templates/thumbnail/pending?objectKey=${encodeURIComponent(objectKey)}`, { method: 'DELETE' }) }
-  catch { /* The server expires abandoned pending uploads as a fallback. */ }
-}
-
 export type SavePersonalTemplate = {
   name: string
   sceneData: BuilderDesign
-  thumbnailFile: File | null
   template?: PersonalTemplate
-  assertCurrent?: () => void
 }
 
-/** Upload a newly captured image, then atomically write the Builder design and image reference. */
+/** Save the Builder design directly; personal templates have no image assets. */
 export async function savePersonalTemplate(authenticatedFetch: AuthenticatedFetch, input: SavePersonalTemplate, signal?: AbortSignal): Promise<PersonalTemplate> {
+  signal?.throwIfAborted()
   const name = personalTemplateName(input.name)
   // This boundary selects only Builder fields, even when a caller passes a full scene.
   const sceneData = builderDesign(input.sceneData)
-  let objectKey: string | undefined
-  try {
-    signal?.throwIfAborted()
-    input.assertCurrent?.()
-    if (input.thumbnailFile) {
-      const file = input.thumbnailFile
-      const response = await checkedResponse(await authenticatedFetch('/builder-templates/thumbnail/presign', {
-        method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type, sizeBytes: file.size }),
-      }), 'The template thumbnail upload could not be prepared.')
-      const upload = await response.json() as { objectKey: string; uploadUrl: string; method: string; headers?: Record<string, string> }
-      objectKey = upload.objectKey
-      if (!objectKey || !upload.uploadUrl || !upload.method) throw new PersonalTemplateError('The thumbnail upload response was incomplete.')
-      signal?.throwIfAborted()
-      // Storage is a presigned endpoint, not the authenticated application API.
-      const uploaded = await fetch(upload.uploadUrl, { method: upload.method, headers: upload.headers, body: file, signal })
-      if (!uploaded.ok) throw new PersonalTemplateError('The template thumbnail could not be uploaded. Your template has not been saved.')
-    }
-    signal?.throwIfAborted()
-    input.assertCurrent?.()
-    const response = await checkedResponse(await authenticatedFetch(input.template ? `/builder-templates/${input.template.templateId}` : '/builder-templates', {
-      method: input.template ? 'PUT' : 'POST', signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, sceneData, ...(input.template ? { expectedRevision: input.template.revision } : {}), ...(objectKey ? { thumbnailObjectKey: objectKey } : {}) }),
-    }), 'The template could not be saved. Your editor draft is unchanged.')
-    return response.json()
-  } catch (error) {
-    if (objectKey) await discardPendingThumbnail(authenticatedFetch, objectKey)
-    throw error
-  }
+  const response = await checkedResponse(await authenticatedFetch(input.template ? `/builder-templates/${input.template.templateId}` : '/builder-templates', {
+    method: input.template ? 'PUT' : 'POST', signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, sceneData, ...(input.template ? { expectedRevision: input.template.revision } : {}) }),
+  }), 'The template could not be saved. Your editor draft is unchanged.')
+  return response.json()
 }
 
 export async function renamePersonalTemplate(authenticatedFetch: AuthenticatedFetch, template: PersonalTemplate, name: string, signal?: AbortSignal): Promise<PersonalTemplate> {

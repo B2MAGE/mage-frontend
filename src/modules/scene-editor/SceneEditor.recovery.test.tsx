@@ -37,7 +37,8 @@ describe('scene editor recovery', () => {
     await waitFor(() => expect(player.loadSceneBlob).toHaveBeenCalled())
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /^Scene$/ }))
-    await user.click(screen.getByRole('button', { name: 'Add new template' }))
+    await user.click(screen.getByRole('button', { name: 'Template actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'New template' }))
 
     await waitFor(() => expect(player.loadSceneBlob).toHaveBeenLastCalledWith(
       expect.objectContaining({ kind: 'builder', objects: [expect.objectContaining({ operation: { type: 'sphere', radius: 1 } })] }),

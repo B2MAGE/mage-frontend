@@ -6,6 +6,7 @@ import { buildSceneSubmissionDocument } from './utils'
 import { parseSceneDraftRecord, sceneDraftFingerprint } from './sceneDraftRecovery'
 import type { PersonalTemplate } from './personalTemplates'
 import { builderDesign } from './builderDesign'
+import { createTemplateScene } from './templateEditor'
 
 vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@shared/lib')>(),
   fetchAvailableTags: async () => [] }))
@@ -13,7 +14,7 @@ vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@sh
 function template(): PersonalTemplate {
   const sceneData = createBuilderScene()
   sceneData.objects[0].name = 'My sphere'
-  return { templateId: 17, name: 'My constellation', sceneData: builderDesign(sceneData), revision: 2, thumbnailRef: null,
+  return { templateId: 17, name: 'My constellation', sceneData: builderDesign(sceneData), revision: 2,
     createdAt: '', updatedAt: '' }
 }
 async function editor() {
@@ -24,6 +25,29 @@ async function editor() {
 }
 
 describe('personal template copies in editor history', () => {
+  it.each([1, 12])('opens the default built-in at its intended scale after deleting a template with scale %s', async scale => {
+    const { result } = await editor()
+    act(() => result.current.handleLoadPersonalTemplate(template()))
+    act(() => result.current.updateBuilderValue('settings.camera.fov', 73))
+    act(() => result.current.updateBuilderValue('settings.skybox', 3))
+    act(() => result.current.updateBuilderValue('parameters.scale', scale))
+    act(() => result.current.updateBuilderValue('parameters.speed', 1.8))
+    const before = result.current.builderDocument!
+    act(() => result.current.handlePersonalTemplateDeleted(99))
+    expect(result.current.builderDocument).toBe(before)
+    act(() => result.current.handlePersonalTemplateDeleted(17))
+    expect(result.current.personalTemplateSource).toBeNull()
+    expect(result.current.builderTemplateSourceId).toBe('embedded-scene-0')
+    expect(result.current.isBuilderAdapted).toBe(false)
+    expect(result.current.builderDocument?.settings).toEqual(before.settings)
+    expect(result.current.builderDocument?.parameters).toEqual({ ...before.parameters,
+      scale: createTemplateScene().parameters.scale })
+    expect(result.current.name).toBe('Keep my title')
+    expect(result.current.description).toBe('Keep my description')
+    act(() => result.current.undoDraft())
+    expect(result.current.builderDocument).toEqual(before)
+  })
+
   it('loads an independent design, retains other settings and details, and undoes source and design together', async () => {
     const { result } = await editor()
     act(() => result.current.updateBuilderValue('settings.camera.fov', 73))

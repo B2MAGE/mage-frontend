@@ -304,7 +304,7 @@ export function useSceneEditorState({
   function handleLoadPersonalTemplate(template: PersonalTemplate) {
     const document = applyBuilderDesign(template.sceneData, history.readDraft().sceneData)
     const source = { templateId: template.templateId, name: template.name, revision: template.revision,
-      thumbnailRef: template.thumbnailRef, documentKey: builderDesignKey(document) }
+      documentKey: builderDesignKey(document) }
     return applySceneData(document, false, undefined, null, source)
   }
 
@@ -312,7 +312,13 @@ export function useSceneEditorState({
     // Saving the library must never replace edits made while its request was in flight.
     if (history.readDraft().sceneData !== submittedDocument) return
     history.setPersonalTemplateSource({ templateId: template.templateId, name: template.name, revision: template.revision,
-      thumbnailRef: template.thumbnailRef, documentKey: builderDesignKey(submittedDocument) })
+      documentKey: builderDesignKey(submittedDocument) })
+  }
+
+  function handlePersonalTemplateDeleted(templateId: number) {
+    const current = history.readDraft()
+    if (current.personalTemplateSource?.templateId !== templateId) return
+    handleTemplateSelection(createTemplateScene().templateId)
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {
@@ -510,6 +516,7 @@ export function useSceneEditorState({
     isPersonalTemplateAdapted,
     handleLoadPersonalTemplate,
     handlePersonalTemplateSaved,
+    handlePersonalTemplateDeleted,
     isBuilderAdapted,
     templateFieldErrors,
     titleId,

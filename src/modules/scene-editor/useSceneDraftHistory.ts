@@ -86,8 +86,12 @@ export function useSceneDraftHistory(initial: () => SceneDraftSnapshot) {
   }, [publish])
   const setPersonalTemplateSource = useCallback((source: PersonalTemplateSource) => {
     const state = current.current
-    // A library write updates editor provenance, not the scene's undo stack.
-    publish({ ...state, present: { ...state.present, templateSourceId: null, personalTemplateSource: source } })
+    // A library write is not undoable. Older designs still compare against that latest saved version.
+    const refreshSource = (draft: SceneDraftSnapshot) => draft.personalTemplateSource?.templateId === source.templateId
+      ? { ...draft, personalTemplateSource: source } : draft
+    publish({ ...state, present: { ...state.present, templateSourceId: null, personalTemplateSource: source },
+      past: bounded(state.past.map(entry => ({ ...entry, snapshot: refreshSource(entry.snapshot) }))),
+      future: bounded(state.future.map(entry => ({ ...entry, snapshot: refreshSource(entry.snapshot) }))) })
   }, [publish])
   return { draft: history.present, baseline, readDraft, commit, selectObject, undo, redo, reset, restore,
     beginEdit, endEdit, initializeTags, setPersonalTemplateSource, canUndo: history.past.length > 0, canRedo: history.future.length > 0,

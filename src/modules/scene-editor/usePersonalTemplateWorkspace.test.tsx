@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from './builderEditor'
+import { builderDesign } from './builderDesign'
 import { usePersonalTemplateWorkspace } from './usePersonalTemplateWorkspace'
 import type { PersonalTemplate } from './personalTemplates'
 
@@ -11,49 +12,67 @@ function draft() {
   const sceneData = createBuilderScene()
   return { name: '', description: '', sceneData, sceneDataText: JSON.stringify(sceneData), selectedTagIds: [], selectedBuilderObjectId: null }
 }
+const template = (): PersonalTemplate => ({ templateId: 7, name: 'Personal design', revision: 0,
+  sceneData: builderDesign(createBuilderScene()), createdAt: '', updatedAt: '' })
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(done => { resolve = done })
   return { promise, resolve }
 }
 
+beforeEach(() => vi.clearAllMocks())
+
 describe('template library work cannot replace newer editor work', () => {
-  it('does not start an upload if the account changed during capture', async () => {
-    library.save.mockReset()
-    const capture = deferred<File>()
+  it('saves the design directly without any preview callback', async () => {
     const current = draft()
-    const { result, rerender } = renderHook(({ userId }) => usePersonalTemplateWorkspace({
-      authenticatedFetch: vi.fn(), userId, source: null, readDraft: () => current,
-      captureThumbnail: () => capture.promise, onLoad: vi.fn(), onSaved: vi.fn(), onSourceChange: vi.fn(),
-    }), { initialProps: { userId: 1 } })
-    let saving!: Promise<void>
-    act(() => { saving = result.current.save('Private template') })
-    rerender({ userId: 2 })
-    await act(async () => {
-      capture.resolve(new File(['preview'], 'preview.png', { type: 'image/png' }))
-      await expect(saving).rejects.toThrow('changed')
-    })
-    expect(library.save).not.toHaveBeenCalled()
+    const saved = template()
+    library.save.mockResolvedValueOnce(saved)
+    const onSaved = vi.fn()
+    const { result } = renderHook(() => usePersonalTemplateWorkspace({
+      authenticatedFetch: vi.fn(), userId: 1, source: null, readDraft: () => current,
+      onLoad: vi.fn(), onSaved, onSourceChange: vi.fn(), onDeleted: vi.fn(),
+    }))
+    await act(async () => { await result.current.save('Personal design') })
+    expect(library.save).toHaveBeenCalledWith({ name: 'Personal design', sceneData: builderDesign(current.sceneData), template: undefined })
+    expect(onSaved).toHaveBeenCalledWith(saved, current.sceneData)
+    expect(result.current.notice).toBe('Saved “Personal design”.')
+    act(() => result.current.dismissNotice())
+    expect(result.current.notice).toBe('')
   })
 
-  it('keeps a newer scene when an earlier template load finishes', async () => {
+  it('does not apply a save completion after the signed-in account changes', async () => {
+    const saving = deferred<PersonalTemplate>()
+    library.save.mockReturnValueOnce(saving.promise)
+    const current = draft()
+    const onSaved = vi.fn()
+    const { result, rerender } = renderHook(({ userId }) => usePersonalTemplateWorkspace({
+      authenticatedFetch: vi.fn(), userId, source: null, readDraft: () => current,
+      onLoad: vi.fn(), onSaved, onSourceChange: vi.fn(), onDeleted: vi.fn(),
+    }), { initialProps: { userId: 1 } })
+    let pending!: Promise<void>
+    act(() => { pending = result.current.save('Private template') })
+    rerender({ userId: 2 })
+    await act(async () => { saving.resolve(template()); await pending })
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(result.current.notice).toBe('')
+  })
+
+  it.each(['changed', 'cancelled'])('keeps editor work when an earlier template load finishes after it was %s', async reason => {
     const loading = deferred<PersonalTemplate>()
     library.load.mockReturnValueOnce(loading.promise)
     let current = draft()
     const onLoad = vi.fn(() => true)
     const { result } = renderHook(() => usePersonalTemplateWorkspace({
       authenticatedFetch: vi.fn(), userId: 1, source: null, readDraft: () => current,
-      captureThumbnail: vi.fn(), onLoad, onSaved: vi.fn(), onSourceChange: vi.fn(),
+      onLoad, onSaved: vi.fn(), onSourceChange: vi.fn(), onDeleted: vi.fn(),
     }))
     let opening!: Promise<boolean>
     act(() => { opening = result.current.open(7) })
-    current = { ...draft(), name: 'Changed while loading' }
-    await act(async () => {
-      loading.resolve({ templateId: 7, name: 'Earlier', revision: 0, sceneData: createBuilderScene(),
-        thumbnailRef: null, createdAt: '', updatedAt: '' })
-      expect(await opening).toBe(false)
-    })
+    if (reason === 'changed') current = { ...draft(), name: 'Changed while loading' }
+    else act(() => result.current.cancelOpen())
+    await act(async () => { loading.resolve(template()); expect(await opening).toBe(false) })
     expect(onLoad).not.toHaveBeenCalled()
-    expect(result.current.loadError).toContain('Your work was kept')
+    expect(result.current.loadError).toBe(reason === 'changed'
+      ? 'The editor changed while the template was loading. Your work was kept; choose the template again when ready.' : '')
   })
 })

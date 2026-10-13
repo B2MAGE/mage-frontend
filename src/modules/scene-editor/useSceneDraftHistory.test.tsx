@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from './builderEditor'
 import { useSceneEditorState } from './useSceneEditorState'
 import { useSceneDraftHistory } from './useSceneDraftHistory'
-import type { SceneDraftSnapshot } from './sceneDraftRecovery'
+import type { PersonalTemplateSource, SceneDraftSnapshot } from './sceneDraftRecovery'
+import { builderDesignKey } from './builderDesign'
 
 vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@shared/lib')>(), fetchAvailableTags: async () => [] }))
 
@@ -15,6 +16,55 @@ async function editor() {
 }
 
 describe('Builder draft history', () => {
+  it('refreshes the saved source across matching undo and redo snapshots while preserving every design and unrelated source', () => {
+    const draft = (name: string, source: PersonalTemplateSource | null = null): SceneDraftSnapshot & { sceneData: ReturnType<typeof createBuilderScene> } => {
+      const sceneData = createBuilderScene()
+      sceneData.objects[0].name = name
+      return { name: '', description: '', sceneData, sceneDataText: JSON.stringify(sceneData),
+        selectedTagIds: [], selectedBuilderObjectId: 'object-1', templateSourceId: null, personalTemplateSource: source }
+    }
+    const source: PersonalTemplateSource = { templateId: 17, name: 'Saved design', revision: 4,
+      documentKey: builderDesignKey(createBuilderScene()) }
+    const unrelated = draft('Another template', { ...source, templateId: 99, name: 'Another source' })
+    const initial = draft('Unsaved draft')
+    const original = draft('Original saved object', source)
+    const edited = draft('Edited object', source)
+    const future = draft('Later object', source)
+    const { result } = renderHook(() => useSceneDraftHistory(() => initial))
+    act(() => result.current.restore(unrelated))
+    act(() => result.current.restore(original))
+    act(() => result.current.commit(() => edited, 'Edit object'))
+    act(() => result.current.commit(() => future, 'Later edit'))
+    act(() => result.current.undo())
+    const updatedSource = { ...source, revision: 5, name: 'Renamed design', documentKey: builderDesignKey(edited.sceneData) }
+    act(() => result.current.setPersonalTemplateSource(updatedSource))
+    expect(result.current.draft.sceneData).toBe(edited.sceneData)
+    expect(result.current.draft.personalTemplateSource).toEqual(updatedSource)
+    expect(result.current.undoLabel).toBe('Edit object')
+    expect(result.current.redoLabel).toBe('Later edit')
+    act(() => result.current.undo())
+    expect(result.current.draft.sceneData).toBe(original.sceneData)
+    expect(result.current.draft.sceneDataText).toBe(original.sceneDataText)
+    expect(result.current.draft.personalTemplateSource).toEqual(updatedSource)
+    act(() => result.current.undo())
+    expect(result.current.draft).toEqual(unrelated)
+    act(() => result.current.undo())
+    expect(result.current.draft).toEqual(initial)
+    expect(result.current.canUndo).toBe(false)
+    act(() => result.current.redo())
+    expect(result.current.draft).toEqual(unrelated)
+    act(() => result.current.redo())
+    expect(result.current.draft.sceneData).toBe(original.sceneData)
+    expect(result.current.draft.personalTemplateSource).toEqual(updatedSource)
+    act(() => result.current.redo())
+    expect(result.current.draft.sceneData).toBe(edited.sceneData)
+    expect(result.current.draft.personalTemplateSource).toEqual(updatedSource)
+    act(() => result.current.redo())
+    expect(result.current.draft.sceneData).toBe(future.sceneData)
+    expect(result.current.draft.personalTemplateSource).toEqual(updatedSource)
+    expect(result.current.canRedo).toBe(false)
+  })
+
   it('undoes, redoes, and restores editor template identity with its document', () => {
     const sceneData = createBuilderScene()
     const initial: SceneDraftSnapshot = { name: '', description: '', sceneData,

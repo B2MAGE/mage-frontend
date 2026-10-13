@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthenticatedFetch } from '@auth'
 import type { BuilderSceneDocument } from '@modules/player'
 import { isBuilderEditorDocument } from './builderEditor'
@@ -13,17 +13,18 @@ type Args = {
   userId?: number | null
   source: PersonalTemplateSource | null
   readDraft: () => SceneDraftSnapshot
-  captureThumbnail: () => Promise<File>
   onLoad: (template: PersonalTemplate) => boolean
   onSaved: (template: PersonalTemplate, document: BuilderSceneDocument) => void
   onSourceChange: (source: PersonalTemplateSource) => void
+  onDeleted: (templateId: number) => void
 }
 
-/** Owns library requests and capture; the scene draft remains owned by its history. */
+/** Owns library requests; the scene draft remains owned by its history. */
 export function usePersonalTemplateWorkspace({ authenticatedFetch, userId, source, readDraft,
-  captureThumbnail, onLoad, onSaved, onSourceChange }: Args) {
+  onLoad, onSaved, onSourceChange, onDeleted }: Args) {
   const library = usePersonalTemplates({ authenticatedFetch, userId })
   const [notice, setNotice] = useState('')
+  const dismissNotice = useCallback(() => setNotice(''), [])
   const [loadError, setLoadError] = useState('')
   const [isOpening, setIsOpening] = useState(false)
   const request = useRef(0)
@@ -35,7 +36,7 @@ export function usePersonalTemplateWorkspace({ authenticatedFetch, userId, sourc
   const listed = source ? library.templates.find(item => item.templateId === source.templateId) : undefined
   // Keep the revision actually loaded by this editor, so another tab's updates conflict safely.
   const selectedTemplate = listed && source ? { ...listed, name: source.name,
-    revision: source.revision, thumbnailRef: source.thumbnailRef } : null
+    revision: source.revision } : null
 
   async function open(templateId: number) {
     const started = ++request.current
@@ -67,26 +68,16 @@ export function usePersonalTemplateWorkspace({ authenticatedFetch, userId, sourc
     if (!isBuilderEditorDocument(draft.sceneData)) throw new Error('Open an editable Builder template first.')
     const document = buildSceneSubmissionDocument(draft.sceneData)
     if (document.kind !== 'builder') throw new Error('Only Builder templates can be saved.')
-    const assertCurrent = () => {
-      const current = readDraft()
-      if (!mounted.current || started !== request.current || current.sceneData !== draft.sceneData || current.sceneDataText !== draft.sceneDataText) {
-        throw new Error('The scene changed while the template was being saved. Your edits were kept. Save again to use the current scene.')
-      }
-    }
     setNotice('')
-    let thumbnailFile: File | null = null
-    try { thumbnailFile = await captureThumbnail() }
-    catch { /* An unavailable preview has an explicit placeholder, never an old scene image. */ }
-    assertCurrent()
-    const saved = await library.save({ name, sceneData: builderDesign(document), thumbnailFile, template, assertCurrent })
+    const saved = await library.save({ name, sceneData: builderDesign(document), template })
     if (!mounted.current || started !== request.current) return
     onSaved(saved, draft.sceneData)
-    setNotice(thumbnailFile ? `Saved “${saved.name}” with a fresh thumbnail.`
-      : `Saved “${saved.name}” without a thumbnail because the preview could not be captured. Update it when the preview is ready to add one.`)
+    setNotice(`${template ? 'Updated' : 'Saved'} “${saved.name}”.`)
   }
 
   async function rename(template: PersonalTemplate, name: string) {
     const started = request.current
+    setNotice('')
     const renamed = await library.rename(template, name)
     if (!mounted.current || started !== request.current) return
     const currentSource = readDraft().personalTemplateSource
@@ -98,9 +89,12 @@ export function usePersonalTemplateWorkspace({ authenticatedFetch, userId, sourc
 
   async function remove(template: PersonalTemplate) {
     const started = request.current
+    setNotice('')
     await library.remove(template)
-    if (mounted.current && started === request.current) setNotice(`Deleted “${template.name}” from your templates. Your open scene and saved scenes are unchanged.`)
+    if (!mounted.current || started !== request.current) return
+    onDeleted(template.templateId)
+    setNotice(`Deleted “${template.name}”.`)
   }
 
-  return { ...library, selectedTemplate, notice, loadError, isOpening, open, cancelOpen, save, rename, remove }
+  return { ...library, selectedTemplate, notice, dismissNotice, loadError, isOpening, open, cancelOpen, save, rename, remove }
 }

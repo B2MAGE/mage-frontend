@@ -192,7 +192,7 @@ const DEFORMATION_REFERENCES = {
   },
 } as const satisfies Partial<Record<TemplateId, DeformationReference>>
 
-/** Describe the shared conversion before replacing an authored document. */
+/** Source rendering values used to verify the editable recipe. */
 export function builderRecipeReference(templateId: TemplateId) {
   const reference = templateId === 'embedded-scene-0' || templateId === 'embedded-scene-13' ? COMPLEX_RECIPE_REFERENCES[templateId]
     : Object.hasOwn(DEFORMATION_REFERENCES, templateId)
@@ -201,7 +201,6 @@ export function builderRecipeReference(templateId: TemplateId) {
   if (!reference) return null
   return {
     size: referenceSize, sourceIterations: reference.sourceIterations, sourceStepSize: reference.sourceStepSize,
-    note: 'Keeps the original shapes, scene response, rotation order, and rendering detail as editable objects and influences.',
   }
 }
 

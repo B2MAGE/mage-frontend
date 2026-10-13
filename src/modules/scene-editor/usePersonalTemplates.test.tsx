@@ -4,7 +4,7 @@ import { createBuilderScene } from './builderEditor'
 import { builderDesign } from './builderDesign'
 import { usePersonalTemplates } from './usePersonalTemplates'
 
-const template = { templateId: 7, name: 'Mine', sceneData: builderDesign(createBuilderScene()), thumbnailRef: null, revision: 0, createdAt: '', updatedAt: '' }
+const template = { templateId: 7, name: 'Mine', sceneData: builderDesign(createBuilderScene()), revision: 0, createdAt: '', updatedAt: '' }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 describe('usePersonalTemplates', () => {
@@ -20,7 +20,7 @@ describe('usePersonalTemplates', () => {
       .mockResolvedValueOnce(json({ ...template, name: 'Renamed', revision: 1 })).mockResolvedValueOnce(new Response(null, { status: 204 }))
     const { result } = renderHook(() => usePersonalTemplates({ authenticatedFetch, userId: 1 }))
     await waitFor(() => expect(result.current.templates).toHaveLength(1))
-    await act(async () => { await expect(result.current.save({ name: 'Mine', sceneData: template.sceneData, thumbnailFile: null })).rejects.toThrow('Name already exists.') })
+    await act(async () => { await expect(result.current.save({ name: 'Mine', sceneData: template.sceneData })).rejects.toThrow('Name already exists.') })
     expect(result.current.templates).toEqual([template])
     await act(async () => { await result.current.rename(template, 'Renamed') })
     expect(result.current.templates[0].name).toBe('Renamed')

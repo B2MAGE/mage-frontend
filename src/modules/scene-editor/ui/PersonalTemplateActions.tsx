@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { AppIcon } from '@shared/ui'
 import { PERSONAL_TEMPLATE_NAME_LIMIT, PersonalTemplateError, personalTemplateName, type PersonalTemplate } from '../personalTemplates'
@@ -9,6 +9,7 @@ type Props = {
   canSave: boolean
   disabled?: boolean
   busy?: boolean
+  onNew: () => void
   onSave: (name: string, template?: PersonalTemplate) => Promise<void>
   onRename: (template: PersonalTemplate, name: string) => Promise<void>
   onDelete: (template: PersonalTemplate) => Promise<void>
@@ -17,18 +18,22 @@ type Dialog = { mode: 'save' | 'update' | 'rename' | 'delete'; template?: Person
 
 const titles = { save: 'Save as template', update: 'Update template', rename: 'Rename template', delete: 'Delete template' }
 
-export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = false, busy = false, onSave, onRename, onDelete }: Props) {
+export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = false, busy = false, onNew, onSave, onRename, onDelete }: Props) {
   const id = useId()
   const root = useRef<HTMLDivElement>(null)
-  const trigger = useRef<HTMLElement | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [placement, setPlacement] = useState({ top: 0, left: 0 })
+  const initialMenuFocus = useRef<'first' | 'last'>('first')
   const modal = useRef<HTMLElement>(null)
   const mounted = useRef(true)
   const submitting = useRef(false)
+  const restoreTriggerFocus = useRef(false)
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [name, setName] = useState('')
   const [pending, setPending] = useState(false)
   const [failure, setFailure] = useState<{ message: string; fields?: Record<string, string>; status?: number } | null>(null)
-  const [brokenThumbnail, setBrokenThumbnail] = useState<string | null>(null)
   const blocked = disabled || busy || pending
   const editableName = dialog?.mode === 'save' || dialog?.mode === 'rename'
 
@@ -37,9 +42,73 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
     if (!dialog) return
     modal.current?.querySelector<HTMLElement>(editableName ? 'input' : '[data-cancel]')?.focus()
   }, [dialog, editableName])
+  useEffect(() => {
+    if (!dialog && !blocked && restoreTriggerFocus.current) {
+      trigger.current?.focus()
+      restoreTriggerFocus.current = false
+    }
+  }, [dialog, blocked])
+
+  useLayoutEffect(() => {
+    if (!menuOpen || !menu.current || !trigger.current) return
+    function position() {
+      const anchor = trigger.current!.getBoundingClientRect()
+      const panel = menu.current!.getBoundingClientRect()
+      const below = anchor.bottom + 6
+      const above = anchor.top - panel.height - 6
+      setPlacement({
+        top: Math.max(8, Math.min(below + panel.height > window.innerHeight - 8 ? above : below, window.innerHeight - panel.height - 8)),
+        left: Math.max(8, Math.min(anchor.right - panel.width, window.innerWidth - panel.width - 8)),
+      })
+    }
+    position()
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(position)
+    resizeObserver?.observe(menu.current)
+    const items = menu.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+    items[initialMenuFocus.current === 'last' ? items.length - 1 : 0]?.focus()
+    window.addEventListener('resize', position)
+    window.addEventListener('scroll', position, true)
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !root.current?.contains(event.target) && !menu.current?.contains(event.target)) setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', position)
+      window.removeEventListener('scroll', position, true)
+      document.removeEventListener('pointerdown', closeOutside)
+    }
+  }, [menuOpen])
+
+  function closeMenu() {
+    setMenuOpen(false)
+    trigger.current?.focus()
+  }
+  function navigateMenu(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault()
+      // The portaled menu is outside the picker in DOM order; Tab continues from its trigger.
+      const tabbable = event.key === 'Tab' ? Array.from(document.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+      )).filter(element => !menu.current?.contains(element) && element.tabIndex >= 0
+        && !element.closest('[hidden], [inert]') && getComputedStyle(element).display !== 'none'
+        && getComputedStyle(element).visibility !== 'hidden') : []
+      const next = tabbable[tabbable.indexOf(trigger.current!) + (event.shiftKey ? -1 : 1)]
+      closeMenu()
+      next?.focus()
+      return
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+    const current = items.indexOf(document.activeElement as HTMLButtonElement)
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+      : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+    items[index]?.focus()
+  }
 
   function open(mode: Dialog['mode'], template?: PersonalTemplate) {
-    trigger.current = document.activeElement as HTMLElement
+    setMenuOpen(false)
     setName(mode === 'rename' ? template!.name : '')
     setFailure(null)
     setDialog({ mode, template })
@@ -72,8 +141,8 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
       else if (dialog.mode === 'rename') await onRename(dialog.template!, personalTemplateName(name))
       else await onDelete(dialog.template!)
       if (mounted.current) {
+        restoreTriggerFocus.current = true
         setDialog(null)
-        trigger.current?.focus()
       }
     } catch (cause) {
       if (mounted.current) setFailure({ message: cause instanceof Error ? cause.message : 'The template action failed. Please try again.', fields: cause instanceof PersonalTemplateError ? cause.fields : undefined, status: cause instanceof PersonalTemplateError ? cause.status : undefined })
@@ -83,7 +152,6 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
     }
   }
 
-  const image = selectedTemplate?.thumbnailRef && selectedTemplate.thumbnailRef !== brokenThumbnail ? selectedTemplate.thumbnailRef : null
   const dialogMarkup = dialog ? <div className="scene-editor-modal-backdrop" role="presentation" onMouseDown={event => {
     if (event.target === event.currentTarget) close()
   }}>
@@ -92,7 +160,7 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
       <form onSubmit={event => { event.preventDefault(); event.stopPropagation(); void submit() }}>
         <h2 id={`${id}-title`}>{titles[dialog.mode]}</h2>
         <p id={`${id}-description`}>{dialog.mode === 'delete'
-          ? `Delete “${dialog.template!.name}” from Your templates? Scenes and drafts made from it will keep their own copies.`
+          ? `Delete “${dialog.template!.name}” from Your templates? The editor will switch to Prism Core at its default scale. Your other scene settings and saved scenes stay unchanged.`
           : dialog.mode === 'rename' ? 'Give this template a new name. Its saved design and existing scenes stay the same.'
             : dialog.mode === 'update' ? `Replace “${dialog.template!.name}” with your current Builder design—objects, groups, materials, animation and input bindings? Other scene sections stay unchanged, and existing scenes and drafts keep their own copies.`
               : 'Save your Builder design: objects, groups, materials, animation and input bindings. Camera, skybox, scene scale, Motion, Effects and other scene sections stay unchanged when you use it.'}</p>
@@ -104,7 +172,6 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
           <small id={`${id}-name-help`}>Required · Up to {PERSONAL_TEMPLATE_NAME_LIMIT} characters · Use a unique name</small>
           {failure?.fields?.name ? <span id={`${id}-name-error`} className="personal-template-modal__error">{failure.fields.name}</span> : null}
         </div> : null}
-        {dialog.mode === 'save' || dialog.mode === 'update' ? <p className="personal-template-modal__capture-note">A fresh thumbnail is captured from this scene. Its camera, surroundings, and effects aren't part of the saved design. If capture is unavailable, a placeholder is used.</p> : null}
         {failure ? <div className="personal-template-modal__error" role="alert">
           <p>{failure.message}</p>
           {Object.entries(failure.fields ?? {}).filter(([field]) => field !== 'name').map(([field, message]) => <p key={field}>{field}: {message}</p>)}
@@ -119,22 +186,28 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
   </div> : null
 
   return <div className="personal-template-actions" ref={root}>
-    {selectedTemplate ? <div className="personal-template-actions__source">
-      <div className="personal-template-actions__thumbnail" aria-label={image ? 'Saved template preview' : 'No saved template snapshot'}>
-        {image ? <img src={image} alt="" onError={() => setBrokenThumbnail(image)} /> : <AppIcon name="images" size={20} />}
-      </div>
-      <div><span>Your template</span><strong>{selectedTemplate.name}</strong></div>
-    </div> : null}
-    <div className="personal-template-actions__buttons" aria-label="Template actions">
-      <button className="scene-secondary-button" disabled={!canSave || blocked} type="button" onClick={() => open('save')}>
-        {selectedTemplate ? 'Save as new template' : 'Save as template'}
-      </button>
+    <button aria-label="Template actions" title="Template actions" className="scene-secondary-button scene-template-picker__actions"
+      id="scene-template-actions" type="button" ref={trigger} disabled={blocked} aria-haspopup="menu" aria-expanded={menuOpen} aria-controls={menuOpen ? `${id}-menu` : undefined}
+      onClick={() => { initialMenuFocus.current = 'first'; setMenuOpen(value => !value) }}
+      onKeyDown={event => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault()
+          initialMenuFocus.current = event.key === 'ArrowUp' ? 'last' : 'first'
+          setMenuOpen(true)
+        }
+      }}>
+      <AppIcon name="ellipsis" size={18} />
+    </button>
+    {menuOpen ? createPortal(<div className="builder-object-actions__menu personal-template-actions__menu" id={`${id}-menu`}
+      role="menu" aria-label="Template actions" ref={menu} style={placement} onKeyDown={navigateMenu}>
+      <button type="button" role="menuitem" onClick={() => { closeMenu(); onNew() }}>New template</button>
+      <button type="button" role="menuitem" disabled={!canSave || blocked} onClick={() => open('save')}>Save as new template</button>
       {selectedTemplate ? <>
-        <button className="scene-secondary-button" disabled={!canSave || blocked} type="button" onClick={() => open('update', selectedTemplate)}>Update template</button>
-        <button className="scene-secondary-button" disabled={blocked} type="button" onClick={() => open('rename', selectedTemplate)}>Rename template</button>
-        <button className="scene-secondary-button" disabled={blocked} type="button" onClick={() => open('delete', selectedTemplate)}>Delete template</button>
+        <button type="button" role="menuitem" disabled={!canSave || blocked} onClick={() => open('update', selectedTemplate)}>Update template</button>
+        <button type="button" role="menuitem" disabled={blocked} onClick={() => open('rename', selectedTemplate)}>Rename template</button>
+        <button className="builder-object-actions__remove" type="button" role="menuitem" disabled={blocked} onClick={() => open('delete', selectedTemplate)}>Delete template</button>
       </> : null}
-    </div>
+    </div>, root.current?.closest('.scene-editor-page') ?? document.body) : null}
     {dialogMarkup ? createPortal(dialogMarkup, root.current?.closest('.scene-editor-page') ?? document.body) : null}
   </div>
 }

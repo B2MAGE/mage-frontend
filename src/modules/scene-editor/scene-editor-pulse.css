@@ -276,7 +276,7 @@ html[data-theme] .scene-editor-page .scene-setup-controls {
 }
 .scene-template-picker { display: flex; align-items: stretch; gap: 8px; min-width: 0; }
 .scene-template-picker > select { min-width: 0; flex: 1; }
-html[data-theme] .scene-editor-page .scene-template-picker__add {
+html[data-theme] .scene-editor-page .scene-template-picker__actions {
   display: grid;
   place-items: center;
   flex: 0 0 42px;

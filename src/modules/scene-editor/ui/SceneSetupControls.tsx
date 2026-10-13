@@ -1,5 +1,6 @@
 import { listSceneTemplates, listSelectableSceneTemplates } from '@modules/player'
-import { AppIcon, EditorFieldShell, SliderFieldShell } from '@shared/ui'
+import type { ReactNode } from 'react'
+import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import { SKYBOX_OPTIONS } from '../sceneEditor'
 
 export const BUILDER_SHADER_TEMPLATE_VALUE = '__builder-shader__'
@@ -8,7 +9,8 @@ type Props = {
   fields?: Record<string, string>
   isBuilder: boolean
   builderTemplateLabel: string
-  onAddTemplate: () => void
+  builderDraftStatus: 'unsaved' | 'modified'
+  templateActions: ReactNode
   onScaleChange: (value: number) => void
   onSkyboxChange: (value: number) => void
   onTemplateChange: (templateId: string) => void
@@ -41,7 +43,8 @@ export function SceneSetupControls({
   fields = {},
   isBuilder,
   builderTemplateLabel,
-  onAddTemplate,
+  builderDraftStatus,
+  templateActions,
   onScaleChange,
   onSkyboxChange,
   onTemplateChange,
@@ -81,7 +84,6 @@ export function SceneSetupControls({
             onChange={event => onTemplateChange(event.currentTarget.value)}
             value={templateId}
           >
-            {templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>{builderTemplateLabel}</option> : null}
             {templateId === 'custom' ? <option value="custom" disabled>Custom shader</option> : null}
             {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>
               {selectedRetiredTemplate.label} (unavailable)
@@ -90,14 +92,14 @@ export function SceneSetupControls({
               key={`${template.templateId}:${template.templateVersion}`}
               value={template.templateId}
             >{template.label}</option>)}</optgroup>
-            {personalTemplates.length > 0 ? <optgroup label="Your templates">
+            {personalTemplates.length > 0 || templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <optgroup label="Your templates">
+              {templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>
+                {builderTemplateLabel} ({builderDraftStatus === 'modified' ? 'Modified' : 'Unsaved'})
+              </option> : null}
               {personalTemplates.map(template => <option key={template.templateId} value={`personal:${template.templateId}`}>{template.name}</option>)}
             </optgroup> : null}
           </select>
-          <button aria-label="Add new template" className="scene-secondary-button scene-template-picker__add"
-            id="scene-add-template" disabled={templatesBusy} onClick={onAddTemplate} title="Add new template" type="button">
-            <AppIcon name="plus" size={18} />
-          </button>
+          {templateActions}
         </div>
       </EditorFieldShell>
       {issue('templateId')}
