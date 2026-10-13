@@ -115,8 +115,10 @@ The ordinary blend field remains editable: its baseline is `b/2`, multiplied by
 | Ember Grid | `.9995767105459568, .3013572617092242, 0` | `.4757753414424941` | `.4905478148343774` | `2.7452866417099218` | `.10155951925016898` |
 | Emerald Ring | `.19651749597261697, .914203219207783, .24550611194053884` | `.31594207653292694` | `.3832572948846391` | `1.9938824658616179` | `.11214341939632295` |
 
-The current material editor stores six-digit hexadecimal color, so RGB values
-are rounded to the nearest 8-bit channel. A shared group material preserves the
+These eight recipes retain six-digit hexadecimal color, so their RGB values
+are rounded to the nearest 8-bit channel. SB-12 also supports numeric RGB for
+[deformation/material recipes](builder-deformation-material-references.md).
+A shared group material preserves the
 common source color, shine and size-dependent metalness; each object also has
 an ordinary material ready if it is moved outside that group. The recipes
 preserve the user's scale, speed, camera, skybox, audio mode, and effects when
@@ -159,7 +161,7 @@ edge, 2,073,600 pixels, device-pixel ratio 1.5, and 60 fps. No ceiling is raised
 to hide a difficult lattice ray. Rays that do not converge within their budget
 remain misses rather than generating the old false distorted surfaces.
 
-All eight recipes fit the existing 16-object, 8-group, depth-3, 64-live-uniform,
+All eight recipes use at most depth 3 and fit the 16-object, 8-group, 64-live-uniform,
 192-driver-operation, and 80-modifier-operation limits. Recipe tests check
 reference geometry, exact constituent order, group scopes and Y signs, current
 document round trips, settings preservation, and compilation through the shipped
