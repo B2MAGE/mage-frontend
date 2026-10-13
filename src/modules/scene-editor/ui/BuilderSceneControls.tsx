@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { BUILDER_OPERATIONS, BUILDER_LIMITS, BUILDER_TRANSFORMS, BUILDER_GROUP_TRANSFORMS, BUILDER_GROUP_BLEND, BUILDER_MATERIAL, BUILDER_MODIFIERS,
-  BUILDER_ARRANGEMENTS, BUILDER_SPIN, BUILDER_RENDER_SETTINGS, builderOperationFields, createBuilderModifier, createBuilderArrangement,
-  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame, type BuilderRenderSettings } from '@modules/player'
+  BUILDER_ARRANGEMENTS, BUILDER_SPIN, BUILDER_RENDER_SETTINGS, BUILDER_DRIVER_LIMITS, builderColorChannels, builderColorHex, builderOperationFields, createBuilderModifier, createBuilderArrangement,
+  type BuilderArrangement, type BuilderDimension, type BuilderModifier, type BuilderObject, type BuilderSceneDocument, type BuilderGroup, type BuilderFrame, type BuilderRenderSettings, type BuilderColor } from '@modules/player'
 import { AppIcon, EditorFieldShell } from '@shared/ui'
 import {
   BUILDER_EXPANDED_PRIMITIVE_LIMIT,
@@ -17,6 +17,7 @@ import { BuilderObjectList } from './BuilderObjectList'
 import { BuilderControlStage, InspectorSection } from './BuilderInspector'
 import { BuilderBindingControls } from './BuilderBindingControls'
 import { BuilderDriverControls } from './BuilderDriverControls'
+import { addNoiseDeformation, addProceduralColor } from '../builderProcedural'
 import { builderGroupFieldIssues, builderObjectFieldIssues, FieldErrorsContext, useSceneEditorFieldErrors, useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 import { builderGroups, builderGroupingIssue, builderParent, findBuilderNode } from '../builderGroups'
 
@@ -93,25 +94,27 @@ function ArrangementStage({ arrangement, index, maxCount, object, onRemove, onTo
   </BuilderControlStage>
 }
 
-function ModifierControls({ object, update }: { object: BuilderObject; update: (object: BuilderObject) => void }) {
+function ModifierControls<T extends BuilderObject | BuilderGroup>({ object, update }: { object: T; update: (object: T) => void }) {
+  const modifiers = object.modifiers ?? []
+  const group = 'children' in object
   const [newType, setNewType] = useState<BuilderModifier['type']>('expand')
   const [openType, setOpenType] = useState<BuilderModifier['type'] | null>(null)
-  const exists = object.modifiers.some(modifier => modifier.type === newType)
+  const exists = modifiers.some(modifier => modifier.type === newType)
   const add = () => {
     setOpenType(newType)
-    update({ ...object, modifiers: [...object.modifiers, createBuilderModifier(newType)] })
+    update({ ...object, modifiers: [...modifiers, createBuilderModifier(newType)] })
   }
   return <div className="builder-composition-control">
     <div className="builder-composition-control__add">
       <select aria-label="Modifier" className="mage-select" value={newType}
         onChange={event => setNewType(event.currentTarget.value as BuilderModifier['type'])}>
-        {Object.entries(BUILDER_MODIFIERS).map(([value, definition]) => <option key={value} value={value}>{definition.label}</option>)}
+        {Object.entries(BUILDER_MODIFIERS).filter(([type]) => !group || type !== 'twist').map(([value, definition]) => <option key={value} value={value}>{definition.label}</option>)}
       </select>
-      <button className="scene-secondary-button" type="button" disabled={object.modifiers.length >= BUILDER_LIMITS.modifiers || exists} onClick={add}>Add modifier</button>
+      <button className="scene-secondary-button" type="button" disabled={modifiers.length >= BUILDER_LIMITS.modifiers || exists} onClick={add}>Add modifier</button>
     </div>
-    {object.modifiers.length === 0 ? <p className="field-hint">No modifiers. Add Expand, Shell, or Twist to reshape every arranged copy.</p> : null}
-    {object.modifiers.length ? <div className="builder-modifier-stages">
-      {object.modifiers.map((modifier, index) => {
+    {modifiers.length === 0 ? <p className="field-hint">{group ? 'Expand or shell the combined surface after the children are joined.' : 'Add Expand, Shell, or Twist to reshape every arranged copy.'}</p> : null}
+    {modifiers.length ? <div className="builder-modifier-stages">
+      {modifiers.map((modifier, index) => {
         const title = BUILDER_MODIFIERS[modifier.type].label
         const open = openType === modifier.type
         const summary = modifier.type === 'expand' ? [`Amount: ${modifier.amount}`]
@@ -122,11 +125,12 @@ function ModifierControls({ object, update }: { object: BuilderObject; update: (
         return <BuilderControlStage description={description} fieldPrefix={`builder-modifier-${index}-`} index={index} key={modifier.type}
           onRemove={() => {
             if (open) setOpenType(null)
-            update({ ...object, modifiers: object.modifiers.filter((_, itemIndex) => itemIndex !== index) })
+            update({ ...object, modifiers: modifiers.filter((_, itemIndex) => itemIndex !== index),
+              drivers: object.drivers?.filter(driver => !driver.target.startsWith(`modifier.${modifier.type}.`)) })
           }}
           onToggle={() => setOpenType(current => current === modifier.type ? null : modifier.type)} open={open}
           removeLabel={`Remove ${title} modifier ${index + 1}`} summary={summary} title={title}
-          titleAddon={modifier.type === 'twist' && object.operation.type === 'sphere'
+          titleAddon={modifier.type === 'twist' && !group && object.operation.type === 'sphere'
             ? <BuilderInfoTooltip label="Why Twist may not be visible on a sphere">
               A sphere is symmetrical, so twisting it can look unchanged. Try a less symmetrical shape to make the effect easier to see.
             </BuilderInfoTooltip>
@@ -134,19 +138,22 @@ function ModifierControls({ object, update }: { object: BuilderObject; update: (
           toggleLabel={`${open ? 'Collapse' : 'Expand'} ${title} modifier ${index + 1}`}>
           {modifier.type === 'expand'
             ? <NumberField id={`builder-modifier-${index}-amount`} label="Amount" min={BUILDER_MODIFIERS.expand.amount.minimum} max={BUILDER_MODIFIERS.expand.amount.maximum} step={0.01} value={modifier.amount}
-              onChange={amount => update({ ...object, modifiers: object.modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, amount } : item) })} />
+              onChange={amount => update({ ...object, modifiers: modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, amount } : item) })} />
             : modifier.type === 'shell'
               ? <NumberField id={`builder-modifier-${index}-thickness`} label="Thickness" min={BUILDER_MODIFIERS.shell.thickness.minimum} max={BUILDER_MODIFIERS.shell.thickness.maximum} step={0.01} value={modifier.thickness}
-                onChange={thickness => update({ ...object, modifiers: object.modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, thickness } : item) })} />
+                onChange={thickness => update({ ...object, modifiers: modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, thickness } : item) })} />
               : <div className="scene-editor-grid">
                 <SelectField id={`builder-modifier-${index}-axis`} label="Axis" value={modifier.axis} options={axes}
-                  onChange={axis => update({ ...object, modifiers: object.modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, axis: axis as 'x' | 'y' | 'z' } : item) })} />
+                  onChange={axis => update({ ...object, modifiers: modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, axis: axis as 'x' | 'y' | 'z' } : item) })} />
                 <NumberField id={`builder-modifier-${index}-amount`} label="Twist" min={BUILDER_MODIFIERS.twist.amount.minimum} max={BUILDER_MODIFIERS.twist.amount.maximum} step={0.05} value={modifier.amount}
-                  onChange={amount => update({ ...object, modifiers: object.modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, amount } : item) })} />
+                  onChange={amount => update({ ...object, modifiers: modifiers.map((item, itemIndex) => itemIndex === index ? { ...modifier, amount } : item) })} />
               </div>}
         </BuilderControlStage>
       })}
     </div> : null}
+    <button className="scene-secondary-button" type="button" disabled={(object.drivers?.length ?? 0) >= BUILDER_DRIVER_LIMITS.perNode}
+      onClick={() => update(addNoiseDeformation(object))}>Add noise deformation</button>
+    <p className="field-hint">Noise deforms {group ? 'the joined group surface' : 'each arranged copy'}. Edit its frequency, strength, offset, drift, and coordinate space in Animation.</p>
   </div>
 }
 
@@ -373,19 +380,43 @@ function AnimationControls({ object, update }: { object: BuilderObject; update: 
   </div>
 }
 
+function colorSummary(color: BuilderColor): string {
+  return typeof color === 'string' ? color.toUpperCase() : `RGB ${conciseVector(color)}`
+}
+
+function ProceduralColorButtons<T extends BuilderObject | BuilderGroup>({ node, update }: { node: T; update: (node: T) => void }) {
+  const disabled = !node.material || (node.drivers?.length ?? 0) + 3 > BUILDER_DRIVER_LIMITS.perNode
+  return <>
+    <div className="builder-group-selection">
+      <button className="scene-secondary-button" type="button" disabled={disabled} onClick={() => update(addProceduralColor(node, 'view-ray'))}>Add view-ray color</button>
+      <button className="scene-secondary-button" type="button" disabled={disabled} onClick={() => update(addProceduralColor(node, 'animated'))}>Add animated RGB</button>
+    </div>
+    <p className="field-hint">Each adds three editable channel influences in Animation. {disabled ? 'Three free influence slots and a material are required.' : 'View-ray color follows camera direction; animated RGB cycles with time.'}</p>
+  </>
+}
+
 function AppearanceControls<T extends Pick<BuilderObject, 'id' | 'material'>>({ object, update }: { object: T; update: (object: T) => void }) {
   const [openControl, setOpenControl] = useState<'color' | 'metalness' | 'shininess' | null>(null)
   const toggle = (control: 'color' | 'metalness' | 'shininess') => setOpenControl(current => current === control ? null : control)
   return <div className="builder-appearance-stages">
     <BuilderControlStage description="Choose the object's base color." fieldPrefix="builder-color" onToggle={() => toggle('color')}
-      open={openControl === 'color'} summary={[object.material.color.toUpperCase()]} title="Color"
+      open={openControl === 'color'} summary={[colorSummary(object.material.color)]} title="Color"
       toggleLabel={`${openControl === 'color' ? 'Collapse' : 'Expand'} Color appearance`}>
       <FieldValidation id="builder-color">
         <EditorFieldShell fieldClassName="builder-color-field" htmlFor="builder-color" label="Color">
-          <BuilderColorControl key={`${object.id}-${object.material.color}`} value={object.material.color}
+          <BuilderColorControl key={`${object.id}-${builderColorHex(object.material.color)}`} value={builderColorHex(object.material.color)}
             onChange={color => update({ ...object, material: { ...object.material, color } })} />
         </EditorFieldShell>
       </FieldValidation>
+      <p className="field-hint">Linear RGB preserves precise color. The hex swatch is an 8-bit approximation. Procedural colors can use negative channels.</p>
+      <div className="scene-editor-grid scene-editor-grid--3">{(['x', 'y', 'z'] as const).map((axis, index) => {
+        const channels = builderColorChannels(object.material.color)
+        return <NumberField key={axis} id={`builder-color-${axis}`} label={['Red', 'Green', 'Blue'][index]}
+          min={-1} max={1} step={.001} numericStep="any" value={channels[index]} onChange={value => {
+            const color = { x: channels[0], y: channels[1], z: channels[2], [axis]: value }
+            update({ ...object, material: { ...object.material, color } })
+          }} />
+      })}</div>
     </BuilderControlStage>
     <BuilderControlStage description="Control how strongly the surface reflects its environment." fieldPrefix="builder-metalness" onToggle={() => toggle('metalness')}
       open={openControl === 'metalness'} summary={[conciseNumber(object.material.metalness)]} title="Metalness"
@@ -445,6 +476,10 @@ function BuilderGroupInspector({ document, group, issues, onDuplicate, onRemove,
         <InspectorSection title="Animation" fieldPrefixes={['builder-driver-', 'builder-drivers']} description="Shared movement and responses" status={group.drivers?.length ? `${group.drivers.length} influences` : 'Off'}>
           <BuilderDriverControls key={group.id} node={group} onChange={update} />
         </InspectorSection>
+        <InspectorSection title="Modifiers" fieldPrefixes={['builder-modifier-']} description="Deform the joined child surfaces"
+          status={group.modifiers?.length ? group.modifiers.map(modifier => modifier.type).join(', ') : 'None'}>
+          <ModifierControls key={group.id} object={group} update={next => update(() => next)} />
+        </InspectorSection>
         <InspectorSection title="Composition" fieldPrefixes={['builder-group-operation', 'builder-group-blend']} description="How the children's surfaces join"
           status={group.operation.type === 'union' ? 'Union' : `Smooth union · ${conciseNumber(group.operation.blend)}`}>
           <SelectField id="builder-group-operation" label="Join surfaces" value={group.operation.type}
@@ -454,7 +489,7 @@ function BuilderGroupInspector({ document, group, issues, onDuplicate, onRemove,
           {group.operation.type === 'smooth-union' ? <SliderField id="builder-group-blend" label="Blend radius" min={BUILDER_GROUP_BLEND.minimum} max={BUILDER_GROUP_BLEND.maximum} step={.01}
             value={group.operation.blend} onChange={blend => update(current => ({ ...current, operation: { type: 'smooth-union', blend } }))} /> : null}
         </InspectorSection>
-        <InspectorSection title="Appearance" fieldPrefixes={['builder-color', 'builder-metalness', 'builder-shininess']} description="Use child materials or one group material" status={material ? material.color.toUpperCase() : 'Child materials'}>
+        <InspectorSection title="Appearance" fieldPrefixes={['builder-color', 'builder-metalness', 'builder-shininess']} description="Use child materials or one group material" status={material ? colorSummary(material.color) : 'Child materials'}>
           <label className="builder-group-material-toggle"><input type="checkbox" checked={Boolean(material)}
             onChange={event => update(current => {
               if (event.currentTarget.checked) return { ...current, material: { color: BUILDER_MATERIAL.color.default, metalness: BUILDER_MATERIAL.metalness.default, shininess: BUILDER_MATERIAL.shininess.default } }
@@ -462,8 +497,9 @@ function BuilderGroupInspector({ document, group, issues, onDuplicate, onRemove,
             })} /> Use one material for this group</label>
           <p className="field-hint">An outer group's material overrides its children. Turn it off to restore their own materials.</p>
           {material ? <AppearanceControls key={group.id} object={{ id: group.id, material }} update={value => update(current => ({ ...current, material: value.material }))} /> : null}
+          <ProceduralColorButtons node={group} update={next => update(() => next)} />
         </InspectorSection>
-        <p className="field-hint">Ungroup keeps authored placement and colors. This group's animation and smooth join are removed; the parent behavior applies.</p>
+        <p className="field-hint">Ungroup keeps authored placement and colors. Remove group deformation first; it cannot be flattened without changing the result. The group's animation and smooth join are removed; the parent behavior applies.</p>
       </div>
     </section>
   </FieldErrorsContext.Provider>
@@ -614,8 +650,9 @@ export function BuilderSceneControls({
 
           <BuilderBindingControls key={selected.id} object={selected} document={document} onChange={update} />
 
-          <InspectorSection title="Appearance" fieldPrefixes={['builder-color', 'builder-metalness', 'builder-shininess']} description="Color and material response" status={selected.material.color.toUpperCase()}>
+          <InspectorSection title="Appearance" fieldPrefixes={['builder-color', 'builder-metalness', 'builder-shininess']} description="Color and material response" status={colorSummary(selected.material.color)}>
             <AppearanceControls key={selected.id} object={selected} update={object => update(() => object)} />
+            <ProceduralColorButtons node={selected} update={object => update(() => object)} />
           </InspectorSection>
         </div>
       </section></FieldErrorsContext.Provider> : null}

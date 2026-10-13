@@ -21,6 +21,7 @@ export const SECURITY_CHECK_ALLOWED_MODULES = Object.freeze([
   'src/modules/player/templates/templateSettings.ts',
   'src/modules/player/templates/resolveScene.ts',
   'src/modules/player/templates/builderCompiler.ts',
+  'src/modules/player/templates/builderColor.ts',
   'src/modules/player/templates/builderComposition.ts',
   'src/modules/player/templates/builderDefinitions.ts',
   'src/modules/player/templates/builderUniformValues.ts',

@@ -1,4 +1,4 @@
-import { BUILDER_BINDING_RANGES, BUILDER_DRIVER_LIMITS, BUILDER_GROUP_RANGES, builderOperationFields,
+import { BUILDER_BINDING_RANGES, BUILDER_DRIVER_LIMITS, BUILDER_GROUP_RANGES, builderOperationFields, builderDriverTargetRange,
   type BuilderDriver, type BuilderDriverExpression, type BuilderDriverTarget, type BuilderGroup, type BuilderObject } from '@modules/player'
 import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from './builderBindings'
 
@@ -72,6 +72,11 @@ function scalar(expression: BuilderDriverExpression): number | undefined {
   return expression.type === 'constant' && typeof expression.value === 'number' ? expression.value : undefined
 }
 function sourceName(expression: BuilderDriverExpression): string | undefined {
+  // A higher ancestor is not represented by the simple source dropdown. Keep
+  // it in Combined inputs rather than resetting the coordinate scope on edit.
+  if (expression.type === 'input' && expression.source === 'group-position' && (expression.ancestor ?? 1) !== 1) return undefined
+  if (expression.type === 'component' && expression.input.type === 'input'
+    && expression.input.source === 'group-position' && (expression.input.ancestor ?? 1) !== 1) return undefined
   if (expression.type === 'input') return expression.source
   if (expression.type === 'component' && expression.input.type === 'input') return `${expression.input.source}.${expression.axis}`
 }
@@ -136,15 +141,24 @@ export function readDriverPreset(expression: BuilderDriverExpression): DriverPre
 }
 
 export function driverTargets(node: BuilderObject | BuilderGroup) {
-  if ('children' in node) return Object.entries(BUILDER_GROUP_RANGES)
+  const proceduralTargets = [
+    ['material.color.r', 'Red channel'], ['material.color.g', 'Green channel'], ['material.color.b', 'Blue channel'],
+    ['modifier.expand.amount', 'Expansion amount'], ['modifier.shell.thickness', 'Shell thickness'],
+  ] as const
+  const extra = proceduralTargets.flatMap(([value, label]) => {
+    const range = builderDriverTargetRange(node, value)
+    return range ? [{ value, label, ...range }] : []
+  })
+  if ('children' in node) return [...Object.entries(BUILDER_GROUP_RANGES)
     .filter(([target]) => (target !== 'blend' || node.operation.type === 'smooth-union') && (!target.startsWith('material.') || node.material))
     .map(([value, range]) => ({ value: value as BuilderDriverTarget, label: value === 'scale' ? 'Overall scale' : value === 'blend' ? 'Blend radius'
-      : BUILDER_BINDING_TARGET_LABELS[value as keyof typeof BUILDER_BINDING_TARGET_LABELS], ...range }))
+      : BUILDER_BINDING_TARGET_LABELS[value as keyof typeof BUILDER_BINDING_TARGET_LABELS], ...range })), ...extra]
   return [
     ...Object.entries(BUILDER_BINDING_RANGES).map(([value, range]) => ({ value: value as BuilderDriverTarget,
       label: BUILDER_BINDING_TARGET_LABELS[value as keyof typeof BUILDER_BINDING_TARGET_LABELS], ...range })),
     ...builderOperationFields(node.operation).filter(field => field.animatable).map(field => ({ value: `operation.${field.key}` as BuilderDriverTarget, label: field.title,
       minimum: field.minimum, maximum: field.maximum, default: field.default })),
+    ...extra,
   ]
 }
 

@@ -7,6 +7,8 @@ import { BuilderControlStage } from './BuilderInspector'
 import { NumberField, SelectField, SliderField } from './SceneEditorControls'
 import { FieldValidation } from './SceneEditorFieldValidation'
 import { BuilderExpressionControls } from './BuilderExpressionControls'
+import { BuilderNoiseControls } from './BuilderNoiseControls'
+import { addNoiseDeformation, createNoiseExpression, readNoiseExpression } from '../builderProcedural'
 import { useSceneEditorFieldIssue } from './sceneEditorFieldErrors'
 
 type Node = BuilderObject | BuilderGroup
@@ -53,12 +55,13 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
       {drivers.map((driver, index) => {
         const prefix = `builder-driver-${index}`
         const preset = readDriverPreset(driver.expression)
+        const noise = readNoiseExpression(driver.expression)
         // The same linear expression is valid on other numeric properties, but
         // only rotation is a Spin control with wrapping and rotation targets.
         const values: DriverPresetValues | null = preset?.preset === 'spin' && !driver.target.startsWith('rotation.')
           ? { ...preset, preset: 'follow', amount: preset.speed, offset: preset.phase, ...DRIVER_INFLUENCE_RANGE, unclamped: true } : preset
-        const showFormula = !values || formulaIndices.includes(index)
-        const title = showFormula ? 'Combined inputs' : DRIVER_PRESETS.find(item => item.value === values!.preset)!.label
+        const showFormula = (!values && !noise) || formulaIndices.includes(index)
+        const title = showFormula ? 'Combined inputs' : noise ? 'Noise' : DRIVER_PRESETS.find(item => item.value === values!.preset)!.label
         const fullMotion = values?.minimum === DRIVER_INFLUENCE_RANGE.minimum && values?.maximum === DRIVER_INFLUENCE_RANGE.maximum
         const audioDriven = values?.audioDriven === true
         const timeDriven = values?.source === 'time' || values?.preset === 'spin'
@@ -88,7 +91,8 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
             options={[{ value: 'add', label: 'Add to the current value' }, { value: 'replace', label: 'Set the value' }, { value: 'multiply', label: 'Multiply the current value' }]}
             onChange={value => change({ mode: value as BuilderDriver['mode'] })} />
           <DriverExpressionValidation id={`${prefix}-expression`}>
-          {values && !showFormula ? <>
+          {noise && !showFormula ? <BuilderNoiseControls id={`${prefix}-noise`} value={noise}
+            onChange={next => change({ expression: createNoiseExpression(next) })} /> : values && !showFormula ? <>
             {values.preset !== 'spin' ? <SelectField id={`${prefix}-source`} label="Input" value={values.source} options={DRIVER_SOURCES}
               onChange={source => updatePreset({ source })} description={inputDescription(values)} /> : null}
             {isAudioPulse(values) && !audioDriven ? <div>
@@ -124,7 +128,7 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
             setFormulaIndices(indices => indices.includes(index) ? indices : [...indices, index])
             change({ expression })
           }} />}
-          {values ? <button className="scene-secondary-button" type="button" onClick={() => setFormulaIndices(indices => showFormula
+          {values || noise ? <button className="scene-secondary-button" type="button" onClick={() => setFormulaIndices(indices => showFormula
             ? indices.filter(item => item !== index) : [...indices, index])}>{showFormula ? 'Use simple controls' : 'Edit combined inputs'}</button> : null}
           </DriverExpressionValidation>
           {target ? <p className="field-hint">Final {target.label.toLowerCase()} stays between {Number(resultRange.minimum.toFixed(2))} and {Number(resultRange.maximum.toFixed(2))}{driver.target.startsWith('rotation.') ? ' radians; rotation wraps through full turns' : ''}.</p> : null}
@@ -150,8 +154,12 @@ export function BuilderDriverControls<T extends Node>({ node, onChange }: Props<
           },
         }] }))
       }}>Add combined inputs</button>
+      <button className="scene-secondary-button" type="button" disabled={drivers.length >= BUILDER_DRIVER_LIMITS.perNode} onClick={() => {
+        setOpenIndex(drivers.length)
+        onChange(current => addNoiseDeformation(current))
+      }}>Add noise deformation</button>
     </div></FieldValidation>
-    {'children' in node ? <p className="field-hint">Group movement is shared by every child. The closest parent defines group-position inputs.</p> : null}
+    {'children' in node ? <p className="field-hint">Group movement is shared by every child. Group-position inputs can use the parent or an earlier ancestor.</p> : null}
   </>
 }
 

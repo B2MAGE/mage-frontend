@@ -3,9 +3,10 @@ import { builderDriverResultRange } from './builderDrivers'
 import type { BuilderBinding, BuilderDriver, BuilderDriverExpression, BuilderGroup, BuilderObject, BuilderSceneDocument } from './sceneContract'
 
 type Owner = BuilderObject | BuilderGroup
-export type BuilderDriverContext = { local: string; group: string; world: string }
+export type BuilderDriverContext = { local: string; group: string; world: string; ancestors?: readonly string[] }
+type ExpressionContext = BuilderDriverContext & { noise: (id: number, value: string) => string }
 type Axis = 'x' | 'y' | 'z'
-type ExpressionSource = (context: BuilderDriverContext, axis?: Axis) => string
+type ExpressionSource = (context: ExpressionContext, axis?: Axis) => string
 const bound = (value: string) => `max(-1000000,min(1000000,${value}))`
 const literal = (value: number) => Object.is(value, -0) ? '0' : String(value)
 
@@ -16,6 +17,7 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
   const signals = new Map<BuilderBinding['source'], string>()
   const sceneInputs = new Set<string>()
   let spatial = false
+  let noiseIndex = 0
   const slot = (value: number, source?: BuilderBinding['source']) => {
     const driverSlot = uniforms.length
     const name = `builder_d${driverSlot}_${source ? source.replaceAll('-', '_') : 'value'}`
@@ -53,7 +55,11 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
         }
         if (node.source === 'view-ray') { spatial = true; return (_context, axis) => `getRayDirection().${axis}` }
         if (node.source === 'world-position') { spatial = true; return (context, axis) => bound(`${context.world}.${axis}`) }
-        if (node.source === 'group-position') { spatial = true; return (context, axis) => bound(`${context.group}.${axis}`) }
+        if (node.source === 'group-position') {
+          spatial = true
+          return (context, axis) => bound(`${node.ancestor
+            ? context.ancestors?.[node.ancestor - 1] ?? context.world : context.group}.${axis}`)
+        }
         if (node.source === 'local-position') { spatial = true; return (context, axis) => bound(`${context.local}.${axis}`) }
         const signal = inputSignal(node.source)
         return () => signal
@@ -65,6 +71,12 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
       case 'sin': case 'cos': {
         const input = expression(node.input)
         return (context, axis) => `${node.type}(${bound(input(context, axis))})`
+      }
+      case 'noise': {
+        const input = expression(node.input), id = noiseIndex++
+        // Hoist each authored noise node once per owner/copy, including when a
+        // scalar noise output is broadcast into vector arithmetic.
+        return context => context.noise(id, `noise(vec3(${input(context, 'x')},${input(context, 'y')},${input(context, 'z')}))`)
       }
       case 'clamp': {
         const input = expression(node.input), min = slot(node.min), max = slot(node.max)
@@ -90,7 +102,18 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
       const targets = new Map<string, string>()
       return {
         get declarations() {
-          return drivers.map((driver, index) => `let ${names[index]}=${driver.source(context)};`).join('') + targetDeclarations.join('')
+          const noiseNames = new Map<number, string>()
+          const noiseDeclarations: string[] = []
+          const expressionContext: ExpressionContext = { ...context, noise(id, value) {
+            if (!noiseNames.has(id)) {
+              const name = `builder_noise_${suffix}_${id}`
+              noiseNames.set(id, name)
+              noiseDeclarations.push(`let ${name}=${value};`)
+            }
+            return noiseNames.get(id)!
+          } }
+          const values = drivers.map((driver, index) => `let ${names[index]}=${driver.source(expressionContext)};`).join('')
+          return noiseDeclarations.join('') + values + targetDeclarations.join('')
         },
         apply(target: string, baseline: string) {
           if (targets.has(target)) return targets.get(target)!

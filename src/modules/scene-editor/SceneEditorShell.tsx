@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel, usePointerReorder } from "@shared/ui";
-import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
+import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type BuilderColor, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
   EffectCard,
@@ -79,6 +79,10 @@ function formatDegrees(value: number) {
 
 function toCameraDegreeValue(radians: number) {
   return Number(toDegrees(radians).toFixed(2));
+}
+
+function formatBuilderColor(color: BuilderColor) {
+  return typeof color === "string" ? color : `RGB (${color.x}, ${color.y}, ${color.z})`;
 }
 
 function formatBuilderOperation(object: BuilderObject) {
@@ -1779,7 +1783,8 @@ export function SceneEditorShell({
                                   <span>Composition: {group.operation.type === 'union' ? 'Union' : `Smooth union · Blend ${formatFixed(group.operation.blend)}`}</span>
                                   <span>Position: {formatFixed(group.transform.position.x)}, {formatFixed(group.transform.position.y)}, {formatFixed(group.transform.position.z)}</span>
                                   <span>Rotation: {formatFixed(group.transform.rotation.x)}, {formatFixed(group.transform.rotation.y)}, {formatFixed(group.transform.rotation.z)} · Scale: {formatFixed(group.transform.scale)}</span>
-                                  <span>Appearance: {group.material ? `${group.material.color} · Metalness ${formatFixed(group.material.metalness)} · Shininess ${formatFixed(group.material.shininess)}` : 'Child materials'}</span>
+                                  <span>Modifiers: {group.modifiers?.length ? group.modifiers.map(formatBuilderModifier).join(' → ') : 'None'}</span>
+                                  <span>Appearance: {group.material ? `${formatBuilderColor(group.material.color)} · Metalness ${formatFixed(group.material.metalness)} · Shininess ${formatFixed(group.material.shininess)}` : 'Child materials'}</span>
                                 </section>)}
                                 {builderDocument.objects.map((object) => (
                                   <section key={object.id}>
@@ -1791,7 +1796,7 @@ export function SceneEditorShell({
                                     <span>Modifiers: {object.modifiers.length ? object.modifiers.map(formatBuilderModifier).join(" → ") : "None"}</span>
                                     <span>Arrangements: {object.arrangements.length ? object.arrangements.map(formatBuilderArrangement).join(" → ") : "None"}</span>
                                     <span>Animation: {formatBuilderMotion(object)}</span>
-                                    <span>Appearance: {object.material.color} · Metalness {formatFixed(object.material.metalness)} · Shininess {formatFixed(object.material.shininess)}</span>
+                                    <span>Appearance: {formatBuilderColor(object.material.color)} · Metalness {formatFixed(object.material.metalness)} · Shininess {formatFixed(object.material.shininess)}</span>
                                     <span>Music &amp; pointer: {object.bindings.length ? `${object.bindings.length} responses` : 'Off'}</span>
                                     {object.bindings.map(binding => <span key={binding.target}>
                                       {BUILDER_BINDING_SOURCE_LABELS[binding.source]} → {BUILDER_BINDING_TARGET_LABELS[binding.target]} · {binding.mode === 'add' ? 'Add' : 'Set'} · Strength {formatFixed(binding.amount)} · Offset {formatFixed(binding.offset)} · Rise {formatFixed(binding.attack)}s · Fall {formatFixed(binding.release)}s

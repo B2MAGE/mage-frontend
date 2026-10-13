@@ -1,6 +1,6 @@
 {
   "policyVersion": 1,
-  "description": "Whole-scene compilation limits for Scene Builder version 1, including composition version 1. Counts include arranged copies, object frames, and every group. Procedural frame distance work and lattice coordinate folds use the existing modifier budget, per arranged copy.",
+  "description": "Whole-scene compilation limits for Scene Builder version 1, including composition version 1. Counts include arranged copies, object frames, every group and post-composition group modifiers. Procedural frame distance work and lattice coordinate folds use the modifier budget per arranged copy. Expression workload weights each noise evaluation as eight operations; structural node/depth limits are unchanged.",
   "limits": {
     "expandedPrimitives": 16,
     "compositionOperations": 15,
@@ -13,7 +13,7 @@
     "optionalEffects": 4,
     "generatedSourceBytes": 32768,
     "groups": 8,
-    "groupDepth": 3,
+    "groupDepth": 6,
     "driverOperations": 192,
     "authoredDrivers": 32
   },
@@ -33,7 +33,8 @@
     "liveUniformPerBinding": 1,
     "box-frame": 3,
     "lattice": 3,
-    "latticePerFold": 1
+    "latticePerFold": 1,
+    "noise": 8
   },
   "driverLimits": {
     "perNode": 8,

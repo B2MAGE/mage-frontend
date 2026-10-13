@@ -35,6 +35,20 @@ function additionTree(depth: number): Expression {
 }
 
 describe('Builder combined input controls', () => {
+  it('authors noise from XYZ coordinates and preserves an explicitly selected ancestor', async () => {
+    const { user, current } = setup(constant(0))
+    await user.selectOptions(calculation(), 'noise')
+    expect(current()).toEqual({ type: 'noise', input: input('local-position') })
+    await user.click(summary(source('-input')))
+    await user.selectOptions(source('-input'), 'group-position')
+    await user.selectOptions(screen.getByLabelText('Coordinate group'), '3')
+    expect(current()).toEqual({ type: 'noise', input: { type: 'input', source: 'group-position', ancestor: 3 } })
+    expect(validateBuilderDriverExpression(current()).type).toBe('scalar')
+    await user.selectOptions(source('-input'), 'world-position')
+    expect(current()).toEqual({ type: 'noise', input: input('world-position') })
+    expect(validateBuilderDriverExpression(current()).type).toBe('scalar')
+  })
+
   it('opens existing formulas without changing them and preserves their children when wrapping a calculation', async () => {
     const initial = add(input('time'), multiply(input('bass-level'), constant(2)))
     const before = structuredClone(initial)

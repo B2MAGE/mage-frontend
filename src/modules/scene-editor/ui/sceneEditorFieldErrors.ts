@@ -85,6 +85,9 @@ const builderObjectControlIds: Record<string, string> = {
   'transform.scale.y': 'builder-scale-y',
   'transform.scale.z': 'builder-scale-z',
   'material.color': 'builder-color',
+  'material.color.x': 'builder-color-x',
+  'material.color.y': 'builder-color-y',
+  'material.color.z': 'builder-color-z',
   'material.metalness': 'builder-metalness',
   'material.shininess': 'builder-shininess',
   'motion.type': 'builder-motion-axis',
@@ -98,7 +101,9 @@ export function builderControlLocation(rawPath: string): { path: string; id: str
   if (groupMatch) {
     const field = groupMatch[3] ?? ''
     const groupFields: Record<string, string> = { 'operation.type': 'builder-group-operation', 'operation.blend': 'builder-group-blend', 'transform.scale': 'builder-scale' }
-    return { path, id: driverControlId(field) ?? groupFields[field] ?? builderObjectControlIds[field] ?? 'builder-object-list', groupIndex: Number(groupMatch[1] ?? groupMatch[2]), section: 'scene' }
+    const modifier = /^modifiers(?:\[(\d+)\]|\.(\d+))\.(amount|thickness)$/.exec(field)
+    const modifierId = modifier ? `builder-modifier-${modifier[1] ?? modifier[2]}-${modifier[3]}` : undefined
+    return { path, id: driverControlId(field) ?? groupFields[field] ?? builderObjectControlIds[field] ?? modifierId ?? 'builder-object-list', groupIndex: Number(groupMatch[1] ?? groupMatch[2]), section: 'scene' }
   }
   if (path.startsWith('composition')) return { path, id: 'builder-object-list', section: 'scene' }
   const objectMatch = /^objects(?:\[(\d+)\]|\.(\d+))(?:\.(.+))?$/.exec(path)

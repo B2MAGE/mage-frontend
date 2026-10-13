@@ -6199,7 +6199,7 @@
         "composition": {
           "version": 1,
           "roots": [
-            "top"
+            "extra-depth-2"
           ],
           "groups": [
             {
@@ -6225,6 +6225,24 @@
               "id": "top",
               "children": [
                 "outer"
+              ]
+            },
+            {
+              "id": "extra-depth-0",
+              "children": [
+                "top"
+              ]
+            },
+            {
+              "id": "extra-depth-1",
+              "children": [
+                "extra-depth-0"
+              ]
+            },
+            {
+              "id": "extra-depth-2",
+              "children": [
+                "extra-depth-1"
               ]
             }
           ]
@@ -7231,6 +7249,581 @@
                 "expression": {
                   "type": "constant",
                   "value": 0.8
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deformation-noise-precise-rgb-and-post-composition-modifiers",
+      "valid": true,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "material": {
+              "color": {
+                "x": 0.08256470259178794,
+                "y": -0.25,
+                "z": 0.763003005740327
+              },
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [
+              {
+                "type": "expand",
+                "amount": 0
+              }
+            ],
+            "drivers": [
+              {
+                "target": "modifier.expand.amount",
+                "mode": "replace",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "noise",
+                    "input": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "group-position",
+                        "ancestor": 2
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1080185521425232
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0.39571611124777173
+                  }
+                }
+              },
+              {
+                "target": "material.color.r",
+                "mode": "replace",
+                "expression": {
+                  "type": "component",
+                  "input": {
+                    "type": "input",
+                    "source": "view-ray"
+                  },
+                  "axis": "x"
+                }
+              }
+            ]
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "scoped-surface"
+          ],
+          "groups": [
+            {
+              "id": "scoped-surface",
+              "children": [
+                "surface"
+              ],
+              "material": {
+                "color": {
+                  "x": 0.1,
+                  "y": 0.2345678901234567,
+                  "z": 0.9
+                },
+                "metalness": 0.3,
+                "shininess": 0.4
+              },
+              "modifiers": [
+                {
+                  "type": "shell",
+                  "thickness": 0.1
+                },
+                {
+                  "type": "expand",
+                  "amount": 0.2
+                }
+              ],
+              "drivers": [
+                {
+                  "target": "modifier.shell.thickness",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "constant",
+                    "value": 0.001
+                  }
+                },
+                {
+                  "target": "material.color.g",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "component",
+                    "input": {
+                      "type": "sin",
+                      "input": {
+                        "type": "input",
+                        "source": "view-ray"
+                      }
+                    },
+                    "axis": "y"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "normalized": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere",
+              "radius": 1
+            },
+            "name": "Object",
+            "transform": {
+              "position": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+              },
+              "scale": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+              }
+            },
+            "material": {
+              "color": {
+                "x": 0.08256470259178794,
+                "y": -0.25,
+                "z": 0.763003005740327
+              },
+              "metalness": 0,
+              "shininess": 0.5
+            },
+            "modifiers": [
+              {
+                "type": "expand",
+                "amount": 0
+              }
+            ],
+            "arrangements": [],
+            "motion": {
+              "type": "none"
+            },
+            "bindings": [],
+            "drivers": [
+              {
+                "target": "modifier.expand.amount",
+                "mode": "replace",
+                "expression": {
+                  "type": "multiply",
+                  "left": {
+                    "type": "noise",
+                    "input": {
+                      "type": "multiply",
+                      "left": {
+                        "type": "input",
+                        "source": "group-position",
+                        "ancestor": 2
+                      },
+                      "right": {
+                        "type": "constant",
+                        "value": 0.1080185521425232
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "constant",
+                    "value": 0.39571611124777173
+                  }
+                }
+              },
+              {
+                "target": "material.color.r",
+                "mode": "replace",
+                "expression": {
+                  "type": "component",
+                  "input": {
+                    "type": "input",
+                    "source": "view-ray"
+                  },
+                  "axis": "x"
+                }
+              }
+            ]
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "scoped-surface"
+          ],
+          "groups": [
+            {
+              "id": "scoped-surface",
+              "children": [
+                "surface"
+              ],
+              "material": {
+                "color": {
+                  "x": 0.1,
+                  "y": 0.2345678901234567,
+                  "z": 0.9
+                },
+                "metalness": 0.3,
+                "shininess": 0.4
+              },
+              "name": "Group",
+              "transform": {
+                "position": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "rotation": {
+                  "x": 0,
+                  "y": 0,
+                  "z": 0
+                },
+                "scale": 1
+              },
+              "operation": {
+                "type": "union"
+              },
+              "modifiers": [
+                {
+                  "type": "shell",
+                  "thickness": 0.1
+                },
+                {
+                  "type": "expand",
+                  "amount": 0.2
+                }
+              ],
+              "drivers": [
+                {
+                  "target": "modifier.shell.thickness",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "constant",
+                    "value": 0.001
+                  }
+                },
+                {
+                  "target": "material.color.g",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "component",
+                    "input": {
+                      "type": "sin",
+                      "input": {
+                        "type": "input",
+                        "source": "view-ray"
+                      }
+                    },
+                    "axis": "y"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "parameters": {
+          "scale": 10,
+          "speed": 1
+        },
+        "settings": {
+          "skybox": 6,
+          "camera": {
+            "fov": 75,
+            "autoRotate": true,
+            "orbitSpeed": 0.2
+          },
+          "bloom": {
+            "enabled": false,
+            "strength": 1,
+            "radius": 0.2,
+            "threshold": 0.1
+          },
+          "tint": {
+            "enabled": false,
+            "color": "#ffffff"
+          }
+        }
+      }
+    },
+    {
+      "name": "deformation-noise-rejects-scalar-input",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "replace",
+                "expression": {
+                  "type": "noise",
+                  "input": {
+                    "type": "input",
+                    "source": "time"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deformation-rejects-ancestor-on-world-position",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "replace",
+                "expression": {
+                  "type": "noise",
+                  "input": {
+                    "type": "input",
+                    "source": "world-position",
+                    "ancestor": 1
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deformation-rejects-ancestor-above-six",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "replace",
+                "expression": {
+                  "type": "noise",
+                  "input": {
+                    "type": "input",
+                    "source": "group-position",
+                    "ancestor": 7
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deformation-rejects-unowned-modifier-target",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "drivers": [
+              {
+                "target": "modifier.expand.amount",
+                "mode": "replace",
+                "expression": {
+                  "type": "noise",
+                  "input": {
+                    "type": "input",
+                    "source": "local-position"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deformation-rejects-unowned-group-color",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "group"
+          ],
+          "groups": [
+            {
+              "id": "group",
+              "children": [
+                "surface"
+              ],
+              "drivers": [
+                {
+                  "target": "material.color.g",
+                  "mode": "replace",
+                  "expression": {
+                    "type": "constant",
+                    "value": 0.2
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "deformation-rejects-rgb-range",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "material": {
+              "color": {
+                "x": 0,
+                "y": 0,
+                "z": 1.001
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "deformation-rejects-unknown-group-modifier",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            }
+          }
+        ],
+        "composition": {
+          "version": 1,
+          "roots": [
+            "group"
+          ],
+          "groups": [
+            {
+              "id": "group",
+              "children": [
+                "surface"
+              ],
+              "modifiers": [
+                {
+                  "type": "twist",
+                  "axis": "y",
+                  "amount": 0.2
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "deformation-rejects-noise-source-injection",
+      "valid": false,
+      "document": {
+        "schemaVersion": 1,
+        "kind": "builder",
+        "builderVersion": 1,
+        "objects": [
+          {
+            "id": "surface",
+            "operation": {
+              "type": "sphere"
+            },
+            "drivers": [
+              {
+                "target": "position.x",
+                "mode": "replace",
+                "expression": {
+                  "type": "noise",
+                  "input": {
+                    "type": "input",
+                    "source": "local-position"
+                  },
+                  "source": "NEVER_EXECUTE()"
                 }
               }
             ]

@@ -17,7 +17,7 @@ export function expressionValueType(expression: Expression): ExpressionValueType
   switch (expression.type) {
     case 'constant': return typeof expression.value === 'number' ? 'scalar' : 'vector'
     case 'input': return VECTOR_INPUTS.some(input => input.value === expression.source) ? 'vector' : 'scalar'
-    case 'component': return 'scalar'
+    case 'component': case 'noise': return 'scalar'
     case 'add': case 'multiply': return expressionValueType(expression.left) === 'vector' || expressionValueType(expression.right) === 'vector' ? 'vector' : 'scalar'
     default: return expressionValueType(expression.input)
   }
@@ -39,6 +39,7 @@ export function changeExpressionOperation(expression: Expression, type: Expressi
     case 'sin': case 'cos': return { type, input: expression.type === 'sin' || expression.type === 'cos' ? expression.input : expression }
     case 'clamp': return { type, input: expression, min: -1, max: 1 }
     case 'component': return { type, input: { type: 'input', source: 'local-position' }, axis: 'x' }
+    case 'noise': return { type, input: valueType === 'vector' ? expression : { type: 'input', source: 'local-position' } }
   }
 }
 
@@ -53,10 +54,12 @@ export function expressionSummary(expression: Expression): string {
   switch (expression.type) {
     case 'constant': return typeof expression.value === 'number' ? String(Number(expression.value.toPrecision(4)))
       : `XYZ (${expression.value.x}, ${expression.value.y}, ${expression.value.z})`
-    case 'input': return [...SCALAR_INPUTS, ...VECTOR_INPUTS].find(input => input.value === expression.source)?.label ?? expression.source
+    case 'input': return expression.source === 'group-position' && (expression.ancestor ?? 1) > 1 ? `Group position (${expression.ancestor} groups up)`
+      : [...SCALAR_INPUTS, ...VECTOR_INPUTS].find(input => input.value === expression.source)?.label ?? expression.source
     case 'add': case 'multiply': return `(${expressionSummary(expression.left)} ${expression.type === 'add' ? '+' : '×'} ${expressionSummary(expression.right)})`
     case 'sin': case 'cos': return `${expression.type === 'sin' ? 'Sine' : 'Cosine'}(${expressionSummary(expression.input)})`
     case 'clamp': return `Limit(${expressionSummary(expression.input)}, ${expression.min}, ${expression.max})`
     case 'component': return `${expressionSummary(expression.input)} → ${expression.axis.toUpperCase()}`
+    case 'noise': return `Noise(${expressionSummary(expression.input)})`
   }
 }

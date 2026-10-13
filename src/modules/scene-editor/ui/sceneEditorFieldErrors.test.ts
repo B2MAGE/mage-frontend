@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { builderControlLocation, builderGroupFieldIssues, builderObjectFieldIssues } from './sceneEditorFieldErrors'
 
 describe('Builder field locations', () => {
+  it('routes group deformation and precise color errors to their shared controls', () => {
+    expect(builderControlLocation('sceneData.composition.groups[2].modifiers[1].thickness'))
+      .toMatchObject({ id: 'builder-modifier-1-thickness', groupIndex: 2 })
+    expect(builderControlLocation('composition.groups.2.modifiers.0.amount'))
+      .toMatchObject({ id: 'builder-modifier-0-amount', groupIndex: 2 })
+    expect(builderControlLocation('composition.groups[2].material.color.y'))
+      .toMatchObject({ id: 'builder-color-y', groupIndex: 2 })
+    expect(builderControlLocation('objects[1].material.color.x'))
+      .toMatchObject({ id: 'builder-color-x', objectIndex: 1 })
+  })
+
   it.each(['target', 'source', 'mode', 'amount', 'offset', 'attack', 'release'])('maps binding %s errors into the selected object response', field => {
     expect(builderControlLocation(`sceneData.objects[2].bindings[1].${field}`)).toMatchObject({ id: `builder-binding-1-${field}`, objectIndex: 2, section: 'scene' })
   })
