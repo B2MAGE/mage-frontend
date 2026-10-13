@@ -5,6 +5,7 @@ import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel } from './sceneEditor'
 import { createTemplateScene } from './templateEditor'
+import { createBuilderRecipe } from './builderRecipes'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -222,7 +223,7 @@ describe('EditScenePage workflow', () => {
         description: 'Updated from My Scenes.',
         name: 'Updated Scene',
         tagIds: [1, 2],
-        sceneData: kind === 'template' ? createTemplateScene() : {
+        sceneData: kind === 'template' ? createBuilderRecipe('embedded-scene-0', createTemplateScene().settings, createTemplateScene().parameters) : {
           schemaVersion: 1, kind: 'custom', scene: {
             audioResponse: 'mapped-v1',
             visualizer: { shader: 'nebula' },

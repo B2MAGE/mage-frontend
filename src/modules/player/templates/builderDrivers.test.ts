@@ -13,7 +13,7 @@ describe('bounded Builder driver contract', () => {
       driver({ type: 'component', input: { type: 'input', source: 'view-ray' }, axis: 'y' }),
       driver({ type: 'input', source: 'bass-level' })])
     expect(parseSceneDocument(JSON.parse(JSON.stringify(document)))).toEqual(document)
-    expect(validateBuilderDrivers(document)).toEqual({ driverOperations: 6, authoredDrivers: 3, driverUniforms: 2 })
+    expect(validateBuilderDrivers(document)).toEqual({ driverOperations: 6, authoredDrivers: 3, driverUniforms: 1 })
   })
 
   it('allows typed vector math but requires scalar property outputs', () => {
@@ -62,7 +62,7 @@ describe('bounded Builder driver contract', () => {
 
   it('rejects expression depth and node overflow before expansion', () => {
     let expression = scalar()
-    for (let depth = 1; depth < 8; depth++) expression = { type: 'sin', input: expression }
+    for (let depth = 1; depth < 12; depth++) expression = { type: 'sin', input: expression }
     expect(() => scene([driver(expression)])).not.toThrow()
     expect(() => scene([driver({ type: 'sin', input: expression })])).toThrow(/depth/)
     let wide = scalar()
@@ -71,14 +71,12 @@ describe('bounded Builder driver contract', () => {
   })
 
   it('counts arranged expressions and required live values against scene budgets', () => {
-    const expression: BuilderDriverExpression = { type: 'clamp', input: { type: 'sin', input: { type: 'multiply',
-      left: { type: 'input', source: 'time' }, right: scalar(2) } }, min: -1, max: 1 }
-    const document = scene([driver(expression), driver(expression), driver(expression)])
+    let expression = scalar()
+    for (let depth = 1; depth < 8; depth++) expression = { type: 'sin', input: expression }
+    const document = scene(Array.from({ length: 8 }, () => driver(expression)))
     document.objects[0].arrangements = [{ type: 'linear', axis: 'x', count: 16, spacing: 1 }]
+    expect(validateBuilderDrivers(document).driverOperations).toBe(1024)
+    document.objects[0].drivers!.push(driver(scalar()))
     expect(() => validateBuilderDrivers(document)).toThrow(/expanded driver work/)
-    const costly = scene(Array.from({ length: 8 }, () => driver({ type: 'component', axis: 'x',
-      input: { type: 'add', left: { type: 'constant', value: { x: 0, y: 1, z: 2 } }, right: { type: 'constant', value: { x: 0, y: 1, z: 2 } } } })))
-    costly.objects.push({ ...structuredClone(costly.objects[0]), id: 'second' })
-    expect(() => validateBuilderDrivers(costly)).toThrow(/uniforms/)
   })
 })

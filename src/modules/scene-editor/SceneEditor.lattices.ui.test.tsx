@@ -62,6 +62,6 @@ describe('Frame and lattice authoring', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(preview()).toEqual(initial))
     await user.click(screen.getByRole('button', { name: 'Undo' }))
-    await waitFor(() => expect(preview()).toMatchObject({ kind: 'template', templateId: 'embedded-scene-0' }))
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'recipe-0-frame' }, { id: 'recipe-0-sphere' }, { id: 'recipe-0-solid-frame' }] }))
   })
 })

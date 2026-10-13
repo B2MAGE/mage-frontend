@@ -49,7 +49,7 @@ export function useSceneImportExport({ allowCustomSceneData, sceneData, sceneDat
         setErrors(current => ({ ...current, sceneData: CUSTOM_SCENE_DATA_DISABLED_MESSAGE }))
         return
       }
-      if (!isTemplate && document.kind === 'template') {
+      if (!isTemplate && !isBuilder && document.kind === 'template') {
         setSceneDataText(nextValue)
         templateImportPreviousTextRef.current ??= sceneDataText
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
@@ -72,7 +72,7 @@ export function useSceneImportExport({ allowCustomSceneData, sceneData, sceneDat
           : 'Custom Code is disabled for MAGE. This saved custom scene is read-only.' }))
         return
       }
-      if (!isTemplate && document.kind === 'template') {
+      if (!isTemplate && !isBuilder && document.kind === 'template') {
         templateImportPreviousTextRef.current ??= prettyPrintEditorSceneData(sceneData)
         setPendingImport({ document, previousText: templateImportPreviousTextRef.current })
       } else {

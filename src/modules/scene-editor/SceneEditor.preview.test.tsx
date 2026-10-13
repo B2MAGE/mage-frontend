@@ -6,6 +6,8 @@ import { jsonResponse } from '@shared/test/http'
 import { createDefaultSceneData, getSceneEditorModel, SHADER_SCENES, type SceneData } from './sceneEditor'
 import { buildEffectiveSceneData, editorSceneDocument, readEditableSceneData } from './utils'
 import { createTemplateScene } from './templateEditor'
+import { createBuilderRecipe } from './builderRecipes'
+import { parseSceneDocument } from '@modules/player'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -146,16 +148,19 @@ describe('scene editor presets and beat preview', () => {
     expect(getSceneEditorModel(readEditableSceneData(updated!.sceneData)).state.volume_multiplier).toBe(0.27)
   }, 60_000)
 
-  it.each(['Rose Circuit'])('keeps %s as a source-free template without retired controls', async label => {
+  it.each(['Rose Circuit'])('opens %s as editable objects without source or retired controls', async label => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const user = userEvent.setup()
     renderCreateScenePage('mage-pulse')
     await screen.findByTestId('scene-preview')
-    const before = previewScene()
+    const before = parseSceneDocument(previewScene())
+    if (before.kind !== 'builder') throw new Error('Expected the default editable Prism scene')
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Template' }), shaderOption(label).id)
-    await waitFor(() => expect(previewScene()).toEqual({ ...before, templateId: shaderOption(label).id }))
+    const template = createTemplateScene(shaderOption(label).id)
+    await waitFor(() => expect(previewScene()).toEqual(createBuilderRecipe(template.templateId, before.settings,
+      { ...before.parameters, scale: template.parameters.scale })))
     expect(previewScene()).not.toHaveProperty('visualizer')
     expect(previewScene()).not.toHaveProperty('reactions')
     expect(previewScene()).not.toHaveProperty('mageTemplate')
@@ -274,7 +279,7 @@ describe('scene editor presets and beat preview', () => {
     expect(screen.getByText('7 \u00b7 Confirm')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^create scene$/i }))
     await waitFor(() => expect(created).toBeDefined())
-    const expected = createTemplateScene(shaderOption('Rose Circuit').id)
+    const expected = createBuilderRecipe(createTemplateScene(shaderOption('Rose Circuit').id).templateId)
     expect(created?.sceneData).toEqual({ ...expected, parameters: { ...expected.parameters, speed: 0.75 } })
     expect(JSON.stringify(created)).not.toMatch(/shader|simulatedBeat|previewBpm|isBeatSimulated/)
     expect(await screen.findByText('My Scenes')).toBeInTheDocument()

@@ -132,24 +132,25 @@ describe('Builder combined input controls', () => {
     expect(current()).toEqual(initial)
   })
 
-  it('blocks a ninth nested level, retains the current formula, and clears the notice after simplifying', async () => {
-    expect(BUILDER_DRIVER_LIMITS.expressionDepth).toBe(8)
-    const initial = waveChain(8)
+  it('blocks a thirteenth nested level, retains the current formula, and clears the notice after simplifying', async () => {
+    expect(BUILDER_DRIVER_LIMITS.expressionDepth).toBe(12)
+    const initial = waveChain(12)
     const before = structuredClone(initial)
     const { user, changed, current } = setup(initial)
-    expect(expressionBudget(initial)).toEqual({ depth: 8, nodes: 8 })
+    expect(expressionBudget(initial)).toEqual({ depth: 12, nodes: 12 })
+    expect(validateBuilderDriverExpression(initial).type).toBe('scalar')
     await user.selectOptions(calculation(), 'multiply')
-    expect(screen.getByRole('status')).toHaveTextContent('nested up to 8 levels')
+    expect(screen.getByRole('status')).toHaveTextContent('nested up to 12 levels')
     expect(changed).not.toHaveBeenCalled()
     expect(current()).toEqual(before)
     expect(calculation()).toHaveValue('sin')
 
     const root = calculation().closest('details')!
     await user.click(within(root).getAllByRole('button', { name: 'Use incoming value only' })[0])
-    expect(expressionBudget(current()).depth).toBe(7)
+    expect(expressionBudget(current()).depth).toBe(11)
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     await user.selectOptions(calculation(), 'multiply')
-    expect(expressionBudget(current())).toEqual({ depth: 8, nodes: 9 })
+    expect(expressionBudget(current())).toEqual({ depth: 12, nodes: 13 })
     expect(validateBuilderDriverExpression(current()).type).toBe('scalar')
     expect(initial).toEqual(before)
   })

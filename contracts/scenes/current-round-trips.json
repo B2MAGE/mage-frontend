@@ -3572,7 +3572,7 @@
         "modifierOperations": 7,
         "driverOperations": 2,
         "authoredDrivers": 2,
-        "liveUniforms": 2
+        "liveUniforms": 1
       }
     },
     {
@@ -4917,13 +4917,13 @@
         "modifierOperations": 19,
         "arrangementOperations": 0,
         "animationOperations": 0,
-        "liveUniforms": 52,
+        "liveUniforms": 2,
         "optionalEffects": 4,
         "groups": 3,
         "groupDepth": 3,
         "driverOperations": 170,
         "authoredDrivers": 21,
-        "generatedSourceBytes": 17031
+        "generatedSourceBytes": 14101
       },
       "normalized": {
         "schemaVersion": 1,

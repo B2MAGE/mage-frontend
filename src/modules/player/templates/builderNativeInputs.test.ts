@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileShader } from '@notrac/mage/compiler'
 import { normalizeCompiledShader } from '@notrac/mage/compiled-shader'
 import { compileBuilderDocument, compileBuilderPreviewDocument } from './builderCompiler'
+import { createBuilderBinding } from './builderDefinitions'
 import { createBuilderDriverCompilation } from './builderDriverCompiler'
 import { builderDriverResultRange, validateBuilderDriverExpression, validateBuilderDrivers } from './builderDrivers'
 import { parseSceneDocument, type BuilderDriver, type BuilderDriverExpression, type BuilderSceneDocument } from './sceneContract'
@@ -63,21 +64,14 @@ describe('Builder native scene inputs', () => {
     expect(artifact.uniforms.filter(uniform => uniform.name === 'pointerDown')).toHaveLength(1)
   })
 
-  it('counts native inputs at the required 64-uniform validation boundary', () => {
-    const document = scene([])
-    const vectorComponent: BuilderDriverExpression = { type: 'component', axis: 'x', input: { type: 'constant', value: { x: 1, y: 2, z: 3 } } }
-    document.objects = Array.from({ length: 3 }, (_, index) => ({ ...structuredClone(document.objects[0]), id: `frame-${index}`,
-      drivers: Array.from({ length: 7 }, () => driver('rotation.x', structuredClone(vectorComponent))),
-    }))
-    document.objects[0].drivers!.push(driver('operation.width', input('scene-size')))
-    document.objects[1].drivers!.push(driver('operation.width', input('scene-pointer-down')))
-    // 21 vector constants take 63 slots, plus the two shared native scalars.
+  it('counts required native inputs alongside all object bindings at the 64-uniform boundary', () => {
+    const document = scene([driver('operation.width', input('scene-size')), driver('operation.depth', input('scene-pointer-down'))])
+    const bindings = (['position.x', 'position.y', 'position.z', 'scale.x'] as const).map(target => createBuilderBinding(target, 'bass-level'))
+    document.objects = Array.from({ length: 16 }, (_, index) => ({ ...structuredClone(document.objects[0]), id: `frame-${index}`, bindings: structuredClone(bindings) }))
+    delete document.composition
     expect(() => validateBuilderDrivers(document)).toThrow(/64 uniforms/)
-    expect(() => compileBuilderDocument(document)).toThrow(/64 uniforms/)
-    document.objects[0].drivers![0].expression = { type: 'add',
-      left: { type: 'constant', value: 1 }, right: { type: 'constant', value: 2 },
-    }
-    expect(validateBuilderDrivers(document).driverUniforms).toBe(64)
+    document.objects[0].bindings.splice(0, 2)
+    expect(validateBuilderDrivers(document).driverUniforms).toBe(2)
     const result = compileBuilderPreviewDocument(document)
     expect(result.workload.liveUniforms).toBe(64)
     expect(result.uniforms).toHaveLength(62)

@@ -29,7 +29,7 @@ describe('Builder rendering controls', () => {
     await screen.findByLabelText(/scene name/i)
     await user.click(screen.getByRole('button', { name: 'Scene' }))
     await user.click(screen.getByRole('button', { name: 'Add new template' }))
-    await waitFor(() => expect(preview().kind).toBe('builder'))
+    await waitFor(() => expect(preview().objects).toEqual(createBuilderScene().objects))
     const original = preview()
     expect(original).not.toHaveProperty('rendering')
     await openRendering(user)

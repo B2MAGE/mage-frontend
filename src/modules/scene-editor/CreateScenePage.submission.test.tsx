@@ -105,7 +105,7 @@ describe('CreateScenePage submission', () => {
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('Another tab’s scene')
   })
 
-  it('submits a source-free template document with the edited camera setting', async () => {
+  it('submits a source-free Builder document with the edited camera setting', async () => {
     storeSceneEditorSession()
 
     let submittedBody: Record<string, unknown> | null = null
@@ -143,8 +143,9 @@ describe('CreateScenePage submission', () => {
     }
 
     const responseBody: { name: string; sceneData: Record<string, unknown> } = submittedBody
-    expect(responseBody.sceneData).toMatchObject({ schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1,
+    expect(responseBody.sceneData).toMatchObject({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
       settings: { camera: { fov: 90 } } })
+    expect(responseBody.sceneData).not.toHaveProperty('templateId')
     expect(responseBody.sceneData).not.toHaveProperty('scene')
     expect(JSON.stringify(responseBody.sceneData)).not.toContain('shader')
 

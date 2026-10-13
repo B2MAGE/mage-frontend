@@ -93,7 +93,7 @@ describe('draft editing through the shared editor', () => {
     const beforeReset = preview()
     await user.click(screen.getByRole('button', { name: 'Draft options' }))
     await user.click(screen.getByRole('button', { name: 'Reset draft' }))
-    await waitFor(() => expect(preview().kind).toBe('template'))
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', objects: [{ id: 'recipe-0-frame' }, { id: 'recipe-0-sphere' }, { id: 'recipe-0-solid-frame' }] }))
     await user.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(preview()).toEqual(beforeReset))
     expect(screen.getByLabelText('Name')).toHaveValue('Sphere 2')

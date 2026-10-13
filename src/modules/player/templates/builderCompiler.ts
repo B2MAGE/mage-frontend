@@ -350,9 +350,20 @@ export function validateBuilderRenderingWorkload(document: BuilderSceneDocument)
  * IDs, names and binding sources never enter generated source. Only validated
  * numeric values and fixed operation tokens are emitted.
  */
-export function compileBuilderDocument(document: BuilderSceneDocument, options: { livePreview?: boolean; bindingUniformsOnly?: boolean } = {}): BuilderCompilation {
+export function compileBuilderDocument(document: BuilderSceneDocument, options: { livePreview?: boolean; bindingUniformsOnly?: boolean; inlineDriverConstants?: boolean } = {}): BuilderCompilation {
   const baseWorkload = validateBuilderRenderingWorkload(document)
-  const drivers = createBuilderDriverCompilation(document, !!options.livePreview)
+  const liveConstants = !!options.livePreview && !options.inlineDriverConstants
+  let drivers = createBuilderDriverCompilation(document, !!options.livePreview, liveConstants)
+  const bindingCount = document.objects.reduce((count, object) => count + object.bindings.length, 0)
+  if (drivers.uniforms.length + drivers.nativeUniformCount + bindingCount > policy.limits.liveUniforms) {
+    drivers = createBuilderDriverCompilation(document, !!options.livePreview, liveConstants, true)
+  }
+  if (drivers.uniforms.length + drivers.nativeUniformCount + bindingCount > policy.limits.liveUniforms) {
+    // Large calculation trees remain editable without exceeding the engine's
+    // uniform budget. Coefficient edits then change the structural shader and
+    // use the editor's normal coalesced compile/reload path.
+    drivers = createBuilderDriverCompilation(document, !!options.livePreview, false)
+  }
   const uniforms: BuilderUniform[] = [...drivers.uniforms]
   const declarations: string[] = [...drivers.declarations]
   const groups = document.composition?.groups ?? []
@@ -360,7 +371,7 @@ export function compileBuilderDocument(document: BuilderSceneDocument, options: 
   // Saved compilation stays deterministic under version one's shared contract.
   // Playback can spend its remaining uniform budget on editor numeric values.
   // Authored bindings reserve their slots first; overflow stays structural.
-  let remaining = policy.limits.liveUniforms - baseWorkload.liveUniforms
+  let remaining = policy.limits.liveUniforms - drivers.uniforms.length - drivers.nativeUniformCount - bindingCount
   const groupValues = groups.map((group, groupIndex) => {
     const values = new Map<BuilderGroupTarget, string>()
     if (options.livePreview && !options.bindingUniformsOnly) {
@@ -556,6 +567,10 @@ export function compileBuilderPreviewDocument(document: BuilderSceneDocument): B
   try { return compileBuilderDocument(document, { livePreview: true }) }
   catch (error) {
     if (!(error instanceof BuilderCompilationError) || !error.message.includes('generatedSourceBytes requires')) throw error
-    return compileBuilderDocument(document, { livePreview: true, bindingUniformsOnly: true })
+  }
+  try { return compileBuilderDocument(document, { livePreview: true, bindingUniformsOnly: true }) }
+  catch (error) {
+    if (!(error instanceof BuilderCompilationError) || !error.message.includes('generatedSourceBytes requires')) throw error
+    return compileBuilderDocument(document, { livePreview: true, bindingUniformsOnly: true, inlineDriverConstants: true })
   }
 }

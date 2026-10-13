@@ -11,14 +11,20 @@ const bound = (value: string) => `max(-1000000,min(1000000,${value}))`
 const literal = (value: number) => Object.is(value, -0) ? '0' : String(value)
 
 /** Only validated enums and numeric slots enter this trusted shader generator. */
-export function createBuilderDriverCompilation(document: BuilderSceneDocument, livePreview: boolean) {
+export function createBuilderDriverCompilation(document: BuilderSceneDocument, livePreview: boolean, liveConstants = livePreview, poolConstants = false) {
   const uniforms: BuilderUniform[] = []
   const declarations: string[] = []
   const signals = new Map<BuilderBinding['source'], string>()
+  const constants = new Map<number, string>()
   const sceneInputs = new Set<string>()
   let spatial = false
   let noiseIndex = 0
   const slot = (value: number, source?: BuilderBinding['source']) => {
+    if (!source && !liveConstants) return literal(value)
+    // Repeated coefficients share a GPU value. The references in the generated
+    // shader change if an edit splits a shared coefficient, so the existing
+    // structural comparison reloads that shader before applying its new slots.
+    if (!source && poolConstants && constants.has(value)) return constants.get(value)!
     const driverSlot = uniforms.length
     const name = `builder_d${driverSlot}_${source ? source.replaceAll('-', '_') : 'value'}`
     const minimum = source ? source === 'pointer-x' || source === 'pointer-y' ? -1 : 0 : -1000
@@ -28,6 +34,7 @@ export function createBuilderDriverCompilation(document: BuilderSceneDocument, l
       ? { driverSlot, target: 'driver-signal', source, name, initialValue: value, minimum, maximum }
       : { driverSlot, target: 'driver-value', name, initialValue: value, minimum, maximum })
     declarations.push(`let ${name}=input(${literal(livePreview || target === 'driver-signal' ? 0 : value)},${minimum},${maximum});`)
+    if (!source && poolConstants) constants.set(value, name)
     return name
   }
   const inputSignal = (source: BuilderBinding['source']) => {

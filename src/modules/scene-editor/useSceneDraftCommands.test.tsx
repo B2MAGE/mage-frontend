@@ -4,7 +4,7 @@ import { useSceneEditorState } from './useSceneEditorState'
 import { addBuilderObject, createBuilderScene } from './builderEditor'
 import { buildSceneSubmissionDocument } from './utils'
 import { createTemplateScene } from './templateEditor'
-import { assertSceneDocumentBudget, BUILDER_LIMITS, createBuilderBinding, parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
+import { assertSceneDocumentBudget, BUILDER_LIMITS, createBuilderBinding, parseSceneDocument, type BuilderDriverExpression, type BuilderSceneDocument } from '@modules/player'
 import { groupBuilderNodes, ungroupBuilderNode, updateBuilderGroup } from './builderGroups'
 import { updateBuilderBinding } from './builderBindings'
 import { addNoiseDeformation, addProceduralColor } from './builderProcedural'
@@ -120,10 +120,13 @@ describe('scene draft commands and current document round trips', () => {
   it('rejects an ungroup that exceeds the shared document budget, preserving the draft, selection, and undo', async () => {
     let objects = addBuilderObject(createBuilderScene(), 'sphere')
     let large: BuilderSceneDocument | undefined
+    let expression: BuilderDriverExpression = { type: 'input', source: 'time' }
+    for (let depth = 0; depth < 11; depth++) expression = { type: 'clamp', input: expression, min: 0, max: 1 }
     for (let count = 2; count <= BUILDER_LIMITS.objects; count++) {
-      // Authored music responses bring a valid scene near the current shared JSON
-      // budget. Ungrouping copies the inherited frame onto every child.
+      // Four music responses and bounded animation expressions bring the scene
+      // near the JSON budget. Ungrouping copies its inherited frame onto each child.
       const responsive = { ...objects, objects: objects.objects.map(object => ({ ...object,
+        drivers: (['rotation.x', 'rotation.y', 'rotation.z', 'scale.x'] as const).map(target => ({ target, mode: 'add' as const, expression })),
         bindings: [createBuilderBinding('position.x', 'bass-level'), createBuilderBinding('position.y', 'mid-level'),
           createBuilderBinding('position.z', 'treble-level'), createBuilderBinding('rotation.z', 'pointer-x')] })) }
       const document = updateBuilderGroup(groupBuilderNodes(responsive, responsive.objects.map(object => object.id), 'group-1'), 'group-1', group => ({ ...group, transform: { ...group.transform, scale: 2 } }))

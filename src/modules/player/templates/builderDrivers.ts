@@ -15,7 +15,9 @@ const defaultFail: Fail = (path, detail) => { throw new Error(`${path}: ${detail
 /** Targets refer to actual editable properties, never generated uniform names. */
 export function builderDriverTargetRange(node: BuilderObject | BuilderGroup, target: string): { minimum: number; maximum: number } | null {
   if (['material.color.r', 'material.color.g', 'material.color.b'].includes(target)) {
-    return node.material ? { minimum: -1, maximum: 1 } : null
+    // Procedural light can exceed the base color picker: Prism's ray + tint
+    // reaches 1.25. Keep that highlight before the renderer's tone mapping.
+    return node.material ? { minimum: -1, maximum: 2 } : null
   }
   if (target === 'modifier.expand.amount') return node.modifiers?.some(modifier => modifier.type === 'expand')
     ? { minimum: -2, maximum: 2 } : null
@@ -54,11 +56,12 @@ function bounded(value: unknown, path: string, fail: Fail): number {
   return value
 }
 
-export type BuilderDriverExpressionInfo = { type: ValueType; nodes: number; operations: number; constants: number; signals: Set<string>; nativeInputs: Set<string>; spatial: boolean }
+export type BuilderDriverExpressionInfo = { type: ValueType; nodes: number; operations: number; constants: Set<number>; signals: Set<string>; nativeInputs: Set<string>; spatial: boolean }
 
 /** Independent compiler validation runs before expansion or source allocation. */
 export function validateBuilderDriverExpression(value: unknown, path = 'expression', fail: Fail = defaultFail): BuilderDriverExpressionInfo {
-  let nodes = 0, operations = 0, constants = 0, spatial = false
+  let nodes = 0, operations = 0, spatial = false
+  const constants = new Set<number>()
   const signals = new Set<string>()
   const nativeInputs = new Set<string>()
   const visit = (input: unknown, at: string, depth: number): ValueType => {
@@ -75,10 +78,9 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
     const expression = plain(input, at, fields[type], fail)
     switch (type) {
       case 'constant': {
-        if (typeof expression.value === 'number') { bounded(expression.value, `${at}.value`, fail); constants++; return 'scalar' }
+        if (typeof expression.value === 'number') { constants.add(bounded(expression.value, `${at}.value`, fail)); return 'scalar' }
         const vector = plain(expression.value, `${at}.value`, axes, fail)
-        for (const axis of axes) bounded(vector[axis], `${at}.value.${axis}`, fail)
-        constants += 3
+        for (const axis of axes) constants.add(bounded(vector[axis], `${at}.value.${axis}`, fail))
         return 'vector'
       }
       case 'input': {
@@ -109,7 +111,8 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
         const minimum = bounded(expression.min, `${at}.min`, fail)
         const maximum = bounded(expression.max, `${at}.max`, fail)
         if (minimum > maximum) return fail(at, 'driver minimum must not exceed maximum')
-        constants += 2
+        constants.add(minimum)
+        constants.add(maximum)
         return visit(expression.input, `${at}.input`, depth + 1)
       }
       case 'component': {
@@ -125,7 +128,7 @@ export function validateBuilderDriverExpression(value: unknown, path = 'expressi
 }
 
 export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fail = defaultFail) {
-  let driverOperations = 0, authoredDrivers = 0, constants = 0
+  let driverOperations = 0, authoredDrivers = 0
   const signals = new Set<string>()
   const nativeInputs = new Set<string>()
   const visitNode = (node: BuilderObject | BuilderGroup, path: string, copies: number) => {
@@ -140,7 +143,6 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
       if (info.type !== 'scalar') return fail(`${at}.expression`, 'this property requires a scalar value; select a vector component')
       driverOperations += info.operations * copies
       authoredDrivers++
-      constants += info.constants
       info.signals.forEach(source => signals.add(source))
       info.nativeInputs.forEach(source => nativeInputs.add(source))
       if (authoredDrivers > policy.limits.authoredDrivers) return fail(path, `scene exceeds ${policy.limits.authoredDrivers} drivers`)
@@ -150,7 +152,9 @@ export function validateBuilderDrivers(document: BuilderSceneDocument, fail: Fai
   document.objects.forEach((node, index) => visitNode(node, `scene.objects[${index}].drivers`,
     node.arrangements.reduce((count, arrangement) => count * arrangement.count, 1)))
   document.composition?.groups.forEach((node, index) => visitNode(node, `scene.composition.groups[${index}].drivers`, 1))
-  const driverUniforms = constants + signals.size + nativeInputs.size
+  // Constants can be compiled as literals. Only changing engine/music/pointer
+  // inputs require GPU slots; extra live editor values are a compiler optimization.
+  const driverUniforms = signals.size + nativeInputs.size
   const bindings = document.objects.reduce((count, object) => count + object.bindings.length, 0)
   if (driverUniforms + bindings > policy.limits.liveUniforms) fail('scene.objects.drivers', `required live values exceed ${policy.limits.liveUniforms} uniforms`)
   return { driverOperations, authoredDrivers, driverUniforms }

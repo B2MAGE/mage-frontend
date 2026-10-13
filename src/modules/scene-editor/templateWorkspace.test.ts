@@ -21,10 +21,7 @@ describe('template-driven Builder workspace', () => {
     expect(template).toEqual(before)
   })
 
-  it('keeps unsupported catalog templates and custom scenes unchanged', () => {
-    const template = createTemplateScene('embedded-scene-0')
-    expect(openTemplateWorkspace(template)).toEqual({ document: template, templateSourceId: template.templateId })
-    expect(openTemplateWorkspace(template).document).toBe(template)
+  it('keeps custom scenes unchanged', () => {
     const custom = { visualizer: { shader: 'sphere(1)' } }
     expect(openTemplateWorkspace(custom)).toEqual({ document: custom, templateSourceId: null })
     expect(openTemplateWorkspace(custom).document).toBe(custom)
