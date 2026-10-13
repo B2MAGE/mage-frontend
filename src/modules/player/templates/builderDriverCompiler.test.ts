@@ -18,6 +18,49 @@ function fixture(drivers: BuilderDriver[] = []): BuilderSceneDocument {
 }
 
 describe('bounded Builder driver compilation', () => {
+  it('inlines preview coefficients when optional live values exceed the source budget', () => {
+    let expression = constant(.2)
+    for (let depth = 0; depth < 10; depth++) expression = { type: 'sin', input: expression }
+    const scene = fixture(Array.from({ length: 12 }, () => driver(structuredClone(expression), 'scale.x')))
+    scene.objects = Array.from({ length: 5 }, (_, index) => ({ ...structuredClone(scene.objects[0]), id: `shape-${index}`, operation: { type: 'sphere', radius: 1 } }))
+    delete scene.composition
+    expect(compileBuilderDocument(scene).workload.generatedSourceBytes).toBeLessThanOrEqual(32768)
+    const preview = compileBuilderPreviewDocument(scene)
+    expect(preview.workload.generatedSourceBytes).toBeLessThanOrEqual(32768)
+    expect(preview.uniforms.filter(uniform => uniform.target === 'driver-value')).toHaveLength(0)
+    expect(() => normalizeCompiledShader(compileShader(preview.shader))).not.toThrow()
+  })
+
+  it('shares equal preview constants and reloads when an edit splits their values', () => {
+    const component: BuilderDriverExpression = { type: 'component', axis: 'x', input: { type: 'constant', value: { x: .25, y: .25, z: .25 } } }
+    const scene = fixture(Array.from({ length: 12 }, () => driver(structuredClone(component))))
+    scene.objects.push({ ...structuredClone(scene.objects[0]), id: 'second' })
+    delete scene.composition
+    const before = compileBuilderPreviewDocument(scene)
+    expect(before.uniforms.filter(uniform => uniform.target === 'driver-value')).toHaveLength(1)
+    const next = structuredClone(scene)
+    next.objects[0].drivers![1].expression = constant(.5)
+    expect(sceneStructuralContent(next)).not.toEqual(sceneStructuralContent(scene))
+    expect(compileBuilderPreviewDocument(next).uniforms.filter(uniform => uniform.target === 'driver-value')).toHaveLength(2)
+    expect(compileBuilderDocument(next).uniforms.filter(uniform => uniform.target === 'driver-value')).toHaveLength(0)
+  })
+
+  it('keeps complex coefficients editable through structural reload within the unchanged GPU cap', () => {
+    const scene = createBuilderRecipe('embedded-scene-13')
+    const compiled = compileBuilderPreviewDocument(scene)
+    expect(compiled.uniforms.filter(uniform => uniform.target === 'driver-value')).toHaveLength(0)
+    expect(compiled.workload.liveUniforms).toBeLessThanOrEqual(64)
+    const next = structuredClone(scene)
+    const editCoefficient = (expression: BuilderDriverExpression): boolean => {
+      if (expression.type === 'constant' && typeof expression.value === 'number') { expression.value += .01; return true }
+      if (expression.type === 'add' || expression.type === 'multiply') return editCoefficient(expression.left) || editCoefficient(expression.right)
+      return 'input' in expression && editCoefficient(expression.input)
+    }
+    expect(editCoefficient(next.objects[0].drivers![0].expression)).toBe(true)
+    expect(sceneStructuralContent(next)).not.toEqual(sceneStructuralContent(scene))
+    expect(() => normalizeCompiledShader(compileShader(compileBuilderPreviewDocument(next).shader))).not.toThrow()
+  })
+
   it('compiles time, music, pointer and arithmetic through trusted inputs with no authored source', () => {
     const scene = fixture([
       driver({ type: 'multiply', left: { type: 'input', source: 'time' }, right: constant(0.2) }),

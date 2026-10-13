@@ -13,6 +13,12 @@ function sourceIdentity(document: SceneData): string | null {
       && typeof document.templateVersion === 'number'
       ? JSON.stringify(['template', document.templateId, document.templateVersion]) : null
   }
+  if (document.kind === 'builder') {
+    // The concrete objects and groups own the generated shader's inputs. Music
+    // settings may be edited (or invalid) without changing that ownership.
+    return document.schemaVersion === 1 && Array.isArray(document.objects)
+      ? JSON.stringify(['builder', document.objects, document.composition]) : null
+  }
   const scene = document.kind === 'custom' && document.schemaVersion === 1
     ? document.scene
     : Object.hasOwn(document, 'kind') || Object.hasOwn(document, 'schemaVersion') ? null : document

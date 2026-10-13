@@ -284,22 +284,30 @@ ranges, while rotation wraps to an equivalent angle in −π–π to allow conti
 spinning. Independent API and compiler validation reject unknown operations,
 inputs, targets and incompatible types before compilation or persistence.
 
-There are at most eight drivers per object/group, 32 authored drivers per
-scene, eight expression levels and 32 nodes per expression. The scene's total
-driver-operation budget is 192 nodes, counting object arrangement copies;
-group expressions count once for their composed result. Numeric constants each
-require one live uniform (three for a vector), clamp bounds require two, and
-each distinct audio/pointer signal requires one shared uniform. Each distinct
-native scalar scene input also requires one shared uniform. Time, spatial
-inputs and the built-in `scene-pointer` vector do not add live slots. Driver
-slots and existing binding slots together
-remain within the 64-uniform budget. Whole-document and other rendering limits
-continue to apply.
+There are at most 12 drivers per object/group, 64 authored drivers per scene,
+12 expression levels and 32 nodes per expression. The scene's weighted
+driver-operation budget is 1,024, counting object arrangement copies and eight
+operations per noise evaluation; group expressions count once for their composed
+result. These limits accommodate the complete editable catalog. Rose Circuit
+uses 51 authored drivers and 735 weighted operations; Prism Core uses 30 drivers
+and 227 operations. They remain bounded documents using the same ordinary
+controls as a scene authored from scratch.
 
-The compiler assigns deterministic slots by owner, driver and expression path.
-Numeric edits update those slots without recompilation; structural expression,
-target or mode changes use normal stale-work cancellation. Source generation is
-never performed per frame. The UI's Pulse, Wobble, Spin, Speed, Amount, Phase,
+Preview compilation normally gives numeric coefficients independent live slots.
+If that would exceed 64 uniforms, it pools equal coefficients (including vector
+components and clamp bounds). Each distinct
+audio/pointer signal and native scalar scene input requires one shared uniform.
+Time, spatial inputs and the built-in `scene-pointer` vector do not add slots.
+If pooling still exceeds the existing 64-uniform ceiling, numeric constants
+are emitted as trusted numeric literals instead. Music/pointer signals remain
+live. Saved compilation also uses literals for constants. This avoids allocating
+one GPU uniform per repeated coefficient without changing the authored data.
+
+Numeric edits update live slots when the slot layout remains the same. Splitting
+or merging pooled constants can change that layout; inline-coefficient edits also
+change the generated source. Those changes use the existing coalesced structural
+preview reload and stale-work cancellation, as do expression, target and mode
+changes. Source generation is never performed per frame. The UI's Pulse, Wobble, Spin, Speed, Amount, Phase,
 Offset and range controls edit this same data without exposing a formula box.
 Original and Selective scene-wide audio modes remain supported alongside these
 per-object/group drivers.
@@ -364,25 +372,28 @@ existing unbounded-coordinate path instead of an invalid fixed box bound.
 There are at most 16 objects, one shape operation each, and four bindings per
 object. Disabled/unused data still counts. The existing whole-document policy
 also applies before recursive validation and again after defaults: 256 KiB
-serialized UTF-8, depth 16, 64 items per array, 64 keys per object, 1,024 total
-keys, 2,048 total values, and 64 UTF-8 bytes per key. API request limit remains
+serialized UTF-8, depth 24, 64 items per array, 64 keys per object, 4,096 total
+keys, 8,192 total values, and 64 UTF-8 bytes per key. API request limit remains
 512 KiB. No Builder-specific budget bypass is introduced; rich object settings
 can exhaust the shared total budget before the object-count ceiling. At most
 four optional scene effects can be enabled, including bloom and tint.
 
-SB-11 raises only the transport field count from 512 to 1,024. The exact
-six-object Mint Halo recipe contains 725 keys before optional settings; with
-fully authored camera, effects, motion and six audio mappings it uses 813 keys.
-An additional Spin uses 16 more keys, bringing it to 829 keys, 891 JSON values,
-13,174 UTF-8 bytes and scalar depth 12 (container depth 11). It uses 52 live
-input slots including two native engine values, 21 drivers and 170 expression
-operations. The original 512 and
-intermediate 768 ceilings both rejected a valid editable document even though
-its geometry and expressions fit every rendering-work budget (20 drivers and
-165 expression operations before the extra Spin). This measured document-size
-adjustment preserves the ordinary dimensions and their native scene responses.
-Document bytes/depth/array sizes, total values, shader work and runtime ceilings
-remain unchanged; 1,025 fields still fail the transport walk before parsing.
+SB-13 expands the data/expression allowances for Prism Core and Rose Circuit:
+document depth 16→24, total keys 1,024→4,096, total values 2,048→8,192;
+driver count 32→64, drivers per node 8→12, expression depth 8→12 and weighted
+driver operations 192→1,024. Expression nodes remain capped at 32. Nested
+phased waves, local coordinate snapshots, separate RGB channels and sequential
+joins now fit as inspectable data instead of an opaque template implementation.
+The shared frontend/backend contract enforces these same limits before storage
+and again before rendering; there is no recipe-only exemption.
+
+The GPU uniform ceiling remains 64 and generated trusted source remains capped
+at 32 KiB. The saved Rose reference generates 26,161 bytes with only two native
+input uniforms; preview uses pooled coefficients when possible and literals
+when they will not fit. Object, group, geometry/modifier, transform, material,
+arrangement, optional-effect, pixel, frame-rate and raymarch ceilings are
+unchanged. No engine change is required. These static bounds and a successful
+compile do not establish equal physical-device frame rates.
 
 All numbers must be finite and in range. Wrong types are rejected, not coerced
 or clamped during storage. Duplicate IDs/targets, prototype-related fields,

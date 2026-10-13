@@ -5,6 +5,7 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { supportedPreviewAudioTargets } from './musicResponseCapabilities'
 import { createDefaultSceneData, getSceneEditorModel, type SceneData } from './sceneEditor'
 import { createTemplateScene } from './templateEditor'
+import { createBuilderScene } from './builderEditor'
 
 function snapshot(sceneBlob: SceneData, supportedTargets: AudioResponseTarget[]): MagePlayerAudioResponseCapabilitiesSnapshot {
   return { sceneBlob, capabilities: {
@@ -89,5 +90,33 @@ describe('editor music-response capability ownership', () => {
     expect(supportedPreviewAudioTargets(compiled, preview, { schemaVersion: 1, kind: 'custom', scene })).toEqual(['bass'])
     expect(supportedPreviewAudioTargets(compiled, preview, { schemaVersion: 2, kind: 'custom', scene })).toBeNull()
     expect(supportedPreviewAudioTargets(compiled, preview, { ...scene, kind: 'unknown' })).toBeNull()
+  })
+
+  it('retains Builder input capabilities through music edits and invalid response values', () => {
+    const scene = createBuilderScene()
+    scene.objects[0].drivers = [{ target: 'scale.x', mode: 'add', expression: { type: 'input', source: 'scene-size' } }]
+    const draft = structuredClone(scene)
+    draft.settings.audioResponse = 'mapped-v1'
+    draft.settings.audioResponseConfig = {
+      version: 1, sensitivity: 9, mappings: [{ target: 'treble', source: 'treble-hit', amount: 8, attack: .1, release: .2 }],
+    }
+    const before = structuredClone(draft)
+    expect(supportedPreviewAudioTargets(snapshot(scene, ['size']), scene, draft)).toEqual(['size'])
+    expect(supportedPreviewAudioTargets(snapshot(scene, []), scene, draft)).toEqual([])
+    expect(draft).toEqual(before)
+  })
+
+  it('rejects prior Builder inputs after objects or groups change without relying on recipe IDs', () => {
+    const scene = createBuilderScene()
+    scene.objects[0].drivers = [{ target: 'scale.x', mode: 'add', expression: { type: 'input', source: 'scene-size' } }]
+    const draft = structuredClone(scene)
+    draft.objects[0].drivers = []
+    expect(supportedPreviewAudioTargets(snapshot(scene, ['size']), scene, draft)).toBeNull()
+    expect(supportedPreviewAudioTargets(snapshot(scene, ['size']), draft, draft)).toBeNull()
+    expect(supportedPreviewAudioTargets(snapshot(draft, []), draft, draft)).toEqual([])
+    expect(supportedPreviewAudioTargets(snapshot(scene, ['size']), scene, {
+      ...scene, composition: { version: 1, roots: [scene.objects[0].id], groups: [] },
+    })).toBeNull()
+    expect(supportedPreviewAudioTargets(snapshot(scene, ['size']), scene, { ...scene, schemaVersion: 2 })).toBeNull()
   })
 })

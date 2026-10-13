@@ -5,8 +5,8 @@ import { createMagePlayer, sceneRecovery, sceneRecoveryKey } from '@modules/play
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { buildMagePlayerController } from '../player/test-fixtures'
-import { createTemplateScene } from './templateEditor'
 import { createBuilderScene } from './builderEditor'
+import { createBuilderRecipe } from './builderRecipes'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
 
 vi.mock('../player/infrastructure/engineAdapter', () => ({ createMagePlayer: vi.fn() }))
@@ -60,14 +60,14 @@ describe('scene editor recovery', () => {
     await user.click(screen.getByRole('button', { name: /^Scene$/ }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' }), { target: { value: '12' } })
     await waitFor(() => expect(first.loadSceneBlob).toHaveBeenLastCalledWith(expect.objectContaining({
-      kind: 'template', parameters: expect.objectContaining({ scale: 12 }),
+      kind: 'builder', parameters: expect.objectContaining({ scale: 12 }),
     }), expect.any(Object)))
     const loaded = vi.mocked(first.loadSceneBlob).mock.lastCall![1]!.recoverySceneBlob
     const key = sceneRecoveryKey(loaded)!
     blockedKeys.add(key)
     act(() => sceneRecovery.block(key, 'runtime'))
     await waitFor(() => expect(automaticRetry.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'template', parameters: expect.objectContaining({ scale: 12 }),
+      kind: 'builder', parameters: expect.objectContaining({ scale: 12 }),
     }), expect.any(Object)))
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
     expect(first.dispose).toHaveBeenCalledTimes(1)
@@ -92,7 +92,7 @@ describe('scene editor recovery', () => {
     expect(resumed.loadSceneBlob).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Retry scene' }))
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'template', parameters: expect.objectContaining({ scale: 6 }),
+      kind: 'builder', parameters: expect.objectContaining({ scale: 6 }),
     }), expect.any(Object)))
     expect(sceneRecovery.getAutomaticBlock(key)?.reason).toBe('runtime')
     expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveValue(6)
@@ -131,7 +131,7 @@ describe('scene editor recovery', () => {
   it('keeps a failed saved template stopped until an explicit retry', async () => {
     vi.mocked(createMagePlayer).mockReset()
     storeSceneEditorSession()
-    const source = createTemplateScene()
+    const source = createBuilderRecipe('embedded-scene-0')
     const key = sceneRecoveryKey(source, 12)!
     blockedKeys.add(key)
     sceneRecovery.block(key, 'load')

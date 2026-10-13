@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseSceneDocument, resolveSceneForPlayback, scenePlaybackIdentity, type BuilderDriver, type BuilderDriverSource } from '@modules/player'
+import { compileBuilderPreviewDocument } from '../player/templates/builderCompiler'
 import { createBuilderScene } from './builderEditor'
 import { createDriverPresetExpression, defaultDriverPreset, DRIVER_INFLUENCE_RANGE, readDriverPreset,
   type DriverPreset, type DriverPresetValues } from './builderDrivers'
@@ -103,12 +104,12 @@ describe('Builder animation influence range', () => {
     let values = readDriverPreset(scene.objects[0].drivers[0].expression)!
     const identity = scenePlaybackIdentity(scene)
     expect(identity).not.toBeNull()
-    let uniforms = resolveSceneForPlayback(scene).builderCompilation!.uniforms
+    let uniforms = compileBuilderPreviewDocument(scene).uniforms
     for (const change of [{ amount: 8.3, offset: -2.15 }, { minimum: -1, maximum: 1 }, DRIVER_INFLUENCE_RANGE]) {
       values = { ...values, ...change }
       scene.objects[0].drivers[0].expression = createDriverPresetExpression(values)
       expect(scenePlaybackIdentity(scene)).toBe(identity)
-      const next = resolveSceneForPlayback(scene).builderCompilation!.uniforms
+      const next = compileBuilderPreviewDocument(scene).uniforms
       expect(next).not.toEqual(uniforms)
       expect(next.map(uniform => ({ ...uniform, initialValue: 0 })))
         .toEqual(uniforms.map(uniform => ({ ...uniform, initialValue: 0 })))

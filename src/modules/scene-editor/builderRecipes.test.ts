@@ -50,8 +50,8 @@ const references = [
 
 describe('editable template recipes', () => {
   it('covers every offered conversion with source-parity checks', () => {
-    // The four noise/material recipes have their own executable-source suite.
-    expect([...references.map(reference => reference.id), 'embedded-scene-2', 'embedded-scene-4', 'embedded-scene-11', 'embedded-scene-12'].sort())
+    // Noise/material and Prism/Rose recipes have their own source-reference suites.
+    expect([...references.map(reference => reference.id), 'embedded-scene-0', 'embedded-scene-2', 'embedded-scene-4', 'embedded-scene-11', 'embedded-scene-12', 'embedded-scene-13'].sort())
       .toEqual(BUILDER_RECIPES.map(recipe => recipe.templateId).sort())
   })
 
@@ -195,7 +195,7 @@ describe('editable template recipes', () => {
     expect(customized.parameters).toEqual({ scale: 4.25, speed: .7 })
     expect(BUILDER_RECIPES.map(recipe => recipe.templateId)).toContain('embedded-scene-5')
     expect(createBuilderRecipe('embedded-scene-5').objects).toHaveLength(3)
-    expect(() => createBuilderRecipe('embedded-scene-0')).toThrow('does not have an editable Builder version')
+    expect(() => createBuilderRecipe('embedded-scene-14' as TemplateId)).toThrow('does not have an editable Builder version')
   })
 
   it('preserves the source sampling profile within the existing host ceiling', () => {
@@ -205,7 +205,7 @@ describe('editable template recipes', () => {
       expect(builderRecipeReference(`embedded-scene-${number}` as TemplateId)).toMatchObject({ size: .6, sourceIterations, sourceStepSize })
       expect(createBuilderRecipe(`embedded-scene-${number}` as TemplateId).rendering).toEqual({ maxIterations: sourceIterations, stepSize: sourceStepSize })
     }
-    expect(builderRecipeReference('embedded-scene-0')).toBeNull()
+    expect(builderRecipeReference('embedded-scene-14' as TemplateId)).toBeNull()
   })
 })
 

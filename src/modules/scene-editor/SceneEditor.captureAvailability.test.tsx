@@ -41,6 +41,7 @@ function setAllowed(allowed: boolean) {
 describe('editor thumbnail availability', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    permission.capture.mockReset()
     permission.snapshot = { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 }
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('[]'))
     permission.capture.mockResolvedValue('data:image/png;base64,cHJldmlldw==')
@@ -90,7 +91,7 @@ describe('editor thumbnail availability', () => {
     let finish!: (value: string) => void
     permission.capture.mockImplementationOnce(() => new Promise<string>((resolve) => { finish = resolve }))
     render(<SceneEditorShell authenticatedFetch={vi.fn()} onComplete={vi.fn()} mode={{ type: 'edit', sceneId: 23, revision: 0 }} initialState={{ name: 'Repair scene', thumbnailPreviewUrl: '/saved.png', sceneData: createTemplateScene() }} />)
-    expect(permission.targets).toHaveBeenCalledWith('template:23')
+    expect(permission.targets).toHaveBeenCalledWith('status:23')
     fireEvent.click(screen.getByRole('button', { name: 'Recapture Thumbnail' }))
     expect(screen.getByRole('button', { name: 'Capturing...' })).toBeDisabled()
     await act(async () => setAllowed(false))

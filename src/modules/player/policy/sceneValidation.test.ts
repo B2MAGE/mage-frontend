@@ -6,7 +6,7 @@ import { resolveSceneForPlayback } from '../templates/resolveScene'
 import { TEMPLATE_IDS } from '../templates/sceneContract'
 import { BRAND_SCENE } from '../templates/platformBrandScene'
 import {
-  assertSceneRequestBudget, parseSceneImport, SCENE_LIMITS, SCENE_POLICY, SCENE_RUNTIME_CEILINGS,
+  assertSceneDocumentBudget, assertSceneRequestBudget, parseSceneImport, SCENE_LIMITS, SCENE_POLICY, SCENE_RUNTIME_CEILINGS,
   SceneValidationError, validateSceneDocument, validateSceneForPlayback,
 } from './sceneValidation'
 
@@ -127,26 +127,46 @@ describe('shared scene submission preflight', () => {
   it('bounds depth, array lengths, object widths, total fields and nodes before schema traversal', () => {
     const deep: Record<string, unknown> = {}
     let cursor = deep
-    for (let i = 0; i < 16; i++) { const next = {}; cursor.child = next; cursor = next }
+    for (let i = 0; i < SCENE_LIMITS.sceneDepth; i++) { const next = {}; cursor.child = next; cursor = next }
     expect(() => validateSceneDocument(deep)).toThrow('nesting')
     rejects({ items: Array(65).fill(0) }, 'sceneData.items', 'array items')
     rejects(Object.fromEntries(Array.from({ length: 65 }, (_, i) => [`k${i}`, i])), 'sceneData', 'object fields')
-    rejects({ items: Array.from({ length: Math.ceil(SCENE_LIMITS.totalKeys / 60) }, () => Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`k${i}`, i]))) }, 'sceneData', 'total object fields')
-    rejects({ items: Array.from({ length: 64 }, () => Array(64).fill(0)) }, 'sceneData', 'JSON values')
+    rejects({ items: Array.from({ length: 64 }, () => Object.fromEntries(Array.from({ length: 64 }, (_, i) => [`k${i}`, i]))) }, 'sceneData', 'total object fields')
+    rejects({ items: Array.from({ length: 2 }, () => Array.from({ length: 64 }, () => Array(64).fill(0))) }, 'sceneData', 'JSON values')
     rejects({ ['é'.repeat(33)]: 1 }, 'sceneData', 'Field names')
   })
 
   it('keeps the transport field ceiling bounded independently from rendering work', () => {
-    expect(SCENE_LIMITS.totalKeys).toBe(1024)
-    const atLimit = { items: Array.from({ length: 18 }, (_, row) => Object.fromEntries(
-      Array.from({ length: row === 17 ? 3 : 60 }, (_, column) => [`key${column}`, column]))) }
-    // 1 array property + 17 * 60 fields + 3 fields = 1024. Schema validation
-    // still rejects this unknown envelope, but the transport walk permits it.
-    expect(() => validateSceneDocument(atLimit)).not.toThrow('total object fields')
-    atLimit.items[17].extra = 1
-    rejects(atLimit, 'sceneData', 'maximum is 1024')
-    expect(SCENE_LIMITS).toMatchObject({ sceneBytes: 262144, sceneDepth: 16, arrayItems: 64,
-      objectKeys: 64, totalNodes: 2048, sourceBytes: 65536, optionalEffects: 4 })
+    expect(SCENE_LIMITS.totalKeys).toBe(4096)
+    const atLimit = { items: Array.from({ length: 64 }, (_, row) => Object.fromEntries(
+      Array.from({ length: row === 63 ? 63 : 64 }, (_, column) => [`key${column}`, column]))) }
+    // 1 array property + 63 * 64 fields + 63 fields = 4096. The first
+    // excess field still fits the independent object-width and node budgets.
+    expect(() => assertSceneDocumentBudget(atLimit)).not.toThrow()
+    atLimit.items[63].extra = 1
+    rejects(atLimit, 'sceneData', 'maximum is 4096')
+    expect(SCENE_LIMITS).toMatchObject({ sceneBytes: 262144, sceneDepth: 24, arrayItems: 64,
+      objectKeys: 64, totalNodes: 8192, sourceBytes: 65536, optionalEffects: 4 })
+  })
+
+  it('accepts the exact JSON-value ceiling and rejects one more without hitting array or field limits', () => {
+    const rows = Array.from({ length: 126 }, (_, index) => Array(index === 125 ? 62 : 64).fill(0))
+    const atLimit = { items: [rows.slice(0, 64), rows.slice(64)] }
+    // Root + outer array + 2 containers + 126 rows + (125 * 64 + 62) scalars = 8192.
+    expect(() => assertSceneDocumentBudget(atLimit)).not.toThrow()
+    atLimit.items[1][61].push(0)
+    expect(() => assertSceneDocumentBudget(atLimit)).toThrow('maximum is 8192')
+  })
+
+  it('accepts the exact object-depth ceiling and rejects the next level', () => {
+    const atLimit: Record<string, unknown> = {}
+    let cursor = atLimit
+    for (let index = 1; index < SCENE_LIMITS.sceneDepth; index++) {
+      const next = {}; cursor.child = next; cursor = next
+    }
+    expect(() => assertSceneDocumentBudget(atLimit)).not.toThrow()
+    cursor.child = {}
+    expect(() => assertSceneDocumentBudget(atLimit)).toThrow('nesting exceeds 24 levels')
   })
 
   it('does not invoke getters or toJSON while rejecting unsafe object shapes', () => {

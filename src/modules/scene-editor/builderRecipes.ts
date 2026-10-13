@@ -2,8 +2,10 @@ import { parseSceneDocument, type BuilderDriver, type BuilderDriverExpression, t
 import { createBuilderObject, createBuilderScene } from './builderEditor'
 import { identityBuilderFrame } from './builderGroups'
 import { createTemplateScene } from './templateEditor'
+import { COMPLEX_RECIPE_REFERENCES, createComplexBuilderRecipe } from './builderComplexRecipes'
 
 export const BUILDER_RECIPES = [
+  { templateId: 'embedded-scene-0', label: 'Prism Core', description: 'Two prism frames and a reflective core with layered view motion, pointer response, and two animated joins.' },
   { templateId: 'embedded-scene-1', label: 'Steel Lattice', description: 'A folded lattice and three box frames with shared motion and an animated outer join.' },
   { templateId: 'embedded-scene-2', label: 'Aqua Static', description: 'Two cyan frames with layered noise expansion, a folded inner lattice, and a fractional outer lattice.' },
   { templateId: 'embedded-scene-3', label: 'Verdant Frames', description: 'Two green frames and a wide supporting lattice with shared motion and an animated join.' },
@@ -16,6 +18,7 @@ export const BUILDER_RECIPES = [
   { templateId: 'embedded-scene-10', label: 'Emerald Ring', description: 'A green ring and frame over a wide supporting lattice.' },
   { templateId: 'embedded-scene-11', label: 'Spectrum Relay', description: 'A noise-expanded cylinder, ring, and lattice colored by the viewing direction.' },
   { templateId: 'embedded-scene-12', label: 'Chroma Storm', description: 'Ordered noise expansion across five shapes with shared view-driven motion and rainbow color.' },
+  { templateId: 'embedded-scene-13', label: 'Rose Circuit', description: 'Two metallic rings and a cylinder with independent phased motion, rose colors, and scoped noise.' },
 ] as const satisfies readonly { templateId: TemplateId; label: string; description: string }[]
 
 /** Visible editing baseline; native influences retain the original live response. */
@@ -191,7 +194,8 @@ const DEFORMATION_REFERENCES = {
 
 /** Describe the shared conversion before replacing an authored document. */
 export function builderRecipeReference(templateId: TemplateId) {
-  const reference = Object.hasOwn(DEFORMATION_REFERENCES, templateId)
+  const reference = templateId === 'embedded-scene-0' || templateId === 'embedded-scene-13' ? COMPLEX_RECIPE_REFERENCES[templateId]
+    : Object.hasOwn(DEFORMATION_REFERENCES, templateId)
     ? DEFORMATION_REFERENCES[templateId as keyof typeof DEFORMATION_REFERENCES]
     : RECIPE_REFERENCES[templateId as keyof typeof RECIPE_REFERENCES]
   if (!reference) return null
@@ -255,6 +259,11 @@ function recipeObjects(objects: RecipeReference['objects'], prefix: string, mate
 
 /** A fresh concrete document, never a template alias or embedded shader. */
 export function createBuilderRecipe(templateId: TemplateId, settings?: BuilderSceneDocument['settings'], parameters?: BuilderSceneDocument['parameters']): BuilderSceneDocument {
+  if (templateId === 'embedded-scene-0' || templateId === 'embedded-scene-13') {
+    const parsed = parseSceneDocument(createComplexBuilderRecipe(templateId, settings, parameters))
+    if (parsed.kind !== 'builder') throw new Error('Expected a Builder recipe.')
+    return parsed
+  }
   if (Object.hasOwn(DEFORMATION_REFERENCES, templateId)) {
     return createDeformationRecipe(templateId as keyof typeof DEFORMATION_REFERENCES, settings, parameters)
   }

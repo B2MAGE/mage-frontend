@@ -5,6 +5,7 @@ const ERROR_CSP = "default-src 'none'; sandbox; frame-ancestors 'none'"
 
 export const MANUAL_CHECK_PAGES = Object.freeze([
   'audio-response-browser-check.html', 'audio-response-player-check.html',
+  'builder-catalog-check.html',
   'isolated-playback-check.html', 'isolated-renderer-check.html',
   'isolated-security-check.html', 'isolated-worker-check.html',
   'quality-scene-capture.html', 'render-budget-check.html',

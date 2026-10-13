@@ -10,6 +10,7 @@ export const contractFiles = [
   ['scene-limits.v1.json', 'src/main/resources/scene-limits.v1.json'],
   ['fixtures.json', 'src/test/resources/contracts/scenes/fixtures.json'],
   ['current-round-trips.json', 'src/test/resources/contracts/scenes/current-round-trips.json'],
+  ['builder-catalog.v1.fixtures.json', 'src/test/resources/contracts/scenes/builder-catalog.v1.fixtures.json'],
 ]
 
 /** Compare checked-in copies without writing either repository or changing JSON. */

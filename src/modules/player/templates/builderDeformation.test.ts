@@ -36,6 +36,7 @@ describe('scoped Builder deformation and procedural color', () => {
     expect(compiled.shader).not.toContain('builder_bound_distance')
     expect(() => normalizeCompiledShader(compileShader(compiled.shader))).not.toThrow()
     scene.objects[0].arrangements[0].count = 16
+    scene.objects[0].drivers = Array.from({ length: 8 }, () => structuredClone(scene.objects[0].drivers![0]))
     expect(() => compileBuilderDocument(scene)).toThrow(/expanded driver work/)
   })
 
@@ -83,9 +84,20 @@ describe('scoped Builder deformation and procedural color', () => {
     ] }])
     for (const compile of [compileBuilderDocument, compileBuilderPreviewDocument]) {
       const result = compile(scene)
-      expect(result.shader).toContain('max(-1,min(1,builder_driver_o0_0_0))')
+      expect(result.shader).toContain('max(-1,min(2,builder_driver_o0_0_0))')
       expect(result.shader).toContain('color(builder_value_o0_0_0,builder_value_o0_0_1,')
       expect(() => normalizeCompiledShader(compileShader(result.shader))).not.toThrow()
     }
+  })
+
+  it('preserves procedural highlights above one without widening base color values', () => {
+    const scene = parse([{ id: 'shape', operation: { type: 'sphere' },
+      material: { color: { x: .2, y: .25, z: .2 } }, drivers: [
+        { target: 'material.color.r', mode: 'add', expression: { type: 'component', input: { type: 'input', source: 'view-ray' }, axis: 'x' } },
+      ] }])
+    const result = compileBuilderDocument(scene)
+    expect(result.shader).toContain('max(-1,min(2,(0.2+builder_driver_o0_0_0)))')
+    expect(() => normalizeCompiledShader(compileShader(result.shader))).not.toThrow()
+    expect(() => parse([{ id: 'shape', operation: { type: 'sphere' }, material: { color: { x: 1.25, y: 0, z: 0 } } }])).toThrow()
   })
 })

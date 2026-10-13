@@ -5,6 +5,7 @@ import { parseSceneDocument } from '@modules/player'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
 import { buildSceneEditorApiScene, mockCreateScenePageFetch, renderCreateScenePage, renderEditScenePage, storeSceneEditorSession } from './test-fixtures'
+import { createBuilderRecipe } from './builderRecipes'
 
 const capture = vi.fn(async () => 'data:image/png;base64,cHJldmlldw==')
 vi.mock('@modules/player', async original => {
@@ -78,7 +79,7 @@ describe('template editor API round trips', () => {
     expect(JSON.parse((screen.getByLabelText('Scene Data JSON') as HTMLTextAreaElement).value)).toEqual(saved)
   })
 
-  it('updates a template camera setting while preserving its version and other parameters', async () => {
+  it('opens a saved catalog template as concrete objects and preserves its other settings when updating the camera', async () => {
     let submitted: Record<string, unknown> | undefined
     const saved = template()
     mockCreateScenePageFetch((url, init) => {
@@ -97,7 +98,7 @@ describe('template editor API round trips', () => {
     await user.click(screen.getByRole('button', { name: /^update scene$/i }))
     await screen.findByText('My Scenes')
     expect(submitted?.sceneData).toEqual(saved.kind === 'template'
-      ? { ...saved, settings: { ...saved.settings, camera: { ...saved.settings.camera, fov: 85 } } } : null)
+      ? createBuilderRecipe(saved.templateId, { ...saved.settings, camera: { ...saved.settings.camera, fov: 85 } }, saved.parameters) : null)
     expect(JSON.stringify(submitted?.sceneData)).not.toContain('shader')
     expect(capture).not.toHaveBeenCalled()
   })
@@ -116,6 +117,7 @@ describe('template editor API round trips', () => {
     const field = await screen.findByLabelText('FOV', { exact: true })
     await waitFor(() => expect(document.querySelector('[data-template-field="settings.camera.fov"]')).toHaveTextContent('Please choose a supported field of view.'))
     expect(field).toHaveValue('65')
-    expect(JSON.parse(screen.getByTestId('template-preview').getAttribute('data-scene')!)).toEqual(saved)
+    expect(JSON.parse(screen.getByTestId('template-preview').getAttribute('data-scene')!)).toEqual(saved.kind === 'template'
+      ? createBuilderRecipe(saved.templateId, saved.settings, saved.parameters) : null)
   })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { parseSceneImport, SceneValidationError, validateSceneForPlayback, validateSceneForStorage } from '../policy/sceneValidation'
+import { assertSceneDocumentBudget, parseSceneImport, SceneValidationError, validateSceneForPlayback, validateSceneForStorage } from '../policy/sceneValidation'
+import type { BuilderDriverExpression } from './sceneContract'
 import { resolveSceneForPlayback } from './resolveScene'
 import { buildScenePlaylistTrack } from '../playlist'
 import { sceneForBridge } from '../isolation/playbackProtocol'
@@ -59,9 +60,13 @@ describe('builder storage and playback boundaries', () => {
   it('counts materialized defaults in the budget and accepts the full sixteen-object minimum', () => {
     expect(validateSceneForStorage({ ...builder, objects: Array.from({ length: 16 }, (_, id) => ({ id: `ball-${id}`, operation: { type: 'sphere' } })) }))
       .toHaveProperty('objects.length', 16)
+    let expression: BuilderDriverExpression = { type: 'input', source: 'time' }
+    for (let depth = 0; depth < 11; depth++) expression = { type: 'clamp', input: expression, min: 0, max: 1 }
     const full = { ...builder, objects: Array.from({ length: 16 }, (_, id) => ({ id: `ball-${id}`, operation: { type: 'sphere' }, frame: {},
+      drivers: ['rotation.x', 'rotation.y', 'rotation.z', 'scale.x'].map(target => ({ target, mode: 'add', expression })),
       bindings: ['position.x', 'position.y', 'position.z', 'scale.x'].map(target => ({ target, source: 'bass-hit' })),
     })) }
+    expect(() => assertSceneDocumentBudget(full)).not.toThrow()
     expect(() => validateSceneForStorage(full)).toThrow('Too many total object fields')
   })
 })

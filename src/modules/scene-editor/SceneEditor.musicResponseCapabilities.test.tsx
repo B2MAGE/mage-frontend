@@ -156,10 +156,11 @@ describe('editor targets from compiled shader capabilities', () => {
     expect(exportedScene().audioResponseConfig).toEqual(expected)
   })
 
-  it('keeps the existing single-target template controls and rejects a different template report', async () => {
+  it('keeps global music controls when a catalog template opens as Builder and rejects another template report', async () => {
     const scene = createTemplateScene('embedded-scene-0')
     scene.settings = { ...scene.settings, audioResponse: 'mapped-v1', audioResponseConfig: savedConfig }
     await editor(scene)
+    expect(latestPlayer().sceneBlob).toMatchObject({ kind: 'builder' })
     publish(['size'])
     expect(screen.getByRole('spinbutton', { name: 'Amount numeric value' })).toHaveValue(1.1)
     expect(screen.queryByRole('combobox', { name: 'Response target' })).not.toBeInTheDocument()

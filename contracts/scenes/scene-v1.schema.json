@@ -1295,7 +1295,7 @@
               },
               "drivers": {
                 "type": "array",
-                "maxItems": 8,
+                "maxItems": 12,
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
@@ -2063,7 +2063,7 @@
                   },
                   "drivers": {
                     "type": "array",
-                    "maxItems": 8,
+                    "maxItems": 12,
                     "items": {
                       "type": "object",
                       "additionalProperties": false,
