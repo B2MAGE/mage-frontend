@@ -1,9 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from './builderEditor'
+import { builderDesign } from './builderDesign'
 import { usePersonalTemplates } from './usePersonalTemplates'
 
-const template = { templateId: 7, name: 'Mine', sceneData: createBuilderScene(), thumbnailRef: null, revision: 0, createdAt: '', updatedAt: '' }
+const template = { templateId: 7, name: 'Mine', sceneData: builderDesign(createBuilderScene()), thumbnailRef: null, revision: 0, createdAt: '', updatedAt: '' }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 describe('usePersonalTemplates', () => {

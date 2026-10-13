@@ -1,6 +1,7 @@
 import type { SceneData } from './sceneEditor'
 import sceneSchema from '../../../contracts/scenes/scene-v1.schema.json'
-import { listSceneTemplates, validateBuilderComposition, type BuilderSceneDocument, type TemplateId } from '@modules/player'
+import { listSceneTemplates, parseSceneDocument, validateBuilderComposition, type BuilderSceneDocument, type TemplateId } from '@modules/player'
+import { builderDesignKey } from './builderDesign'
 
 /** A library source is editor context only; scenes always contain their own full document. */
 export type PersonalTemplateSource = {
@@ -140,9 +141,12 @@ export function parseSceneDraftRecord(raw: string): SceneDraftRecord | null {
       || !Number.isSafeInteger(source.revision) || Number(source.revision) < 0
       || typeof source.name !== 'string' || !source.name.trim() || source.name.length > 100
       || !(source.thumbnailRef === null || typeof source.thumbnailRef === 'string')
-      || typeof source.documentKey !== 'string'
-      || !isCurrentSceneData(JSON.parse(source.documentKey))
-      || JSON.parse(source.documentKey).kind !== 'builder')) return null
+      || typeof source.documentKey !== 'string')) return null
+    if (isObject(source)) {
+      const design = parseSceneDocument(JSON.parse(source.documentKey as string))
+      if (design.kind !== 'builder') return null
+      source.documentKey = builderDesignKey(design)
+    }
     if (typeof snapshot.name !== 'string' || typeof snapshot.description !== 'string'
       || typeof snapshot.sceneDataText !== 'string' || !isCurrentSceneData(snapshot.sceneData)
       || !Array.isArray(snapshot.selectedTagIds) || snapshot.selectedTagIds.length > 1000

@@ -68,7 +68,7 @@ export function SceneSetupControls({
         htmlFor={fieldId('templateId')}
         label="Template"
         description={isBuilder
-          ? 'Edit this scene, or save its whole setup as your own reusable template.'
+          ? 'Save the Builder design as a template. Camera, motion, and effects stay with this scene.'
           : 'Choose a template or add a new one. Editable templates open below.'}
       >
         <div className="scene-template-picker">

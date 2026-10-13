@@ -6,6 +6,7 @@ import type { PersonalTemplate } from './personalTemplates'
 import type { PersonalTemplateSource, SceneDraftSnapshot } from './sceneDraftRecovery'
 import { usePersonalTemplates } from './usePersonalTemplates'
 import { buildSceneSubmissionDocument } from './utils'
+import { builderDesign } from './builderDesign'
 
 type Args = {
   authenticatedFetch: AuthenticatedFetch
@@ -77,7 +78,7 @@ export function usePersonalTemplateWorkspace({ authenticatedFetch, userId, sourc
     try { thumbnailFile = await captureThumbnail() }
     catch { /* An unavailable preview has an explicit placeholder, never an old scene image. */ }
     assertCurrent()
-    const saved = await library.save({ name, sceneData: document, thumbnailFile, template, assertCurrent })
+    const saved = await library.save({ name, sceneData: builderDesign(document), thumbnailFile, template, assertCurrent })
     if (!mounted.current || started !== request.current) return
     onSaved(saved, draft.sceneData)
     setNotice(thumbnailFile ? `Saved “${saved.name}” with a fresh thumbnail.`

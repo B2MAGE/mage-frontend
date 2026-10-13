@@ -94,8 +94,8 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
         <p id={`${id}-description`}>{dialog.mode === 'delete'
           ? `Delete “${dialog.template!.name}” from Your templates? Scenes and drafts made from it will keep their own copies.`
           : dialog.mode === 'rename' ? 'Give this template a new name. Its saved design and existing scenes stay the same.'
-            : dialog.mode === 'update' ? `Replace “${dialog.template!.name}” with your current Builder setup and a fresh preview snapshot? Existing scenes and drafts keep their own copies.`
-              : 'Save the whole Builder setup, including camera, effects and music responses. Scene details, tags and music files stay with the scene.'}</p>
+            : dialog.mode === 'update' ? `Replace “${dialog.template!.name}” with your current Builder design—objects, groups, materials, animation and input bindings? Other scene sections stay unchanged, and existing scenes and drafts keep their own copies.`
+              : 'Save your Builder design: objects, groups, materials, animation and input bindings. Camera, skybox, scene scale, Motion, Effects and other scene sections stay unchanged when you use it.'}</p>
         {editableName ? <div className="personal-template-modal__field">
           <label htmlFor={`${id}-name`}>Template name</label>
           <input id={`${id}-name`} type="text" maxLength={PERSONAL_TEMPLATE_NAME_LIMIT} value={name} disabled={blocked}
@@ -104,7 +104,7 @@ export function PersonalTemplateActions({ selectedTemplate, canSave, disabled = 
           <small id={`${id}-name-help`}>Required · Up to {PERSONAL_TEMPLATE_NAME_LIMIT} characters · Use a unique name</small>
           {failure?.fields?.name ? <span id={`${id}-name-error`} className="personal-template-modal__error">{failure.fields.name}</span> : null}
         </div> : null}
-        {dialog.mode === 'save' || dialog.mode === 'update' ? <p className="personal-template-modal__capture-note">A fresh snapshot is captured when you save. If the preview cannot be captured, the template uses a placeholder.</p> : null}
+        {dialog.mode === 'save' || dialog.mode === 'update' ? <p className="personal-template-modal__capture-note">A fresh thumbnail is captured from this scene. Its camera, surroundings, and effects aren't part of the saved design. If capture is unavailable, a placeholder is used.</p> : null}
         {failure ? <div className="personal-template-modal__error" role="alert">
           <p>{failure.message}</p>
           {Object.entries(failure.fields ?? {}).filter(([field]) => field !== 'name').map(([field, message]) => <p key={field}>{field}: {message}</p>)}

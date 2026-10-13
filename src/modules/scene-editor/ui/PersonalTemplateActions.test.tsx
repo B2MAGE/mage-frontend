@@ -2,10 +2,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from '../builderEditor'
+import { builderDesign } from '../builderDesign'
 import { PersonalTemplateError } from '../personalTemplates'
 import { PersonalTemplateActions } from './PersonalTemplateActions'
 
-const template = { templateId: 7, name: 'My template', sceneData: createBuilderScene(), thumbnailRef: null, revision: 2, createdAt: '', updatedAt: '' }
+const template = { templateId: 7, name: 'My template', sceneData: builderDesign(createBuilderScene()), thumbnailRef: null, revision: 2, createdAt: '', updatedAt: '' }
 const props = () => ({ selectedTemplate: null, canSave: true, onSave: vi.fn().mockResolvedValue(undefined), onRename: vi.fn().mockResolvedValue(undefined), onDelete: vi.fn().mockResolvedValue(undefined) })
 
 describe('PersonalTemplateActions', () => {
@@ -17,7 +18,8 @@ describe('PersonalTemplateActions', () => {
     const dialog = screen.getByRole('dialog', { name: 'Save as template' })
     const input = screen.getByLabelText('Template name')
     expect(input).toHaveFocus()
-    expect(dialog).toHaveTextContent(/Scene details, tags and music files stay with the scene/)
+    expect(dialog).toHaveTextContent(/objects, groups, materials, animation and input bindings/)
+    expect(dialog).toHaveTextContent(/Camera, skybox, scene scale, Motion, Effects and other scene sections stay unchanged/)
     await user.type(input, '   ')
     await user.click(within(dialog).getByRole('button', { name: 'Save as template' }))
     expect(actions.onSave).not.toHaveBeenCalled()

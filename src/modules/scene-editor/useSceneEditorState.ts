@@ -36,7 +36,8 @@ import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
 import { builderOrderedNodes } from './builderGroups'
-import { openTemplateWorkspace, builderWorkspaceAdapted } from './templateWorkspace'
+import { openTemplateWorkspace, builderWorkspaceAdapted, applyBuilderDesign } from './templateWorkspace'
+import { builderDesignKey } from './builderDesign'
 
 type UseSceneEditorStateArgs = {
   allowCustomSceneData?: boolean
@@ -85,7 +86,7 @@ export function useSceneEditorState({
   const builderTemplateSourceId = isBuilder ? history.draft.templateSourceId ?? null : null
   const personalTemplateSource = isBuilder ? history.draft.personalTemplateSource ?? null : null
   const isPersonalTemplateAdapted = Boolean(personalTemplateSource
-    && personalTemplateSource.documentKey !== JSON.stringify(builderDocument))
+    && builderDocument && builderDesignKey(JSON.parse(personalTemplateSource.documentKey)) !== builderDesignKey(builderDocument))
   const isBuilderAdapted = useMemo(() => builderDocument
     ? builderWorkspaceAdapted(builderDocument, builderTemplateSourceId) : false, [builderDocument, builderTemplateSourceId])
   const authoredFieldErrors = useMemo(() => {
@@ -301,20 +302,17 @@ export function useSceneEditorState({
   }
 
   function handleLoadPersonalTemplate(template: PersonalTemplate) {
-    const document = readEditableSceneData(template.sceneData)
-    if (!isBuilderEditorDocument(document)) throw new Error('This template is not a supported Builder document.')
+    const document = applyBuilderDesign(template.sceneData, history.readDraft().sceneData)
     const source = { templateId: template.templateId, name: template.name, revision: template.revision,
-      thumbnailRef: template.thumbnailRef, documentKey: JSON.stringify(document) }
-    if (!applySceneData(structuredClone(document), false, undefined, null, source)) return false
-    setMusicResponseDefaults(readMusicResponseDefaults(getBuilderEditorSceneData(document)))
-    return true
+      thumbnailRef: template.thumbnailRef, documentKey: builderDesignKey(document) }
+    return applySceneData(document, false, undefined, null, source)
   }
 
   function handlePersonalTemplateSaved(template: PersonalTemplate, submittedDocument: BuilderSceneDocument) {
     // Saving the library must never replace edits made while its request was in flight.
     if (history.readDraft().sceneData !== submittedDocument) return
     history.setPersonalTemplateSource({ templateId: template.templateId, name: template.name, revision: template.revision,
-      thumbnailRef: template.thumbnailRef, documentKey: JSON.stringify(submittedDocument) })
+      thumbnailRef: template.thumbnailRef, documentKey: builderDesignKey(submittedDocument) })
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {

@@ -80,28 +80,35 @@ Current limitations:
 
 Coverage lives in the colocated scene-editor specs under `src/modules/scene-editor/`.
 
-## Personal whole templates (SB-14)
+## Personal Builder templates (SB-14)
 
 In **Scene**, signed-in users can choose **Save as template** for any Builder setup.
 The required name is separate from the scene title, trimmed, limited to 100 characters,
 and unique within that account without regard to case. The Template selector separates
 **Built-in templates** from **Your templates**. Built-ins are never overwritten.
-Selecting a personal template copies its complete document, including camera, skybox,
-effects/pass order, motion and music responses. Edited or new work requires confirmation
-before replacement; Cancel retains it and Undo restores the previous document and selection.
+Selecting a personal template copies its Builder design: objects, groups, composition,
+materials, animation and per-object/group input bindings. Camera, skybox, scene scale,
+scene-wide Motion/music responses, Effects and Pass Order remain as they were in the editor.
+Edited or new designs require confirmation before replacement; Cancel retains the design
+and Undo restores the previous design and selection.
 
 A selected personal template offers **Update template**, **Rename template**,
 **Save as new template**, and **Delete template**. Updating is explicit; ordinary scene
 edits and scene saves do not change the library. Existing scenes and browser drafts own
 their document copies and continue working after the source template is updated or deleted.
-Scene title/description, tags, account/social fields, local audio files, and playback state
-are excluded. Template provenance lives only in editor history/browser recovery, never
-in the saved scene document or compiler input.
+Personal templates contain only the Builder contract markers, objects, composition and
+rendering fields. Settings and parameters from other sections, scene title/description,
+tags, account/social fields, local audio files and playback state are excluded. Template
+provenance lives only in editor history/browser recovery, never in the saved scene document
+or compiler input. `builderDesign.ts` selects this shared subset for saving and comparison;
+transport applies the same selection even if a caller supplies a complete scene.
 
 Every create/content update captures a fresh preview frame and uploads it through
 `/api/builder-templates/thumbnail/presign`. If capture is unavailable, a visible placeholder
-is saved; an old scene thumbnail is never substituted. Storage or write failures keep the
-dialog and draft intact. Rename retains the existing image. The backend atomically saves
+is saved; an old scene thumbnail is never substituted. The image shows the current live
+preview context, but its camera, skybox and effects are not included in the template.
+Storage or write failures keep the dialog and draft intact. Rename retains the existing
+image. The backend atomically saves
 document/image reference and owns cleanup in a namespace separate from scene images.
 
 `personalTemplates.ts` owns the owner-only `/api/builder-templates` transport;
@@ -112,8 +119,10 @@ conflicts require deliberate reloading of the saved template or saving a new cop
 never silently overwrite the other edit. No public sharing, custom code, version browser,
 or reusable object/component graph is introduced.
 
-Requires backend #167 (additive Flyway V23). Existing databases and object-storage data
-remain intact. For review, check save/reload, update with a changed camera/effect, duplicate
+Requires backend #167 (additive Flyway V23 and V24). V24 narrows pre-review personal
+templates to their Builder designs; saved scenes and thumbnails remain intact.
+For review, check save/reload with a changed object or material, confirm
+camera/effects/skybox/scale remain unchanged when applying a template, and check duplicate
 names, rename, replacement Cancel/Undo, and deletion while a copied scene remains open.
 The colocated personal-template tests cover these paths, fresh capture, request failures,
 account changes, and publishing/reopening a scene after its source template is deleted.
@@ -239,6 +248,7 @@ recovered drafts retains authored settings. Template source labels are editor-on
 draft/history metadata, never extra fields in the saved scene contract.
 
 There is no creation-mode toggle or new custom-code entry point. Existing custom
-documents and moderator controls still follow their existing policy. Edits save
-with the scene only: reusable personal template storage is deferred to frontend
-#314 and backend #167, while the custom-code direction remains a future decision.
+documents and moderator controls still follow their existing policy. Builder edits save
+with the scene; signed-in users can also explicitly save a reusable Builder design using
+personal templates (frontend #314 and backend #167). The custom-code direction remains a
+future decision.

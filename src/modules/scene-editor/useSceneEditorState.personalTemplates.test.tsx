@@ -5,16 +5,15 @@ import { useSceneEditorState } from './useSceneEditorState'
 import { buildSceneSubmissionDocument } from './utils'
 import { parseSceneDraftRecord, sceneDraftFingerprint } from './sceneDraftRecovery'
 import type { PersonalTemplate } from './personalTemplates'
+import { builderDesign } from './builderDesign'
 
 vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@shared/lib')>(),
   fetchAvailableTags: async () => [] }))
 
 function template(): PersonalTemplate {
   const sceneData = createBuilderScene()
-  sceneData.settings.camera.fov = 73
-  sceneData.settings.skybox = 3
   sceneData.objects[0].name = 'My sphere'
-  return { templateId: 17, name: 'My constellation', sceneData, revision: 2, thumbnailRef: null,
+  return { templateId: 17, name: 'My constellation', sceneData: builderDesign(sceneData), revision: 2, thumbnailRef: null,
     createdAt: '', updatedAt: '' }
 }
 async function editor() {
@@ -25,12 +24,17 @@ async function editor() {
 }
 
 describe('personal template copies in editor history', () => {
-  it('loads all settings independently of library data, retains details, and undoes source and document together', async () => {
+  it('loads an independent design, retains other settings and details, and undoes source and design together', async () => {
     const { result } = await editor()
-    const original = result.current.sceneData
+    act(() => result.current.updateBuilderValue('settings.camera.fov', 73))
+    act(() => result.current.updateBuilderValue('settings.skybox', 3))
+    act(() => result.current.updateBuilderValue('parameters.speed', 1.8))
+    const original = result.current.builderDocument!
     const saved = template()
     act(() => result.current.handleLoadPersonalTemplate(saved))
-    expect(result.current.sceneData).toEqual(saved.sceneData)
+    expect(builderDesign(result.current.builderDocument!)).toEqual(saved.sceneData)
+    expect(result.current.builderDocument?.settings).toEqual(original.settings)
+    expect(result.current.builderDocument?.parameters).toEqual(original.parameters)
     expect(result.current.sceneData).not.toBe(saved.sceneData)
     expect(result.current.name).toBe('Keep my title')
     expect(result.current.description).toBe('Keep my description')
@@ -44,11 +48,15 @@ describe('personal template copies in editor history', () => {
     expect(result.current.personalTemplateSource?.templateId).toBe(17)
     expect(result.current.isPersonalTemplateAdapted).toBe(false)
     act(() => result.current.updateBuilderValue('settings.camera.fov', 91))
+    expect(result.current.isPersonalTemplateAdapted).toBe(false)
+    act(() => result.current.handleUpdateBuilderObject(result.current.builderDocument!.objects[0].id,
+      object => ({ ...object, name: 'My changed design' })))
     expect(result.current.isPersonalTemplateAdapted).toBe(true)
   })
 
   it('recovers personal source context without putting any library reference into a saved scene', async () => {
     const { result } = await editor()
+    act(() => result.current.updateBuilderValue('settings.camera.fov', 73))
     act(() => result.current.handleLoadPersonalTemplate(template()))
     const snapshot = result.current.draftSnapshot
     const recovered = parseSceneDraftRecord(JSON.stringify({ version: 1, savedAt: 123,

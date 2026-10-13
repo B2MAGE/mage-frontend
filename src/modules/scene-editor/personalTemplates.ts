@@ -1,13 +1,13 @@
 import type { AuthenticatedFetch } from '@auth'
-import type { BuilderSceneDocument } from '@modules/player'
 import { parseApiError } from '@shared/lib'
+import { builderDesign, type BuilderDesign } from './builderDesign'
 
 export const PERSONAL_TEMPLATE_NAME_LIMIT = 100
 
 export type PersonalTemplate = {
   templateId: number
   name: string
-  sceneData: BuilderSceneDocument
+  sceneData: BuilderDesign
   thumbnailRef: string | null
   revision: number
   createdAt: string
@@ -58,17 +58,17 @@ async function discardPendingThumbnail(authenticatedFetch: AuthenticatedFetch, o
 
 export type SavePersonalTemplate = {
   name: string
-  sceneData: BuilderSceneDocument
+  sceneData: BuilderDesign
   thumbnailFile: File | null
   template?: PersonalTemplate
   assertCurrent?: () => void
 }
 
-/** Upload a newly captured image, then atomically write the template document and image reference. */
+/** Upload a newly captured image, then atomically write the Builder design and image reference. */
 export async function savePersonalTemplate(authenticatedFetch: AuthenticatedFetch, input: SavePersonalTemplate, signal?: AbortSignal): Promise<PersonalTemplate> {
   const name = personalTemplateName(input.name)
-  // Keep the submitted document independent of the editor while the image is uploading.
-  const sceneData = structuredClone(input.sceneData)
+  // This boundary selects only Builder fields, even when a caller passes a full scene.
+  const sceneData = builderDesign(input.sceneData)
   let objectKey: string | undefined
   try {
     signal?.throwIfAborted()
