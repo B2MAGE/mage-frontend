@@ -1,5 +1,6 @@
 import { listSceneTemplates, listSelectableSceneTemplates } from '@modules/player'
-import { AppIcon, EditorFieldShell, SliderFieldShell } from '@shared/ui'
+import type { ReactNode } from 'react'
+import { EditorFieldShell, SliderFieldShell } from '@shared/ui'
 import { SKYBOX_OPTIONS } from '../sceneEditor'
 
 export const BUILDER_SHADER_TEMPLATE_VALUE = '__builder-shader__'
@@ -8,13 +9,16 @@ type Props = {
   fields?: Record<string, string>
   isBuilder: boolean
   builderTemplateLabel: string
-  onAddTemplate: () => void
+  builderDraftStatus: 'unsaved' | 'modified'
+  templateActions: ReactNode
   onScaleChange: (value: number) => void
   onSkyboxChange: (value: number) => void
   onTemplateChange: (templateId: string) => void
   scale: number
   skybox: number
   templateId: string
+  personalTemplates?: { templateId: number; name: string }[]
+  templatesBusy?: boolean
 }
 
 const fieldId = (path: string) => `template-${path.replaceAll('.', '-')}`
@@ -39,13 +43,16 @@ export function SceneSetupControls({
   fields = {},
   isBuilder,
   builderTemplateLabel,
-  onAddTemplate,
+  builderDraftStatus,
+  templateActions,
   onScaleChange,
   onSkyboxChange,
   onTemplateChange,
   scale,
   skybox,
   templateId,
+  personalTemplates = [],
+  templatesBusy = false,
 }: Props) {
   const selectableTemplates = listSelectableSceneTemplates()
   const selectedRetiredTemplate = !isBuilder && templateId !== 'custom'
@@ -64,7 +71,7 @@ export function SceneSetupControls({
         htmlFor={fieldId('templateId')}
         label="Template"
         description={isBuilder
-          ? 'Edits are saved with this scene. Templates are not saved separately.'
+          ? 'Save the Builder design as a template. Camera, motion, and effects stay with this scene.'
           : 'Choose a template or add a new one. Editable templates open below.'}
       >
         <div className="scene-template-picker">
@@ -73,23 +80,26 @@ export function SceneSetupControls({
             aria-invalid={Boolean(error('templateId'))}
             className="mage-select"
             id={fieldId('templateId')}
+            disabled={templatesBusy}
             onChange={event => onTemplateChange(event.currentTarget.value)}
             value={templateId}
           >
-            {templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>{builderTemplateLabel}</option> : null}
             {templateId === 'custom' ? <option value="custom" disabled>Custom shader</option> : null}
             {selectedRetiredTemplate ? <option value={selectedRetiredTemplate.templateId} disabled>
               {selectedRetiredTemplate.label} (unavailable)
             </option> : null}
-            {selectableTemplates.map(template => <option
+            <optgroup label="Built-in templates">{selectableTemplates.map(template => <option
               key={`${template.templateId}:${template.templateVersion}`}
               value={template.templateId}
-            >{template.label}</option>)}
+            >{template.label}</option>)}</optgroup>
+            {personalTemplates.length > 0 || templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <optgroup label="Your templates">
+              {templateId === BUILDER_SHADER_TEMPLATE_VALUE ? <option value={BUILDER_SHADER_TEMPLATE_VALUE}>
+                {builderTemplateLabel} ({builderDraftStatus === 'modified' ? 'Modified' : 'Unsaved'})
+              </option> : null}
+              {personalTemplates.map(template => <option key={template.templateId} value={`personal:${template.templateId}`}>{template.name}</option>)}
+            </optgroup> : null}
           </select>
-          <button aria-label="Add new template" className="scene-secondary-button scene-template-picker__add"
-            id="scene-add-template" onClick={onAddTemplate} title="Add new template" type="button">
-            <AppIcon name="plus" size={18} />
-          </button>
+          {templateActions}
         </div>
       </EditorFieldShell>
       {issue('templateId')}

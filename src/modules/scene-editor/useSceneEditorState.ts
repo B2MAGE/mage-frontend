@@ -26,6 +26,7 @@ import { changeSceneBranch, mergeChangedValues } from './draftCommands'
 import { useSceneDraftCommands } from './useSceneDraftCommands'
 import { useSceneDraftHistory } from './useSceneDraftHistory'
 import type { SceneDraftSnapshot } from './sceneDraftRecovery'
+import type { PersonalTemplate } from './personalTemplates'
 import { useSceneEditorNavigation } from './useSceneEditorNavigation'
 import { useSceneTagEditor } from './useSceneTagEditor'
 import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioResponseConfig, type AudioResponseTarget, type SceneAudioResponseMode } from '@shared/lib'
@@ -35,7 +36,8 @@ import { describeSceneValidationError } from './sceneValidation'
 import { changedTemplateFields, changeTemplateMusicSettings, changeTemplateValue, createTemplateScene, getTemplateEditorSceneData, isTemplateEditorDocument, type TemplateFieldPath } from './templateEditor'
 import { changeBuilderMusicSettings, changeBuilderValue, createBuilderScene, getBuilderEditorSceneData, isBuilderEditorDocument } from './builderEditor'
 import { builderOrderedNodes } from './builderGroups'
-import { openTemplateWorkspace, builderWorkspaceAdapted } from './templateWorkspace'
+import { openTemplateWorkspace, builderWorkspaceAdapted, applyBuilderDesign } from './templateWorkspace'
+import { builderDesignKey } from './builderDesign'
 
 type UseSceneEditorStateArgs = {
   allowCustomSceneData?: boolean
@@ -82,6 +84,9 @@ export function useSceneEditorState({
   const isBuilder = isBuilderEditorDocument(sceneData)
   const builderDocument = isBuilder ? sceneData : null
   const builderTemplateSourceId = isBuilder ? history.draft.templateSourceId ?? null : null
+  const personalTemplateSource = isBuilder ? history.draft.personalTemplateSource ?? null : null
+  const isPersonalTemplateAdapted = Boolean(personalTemplateSource
+    && builderDocument && builderDesignKey(JSON.parse(personalTemplateSource.documentKey)) !== builderDesignKey(builderDocument))
   const isBuilderAdapted = useMemo(() => builderDocument
     ? builderWorkspaceAdapted(builderDocument, builderTemplateSourceId) : false, [builderDocument, builderTemplateSourceId])
   const authoredFieldErrors = useMemo(() => {
@@ -120,6 +125,7 @@ export function useSceneEditorState({
       history.commit(draft => ({ ...draft, sceneData: workspace.document,
         sceneDataText: workspace.document === next ? text : prettyPrintEditorSceneData(workspace.document),
         templateSourceId: workspace.templateSourceId,
+        personalTemplateSource: null,
         selectedBuilderObjectId: reconcileSelection(draft, workspace.document) }), 'Import scene')
     },
   })
@@ -191,7 +197,8 @@ export function useSceneEditorState({
     setErrors,
   })
 
-  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false, changedField?: string | string[], templateSourceId?: TemplateId | null) {
+  function applySceneData(nextSceneData: SceneData, replaceRawDraft = false, changedField?: string | string[], templateSourceId?: TemplateId | null,
+    personalSource?: SceneDraftSnapshot['personalTemplateSource']) {
     if (!replaceRawDraft && confirmSectionIssueMessage && sceneDataText !== prettyPrintEditorSceneData(sceneData)) {
       setErrors(current => ({ ...current, sceneData: confirmSectionIssueMessage ?? undefined,
         form: 'Fix the Scene Data JSON before changing other controls. Your imported draft has been kept.' }))
@@ -207,6 +214,8 @@ export function useSceneEditorState({
     history.commit(draft => ({ ...draft, sceneData: nextSceneData, sceneDataText: nextText,
       templateSourceId: templateSourceId !== undefined ? templateSourceId : isBuilderEditorDocument(nextSceneData)
         ? draft.templateSourceId : isTemplateEditorDocument(nextSceneData) ? nextSceneData.templateId : null,
+      personalTemplateSource: personalSource !== undefined ? personalSource
+        : templateSourceId !== undefined || !isBuilderEditorDocument(nextSceneData) ? null : draft.personalTemplateSource,
       selectedBuilderObjectId: reconcileSelection(draft, nextSceneData) }))
     const validation = validateSceneDataText(nextText)
     setErrors(current => ({ ...current, sceneData: validation.error ?? undefined, form: undefined,
@@ -290,6 +299,26 @@ export function useSceneEditorState({
       setMusicResponseDefaults(readMusicResponseDefaults(isBuilderEditorDocument(workspace.document)
         ? getBuilderEditorSceneData(workspace.document) : getTemplateEditorSceneData(template)))
     }
+  }
+
+  function handleLoadPersonalTemplate(template: PersonalTemplate) {
+    const document = applyBuilderDesign(template.sceneData, history.readDraft().sceneData)
+    const source = { templateId: template.templateId, name: template.name, revision: template.revision,
+      documentKey: builderDesignKey(document) }
+    return applySceneData(document, false, undefined, null, source)
+  }
+
+  function handlePersonalTemplateSaved(template: PersonalTemplate, submittedDocument: BuilderSceneDocument) {
+    // Saving the library must never replace edits made while its request was in flight.
+    if (history.readDraft().sceneData !== submittedDocument) return
+    history.setPersonalTemplateSource({ templateId: template.templateId, name: template.name, revision: template.revision,
+      documentKey: builderDesignKey(submittedDocument) })
+  }
+
+  function handlePersonalTemplateDeleted(templateId: number) {
+    const current = history.readDraft()
+    if (current.personalTemplateSource?.templateId !== templateId) return
+    handleTemplateSelection(createTemplateScene().templateId)
   }
 
   function updateTemplateValue(path: TemplateFieldPath, value: number | string | boolean) {
@@ -402,7 +431,7 @@ export function useSceneEditorState({
       resetPendingTemplateImport()
       clearErrors()
       history.restore({ ...draft, sceneData: workspace.document,
-        templateSourceId: draft.templateSourceId ?? workspace.templateSourceId,
+        templateSourceId: draft.personalTemplateSource ? null : draft.templateSourceId ?? workspace.templateSourceId,
         // Preserve pending JSON repairs instead of silently replacing their text.
         sceneDataText: converted && draft.sceneDataText === prettyPrintEditorSceneData(draft.sceneData)
           ? prettyPrintEditorSceneData(workspace.document) : draft.sceneDataText,
@@ -483,6 +512,11 @@ export function useSceneEditorState({
     templateDocument,
     builderDocument,
     builderTemplateSourceId,
+    personalTemplateSource,
+    isPersonalTemplateAdapted,
+    handleLoadPersonalTemplate,
+    handlePersonalTemplateSaved,
+    handlePersonalTemplateDeleted,
     isBuilderAdapted,
     templateFieldErrors,
     titleId,

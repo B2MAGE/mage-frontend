@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { SceneDraftSnapshot } from './sceneDraftRecovery'
+import type { PersonalTemplateSource, SceneDraftSnapshot } from './sceneDraftRecovery'
 
 type Entry = { snapshot: SceneDraftSnapshot; label: string }
 type History = { present: SceneDraftSnapshot; past: Entry[]; future: Entry[]; group: string | null }
@@ -8,7 +8,7 @@ const HISTORY_BYTES = 4 * 1024 * 1024
 
 export function draftContentKey(snapshot: SceneDraftSnapshot) {
   return JSON.stringify([snapshot.name, snapshot.description, snapshot.sceneData, snapshot.sceneDataText, snapshot.selectedTagIds,
-    snapshot.templateSourceId ?? null])
+    snapshot.templateSourceId ?? null, snapshot.personalTemplateSource ?? null])
 }
 
 function bounded(entries: Entry[]) {
@@ -84,8 +84,17 @@ export function useSceneDraftHistory(initial: () => SceneDraftSnapshot) {
       past: state.past.map(entry => ({ ...entry, snapshot: withTags(entry.snapshot) })),
       future: state.future.map(entry => ({ ...entry, snapshot: withTags(entry.snapshot) })) })
   }, [publish])
+  const setPersonalTemplateSource = useCallback((source: PersonalTemplateSource) => {
+    const state = current.current
+    // A library write is not undoable. Older designs still compare against that latest saved version.
+    const refreshSource = (draft: SceneDraftSnapshot) => draft.personalTemplateSource?.templateId === source.templateId
+      ? { ...draft, personalTemplateSource: source } : draft
+    publish({ ...state, present: { ...state.present, templateSourceId: null, personalTemplateSource: source },
+      past: bounded(state.past.map(entry => ({ ...entry, snapshot: refreshSource(entry.snapshot) }))),
+      future: bounded(state.future.map(entry => ({ ...entry, snapshot: refreshSource(entry.snapshot) }))) })
+  }, [publish])
   return { draft: history.present, baseline, readDraft, commit, selectObject, undo, redo, reset, restore,
-    beginEdit, endEdit, initializeTags, canUndo: history.past.length > 0, canRedo: history.future.length > 0,
+    beginEdit, endEdit, initializeTags, setPersonalTemplateSource, canUndo: history.past.length > 0, canRedo: history.future.length > 0,
     canReset: draftContentKey(history.present) !== draftContentKey(baseline),
     undoLabel: history.past.at(-1)?.label, redoLabel: history.future.at(-1)?.label }
 }

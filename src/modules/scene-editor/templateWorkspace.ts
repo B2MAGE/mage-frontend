@@ -1,8 +1,9 @@
-import type { BuilderSceneDocument, TemplateId } from '@modules/player'
+import { parseSceneDocument, type BuilderSceneDocument, type TemplateId } from '@modules/player'
 import { isBuilderEditorDocument } from './builderEditor'
 import { BUILDER_RECIPES, createBuilderRecipe } from './builderRecipes'
-import type { SceneData } from './sceneEditor'
-import { isTemplateEditorDocument } from './templateEditor'
+import { getSceneEditorModel, type SceneData } from './sceneEditor'
+import { changeAuthoredBranch, changeAuthoredMusicSettings, createTemplateScene, isTemplateEditorDocument } from './templateEditor'
+import { builderDesign, builderDesignKey, type BuilderDesign } from './builderDesign'
 
 const recipeIds = new Set<string>(BUILDER_RECIPES.map(recipe => recipe.templateId))
 
@@ -34,13 +35,26 @@ export function openTemplateWorkspace(document: SceneData): {
   return { document, templateSourceId: isBuilderEditorDocument(document) ? inferBuilderTemplate(document) : null }
 }
 
-function builderContent(document: BuilderSceneDocument) {
-  return JSON.stringify([document.objects, document.composition, document.rendering])
+/** Replace only Builder-owned content; every other editor section keeps its current values. */
+export function applyBuilderDesign(design: BuilderDesign, current: SceneData): BuilderSceneDocument {
+  const validated = parseSceneDocument(design)
+  if (validated.kind !== 'builder') throw new Error('This template is not a supported Builder design.')
+  if (isBuilderEditorDocument(current) || isTemplateEditorDocument(current)) {
+    return { ...builderDesign(validated), settings: structuredClone(current.settings), parameters: structuredClone(current.parameters) }
+  }
+  // The owner repair editor uses the same controls, expressed through the custom scene model.
+  const model = getSceneEditorModel(current)
+  let settings = createTemplateScene()
+  for (const branch of ['controls', 'visualizer', 'intent', 'state', 'fx'] as const) {
+    settings = changeAuthoredBranch(settings, branch, model[branch])
+  }
+  settings = changeAuthoredMusicSettings(settings, current)
+  return { ...builderDesign(validated), settings: settings.settings, parameters: settings.parameters }
 }
 
 /** Effects, camera, music, and scene-wide size are scene settings, not changes to the template's objects. */
 export function builderWorkspaceAdapted(document: BuilderSceneDocument, templateSourceId: TemplateId | null) {
   if (!templateSourceId || !recipeIds.has(templateSourceId)) return false
   const original = createBuilderRecipe(templateSourceId)
-  return builderContent(document) !== builderContent(original)
+  return builderDesignKey(document) !== builderDesignKey(original)
 }

@@ -1,6 +1,15 @@
 import type { SceneData } from './sceneEditor'
 import sceneSchema from '../../../contracts/scenes/scene-v1.schema.json'
-import { listSceneTemplates, validateBuilderComposition, type BuilderSceneDocument, type TemplateId } from '@modules/player'
+import { listSceneTemplates, parseSceneDocument, validateBuilderComposition, type BuilderSceneDocument, type TemplateId } from '@modules/player'
+import { builderDesignKey } from './builderDesign'
+
+/** A library source is editor context only; scenes always contain their own full document. */
+export type PersonalTemplateSource = {
+  templateId: number
+  name: string
+  revision: number
+  documentKey: string
+}
 
 export type SceneDraftSnapshot = {
   name: string
@@ -11,6 +20,7 @@ export type SceneDraftSnapshot = {
   selectedBuilderObjectId: string | null
   /** Editor-only origin; it is not part of the saved scene or a reusable template. */
   templateSourceId?: TemplateId | null
+  personalTemplateSource?: PersonalTemplateSource | null
 }
 
 export type SceneDraftSaveContext = { savedSceneId: number | null; expectedRevision: number | null; saveNeedsReview: boolean }
@@ -40,7 +50,8 @@ export function sceneDraftStorageKey(userId: string | number, sceneId: number | 
 export function sceneDraftFingerprint(snapshot: SceneDraftSnapshot) {
   return JSON.stringify({ name: snapshot.name, description: snapshot.description,
     sceneData: snapshot.sceneData, sceneDataText: snapshot.sceneDataText, selectedTagIds: snapshot.selectedTagIds,
-    ...(snapshot.templateSourceId ? { templateSourceId: snapshot.templateSourceId } : {}) })
+    ...(snapshot.templateSourceId ? { templateSourceId: snapshot.templateSourceId } : {}),
+    ...(snapshot.personalTemplateSource ? { personalTemplateSource: snapshot.personalTemplateSource } : {}) })
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -123,6 +134,17 @@ export function parseSceneDraftRecord(raw: string): SceneDraftRecord | null {
       || !Number.isFinite(record.savedAt) || record.savedAt < 0 || typeof record.baseFingerprint !== 'string'
       || !isObject(record.snapshot) || !isObject(record.saveContext)) return null
     const { snapshot, saveContext } = record
+    const source = snapshot.personalTemplateSource
+    if (source !== undefined && source !== null && (!isObject(source)
+      || !Number.isSafeInteger(source.templateId) || Number(source.templateId) < 1
+      || !Number.isSafeInteger(source.revision) || Number(source.revision) < 0
+      || typeof source.name !== 'string' || !source.name.trim() || source.name.length > 100
+      || typeof source.documentKey !== 'string')) return null
+    if (isObject(source)) {
+      const design = parseSceneDocument(JSON.parse(source.documentKey as string))
+      if (design.kind !== 'builder') return null
+      source.documentKey = builderDesignKey(design)
+    }
     if (typeof snapshot.name !== 'string' || typeof snapshot.description !== 'string'
       || typeof snapshot.sceneDataText !== 'string' || !isCurrentSceneData(snapshot.sceneData)
       || !Array.isArray(snapshot.selectedTagIds) || snapshot.selectedTagIds.length > 1000

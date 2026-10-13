@@ -48,7 +48,8 @@ async function openNewAnimation(user: ReturnType<typeof userEvent.setup>) {
   const view = renderCreateScenePage()
   fireEvent.change(await screen.findByLabelText(/scene name/i), { target: { value: 'Combined motion' } })
   await user.click(screen.getByRole('button', { name: 'Scene' }))
-  await user.click(screen.getByRole('button', { name: 'Add new template' }))
+  await user.click(screen.getByRole('button', { name: 'Template actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'New template' }))
   await user.click(screen.getByRole('heading', { name: 'Animation', level: 4 }).closest('summary')!)
   await user.click(screen.getByRole('button', { name: 'Add combined inputs' }))
   await waitFor(() => expect(preview().objects[0].drivers).toHaveLength(1))
@@ -78,7 +79,7 @@ describe('combined-input authoring', () => {
     if (expression.type !== 'add' || expression.left.type !== 'multiply') throw new Error('Expected the authored Alloy clock branch')
     expression.left.right = { type: 'constant', value: .35 }
     await waitFor(() => expect(preview()).toEqual(changed))
-    expect(screen.getByLabelText('Template')).toHaveDisplayValue('Alloy Capsule Adaptation')
+    expect(screen.getByLabelText('Template')).toHaveDisplayValue('Alloy Capsule Adaptation (Unsaved)')
     await user.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(preview()).toEqual(original))
     expect(screen.getByLabelText('Template')).toHaveDisplayValue('Alloy Capsule')

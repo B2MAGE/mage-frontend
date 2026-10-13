@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
-import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel, usePointerReorder } from "@shared/ui";
+import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel, Toast, usePointerReorder } from "@shared/ui";
 import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type BuilderColor, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
 import {
@@ -39,8 +39,9 @@ import { FieldValidation, SceneEditorFieldErrorsProvider } from "./ui/SceneEdito
 import { builderControlLocation, templateControlLocation } from "./ui/sceneEditorFieldErrors";
 import { useSceneEditorPreview } from "./useSceneEditorPreview";
 import { useSceneEditorState } from "./useSceneEditorState";
-import { builderRecipeReference } from "./builderRecipes";
 import { useSceneThumbnailCapture } from "./useSceneThumbnailCapture";
+import { usePersonalTemplateWorkspace } from "./usePersonalTemplateWorkspace";
+import { PersonalTemplateActions } from "./ui/PersonalTemplateActions";
 import { useSceneEditorSubmission } from "./useSceneEditorSubmission";
 import { useSceneDraftRecovery } from "./useSceneDraftRecovery";
 import { sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftSaveContext } from "./sceneDraftRecovery";
@@ -144,7 +145,7 @@ export function SceneEditorShell({
   const editorFormRef = useRef<HTMLFormElement | null>(null);
   const reviewFocusTargetRef = useRef<string | null>(null);
   const [pendingReplacement, setPendingReplacement] = useState<
-    { kind: "new" } | { kind: "template"; templateId: TemplateId } | null
+    { kind: "new" } | { kind: "template"; templateId: TemplateId } | { kind: "personal"; templateId: number; name: string } | null
   >(null);
   const customCodeAvailability = useSceneAvailability('custom');
 
@@ -240,6 +241,11 @@ export function SceneEditorShell({
     isTemplate,
     isBuilder,
     builderTemplateSourceId,
+    personalTemplateSource,
+    isPersonalTemplateAdapted,
+    handleLoadPersonalTemplate,
+    handlePersonalTemplateSaved,
+    handlePersonalTemplateDeleted,
     isBuilderAdapted,
     templateDocument,
     builderDocument,
@@ -278,6 +284,7 @@ export function SceneEditorShell({
     requestAnimationFrame(() => document.getElementById('sceneData')?.focus());
   }
   function cancelTemplateReplacement() {
+    personalTemplates.cancelOpen();
     setPendingReplacement(null);
     requestAnimationFrame(() => document.getElementById(replacementTriggerRef.current)?.focus());
   }
@@ -389,6 +396,12 @@ export function SceneEditorShell({
     registerCaptureFramePreview } = useSceneThumbnailCapture({
     availabilityTarget, revision: sceneDataText, canPreviewScene, sceneDraftError,
     isPreviewPending, onCapture: handleThumbnailCapture, setErrors,
+  });
+  const personalTemplates = usePersonalTemplateWorkspace({
+    authenticatedFetch, userId, source: personalTemplateSource, readDraft: history.readDraft,
+    onLoad: handleLoadPersonalTemplate, onSaved: handlePersonalTemplateSaved,
+    onSourceChange: history.setPersonalTemplateSource,
+    onDeleted: handlePersonalTemplateDeleted,
   });
 
   function renderAdditionalPassCard(passConfig: {
@@ -663,11 +676,15 @@ export function SceneEditorShell({
       ? 'Checking whether Custom Code is available.'
       : 'Custom Code is disabled for MAGE. The code for this scene is preserved but locked. Choose a template or add a new one to replace it.';
   const builderSourceLabel = templateCatalog.find(template => template.templateId === builderTemplateSourceId)?.label;
-  const builderTemplateLabel = builderSourceLabel
+  const builderTemplateLabel = personalTemplateSource
+    ? personalTemplateSource.name
+    : builderSourceLabel
     ? `${builderSourceLabel}${isBuilderAdapted ? " Adaptation" : ""}`
     : "New Template";
   const templateSelectValue = isBuilder
-    ? builderTemplateSourceId && !isBuilderAdapted ? builderTemplateSourceId : BUILDER_SHADER_TEMPLATE_VALUE
+    ? personalTemplateSource
+      ? !isPersonalTemplateAdapted && personalTemplates.selectedTemplate ? `personal:${personalTemplateSource.templateId}` : BUILDER_SHADER_TEMPLATE_VALUE
+      : builderTemplateSourceId && !isBuilderAdapted ? builderTemplateSourceId : BUILDER_SHADER_TEMPLATE_VALUE
     : templateDocument?.templateId ?? "custom";
   const selectedTemplateLabel = templateCatalog.find(
     (template) => template.templateId === templateDocument?.templateId,
@@ -771,25 +788,34 @@ export function SceneEditorShell({
     setIsPreviewCollapsed(false);
     requestAnimationFrame(() => previewHideButtonRef.current?.focus());
   }
-  function applyTemplateReplacement(replacement: NonNullable<typeof pendingReplacement>) {
+  async function applyTemplateReplacement(replacement: NonNullable<typeof pendingReplacement>) {
+    if (personalTemplates.isOpening) return;
     if (replacement.kind === "new") switchToDefaultBuilder();
-    else handleTemplateSelection(replacement.templateId);
+    else if (replacement.kind === "personal") {
+      if (!await personalTemplates.open(replacement.templateId)) return;
+    } else handleTemplateSelection(replacement.templateId);
     setPendingReplacement(null);
     requestAnimationFrame(() => document.getElementById(replacementTriggerRef.current)?.focus());
   }
   function requestTemplateReplacement(replacement: NonNullable<typeof pendingReplacement>) {
-    replacementTriggerRef.current = replacement.kind === "new" ? "scene-add-template" : "template-templateId";
-    const replacesAuthoredTemplate = isBuilder && (!builderTemplateSourceId || isBuilderAdapted);
+    replacementTriggerRef.current = replacement.kind === "new" ? "scene-template-actions" : "template-templateId";
+    const replacesAuthoredTemplate = isBuilder && (personalTemplateSource
+      ? isPersonalTemplateAdapted || !personalTemplates.selectedTemplate : !builderTemplateSourceId || isBuilderAdapted);
     if (replacesAuthoredTemplate || isCustomCreation) setPendingReplacement(replacement);
     else applyTemplateReplacement(replacement);
   }
   function handleSharedTemplateChange(templateId: string) {
+    if (templateId.startsWith("personal:")) {
+      const personal = personalTemplates.templates.find(item => `personal:${item.templateId}` === templateId);
+      if (personal) requestTemplateReplacement({ kind: "personal", templateId: personal.templateId, name: personal.name });
+      return;
+    }
     const template = templateCatalog.find(option => option.templateId === templateId);
     if (template) requestTemplateReplacement({ kind: "template", templateId: template.templateId as TemplateId });
   }
   const pendingTemplateLabel = pendingReplacement?.kind === "template"
     ? templateCatalog.find(template => template.templateId === pendingReplacement.templateId)?.label
-    : "New Template";
+    : pendingReplacement?.kind === "personal" ? pendingReplacement.name : "New Template";
   const replacementDialog = pendingReplacement ? (
     <div className="scene-editor-modal-backdrop" role="presentation" onMouseDown={event => {
       if (event.target === event.currentTarget) cancelTemplateReplacement();
@@ -797,9 +823,10 @@ export function SceneEditorShell({
       <section className="scene-editor-modal" role="alertdialog" aria-modal="true" aria-labelledby="replace-scene-title"
         aria-describedby="replace-scene-description" onKeyDown={event => trapModalFocus(event, cancelTemplateReplacement)}>
         <h2 id="replace-scene-title">{isBuilder ? "Replace your Builder scene?" : isCustomCreation ? "Replace your custom scene?" : "Replace your scene?"}</h2>
-        <p id="replace-scene-description">Switching to {pendingTemplateLabel} replaces {isBuilder ? "every Builder object and any unsaved Builder changes" : isCustomCreation ? "your custom shader code" : "your current template and scene settings"}. {pendingReplacement.kind === "new" || isCustomCreation ? "The new template starts with default scene settings. Your scene details and selected music stay." : "The template starts at its default scene scale. Your scene details, camera, effects, and selected music stay."} You can undo this change while the editor stays open.</p>
+        <p id="replace-scene-description">Switching to {pendingTemplateLabel} replaces {isBuilder ? "every Builder object and any unsaved Builder changes" : isCustomCreation ? "your custom shader code" : "your current template and scene settings"}. {pendingReplacement.kind === "personal" ? "Only the Builder design is replaced. Your details, skybox, scene scale, camera, motion, effects, pass order, and selected music stay." : pendingReplacement.kind === "new" || isCustomCreation ? "The new template starts with default scene settings. Your scene details and selected music stay." : "The template starts at its default scene scale. Your scene details, camera, effects, and selected music stay."} You can undo this change while the editor stays open.</p>
+        {personalTemplates.loadError ? <p className="field-error" role="alert">{personalTemplates.loadError}</p> : null}
         <div className="auth-actions">
-          <button className="scene-editor-confirm-submit" type="button" onClick={() => applyTemplateReplacement(pendingReplacement)}>Use {pendingTemplateLabel}</button>
+          <button className="scene-editor-confirm-submit" type="button" disabled={personalTemplates.isOpening} onClick={() => applyTemplateReplacement(pendingReplacement)}>{personalTemplates.isOpening ? "Opening template…" : `Use ${pendingTemplateLabel}`}</button>
           <button className="scene-secondary-button" type="button" ref={replacementCancelRef} onClick={cancelTemplateReplacement}>Cancel</button>
         </div>
       </section>
@@ -899,15 +926,26 @@ export function SceneEditorShell({
                   fields={{ ...templateFieldErrors, ...errors.fields }}
                   isBuilder={isBuilder}
                   builderTemplateLabel={builderTemplateLabel}
-                  onAddTemplate={() => requestTemplateReplacement({ kind: "new" })}
+                  builderDraftStatus={personalTemplates.selectedTemplate ? "modified" : "unsaved"}
+                  templateActions={<PersonalTemplateActions selectedTemplate={personalTemplates.selectedTemplate}
+                    onNew={() => requestTemplateReplacement({ kind: "new" })}
+                    canSave={Boolean(userId) && isBuilder && !sceneDraftError} disabled={isSubmitting || personalTemplates.isOpening}
+                    busy={personalTemplates.isBusy} onSave={personalTemplates.save}
+                    onRename={personalTemplates.rename} onDelete={personalTemplates.remove} />}
                   onScaleChange={nextValue => updateBranch("visualizer", current => ({ ...current, scale: nextValue }))}
                   onSkyboxChange={nextValue => updateBranch("visualizer", current => ({ ...current, skyboxPreset: nextValue }))}
                   onTemplateChange={handleSharedTemplateChange}
                   scale={sceneModel.visualizer.scale}
                   skybox={sceneModel.visualizer.skyboxPreset}
                   templateId={templateSelectValue}
+                  personalTemplates={personalTemplates.templates}
+                  templatesBusy={personalTemplates.isOpening}
                 />
-                {builderTemplateSourceId && builderRecipeReference(builderTemplateSourceId) ? <p className="field-hint">{builderRecipeReference(builderTemplateSourceId)?.note}</p> : null}
+                {userId ? <>
+                  {personalTemplates.isLoading ? <p className="field-hint" role="status">Loading your templates…</p> : null}
+                  {personalTemplates.error ? <p className="field-error" role="alert">{personalTemplates.error} <button type="button" className="scene-secondary-button" onClick={() => void personalTemplates.refresh()}>Reload templates</button></p> : null}
+                  {personalTemplates.loadError && !pendingReplacement ? <p className="field-error" role="alert">{personalTemplates.loadError}</p> : null}
+                </> : null}
               </section>
               {isBuilder && builderDocument ? <BuilderSceneControls
                   document={builderDocument}
@@ -2078,6 +2116,7 @@ export function SceneEditorShell({
           <span>Show preview</span>
         </button>
       </form>
+      {personalTemplates.notice ? <Toast message={personalTemplates.notice} onDismiss={personalTemplates.dismissNotice} /> : null}
       {replacementDialog}
     </AuthPage>
   );

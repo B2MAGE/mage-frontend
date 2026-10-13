@@ -1,0 +1,15 @@
+.personal-template-actions { display: flex; flex: 0 0 auto; }
+.builder-object-actions__menu.personal-template-actions__menu { position: fixed; right: auto; z-index: 110; width: 220px; min-width: 0; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; }
+.personal-template-modal { max-height: calc(100dvh - 48px); overflow-y: auto; }
+.personal-template-modal__field { display: grid; gap: 8px; margin-bottom: 18px; }
+.personal-template-modal__field label { color: var(--studio-text); font-size: 12px; font-weight: 650; }
+.personal-template-modal__field input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--studio-border-strong); border-radius: 8px; background: var(--studio-control); color: var(--studio-text); }
+.personal-template-modal__field input:focus-visible { outline: 2px solid var(--studio-focus-outline); outline-offset: 2px; }
+.personal-template-modal__field input[aria-invalid="true"] { border-color: var(--studio-error); }
+.personal-template-modal__field small { color: var(--studio-muted); font-size: 11px; }
+.personal-template-modal__error { margin-bottom: 12px; color: var(--studio-error); font-size: 12px; overflow-wrap: anywhere; }
+html[data-theme] .personal-template-modal .personal-template-modal__error p { margin-bottom: 8px; color: inherit; }
+.personal-template-modal .auth-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 480px) {
+  html[data-theme] .personal-template-modal { padding: 18px; }
+}
