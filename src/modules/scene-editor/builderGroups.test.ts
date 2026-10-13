@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSceneDocument, type BuilderFrame } from '@modules/player'
+import { BUILDER_LIMITS, parseSceneDocument, type BuilderFrame } from '@modules/player'
 import { compileBuilderDocument } from '../player/templates/builderCompiler'
 import { addBuilderObject, createBuilderScene } from './builderEditor'
 import { builderGroupingIssue, builderOrderedNodes, builderWorldFrame, composeBuilderFrames, duplicateBuilderNode,
@@ -149,15 +149,15 @@ describe('Builder groups and authoring commands', () => {
     expect(parseSceneDocument(restored)).toEqual(restored)
   })
 
-  it('rejects cycles, cross-parent grouping, and nesting beyond three group levels', () => {
+  it('rejects cycles, cross-parent grouping, and nesting beyond the supported group depth', () => {
     let document = grouped()
     expect(builderGroupingIssue(document, ['object-1', 'object-3'])).toMatch(/same group/)
     document = groupBuilderNodes(document, ['group-1', 'object-3'], 'group-2')
     expect(() => reparentBuilderNode(document, 'group-2', 'group-1')).toThrow(/inside itself/)
-    document = addBuilderObject(document, 'sphere')
-    document = groupBuilderNodes(document, ['group-2', 'object-4'], 'group-3')
-    document = addBuilderObject(document, 'sphere')
-    expect(builderGroupingIssue(document, ['group-3', 'object-5'])).toMatch(/three|3 levels/)
+    for (let depth = 3; depth <= BUILDER_LIMITS.groupDepth; depth++) {
+      document = groupBuilderNodes(document, [`group-${depth - 1}`], `group-${depth}`)
+    }
+    expect(builderGroupingIssue(document, [`group-${BUILDER_LIMITS.groupDepth}`])).toContain(`${BUILDER_LIMITS.groupDepth} levels`)
     expect(parseSceneDocument(document)).toEqual(document)
   })
 

@@ -1,4 +1,4 @@
-import type { ChangeEvent, PropsWithChildren, ReactNode } from 'react'
+import type { ChangeEvent, KeyboardEvent, PropsWithChildren, ReactNode } from 'react'
 import type { Vector3Value } from '../sceneEditor'
 import { joinClassNames } from '@shared/lib'
 import { EditorFieldShell, SliderFieldShell, SurfaceCard } from '@shared/ui'
@@ -35,13 +35,13 @@ type NumberFieldProps = {
   onChange: (value: number) => void
   placeholder?: string
   step?: number
+  numericStep?: number | 'any'
   value: number
 }
 
 type SliderFieldProps = NumberFieldProps & {
   formatValue?: (value: number) => string
   numericLabel?: string
-  numericStep?: number | 'any'
   rangeScale?: {
     min: number
     max: number
@@ -94,6 +94,14 @@ function forwardNumericValue(event: ChangeEvent<HTMLInputElement>, onChange: (va
   if (Number.isFinite(nextValue)) {
     onChange(nextValue)
   }
+}
+
+function stepPreciseNumber(event: KeyboardEvent<HTMLInputElement>, value: number, step: number,
+  min: number | undefined, max: number | undefined, onChange: (value: number) => void) {
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+  event.preventDefault()
+  const next = Number((value + (event.key === 'ArrowUp' ? step : -step)).toPrecision(15))
+  onChange(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, next)))
 }
 
 function formatSliderValue(value: number, formatValue?: (value: number) => string) {
@@ -165,6 +173,7 @@ export function NumberField({
   label,
   max,
   min,
+  numericStep,
   onChange,
   placeholder,
   step = 0.01,
@@ -182,7 +191,8 @@ export function NumberField({
         min={min}
         onChange={(event) => forwardNumericValue(event, onChange)}
         placeholder={placeholder}
-        step={step}
+        onKeyDown={numericStep === 'any' ? event => stepPreciseNumber(event, value, step, min, max, onChange) : undefined}
+        step={numericStep ?? step}
         type="number"
         value={Number.isFinite(value) ? value : ''}
       />
@@ -234,12 +244,7 @@ export function SliderField({
         max={max}
         min={min}
         onChange={(event) => forwardNumericValue(event, onChange)}
-        onKeyDown={numericStep === 'any' ? (event) => {
-          if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
-          event.preventDefault()
-          const next = Number((value + (event.key === 'ArrowUp' ? step : -step)).toPrecision(15))
-          onChange(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, next)))
-        } : undefined}
+        onKeyDown={numericStep === 'any' ? event => stepPreciseNumber(event, value, step, min, max, onChange) : undefined}
         step={numericStep ?? step}
         type="number"
         value={Number.isFinite(value) ? value : ''}

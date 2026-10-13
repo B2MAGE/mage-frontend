@@ -214,8 +214,9 @@ describe('template editor state and preview', () => {
     expect(result.current.pendingTemplateImport).toBeNull()
     act(() => result.current.handleRawSceneDataChange(JSON.stringify(imported)))
     act(() => result.current.confirmTemplateImport())
-    expect(result.current.sceneData).toEqual(imported)
-    expect(result.current.isTemplate).toBe(true)
+    expect(result.current.sceneData).toEqual(createBuilderRecipe(imported.templateId, imported.settings, imported.parameters))
+    expect(result.current.isBuilder).toBe(true)
+    expect(result.current.builderTemplateSourceId).toBe(imported.templateId)
     expect(result.current.pendingTemplateImport).toBeNull()
   })
 

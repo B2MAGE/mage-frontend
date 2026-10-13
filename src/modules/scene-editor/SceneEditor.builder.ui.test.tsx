@@ -173,8 +173,10 @@ describe('Scene Builder object editor', () => {
     expect(screen.getByLabelText('Scene Scale numeric value')).toHaveValue(10)
     await user.selectOptions(template, 'embedded-scene-2')
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    await waitFor(() => expect(preview()).toMatchObject({ kind: 'template', templateId: 'embedded-scene-2' }))
-    expect(screen.queryByRole('heading', { name: 'Builder workspace' })).not.toBeInTheDocument()
+    await waitFor(() => expect(preview()).toMatchObject({ kind: 'builder', objects: expect.arrayContaining([
+      expect.objectContaining({ id: 'recipe-2-object-1' }),
+    ]) }))
+    expect(screen.getByRole('heading', { name: 'Builder workspace' })).toBeInTheDocument()
   })
 
   it('converts a template starting point and edits objects without hiding scene-wide controls', async () => {

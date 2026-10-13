@@ -139,7 +139,7 @@ export function updateBuilderObject(
     objects: document.objects.map(object => {
       if (object.id !== objectId) return object
       const next = { ...recipe(structuredClone(object)), id: object.id }
-      if (next.drivers && next.operation.type !== object.operation.type) {
+      if (next.drivers) {
         next.drivers = next.drivers.filter(driver => builderDriverTargetRange(next, driver.target))
       }
       return next

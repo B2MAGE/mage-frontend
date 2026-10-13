@@ -55,7 +55,7 @@ function ancestorCount(document: BuilderSceneDocument, id: string): number {
 }
 
 export function builderGroupingIssue(document: BuilderSceneDocument, ids: readonly string[]): string | null {
-  if (ids.length < 2) return 'Select at least two objects or groups to group together.'
+  if (ids.length < 1) return 'Select an object or group to place in a group.'
   if (new Set(ids).size !== ids.length || ids.some(id => !findBuilderNode(document, id))) return 'Select existing objects or groups.'
   const parent = builderParent(document, ids[0])?.id
   if (ids.some(id => builderParent(document, id)?.id !== parent)) return 'Select items in the same group, or at the scene level.'
@@ -196,7 +196,7 @@ export function updateBuilderGroup(document: BuilderSceneDocument, id: string, r
   const group = builderGroups(document).find(item => item.id === id)
   if (!group) return document
   const next = { ...recipe(structuredClone(group)), id: group.id, children: group.children }
-  if (next.drivers && (group.operation.type !== next.operation.type || Boolean(group.material) !== Boolean(next.material))) {
+  if (next.drivers) {
     next.drivers = next.drivers.filter(driver => builderDriverTargetRange(next, driver.target))
   }
   return replaceNode(document, next)
@@ -204,6 +204,7 @@ export function updateBuilderGroup(document: BuilderSceneDocument, id: string, r
 export function ungroupBuilderNode(document: BuilderSceneDocument, id: string): BuilderSceneDocument {
   const group = builderGroups(document).find(item => item.id === id)
   if (!group) return document
+  if (group.modifiers?.length) throw new Error('Remove this group’s deformation before ungrouping. It applies to the joined surface and cannot be transferred to individual children without changing the result.')
   let next = document
   for (const childId of group.children) {
     const child = findBuilderNode(document, childId)!

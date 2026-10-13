@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBuilderScene } from './builderEditor'
 import { createTemplateScene } from './templateEditor'
+import { groupBuilderNodes, updateBuilderGroup } from './builderGroups'
+import { addNoiseDeformation, addProceduralColor } from './builderProcedural'
 import { parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
 import { createSceneDraftRecovery, parseSceneDraftRecord, SCENE_DRAFT_MAX_CHARACTERS,
   sceneDraftFingerprint, sceneDraftStorageKey, type SceneDraftRecord, type SceneDraftSnapshot } from './sceneDraftRecovery'
@@ -22,6 +24,16 @@ function record(draft: SceneDraftSnapshot, base: SceneDraftSnapshot = snapshot()
 }
 
 describe('current browser draft format', () => {
+  it('recovers exact numeric color, scoped noise, and group deformation', () => {
+    const document = createBuilderScene()
+    let sceneData = groupBuilderNodes(document, [document.objects[0].id], 'group-1')
+    sceneData = updateBuilderGroup(sceneData, 'group-1', group => addProceduralColor(addNoiseDeformation({ ...group,
+      material: { color: { x: .8939736534961771, y: .15343539973164377, z: .2647498251648912 }, metalness: .5, shininess: .3 },
+    }), 'view-ray'))
+    const draft = { ...snapshot(), sceneData, sceneDataText: JSON.stringify(sceneData), selectedBuilderObjectId: 'group-1' }
+    expect(parseSceneDraftRecord(JSON.stringify(record(draft)))?.snapshot).toEqual(draft)
+  })
+
   it('separates accounts, create, and every edit destination', () => {
     const keys = [sceneDraftStorageKey('first', null), sceneDraftStorageKey('second', null),
       sceneDraftStorageKey('first', 1), sceneDraftStorageKey('first', 2),

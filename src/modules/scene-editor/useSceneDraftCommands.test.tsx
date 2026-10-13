@@ -7,6 +7,7 @@ import { createTemplateScene } from './templateEditor'
 import { assertSceneDocumentBudget, BUILDER_LIMITS, createBuilderBinding, parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
 import { groupBuilderNodes, ungroupBuilderNode, updateBuilderGroup } from './builderGroups'
 import { updateBuilderBinding } from './builderBindings'
+import { addNoiseDeformation, addProceduralColor } from './builderProcedural'
 
 vi.mock('@shared/lib', async original => ({ ...await original<typeof import('@shared/lib')>(), fetchAvailableTags: async () => [] }))
 
@@ -17,6 +18,29 @@ async function draft(sceneData = createBuilderScene()) {
 }
 
 describe('scene draft commands and current document round trips', () => {
+  it('keeps precise procedural material and joined deformation through undo, redo, and saved-document round trips', async () => {
+    const { result } = await draft()
+    act(() => result.current.handleGroupBuilderNodes(['object-1']))
+    const before = structuredClone(result.current.builderDocument!)
+    act(() => result.current.handleUpdateBuilderGroup('group-1', group => addProceduralColor(addNoiseDeformation({ ...group,
+      material: { color: { x: .08256470259178794, y: -.782309705948631, z: .763003005740327 }, metalness: .5, shininess: .3 },
+    }), 'view-ray')))
+    const authored = structuredClone(result.current.builderDocument!)
+    expect(authored.composition!.groups[0].drivers).toHaveLength(4)
+    expect(buildSceneSubmissionDocument(result.current.sceneData)).toEqual(authored)
+    act(() => result.current.undoDraft())
+    expect(result.current.builderDocument).toEqual(before)
+    act(() => result.current.redoDraft())
+    expect(result.current.builderDocument).toEqual(authored)
+    act(() => result.current.handleUngroupBuilderNode('group-1'))
+    expect(result.current.builderCommandError).toMatch(/joined surface/)
+    expect(result.current.builderDocument).toEqual(authored)
+    act(() => result.current.handleRawSceneDataChange(JSON.stringify(authored)))
+    act(() => result.current.handleFormatJson())
+    expect(parseSceneDocument(result.current.sceneData)).toEqual(authored)
+    expect(buildSceneSubmissionDocument(result.current.sceneData)).toEqual(authored)
+  })
+
   it.each(['legacy', 'mapped-v1'] as const)('preserves independent responses through %s scene settings, group duplication, deletion, Undo, and export/import', async mode => {
     const { result } = await draft()
     act(() => result.current.handleAddBuilderObject('box'))
