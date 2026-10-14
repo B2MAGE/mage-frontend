@@ -244,24 +244,16 @@ html[data-theme='classic-facebook'] .mage-scene-card.is-active .mage-scene-card_
   --player-inline-bar: #f7f8fb;
   --player-inline-progress: #3b5998;
   --player-inline-track: #c9d2e1;
-  --player-meta-text: #49618d;
   --player-track-summary-hover-text: #29467c;
   --player-feedback-text: #a42d2d;
-  --player-button-text: #3b5998;
-  --player-button-disabled-text: #6076a8;
-  --player-button-disabled-background: #f7f8fb;
   --player-slider-thumb-background: #3b5998;
 }
-:root[data-theme='classic-facebook'] .mage-player__viewport { min-height: 0; }
-:root[data-theme='classic-facebook'] .mage-player__controls { min-height: 58px; border-color: #bcc7d8; }
+:root[data-theme='classic-facebook'] .mage-player__controls { border-color: #bcc7d8; }
 :root[data-theme='classic-facebook'] .mage-player__control-button { border: 1px solid transparent; border-radius: 2px; color: #49618d; transition: color .16s ease, background-color .16s ease, border-color .16s ease; transform: none; }
 :root[data-theme='classic-facebook'] .mage-player__control-button:not(.mage-player__control-button--playback):enabled:hover { border-color: #bcc7d8; background: #e9eff8; color: #29467c; }
 :root[data-theme='classic-facebook'] .mage-player__control-button--playback { border: 1px solid #29467c; border-radius: 2px; background: #3b5998; color: #fff; }
 :root[data-theme='classic-facebook'] .mage-player__control-button--playback:enabled:hover { background: #2d4373; color: #fff; }
-:root[data-theme='classic-facebook'] .mage-player__timeline-slider::-webkit-slider-thumb { background: #3b5998; }
-:root[data-theme='classic-facebook'] .mage-player__timeline-slider::-moz-range-thumb { background: #3b5998; }
 :root[data-theme='classic-facebook'] .mage-player__control-button:focus-visible { outline-color: #5b74a8; }
-:root[data-theme='classic-facebook'] .mage-player__volume-panel { z-index: 3; }
 :root[data-theme='classic-facebook'] .scene-detail-page {
   --watch-stage: #090a0f;
   --watch-shadow: rgba(29,42,68,.1);

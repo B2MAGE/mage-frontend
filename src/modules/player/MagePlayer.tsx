@@ -11,7 +11,6 @@ import {
 import { type MagePlayerPlaylistTrack } from './playlist'
 import { MagePlayerControls, MagePlayerDisabledControls } from './MagePlayerControls'
 import './magePlayer.css'
-import './pulsePlayer.css'
 import {
   audioStatesMatch,
   buildMagePlayerClassName,
@@ -129,6 +128,7 @@ function MagePlayerStatusReporter({
 }
 
 function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
+  const showPlaylistButton = Boolean(props.onRequestPlaylistOpen)
   const defaultPlayback = props.initialPlayback ?? 'playing'
   const playbackIntentRef = useRef<SessionPlaybackIntent>({ playback: defaultPlayback, initialPlayback: defaultPlayback, sceneKey: props.sceneKey })
   const validationError = useMemo(() => {
@@ -205,6 +205,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
       <MagePlayerStatusReporter onChange={props.onPlaybackStatusChange} status={checking ? 'paused' : 'unavailable'} />
       <SceneAvailabilityPanel className={props.className} posterUrl={props.posterUrl}
         audioMode={props.audioMode}
+        showPlaylistButton={showPlaylistButton}
         message={!availability.allowed ? availability.message : sourceError
           ? 'This scene could not be loaded. You can check again.' : canRestoreSource
             ? 'Loading this scene…' : 'This scene is temporarily unavailable.'}
@@ -223,6 +224,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
       />
       <SceneRecoveryPanel
         audioMode={props.audioMode}
+        showPlaylistButton={showPlaylistButton}
         className={props.className}
         posterUrl={props.posterUrl}
         block={block}
@@ -246,7 +248,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
             <div className="mage-player__overlay-copy"><strong>This scene needs changes.</strong><p>{validationError}</p></div>
           </div>
         </div>
-        <MagePlayerDisabledControls audioMode={props.audioMode} />
+        <MagePlayerDisabledControls audioMode={props.audioMode} showPlaylistButton={showPlaylistButton} />
       </section>
     </>
   }

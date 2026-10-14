@@ -1,0 +1,177 @@
+/* Shared editor controls. Section rules own layout; themes own the palette. */
+html[data-theme] .scene-editor-page input:where(:not([type='range']):not([type='checkbox']):not([type='color'])),
+html[data-theme] .scene-editor-page textarea {
+  width: 100%;
+  min-height: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--studio-border-strong);
+  border-radius: var(--studio-input-radius, 9px);
+  outline: 0;
+  box-shadow: none;
+  background-color: var(--studio-field);
+  color: var(--studio-text);
+  font-size: 16px;
+  font-family: inherit;
+  appearance: var(--studio-input-appearance, auto);
+}
+
+html[data-theme] .scene-editor-page :is(
+  input:where(:not([type='range']):not([type='checkbox']):not([type='color']):not(.builder-color-control__value)),
+  textarea,
+  select.mage-select,
+  .scene-color-field,
+  .builder-color-control
+) {
+  border-color: var(--studio-border-strong);
+  background-color: var(--studio-input-background, var(--studio-field));
+  transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+
+/* Scene's brighter inputs are a surface choice, not separate interaction rules. */
+html[data-theme] .scene-editor-page .scene-editor-section[data-section='Scene'] :is(
+  select.mage-select, .scene-text-input, .scene-number-input, .scene-slider__number, .scene-textarea
+) { --studio-input-background: var(--studio-control); }
+
+html[data-theme] .scene-editor-page :is(
+  input:where(:not([type='range']):not([type='checkbox']):not([type='color']):not(.builder-color-control__value)),
+  textarea,
+  select.mage-select,
+  .scene-color-field,
+  .builder-color-control
+):not(:disabled):not([aria-invalid='true']):where(:not(:focus-within)):hover {
+  border-color: var(--studio-accent-border);
+  background-color: var(--studio-control-hover);
+}
+
+html[data-theme] .scene-editor-page :is(
+  input:where(:not([type='range']):not([type='checkbox']):not([type='color']):not(.builder-color-control__value)),
+  textarea,
+  select.mage-select
+):not(:disabled):not([aria-invalid='true']):focus,
+html[data-theme] .scene-editor-page :is(.scene-color-field, .builder-color-control):focus-within {
+  border-color: var(--studio-focus-outline);
+  background-color: var(--studio-input-background, var(--studio-field));
+  outline: 0;
+  box-shadow: 0 0 0 1px var(--studio-focus-ring);
+}
+
+html[data-theme] .scene-editor-page :is(input, textarea)::placeholder { color: var(--studio-placeholder); }
+html[data-theme] .scene-editor-page :is(input, textarea, select.mage-select)[aria-invalid='true'] {
+  border-color: var(--studio-error);
+  box-shadow: none;
+}
+html[data-theme] .scene-editor-page :is(input, textarea, select.mage-select)[aria-invalid='true']:not(:disabled):focus {
+  border-color: var(--studio-error);
+  box-shadow: 0 0 0 3px var(--studio-error-ring);
+}
+html[data-theme] .scene-editor-page :is(input, textarea, select.mage-select):disabled {
+  cursor: not-allowed;
+  color: var(--studio-subtle);
+  -webkit-text-fill-color: var(--studio-subtle);
+}
+html[data-theme] .scene-editor-page select.mage-select:disabled { opacity: 1; }
+
+html[data-theme] .scene-editor-page textarea {
+  height: auto;
+  min-height: 116px;
+  padding: 11px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+html[data-theme] .scene-editor-page #description { height: 116px; }
+
+.scene-editor-collapsible { display: grid; gap: 0; justify-items: stretch; }
+.scene-editor-collapsible__content { display: grid; gap: 16px; width: 100%; }
+
+html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle {
+  appearance: none;
+  justify-self: stretch;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  height: var(--scene-collapsible-row-height, 42px);
+  min-height: var(--scene-collapsible-row-height, 42px);
+  padding: 0 var(--scene-collapsible-inline-padding, 15px);
+  border: 0;
+  border-radius: 0;
+  background: var(--scene-disclosure-background, rgba(255,255,255,.008));
+  color: var(--studio-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+html[data-theme] .scene-editor-page :is(
+  .scene-editor-collapsible__toggle,
+  .scene-confirm-section__head,
+  .scene-confirm-subtoggle,
+  .builder-control-stage__toggle,
+  .builder-inspector-section > summary,
+  .builder-expression-node > summary
+) { transition: background-color .16s ease, color .16s ease; }
+
+html[data-theme] .scene-editor-page :is(
+  .scene-editor-collapsible__toggle,
+  .scene-confirm-section__head,
+  .scene-confirm-subtoggle,
+  .builder-inspector-section > summary,
+  .builder-expression-node > summary
+):not(:disabled):hover {
+  background: var(--scene-disclosure-hover-background, var(--studio-row-hover));
+  color: var(--studio-text);
+}
+
+html[data-theme] .scene-editor-page :is(
+  .scene-editor-collapsible__toggle,
+  .scene-confirm-section__head,
+  .scene-confirm-subtoggle,
+  .builder-control-stage__toggle,
+  .builder-inspector-section > summary,
+  .builder-expression-node > summary
+):focus-visible {
+  outline: 2px solid var(--studio-focus-outline);
+  outline-offset: -2px;
+}
+
+html[data-theme] .scene-editor-page :is(
+  .scene-editor-collapsible__toggle,
+  .scene-confirm-section__head,
+  .scene-confirm-subtoggle,
+  .builder-control-stage__toggle
+):disabled { opacity: .55; cursor: default; }
+
+html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle::after,
+html[data-theme] .scene-editor-page .scene-confirm-section__chevron,
+html[data-theme] .scene-editor-page .builder-inspector-section__chevron,
+html[data-theme] .scene-editor-page .builder-control-stage__chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .16s ease;
+}
+
+html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle::after {
+  content: '';
+  flex: 0 0 7px;
+  align-self: center;
+  margin-right: 3px;
+}
+html[data-theme] .scene-editor-page .scene-editor-collapsible__toggle[aria-expanded='true']::after {
+  transform: rotate(225deg) translate(-2px, -1px);
+}
+html[data-theme] .scene-editor-page .scene-confirm-section__chevron { color: var(--studio-subtle); }
+html[data-theme] .scene-editor-page .builder-inspector-section__chevron,
+html[data-theme] .scene-editor-page .builder-control-stage__chevron { color: var(--studio-muted); }
+html[data-theme] .scene-editor-page .scene-confirm-section[data-open='true'] .scene-confirm-section__chevron,
+html[data-theme] .scene-editor-page .builder-inspector-section[open] .builder-inspector-section__chevron,
+html[data-theme] .scene-editor-page .builder-control-stage.is-open .builder-control-stage__chevron {
+  transform: rotate(225deg) translate(-1px, -1px);
+}

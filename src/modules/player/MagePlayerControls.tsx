@@ -220,8 +220,9 @@ const DISABLED_AUDIO_STATE: MagePlayerAudioState = {
 
 const ignoreDisabledControl = () => undefined
 
-export function MagePlayerDisabledControls({ audioMode = 'playlist' }: {
+export function MagePlayerDisabledControls({ audioMode = 'playlist', showPlaylistButton = false }: {
   audioMode?: 'single' | 'playlist'
+  showPlaylistButton?: boolean
 }) {
   const volumeControlRef = useRef<HTMLDivElement>(null)
 
@@ -243,7 +244,7 @@ export function MagePlayerDisabledControls({ audioMode = 'playlist' }: {
     onVolumeChange={ignoreDisabledControl}
     onPauseAllScenes={ignoreDisabledControl}
     playbackState="paused"
-    showPlaylistButton={false}
+    showPlaylistButton={showPlaylistButton}
     tracksCount={0}
     volumeControlRef={volumeControlRef}
   />

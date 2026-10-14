@@ -2,13 +2,14 @@ import { useId } from 'react'
 import { buildMagePlayerClassName } from '../magePlayerUtils'
 import { MagePlayerDisabledControls } from '../MagePlayerControls'
 
-export function SceneAvailabilityPanel({ className, posterUrl, message, checking = false, onCheck, audioMode }: {
+export function SceneAvailabilityPanel({ className, posterUrl, message, checking = false, onCheck, audioMode, showPlaylistButton }: {
   className?: string
   posterUrl?: string | null
   message: string
   checking?: boolean
   onCheck?: () => void
   audioMode?: 'single' | 'playlist'
+  showPlaylistButton?: boolean
 }) {
   const titleId = useId(), messageId = useId()
   return <section className={buildMagePlayerClassName('mage-player', className)} data-state="unavailable" aria-labelledby={titleId} aria-describedby={messageId}>
@@ -24,6 +25,6 @@ export function SceneAvailabilityPanel({ className, posterUrl, message, checking
         </div> : null}
       </div>
     </div>
-    <MagePlayerDisabledControls audioMode={audioMode} />
+    <MagePlayerDisabledControls audioMode={audioMode} showPlaylistButton={showPlaylistButton} />
   </section>
 }

@@ -56,8 +56,6 @@ html[data-theme] .scene-detail-page {
   & .mage-player-shell { width: 100%; overflow: hidden; border-color: var(--ui-border); border-radius: 20px; background: var(--watch-stage); box-shadow: 0 24px 70px var(--watch-shadow); }
   & .scene-detail-stage { aspect-ratio: auto; min-height: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   & .scene-detail-stage::after { display: none; }
-  & .scene-detail-player { width: 100%; height: auto; gap: 0; }
-  & .scene-detail-stage .mage-player:not(:fullscreen) .mage-player__viewport { height: auto; min-height: 0; aspect-ratio: 16 / 9; border-radius: 0; }
   & .scene-detail-header { display: block; padding: 24px 2px 0; }
   & .mage-watch__title { max-width: 100%; margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.05; letter-spacing: -.035em; overflow-wrap: anywhere; text-wrap: balance; }
   & .scene-detail-social-row { display: flex; flex-direction: row; justify-content: space-between; margin-top: 22px; padding: 0 2px 22px; align-items: center; gap: 18px; flex-wrap: wrap; border-color: var(--ui-border); }

@@ -12,6 +12,7 @@ type Props = {
   onRetry: () => void
   onSafeModeChange: (enabled: boolean) => void
   audioMode?: 'single' | 'playlist'
+  showPlaylistButton?: boolean
 }
 
 const recoveryMessages: Record<RecoveryReason, string> = {
@@ -31,7 +32,7 @@ const recoveryMessages: Record<RecoveryReason, string> = {
   interrupted: 'Playback was interrupted. You can retry the scene.',
 }
 
-export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRetry, onSafeModeChange, audioMode }: Props) {
+export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRetry, onSafeModeChange, audioMode, showPlaylistButton }: Props) {
   const messageId = useId()
   const stopped = block?.reason === 'stopped'
   const message = safeMode ? 'All scenes and previews on this page are paused. Turn off Pause all scenes to resume playback.'
@@ -54,6 +55,6 @@ export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRe
         </div>
       </div>
     </div>
-    <MagePlayerDisabledControls audioMode={audioMode} />
+    <MagePlayerDisabledControls audioMode={audioMode} showPlaylistButton={showPlaylistButton} />
   </section>
 }
