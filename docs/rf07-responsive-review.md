@@ -2,7 +2,9 @@
 
 Issue: [frontend #304](https://github.com/B2MAGE/mage-frontend/issues/304).
 Branch: `codex/rf07-shared-responsive-styling`, based on `dad0b0e`.
-Local verification: October 14, 2026. Awaiting owner review; not merged or deployed.
+Local verification: October 14, 2026. The owner approved merging and deployment
+after local review. Production release evidence is recorded in issue #304;
+the checks below describe the local implementation.
 
 ## Shared ownership
 
