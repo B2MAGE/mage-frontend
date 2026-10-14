@@ -15,17 +15,56 @@
 :root[data-theme='classic-facebook'] .primary-button:hover { background: #49679f; color: #fff; }
 :root[data-theme='classic-facebook'] .secondary-button { border-color: var(--border-strong); background: var(--surface-soft); color: var(--accent); }
 :root[data-theme='classic-facebook'] .secondary-button:hover { border-color: #6d84b4; background: var(--surface-hover); color: #29447e; }
+/* Select presentation is shared by the editor and other forms. */
 :root[data-theme='classic-facebook'] .mage-select {
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
-  background-color: var(--surface);
-  color: var(--text);
   box-shadow: none;
   font-size: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text);
+  min-height: 42px;
+  padding-right: 44px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #5b74a8 50%),
+    linear-gradient(135deg, #5b74a8 50%, transparent 50%),
+    linear-gradient(#ffffff, #ffffff);
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 12px) calc(50% - 1px),
+    0 0;
+  background-size:
+    6px 6px,
+    6px 6px,
+    100% 100%;
+  background-repeat: no-repeat;
+  background-color: var(--surface);
 }
-:root[data-theme='classic-facebook'] .mage-select:hover { border-color: #6d84b4; }
-:root[data-theme='classic-facebook'] .mage-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-:root[data-theme='classic-facebook'] .mage-select option { background: var(--surface); color: var(--text); }
+
+:root[data-theme='classic-facebook'] .mage-select::-ms-expand {
+  display: none;
+}
+
+:root[data-theme='classic-facebook'] .mage-select option {
+  color: var(--text);
+  background: var(--surface);
+}
+
+:root[data-theme='classic-facebook'] .mage-select:hover:where(:not(:disabled)) {
+  border-color: #6d84b4;
+}
+
+:root[data-theme='classic-facebook'] .mage-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+:root[data-theme='classic-facebook'] .mage-select::placeholder {
+  color: #5f6f88;
+}
+
 :root[data-theme='classic-facebook'] .tag-pill { min-height: 30px; padding: 5px 10px; font-size: 11px; font-weight: 700; text-decoration: none; }
 :root[data-theme='classic-facebook'] .tag-filter-scroller__arrow { border-color: var(--border-strong); background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px #1d2a4420; }
 :root[data-theme='classic-facebook'] .tag-filter-scroller__arrow:hover { border-color: var(--accent); background: var(--surface-hover); color: #29447e; }

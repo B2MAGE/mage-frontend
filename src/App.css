@@ -759,26 +759,6 @@
   pointer-events: none;
 }
 
-.scene-detail-player,
-.scene-detail-player.mage-player {
-  width: 100%;
-  height: 100%;
-}
-
-.scene-detail-stage .mage-player__viewport {
-  height: 100%;
-  min-height: 0;
-  aspect-ratio: auto;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  box-shadow: none;
-}
-
-.scene-detail-stage .mage-player__viewport::after {
-  display: none;
-}
-
 .scene-detail-stage .mage-player__overlay {
   border-radius: inherit;
 }
@@ -1875,44 +1855,6 @@
   gap: 18px;
 }
 
-.scene-editor-collapsible {
-  display: grid;
-  gap: 14px;
-  justify-items: center;
-}
-
-.scene-editor-collapsible__toggle {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: fit-content;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: var(--editor-button-radius);
-  border: 1px solid var(--editor-button-border);
-  background: var(--editor-button-background);
-  color: var(--editor-button-text);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
-  text-align: center;
-  cursor: pointer;
-  justify-self: center;
-}
-
-.scene-editor-collapsible__toggle:hover {
-  border-color: var(--editor-button-hover-border);
-  background: var(--editor-button-hover-background);
-  color: var(--editor-button-hover-text);
-}
-
-.scene-editor-collapsible__content {
-  display: grid;
-  gap: 16px;
-  width: 100%;
-}
-
 .scene-editor-section__header h2,
 .scene-editor-preview__header h2 {
   margin: 0;
@@ -2681,15 +2623,6 @@
 .scene-editor-preview__header {
   display: grid;
   gap: 6px;
-}
-
-.scene-editor-preview__player,
-.scene-editor-preview__player.mage-player {
-  width: 100%;
-}
-
-.scene-editor-preview__player .mage-player__viewport {
-  min-height: 360px;
 }
 
 @media (max-width: 1080px) {

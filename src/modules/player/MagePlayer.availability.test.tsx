@@ -73,6 +73,41 @@ afterEach(() => {
 })
 
 describe('MagePlayer live availability', () => {
+  it.each([
+    { audioMode: 'playlist', hasPlaylistAction: true, showsPlaylist: true },
+    { audioMode: 'playlist', hasPlaylistAction: false, showsPlaylist: false },
+    { audioMode: 'single', hasPlaylistAction: true, showsPlaylist: false },
+  ] as const)('preserves the playlist affordance across stopped and unavailable states ($audioMode, action=$hasPlaylistAction)', async ({ audioMode, hasPlaylistAction, showsPlaylist }) => {
+    const scene = buildMagePlayerSceneBlob()
+    remember(scene, 936)
+    permission(936, allowed)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(buildMagePlayerController())
+    const onRequestPlaylistOpen = vi.fn()
+    render(<MagePlayer sceneBlob={scene} sceneKey={936} audioMode={audioMode}
+      onRequestPlaylistOpen={hasPlaylistAction ? onRequestPlaylistOpen : undefined} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause scene and audio playback' })).toBeEnabled())
+
+    const playlistButton = () => screen.queryByRole('button', { name: 'Open playlist' })
+    if (showsPlaylist) expect(playlistButton()).toBeEnabled()
+    else expect(playlistButton()).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Playback options' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop this scene' }))
+    expect(screen.getByText('Playback paused')).toBeInTheDocument()
+    if (showsPlaylist) {
+      expect(playlistButton()).toBeDisabled()
+      fireEvent.click(playlistButton()!)
+    } else expect(playlistButton()).not.toBeInTheDocument()
+
+    permission(936, disabled)
+    expect(screen.getByText('Playback unavailable')).toBeInTheDocument()
+    if (showsPlaylist) {
+      expect(playlistButton()).toBeDisabled()
+      fireEvent.click(playlistButton()!)
+    } else expect(playlistButton()).not.toBeInTheDocument()
+    expect(onRequestPlaylistOpen).not.toHaveBeenCalled()
+  })
+
   it.each(['permission-check', 'compilation'] as const)('keeps Stop available while disabling playback during %s and preserves playback intent', async pendingReason => {
     const scene = buildMagePlayerSceneBlob()
     const controller = buildMagePlayerController()
