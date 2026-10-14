@@ -41,11 +41,15 @@ deduplicates object IDs during validation. Names are inert display labels, up to
 binding semantics. Only version 1 is accepted for writes/import. Unknown
 versions, operations and fields are rejected with the offending field path.
 There is no best-effort conversion, version downgrade, or custom-source fallback.
-Changing a default or operation meaning requires a new builder version and an
-explicit tested migration. No migration is performed by SB-01. Existing
-template IDs/versions, custom envelopes and stored legacy scenes are unchanged.
-Unrecognized stored data remains available through the existing owner repair
-export rather than being rewritten merely by reading it.
+Future format or meaning changes require an explicit contract decision and
+coordinated consumer updates; they do not require a historical migration or
+version-negotiation framework. Historical raw documents, retired templates and
+documents rejected by the current schema return `409 SCENE_DOCUMENT_UNSUPPORTED`
+without source from the owner repair endpoint. Reads never convert or rewrite
+stored data. Owner repair/export remains available for supported current
+documents, including scenes blocked from playback by operator controls.
+Original (`legacy`) and Selective (`mapped-v1`) music response are both supported
+current choices; the Original wire identifier does not make it a retired format.
 
 Accepted documents are copied and normalized once, filling only published
 defaults. Revalidating a normalized document produces identical data. Storage,

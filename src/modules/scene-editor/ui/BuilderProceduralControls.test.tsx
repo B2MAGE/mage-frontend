@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { parseSceneDocument, type BuilderSceneDocument } from '@modules/player'
+import { parseSceneDocument, type BuilderObject, type BuilderSceneDocument } from '@modules/player'
 import { createBuilderScene, updateBuilderObject } from '../builderEditor'
 import { groupBuilderNodes, updateBuilderGroup } from '../builderGroups'
 import { BuilderSceneControls } from './BuilderSceneControls'
@@ -25,6 +25,21 @@ function setup(initial: BuilderSceneDocument, selected = initial.objects[0].id) 
 const section = (name: string) => screen.getByRole('heading', { name, hidden: true }).closest('summary')!
 
 describe('Builder deformation and material controls', () => {
+  it.each<{ operation: BuilderObject['operation']; summary: string }>([
+    { operation: { type: 'sphere', radius: .75 }, summary: 'Radius 0.75' },
+    { operation: { type: 'box', width: 1, height: 2, depth: 3 }, summary: '1 × 2 × 3' },
+    { operation: { type: 'torus', radius: .75, tube: .2 }, summary: 'Radius 0.75 · Tube 0.2' },
+    { operation: { type: 'cylinder', radius: .75, height: 2 }, summary: 'Radius 0.75 · Height 2' },
+    { operation: { type: 'box-frame', width: 1, height: 2, depth: 3, thickness: .12 }, summary: '1 × 2 × 3 · Edge 0.12' },
+    { operation: { type: 'lattice', iterations: 2.5, spacing: .75, thickness: .00625 }, summary: '2.5 repetitions · Spacing 0.75 · Rod 0.00625' },
+  ])('preserves the compact $operation.type size summary from shared field metadata', ({ operation, summary }) => {
+    const initial = createBuilderScene()
+    initial.objects[0].operation = operation
+    const { changed } = setup(initial)
+    expect(section('Size').querySelector('.builder-inspector-section__status')).toHaveTextContent(summary)
+    expect(changed).not.toHaveBeenCalled()
+  })
+
   it('opens precise color controls without rewriting and edits one channel without rounding its siblings', async () => {
     const initial = createBuilderScene()
     const color = { x: .08256470259178794, y: .782309705948631, z: .763003005740327 }

@@ -133,8 +133,13 @@ and custom documents, including exact normalized output, defaults, mapped audio,
 ordered modifiers and nested arrangements. Both repositories consume these
 fixtures independently. Structural validity in `fixtures.json` does not imply
 write validity: an empty custom shader is one example of the difference.
+The third corpus, `builder-catalog.v1.fixtures.json`, contains the editable
+catalog recipes for independent frontend compilation and backend persistence
+checks.
 
 From the frontend checkout, run `npm run contracts:check -- <backend-checkout>`
-to compare the six shared schema, policy, catalog and fixture files without
+to compare the seven shared schema, policy, catalog and fixture files without
 modifying either repository. See [current scene definitions](../../docs/scene-foundations.md)
-for ownership, a Box-field walkthrough and the supported-operation workflow.
+for ownership, a Box-field walkthrough and the supported-operation workflow,
+and the [contract change and release checklist](../../docs/scene-foundations.md#contract-change-and-release-checklist)
+for coordinating the API, editor and isolated renderer.

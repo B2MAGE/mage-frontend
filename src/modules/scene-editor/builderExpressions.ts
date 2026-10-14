@@ -1,16 +1,14 @@
 import type { BuilderDriverExpression } from '@modules/player'
-import { DRIVER_SOURCES } from './builderDrivers'
+import { SCALAR_INPUTS, VECTOR_INPUTS } from './builderInputDefinitions'
+
+export { SCALAR_INPUTS, VECTOR_INPUTS } from './builderInputDefinitions'
 
 export type Expression = BuilderDriverExpression
 export type ExpressionValueType = 'scalar' | 'vector'
-export const VECTOR_INPUTS = [
-  { value: 'scene-pointer', label: 'Scene pointer (XYZ)' },
-  { value: 'local-position', label: 'Local position (XYZ)' },
-  { value: 'group-position', label: 'Parent group position (XYZ)' },
-  { value: 'world-position', label: 'World position (XYZ)' },
-  { value: 'view-ray', label: 'View ray (XYZ)' },
-] as const
-export const SCALAR_INPUTS = DRIVER_SOURCES.filter(source => !source.value.includes('.'))
+export const EXPRESSION_OPERATION_LABELS = {
+  constant: 'Fixed value', input: 'Input', add: 'Add two values', multiply: 'Multiply two values',
+  sin: 'Sine wave', cos: 'Cosine wave', clamp: 'Limit range', component: 'Take X, Y or Z', noise: '3D noise',
+} satisfies Record<Expression['type'], string>
 
 /** Structural typing also works while a numeric range is temporarily invalid. */
 export function expressionValueType(expression: Expression): ExpressionValueType {

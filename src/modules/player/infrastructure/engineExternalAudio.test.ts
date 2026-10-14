@@ -6,7 +6,7 @@ type Harness = Record<string, any> // eslint-disable-line @typescript-eslint/no-
 type Method = (this: Harness, ...args: unknown[]) => unknown
 const engineClass = engineSource.slice(engineSource.indexOf('var MAGEEngine = class MAGEEngine {'))
 
-// Exercise the installed patch without creating a WebGL context in jsdom.
+// Exercise the installed package without creating a WebGL context in jsdom.
 function method(name: string): Method {
   const publicStart = engineClass.indexOf(`\n\t${name}(`)
   const start = publicStart >= 0 ? publicStart : engineClass.indexOf(`\n\t#${name}(`)
@@ -29,7 +29,7 @@ function sample(time = 2, sequence = 1) {
 function fixture() {
   const engine: Harness = {
     externalAudio: null, externalAudioFrames: [], externalAudioLastFrame: null,
-    externalAudioReceivedAt: 0, externalTransientEnvelope: 0,
+    externalAudioReceivedAt: 0,
     externalClock: null, externalClockReceivedAt: 0,
     clock: { reset: vi.fn(), update: vi.fn(), getDelta: () => 1 / 60 },
     audioMapper: new AudioResponseMapper({ version: 1, mappings: [{ target: 'size', source: 'bass-hit', amount: 1, attack: 0, release: 0.1 }] }),
@@ -39,9 +39,8 @@ function fixture() {
     syntheticPreviewSeed: 0, syntheticPreviewTempoScale: 1, syntheticPreviewTime: 0,
     state: { time: 1, size: 0, currAudio: 0, minimizing_factor: 0.8, power_factor: 8, base_speed: 0.12, easing_speed: 0.95, volume_multiplier: 0 },
     audio: null, reversedAudio: null, audioAnalyser: null, isRunning: true, animationFrameId: null,
-    _disconnectTransientAnalyser: vi.fn(),
   }
-  for (const name of ['setExternalAudioFrame', '_externalAudioSnapshot', '_sampleExternalTransientAudio',
+  for (const name of ['setExternalAudioFrame', '_externalAudioSnapshot',
     '_sampleMappedAudio', '_syncAudioAnalysis', '_resetAudioAnalysis', 'getAudioAnalysis',
     'setExternalClock', '_updateExternalClock']) engine[name] = method(name)
   return engine
@@ -141,7 +140,7 @@ describe('installed external audio bridge API', () => {
     expect(engine.externalAudioLastFrame).toBeNull()
   })
 
-  it('retains the legacy response calculation using the parent frequency magnitude', () => {
+  it('retains the Original response calculation using the parent frequency magnitude', () => {
     vi.spyOn(performance, 'now').mockReturnValue(1000)
     const engine = fixture()
     engine.audioResponseMode = 'legacy'
@@ -154,18 +153,6 @@ describe('installed external audio bridge API', () => {
     expect(state.currAudio).toBeCloseTo(expected)
     expect(state.size).toBeCloseTo((1 - state.easing_speed) * expected)
     expect(engine.syntheticPreviewTime).toBe(0)
-  })
-
-  it('consumes each supplied transient hit once, then releases its envelope', () => {
-    vi.spyOn(performance, 'now').mockReturnValue(1000)
-    const engine = fixture()
-    engine.audioResponseMode = 'transient-v1'
-    engine.setExternalAudioFrame(sample())
-    renderAudio.call(engine, 1 / 60)
-    expect(engine.state.currAudio).toBe(0.8)
-    engine.setExternalAudioFrame(sample())
-    renderAudio.call(engine, 1 / 60)
-    expect(engine.state.currAudio).toBeCloseTo(0.8 * Math.exp(-1 / 60 / 0.16))
   })
 
   it('does not restart a renderer-owned audio source when host playback resumes', () => {

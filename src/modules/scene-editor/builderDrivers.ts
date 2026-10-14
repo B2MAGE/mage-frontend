@@ -1,6 +1,9 @@
 import { BUILDER_BINDING_RANGES, BUILDER_DRIVER_LIMITS, BUILDER_GROUP_RANGES, builderOperationFields, builderDriverTargetRange,
   type BuilderDriver, type BuilderDriverExpression, type BuilderDriverTarget, type BuilderGroup, type BuilderObject } from '@modules/player'
-import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from './builderBindings'
+import { BUILDER_BINDING_TARGET_LABELS } from './builderBindings'
+import { DRIVER_SOURCES } from './builderInputDefinitions'
+
+export { DRIVER_SOURCES } from './builderInputDefinitions'
 
 export type DriverPreset = 'pulse' | 'wobble' | 'spin' | 'follow'
 export type DriverPresetValues = {
@@ -21,17 +24,6 @@ export const DRIVER_PRESETS = [
   { value: 'pulse', label: 'Pulse' }, { value: 'wobble', label: 'Wobble' },
   { value: 'spin', label: 'Spin' }, { value: 'follow', label: 'Follow input' },
 ] as const
-export const DRIVER_SOURCES = [
-  { value: 'time', label: 'Time' },
-  { value: 'scene-size', label: 'Scene size response' },
-  { value: 'scene-pointer-down', label: 'Scene pointer press' },
-  { value: 'scene-pointer.x', label: 'Scene pointer horizontal' },
-  { value: 'scene-pointer.y', label: 'Scene pointer vertical' },
-  ...Object.entries(BUILDER_BINDING_SOURCE_LABELS).map(([value, label]) => ({ value, label })),
-  ...(['local-position', 'group-position', 'world-position', 'view-ray'] as const).flatMap(source =>
-    (['x', 'y', 'z'] as const).map(axis => ({ value: `${source}.${axis}`,
-      label: `${{ 'local-position': 'Local position', 'group-position': 'Parent group position', 'world-position': 'World position', 'view-ray': 'View ray' }[source]} ${axis.toUpperCase()}` }))),
-]
 const constant = (value: number): BuilderDriverExpression => ({ type: 'constant', value })
 const multiply = (left: BuilderDriverExpression, right: BuilderDriverExpression): BuilderDriverExpression => ({ type: 'multiply', left, right })
 const add = (left: BuilderDriverExpression, right: BuilderDriverExpression): BuilderDriverExpression => ({ type: 'add', left, right })

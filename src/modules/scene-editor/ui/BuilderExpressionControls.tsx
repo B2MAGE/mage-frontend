@@ -1,16 +1,10 @@
 import { useState } from 'react'
 import { BUILDER_DRIVER_LIMITS, BUILDER_LIMITS } from '@modules/player'
 import { changeExpressionOperation, expressionBudget, expressionConstant, expressionSummary, expressionValueType,
-  SCALAR_INPUTS, VECTOR_INPUTS, type Expression } from '../builderExpressions'
+  EXPRESSION_OPERATION_LABELS, SCALAR_INPUTS, VECTOR_INPUTS, type Expression } from '../builderExpressions'
 import { NumberField, SelectField } from './SceneEditorControls'
 
-const operations = [
-  { value: 'constant', label: 'Fixed value' }, { value: 'input', label: 'Input' },
-  { value: 'add', label: 'Add two values' }, { value: 'multiply', label: 'Multiply two values' },
-  { value: 'sin', label: 'Sine wave' }, { value: 'cos', label: 'Cosine wave' },
-  { value: 'clamp', label: 'Limit range' }, { value: 'component', label: 'Take X, Y or Z' },
-  { value: 'noise', label: '3D noise' },
-]
+const operations = Object.entries(EXPRESSION_OPERATION_LABELS).map(([value, label]) => ({ value, label }))
 const bound = BUILDER_DRIVER_LIMITS.constantMagnitude
 type Props = { id: string; value: Expression; onChange: (value: Expression) => void }
 
