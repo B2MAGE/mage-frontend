@@ -1,7 +1,11 @@
 # RF-08 development checks cleanup
 
 Issue: [frontend #305](https://github.com/B2MAGE/mage-frontend/issues/305).
-Local verification: October 14, 2026. Not merged or deployed.
+Local verification: October 14, 2026. The owner subsequently approved merge and
+deployment. Implementation merged through [frontend PR #325](https://github.com/B2MAGE/mage-frontend/pull/325)
+at `295132a` and [backend PR #174](https://github.com/B2MAGE/mage-backend/pull/174)
+at `ef438ed`. Issue #305 records production deployment and retirement evidence;
+the checks below describe the preceding local verification.
 
 ## Changes
 
@@ -41,9 +45,9 @@ this change does not update dependency versions. No fresh mobile/browser renderi
 matrix or production deployment is claimed. The running backend was not rebuilt;
 its default-origin change takes effect on the next normal build/start.
 
-## Release follow-up
+## Release checklist
 
-Keep #305 open until owner review and release. Remove the old `mage-player-check`
+Record completion in #305 after live verification. Remove the old `mage-player-check`
 public route, stop its container and disable its automatic deployments as described
 in [deployment retirement](test-tools-cleanup.md#deployment-retirement). The main
 app retains the small 410 route exclusions; no replacement service is required.
