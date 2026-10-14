@@ -8,13 +8,14 @@ import {
 } from '@notrac/mage/audio-response'
 
 describe('versioned audio response configuration', () => {
-  it('keeps existing and absent modes compatible, with explicit opt-in for mapped response', () => {
+  it('supports Original and Selective, with Original as the absent-mode default', () => {
     expect(normalizeAudioResponseMode('legacy')).toBe('legacy')
-    expect(normalizeAudioResponseMode('transient-v1')).toBe('transient-v1')
     expect(normalizeAudioResponseMode('mapped-v1')).toBe('mapped-v1')
-    for (const value of [undefined, null, '', 'future-v2', {}, 1]) {
-      expect(normalizeAudioResponseMode(value)).toBe('legacy')
-    }
+    expect(normalizeAudioResponseMode(undefined)).toBe('legacy')
+  })
+
+  it.each([null, '', 'transient-v1', 'future-v2', {}, 1])('rejects unsupported mode %j instead of silently changing it', value => {
+    expect(() => normalizeAudioResponseMode(value)).toThrow(/unsupported/i)
   })
 
   it('returns fresh complete defaults for absent or unsupported configuration', () => {

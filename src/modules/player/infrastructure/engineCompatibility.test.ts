@@ -130,7 +130,7 @@ describe('installed MAGE engine compatibility', () => {
     expectTypeOf<MAGEEngineAPI['unloadAudio']>().toEqualTypeOf<() => void>()
     expectTypeOf<MAGEEngineAPI['getAudioVolume']>().toEqualTypeOf<() => number>()
     expectTypeOf<MAGEEngineAPI['setAudioVolume']>().toEqualTypeOf<(volume: number) => number>()
-    expectTypeOf<MAGEEngineAPI['setAudioResponseMode']>().toEqualTypeOf<(mode?: 'legacy' | 'transient-v1' | 'mapped-v1') => void>()
+    expectTypeOf<MAGEEngineAPI['setAudioResponseMode']>().toEqualTypeOf<(mode?: 'legacy' | 'mapped-v1') => void>()
     expectTypeOf<MAGEEngineAPI['setSyntheticPreview']>().toEqualTypeOf<(enabled: boolean, seed?: number, tempoScale?: number) => void>()
     expectTypeOf<MAGEConfig['pixelRatio']>().toEqualTypeOf<number | undefined>()
   })
@@ -292,7 +292,8 @@ describe('installed MAGE engine compatibility', () => {
     const getActiveShader = vi.fn(() => shader)
     const engine = {
       visualizer: { getActiveShader, skyboxPreset: 6, scale: 1.25 },
-      audioResponseMode: 'transient-v1',
+      audioResponseMode: 'mapped-v1',
+      getAudioResponseConfig: () => ({ version: 1, mappings: [] }),
       state: { time: 3, size: 0.2 },
       controls: null,
       camera: { fov: 50 },
@@ -301,7 +302,8 @@ describe('installed MAGE engine compatibility', () => {
     }
 
     expect(engineMethod('toPreset', { MAGE_VERSION: 'test' }).call(engine)).toMatchObject({
-      audioResponse: 'transient-v1',
+      audioResponse: 'mapped-v1',
+      audioResponseConfig: { version: 1, mappings: [] },
       visualizer: { shader, skyboxPreset: 6, scale: 1.25 },
       state: { time: 3, size: 0.2 },
       fx: { passes: { bleachBypass: true, toon: true } },
