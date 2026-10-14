@@ -28,6 +28,8 @@ type OperationPresentation<T extends BuilderShape> = {
     key: Exclude<keyof Extract<BuilderOperation, { type: T }>, 'type'>
     title: string
     summaryLabel: string
+    compactLabel?: string
+    compactStyle?: 'dimension' | 'suffix'
     description: string
     animatable?: boolean
   }[]
@@ -39,9 +41,9 @@ export const BUILDER_OPERATIONS = {
     { key: 'radius', title: 'Radius', summaryLabel: 'Radius', description: 'Set the distance from the center to the surface.' },
   ] },
   box: { label: 'Box', glyph: '□', fields: [
-    { key: 'width', title: 'Width', summaryLabel: 'Width', description: 'Set the shape from left to right.' },
-    { key: 'height', title: 'Height', summaryLabel: 'Height', description: 'Set the shape from bottom to top.' },
-    { key: 'depth', title: 'Depth', summaryLabel: 'Depth', description: 'Set the shape from front to back.' },
+    { key: 'width', title: 'Width', summaryLabel: 'Width', compactStyle: 'dimension', description: 'Set the shape from left to right.' },
+    { key: 'height', title: 'Height', summaryLabel: 'Height', compactStyle: 'dimension', description: 'Set the shape from bottom to top.' },
+    { key: 'depth', title: 'Depth', summaryLabel: 'Depth', compactStyle: 'dimension', description: 'Set the shape from front to back.' },
   ] },
   torus: { label: 'Torus', glyph: '◎', fields: [
     { key: 'radius', title: 'Radius', summaryLabel: 'Radius', description: 'Set the distance from the center to the ring.' },
@@ -52,15 +54,15 @@ export const BUILDER_OPERATIONS = {
     { key: 'height', title: 'Height', summaryLabel: 'Height', description: 'Set the shape from bottom to top.' },
   ] },
   'box-frame': { label: 'Box frame', glyph: '◇', fields: [
-    { key: 'width', title: 'Width', summaryLabel: 'Width', description: 'Set the frame from left to right.' },
-    { key: 'height', title: 'Height', summaryLabel: 'Height', description: 'Set the frame from bottom to top.' },
-    { key: 'depth', title: 'Depth', summaryLabel: 'Depth', description: 'Set the frame from front to back.' },
-    { key: 'thickness', title: 'Frame thickness', summaryLabel: 'Thickness', description: 'Thicken the edges inward. Thick edges can fill the frame.' },
+    { key: 'width', title: 'Width', summaryLabel: 'Width', compactStyle: 'dimension', description: 'Set the frame from left to right.' },
+    { key: 'height', title: 'Height', summaryLabel: 'Height', compactStyle: 'dimension', description: 'Set the frame from bottom to top.' },
+    { key: 'depth', title: 'Depth', summaryLabel: 'Depth', compactStyle: 'dimension', description: 'Set the frame from front to back.' },
+    { key: 'thickness', title: 'Frame thickness', summaryLabel: 'Thickness', compactLabel: 'Edge', description: 'Thicken the edges inward. Thick edges can fill the frame.' },
   ] },
   lattice: { label: 'Lattice', glyph: '▦', fields: [
-    { key: 'iterations', title: 'Repetition levels', summaryLabel: 'Levels', description: 'Each full level doubles the pattern along all three axes. Fractional levels adjust its spacing.', animatable: false },
-    { key: 'spacing', title: 'Cell size', summaryLabel: 'Cell size', description: 'Set the distance from a cell center to its edge.' },
-    { key: 'thickness', title: 'Rod thickness', summaryLabel: 'Thickness', description: 'Set the radius of the rods that form the lattice.' },
+    { key: 'iterations', title: 'Repetition levels', summaryLabel: 'Levels', compactLabel: 'repetitions', compactStyle: 'suffix', description: 'Each full level doubles the pattern along all three axes. Fractional levels adjust its spacing.', animatable: false },
+    { key: 'spacing', title: 'Cell size', summaryLabel: 'Cell size', compactLabel: 'Spacing', description: 'Set the distance from a cell center to its edge.' },
+    { key: 'thickness', title: 'Rod thickness', summaryLabel: 'Thickness', compactLabel: 'Rod', description: 'Set the radius of the rods that form the lattice.' },
   ] },
 } as const satisfies { [T in BuilderShape]: OperationPresentation<T> }
 
@@ -69,6 +71,8 @@ export const BUILDER_SHAPES = (Object.keys(BUILDER_OPERATIONS) as BuilderShape[]
 
 export function builderOperationFields(operation: BuilderOperation) {
   return BUILDER_OPERATIONS[operation.type].fields.map(field => ({
+    compactLabel: field.summaryLabel as string,
+    compactStyle: 'label' as 'label' | 'dimension' | 'suffix',
     ...field,
     animatable: !('animatable' in field) || field.animatable !== false,
     ...numericField(object.operation.anyOf, operation.type, field.key),

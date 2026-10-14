@@ -4,6 +4,7 @@ import schema from '../../../../contracts/scenes/scene-v1.schema.json'
 import { BUILDER_BINDING_RANGES, BUILDER_OPERATIONS, BUILDER_SHAPES, builderOperationFields,
   createBuilderArrangement, createBuilderModifier, createBuilderMotion, createBuilderOperation } from './builderDefinitions'
 import { compileBuilderDocument } from './builderCompiler'
+import { builderDriverTargetRange } from './builderDrivers'
 import { parseSceneDocument, type BuilderBinding, type BuilderSceneDocument } from './sceneContract'
 
 const objectRule = schema.$defs.builder.properties.objects.items.properties
@@ -50,6 +51,16 @@ describe('shared Builder definitions reach the contract, inspector and compiler'
       expect(scene({ id: 'shape', operation: { type: 'sphere' }, motion: { type } }).objects[0].motion)
         .toEqual(createBuilderMotion(type))
     }
+  })
+
+  it.each(['expand', 'shell'] as const)('%s influences use the same limits as the modifier control and transport', type => {
+    const modifier = createBuilderModifier(type)
+    const property = type === 'expand' ? 'amount' : 'thickness'
+    const rule = objectRule.modifiers.items.anyOf.find(branch => branch.properties.type.const === type)!
+      .properties[property]!
+    const document = scene({ id: 'shape', operation: { type: 'sphere' }, modifiers: [modifier] })
+    expect(builderDriverTargetRange(document.objects[0], `modifier.${type}.${property}`))
+      .toEqual({ minimum: rule.minimum, maximum: rule.maximum })
   })
 
   it.each(Object.keys(BUILDER_BINDING_RANGES) as BuilderBinding['target'][])(

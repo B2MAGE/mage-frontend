@@ -1,6 +1,6 @@
 import schema from '../../../../contracts/scenes/scene-v1.schema.json'
 import policy from '../../../../contracts/scenes/builder-rendering.v1.json'
-import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, builderOperationFields } from './builderDefinitions'
+import { BUILDER_BINDING_RANGES, BUILDER_GROUP_RANGES, BUILDER_MODIFIERS, builderOperationFields } from './builderDefinitions'
 import type { BuilderDriver, BuilderDriverExpression, BuilderGroup, BuilderObject, BuilderSceneDocument } from './sceneContract'
 
 type Fail = (path: string, detail: string) => never
@@ -20,9 +20,9 @@ export function builderDriverTargetRange(node: BuilderObject | BuilderGroup, tar
     return node.material ? { minimum: -1, maximum: 2 } : null
   }
   if (target === 'modifier.expand.amount') return node.modifiers?.some(modifier => modifier.type === 'expand')
-    ? { minimum: -2, maximum: 2 } : null
+    ? { minimum: BUILDER_MODIFIERS.expand.amount.minimum, maximum: BUILDER_MODIFIERS.expand.amount.maximum } : null
   if (target === 'modifier.shell.thickness') return node.modifiers?.some(modifier => modifier.type === 'shell')
-    ? { minimum: 0.001, maximum: 2 } : null
+    ? { minimum: BUILDER_MODIFIERS.shell.thickness.minimum, maximum: BUILDER_MODIFIERS.shell.thickness.maximum } : null
   if ('children' in node) {
     if (target === 'blend' && node.operation.type !== 'smooth-union') return null
     if (target.startsWith('material.') && !node.material) return null

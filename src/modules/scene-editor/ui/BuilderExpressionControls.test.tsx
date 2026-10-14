@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { BUILDER_DRIVER_LIMITS, validateBuilderDriverExpression } from '@modules/player'
+import schema from '../../../../contracts/scenes/scene-v1.schema.json'
 import { expressionBudget, type Expression, VECTOR_INPUTS } from '../builderExpressions'
 import { BuilderExpressionControls } from './BuilderExpressionControls'
 
@@ -35,6 +36,19 @@ function additionTree(depth: number): Expression {
 }
 
 describe('Builder combined input controls', () => {
+  it('offers every contract expression operation in the actual calculation dropdown', () => {
+    setup(constant(0))
+    expect(options(calculation()).sort()).toEqual(schema.$defs.builderDriverExpression.anyOf
+      .map(branch => branch.properties.type.const).sort())
+  })
+
+  it.each(['scalar', 'vector'] as const)('offers every %s contract input in the actual input dropdown', valueType => {
+    setup(input(valueType === 'scalar' ? 'time' : 'local-position'))
+    const sources = schema.$defs.builderDriverExpression.anyOf.find(branch => branch.properties.type.const === 'input')!.properties.source!.enum
+    expect(options(source()).sort()).toEqual(sources.filter(source =>
+      validateBuilderDriverExpression({ type: 'input', source }).type === valueType).sort())
+  })
+
   it('authors noise from XYZ coordinates and preserves an explicitly selected ancestor', async () => {
     const { user, current } = setup(constant(0))
     await user.selectOptions(calculation(), 'noise')

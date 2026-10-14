@@ -265,15 +265,11 @@ function BuilderObjectActions({ canDuplicate, onDuplicate, onRemove, onUngroup }
 const shapeLabel = (object: BuilderObject) => BUILDER_OPERATIONS[object.operation.type].label
 
 function sizeSummary(object: BuilderObject) {
-  const operation = object.operation
-  if (operation.type === 'box' || operation.type === 'box-frame') {
-    const dimensions = [operation.width, operation.height, operation.depth].map(conciseNumber).join(' × ')
-    return operation.type === 'box-frame' ? `${dimensions} · Edge ${conciseNumber(operation.thickness)}` : dimensions
-  }
-  if (operation.type === 'lattice') return `${conciseNumber(operation.iterations)} repetitions · Spacing ${conciseNumber(operation.spacing)} · Rod ${conciseNumber(operation.thickness)}`
-  if (operation.type === 'torus') return `Radius ${conciseNumber(operation.radius)} · Tube ${conciseNumber(operation.tube)}`
-  if (operation.type === 'cylinder') return `Radius ${conciseNumber(operation.radius)} · Height ${conciseNumber(operation.height)}`
-  return `Radius ${conciseNumber(operation.radius)}`
+  const fields = builderOperationFields(object.operation)
+  const dimensions = fields.filter(field => field.compactStyle === 'dimension').map(field => conciseNumber(field.value)).join(' × ')
+  const labeled = fields.filter(field => field.compactStyle !== 'dimension').map(field => field.compactStyle === 'suffix'
+    ? `${conciseNumber(field.value)} ${field.compactLabel}` : `${field.compactLabel} ${conciseNumber(field.value)}`)
+  return [dimensions, ...labeled].filter(Boolean).join(' · ')
 }
 
 function conciseNumber(value: number) {

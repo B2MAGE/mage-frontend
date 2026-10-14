@@ -1,4 +1,5 @@
-import { BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, createBuilderBinding, type BuilderBinding, type BuilderObject } from '@modules/player'
+import { BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, BUILDER_BINDING_RULES, createBuilderBinding, type BuilderBinding, type BuilderObject } from '@modules/player'
+import { BUILDER_INPUTS } from './builderInputDefinitions'
 
 type Target = BuilderBinding['target']
 type Source = BuilderBinding['source']
@@ -9,11 +10,9 @@ export const BUILDER_BINDING_TARGET_LABELS: Record<Target, string> = {
   'rotation.x': 'Rotation X', 'rotation.y': 'Rotation Y', 'rotation.z': 'Rotation Z',
   'material.metalness': 'Metalness', 'material.shininess': 'Shininess',
 }
-export const BUILDER_BINDING_SOURCE_LABELS: Record<Source, string> = {
-  'bass-level': 'Bass level', 'mid-level': 'Mid level', 'treble-level': 'Treble level', 'overall-level': 'Whole mix level',
-  'bass-hit': 'Bass hits', 'mid-hit': 'Mid hits', 'treble-hit': 'Treble hits', 'overall-hit': 'Whole mix hits',
-  'pointer-x': 'Pointer horizontal', 'pointer-y': 'Pointer vertical', 'pointer-down': 'Pointer press',
-}
+export const BUILDER_BINDING_SOURCE_LABELS = Object.fromEntries(Object.entries(BUILDER_INPUTS)
+  .filter(([source]) => BUILDER_BINDING_RULES.source.enum.includes(source))
+  .map(([source, definition]) => [source, definition.label])) as Record<Source, string>
 
 export const BUILDER_BINDING_TARGETS = Object.keys(BUILDER_BINDING_TARGET_LABELS) as Target[]
 export function availableBuilderBindingTargets(object: BuilderObject) {

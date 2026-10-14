@@ -44,6 +44,15 @@ fixture. Update the backend contract copy and its independent validation when
 the new data requires it. The catalog coverage test must pass, and the generated
 source must compile. This deliberately keeps the supported operations finite.
 
+Input labels and scalar/vector presentation facts live in the editor's
+`builderInputDefinitions.ts`; bindings, simple influences and combined inputs
+use those same facts. Runtime validation remains independent. The expression
+operation labels are exhaustive over the typed union, and
+`BuilderExpressionControls.test.tsx` compares the actual operation/input choices
+to the contract. Compact shape summaries reuse `builderOperationFields` while
+retaining their existing formatting. Expand/Shell influences use the same
+schema-backed modifier limits as the inspector.
+
 ## Verify both repositories together
 
 From the frontend checkout, provide the backend checkout being released:
