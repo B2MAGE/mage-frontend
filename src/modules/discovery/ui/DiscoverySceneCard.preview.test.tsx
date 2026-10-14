@@ -43,7 +43,6 @@ const recoveryMocks = vi.hoisted(() => ({
   safeMode: false,
   version: 0,
   blocks: new Set<string>(),
-  retryGrants: new Set<string>(),
   listeners: new Set<() => void>(),
 }))
 
@@ -56,8 +55,7 @@ vi.mock('@modules/player/recovery/sceneRecovery', () => ({
     },
     getSnapshot: () => recoveryMocks.version,
     isSafeMode: () => recoveryMocks.safeMode,
-    getBlock: (key: string) => !recoveryMocks.retryGrants.has(key) && recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
-    getAutomaticBlock: (key: string) => recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
+    getBlock: (key: string) => recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
   },
 }))
 
@@ -197,7 +195,6 @@ describe('DiscoverySceneCard animated preview', () => {
     finePointer = true
     recoveryMocks.safeMode = false
     recoveryMocks.blocks.clear()
-    recoveryMocks.retryGrants.clear()
     recoveryMocks.version += 1
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
@@ -565,25 +562,27 @@ describe('DiscoverySceneCard animated preview', () => {
     expect(nextController.loadSceneBlob).toHaveBeenCalledWith(scene.sceneData, { sceneKey: scene.sceneId })
   })
 
-  it('leaves a deliberate retry grant for its player while automatic previews stay blocked', async () => {
+  it('waits for a new interaction after another player clears the session failure', async () => {
     const key = sceneRecoveryKey(scene.sceneData, scene.sceneId)!
     recoveryMocks.blocks.add(key)
-    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn(() => { recoveryMocks.retryGrants.delete(key) }) })
+    const controller = buildMagePlayerController()
     engineMocks.createMagePlayer.mockResolvedValue(controller)
     renderCard()
-    await act(async () => {
-      recoveryMocks.retryGrants.add(key)
-      publishRecoveryChange()
-    })
     const link = screen.getByRole('link', { name: /signal bloom/i })
-    fireEvent.pointerEnter(link, { pointerType: 'mouse' })
     fireEvent.focus(link)
     await finishActivation()
-
+    await act(async () => {
+      recoveryMocks.blocks.delete(key)
+      publishRecoveryChange()
+    })
+    await finishActivation()
     expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
-    expect(controller.loadSceneBlob).not.toHaveBeenCalled()
-    expect(recoveryMocks.retryGrants.has(key)).toBe(true)
-    expect(screen.getByText('Preview paused. Open scene to retry.')).toBeInTheDocument()
+    expect(screen.queryByText('Preview paused. Open scene to retry.')).not.toBeInTheDocument()
+
+    fireEvent.pointerEnter(link, { pointerType: 'mouse' })
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(scene.sceneData, { sceneKey: scene.sceneId })
   })
 
   it('lets a corrected revision preview without reviving the blocked revision of the same scene', async () => {

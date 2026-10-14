@@ -27,14 +27,14 @@ function setup(mode: 'normal' | 'unsupported' | 'unobserved-loss' | 'missing-act
         ...options.fixedRecoveryCheck!, event, atMs: performance.now() })
     }
     const progress = () => options.onDiagnostic?.({ type: 'progress', at: performance.now() })
-    const fail = (reason: 'runtime' | 'startup-timeout') => {
+    const fail = (reason: 'runtime' | 'graphics-download' | 'context-lost') => {
       if (mode !== 'not-removed') frame.remove()
       options.onFailure?.(reason)
     }
     let ready = Promise.resolve()
     if (options.fixedRecoveryCheck?.case === 'missing-ready' || mode === 'stalled-startup') {
       ready = new Promise<void>((_resolve, reject) => { rejectReady = reject })
-      if (mode !== 'stalled-startup') later(() => { marker('connected'); fail('startup-timeout'); rejectReady!(new Error('Missing ready.')) }, 50)
+      if (mode !== 'stalled-startup') later(() => { marker('connected'); fail('graphics-download'); rejectReady!(new Error('Missing ready.')) }, 50)
     } else marker('connected')
     if (!options.fixedRecoveryCheck && normalPlayers++ === 0) {
       vi.spyOn(frame, 'src', 'set').mockImplementation(() => later(() => { frame.dispatchEvent(new dom.window.Event('load')); fail('runtime') }, 50))
@@ -46,7 +46,7 @@ function setup(mode: 'normal' | 'unsupported' | 'unobserved-loss' | 'missing-act
         if (fixedCase === 'context-loss' && mode === 'unsupported') { marker('unsupported'); return }
         if (fixedCase) marker('action')
         if (fixedCase === 'context-loss' && mode !== 'unobserved-loss') marker('context-lost')
-        if (fixedCase && fixedCase !== 'window-message') fail('runtime')
+        if (fixedCase && fixedCase !== 'window-message') fail(fixedCase === 'context-loss' ? 'context-lost' : 'runtime')
       }, 150)
       later(progress, 200); later(progress, 700)
     } } as ReturnType<typeof createIsolatedPlaybackHost>

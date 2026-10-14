@@ -24,7 +24,7 @@ Exports:
 - `MagePlayerProps`
 - `createMagePlayer()`
 - `createIsolatedPlayer()` (lower-level transport for controlled fixtures; normal app surfaces use the guarded `createMagePlayer` facade)
-- `sceneRecovery` / `sceneRecoveryKey()` (shared recovery guard for all render surfaces)
+- `sceneRecovery` / `sceneRecoveryKey()` (shared in-memory recovery for submitted scenes on the current page)
 - `sceneAvailabilityStore` / `useSceneAvailability()` (fresh server permission, independent of local recovery)
 - `SceneAvailabilityAdminControls` (server-authorized block/unblock dialog for one scene)
 - `fetchCustomControl()` / `updateCustomControl()` / `CustomRenderingControl` (shared API for the administrator-only custom shader tool in the moderation area)
@@ -51,17 +51,21 @@ Exports:
 ## Internal Responsibilities
 
 - `MagePlayer.tsx`
-  Shared React boundary for embedding the player in homepage, scene detail, and editor preview surfaces.
+  Shared React boundary; its session gates permission, Stop/Retry and page-wide pause while retaining user playback and audio intent.
+- `useMagePlayerScene.ts`
+  Owns renderer creation, current scene loading/live updates, readiness and disposal for the React player.
 - `playlist.ts`
   Frontend-owned playlist types and helper functions used by the player module and consuming feature modules.
 - `useMagePlayerPlaylist.ts`
   Internal playlist state orchestration for the shared player UI.
 - `infrastructure/engineAdapter.ts`
-  Guarded public facade: submitted scenes use the isolated controller; only the exact fixed platform brand artwork can use its private in-page engine path.
+  Validates the initial submitted scene and routes every supported document to the isolated controller.
 - `infrastructure/isolatedController.ts`
   `MagePlayerController` adapter applying validation, fresh availability, recovery leases, audio settings and capture/retry rules around the bridge.
 - `isolation/`
   Parent-owned audio/input, fixed renderer configuration, versioned private-port transport and validated raster capture. Executable renderer code lives in `src/isolated-renderer/`.
+- `../scene-artwork/brandArtworkController.ts`
+  Dedicated in-page controller for the frozen brand scene; it has no submitted-scene input or generic audio/scene API.
 
 ## Component Surface
 
@@ -118,11 +122,13 @@ All submitted scene kinds take the isolated path; classification does not author
 - invalid scene data produces a recoverable error overlay instead of crashing the page
 - initial/replacement documents always take the validated scene-load path; an audio-response-only update uses the numeric bridge without restarting the song
 - the iframe, port, audio and pending work are disposed on unmount
-- failed or interrupted revisions stay static until deliberate retry; safe mode disables automatic rendering across the site
+- failed or interrupted revisions stay static in the current page session until deliberate retry; Pause all scenes applies to this page and is cleared by reload
 - Stop and recovery controls remain outside the renderer; editor and playlist state survives replacing it
 
-See [`docs/scene-recovery.md`](../../../docs/scene-recovery.md) for marker lifetime,
-cross-tab behavior, failure signals, storage bounds, and execution-isolation limits.
+See [scene recovery](../../../docs/scene-recovery.md) for page-session lease lifetime,
+failure messages, explicit retry and the unchanged two-second acknowledged compile
+deadline. See [PL-01/RF-04 local review](../../../docs/pl01-rf04-local-review.md) for
+ownership and the verification checklist.
 
 Audio and playlist notes:
 

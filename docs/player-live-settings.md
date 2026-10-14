@@ -34,7 +34,7 @@ the live contract. Invalid input is rejected before fields are removed for ident
 1. `scenePlaybackIdentity` validates the whole document and removes only audited
    live leaves plus the separately handled response settings. Template identity
    and resolved source/resources stay in the structural identity.
-2. `MagePlayer` calls `updateSceneSettings` only for matching structure. The guarded
+2. `useMagePlayerScene` calls `updateSceneSettings` only for matching structure. The guarded
    controller validates the full document, checks the existing availability target,
    obtains the current revision's recovery lease, and updates its saved snapshot.
 3. The private bridge sends `scene-settings`, a complete normalized data-only
@@ -54,6 +54,11 @@ Load/dispose clears queued settings; old generations cannot change a replacement
 scene. Settings arriving during startup apply only to that startup generation.
 Capture flushes queued scene and music-response settings before requesting the
 image. A capture begun for an older editor revision is discarded.
+
+Recovery leases and stopped revisions are held only in the current page session.
+Live edits preserve an existing Stop/failure until explicit Resume/Retry; a later
+callback from the retired lease cannot stop a newer attempt. Reload starts fresh
+playback recovery state. See [scene recovery](scene-recovery.md).
 
 Live changes preserve the selected track, queue, seek position, volume, playback
 intent, response overrides, and unrelated camera motion. Availability polling,

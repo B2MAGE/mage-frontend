@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { MagePlayerLoading } from './MagePlayerLoading'
 import {
-  createMagePlayer,
   type MageAudioResponseCapabilities,
   type MageEngineDiagnostics,
   type MagePlayerAudioState,
@@ -18,14 +17,12 @@ import {
   buildMagePlayerClassName,
   EMPTY_AUDIO_STATE,
   readMagePlayerErrorMessage,
-  type MagePlayerStatus,
 } from './magePlayerUtils'
 import { useMagePlayerPlaylist } from './useMagePlayerPlaylist'
+import { useMagePlayerScene, type SessionPlaybackIntent } from './useMagePlayerScene'
 import { useMagePlayerAudioSelection } from './useMagePlayerAudioSelection'
 import { scenePlaybackIdentity, type MageSceneKey } from './scenePlaybackIdentity'
-import { extractLiveSceneSettings } from './liveSceneSettings'
-import { normalizeAudioResponseMode } from '@shared/lib'
-import { sceneRecovery, sceneRecoveryKey, type RecoveryReason } from './recovery/sceneRecovery'
+import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import { SceneRecoveryPanel } from './recovery/SceneRecoveryPanel'
 import { sceneAvailabilityStore } from './availability/sceneAvailability'
 import { availabilityStatusTarget, availabilityTarget } from './availability/availabilityTarget'
@@ -33,7 +30,6 @@ import { useSceneAvailability } from './availability/useSceneAvailability'
 import { SceneAvailabilityPanel } from './availability/SceneAvailabilityPanel'
 import { validateSceneForPlayback } from './policy/sceneValidation'
 import { boundCaptureSize, type RenderProfile } from './policy/renderBudget'
-import { resolveSceneForPlayback } from './templates/resolveScene'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -121,16 +117,6 @@ type SessionAudioProps = {
   rendererAudioClearRef: { current: (() => void) | null }
 }
 
-type SessionPlaybackIntent = { playback: MagePlayerPlaybackState; initialPlayback: MagePlayerPlaybackState; sceneKey: MageSceneKey | undefined }
-
-const AUTOMATIC_RECOVERY_REASONS = new Set<RecoveryReason>([
-  'load',
-  'runtime',
-  'startup-timeout',
-  'progress-timeout',
-])
-const AUTOMATIC_RECOVERY_HISTORY_LIMIT = 32
-
 function MagePlayerStatusReporter({
   onChange,
   status,
@@ -157,9 +143,8 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   const recoveryKey = useMemo(() => sceneRecoveryKey(props.recoverySceneBlob ?? props.sceneBlob, props.sceneKey), [props.recoverySceneBlob, props.sceneBlob, props.sceneKey])
   const structuralIdentity = scenePlaybackIdentity(props.sceneBlob, props.sceneKey)
   const [previousRecovery, setPreviousRecovery] = useState({ identity: structuralIdentity, key: recoveryKey })
-  // Editing live controls must not restart a stopped or failed scene. A stop
-  // during a retry can retain its original failure reason, so preserve any block
-  // until an explicit Resume/Retry while the editable draft continues to update.
+  // Live edits must not restart a stopped or failed scene. Keep the block until
+  // explicit Resume/Retry while the editable draft continues to update.
   const retainedBlock = structuralIdentity !== null && previousRecovery.identity === structuralIdentity
     && previousRecovery.key && sceneRecovery.getBlock(previousRecovery.key)
     ? previousRecovery.key : null
@@ -172,8 +157,6 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   }
   const block = blockedRecoveryKey ? sceneRecovery.getBlock(blockedRecoveryKey) : null
   const safeMode = sceneRecovery.isSafeMode()
-  const activeRecoveryKeyRef = useRef<string | null>(null)
-  const automaticallyRetriedKeysRef = useRef(new Set<string>())
   const target = useMemo(() => props.sceneBlob ? availabilityTarget(props.sceneKey, props.sceneBlob)
     : availabilityStatusTarget(props.sceneKey), [props.sceneKey, props.sceneBlob])
   const availability = useSceneAvailability(target)
@@ -185,7 +168,6 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   // paused until permission is confirmed; a denial still ends the entire session.
   if (retainedSource !== null && !availability.allowed && availability.code !== 'CHECKING') setRetainedSource(null)
   const availabilityPending = availability.code === 'CHECKING' && retainedSource !== null
-  const retainsSession = availability.allowed || availabilityPending
   const requiresAvailability = !!props.sceneBlob || target !== 'custom'
   const [reloadAttempt, setReloadAttempt] = useState(0)
   const [sourceError, setSourceError] = useState(false)
@@ -193,30 +175,6 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   useEffect(() => { restoreSourceRef.current = props.onAvailabilityRestored }, [props.onAvailabilityRestored])
   const hasSource = !!props.sceneBlob
   const canRestoreSource = !!props.onAvailabilityRestored
-
-  useLayoutEffect(() => {
-    if (!blockedRecoveryKey || safeMode || !availability.allowed) {
-      activeRecoveryKeyRef.current = null
-      return
-    }
-    if (!block) {
-      activeRecoveryKeyRef.current = blockedRecoveryKey
-      return
-    }
-    if (activeRecoveryKeyRef.current !== blockedRecoveryKey
-      || !AUTOMATIC_RECOVERY_REASONS.has(block.reason)
-      || automaticallyRetriedKeysRef.current.has(blockedRecoveryKey)) return
-
-    activeRecoveryKeyRef.current = null
-    const attempted = automaticallyRetriedKeysRef.current
-    attempted.add(blockedRecoveryKey)
-    if (attempted.size > AUTOMATIC_RECOVERY_HISTORY_LIMIT) attempted.delete(attempted.values().next().value!)
-    sceneRecovery.retry(blockedRecoveryKey)
-  }, [availability.allowed, block, blockedRecoveryKey, safeMode])
-
-  useEffect(() => {
-    if (!availability.allowed && availability.code !== 'CHECKING' && recoveryKey) sceneRecovery.revokeRetry(recoveryKey)
-  }, [availability.allowed, availability.code, recoveryKey])
 
   useEffect(() => {
     if (!availability.allowed || hasSource || target === 'custom' || !canRestoreSource) return
@@ -230,20 +188,6 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     })
     return () => { cancelled = true }
   }, [availability.allowed, canRestoreSource, hasSource, reloadAttempt, target])
-
-  // A global pause replaces the renderer, but keeps this viewing session open.
-  // Navigating away or editing the revision ends any retained retry permission.
-  useEffect(() => {
-    if (!recoveryKey || !retainsSession) return
-    const release = sceneRecovery.retainPlaybackSession(recoveryKey)
-    return () => {
-      // Cleanup runs before the new effect. Revoke first so a server stop cannot
-      // retire a remembered interruption through a suspended local retry.
-      const status = sceneAvailabilityStore.getSnapshot(target)
-      if (!status.allowed && status.code !== 'CHECKING') sceneRecovery.revokeRetry(recoveryKey)
-      release()
-    }
-  }, [retainsSession, recoveryKey, target])
 
   useEffect(() => {
     // A cached browser page retains React state, but pagehide has shut down its
@@ -316,7 +260,6 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     playlist={playlist}
     audioSelection={audioSelection}
     onStopRendering={recoveryKey ? () => {
-      activeRecoveryKeyRef.current = null
       sceneRecovery.block(recoveryKey, 'stopped')
     } : undefined}
     onSafeMode={() => sceneRecovery.setSafeMode(true)}
@@ -355,24 +298,16 @@ function MagePlayerRenderer({
   playbackIntentRef: { current: SessionPlaybackIntent }; onReplaceRetiredRenderer: () => void; recoveryRevision: number } & SessionAudioProps) {
   const renderHostRef = useRef<HTMLDivElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
-  const playerRef = useRef<MagePlayerController | null>(null)
-  const capabilitiesCallbackRef = useRef(onAudioResponseCapabilitiesChange)
   const diagnosticsCallbackRef = useRef(onEngineDiagnosticsChange)
-  const latestSceneBlobRef = useRef<MageSceneBlob | null | undefined>(sceneBlob)
-  const latestSceneKeyRef = useRef(sceneKey)
   // The viewing session owns user intent even when pause-all, recovery or a
   // cached-page return replaces this renderer and its audio resources.
   const requestedPlaybackRef = playbackIntentRef
   const loadedTrackIdRef = useRef<string | null>(null)
   const completedTrackIdRef = useRef<string | null>(null)
   const hasConfiguredSimulatedBeatRef = useRef(false)
-  const appliedSceneRef = useRef<{ player: MagePlayerController; identity: string | null; sceneBlob: MageSceneBlob; recoverySceneBlob?: MageSceneBlob } | null>(null)
-  const pendingSceneLoadRef = useRef<{ player: MagePlayerController; sceneBlob: MageSceneBlob } | null>(null)
   const pendingAudioRef = useRef<{ player: MagePlayerController; trackId: string; result: Promise<MagePlayerAudioState> } | null>(null)
   const audioGenerationRef = useRef(0)
   const playlistLoadAbortRef = useRef<AbortController | null>(null)
-  const playbackIdentity = scenePlaybackIdentity(sceneBlob, sceneKey)
-  const hasScene = Boolean(sceneBlob)
 
   const {
     commitSelectedTrackId,
@@ -382,23 +317,32 @@ function MagePlayerRenderer({
     tracks,
   } = playlist
 
-  const [loadedSceneIdentity, setLoadedSceneIdentity] = useState<string | null>(null)
-  const [loadedPlayerVersion, setLoadedPlayerVersion] = useState<number | null>(null)
-  const [playerVersion, setPlayerVersion] = useState(0)
   const [playbackState, setPlaybackState] = useState<MagePlayerPlaybackState>(initialPlayback)
   const [audioState, setAudioState] = useState<MagePlayerAudioState>(EMPTY_AUDIO_STATE)
   const [audioError, setAudioError] = useState<string | null>(null)
   const [activeAudioAction, setActiveAudioAction] = useState<'add' | 'load' | null>(null)
   const [isVolumeOpen, setIsVolumeOpen] = useState(false)
   const [trackLoadVersion, setTrackLoadVersion] = useState(0)
-  const [loadError, setLoadError] = useState<{ message: string; sceneBlob: MageSceneBlob } | null>(
-    null,
-  )
-  const [capabilitiesResult, setCapabilitiesResult] = useState<{
-    player: MagePlayerController
-    identity: string | null
-    snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null
-  } | null>(null)
+  const { playerRef, latestSceneBlobRef, playerVersion, playbackIdentity, status, loadError, hasLoadedScene } = useMagePlayerScene({
+    hostRef: renderHostRef, sceneBlob, recoverySceneBlob, sceneKey, renderProfile,
+    availabilityPending, recoveryRevision, playbackIntentRef, onReplaceRetiredRenderer,
+    onCapabilities: onAudioResponseCapabilitiesChange,
+    onCreated(player) {
+      loadedTrackIdRef.current = null
+      completedTrackIdRef.current = null
+      pendingAudioRef.current = null
+      setPlaybackState(player.getPlaybackState())
+      setAudioState(player.getAudioState())
+    },
+    onReady(player, liveUpdate) {
+      setPlaybackState(player.getPlaybackState())
+      setAudioState(player.getAudioState())
+      onRendererReady()
+      if (!liveUpdate) { setAudioError(null); setActiveAudioAction(null) }
+    },
+    onError() { setAudioState(EMPTY_AUDIO_STATE) },
+    onDispose() { diagnosticsCallbackRef.current?.(null) },
+  })
 
   const { candidate: audioCandidate, accept: acceptAudioCandidate, reject: rejectAudioCandidate, cancelPending: cancelAudioSelection } = audioSelection
   // A stopped/disposed renderer cannot finish a file selection after Resume.
@@ -426,7 +370,7 @@ function MagePlayerRenderer({
       setAudioState(EMPTY_AUDIO_STATE)
       setAudioError(readMagePlayerErrorMessage(error))
     }
-  }, [invalidateAudioLoads])
+  }, [invalidateAudioLoads, playerRef])
 
   useEffect(() => {
     rendererAudioClearRef.current = clearRenderedMusic
@@ -437,17 +381,8 @@ function MagePlayerRenderer({
   }, [clearRenderedMusic, invalidateAudioLoads, rendererAudioClearRef])
 
   useEffect(() => {
-    capabilitiesCallbackRef.current = onAudioResponseCapabilitiesChange
-  }, [onAudioResponseCapabilitiesChange])
-
-  useEffect(() => {
     diagnosticsCallbackRef.current = onEngineDiagnosticsChange
   }, [onEngineDiagnosticsChange])
-
-  useEffect(() => {
-    latestSceneBlobRef.current = sceneBlob
-    latestSceneKeyRef.current = sceneKey
-  }, [sceneBlob, sceneKey])
 
   useEffect(() => {
     if (sceneBlob) {
@@ -476,210 +411,7 @@ function MagePlayerRenderer({
 
     setPlaybackState(player.setPlaybackState(requested))
     setAudioState(player.getAudioState())
-  }, [initialPlayback, requestedPlaybackRef, sceneKey])
-
-  useEffect(() => {
-    // The retained controller may still watch the previous scene's permission
-    // while the replacement is being checked. Suspend only its visual output.
-    const player = playerRef.current
-    if (!player) return
-    const stoppedKey = player.getStoppedRecoveryKey?.()
-    if (stoppedKey) {
-      const requestedKey = sceneRecoveryKey(recoverySceneBlob ?? sceneBlob, sceneKey)
-      // An older in-flight scene can fail after selection moves elsewhere.
-      // Replace that retired renderer only for a separately allowed revision;
-      // the failed revision's recovery record still requires deliberate Retry.
-      if (requestedKey && requestedKey !== stoppedKey && !availabilityPending
-        && sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, sceneBlob))
-        && !sceneRecovery.isSafeMode() && !sceneRecovery.getBlock(requestedKey)) onReplaceRetiredRenderer()
-      return
-    }
-    player.setRenderingSuspended?.(availabilityPending)
-  }, [availabilityPending, onReplaceRetiredRenderer, playerVersion, recoveryRevision, recoverySceneBlob, sceneBlob, sceneKey])
-
-  useEffect(() => {
-    const canvas = renderHostRef.current
-
-    if (!canvas || !latestSceneBlobRef.current) {
-      return
-    }
-
-    let nextPlayer: MagePlayerController | null = null
-    let isDisposed = false
-    let animationFrameId = 0
-    const startup = new AbortController()
-    const disposePlayer = () => {
-      try { nextPlayer?.dispose() } catch {
-        // The adapter retains its marker when cleanup fails. Recovery controls
-        // and unsaved editor state must survive that failure too.
-      }
-    }
-
-    animationFrameId = window.requestAnimationFrame(() => {
-      void (async () => {
-        try {
-          const initialSceneKey = latestSceneKeyRef.current
-          nextPlayer = await createMagePlayer(canvas, { signal: startup.signal, renderProfile, initialSceneBlob: latestSceneBlobRef.current ?? undefined, mouseInteractions: true, mouseWheelZoom: true, ...(initialSceneKey === undefined ? {} : { sceneKey: initialSceneKey }) })
-
-          if (isDisposed) {
-            disposePlayer()
-            return
-          }
-
-          playerRef.current = nextPlayer
-          appliedSceneRef.current = null
-          pendingSceneLoadRef.current = null
-          loadedTrackIdRef.current = null
-          completedTrackIdRef.current = null
-          pendingAudioRef.current = null
-          setPlaybackState(nextPlayer.setPlaybackState(requestedPlaybackRef.current.playback))
-          setAudioState(nextPlayer.getAudioState())
-          setPlayerVersion((currentVersion) => currentVersion + 1)
-        } catch (error) {
-          disposePlayer()
-
-          if (!isDisposed) {
-            const currentSceneBlob = latestSceneBlobRef.current
-
-            if (currentSceneBlob) {
-              setLoadError({
-                message: readMagePlayerErrorMessage(error),
-                sceneBlob: currentSceneBlob,
-              })
-            }
-          }
-        }
-      })()
-    })
-
-    return () => {
-      isDisposed = true
-      startup.abort()
-      window.cancelAnimationFrame(animationFrameId)
-      playerRef.current = null
-      pendingSceneLoadRef.current = null
-      capabilitiesCallbackRef.current?.(null)
-      diagnosticsCallbackRef.current?.(null)
-      disposePlayer()
-    }
-  }, [hasScene, renderProfile, requestedPlaybackRef])
-
-  useEffect(() => {
-    if (availabilityPending) return
-    if (!sceneBlob) {
-      appliedSceneRef.current = null
-      pendingSceneLoadRef.current = null
-      loadedTrackIdRef.current = null
-      completedTrackIdRef.current = null
-      return
-    }
-
-    const player = playerRef.current
-
-    if (!player || player.getStoppedRecoveryKey?.()) {
-      return
-    }
-    if (pendingSceneLoadRef.current?.player !== player
-      && appliedSceneRef.current?.player === player && appliedSceneRef.current.identity === playbackIdentity && appliedSceneRef.current.sceneBlob === sceneBlob
-      && appliedSceneRef.current.recoverySceneBlob === recoverySceneBlob) return
-
-    let isCancelled = false
-
-    void (async () => {
-      try {
-        const sameStructure = playbackIdentity !== null
-          && appliedSceneRef.current?.player === player
-          && appliedSceneRef.current.identity === playbackIdentity
-        // Older artwork-only adapters retain the response API. They may reuse a
-        // scene only for response edits, never silently ignore another setting.
-        const isLiveUpdate = pendingSceneLoadRef.current?.player !== player && sameStructure && (typeof player.updateSceneSettings === 'function'
-          || JSON.stringify(extractLiveSceneSettings(appliedSceneRef.current!.sceneBlob))
-            === JSON.stringify(extractLiveSceneSettings(sceneBlob)))
-        if (isLiveUpdate && player.updateSceneSettings) {
-          player.updateSceneSettings(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
-        } else if (isLiveUpdate) {
-          const validated = validateSceneForPlayback(sceneBlob)
-          const response = resolveSceneForPlayback(validated).engineScene
-          player.setAudioResponseSettings(
-            Object.hasOwn(response, 'audioResponse') ? normalizeAudioResponseMode(response.audioResponse) : undefined,
-            response.audioResponseConfig,
-          )
-          player.updateRecoveryIdentity?.(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
-        } else {
-          const pendingSceneLoad = { player, sceneBlob }
-          pendingSceneLoadRef.current = pendingSceneLoad
-          try {
-            if (recoverySceneBlob !== undefined) await player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
-            else if (sceneKey === undefined) await player.loadSceneBlob(sceneBlob)
-            else await player.loadSceneBlob(sceneBlob, { sceneKey })
-          } finally {
-            if (pendingSceneLoadRef.current === pendingSceneLoad) pendingSceneLoadRef.current = null
-          }
-        }
-        if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) return
-        appliedSceneRef.current = { player, identity: playbackIdentity, sceneBlob, recoverySceneBlob }
-        const nextPlaybackState = player.getPlaybackState()
-
-        queueMicrotask(() => {
-          if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
-            return
-          }
-
-          // Read capabilities only after this exact document has reached this
-          // player. A runtime failure must not make playback fail.
-          let capabilities: MageAudioResponseCapabilities | null = null
-          try {
-            capabilities = player.getAudioResponseCapabilities()
-          } catch {
-            capabilities = null
-          }
-          setCapabilitiesResult({
-            player,
-            identity: playbackIdentity,
-            snapshot: capabilities ? { sceneBlob, capabilities } : null,
-          })
-          requestedPlaybackRef.current.playback = nextPlaybackState
-          setLoadError(null)
-          setLoadedSceneIdentity(playbackIdentity)
-          setLoadedPlayerVersion(playerVersion)
-          setPlaybackState(nextPlaybackState)
-          setAudioState(player.getAudioState())
-          onRendererReady()
-          if (!isLiveUpdate) {
-            setAudioError(null)
-            setActiveAudioAction(null)
-          }
-        })
-      } catch (error) {
-        queueMicrotask(() => {
-          if (isCancelled || playerRef.current !== player || latestSceneBlobRef.current !== sceneBlob) {
-            return
-          }
-
-          setAudioState(EMPTY_AUDIO_STATE)
-          setLoadError({
-            message: readMagePlayerErrorMessage(error),
-            sceneBlob,
-          })
-        })
-      }
-    })()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [availabilityPending, onRendererReady, playbackIdentity, playerVersion, recoverySceneBlob, requestedPlaybackRef, sceneBlob, sceneKey])
-
-  const status: MagePlayerStatus =
-    availabilityPending
-      ? 'loading'
-      : !sceneBlob
-      ? 'empty'
-      : loadError?.sceneBlob === sceneBlob
-        ? 'error'
-        : playbackIdentity !== null && loadedSceneIdentity === playbackIdentity && loadedPlayerVersion === playerVersion
-          ? 'ready'
-          : 'loading'
+  }, [initialPlayback, latestSceneBlobRef, playerRef, requestedPlaybackRef, sceneKey])
 
   const publishedPlaybackStatus: MagePlayerPlaybackStatus = status === 'ready'
     ? playbackState
@@ -690,23 +422,6 @@ function MagePlayerRenderer({
   useEffect(() => {
     onPlaybackStatusChange?.(publishedPlaybackStatus)
   }, [onPlaybackStatusChange, publishedPlaybackStatus])
-
-  const hasCapabilitiesCallback = Boolean(onAudioResponseCapabilitiesChange)
-
-  useEffect(() => {
-    if (!hasCapabilitiesCallback) return
-    const matchesCompiledPlayer = status === 'ready'
-      && capabilitiesResult?.player === playerRef.current
-      && capabilitiesResult?.identity === playbackIdentity
-    // Live edits keep the same compiled shader. Retain its published
-    // capabilities until the exact updated document is ready, so editor
-    // controls do not unmount during a slider drag or keyboard adjustment.
-    if (matchesCompiledPlayer && capabilitiesResult.snapshot
-      && capabilitiesResult.snapshot.sceneBlob !== sceneBlob) return
-    const matchesLoadedScene = matchesCompiledPlayer
-      && capabilitiesResult.snapshot?.sceneBlob === sceneBlob
-    capabilitiesCallbackRef.current?.(matchesLoadedScene ? capabilitiesResult.snapshot : null)
-  }, [capabilitiesResult, hasCapabilitiesCallback, playbackIdentity, playerVersion, sceneBlob, status])
 
   const hasDiagnosticsCallback = Boolean(onEngineDiagnosticsChange)
 
@@ -742,7 +457,7 @@ function MagePlayerRenderer({
       window.clearInterval(intervalId)
       diagnosticsCallbackRef.current?.(null)
     }
-  }, [hasDiagnosticsCallback, playbackIdentity, playerVersion, status])
+  }, [hasDiagnosticsCallback, playbackIdentity, playerRef, playerVersion, status])
 
   const hasSimulatedBeat = simulatedBeat !== undefined
   const simulatedBeatEnabled = simulatedBeat?.enabled ?? false
@@ -772,7 +487,7 @@ function MagePlayerRenderer({
       simulatedBeatBpm / 120,
     )
     hasConfiguredSimulatedBeatRef.current = hasSimulatedBeat
-  }, [hasSimulatedBeat, playbackState, playerVersion, simulatedBeatBpm, simulatedBeatEnabled, status])
+  }, [hasSimulatedBeat, playbackState, playerRef, playerVersion, simulatedBeatBpm, simulatedBeatEnabled, status])
 
   useEffect(() => {
     if (!onCaptureFramePreviewChange) {
@@ -814,12 +529,12 @@ function MagePlayerRenderer({
     return () => {
       onCaptureFramePreviewChange(null)
     }
-  }, [onCaptureFramePreviewChange, playerVersion, sceneBlob, sceneKey, status])
+  }, [latestSceneBlobRef, onCaptureFramePreviewChange, playerRef, playerVersion, sceneBlob, sceneKey, status])
 
   useEffect(() => {
     const player = playerRef.current
 
-    if (!player || (status !== 'ready' && loadedPlayerVersion === null)) {
+    if (!player || (status !== 'ready' && !hasLoadedScene)) {
       return
     }
 
@@ -833,7 +548,7 @@ function MagePlayerRenderer({
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [loadedPlayerVersion, playerVersion, status])
+  }, [hasLoadedScene, playerRef, playerVersion, status])
 
   useEffect(() => {
     if (!isVolumeOpen) {
@@ -977,7 +692,7 @@ function MagePlayerRenderer({
     return () => {
       isCancelled = true
     }
-  }, [acceptAudioCandidate, audioCandidate, commitTrackDuration, currentTrack, playerVersion, rejectAudioCandidate, requestedPlaybackRef, status, trackLoadVersion, tracks.length])
+  }, [acceptAudioCandidate, audioCandidate, commitTrackDuration, currentTrack, playerRef, playerVersion, rejectAudioCandidate, requestedPlaybackRef, status, trackLoadVersion, tracks.length])
 
   useEffect(() => {
     if (availabilityPending || audioMode === 'single' || audioCandidate) return
@@ -1128,7 +843,7 @@ function MagePlayerRenderer({
 
   if (status === 'error') {
     title = 'Unable to render this scene.'
-    message = loadError?.message ?? 'MAGE could not render this scene.'
+    message = loadError ?? 'MAGE could not render this scene.'
     role = 'alert'
   }
 
@@ -1145,6 +860,7 @@ function MagePlayerRenderer({
             <div className="mage-player__overlay-copy">
               <strong>{title}</strong>
               <p>{message}</p>
+              {status === 'error' ? <button type="button" onClick={onReplaceRetiredRenderer}>Retry scene</button> : null}
             </div>
           </div>
         ) : null}
@@ -1153,6 +869,7 @@ function MagePlayerRenderer({
           <MagePlayerControls
             audioMode={audioMode}
             disabled={status !== 'ready'}
+            allowStopWhileLoading={status === 'loading'}
             activeAudioAction={audioSelection.adding ? 'add' : activeAudioAction}
             audioError={audioSelection.error ?? audioError}
             audioProgressPercent={audioProgressPercent}

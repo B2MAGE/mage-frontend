@@ -10,7 +10,7 @@ const releases: (() => void)[] = []
 afterEach(() => { releases.splice(0).forEach(release => release()); vi.useRealTimers(); vi.restoreAllMocks() })
 function setup(fixedCase: FixedRecoveryCase = 'window-message', overrides: Partial<MessageEvent> = {}) {
   vi.useFakeTimers()
-  const dom = new JSDOM('<canvas></canvas><p></p>')
+  const dom = new JSDOM('<canvas></canvas><p></p>', { pretendToBeVisual: true })
   releases.push(() => dom.window.close())
   const canvas = dom.window.document.querySelector('canvas')!, statusElement = dom.window.document.querySelector('p')!
   const target = Object.assign(new EventTarget(), { parent: { postMessage: vi.fn() } }) as unknown as Window
@@ -19,7 +19,7 @@ function setup(fixedCase: FixedRecoveryCase = 'window-message', overrides: Parti
   const engine = { dispose: vi.fn(), resize: vi.fn(), input: vi.fn(), playback: vi.fn(), synthetic: vi.fn(), audioResponse: vi.fn(), zoom: vi.fn(),
     capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })), capture: vi.fn(async () => ({ bytes: new ArrayBuffer(12), type: 'image/png' as const, width: 10, height: 10 })) }
   const loadScene = vi.fn<PlaybackLoader>(async options => {
-    options.canvas.addEventListener('webglcontextlost', options.onError)
+    options.canvas.addEventListener('webglcontextlost', () => options.onError('context-lost'))
     return engine
   })
   const connection = fixedRecoveryConnection(session, { case: fixedCase, nonce })
@@ -28,7 +28,7 @@ function setup(fixedCase: FixedRecoveryCase = 'window-message', overrides: Parti
   if (check) releases.push(check.dispose)
   let request = 0
   const send = (type: 'load' | 'capture' | 'dispose', payload: unknown) => port.onmessage?.({ data: playbackMessage(type, session, 1, ++request, payload as never) } as MessageEvent)
-  const load = async () => { send('load', { scene: { visualizer: { shader: 'private arbitrary source ignored' } }, profile: 'full' }); await Promise.resolve(); await Promise.resolve() }
+  const load = async () => { send('load', { scene: { schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'sphere(1); // private arbitrary source ignored' } } }, profile: 'full' }); await Promise.resolve(); await Promise.resolve() }
   const messages = () => port.postMessage.mock.calls.map(([message]) => message)
   return { check, target, port, canvas, dom, engine, loadScene, load, send, messages }
 }
@@ -93,7 +93,7 @@ describe('fixed recovery bootstrap and child', () => {
     const messages = f.messages()
     expect(loseContext).toHaveBeenCalledOnce()
     expect(messages.filter(message => message.type === 'marker').map(message => message.event)).toEqual(['connected', 'action', 'context-lost'])
-    expect(messages.at(-1)).toMatchObject({ type: 'error', payload: { code: 'render' } })
+    expect(messages.at(-1)).toMatchObject({ type: 'error', payload: { code: 'context-lost' } })
     expect(f.engine.dispose).toHaveBeenCalledOnce(); expect(f.port.close).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(0)
   })

@@ -196,14 +196,17 @@ describe('Clear music across player sessions', () => {
     expect(screen.getByText('original.mp3')).toBeInTheDocument()
   })
 
-  it('keeps music and all controls disabled during a permission check, then allows clearing after playback returns', async () => {
+  it('retains music during a permission check and exposes only stopping until playback returns', async () => {
     const f = fixture()
     await loadMusic(f)
     const permission = deferred<Response>()
     f.fetchMock.mockReturnValue(permission.promise)
     act(() => window.dispatchEvent(new Event('focus')))
     expect(f.container.querySelector('.mage-player')).toHaveAttribute('data-availability-pending', 'true')
-    expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Playback options' }))
+    expect(screen.getByRole('button', { name: 'Stop this scene' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Clear music' })).not.toBeInTheDocument()
     expect(f.controller.getAudioState().isLoaded).toBe(true)
     await act(async () => permission.resolve(availabilityResponse()))
     await ready(f)

@@ -3,7 +3,7 @@ import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseC
   type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
 import { normalizeAudioResponseMode, type SceneAudioResponseMode as AudioResponseMode } from '@shared/lib/audioResponse'
 import type { RenderProfile } from '../policy/renderBudget'
-import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
+import type { RenderFailure } from '../recovery/sceneRecovery'
 import { createParentAudioSession, type ParentAudioSession } from './parentAudio'
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus } from './playbackHost'
 import { BRIDGE_LIMITS, isAudioResponseSettings, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'
@@ -18,7 +18,6 @@ export type IsolatedPlayerOptions = {
   useInlineFrameStyles?: boolean
   onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void
-  onHealthy?: () => void
 }
 
 export type IsolatedPlayerDependencies = {
@@ -188,10 +187,6 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         try { options.onStatus?.(status) } catch { /* Observers cannot interfere with the bridge. */ }
       },
       onFailure: fail,
-      onHealthy() {
-        if (disposed || failed || !available || !sceneLoaded || !playing || visualsSuspended()) return
-        try { options.onHealthy?.() } catch { /* Recovery observers cannot disrupt playback. */ }
-      },
     })
   } catch (error) {
     options.container.style.userSelect = previousUserSelect

@@ -114,13 +114,13 @@ reenable.addEventListener('click', () => {
     }
     try {
       sceneRecovery.block(recoveryKey, 'runtime')
-      fixtureBlockAt = sceneRecovery.getAutomaticBlock(recoveryKey)?.at ?? null
+      fixtureBlockAt = sceneRecovery.getBlock(recoveryKey)?.at ?? null
       fixtureDisabled = false
       await sceneAvailabilityStore.check(target)
       await waitUntil(() => !!preview.querySelector('[data-state="blocked"]'), 'Re-enable did not preserve the local recovery screen.')
       await new Promise(resolve => setTimeout(resolve, 350))
       if (!sceneAvailabilityStore.isAllowed(target) || preview.querySelector('iframe, canvas')
-        || sceneRecovery.getAutomaticBlock(recoveryKey)?.at !== fixtureBlockAt) {
+        || sceneRecovery.getBlock(recoveryKey)?.at !== fixtureBlockAt) {
         throw new Error('Re-enable bypassed the local failure, or fresh permission was not granted.')
       }
       const retry = [...preview.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === 'Retry scene')
@@ -152,7 +152,7 @@ window.addEventListener('pagehide', () => {
   observer.disconnect()
   clearInterval(ticker)
   root.unmount()
-  if (fixtureBlockAt !== null && sceneRecovery.getAutomaticBlock(recoveryKey)?.at === fixtureBlockAt) sceneRecovery.clear(recoveryKey)
+  if (fixtureBlockAt !== null && sceneRecovery.getBlock(recoveryKey)?.at === fixtureBlockAt) sceneRecovery.clear(recoveryKey)
   sceneAvailabilityStore.dispose()
   window.fetch = originalFetch
 }, { once: true })

@@ -3,11 +3,10 @@ import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notra
 import { boundCaptureSize, getRenderBudget, type RenderProfile } from '../modules/player/policy/renderBudget'
 import { SCENE_POLICY, validateSceneForPlayback } from '../modules/player/policy/sceneValidation'
 import { resolveSceneForPlayback } from '../modules/player/templates/resolveScene'
-import { BRIDGE_LIMITS, type PlaybackPayloads, type CaptureRequest } from '../modules/player/isolation/playbackProtocol'
+import { BRIDGE_LIMITS, type PlaybackPayloads, type CaptureRequest, type StartupPhase } from '../modules/player/isolation/playbackProtocol'
 import { rasterDimensions } from '../modules/player/isolation/capture'
 import { attachViewerPointerDeformation, type ViewerPointerMesh } from '../modules/player/infrastructure/viewerPointerDeformation'
 import { createPointerOrbit, type OrbitFields } from './pointerOrbit'
-import { compileInWorker } from './compiler/client'
 import type { CompiledShaderArtifact } from '@notrac/mage/compiled-shader'
 import { diffLiveSceneSettings, extractLiveSceneSettings, validateLiveSceneSettings, type SceneLiveSettingsPatch } from '../modules/player/liveSceneSettings'
 import { compileBuilderPreviewDocument } from '../modules/player/templates/builderCompiler'
@@ -30,8 +29,13 @@ export type PlaybackEngine = {
 export type PlaybackLoader = (options: {
   canvas: HTMLCanvasElement; scene: unknown; profile: RenderProfile; signal: AbortSignal
   sceneRevision?: number
-  onError: () => void; onFrame: () => void
+  onError: (reason?: 'context-lost') => void; onFrame: () => void; onPhase?: (phase: StartupPhase) => void
 }) => Promise<PlaybackEngine>
+
+export class PlaybackDownloadError extends Error {
+  readonly code: 'compiler-download' | 'graphics-download'
+  constructor(code: 'compiler-download' | 'graphics-download') { super('Player resources could not be downloaded.'); this.code = code }
+}
 
 type Engine = Omit<MAGEEngineAPI, 'loadPreset' | 'loadCompiledPreset' | 'updateSettings'> & {
   updateSettings: (value: SceneLiveSettingsPatch) => boolean
@@ -45,7 +49,7 @@ const noShortcuts: InputState = { requestToggleUI: false, requestResetVisualizer
   requestNextShader: false, requestPreviousShader: false, requestWheelDirection: 0 }
 
 /** Only validated scene data and numbers enter this engine; no media loader is exposed. */
-export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, sceneRevision = 1, onError, onFrame }) => {
+export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, sceneRevision = 1, onError, onFrame, onPhase }) => {
   const document = validateSceneForPlayback(scene)
   const resolved = resolveSceneForPlayback(document).engineScene
   const builder = document.kind === 'builder' ? compileBuilderPreviewDocument(document) : null
@@ -58,10 +62,17 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   const shader = (resolved.visualizer as { shader: string }).shader
   // Finish and retire submitted JavaScript before allocating the renderer. An
   // unavailable worker is an error, never permission to compile in this frame.
-  const artifact = await compileInWorker(shader, { signal, sceneRevision, maxRaymarchIterations: renderBudget.maxRaymarchIterations })
+  onPhase?.('compiler-download')
+  const { compileInWorker } = await import('./compiler/client').catch(() => { throw new PlaybackDownloadError('compiler-download') })
   signal.throwIfAborted()
-  const { initMAGE } = await import('@notrac/mage')
+  onPhase?.('compiler-startup')
+  const artifact = await compileInWorker(shader, { signal, sceneRevision, maxRaymarchIterations: renderBudget.maxRaymarchIterations,
+    onStarted: () => onPhase?.('compiling') })
   signal.throwIfAborted()
+  onPhase?.('graphics-download')
+  const { initMAGE } = await import('@notrac/mage').catch(() => { throw new PlaybackDownloadError('graphics-download') })
+  signal.throwIfAborted()
+  onPhase?.('graphics-startup')
   const devicePixelRatio = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0
     ? Math.min(window.devicePixelRatio, renderBudget.maxDevicePixelRatio)
     : 1
@@ -116,7 +127,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   }
   function onContextLost() {
     if (disposed) return
-    try { onError() } finally { dispose() }
+    try { onError('context-lost') } finally { dispose() }
   }
   function dispose() {
     if (disposed) return

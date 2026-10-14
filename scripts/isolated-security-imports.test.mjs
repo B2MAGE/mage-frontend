@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const brandAdapter = 'src/modules/player/infrastructure/engineAdapter.ts'
+const brandAdapter = 'src/modules/scene-artwork/brandArtworkController.ts'
 function files(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => entry.isDirectory()
     ? files(resolve(directory, entry.name)) : [resolve(directory, entry.name)])
@@ -56,7 +56,7 @@ test('parent application and browser harnesses do not compile scene source', () 
     if (!/\.(?:[cm]?js|tsx?|html)$/.test(name) || /\.(test|spec)\.[^.]+$/.test(name) || name.endsWith('.d.ts')) continue
     for (const source of executableSources(path)) for (const reason of violations(source, name)) failures.push(`${name}: ${reason}`)
   }
-  assert.deepEqual(failures, [], 'Only the guarded platform-brand adapter and isolated child may import the renderer. Audio-only modules are permitted.')
+  assert.deepEqual(failures, [], 'Only the fixed artwork controller and isolated child may import the renderer. Audio-only modules are permitted.')
 })
 
 test('architecture guard detects runtime imports, evaluation and direct renderer calls while permitting type-only imports', () => {

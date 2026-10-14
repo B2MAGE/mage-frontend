@@ -1,22 +1,17 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createMagePlayer, type MagePlayerController } from '@modules/player'
+import { createBrandArtworkController, type BrandArtworkController } from '../scene-artwork/brandArtworkController'
 import { setAnimatedSceneThumbnailsEnabled } from '@shared/preferences'
-import { BrandScene, BRAND_SCENE } from '@modules/scene-artwork'
+import { BrandScene } from '@modules/scene-artwork'
 import { AboutScene } from './AboutScene'
-import { buildAudioResponseController } from '@shared/test/audioResponseController'
-import { sceneRecoveryKey } from '@modules/player'
 
 const recoveryMocks = vi.hoisted(() => ({
   safeMode: false,
   version: 0,
-  blocks: new Set<string>(),
-  retryGrants: new Set<string>(),
   listeners: new Set<() => void>(),
 }))
 
 vi.mock('@modules/player/recovery/sceneRecovery', () => ({
-  sceneRecoveryKey: (blob: unknown, id?: string | number) => `${id ?? 'draft'}:${JSON.stringify(blob)}`,
   sceneRecovery: {
     subscribe: (listener: () => void) => {
       recoveryMocks.listeners.add(listener)
@@ -24,13 +19,6 @@ vi.mock('@modules/player/recovery/sceneRecovery', () => ({
     },
     getSnapshot: () => recoveryMocks.version,
     isSafeMode: () => recoveryMocks.safeMode,
-    getBlock: (key: string) => !recoveryMocks.retryGrants.has(key) && recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
-    getAutomaticBlock: (key: string) => recoveryMocks.blocks.has(key) ? { reason: 'render-failure', at: 0 } : null,
-    block: (key: string) => {
-      recoveryMocks.blocks.add(key)
-      recoveryMocks.version += 1
-      recoveryMocks.listeners.forEach((listener) => listener())
-    },
   },
 }))
 
@@ -39,10 +27,11 @@ function publishRecoveryChange() {
   recoveryMocks.listeners.forEach((listener) => listener())
 }
 
-vi.mock('@modules/player', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@modules/player')>(),
-  createMagePlayer: vi.fn(),
-}))
+async function reportRenderFailure() {
+  await act(async () => { vi.mocked(createBrandArtworkController).mock.lastCall?.[1]?.onError?.() })
+}
+
+vi.mock('../scene-artwork/brandArtworkController', () => ({ createBrandArtworkController: vi.fn() }))
 
 const label = 'A MAGE scene of gently moving violet and teal rings'
 const renderedFrame = 'data:image/png;base64,rendered-frame'
@@ -53,22 +42,12 @@ let motionPreference: MediaQueryList
 let motionChange: EventListener
 
 function buildController() {
-  const audioState = { currentTime: 0, duration: 0, hasSource: false, isLoaded: false, sourcePath: null, volume: 1 }
   return {
-    ...buildAudioResponseController(),
     captureFramePreview: vi.fn(async (): Promise<string | null> => renderedFrame),
-    clearAudio: vi.fn(() => audioState),
     dispose: vi.fn(),
-    getAudioState: vi.fn(() => audioState),
-    getPlaybackState: vi.fn(() => 'paused' as const),
-    loadAudio: vi.fn(async () => audioState),
-    loadSceneBlob: vi.fn(),
-    resetPlayback: vi.fn(() => 'paused' as const),
-    seekAudio: vi.fn(() => audioState),
-    setAudioVolume: vi.fn(() => audioState),
-    setPlaybackState: vi.fn((state: 'playing' | 'paused') => state),
+    setPlaybackState: vi.fn(),
     setSyntheticPreview: vi.fn(),
-  } satisfies MagePlayerController
+  } satisfies BrandArtworkController
 }
 
 function deferred<T>() {
@@ -121,8 +100,6 @@ describe('AboutScene', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     recoveryMocks.safeMode = false
-    recoveryMocks.blocks.clear()
-    recoveryMocks.retryGrants.clear()
     recoveryMocks.version += 1
     setAnimatedSceneThumbnailsEnabled(true)
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
@@ -142,7 +119,7 @@ describe('AboutScene', () => {
       observe = observe
       disconnect = disconnect
     })
-    vi.mocked(createMagePlayer).mockReset()
+    vi.mocked(createBrandArtworkController).mockReset()
   })
 
   afterEach(() => { vi.unstubAllGlobals() })
@@ -151,21 +128,20 @@ describe('AboutScene', () => {
     const frame = deferred<string | null>()
     const controller = buildController()
     controller.captureFramePreview.mockReturnValue(frame.promise)
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     const view = render(<AboutScene />)
     const sceneCanvas = canvas()
 
     expect(observe).toHaveBeenCalledWith(illustration())
-    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(createBrandArtworkController).not.toHaveBeenCalled()
     expectLoading()
     expect(illustration().querySelector('svg')).not.toBeInTheDocument()
     expect(sceneCanvas).toHaveAttribute('aria-hidden', 'true')
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     await setIntersecting(true)
 
-    expect(createMagePlayer).toHaveBeenCalledWith(sceneCanvas, { renderProfile: 'preview', mouseInteractions: true, platformArtwork: 'brand' })
-    expect(controller.loadSceneBlob).toHaveBeenCalledWith(BRAND_SCENE)
-    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
+    expect(createBrandArtworkController).toHaveBeenCalledWith(sceneCanvas, { signal: expect.any(AbortSignal), onError: expect.any(Function) })
+    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false)
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
     expect(controller.captureFramePreview).toHaveBeenCalledTimes(1)
     expect(controller.setPlaybackState.mock.invocationCallOrder[0]).toBeLessThan(controller.captureFramePreview.mock.invocationCallOrder[0])
@@ -174,11 +150,8 @@ describe('AboutScene', () => {
     await act(async () => { frame.resolve(renderedFrame) })
 
     expectReady()
-    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(true, 73, 0.5)
+    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(true)
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
-    expect(controller.loadAudio).not.toHaveBeenCalled()
-    expect(controller.getAudioState).not.toHaveBeenCalled()
-    expect(controller.clearAudio).not.toHaveBeenCalled()
     view.unmount()
     expect(disconnect).toHaveBeenCalledTimes(1)
     expect(controller.dispose).toHaveBeenCalledTimes(1)
@@ -187,7 +160,7 @@ describe('AboutScene', () => {
 
   it('runs the shared homepage artwork without a synthetic beat or any audio', async () => {
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<BrandScene className="editor-brand-scene" reactToBeat={false} />)
     expectLoading()
     await setIntersecting(true)
@@ -195,19 +168,16 @@ describe('AboutScene', () => {
     expectReady()
     expect(illustration()).toHaveClass('brand-scene', 'editor-brand-scene')
     expect(canvas()).toHaveClass('brand-scene__canvas')
-    expect(createMagePlayer).toHaveBeenCalledWith(canvas(), { renderProfile: 'preview', mouseInteractions: true, platformArtwork: 'brand' })
-    expect(controller.loadSceneBlob).toHaveBeenCalledWith(BRAND_SCENE)
+    expect(createBrandArtworkController).toHaveBeenCalledWith(canvas(), { signal: expect.any(AbortSignal), onError: expect.any(Function) })
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
-    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
+    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false)
     expect(controller.setSyntheticPreview.mock.calls.every(([enabled]) => enabled === false)).toBe(true)
-    expect(controller.loadAudio).not.toHaveBeenCalled()
-    expect(controller.getAudioState).not.toHaveBeenCalled()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('pauses and resumes non-reactive artwork without ever enabling the beat', async () => {
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<BrandScene reactToBeat={false} />)
     await setIntersecting(true)
     await setIntersecting(false)
@@ -219,14 +189,14 @@ describe('AboutScene', () => {
     await setVisibility('visible')
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
     expect(controller.setSyntheticPreview.mock.calls.every(([enabled]) => enabled === false)).toBe(true)
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(1)
   })
 
   it.each(['disabled animation', 'reduced motion'] as const)('renders a real static homepage frame with %s', async (preference) => {
     if (preference === 'disabled animation') setAnimatedSceneThumbnailsEnabled(false)
     else Object.defineProperty(motionPreference, 'matches', { configurable: true, value: true })
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<BrandScene reactToBeat={false} />)
     await setIntersecting(true)
 
@@ -240,23 +210,23 @@ describe('AboutScene', () => {
   it('renders a real static frame when animated previews are disabled', async () => {
     setAnimatedSceneThumbnailsEnabled(false)
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     expectLoading()
-    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(createBrandArtworkController).not.toHaveBeenCalled()
     await setIntersecting(true)
 
     expectReady()
     expect(controller.captureFramePreview).toHaveBeenCalledTimes(1)
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
     expect(controller.setPlaybackState).not.toHaveBeenCalledWith('playing')
-    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
+    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false)
   })
 
   it('renders a static frame for reduced motion and responds to changes using the same renderer', async () => {
     Object.defineProperty(motionPreference, 'matches', { configurable: true, value: true })
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     await setIntersecting(true)
     expectReady()
@@ -266,18 +236,18 @@ describe('AboutScene', () => {
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
     await setReducedMotion(true)
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
-    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(1)
     expect(controller.captureFramePreview).toHaveBeenCalledTimes(1)
   })
 
   it('starts only in a visible tab, pauses offscreen or hidden, and resumes the same renderer', async () => {
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     await setVisibility('hidden')
     await setIntersecting(true)
-    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(createBrandArtworkController).not.toHaveBeenCalled()
 
     await setVisibility('visible')
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
@@ -289,8 +259,7 @@ describe('AboutScene', () => {
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
     await setVisibility('visible')
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
-    expect(controller.loadSceneBlob).toHaveBeenCalledTimes(1)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(1)
     expect(controller.captureFramePreview).toHaveBeenCalledTimes(1)
   })
 
@@ -298,7 +267,7 @@ describe('AboutScene', () => {
     const animatedController = buildController()
     const staticController = buildController()
     const resumedController = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValueOnce(animatedController).mockResolvedValueOnce(staticController).mockResolvedValueOnce(resumedController)
+    vi.mocked(createBrandArtworkController).mockResolvedValueOnce(animatedController).mockResolvedValueOnce(staticController).mockResolvedValueOnce(resumedController)
     render(<AboutScene />)
     const originalCanvas = canvas()
     await setIntersecting(true)
@@ -309,7 +278,7 @@ describe('AboutScene', () => {
     expect(staticCanvas).not.toBe(originalCanvas)
     expectLoading()
     await setIntersecting(true)
-    expect(createMagePlayer).toHaveBeenLastCalledWith(staticCanvas, { renderProfile: 'preview', mouseInteractions: true, platformArtwork: 'brand' })
+    expect(createBrandArtworkController).toHaveBeenLastCalledWith(staticCanvas, { signal: expect.any(AbortSignal), onError: expect.any(Function) })
     expectReady()
     expect(staticController.setPlaybackState).toHaveBeenLastCalledWith('paused')
     expect(staticController.setPlaybackState).not.toHaveBeenCalledWith('playing')
@@ -319,23 +288,23 @@ describe('AboutScene', () => {
     const resumedCanvas = canvas()
     expect(resumedCanvas).not.toBe(staticCanvas)
     await setIntersecting(true)
-    expect(createMagePlayer).toHaveBeenLastCalledWith(resumedCanvas, { renderProfile: 'preview', mouseInteractions: true, platformArtwork: 'brand' })
+    expect(createBrandArtworkController).toHaveBeenLastCalledWith(resumedCanvas, { signal: expect.any(AbortSignal), onError: expect.any(Function) })
     expectReady()
     expect(resumedController.setPlaybackState).toHaveBeenLastCalledWith('playing')
-    expect(createMagePlayer).toHaveBeenCalledTimes(3)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(3)
   })
 
-  it('disposes a renderer created after unmount without loading or capturing it', async () => {
-    const creation = deferred<MagePlayerController>()
-    vi.mocked(createMagePlayer).mockReturnValue(creation.promise)
+  it('cancels startup on unmount and disposes a late renderer without capturing it', async () => {
+    const creation = deferred<BrandArtworkController>()
+    vi.mocked(createBrandArtworkController).mockReturnValue(creation.promise)
     const view = render(<AboutScene />)
     await setIntersecting(true)
     view.unmount()
+    expect(vi.mocked(createBrandArtworkController).mock.lastCall?.[1]?.signal?.aborted).toBe(true)
     const controller = buildController()
     await act(async () => { creation.resolve(controller) })
 
     expect(controller.dispose).toHaveBeenCalledTimes(1)
-    expect(controller.loadSceneBlob).not.toHaveBeenCalled()
     expect(controller.captureFramePreview).not.toHaveBeenCalled()
     expect(controller.setPlaybackState).not.toHaveBeenCalled()
   })
@@ -344,7 +313,7 @@ describe('AboutScene', () => {
     const frame = deferred<string | null>()
     const controller = buildController()
     controller.captureFramePreview.mockReturnValue(frame.promise)
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     const view = render(<AboutScene />)
     const sceneCanvas = canvas()
     await setIntersecting(true)
@@ -358,8 +327,8 @@ describe('AboutScene', () => {
   })
 
   it.each(['offscreen', 'hidden', 'reduced motion'] as const)('keeps a late-created renderer paused if it became %s before loading', async (reason) => {
-    const creation = deferred<MagePlayerController>()
-    vi.mocked(createMagePlayer).mockReturnValue(creation.promise)
+    const creation = deferred<BrandArtworkController>()
+    vi.mocked(createBrandArtworkController).mockReturnValue(creation.promise)
     render(<AboutScene />)
     await setIntersecting(true)
     if (reason === 'offscreen') await setIntersecting(false)
@@ -370,7 +339,7 @@ describe('AboutScene', () => {
 
     expectReady()
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
-    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
+    expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(false)
     expect(controller.setPlaybackState).not.toHaveBeenCalledWith('playing')
   })
 
@@ -378,7 +347,7 @@ describe('AboutScene', () => {
     const frame = deferred<string | null>()
     const controller = buildController()
     controller.captureFramePreview.mockReturnValue(frame.promise)
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     await setIntersecting(true)
     if (reason === 'offscreen') await setIntersecting(false)
@@ -399,7 +368,7 @@ describe('AboutScene', () => {
     const frame = deferred<string | null>()
     const controller = buildController()
     controller.captureFramePreview.mockReturnValue(frame.promise)
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     await setIntersecting(true)
     await setIntersecting(false)
@@ -411,15 +380,14 @@ describe('AboutScene', () => {
     expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
   })
 
-  it.each(['creation', 'scene loading', 'capture', 'empty capture'] as const)('shows an error instead of an artificial fallback if %s fails', async (failure) => {
+  it.each(['creation', 'capture', 'empty capture'] as const)('shows an error instead of an artificial fallback if %s fails', async (failure) => {
     const controller = buildController()
     if (failure === 'creation') {
-      vi.mocked(createMagePlayer).mockRejectedValue(new Error('WebGL is unavailable'))
+      vi.mocked(createBrandArtworkController).mockRejectedValue(new Error('WebGL is unavailable'))
     } else {
-      if (failure === 'scene loading') controller.loadSceneBlob.mockImplementation(() => { throw new Error('Scene failed') })
       if (failure === 'capture') controller.captureFramePreview.mockRejectedValue(new Error('Capture failed'))
       if (failure === 'empty capture') controller.captureFramePreview.mockResolvedValue(null)
-      vi.mocked(createMagePlayer).mockResolvedValue(controller)
+      vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     }
     render(<AboutScene />)
     await setIntersecting(true)
@@ -431,20 +399,19 @@ describe('AboutScene', () => {
     expect(controller.dispose).toHaveBeenCalledTimes(failure === 'creation' ? 0 : 1)
     await setIntersecting(false)
     await setIntersecting(true)
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(1)
   })
 
-  it('quarantines the artwork and releases the renderer if WebGL loses its context', async () => {
+  it('shows a local error and releases the renderer if WebGL loses its context', async () => {
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     await setIntersecting(true)
     expectReady()
-    await act(async () => { canvas().dispatchEvent(new Event('webglcontextlost')) })
+    await reportRenderFailure()
 
-    expect(canvas()).toBeNull()
-    expect(illustration()).toHaveAttribute('data-preview-paused', 'true')
-    expect(recoveryMocks.blocks.has(sceneRecoveryKey(BRAND_SCENE)!)).toBe(true)
+    expect(canvas()).not.toHaveAttribute('data-ready')
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to render this scene.')
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
 
@@ -452,35 +419,31 @@ describe('AboutScene', () => {
     const frame = deferred<string | null>()
     const controller = buildController()
     controller.captureFramePreview.mockReturnValue(frame.promise)
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<AboutScene />)
     await setIntersecting(true)
-    await act(async () => { canvas().dispatchEvent(new Event('webglcontextlost')) })
+    await reportRenderFailure()
     await act(async () => { frame.resolve(renderedFrame) })
 
-    expect(canvas()).toBeNull()
-    expect(illustration()).toHaveAttribute('data-preview-paused', 'true')
+    expect(canvas()).not.toHaveAttribute('data-ready')
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to render this scene.')
     expect(controller.setPlaybackState).not.toHaveBeenCalledWith('playing')
     expect(controller.dispose).toHaveBeenCalledTimes(1)
   })
 
-  it.each(['safe mode', 'blocked artwork', 'retry grant'] as const)('keeps decorative artwork static without creating an engine for %s', (reason) => {
-    if (reason === 'safe mode') recoveryMocks.safeMode = true
-    else recoveryMocks.blocks.add(sceneRecoveryKey(BRAND_SCENE)!)
-    if (reason === 'retry grant') recoveryMocks.retryGrants.add(sceneRecoveryKey(BRAND_SCENE)!)
+  it('does not create decorative artwork in safe mode', () => {
+    recoveryMocks.safeMode = true
     render(<BrandScene />)
-
-    expect(createMagePlayer).not.toHaveBeenCalled()
+    expect(createBrandArtworkController).not.toHaveBeenCalled()
     expect(canvas()).toBeNull()
     expect(illustration()).toHaveAttribute('data-preview-paused', 'true')
     expect(illustration()).toHaveAttribute('aria-busy', 'false')
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    if (reason === 'retry grant') expect(recoveryMocks.retryGrants.has(sceneRecoveryKey(BRAND_SCENE)!)).toBe(true)
   })
 
   it('releases live artwork when safe mode starts without remounting on unrelated recovery updates', async () => {
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    vi.mocked(createBrandArtworkController).mockResolvedValue(controller)
     render(<BrandScene />)
     await setIntersecting(true)
     expectReady()
@@ -491,13 +454,13 @@ describe('AboutScene', () => {
     expect(controller.dispose).toHaveBeenCalledTimes(1)
     expect(canvas()).toBeNull()
     await act(async () => { publishRecoveryChange() })
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(1)
   })
 
-  it('disposes artwork that finishes initialization after safe mode starts without loading source', async () => {
-    const creation = deferred<MagePlayerController>()
+  it('disposes artwork that finishes initialization after safe mode starts without capturing it', async () => {
+    const creation = deferred<BrandArtworkController>()
     const controller = buildController()
-    vi.mocked(createMagePlayer).mockReturnValue(creation.promise)
+    vi.mocked(createBrandArtworkController).mockReturnValue(creation.promise)
     render(<BrandScene />)
     await setIntersecting(true)
     await act(async () => {
@@ -507,27 +470,26 @@ describe('AboutScene', () => {
     })
 
     expect(controller.dispose).toHaveBeenCalledTimes(1)
-    expect(controller.loadSceneBlob).not.toHaveBeenCalled()
     expect(controller.captureFramePreview).not.toHaveBeenCalled()
     expect(canvas()).toBeNull()
   })
 
-  it('recreates the artwork after BFCache restoration without quarantining intentional context disposal', async () => {
+  it('recreates the artwork after BFCache restoration without reporting intentional disposal as an error', async () => {
     const first = buildController()
     const restored = buildController()
-    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
+    vi.mocked(createBrandArtworkController).mockResolvedValueOnce(first).mockResolvedValueOnce(restored)
     render(<BrandScene reactToBeat={false} />)
     await setIntersecting(true)
     const originalCanvas = canvas()
     await act(async () => { pageTransition('pageshow', false) })
-    expect(createMagePlayer).toHaveBeenCalledTimes(1)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       pageTransition('pagehide')
-      // Adapter pagehide cleanup intentionally loses the WebGL context.
+      // Controller pagehide cleanup intentionally loses the WebGL context.
       originalCanvas.dispatchEvent(new Event('webglcontextlost'))
     })
-    expect(recoveryMocks.blocks.size).toBe(0)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await act(async () => { pageTransition('pageshow') })
     expect(first.dispose).toHaveBeenCalledTimes(1)
     expect(canvas()).not.toBe(originalCanvas)
@@ -535,17 +497,16 @@ describe('AboutScene', () => {
     await setIntersecting(true)
 
     expectReady()
-    expect(restored.loadSceneBlob).toHaveBeenCalledWith(BRAND_SCENE)
     expect(restored.setPlaybackState).toHaveBeenLastCalledWith('playing')
-    expect(restored.setSyntheticPreview).toHaveBeenLastCalledWith(false, 73, 0.5)
-    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(restored.setSyntheticPreview).toHaveBeenLastCalledWith(false)
+    expect(createBrandArtworkController).toHaveBeenCalledTimes(2)
   })
 
   it('recreates after BFCache interrupts initialization and discards the old result', async () => {
-    const pending = deferred<MagePlayerController>()
+    const pending = deferred<BrandArtworkController>()
     const stale = buildController()
     const restored = buildController()
-    vi.mocked(createMagePlayer).mockReturnValueOnce(pending.promise).mockResolvedValueOnce(restored)
+    vi.mocked(createBrandArtworkController).mockReturnValueOnce(pending.promise).mockResolvedValueOnce(restored)
     render(<BrandScene />)
     await setIntersecting(true)
     await act(async () => {
@@ -556,9 +517,7 @@ describe('AboutScene', () => {
     await act(async () => { pending.resolve(stale) })
 
     expect(stale.dispose).toHaveBeenCalledTimes(1)
-    expect(stale.loadSceneBlob).not.toHaveBeenCalled()
     expect(stale.captureFramePreview).not.toHaveBeenCalled()
-    expect(restored.loadSceneBlob).toHaveBeenCalledWith(BRAND_SCENE)
     expectReady()
   })
 })

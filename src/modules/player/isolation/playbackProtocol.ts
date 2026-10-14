@@ -12,10 +12,15 @@ export const BRIDGE_LIMITS = Object.freeze({ messagesPerSecond: 90, responsesPer
   captureBytes: 1_048_576, captureTimeoutMs: 5_000, maxTime: 604_800, maxHits: 16 })
 export type AudioInput = { frame: AudioAnalysisFrame | null; legacyAmplitude: number; audioTime: number; playing: boolean; loaded: boolean }
 export type CaptureRequest = { width: number; height: number; type: 'image/png' | 'image/jpeg' | 'image/webp'; quality: number }
+export const STARTUP_PHASES = ['waiting-visible', 'compiler-download', 'compiler-startup', 'compiling', 'graphics-download', 'graphics-startup'] as const
+export type StartupPhase = typeof STARTUP_PHASES[number]
+export const PLAYBACK_ERRORS = ['render', 'protocol', 'capture', 'compile', 'compiler-download', 'graphics-download',
+  'compiler-startup', 'compile-timeout', 'invalid-output', 'graphics-startup', 'context-lost', 'interrupted'] as const
 export type PlaybackPayloads = {
-  connect: null; ready: null; dispose: null
+  connect: null | { startupPhases: true }; ready: null; dispose: null
   load: { scene: Record<string, unknown>; profile: 'full' | 'preview' }
   loaded: null
+  'load-phase': { phase: StartupPhase; attempt: 0 | 1 }
   resize: { width: number; height: number; pixelRatio: number }
   playback: { playing: boolean }
   zoom: { factor: number }
@@ -28,7 +33,7 @@ export type PlaybackPayloads = {
   capture: CaptureRequest
   captured: { bytes: ArrayBuffer; type: CaptureRequest['type']; width: number; height: number }
   progress: { frames: number }
-  error: { code: 'render' | 'protocol' | 'capture' | 'compile' }
+  error: { code: typeof PLAYBACK_ERRORS[number] }
 }
 export type PlaybackType = keyof PlaybackPayloads
 export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends PlaybackType ? {
@@ -36,7 +41,7 @@ export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends P
   generation: number; requestId: number; type: T; payload: PlaybackPayloads[T]
 } : never
 export const PLAYBACK_COMMANDS = ['load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'capture', 'dispose'] as const
-export const PLAYBACK_RESPONSES = ['ready', 'loaded', 'captured', 'capabilities-result', 'progress', 'error'] as const
+export const PLAYBACK_RESPONSES = ['ready', 'load-phase', 'loaded', 'captured', 'capabilities-result', 'progress', 'error'] as const
 export function playbackMessage<T extends PlaybackType>(type: T, session: string, generation: number,
   requestId: number, payload: PlaybackPayloads[T]): PlaybackMessage<T> {
   return { protocol: RENDERER_PROTOCOL, version: PLAYBACK_VERSION, type, session, generation, requestId, payload } as PlaybackMessage<T>
@@ -91,8 +96,13 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     || !uint(value.generation) || !uint(value.requestId) || typeof value.type !== 'string' || !allowed.includes(value.type)) return false
   const p = value.payload
   switch (value.type) {
-    case 'connect': case 'ready': return p === null && value.generation === 0 && value.requestId === 0
+    case 'connect': return (p === null || (record(p, ['startupPhases']) && p.startupPhases === true))
+      && value.generation === 0 && value.requestId === 0
+    case 'ready': return p === null && value.generation === 0 && value.requestId === 0
     case 'dispose': case 'loaded': case 'capabilities': return p === null
+    case 'load-phase': return record(p, ['phase', 'attempt']) && STARTUP_PHASES.includes(p.phase as StartupPhase)
+      && (p.attempt === 0 || p.attempt === 1) && numberIn(value.generation, 1, Number.MAX_SAFE_INTEGER)
+      && numberIn(value.requestId, 1, Number.MAX_SAFE_INTEGER)
     case 'audio-response': return isAudioResponseSettings(p)
     case 'scene-settings':
       try { validateLiveSceneSettings(p); return true } catch { return false }
@@ -120,7 +130,7 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
       && numberIn(p.width, 1, CAPTURE_BUDGET.maxLongestEdge) && Number.isInteger(p.width) && numberIn(p.height, 1, CAPTURE_BUDGET.maxLongestEdge)
       && Number.isInteger(p.height) && p.width * p.height <= CAPTURE_BUDGET.maxRenderPixels
     case 'progress': return record(p, ['frames']) && uint(p.frames)
-    case 'error': return record(p, ['code']) && ['render', 'protocol', 'capture', 'compile'].includes(p.code as string)
+    case 'error': return record(p, ['code']) && PLAYBACK_ERRORS.includes(p.code as typeof PLAYBACK_ERRORS[number])
     default: return false
   }
 }

@@ -43,7 +43,7 @@ describe('live scene audio response', () => {
   })
 
   it.each(['custom', 'template'])('keeps a local playlist, playback position, volume, and player while %s mappings change', async kind => {
-    const controller = buildMagePlayerController()
+    const controller = buildMagePlayerController({ updateSceneSettings: vi.fn() })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const scene = withResponse(kind === 'template' ? template : buildMagePlayerSceneBlob(), { audioResponse: 'mapped-v1' })
     const { container, rerender } = render(<MagePlayer sceneBlob={scene} sceneKey="editor" />)
@@ -61,7 +61,7 @@ describe('live scene audio response', () => {
     const config = normalizeAudioResponseConfig({ sensitivity: 2 }).config
     rerender(<MagePlayer sceneBlob={withResponse(scene, { audioResponseConfig: config })} sceneKey="editor" />)
     expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument()
-    await waitFor(() => expect(controller.setAudioResponseSettings).toHaveBeenLastCalledWith('mapped-v1', config))
+    await waitFor(() => expect(controller.updateSceneSettings).toHaveBeenLastCalledWith(withResponse(scene, { audioResponseConfig: config }), { sceneKey: 'editor' }))
     expect(controller.loadSceneBlob).toHaveBeenCalledTimes(1)
     expect(controller.loadAudio).toHaveBeenCalledTimes(1)
     expect(controller.clearAudio).not.toHaveBeenCalled()
@@ -76,6 +76,7 @@ describe('live scene audio response', () => {
   it.each(['custom', 'template'])('does not cancel an in-flight %s song load when only its response settings change', async kind => {
     let complete!: (state: MagePlayerAudioState) => void
     const controller = buildMagePlayerController({
+      updateSceneSettings: vi.fn(),
       loadAudio: vi.fn(() => new Promise<MagePlayerAudioState>((resolve) => { complete = resolve })),
     })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
@@ -84,7 +85,7 @@ describe('live scene audio response', () => {
     const { rerender } = render(<MagePlayer sceneBlob={scene} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
     await screen.findByText('Loading track…')
     rerender(<MagePlayer sceneBlob={withResponse(scene, { audioResponse: 'mapped-v1' })} playlistTracks={tracks} selectedTrackId={tracks[0].id} />)
-    await waitFor(() => expect(controller.setAudioResponseSettings).toHaveBeenCalled())
+    await waitFor(() => expect(controller.updateSceneSettings).toHaveBeenCalled())
     expect(screen.getByText('Loading track…')).toBeInTheDocument()
     await act(async () => complete({ currentTime: 0, duration: 185, hasSource: true, isLoaded: true, sourcePath: '/track.mp3', volume: 1 }))
     await waitFor(() => expect(screen.queryByText('Loading track…')).not.toBeInTheDocument())

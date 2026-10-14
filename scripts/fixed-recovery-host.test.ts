@@ -23,7 +23,7 @@ afterEach(() => { document.body.replaceChildren(); vi.clearAllTimers(); vi.useRe
 function setup() {
   const container = document.createElement('div'); document.body.append(container)
   const failure = vi.fn(), marker = vi.fn()
-  const host = createFixedRecoveryHost({ container, rendererUrl: 'http://127.0.0.1:5181/', startupTimeoutMs: 100,
+  const host = createFixedRecoveryHost({ container, rendererUrl: 'http://127.0.0.1:5181/', startupTimeoutMs: 100, downloadTimeoutMs: 100,
     fixedRecoveryCheck: { case: 'context-loss', nonce }, onFailure: failure, onFixedRecoveryMarker: marker })
   const frame = container.querySelector('iframe')!, post = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => {})
   frame.dispatchEvent(new Event('load'))
@@ -34,7 +34,7 @@ describe('local recovery adapter', () => {
     const f = setup()
     expect(f.post.mock.calls).toEqual([
       [{ type: FIXED_RECOVERY_SETUP, case: 'context-loss', nonce }, '*', [channels[0].port2]],
-      [playbackMessage('connect', session, 0, 0, null), '*', [channels[1].port2]],
+      [playbackMessage('connect', session, 0, 0, { startupPhases: true }), '*', [channels[1].port2]],
     ])
     f.host.dispose()
     expect(f.evidence.close).toHaveBeenCalledOnce(); expect(f.playback.close).toHaveBeenCalledOnce()
@@ -46,7 +46,7 @@ describe('local recovery adapter', () => {
     expect(f.marker).toHaveBeenCalledWith(value)
     expect(f.evidence.postMessage).toHaveBeenCalledWith({ ack: 1 })
     await vi.advanceTimersByTimeAsync(100)
-    expect(f.failure).toHaveBeenCalledExactlyOnceWith('startup-timeout')
+    expect(f.failure).toHaveBeenCalledExactlyOnceWith('graphics-download')
     expect(f.frame.isConnected).toBe(false); expect(f.evidence.close).toHaveBeenCalledOnce()
   })
   it('rejects invalid and excessive evidence', () => {

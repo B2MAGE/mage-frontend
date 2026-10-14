@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer, type MagePlayerAudioResponseCapabilitiesSnapshot } from './MagePlayer'
 import {
@@ -118,8 +118,10 @@ describe('player audio-response capabilities bridge', () => {
     rerender(<MagePlayer sceneBlob={second} sceneKey={sceneKey} onAudioResponseCapabilitiesChange={onChange} />)
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
     if (reason === 'stopped') {
-      expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
-      act(() => sceneRecovery.block(sceneRecoveryKey(second, sceneKey)!, 'stopped'))
+      const options = screen.getByRole('button', { name: 'Playback options' })
+      expect(options).toBeEnabled()
+      fireEvent.click(options)
+      fireEvent.click(screen.getByRole('button', { name: 'Stop this scene' }))
     } else {
       vi.spyOn(sceneAvailabilityStore, 'getSnapshot').mockReturnValue({
         allowed: false, code: 'SCENE_DISABLED', message: 'This scene is temporarily unavailable.', checkedAt: 1,
@@ -165,6 +167,7 @@ describe('player audio-response capabilities bridge', () => {
     const controller = buildMagePlayerController({
       getAudioResponseCapabilities: vi.fn(() => capabilities('size')),
       loadAudio: vi.fn(() => new Promise<MagePlayerAudioState>(resolve => { finishTrack = resolve })),
+      updateSceneSettings: vi.fn(),
     })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const first = buildMagePlayerSceneBlob()
@@ -179,7 +182,7 @@ describe('player audio-response capabilities bridge', () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith({ sceneBlob: second, capabilities: capabilities('size') }))
     expect(onChange.mock.calls.every(([snapshot]) => snapshot !== null && snapshot.sceneBlob === second)).toBe(true)
     expect(controller.loadSceneBlob).toHaveBeenCalledOnce()
-    expect(controller.setAudioResponseSettings).toHaveBeenLastCalledWith('mapped-v1', second.scene.audioResponseConfig)
+    expect(controller.updateSceneSettings).toHaveBeenLastCalledWith(second, { sceneKey: 'editor' })
     expect(controller.loadAudio).toHaveBeenCalledOnce()
     expect(screen.getByText('Loading track…')).toBeInTheDocument()
     expect(screen.queryByText('Loading scene preview.')).not.toBeInTheDocument()

@@ -2,7 +2,7 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installPlaybackRuntime } from './playbackRuntime'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
-import type { PlaybackLoader } from './playbackEngine'
+import { PlaybackDownloadError, type PlaybackLoader } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 
@@ -26,7 +26,7 @@ function fixture() {
   releases.push(runtime.dispose)
   const port = { postMessage: vi.fn(), start: vi.fn(), close: vi.fn(), onmessage: null as ((event: MessageEvent) => void) | null }
   const bootstrap = (overrides: Partial<MessageEventInit> = {}) => target.dispatchEvent(new MessageEvent('message', {
-    data: playbackMessage('connect', session, 0, 0, null), source: target.parent, origin, ports: [port as unknown as MessagePort], ...overrides }))
+    data: playbackMessage('connect', session, 0, 0, { startupPhases: true }), source: target.parent, origin, ports: [port as unknown as MessagePort], ...overrides }))
   let request = 0
   const send = <T extends PlaybackType>(type: T, payload: PlaybackPayloads[T], generation = 1, requestId = ++request) =>
     port.onmessage?.(new MessageEvent('message', { data: playbackMessage(type, session, generation, requestId, payload) }))
@@ -36,6 +36,123 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('keeps an existing v2 parent playing without sending newly introduced phase responses', async () => {
+    const f = fixture()
+    f.loadScene.mockImplementation(async options => {
+      for (const phase of ['compiler-download', 'compiler-startup', 'compiling', 'graphics-download', 'graphics-startup'] as const) options.onPhase?.(phase)
+      options.onFrame()
+      return f.engine
+    })
+    f.bootstrap({ data: playbackMessage('connect', session, 0, 0, null) })
+    f.load(); await Promise.resolve()
+    f.send('playback', { playing: false }); f.send('capabilities', null)
+    f.send('capture', { width: 10, height: 10, type: 'image/png', quality: 0.9 }); await Promise.resolve()
+    // Frozen response vocabulary of the deployed pre-PL-01 v2 parent. That
+    // parent disposes the frame immediately for any response outside this set.
+    const legacyTypes = ['ready', 'loaded', 'captured', 'capabilities-result', 'progress', 'error']
+    for (const [message] of f.port.postMessage.mock.calls) {
+      expect(message.version).toBe(2)
+      expect(Object.keys(message).sort()).toEqual(['generation', 'payload', 'protocol', 'requestId', 'session', 'type', 'version'])
+      expect(legacyTypes).toContain(message.type)
+    }
+    expect(f.responses('load-phase')).toEqual([])
+    expect(f.responses('loaded')).toHaveLength(1)
+    expect(f.responses('captured')).toHaveLength(1)
+    expect(f.responses('capabilities-result')).toHaveLength(1)
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.port.close).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['compiler-download', 'compile'], ['graphics-download', 'render'], ['startup', 'compile'],
+    ['timeout', 'compile'], ['invalid-output', 'compile'], ['interrupted', 'compile'],
+    ['graphics-startup', 'render'], ['context-lost', 'render'],
+  ] as const)('maps %s to the original %s error for an existing parent', async (failure, expected) => {
+    const f = fixture()
+    f.loadScene.mockImplementation(async options => {
+      if (failure === 'compiler-download' || failure === 'graphics-download') throw new PlaybackDownloadError(failure)
+      if (failure === 'graphics-startup') { options.onPhase?.('graphics-startup'); throw new Error('Private detail') }
+      if (failure === 'context-lost') { options.onError('context-lost'); return f.engine }
+      throw new ShaderCompilationError(failure)
+    })
+    f.bootstrap({ data: playbackMessage('connect', session, 0, 0, null) })
+    f.load(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('load-phase')).toEqual([])
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: expected }])
+    expect(f.port.close).toHaveBeenCalledOnce()
+  })
+
+  it('distinguishes graphics setup rejection from runtime rendering failure', async () => {
+    const f = fixture()
+    f.loadScene.mockImplementationOnce(async options => {
+      options.onPhase?.('graphics-startup')
+      throw new Error('Private WebGL details')
+    })
+    f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('error').map(message => message.payload.code)).toEqual(['graphics-startup'])
+    expect(JSON.stringify(f.port.postMessage.mock.calls)).not.toContain('Private WebGL details')
+  })
+  it.each(['compiler-download', 'graphics-download', 'startup', 'timeout', 'invalid-output'] as const)(
+    'preserves fixed %s failure classification without exposing diagnostics', async code => {
+      const f = fixture()
+      f.loadScene.mockRejectedValueOnce(code.endsWith('download')
+        ? new PlaybackDownloadError(code as 'compiler-download' | 'graphics-download')
+        : new ShaderCompilationError(code as 'startup' | 'timeout' | 'invalid-output'))
+      f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve()
+      expect(f.responses('error').map(message => message.payload.code)).toEqual([
+        code === 'startup' ? 'compiler-startup' : code === 'timeout' ? 'compile-timeout' : code])
+    })
+
+  it('waits for visibility before allocating a loader and preserves a requested pause', async () => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    const f = fixture(); f.bootstrap(); f.load(); f.send('playback', { playing: false })
+    expect(f.loadScene).not.toHaveBeenCalled()
+    expect(f.responses('load-phase')[0].payload).toEqual({ phase: 'waiting-visible', attempt: 0 })
+    hidden.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledOnce()
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+  })
+
+  it('restarts one hidden compiler interruption inside the same pending load, retaining pause', async () => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const f = fixture()
+    let reject!: (error: Error) => void
+    f.loadScene.mockReturnValueOnce(new Promise((_resolve, no) => { reject = no }))
+    f.bootstrap(); f.load(7); f.send('playback', { playing: false }, 7)
+    hidden.mockReturnValue('hidden'); reject(new ShaderCompilationError('interrupted'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledOnce(); expect(f.responses('error')).toEqual([])
+    hidden.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene.mock.calls.map(([options]) => options.sceneRevision)).toEqual([7, 7])
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.responses('loaded')).toHaveLength(1)
+  })
+
+  it.each(['dispose', 'replace'] as const)('cancels a hidden pending restart on %s', async action => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const f = fixture()
+    f.loadScene.mockImplementationOnce(() => {
+      hidden.mockReturnValue('hidden')
+      return Promise.reject(new ShaderCompilationError('interrupted'))
+    })
+    f.bootstrap(); f.load(1); await Promise.resolve(); await Promise.resolve()
+    if (action === 'dispose') f.runtime.dispose(); else f.load(2)
+    hidden.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene.mock.calls.map(([options]) => options.sceneRevision)).toEqual(action === 'dispose' ? [1] : [1, 2])
+    expect(f.responses('loaded').map(message => message.generation)).toEqual(action === 'dispose' ? [] : [2])
+    expect(f.responses('error')).toEqual([])
+  })
+
+  it('does not loop when the single visibility restart is interrupted again', async () => {
+    const f = fixture()
+    f.loadScene.mockRejectedValue(new ShaderCompilationError('interrupted'))
+    f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledTimes(2)
+    expect(f.responses('error').map(message => message.payload.code)).toEqual(['interrupted'])
+  })
   it('retains the latest startup settings and preserves desired pause without reloading', async () => {
     const f = fixture(), settings = extractLiveSceneSettings(scene)
     let complete!: (engine: typeof f.engine) => void
@@ -168,7 +285,7 @@ describe('isolated playback runtime', () => {
     f.loadScene.mockImplementation(async options => {
       // WebGL listeners are bound to the canvas. Old renderer disposal may lose
       // that context after the next scene has already begun loading.
-      options.canvas.addEventListener('webglcontextlost', options.onError)
+      options.canvas.addEventListener('webglcontextlost', () => options.onError('context-lost'))
       return { ...f.engine, dispose: vi.fn() }
     })
     f.bootstrap(); f.load(); await Promise.resolve()

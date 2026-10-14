@@ -123,6 +123,11 @@ Storage failure leaves the editor usable and offers JSON export as a fallback.
 Recovery preserves invalid raw text and repairable numeric values, not uploaded
 audio or an in-memory thumbnail; capture a fresh thumbnail after restoring.
 
+Draft backup is independent of [playback recovery](scene-recovery.md). Playback
+stops, failures and Pause all scenes are current-page memory only and reset on
+reload. Retrying a renderer preserves the open editor document; it does not restore
+or discard a browser draft, grant server permission, or migrate historical data.
+
 Scene API responses supply `revision`. Full updates send `expectedRevision`,
 and `409 SCENE_EDIT_CONFLICT` preserves the open draft instead of overwriting a
 newer saved version. An earlier save finishing during editing retains its new

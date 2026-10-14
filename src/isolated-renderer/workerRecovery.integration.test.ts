@@ -28,11 +28,6 @@ const releases: (() => void)[] = []
 const origin = 'http://localhost:5178'
 const scene = customDocument({ visualizer: { shader: 'sphere(0.5); // private submitted source' } })
 
-function memoryStorage() {
-  const values = new Map<string, string>()
-  return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) }, values }
-}
-
 beforeEach(() => {
   vi.useFakeTimers()
   vi.stubEnv('DEV', true)
@@ -77,10 +72,7 @@ describe('unavailable compiler through playback and recovery', () => {
         constructor() { throw new DOMException('Private browser policy diagnostic.', 'SecurityError') }
       })
     }
-    const localStorage = memoryStorage(), sessionStorage = memoryStorage()
-    const makeRecovery = (ownerId: string) => createSceneRecoveryStore({ localStorage, sessionStorage, ownerId,
-      createChannel: null, listenForStorage: null })
-    const recovery = makeRecovery('first-document')
+    const recovery = createSceneRecoveryStore()
     releases.push(recovery.destroy)
     const key = sceneRecoveryKey(scene, 41)!
     const lease = recovery.begin(key)!
@@ -127,25 +119,25 @@ describe('unavailable compiler through playback and recovery', () => {
     expect(allocateUrl).toHaveBeenCalledTimes(unavailable === 'blocked worker constructor' ? 1 : 0)
     expect(revoke).toHaveBeenCalledTimes(unavailable === 'blocked worker constructor' ? 1 : 0)
     expect(vi.getTimerCount()).toBe(0)
-    const publicData = JSON.stringify([replies, [...localStorage.values], [...sessionStorage.values]])
+    const publicData = JSON.stringify([replies, recovery.getBlock(key)])
     expect(publicData).not.toContain('private submitted source')
     expect(publicData).not.toContain('Private browser policy diagnostic.')
 
-    // Failure survives another document; a single intentional retry never erases
-    // the shared quarantine until the new renderer supplies healthy evidence.
-    const reloaded = makeRecovery('next-document')
+    // This session blocks the failed revision; a new document starts fresh.
+    const reloaded = createSceneRecoveryStore()
     releases.push(reloaded.destroy)
-    expect(reloaded.getAutomaticBlock(key)?.reason).toBe('compile')
-    expect(reloaded.begin(key)).toBeNull()
-    reloaded.retry(key)
-    const retry = reloaded.begin(key)
+    expect(reloaded.getBlock(key)).toBeNull()
+    expect(recovery.getBlock(key)?.reason).toBe('compile')
+    expect(recovery.begin(key)).toBeNull()
+    recovery.retry(key)
+    expect(recovery.getBlock(key)).toBeNull()
+    const retry = recovery.begin(key)
     expect(retry).not.toBeNull()
-    expect(recovery.getAutomaticBlock(key)?.reason).toBe('compile')
     retry!.fail('compile')
-    expect(reloaded.begin(key)).toBeNull()
+    expect(recovery.begin(key)).toBeNull()
     const nextRevision = sceneRecoveryKey(customDocument({ visualizer: { shader: 'sphere(0.6);' } }), 41)!
-    expect(reloaded.getAutomaticBlock(nextRevision)).toBeNull()
-    const nextLease = reloaded.begin(nextRevision)
+    expect(recovery.getBlock(nextRevision)).toBeNull()
+    const nextLease = recovery.begin(nextRevision)
     expect(nextLease).not.toBeNull()
     nextLease!.dispose()
     await vi.advanceTimersByTimeAsync(30_000)

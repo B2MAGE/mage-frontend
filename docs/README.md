@@ -25,6 +25,12 @@ README covers setup, scripts, and the high-level project overview.
 - [player-live-settings.md](./player-live-settings.md)
   Audited live editor controls, structural reloads, and isolated update guarantees.
 
+- [scene-recovery.md](./scene-recovery.md)
+  Current-page Stop/Retry, shared pause, failure messages and startup deadlines.
+
+- [pl01-rf04-local-review.md](./pl01-rf04-local-review.md)
+  Local player lifecycle/brand-artwork refactor, ownership and review checklist.
+
 - [theme-system.md](./theme-system.md)  
   Theme registry, provider, CSS structure, and how to add additional themes safely.
 

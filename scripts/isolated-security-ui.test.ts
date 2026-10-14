@@ -88,7 +88,7 @@ describe('bounded stall evidence and cancellation', () => {
       players.push(item)
       options.onDiagnostic?.({ type: 'status', status: 'starting', at: performance.now() })
       return { ready: Promise.resolve(), dispose() { frame.remove() }, async loadScene(value: unknown) {
-        const shader = (value as { visualizer: { shader: string } }).visualizer.shader
+        const shader = (value as { scene: { visualizer: { shader: string } } }).scene.visualizer.shader
         item.nonce = shader.match(/nonce:"([a-f0-9]{32})"/)?.[1] ?? ''
         options.onDiagnostic?.({ type: 'status', status: 'playing', at: performance.now() })
       } } as ReturnType<typeof createIsolatedPlaybackHost>

@@ -27,7 +27,7 @@ export function createCompilerWorker(): CompilerWorkerHandle {
 }
 
 /** A fresh worker owns exactly one job. Submitted source keeps a fixed execution deadline. */
-export function compileInWorker(source: string, options: { signal: AbortSignal; maxRaymarchIterations: number; sceneRevision?: number },
+export function compileInWorker(source: string, options: { signal: AbortSignal; maxRaymarchIterations: number; sceneRevision?: number; onStarted?: () => void },
   dependencies: Dependencies = {}): Promise<CompiledShaderArtifact> {
   const { signal, maxRaymarchIterations, sceneRevision = 1 } = options
   if (signal.aborted) return Promise.reject(new DOMException('Compilation cancelled.', 'AbortError'))
@@ -56,14 +56,22 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
       complete = true
       clearTimeout(timer)
       signal.removeEventListener('abort', abort)
+      document.removeEventListener('visibilitychange', visibilityChanged)
       retire(reason)
       if (reason === 'complete' && artifact) resolve(artifact)
       else if (reason === 'abort') reject(new DOMException('Compilation cancelled.', 'AbortError'))
-      else reject(new ShaderCompilationError(reason === 'timeout' ? 'timeout' : failure))
+      else reject(new ShaderCompilationError(reason === 'timeout' ? started ? 'timeout' : 'startup' : failure))
     }
     const abort = () => finish('abort')
+    const visibilityChanged = () => {
+      // Background timers can be heavily throttled. Retire submitted code at
+      // the visibility boundary instead of extending its execution budget.
+      if (document.visibilityState === 'hidden') finish('error', undefined, 'interrupted')
+    }
     signal.addEventListener('abort', abort, { once: true })
     let timer = setTimeout(() => finish('timeout'), COMPILER_LIMITS.startupDeadlineMs)
+    document.addEventListener('visibilitychange', visibilityChanged)
+    if (document.visibilityState === 'hidden') { visibilityChanged(); return }
     try {
       handle = (dependencies.createWorker ?? createCompilerWorker)()
       observe({ type: 'created' })
@@ -89,7 +97,9 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
           clearTimeout(timer)
           deadline = performance.now() + COMPILER_LIMITS.deadlineMs
           timer = setTimeout(() => finish('timeout'), COMPILER_LIMITS.deadlineMs)
-          observe({ type: 'started' }); return
+          observe({ type: 'started' })
+          try { options.onStarted?.() } catch { /* Reporting cannot extend or strand compilation. */ }
+          return
         }
         if (message.type !== 'compiled' || !started || !dataRecord(message, [...fields, 'artifact'])) {
           finish('error'); return

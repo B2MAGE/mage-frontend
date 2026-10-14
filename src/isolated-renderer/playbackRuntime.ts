@@ -1,6 +1,7 @@
 import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_COMMANDS,
   type PlaybackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
 import type { PlaybackEngine, PlaybackLoader } from './playbackEngine'
+import { PlaybackDownloadError } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 
 export function installPlaybackRuntime(options: {
@@ -8,6 +9,7 @@ export function installPlaybackRuntime(options: {
   loadScene: PlaybackLoader; targetWindow?: Window; initialConnection?: MessageEvent
 }) {
   const target = options.targetWindow ?? window
+  const visibilityDocument = options.canvas.ownerDocument
   let activeCanvas = options.canvas
   let port: MessagePort | null = null
   let session = '', generation = 0, lastRequest = 0, frames = 0, lastProgress = -Infinity
@@ -19,6 +21,7 @@ export function installPlaybackRuntime(options: {
   let pendingAudioResponse: PlaybackPayloads['audio-response'] | null = null
   let pendingSceneSettings: PlaybackPayloads['scene-settings'] | null = null
   let playing = true
+  let reportStartupPhases = false
   let zoom = 1
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
@@ -42,11 +45,28 @@ export function installPlaybackRuntime(options: {
     port?.close(); port = null
     display('Renderer stopped.')
   }
-  function fail(code: 'render' | 'protocol' | 'compile', request = lastRequest) {
+  function fail(code: PlaybackPayloads['error']['code'], request = lastRequest) {
     if (closed) return
+    // Existing v2 parents reject every newly introduced response/error code.
+    // Keep their exact vocabulary until the connecting parent opts in.
+    if (!reportStartupPhases) {
+      if (['compiler-download', 'compiler-startup', 'compile-timeout', 'invalid-output', 'interrupted'].includes(code)) code = 'compile'
+      else if (code !== 'compile' && code !== 'capture' && code !== 'protocol') code = 'render'
+    }
     try { send('error', request, { code }) } catch { /* Parent may already have removed the frame. */ }
     dispose()
     display('This scene could not be displayed.')
+  }
+  function waitForVisible(signal: AbortSignal) {
+    if (signal.aborted) return Promise.reject(new DOMException('Load cancelled.', 'AbortError'))
+    if (visibilityDocument.visibilityState !== 'hidden') return Promise.resolve()
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => { visibilityDocument.removeEventListener('visibilitychange', check); signal.removeEventListener('abort', cancel) }
+      const cancel = () => { cleanup(); reject(new DOMException('Load cancelled.', 'AbortError')) }
+      const check = () => { if (visibilityDocument.visibilityState !== 'hidden') { cleanup(); resolve() } }
+      visibilityDocument.addEventListener('visibilitychange', check)
+      signal.addEventListener('abort', cancel, { once: true })
+    })
   }
   async function load(message: PlaybackMessage<'load'>) {
     loadAbort?.abort()
@@ -66,11 +86,20 @@ export function installPlaybackRuntime(options: {
     const abort = new AbortController()
     loadAbort = abort
     const active = () => !closed && loadAbort === abort && !abort.signal.aborted
+    let currentPhase: PlaybackPayloads['load-phase']['phase'] | null = null
     display('Loading scene…')
     try {
-      const loadedEngine = await options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
+      let attempt: 0 | 1 = 0
+      const phase = (value: PlaybackPayloads['load-phase']['phase']) => {
+        currentPhase = value
+        if (active() && reportStartupPhases) send('load-phase', message.requestId, { phase: value, attempt })
+      }
+      if (visibilityDocument.visibilityState === 'hidden') { phase('waiting-visible'); await waitForVisible(abort.signal) }
+      abort.signal.throwIfAborted()
+      const prepare = () => options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
         sceneRevision: message.generation,
-        onError: () => { if (active()) fail('render', message.requestId) },
+        onPhase: phase,
+        onError: reason => { if (active()) fail(reason ?? (engine ? 'render' : 'graphics-startup'), message.requestId) },
         onFrame: () => {
           if (!active()) return
           frames++
@@ -78,6 +107,16 @@ export function installPlaybackRuntime(options: {
           if (now - lastProgress >= 500) { lastProgress = now; send('progress', 0, { frames }) }
         },
       })
+      let loadedEngine: PlaybackEngine
+      try { loadedEngine = await prepare() } catch (error) {
+        if (!active() || !(error instanceof ShaderCompilationError) || error.code !== 'interrupted') throw error
+        // Exactly one restart belongs to this still-pending load. Stop, scene
+        // replacement and pagehide abort the wait; transport state is retained.
+        attempt = 1; phase('waiting-visible')
+        await waitForVisible(abort.signal)
+        abort.signal.throwIfAborted()
+        loadedEngine = await prepare()
+      }
       if (!active()) { loadedEngine.dispose(); return }
       engine = loadedEngine
       if (pendingResize) engine.resize(pendingResize)
@@ -90,7 +129,11 @@ export function installPlaybackRuntime(options: {
       options.statusElement.hidden = true
       send('loaded', message.requestId, null)
     } catch (error) {
-      if (active()) fail(error instanceof ShaderCompilationError ? 'compile' : 'render', message.requestId)
+      if (active()) fail(error instanceof PlaybackDownloadError ? error.code
+        : error instanceof ShaderCompilationError ? error.code === 'timeout' ? 'compile-timeout'
+          : error.code === 'startup' ? 'compiler-startup' : error.code === 'invalid-output' ? 'invalid-output'
+            : error.code === 'interrupted' ? 'interrupted' : 'compile'
+          : currentPhase === 'graphics-startup' ? 'graphics-startup' : 'render', message.requestId)
     }
   }
   async function capture(message: PlaybackMessage<'capture'>) {
@@ -142,6 +185,7 @@ export function installPlaybackRuntime(options: {
     if (closed || port || target.parent === target || event.source !== target.parent
       || !options.allowedParentOrigins.includes(event.origin) || event.ports.length !== 1
       || !isPlaybackMessage(event.data, ['connect'])) return
+    reportStartupPhases = event.data.type === 'connect' && event.data.payload?.startupPhases === true
     session = event.data.session; port = event.ports[0]
     target.removeEventListener('message', connect)
     port.onmessage = onCommand; port.onmessageerror = () => fail('protocol'); port.start()

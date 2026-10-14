@@ -90,7 +90,9 @@ export class MagePlayerAdapterError extends Error {
 
 export type MagePlayerOptions = {
   log?: boolean; pixelRatio?: number; mouseInteractions?: boolean; mouseWheelZoom?: boolean;
-  sceneKey?: string | number; platformArtwork?: 'brand'; renderProfile?: RenderProfile; initialSceneBlob?: unknown;
+  sceneKey?: string | number; renderProfile?: RenderProfile; initialSceneBlob?: unknown;
+  /** Original editor document used to identify a failure before the first scene load. */
+  initialRecoverySceneBlob?: unknown;
   /** Cancels pending creation and disposes this player's resources on abort. */
   signal?: AbortSignal;
 }

@@ -3,13 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MagePlayerController, MagePlayerOptions } from './playerController'
 import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), begin: vi.fn(), disposeLease: vi.fn(), fail: vi.fn(), block: vi.fn(), revokeRetry: vi.fn() }))
+const mocks = vi.hoisted(() => ({ create: vi.fn(), begin: vi.fn(), disposeLease: vi.fn(), fail: vi.fn(), block: vi.fn() }))
 vi.mock('../isolation/isolatedPlayer', () => ({ createIsolatedPlayer: mocks.create }))
 vi.mock('../isolation/rendererConfig', () => ({ getIsolatedRendererUrl: () => 'https://renderer.example.net/index.html' }))
 vi.mock('../recovery/sceneRecovery', () => ({
   sceneRecoveryKey: (_scene: unknown, id?: string | number) => 'recovery:' + (id ?? 'custom'),
-  sceneRecovery: { begin: mocks.begin, block: mocks.block, revokeRetry: mocks.revokeRetry,
-    getBlock: () => null, getAutomaticBlock: () => null, isSafeMode: () => false, subscribe: () => () => {} },
+  sceneRecovery: { begin: mocks.begin, block: mocks.block,
+    getBlock: () => null, isSafeMode: () => false, subscribe: () => () => {} },
 }))
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 })
 const source = customDocument({ visualizer: { shader: 'sphere(1);' } })
@@ -118,7 +118,7 @@ describe('isolated controller with the real availability polling store', () => {
     disabledIds.add(47)
     await vi.advanceTimersByTimeAsync(10000)
     expect(bridges[0].dispose).toHaveBeenCalledOnce()
-    expect(mocks.revokeRetry).toHaveBeenCalledWith('recovery:47')
+    expect(mocks.fail).not.toHaveBeenCalled()
     expect(() => player.resetPlayback()).toThrow()
   })
 
