@@ -3,7 +3,7 @@ import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBAC
   type CaptureRequest, type PlaybackPayloads, type PlaybackType, type StartupPhase } from './playbackProtocol'
 import { validateRasterCapture } from './capture'
 import { boundCaptureSize, type RenderProfile } from '../policy/renderBudget'
-import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
+import type { RenderFailure } from '../recovery/sceneRecovery'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 import { COMPILER_LIMITS } from '../../../isolated-renderer/compiler/protocol'
 

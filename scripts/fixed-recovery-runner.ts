@@ -1,6 +1,6 @@
 import { createFixedRecoveryHost } from './fixed-recovery-host'
 import { fixedRecoveryScene, type FixedRecoveryCase, type FixedRecoveryMarker } from '../src/modules/player/isolation/fixedRecoveryProtocol'
-import type { RenderFailure } from '../src/modules/player/recovery/renderRecoveryMonitor'
+import type { RenderFailure } from '../src/modules/player/recovery/sceneRecovery'
 
 export type RecoveryCheckResult = { name: string; outcome: 'PASS' | 'FAIL' | 'UNSUPPORTED'; evidence: string }
 export const RECOVERY_FIXTURE_VERSION = 'fixed-renderer-recovery-1'

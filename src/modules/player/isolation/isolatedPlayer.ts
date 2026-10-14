@@ -3,7 +3,7 @@ import { AUDIO_RESPONSE_SIGNALS, AUDIO_RESPONSE_TARGETS, normalizeAudioResponseC
   type AudioResponseConfig, type AudioResponseTarget } from '@notrac/mage/audio-response'
 import { normalizeAudioResponseMode, type SceneAudioResponseMode as AudioResponseMode } from '@shared/lib/audioResponse'
 import type { RenderProfile } from '../policy/renderBudget'
-import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
+import type { RenderFailure } from '../recovery/sceneRecovery'
 import { createParentAudioSession, type ParentAudioSession } from './parentAudio'
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus } from './playbackHost'
 import { BRIDGE_LIMITS, isAudioResponseSettings, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'

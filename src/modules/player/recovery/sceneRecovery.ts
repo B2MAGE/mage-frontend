@@ -14,6 +14,7 @@ export type RecoveryReason =
   | 'stopped'
   | 'interrupted'
 
+export type RenderFailure = Exclude<RecoveryReason, 'load' | 'stopped'>
 export type RecoveryBlock = Readonly<{ reason: RecoveryReason; at: number }>
 export type RecoveryLease = { dispose(): void; fail(reason: RecoveryReason): void }
 
