@@ -136,7 +136,8 @@ describe('isolated playback engine', () => {
     compileInWorker.mockReturnValue(new Promise(resolve => { compiled = resolve }))
     const loading = f.load()
     expect(initMAGE).not.toHaveBeenCalled()
-    expect(compileInWorker).toHaveBeenCalledWith('sphere(1);', { signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200 })
+    await vi.waitFor(() => expect(compileInWorker).toHaveBeenCalledWith('sphere(1);', {
+      signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200, onStarted: expect.any(Function) }))
     compiled(compiledArtifact)
     await vi.waitFor(() => expect(f.engine.loadCompiledPreset).toHaveBeenCalledOnce())
     expect(f.engine.loadCompiledPreset.mock.calls[0][1]).toEqual(compiledArtifact)
@@ -162,7 +163,7 @@ describe('isolated playback engine', () => {
     expect(uniforms.builder_o0_position_x.value).toBe(1)
     expect(generated).not.toContain(builder.objects[0].name)
     expect(compileInWorker).toHaveBeenCalledWith(generated,
-      { signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200 })
+      { signal: f.abort.signal, sceneRevision: 1, maxRaymarchIterations: 200, onStarted: expect.any(Function) })
     expect(f.engine.loadCompiledPreset.mock.calls[0][0]).toMatchObject({ visualizer: { shader: generated, scale: 10 } })
     f.emit('frame'); (await loading).dispose()
   })

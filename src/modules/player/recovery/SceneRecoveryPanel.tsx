@@ -2,7 +2,7 @@ import { useId } from 'react'
 import { buildMagePlayerClassName } from '../magePlayerUtils'
 import { MagePlayerDisabledControls } from '../MagePlayerControls'
 import { PauseAllScenesToggle } from './PauseAllScenesToggle'
-import type { RecoveryBlock } from './sceneRecovery'
+import type { RecoveryBlock, RecoveryReason } from './sceneRecovery'
 
 type Props = {
   className?: string
@@ -14,16 +14,28 @@ type Props = {
   audioMode?: 'single' | 'playlist'
 }
 
+const recoveryMessages: Record<RecoveryReason, string> = {
+  load: 'This scene could not be loaded for playback. You can retry it.',
+  'compiler-download': 'The scene compiler could not be downloaded. Check your connection, then retry.',
+  'graphics-download': 'The scene player could not be downloaded. Check your connection, then retry.',
+  'graphics-startup': 'The browser could not start graphics for this scene. You can retry it.',
+  'compiler-startup': 'The scene compiler did not start in time. You can retry it.',
+  compile: 'This shader could not be prepared for playback. Simplify the shader code or choose a template, then try again.',
+  'compile-timeout': 'Preparing this scene took too long. Simplify the shader code or choose a template, then retry.',
+  'invalid-output': 'The scene compiler returned an invalid result. Try again, or choose another scene.',
+  runtime: 'This scene stopped because of a playback error. You can retry it.',
+  'context-lost': 'The browser lost its graphics connection. You can retry the scene.',
+  'startup-timeout': 'The scene player did not start in time. You can retry it.',
+  'progress-timeout': 'This scene stopped responding during playback. You can retry it.',
+  stopped: "You paused this scene. Resume it when you're ready.",
+  interrupted: 'Playback was interrupted. You can retry the scene.',
+}
+
 export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRetry, onSafeModeChange, audioMode }: Props) {
   const messageId = useId()
-  const interrupted = block?.reason === 'interrupted'
   const stopped = block?.reason === 'stopped'
-  const compileRejected = block?.reason === 'compile'
-  const message = safeMode ? 'All scenes and previews are paused. Turn off Pause all scenes to resume playback.'
-    : stopped ? "You paused this scene. Resume it when you're ready."
-      : interrupted ? "The previous playback may have been interrupted. It won't restart automatically."
-        : compileRejected ? "This shader could not be prepared for playback. Simplify the shader code or choose a template, then try again. It won't restart automatically."
-          : 'This scene stopped because of a playback error. You can retry it.'
+  const message = safeMode ? 'All scenes and previews on this page are paused. Turn off Pause all scenes to resume playback.'
+    : block ? recoveryMessages[block.reason] : 'This scene is paused. You can resume it.'
 
   return <section className={buildMagePlayerClassName('mage-player', className)}
     data-recovery-reason={safeMode ? 'safe-mode' : block?.reason} data-state="blocked">

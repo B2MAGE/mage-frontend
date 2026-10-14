@@ -1,132 +1,105 @@
-# Scene crash recovery (PP-R01)
+# Scene playback recovery (PL-01)
 
-Recovery lives at the shared player boundary. Home, scene detail, editor previews,
-hover cards, and brand artwork all consult the same browser-local guard. There is
-no backend change or server-side crash classification.
+Recovery is shared in memory by submitted-scene players on the current page:
+Home, Watch, editor previews and hover cards. It records observed failures and
+manual stops without changing server permission or classifying a scene as unsafe.
+The [PL-01/RF-04 review record](pl01-rf04-local-review.md) tracks this local change;
+earlier release records describe their original artifacts.
 
-## What the user sees
+## User actions
 
-- A failed or possibly interrupted scene stays static on the next visit. A saved
-  thumbnail is shown when available; the message distinguishes an observed error
-  from an interruption whose cause is unknown.
-- The **Playback options** cogwheel beside fullscreen contains **Stop this scene**
-  and a **Pause all scenes** toggle. These controls are also available in the bottom
-  bar while loading, with no permanent buttons covering the scene.
-- **Stop this scene** disposes the active player and blocks automatic rendering of
-  that revision. **Resume scene** clears an intentional stop, so future visits,
-  previews, and other tabs can play that revision again. It only clears the exact
-  stop shown by the button; a newer stop or failure stays blocked.
-- **Retry scene** permits another attempt in the current tab. It does not approve
-  the scene, change validation, or disable any other playback restrictions.
-  Other tabs remain blocked during the attempt. The isolated player retires that
-  exact warning after ten seconds of sustained foreground frame progress, so a
-  recovered scene can play on later visits. Loading, paused or hidden time and
-  delayed browser tasks do not count. A newer failure or global pause cannot be
-  cleared by an old success signal. Leaving before recovery is confirmed keeps
-  observed errors blocked. A suspected interruption can also be retired when its
-  deliberate retry ends cleanly, allowing subsequent visits; a newer error always wins.
-  A corrected revision has its own identity.
-  Stopping an accepted retry retains its original failure history and requires
-  **Retry scene** again; it cannot turn a failure into a clearable manual stop.
-- One **Playback paused** panel explains whether playback was stopped, interrupted,
-  or failed. **Pause all scenes** turns off automatic rendering across this site's
-  tabs. Browsing and editing remain available; turning it off does not erase failed
-  scenes. Resume stays disabled while all scenes are paused. Internally this setting
-  retains the existing safe-mode flag and persistence behavior.
-- Turning **Pause all scenes** off resumes scenes that were already playing in the
-  current view, including an accepted retry. Clean global-pause disposal retains
-  that permission until resume; leaving the view, changing the revision, or a new
-  failure cancels it. Previously blocked scenes remain blocked, and other tabs do
-  not receive this continuation permission.
-- Editor fields and locally selected audio tracks survive replacing a failed
-  player. This is not draft autosave: a browser crash or page reload can still
-  discard unsaved editor changes and local file selections.
+- **Stop this scene** disposes its renderer and blocks the current revision.
+  **Resume scene** clears only the exact manual stop displayed by the button.
+  A newer stop or failure cannot be cleared by a stale Resume action.
+- **Retry scene** clears the current page's failure and permits a fresh attempt.
+  There is no retry grant, success-observation period or recovery certificate.
+  A repeated failure stays stopped until another explicit Retry.
+- **Pause all scenes** pauses players and fixed brand artwork on this page.
+  Turning it off preserves existing scene failures and manual stops. Resume/Retry
+  stays disabled while the page is paused. Other tabs are independent.
+- Failure messages distinguish scene loading, compiler and graphics downloads,
+  compiler startup, rejected compilation, compilation timeout, invalid compiled
+  output, graphics startup, context loss, interrupted startup and stalled playback.
+- Recovery controls remain outside the renderer. Editor fields, playlist selection
+  and playback intent remain owned by the surrounding UI when it replaces a player.
+  Editor browser backups are a separate feature; see [scene foundations](scene-foundations.md#builder-editing-and-recovery-sb-08).
 
-Recovery controls are DOM elements outside the canvas. They remain usable after
-observable renderer failures, including failures during renderer cleanup. A
-blocked hover card keeps its thumbnail and directs the user to open the scene to
-retry; simply hovering again never clears its block.
+A blocked hover card retains its thumbnail and directs the user to open the scene
+to retry. Clearing a failure elsewhere does not restart the focused card; another
+hover/focus interaction is required. A changed structural scene revision can load
+separately. Live settings edits do not silently resume a stopped preview.
 
-## Identity and local storage
+## Page-session state and ownership
 
-`sceneRecoveryKey` hashes the stable scene ID and complete scene document into an
-opaque revision key. Unsaved scenes use the content fingerprint without a saved
-ID. Key ordering is normalized; getters and `toJSON` are never invoked. Invalid,
-cyclic, excessively nested, or oversized non-JSON input cannot acquire a render
-lease. This fingerprint is a recovery identity, not a trust or security signature.
+`sceneRecoveryKey` fingerprints the stable scene ID and complete current document.
+The editor supplies `recoverySceneBlob` before adding preview defaults, so unchanged
+saved scenes have the same identity across player surfaces. This identity is not
+a security signature. Fingerprinting bounds its work and never invokes getters,
+`toJSON` or submitted functions.
 
-The editor supplies its original document as `recoverySceneBlob`, before adding
-preview defaults. The adapter validates and renders the actual preview document;
-the original document is used only for identity. An untouched saved scene therefore
-has the same block in the editor, cards, Home, and detail view. Live audio-response
-changes transfer the active marker to the new document without restarting music.
+The store keeps at most 64 recent blocks, live lease tokens and the page pause flag
+in memory. It does not read or write localStorage/sessionStorage, open a
+BroadcastChannel, probe abandoned players, or restore older browser history.
+Reloading or opening a new tab starts fresh recovery state. Client-side navigation
+within the same document keeps the current session state.
 
-Storage contains only opaque keys, random owner IDs, timestamps, fixed reason codes,
-and the safe-mode flag. It never contains shader source, full scene data, tokens,
-audio, or raw error messages.
+Each scene load acquires a lease before work begins. A failure invalidates all live
+leases for that revision before notifying players to dispose. Retry, explicit
+clear and page-wide pause also invalidate the affected leases. Late failure or
+disposal callbacks cannot overwrite a newer attempt. A clean disposal removes only
+its own live lease; it does not change another player's block.
 
-- `mage.scene-recovery.v1`: localStorage history, up to 64 entries, seven-day expiry.
-- `mage.scene-recovery.active.v1`: per-tab sessionStorage markers, up to 32 entries.
-- Corrupt or unavailable storage falls back to guarded in-memory behavior. Recovery
-  across reloads is best effort when the browser cannot persist either store.
+The controller still checks current permission on start, resume, scene changes,
+audio operations and capture. Local Retry does not bypass a denial. Page hide
+cancels active resources; a browser-cache return creates a fresh renderer while
+the outer session retains editor, audio-selection and playback-intent state.
 
-An active marker is written **before source loading/compilation** and remains for
-the entire rendering lifetime, including pauses. Clean replacement or disposal
-removes it. Observed failure records a block; failed cleanup retains the marker.
-Reloading with a leftover marker means **suspected interruption**, not proof of a
-crash. On a normal page exit or refresh, `pagehide` synchronously disposes the
-renderer and clears its marker only after successful cleanup. Failed cleanup or
-an unresponsive page retains its marker. Browser cache restoration creates a fresh
-renderer while preserving the surrounding editor and playlist state. No timer or
-first-frame signal clears a running scene's marker.
+Fixed Home/About artwork has a dedicated controller that only loads the frozen
+built-in scene. It observes Pause all scenes, visibility and disposal, but does
+not use submitted-scene permission or per-revision recovery history.
 
-Successful retry confirmation only removes the matching history warning. The
-active marker stays until clean disposal, so an interrupted or failed attempt
-after confirmation is still detected. This is browser-local recovery, not scene
-approval; validation and server playback restrictions continue to apply. Browser
-profiles have independent history, so a scene can be blocked in one browser while
-playing normally in another.
+## Startup and failure limits
 
-Each document has its own owner ID. When a tab inherits sessionStorage, a one-second
-BroadcastChannel probe asks whether the old owner is still live. Until resolved,
-the scene stays static. A live response releases only the copied marker, never an
-explicit failure or the original tab's marker. Late replies are handled. Browsers
-without BroadcastChannel conservatively require retry for inherited markers;
-ordinary independent tabs retain separate sessionStorage.
+The trusted renderer download has a separate 60-second bound. Compiler/graphics
+import phases also have 60-second bounds and distinct error messages, but the
+production build remains one integrity-pinned bundle; these phases do not introduce
+additional production script downloads. The worker has up to eight seconds to
+acknowledge startup. Once it acknowledges `started`, submitted compilation retains
+the fixed two-second execution deadline. The parent uses nine- and three-second
+fallback clocks respectively, allowing the child's precise startup/compilation
+failure to arrive first. Slow trusted downloads do not consume the submitted-code
+execution budget or extend it.
 
-## Failure signals and limits
+Graphics startup requires a first frame within 15 seconds of observed foreground,
+onscreen time. Once playing, ten seconds without completed-frame progress stops
+the player. Pause, hidden/offscreen time and parent scheduling gaps longer than
+two seconds do not count as graphics stalls. Progress reports indicate liveness,
+not approval of source or compiled output.
 
-The [maintained engine package](engine-package.md) provides an optional
-`subscribeRenderLifecycle` hook. It reports completed render submissions and
-runtime/GPU shader failures, and stops a failing frame loop before notifying the
-adapter. Source load/compile exceptions and WebGL context loss also block the
-current revision.
+An initially hidden document defers compilation. Hiding during compilation
+terminates that worker; the same pending load may wait for visibility and retry
+once, preserving playback intent. Replacement, cancellation or navigation retires
+that work. A second interruption stops with an explicit message. This bounded,
+known visibility interruption is the only automatic compiler retry; compilation
+errors, downloads, invalid output and renderer failures require explicit Retry.
 
-The monitor waits for 15 seconds of observed foreground startup time, or 10 seconds
-without progress after a completed frame. It resets observation while paused,
-hidden, or after a delayed timer that could indicate browser suspension or system
-sleep. It uses completed frame submissions, not the scene's editable animation
-clock. Adapters without lifecycle hooks do not fabricate progress timeouts.
-Audio loading errors and failed network requests are not renderer crashes.
-
-This story prevents repeated automatic loading after a failure or interruption.
-It cannot preempt JavaScript that blocks the browser thread, guarantee GPU recovery,
-or certify that a submitted shader is safe. Independent execution isolation and a
-host-side watchdog remain separate work. The lifecycle boundary can accept those
-future signals without moving recovery controls into the renderer.
+Audio loading errors remain separate from renderer recovery. Compilation and
+compiled-output validation retain the isolated worker/child boundary, resource
+limits and current server permissions. Original and Selective audio behavior is
+unchanged.
 
 ## Verification
 
-Automated coverage includes persisted failures and interrupted reloads, clean and
-failed disposal, two tabs and copied tab storage, storage corruption/unavailability,
-revision changes, deliberate retry, context loss, foreground timeouts, audio failure
-exclusion, stopped animation clocks, stale preview initialization, and editor data
-preservation. Engine consumer tests exercise real lifecycle notifications against
-the pinned fork release; a clean install does not modify dependency files.
+Focused tests cover session isolation, absence of browser persistence, Stop/Retry,
+page-wide pause, simultaneous leases, stale callbacks, bounded memory and distinct
+panel messages. Discovery/editor tests cover blocked previews, explicit retries
+and preserved authoring state. Worker, host and lifecycle tests cover their own
+deadlines and cancellation boundaries. Unit tests alone do not establish browser
+downloads, WebGL, audio continuity or device behavior.
 
-For a harmless manual check, stop a valid scene, reload, and verify it stays static.
-Resume explicitly, navigate away and return, and verify the manual pause is gone.
-Refresh a playing valid scene and verify it loads without an interruption prompt.
-Enable Pause all scenes, browse to another scene, then turn it off.
-For editor recovery, make unsaved changes, stop the preview, and confirm the fields
-remain intact. Do not use an infinite loop to test a renderer on the browser thread.
+For manual review, stop a valid scene and verify Resume is required while navigating
+within the same page session. Reload and verify the old stop is gone. Toggle Pause
+all scenes and confirm that an existing failure still needs Retry afterward. Edit
+an unsaved document while stopped, retry it, and verify its fields and local music
+selection remain intact. Record actual results in the
+[local review checklist](pl01-rf04-local-review.md#verification-checklist).

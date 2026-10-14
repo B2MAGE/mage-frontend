@@ -12,8 +12,8 @@ class Port {
 const channels:Array<{port1:Port;port2:Port}>=[]
 function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true, progressTimeoutMs = 1000, onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void) {
   const container=document.createElement('div');document.body.append(container)
-  const failure=vi.fn(),status=vi.fn(),healthy=vi.fn()
-  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,onHealthy:healthy,startupTimeoutMs:100,progressTimeoutMs,decodeCapture,useInlineFrameStyles,onDiagnostic})
+  const failure=vi.fn(),status=vi.fn()
+  const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,startupTimeoutMs:100,progressTimeoutMs,decodeCapture,useInlineFrameStyles,onDiagnostic})
   const frame=container.querySelector('iframe')!,post=vi.spyOn(frame.contentWindow!,'postMessage').mockImplementation(()=>{})
   frame.dispatchEvent(new Event('load'))
   const port=channels.at(-1)!.port1
@@ -22,10 +22,7 @@ function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = 
   async function load(){const promise=host.loadScene(customDocument({visualizer:{shader:'sphere(0.5);'}}));await Promise.resolve();const m=port.postMessage.mock.calls.at(-1)![0];reply('loaded',null,m.generation,m.requestId);await promise}
   let frames=0
   const progress=(generation=1)=>reply('progress',{frames:++frames},generation)
-  async function advanceProgress(milliseconds:number,generation=1) {
-    for(let time=0;time<milliseconds;time+=500){await vi.advanceTimersByTimeAsync(500);progress(generation)}
-  }
-  return {host,frame,port,post,failure,status,healthy,reply,load,container,progress,advanceProgress}
+  return {host,frame,port,post,failure,status,reply,load,container,progress}
 }
 beforeEach(()=>{
   vi.useFakeTimers();vi.stubEnv('DEV',true)
@@ -36,6 +33,118 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it.each(['rewind','skip','early-loaded','invalid-restart'] as const)('closes an invalid startup phase transition: %s',async invalid=>{
+    const s=setup(),rejected=expect(s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))).rejects.toThrow('stopped')
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    const phase=(value:PlaybackPayloads['load-phase']['phase'],attempt:0|1=0)=>s.reply('load-phase',{phase:value,attempt},request.generation,request.requestId)
+    phase('compiler-download')
+    if(invalid==='skip')phase('graphics-download')
+    else{
+      phase('compiler-startup');phase('compiling')
+      if(invalid==='rewind')phase('compiler-download')
+      if(invalid==='early-loaded')s.reply('loaded',null,request.generation,request.requestId)
+      if(invalid==='invalid-restart'){phase('graphics-download');phase('waiting-visible',1)}
+    }
+    await rejected;expect(s.failure).toHaveBeenCalledExactlyOnceWith('runtime')
+  })
+
+  it('does not extend the acknowledged compiler deadline with duplicate phase messages',async()=>{
+    const s=setup(),rejected=expect(s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))).rejects.toThrow('stopped')
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    const phase=(value:PlaybackPayloads['load-phase']['phase'])=>s.reply('load-phase',{phase:value,attempt:0},request.generation,request.requestId)
+    phase('compiler-download');phase('compiler-startup');phase('compiling')
+    await vi.advanceTimersByTimeAsync(2500);phase('compiling')
+    await vi.advanceTimersByTimeAsync(500);await rejected
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('compile-timeout')
+  })
+
+  it('accepts exactly one compiler visibility restart for the same pending load',async()=>{
+    const s=setup(),loading=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    const phase=(value:PlaybackPayloads['load-phase']['phase'],attempt:0|1=0)=>s.reply('load-phase',{phase:value,attempt},request.generation,request.requestId)
+    phase('compiler-download');phase('compiler-startup');phase('compiling')
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('hidden')
+    phase('waiting-visible',1);await vi.advanceTimersByTimeAsync(30000)
+    expect(s.failure).not.toHaveBeenCalled()
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('visible')
+    for(const value of ['compiler-download','compiler-startup','compiling','graphics-download','graphics-startup'] as const)phase(value,1)
+    s.reply('loaded',null,request.generation,request.requestId);await loading
+    expect(s.failure).not.toHaveBeenCalled();s.host.dispose()
+  })
+  it('allows slow trusted downloads and delayed compiler acknowledgement independently of graphics startup',async()=>{
+    const s=setup(),loading=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))
+    await Promise.resolve()
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    const phase=(value:PlaybackPayloads['load-phase']['phase'])=>s.reply('load-phase',{phase:value,attempt:0},request.generation,request.requestId)
+    phase('compiler-download');await vi.advanceTimersByTimeAsync(20000)
+    expect(s.failure).not.toHaveBeenCalled()
+    phase('compiler-startup');await vi.advanceTimersByTimeAsync(7000)
+    expect(s.failure).not.toHaveBeenCalled()
+    phase('compiling');await vi.advanceTimersByTimeAsync(1500)
+    phase('graphics-download');await vi.advanceTimersByTimeAsync(20000)
+    expect(s.failure).not.toHaveBeenCalled()
+    phase('graphics-startup');s.reply('loaded',null,request.generation,request.requestId)
+    await loading;expect(s.status).toHaveBeenLastCalledWith('playing');s.host.dispose()
+  })
+
+  it.each(['compiler-download','graphics-download','compiler-startup','compile-timeout','invalid-output'] as const)(
+    'preserves the current load %s failure and never retries it',async code=>{
+      const s=setup(),rejected=expect(s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))).rejects.toThrow('stopped')
+      await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+      s.reply('error',{code},request.generation,request.requestId);await rejected
+      expect(s.failure).toHaveBeenCalledExactlyOnceWith(code)
+      expect(s.port.postMessage.mock.calls.filter(([message])=>message.type==='load')).toHaveLength(1)
+    })
+
+  it('bounds stalled downloads and does not renew their clock on duplicate phases',async()=>{
+    const s=setup(),rejected=expect(s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))).rejects.toThrow('stopped')
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    const phase=()=>s.reply('load-phase',{phase:'compiler-download',attempt:0},request.generation,request.requestId)
+    phase();await vi.advanceTimersByTimeAsync(59000);phase()
+    await vi.advanceTimersByTimeAsync(1000);await rejected
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('compiler-download')
+  })
+
+  it('does not blame hidden or offscreen first-frame waits on the shader',async()=>{
+    let intersect!: IntersectionObserverCallback
+    const disconnect=vi.fn()
+    vi.stubGlobal('IntersectionObserver',class {
+      constructor(callback:IntersectionObserverCallback){intersect=callback}
+      observe=vi.fn();disconnect=disconnect
+    })
+    const hidden=vi.spyOn(document,'visibilityState','get').mockReturnValue('visible')
+    const s=setup(),loading=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    for(const phase of ['compiler-download','compiler-startup','compiling','graphics-download','graphics-startup'] as const)
+      s.reply('load-phase',{phase,attempt:0},request.generation,request.requestId)
+    hidden.mockReturnValue('hidden');document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(30000);expect(s.failure).not.toHaveBeenCalled()
+    hidden.mockReturnValue('visible');document.dispatchEvent(new Event('visibilitychange'))
+    intersect([{target:s.frame,isIntersecting:false} as unknown as IntersectionObserverEntry],{} as IntersectionObserver)
+    await vi.advanceTimersByTimeAsync(30000);expect(s.failure).not.toHaveBeenCalled()
+    intersect([{target:s.frame,isIntersecting:true} as unknown as IntersectionObserverEntry],{} as IntersectionObserver)
+    s.reply('loaded',null,request.generation,request.requestId);await loading
+    intersect([{target:s.frame,isIntersecting:false} as unknown as IntersectionObserverEntry],{} as IntersectionObserver)
+    await vi.advanceTimersByTimeAsync(30000);expect(s.failure).not.toHaveBeenCalled()
+    s.host.dispose();expect(disconnect).toHaveBeenCalledOnce()
+  })
+
+  it('classifies graphics startup after fresh observed time following a parent scheduling gap',async()=>{
+    const clock=vi.spyOn(performance,'now').mockReturnValue(0)
+    const s=setup(),rejected=expect(s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))).rejects.toThrow('stopped')
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    for(const phase of ['compiler-download','compiler-startup','compiling','graphics-download','graphics-startup'] as const)
+      s.reply('load-phase',{phase,attempt:0},request.generation,request.requestId)
+    clock.mockReturnValue(30000);await vi.advanceTimersByTimeAsync(250)
+    expect(s.failure).not.toHaveBeenCalled()
+    clock.mockReturnValue(30250);await vi.advanceTimersByTimeAsync(250);await rejected
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('startup-timeout')
+  })
+
+  it('preserves context loss after a successful first frame',async()=>{
+    const s=setup();await s.load();s.reply('error',{code:'context-lost'},1,1)
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('context-lost')
+  })
   it('does not replay a queued hit after an audio seek or replacement',async()=>{
     const s=setup();await s.load()
     const audio={audioTime:1,legacyAmplitude:0,playing:true,loaded:true,
@@ -108,7 +217,6 @@ describe('isolated playback host',()=>{
     await vi.advanceTimersByTimeAsync(30000)
     expect(s.container.querySelector('iframe')).toBeNull()
     expect(s.port.postMessage.mock.calls.filter(([message])=>message.type==='load')).toHaveLength(1)
-    expect(s.healthy).not.toHaveBeenCalled()
   })
   it('does not accept a compile classification for an unrelated request',async()=>{
     const s=setup();await s.load()
@@ -192,83 +300,6 @@ describe('isolated playback host',()=>{
     expect(s.frame.isConnected).toBe(false);expect(s.port.onmessage).toBeNull();expect(s.port.close).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(0)
     if(onDiagnostic)expect(onDiagnostic.mock.calls.map(([diagnostic])=>diagnostic.type)).toEqual(expect.arrayContaining(['status','progress','watchdog','failure']))
-  })
-  it('requires ten seconds between fresh frame reports and reports subsequent healthy intervals',async()=>{
-    const s=setup(undefined,true,30000);await s.load()
-    expect(s.healthy).not.toHaveBeenCalled()
-    s.progress()
-    await vi.advanceTimersByTimeAsync(12000)
-    expect(s.healthy).not.toHaveBeenCalled()
-    expect(s.failure).not.toHaveBeenCalled()
-    s.progress()
-    await s.advanceProgress(9500)
-    expect(s.healthy).not.toHaveBeenCalled()
-    await s.advanceProgress(500)
-    expect(s.healthy).toHaveBeenCalledOnce()
-    await s.advanceProgress(10000)
-    expect(s.healthy).toHaveBeenCalledTimes(2)
-    s.host.dispose()
-  })
-  it('starts a new healthy streak after pauses and foreground visibility changes',async()=>{
-    const s=setup(undefined,true,30000);await s.load();s.progress()
-    await s.advanceProgress(9000)
-    s.host.setPlayback(false)
-    await s.advanceProgress(12000)
-    expect(s.healthy).not.toHaveBeenCalled()
-    s.host.setPlayback(true);s.progress()
-    await s.advanceProgress(9000)
-    vi.spyOn(document,'visibilityState','get').mockReturnValue('hidden')
-    document.dispatchEvent(new Event('visibilitychange'))
-    await s.advanceProgress(12000)
-    expect(s.healthy).not.toHaveBeenCalled()
-    vi.spyOn(document,'visibilityState','get').mockReturnValue('visible')
-    document.dispatchEvent(new Event('visibilitychange'));s.progress()
-    await s.advanceProgress(9500)
-    expect(s.healthy).not.toHaveBeenCalled()
-    await s.advanceProgress(500)
-    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
-  })
-  it('discards partial health after a frame gap longer than two seconds',async()=>{
-    const s=setup(undefined,true,30000);await s.load();s.progress()
-    await s.advanceProgress(9000)
-    await vi.advanceTimersByTimeAsync(2500);s.progress()
-    await s.advanceProgress(9500)
-    expect(s.healthy).not.toHaveBeenCalled()
-    await s.advanceProgress(500)
-    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
-  })
-  it('does not count old generations or duplicate progress, and resets when the scene loads',async()=>{
-    const s=setup(undefined,true,30000);await s.load();s.progress()
-    await s.advanceProgress(9000)
-    await s.load()
-    await s.advanceProgress(12000,1)
-    expect(s.healthy).not.toHaveBeenCalled()
-    s.progress(2)
-    for(let i=0;i<20;i++){
-      await vi.advanceTimersByTimeAsync(500)
-      s.reply('progress',{frames:1},2)
-    }
-    expect(s.healthy).not.toHaveBeenCalled()
-    s.progress(2)
-    await s.advanceProgress(10000,2)
-    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
-  })
-  it('does not count browser suspension even when queued progress arrives on resume',async()=>{
-    const s=setup(undefined,true,30000);await s.load();s.progress()
-    await s.advanceProgress(9000)
-    const resumeAt=performance.now()+60000
-    const suspendedClock=vi.spyOn(performance,'now').mockReturnValue(resumeAt)
-    await vi.advanceTimersByTimeAsync(250)
-    s.progress()
-    expect(s.healthy).not.toHaveBeenCalled()
-    for(let i=1;i<=19;i++){
-      suspendedClock.mockReturnValue(resumeAt+i*500)
-      await vi.advanceTimersByTimeAsync(500);s.progress()
-    }
-    expect(s.healthy).not.toHaveBeenCalled()
-    suspendedClock.mockReturnValue(resumeAt+10000)
-    await vi.advanceTimersByTimeAsync(500);s.progress()
-    expect(s.healthy).toHaveBeenCalledOnce();s.host.dispose()
   })
   it('coalesces music response changes and binds capability responses to the current request',async()=>{
     const s=setup();await s.load()

@@ -1,6 +1,7 @@
 import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_COMMANDS,
   type PlaybackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
 import type { PlaybackEngine, PlaybackLoader } from './playbackEngine'
+import { PlaybackDownloadError } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 
 export function installPlaybackRuntime(options: {
@@ -42,11 +43,22 @@ export function installPlaybackRuntime(options: {
     port?.close(); port = null
     display('Renderer stopped.')
   }
-  function fail(code: 'render' | 'protocol' | 'compile', request = lastRequest) {
+  function fail(code: PlaybackPayloads['error']['code'], request = lastRequest) {
     if (closed) return
     try { send('error', request, { code }) } catch { /* Parent may already have removed the frame. */ }
     dispose()
     display('This scene could not be displayed.')
+  }
+  function waitForVisible(signal: AbortSignal) {
+    if (signal.aborted) return Promise.reject(new DOMException('Load cancelled.', 'AbortError'))
+    if (document.visibilityState !== 'hidden') return Promise.resolve()
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => { document.removeEventListener('visibilitychange', check); signal.removeEventListener('abort', cancel) }
+      const cancel = () => { cleanup(); reject(new DOMException('Load cancelled.', 'AbortError')) }
+      const check = () => { if (document.visibilityState !== 'hidden') { cleanup(); resolve() } }
+      document.addEventListener('visibilitychange', check)
+      signal.addEventListener('abort', cancel, { once: true })
+    })
   }
   async function load(message: PlaybackMessage<'load'>) {
     loadAbort?.abort()
@@ -66,11 +78,20 @@ export function installPlaybackRuntime(options: {
     const abort = new AbortController()
     loadAbort = abort
     const active = () => !closed && loadAbort === abort && !abort.signal.aborted
+    let currentPhase: PlaybackPayloads['load-phase']['phase'] | null = null
     display('Loading scene…')
     try {
-      const loadedEngine = await options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
+      let attempt: 0 | 1 = 0
+      const phase = (value: PlaybackPayloads['load-phase']['phase']) => {
+        currentPhase = value
+        if (active()) send('load-phase', message.requestId, { phase: value, attempt })
+      }
+      if (document.visibilityState === 'hidden') { phase('waiting-visible'); await waitForVisible(abort.signal) }
+      abort.signal.throwIfAborted()
+      const prepare = () => options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
         sceneRevision: message.generation,
-        onError: () => { if (active()) fail('render', message.requestId) },
+        onPhase: phase,
+        onError: reason => { if (active()) fail(reason ?? (engine ? 'render' : 'graphics-startup'), message.requestId) },
         onFrame: () => {
           if (!active()) return
           frames++
@@ -78,6 +99,16 @@ export function installPlaybackRuntime(options: {
           if (now - lastProgress >= 500) { lastProgress = now; send('progress', 0, { frames }) }
         },
       })
+      let loadedEngine: PlaybackEngine
+      try { loadedEngine = await prepare() } catch (error) {
+        if (!active() || !(error instanceof ShaderCompilationError) || error.code !== 'interrupted') throw error
+        // Exactly one restart belongs to this still-pending load. Stop, scene
+        // replacement and pagehide abort the wait; transport state is retained.
+        attempt = 1; phase('waiting-visible')
+        await waitForVisible(abort.signal)
+        abort.signal.throwIfAborted()
+        loadedEngine = await prepare()
+      }
       if (!active()) { loadedEngine.dispose(); return }
       engine = loadedEngine
       if (pendingResize) engine.resize(pendingResize)
@@ -90,7 +121,11 @@ export function installPlaybackRuntime(options: {
       options.statusElement.hidden = true
       send('loaded', message.requestId, null)
     } catch (error) {
-      if (active()) fail(error instanceof ShaderCompilationError ? 'compile' : 'render', message.requestId)
+      if (active()) fail(error instanceof PlaybackDownloadError ? error.code
+        : error instanceof ShaderCompilationError ? error.code === 'timeout' ? 'compile-timeout'
+          : error.code === 'startup' ? 'compiler-startup' : error.code === 'invalid-output' ? 'invalid-output'
+            : error.code === 'interrupted' ? 'interrupted' : 'compile'
+          : currentPhase === 'graphics-startup' ? 'graphics-startup' : 'render', message.requestId)
     }
   }
   async function capture(message: PlaybackMessage<'capture'>) {

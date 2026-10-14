@@ -2,7 +2,7 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installPlaybackRuntime } from './playbackRuntime'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
-import type { PlaybackLoader } from './playbackEngine'
+import { PlaybackDownloadError, type PlaybackLoader } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 
@@ -36,6 +36,77 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('distinguishes graphics setup rejection from runtime rendering failure', async () => {
+    const f = fixture()
+    f.loadScene.mockImplementationOnce(async options => {
+      options.onPhase?.('graphics-startup')
+      throw new Error('Private WebGL details')
+    })
+    f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('error').map(message => message.payload.code)).toEqual(['graphics-startup'])
+    expect(JSON.stringify(f.port.postMessage.mock.calls)).not.toContain('Private WebGL details')
+  })
+  it.each(['compiler-download', 'graphics-download', 'startup', 'timeout', 'invalid-output'] as const)(
+    'preserves fixed %s failure classification without exposing diagnostics', async code => {
+      const f = fixture()
+      f.loadScene.mockRejectedValueOnce(code.endsWith('download')
+        ? new PlaybackDownloadError(code as 'compiler-download' | 'graphics-download')
+        : new ShaderCompilationError(code as 'startup' | 'timeout' | 'invalid-output'))
+      f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve()
+      expect(f.responses('error').map(message => message.payload.code)).toEqual([
+        code === 'startup' ? 'compiler-startup' : code === 'timeout' ? 'compile-timeout' : code])
+    })
+
+  it('waits for visibility before allocating a loader and preserves a requested pause', async () => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    const f = fixture(); f.bootstrap(); f.load(); f.send('playback', { playing: false })
+    expect(f.loadScene).not.toHaveBeenCalled()
+    expect(f.responses('load-phase')[0].payload).toEqual({ phase: 'waiting-visible', attempt: 0 })
+    hidden.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledOnce()
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+  })
+
+  it('restarts one hidden compiler interruption inside the same pending load, retaining pause', async () => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const f = fixture()
+    let reject!: (error: Error) => void
+    f.loadScene.mockReturnValueOnce(new Promise((_resolve, no) => { reject = no }))
+    f.bootstrap(); f.load(7); f.send('playback', { playing: false }, 7)
+    hidden.mockReturnValue('hidden'); reject(new ShaderCompilationError('interrupted'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledOnce(); expect(f.responses('error')).toEqual([])
+    hidden.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene.mock.calls.map(([options]) => options.sceneRevision)).toEqual([7, 7])
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.responses('loaded')).toHaveLength(1)
+  })
+
+  it.each(['dispose', 'replace'] as const)('cancels a hidden pending restart on %s', async action => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const f = fixture()
+    f.loadScene.mockImplementationOnce(() => {
+      hidden.mockReturnValue('hidden')
+      return Promise.reject(new ShaderCompilationError('interrupted'))
+    })
+    f.bootstrap(); f.load(1); await Promise.resolve(); await Promise.resolve()
+    if (action === 'dispose') f.runtime.dispose(); else f.load(2)
+    hidden.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'))
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene.mock.calls.map(([options]) => options.sceneRevision)).toEqual(action === 'dispose' ? [1] : [1, 2])
+    expect(f.responses('loaded').map(message => message.generation)).toEqual(action === 'dispose' ? [] : [2])
+    expect(f.responses('error')).toEqual([])
+  })
+
+  it('does not loop when the single visibility restart is interrupted again', async () => {
+    const f = fixture()
+    f.loadScene.mockRejectedValue(new ShaderCompilationError('interrupted'))
+    f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(f.loadScene).toHaveBeenCalledTimes(2)
+    expect(f.responses('error').map(message => message.payload.code)).toEqual(['interrupted'])
+  })
   it('retains the latest startup settings and preserves desired pause without reloading', async () => {
     const f = fixture(), settings = extractLiveSceneSettings(scene)
     let complete!: (engine: typeof f.engine) => void
@@ -168,7 +239,7 @@ describe('isolated playback runtime', () => {
     f.loadScene.mockImplementation(async options => {
       // WebGL listeners are bound to the canvas. Old renderer disposal may lose
       // that context after the next scene has already begun loading.
-      options.canvas.addEventListener('webglcontextlost', options.onError)
+      options.canvas.addEventListener('webglcontextlost', () => options.onError('context-lost'))
       return { ...f.engine, dispose: vi.fn() }
     })
     f.bootstrap(); f.load(); await Promise.resolve()

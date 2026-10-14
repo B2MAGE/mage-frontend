@@ -1,5 +1,6 @@
 export type RenderLifecycleEvent = { type: 'frame' } | { type: 'error' }
 export type RenderFailure = 'runtime' | 'context-lost' | 'startup-timeout' | 'progress-timeout' | 'compile'
+  | 'compiler-download' | 'graphics-download' | 'compiler-startup' | 'compile-timeout' | 'invalid-output' | 'graphics-startup' | 'interrupted'
 
 export const RENDER_STARTUP_TIMEOUT_MS = 15_000
 export const RENDER_PROGRESS_TIMEOUT_MS = 10_000

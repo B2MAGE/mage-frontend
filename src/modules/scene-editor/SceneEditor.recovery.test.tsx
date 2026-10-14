@@ -47,13 +47,12 @@ describe('scene editor recovery', () => {
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
   })
 
-  it('preserves unsaved template settings and details through repeated failure, safe editing, and explicit retry', async () => {
+  it('preserves unsaved settings and details after a failure without restarting before explicit retry', async () => {
     storeSceneEditorSession()
     mockCreateScenePageFetch()
     const first = buildMagePlayerController()
-    const automaticRetry = buildMagePlayerController()
     const resumed = buildMagePlayerController()
-    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(automaticRetry).mockResolvedValueOnce(resumed)
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(first).mockResolvedValueOnce(resumed)
     const user = userEvent.setup()
     renderCreateScenePage('mage-pulse')
     await waitFor(() => expect(first.loadSceneBlob).toHaveBeenCalled())
@@ -67,16 +66,10 @@ describe('scene editor recovery', () => {
     const key = sceneRecoveryKey(loaded)!
     blockedKeys.add(key)
     act(() => sceneRecovery.block(key, 'runtime'))
-    await waitFor(() => expect(automaticRetry.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'builder', parameters: expect.objectContaining({ scale: 12 }),
-    }), expect.any(Object)))
-    expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
     expect(first.dispose).toHaveBeenCalledTimes(1)
-
-    act(() => sceneRecovery.block(key, 'runtime'))
     expect(screen.getByText('Playback paused')).toBeInTheDocument()
     expect(screen.getByText(/playback error/i)).toBeInTheDocument()
-    expect(automaticRetry.dispose).toHaveBeenCalledTimes(1)
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveValue(12)
 
     await user.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
@@ -84,18 +77,18 @@ describe('scene editor recovery', () => {
     expect(screen.getByText('Playback paused')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Pause all scenes' })).toBeChecked()
     expect(screen.getByRole('button', { name: 'Resume scene' })).toBeDisabled()
-    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
     await user.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
     expect(screen.getByRole('button', { name: 'Retry scene' })).toBeEnabled()
     expect(screen.getByText(/playback error/i)).toBeInTheDocument()
     expect(sceneRecovery.getBlock(key)?.reason).toBe('runtime')
-    expect(createMagePlayer).toHaveBeenCalledTimes(2)
+    expect(createMagePlayer).toHaveBeenCalledTimes(1)
     expect(resumed.loadSceneBlob).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Retry scene' }))
     await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'builder', parameters: expect.objectContaining({ scale: 6 }),
     }), expect.any(Object)))
-    expect(sceneRecovery.getAutomaticBlock(key)?.reason).toBe('runtime')
+    expect(sceneRecovery.getBlock(key)).toBeNull()
     expect(screen.getByRole('spinbutton', { name: 'Scene Scale numeric value' })).toHaveValue(6)
     await user.click(screen.getByRole('button', { name: /^Details$/ }))
     expect(screen.getByLabelText(/scene name/i)).toHaveValue('My unfinished scene')

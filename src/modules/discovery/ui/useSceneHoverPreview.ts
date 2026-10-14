@@ -31,7 +31,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
   const availability = useSceneAvailability(target)
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const recoveryKey = useMemo(() => sceneRecoveryKey(sceneBlob, sceneId), [sceneBlob, sceneId])
-  const recoveryPaused = !recoveryKey || sceneRecovery.isSafeMode() || !!sceneRecovery.getAutomaticBlock(recoveryKey)
+  const recoveryPaused = !recoveryKey || sceneRecovery.isSafeMode() || !!sceneRecovery.getBlock(recoveryKey)
   const registrationIdRef = useRef(createSceneHoverPreviewRegistrationId())
   const thumbnailRef = useRef<HTMLDivElement | null>(null)
   const pointerInsideRef = useRef(false)

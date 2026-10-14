@@ -11,7 +11,7 @@ vi.mock('../availability/sceneAvailability', () => ({ sceneAvailabilityStore: {
 } }))
 vi.mock('../recovery/sceneRecovery', async importActual => ({ ...await importActual<object>(), sceneRecovery: {
   subscribe: mocks.subscribeRecovery, begin: mocks.begin, block: mocks.block,
-  isSafeMode: () => false, getBlock: () => null, getAutomaticBlock: () => null,
+  isSafeMode: () => false, getBlock: () => null,
 } }))
 import { createIsolatedMageController } from './isolatedController'
 

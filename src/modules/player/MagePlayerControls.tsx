@@ -14,6 +14,7 @@ import { PlaybackOptions } from './recovery/PlaybackOptions'
 type MagePlayerControlsProps = {
   audioMode?: 'single' | 'playlist'
   disabled?: boolean
+  allowStopWhileLoading?: boolean
   activeAudioAction: 'add' | 'load' | null
   audioError: string | null
   audioProgressPercent: string
@@ -39,6 +40,7 @@ type MagePlayerControlsProps = {
 export function MagePlayerControls({
   audioMode = 'playlist',
   disabled = false,
+  allowStopWhileLoading = false,
   activeAudioAction,
   audioError,
   audioProgressPercent,
@@ -187,7 +189,7 @@ export function MagePlayerControls({
 
 
         <button className="mage-player__control-button mage-player__control-button--fullscreen" disabled={disabled} type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen" onClick={(event) => { const element = event.currentTarget.closest<HTMLElement>('.mage-player'); if (document.fullscreenElement === element) { void document.exitFullscreen?.().catch(() => undefined) } else { void element?.requestFullscreen?.().catch(() => undefined) } }}><AppIcon name="maximize" /></button>
-        <PlaybackOptions key={disabled ? 'disabled' : 'enabled'} disabled={disabled} onStopScene={onStopScene} onClearMusic={onClearMusic} onPauseAllScenes={onPauseAllScenes} />
+        <PlaybackOptions key={disabled ? 'disabled' : 'enabled'} disabled={disabled && !allowStopWhileLoading} onStopScene={onStopScene} onClearMusic={disabled ? undefined : onClearMusic} onPauseAllScenes={onPauseAllScenes} />
         {!isSingleSong && showPlaylistButton && (
           <button
             className="mage-player__control-button mage-player__control-button--playlist"

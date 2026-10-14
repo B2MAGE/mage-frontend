@@ -24,6 +24,32 @@ function fixture() {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('disposable compiler owner', () => {
+  it.each([false, true])('retires compilation immediately on hide (acknowledged: %s)', async acknowledged => {
+    vi.useFakeTimers()
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'interrupted' })
+    if (acknowledged) f.started()
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce(); expect(f.release).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('does not allocate submitted work in an already hidden document', async () => {
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    const f = fixture()
+    await expect(f.load()).rejects.toMatchObject({ code: 'interrupted' })
+    expect(f.createWorker).not.toHaveBeenCalled()
+  })
+
+  it('classifies a late acknowledgement as startup failure even before its timer runs', async () => {
+    let now = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'startup' })
+    now = COMPILER_LIMITS.startupDeadlineMs + 1; f.started()
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce()
+  })
   it('terminates and revokes its URL before resolving a validated result', async () => {
     const f = fixture(), pending = f.load()
     f.success()
@@ -61,7 +87,7 @@ describe('disposable compiler owner', () => {
 
   it('terminates a worker that never reaches submitted-source execution', async () => {
     vi.useFakeTimers()
-    const f = fixture(), pending = expect(f.load()).rejects.toThrow('too long')
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'startup' })
     await vi.advanceTimersByTimeAsync(COMPILER_LIMITS.startupDeadlineMs)
     await pending
     expect(f.terminate).toHaveBeenCalledOnce()

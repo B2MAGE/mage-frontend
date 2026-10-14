@@ -73,7 +73,7 @@ afterEach(() => {
 })
 
 describe('MagePlayer live availability', () => {
-  it.each(['permission-check', 'compilation'] as const)('disables the complete control bar during %s and preserves playback intent on completion', async pendingReason => {
+  it.each(['permission-check', 'compilation'] as const)('keeps Stop available while disabling playback during %s and preserves playback intent', async pendingReason => {
     const scene = buildMagePlayerSceneBlob()
     const controller = buildMagePlayerController()
     vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
@@ -94,7 +94,7 @@ describe('MagePlayer live availability', () => {
     expect(pause).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Toggle fullscreen' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Playback options' })).toBeEnabled()
     fireEvent.click(pause)
     expect(controller.setPlaybackState).not.toHaveBeenCalled()
     if (pendingReason === 'permission-check') permission(930, allowed)
@@ -553,11 +553,10 @@ describe('MagePlayer live availability', () => {
     await expect(pendingCapture).resolves.toBeNull()
   })
 
-  it('keeps a remembered local failure and revokes old retry permission while globally disabled', async () => {
+  it('keeps a current-page failure separate from server disablement', async () => {
     const scene = buildMagePlayerSceneBlob()
     const key = remember(scene, 910)
     sceneRecovery.block(key, 'runtime')
-    sceneRecovery.retry(key)
     permission(910, globalDisabled)
     render(<MagePlayer sceneBlob={scene} sceneKey={910}/>)
     expect(screen.getByText('Scene playback is temporarily disabled.')).toBeInTheDocument()
@@ -582,7 +581,7 @@ describe('MagePlayer live availability', () => {
     expect(createMagePlayer).not.toHaveBeenCalled()
   })
 
-  it('retains an interrupted failure when a paused retry crosses server disablement', async () => {
+  it('does not resurrect a cleared failure when a paused retry crosses server disablement', async () => {
     const scene = buildMagePlayerSceneBlob()
     const key = remember(scene, 913)
     sceneRecovery.block(key, 'interrupted')
@@ -595,7 +594,8 @@ describe('MagePlayer live availability', () => {
       }),
       dispose: vi.fn(() => lease?.dispose()),
     })
-    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller)
+    const resumed = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValueOnce(controller).mockResolvedValueOnce(resumed)
     render(<MagePlayer sceneBlob={scene} sceneKey={913}/>)
     fireEvent.click(screen.getByRole('button', { name: 'Retry scene' }))
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledOnce())
@@ -610,8 +610,9 @@ describe('MagePlayer live availability', () => {
     expect(screen.getByRole('checkbox', { name: 'Pause all scenes' })).toBeChecked()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pause all scenes' }))
 
-    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeInTheDocument()
-    expect(sceneRecovery.getBlock(key)?.reason).toBe('interrupted')
-    expect(createMagePlayer).toHaveBeenCalledOnce()
+    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('button', { name: 'Retry scene' })).not.toBeInTheDocument()
+    expect(sceneRecovery.getBlock(key)).toBeNull()
+    expect(createMagePlayer).toHaveBeenCalledTimes(2)
   })
 })

@@ -94,7 +94,7 @@ class SceneHoverPreviewCoordinator {
     const registration = this.registrations.get(id)
     if (!registration || !sceneAvailabilityStore.isAllowed(registration.availabilityTarget) || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
     const key = sceneRecoveryKey(registration.sceneBlob, registration.sceneId)
-    return !!key && !sceneRecovery.getAutomaticBlock(key)
+    return !!key && !sceneRecovery.getBlock(key)
   }
 
   private readonly handleVisibilityChange = () => {
@@ -194,7 +194,7 @@ class SceneHoverPreviewCoordinator {
       try {
         activation.controller.dispose()
       } catch {
-        // The adapter retains an interrupted marker when cleanup cannot finish.
+        // The adapter records a session failure when cleanup cannot finish.
         // Other cards and recovery controls must still receive store updates.
       }
     }

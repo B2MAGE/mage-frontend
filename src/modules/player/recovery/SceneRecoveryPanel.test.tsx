@@ -7,9 +7,19 @@ import type { RecoveryReason } from './sceneRecovery'
 describe('SceneRecoveryPanel', () => {
   it.each([
     ['stopped', 'Resume scene', /you paused this scene/i],
-    ['interrupted', 'Retry scene', /may have been interrupted/i],
+    ['interrupted', 'Retry scene', /playback was interrupted/i],
+    ['load', 'Retry scene', /scene could not be loaded/i],
+    ['compiler-download', 'Retry scene', /compiler could not be downloaded/i],
+    ['graphics-download', 'Retry scene', /player could not be downloaded/i],
+    ['graphics-startup', 'Retry scene', /browser could not start graphics/i],
+    ['compiler-startup', 'Retry scene', /compiler did not start in time/i],
     ['runtime', 'Retry scene', /playback error/i],
     ['compile', 'Retry scene', /simplify the shader code or choose a template/i],
+    ['compile-timeout', 'Retry scene', /preparing this scene took too long/i],
+    ['invalid-output', 'Retry scene', /compiler returned an invalid result/i],
+    ['context-lost', 'Retry scene', /browser lost its graphics connection/i],
+    ['startup-timeout', 'Retry scene', /player did not start in time/i],
+    ['progress-timeout', 'Retry scene', /stopped responding during playback/i],
   ] as const)('explains %s beneath the shared title and keeps its action outside the live announcement', async (reason, action, message) => {
     const onRetry = vi.fn()
     render(<SceneRecoveryPanel block={{ reason, at: 1 }} safeMode={false} onRetry={onRetry} onSafeModeChange={vi.fn()} />)
@@ -30,7 +40,7 @@ describe('SceneRecoveryPanel', () => {
     render(<SceneRecoveryPanel block={{ reason, at: 1 }} safeMode onRetry={onRetry} onSafeModeChange={onSafeModeChange} />)
 
     expect(screen.getByText('Playback paused')).toBeInTheDocument()
-    expect(screen.getByText(/all scenes and previews are paused/i)).toHaveTextContent('Turn off Pause all scenes to resume playback.')
+    expect(screen.getByText(/all scenes and previews on this page are paused/i)).toHaveTextContent('Turn off Pause all scenes to resume playback.')
     const resume = screen.getByRole('button', { name: 'Resume scene' })
     expect(resume).toBeDisabled()
     const pauseAll = screen.getByRole('checkbox', { name: 'Pause all scenes' })

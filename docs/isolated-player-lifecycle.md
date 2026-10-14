@@ -11,6 +11,10 @@ integration and closure.
 
 > Manual fixture paths in this evidence map require the [explicit local harness](test-tools-cleanup.md). Public check routes are retired by the cleanup deployment. Dated evidence remains unchanged.
 
+Current source routing below includes the local PL-01/RF-04 refactor. Its
+[ownership and review checklist](pl01-rf04-local-review.md) tracks current work;
+the dated PP-I06 verification below is evidence for that earlier build only.
+
 ## Rendering surfaces
 
 Submitted scenes share this route: `MagePlayer` or a hover owner calls
@@ -18,8 +22,10 @@ Submitted scenes share this route: `MagePlayer` or a hover owner calls
 `createIsolatedPlaybackHost`. The child installs `installPlaybackRuntime`, calls
 `loadPlaybackEngine`, finishes `compileInWorker`, then loads the validated artifact
 with `loadCompiledPreset`. No submitted-source fallback is selected when the worker,
-host, permission check or output policy fails. Engine changes remain in the
-frontend-owned package patch.
+host, permission check or output policy fails. The React player delegates creation,
+loading, readiness and disposal to `useMagePlayerScene`; the surrounding session
+retains permission gates, Stop/Retry and playback intent. Engine changes remain
+in the [maintained engine package](engine-package.md).
 
 | Surface | Source route | Relevant automated coverage |
 | --- | --- | --- |
@@ -38,13 +44,14 @@ owning module, except child tests under `src/isolated-renderer`.
 
 ### Fixed brand artwork exception
 
-`src/modules/scene-artwork/BrandScene.tsx` uses the internal `BRAND_SCENE` through
-`platformArtwork: 'brand'`. This fixed Home/About artwork is the only intentional
-parent-engine route. The adapter requires the exact internal scene identity and
-rejects saved IDs, clones, custom/template replacements and unsuitable render
-targets. `engineAdapter.test.ts` covers these restrictions, including later source
-replacement. It is not a submitted-scene playback surface or an alternate route
-for a failed scene.
+`src/modules/scene-artwork/BrandScene.tsx` uses `brandArtworkController.ts`, which
+imports the frozen `BRAND_SCENE` internally and accepts no scene input. This fixed
+Home/About artwork is the only intentional parent-engine route. It owns its small
+animation, visibility, capture and disposal API and follows page-wide pause; it has
+no submitted-scene permission checks, audio/playlist API or revision history.
+`brandArtworkController.test.ts` covers this boundary. The generic adapter routes
+every submitted current-format scene through isolation, including copies of the
+brand document. Import-boundary tests keep the exception narrow.
 
 ### Relevant harnesses
 
@@ -70,7 +77,7 @@ scoped. Test-only direct compiler calls are fixtures, not shipped runtime paths.
 | Rapid replacement cannot overwrite the newest scene | `playbackRuntime.test.ts`, `isolatedController.test.ts`, `MagePlayer.availability.test.tsx`; generation/request correlation and old-load cancellation |
 | Navigation or hover exit during startup releases pending work | `isolatedController.startup.test.ts`, `engineAdapter.test.ts`, `DiscoverySceneCard.preview.test.tsx`; owner AbortSignal reaches startup and an already-created bridge |
 | Unsupported workers fail without a main-thread evaluator | `workerRecovery.integration.test.ts` composes the real compiler receiver, engine loader, child runtime, host and recovery store; only transport and Worker capability are simulated |
-| Repeated failure requires deliberate retry of the exact revision | `sceneRecovery.test.ts`, `MagePlayer.recovery.test.tsx`, `workerRecovery.integration.test.ts`; another document stays blocked, a failed retry retains quarantine, a changed revision has a distinct key |
+| Repeated failure requires deliberate retry of the exact revision | `sceneRecovery.test.ts`, `MagePlayer.recovery.test.tsx`, `workerRecovery.integration.test.ts`; failure is local to the current page, explicit retry clears it, old lease callbacks cannot affect the replacement, and reload starts fresh |
 | Old WebGL context loss cannot stop a replacement | `playbackRuntime.test.ts` replaces the canvas and rejects stale callbacks; `playbackEngine.test.ts` covers context loss while paused |
 | Background, page exit and return | `playbackHost.test.ts`, `sceneAvailability.test.ts`, `MagePlayer.recovery.test.tsx` cover watchdog scheduling gaps, visibility, pagehide/BFCache and permission refresh |
 | Audio remains parent-owned through switching and controls | `isolatedPlayer.test.ts`, `isolatedController.test.ts`, `MagePlayer.audio.test.tsx`, `MagePlayer.audioAvailability.test.tsx`, `musicCheck.test.ts`; source changes do not send audio files or rerun source callbacks for numeric controls |

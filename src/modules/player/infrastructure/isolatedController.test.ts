@@ -4,10 +4,10 @@ import type { MagePlayerController } from './playerController'
 import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
 import { normalizeAudioResponseConfig } from '@shared/lib'
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), check: vi.fn(), begin: vi.fn(), block: vi.fn(), revokeRetry: vi.fn(),
+const mocks = vi.hoisted(() => ({ create: vi.fn(), check: vi.fn(), begin: vi.fn(), block: vi.fn(),
   statuses: new Map<unknown, { allowed: boolean; code: string }>(), availabilityListeners: new Map<unknown, Set<() => void>>(),
   recoveryListeners: new Set<() => void>(), blocked: new Map<string, { reason: string }>(), safeMode: false,
-  leases: [] as Array<{ dispose: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn>; confirmHealthy: ReturnType<typeof vi.fn> }>,
+  leases: [] as Array<{ dispose: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn> }>,
 }))
 vi.mock('../isolation/isolatedPlayer', () => ({ createIsolatedPlayer: mocks.create }))
 vi.mock('../isolation/rendererConfig', () => ({ getIsolatedRendererUrl: () => 'https://renderer.example.net/index.html' }))
@@ -23,9 +23,8 @@ vi.mock('../availability/sceneAvailability', () => ({ sceneAvailabilityStore: {
   },
 } }))
 vi.mock('../recovery/sceneRecovery', async importActual => ({ ...await importActual<object>(), sceneRecovery: {
-  begin: mocks.begin, block: mocks.block, revokeRetry: mocks.revokeRetry,
+  begin: mocks.begin, block: mocks.block,
   getBlock: (key: string) => mocks.blocked.get(key) ?? null,
-  getAutomaticBlock: (key: string) => mocks.blocked.get(key) ?? null,
   isSafeMode: () => mocks.safeMode,
   subscribe(listener: () => void) { mocks.recoveryListeners.add(listener); return () => mocks.recoveryListeners.delete(listener) },
 } }))
@@ -79,7 +78,7 @@ beforeEach(() => {
   mocks.safeMode = false; mocks.leases.length = 0
   mocks.check.mockReset().mockImplementation(async target => mocks.statuses.get(target) ?? { allowed: true, code: 'ALLOWED' })
   mocks.begin.mockReset().mockImplementation(() => {
-    const lease = { dispose: vi.fn(), fail: vi.fn(), confirmHealthy: vi.fn() }
+    const lease = { dispose: vi.fn(), fail: vi.fn() }
     mocks.leases.push(lease)
     return lease
   })
@@ -174,8 +173,6 @@ describe('isolated controller guards', () => {
     expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(true)
     expect(playerBridge.play).not.toHaveBeenCalled()
     expect(playerBridge.pause).not.toHaveBeenCalled()
-    mocks.create.mock.calls[0][0].onHealthy()
-    expect(mocks.leases[0].confirmHealthy).not.toHaveBeenCalled()
     if (order === 'view-first') setAvailability('custom', 'ALLOWED')
     else player.setRenderingSuspended!(false)
     expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
@@ -184,11 +181,10 @@ describe('isolated controller guards', () => {
     expect(playerBridge.loadAudio).toHaveBeenCalledOnce()
   })
 
-  it('disposes on actual revocation and withdraws retry permission', async () => {
+  it('disposes on actual revocation without treating denial as a shader failure', async () => {
     const player = await loaded(custom, 7)
     setAvailability(7, 'SCENE_DISABLED')
     expect(playerBridge.dispose).toHaveBeenCalledOnce()
-    expect(mocks.revokeRetry).toHaveBeenCalledWith(sceneRecoveryKey(custom, 7))
     expect(() => player.setPlaybackState('playing')).toThrow(/stopped/)
     expect(mocks.leases[0].dispose).toHaveBeenCalledOnce()
     expect(mocks.leases[0].fail).not.toHaveBeenCalled()
@@ -341,51 +337,6 @@ describe('isolated controller guards', () => {
     expect(mocks.leases[0].fail).not.toHaveBeenCalled()
     player.stopRendering!()
     expect(mocks.leases[0].fail).toHaveBeenCalledWith('stopped')
-  })
-
-  it('confirms a healthy current lease without replacing the player or music', async () => {
-    const player = await loaded()
-    await player.loadAudio({ sourcePath: 'blob:local-track' })
-    player.seekAudio(23)
-    mocks.create.mock.calls[0][0].onHealthy()
-    expect(mocks.leases[0].confirmHealthy).toHaveBeenCalledOnce()
-    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
-    expect(playerBridge.dispose).not.toHaveBeenCalled()
-    expect(playerBridge.clearAudio).not.toHaveBeenCalled()
-    expect(player.getAudioState().currentTime).toBe(23)
-  })
-
-  it('ignores healthy signals while loading, paused or checking availability', async () => {
-    const player = await create()
-    const onHealthy = mocks.create.mock.calls[0][0].onHealthy
-    const work = deferred<void>()
-    playerBridge.loadScene.mockReturnValueOnce(work.promise)
-    const pending = player.loadSceneBlob(template)
-    await flush()
-    onHealthy()
-    expect(mocks.leases[0].confirmHealthy).not.toHaveBeenCalled()
-    work.resolve()
-    await pending
-    player.setPlaybackState('paused')
-    onHealthy()
-    player.setPlaybackState('playing')
-    setAvailability('draft-template', 'CHECKING')
-    onHealthy()
-    expect(mocks.leases[0].confirmHealthy).not.toHaveBeenCalled()
-    setAvailability('draft-template', 'ALLOWED')
-    onHealthy()
-    expect(mocks.leases[0].confirmHealthy).toHaveBeenCalledOnce()
-  })
-
-  it.each(['dispose', 'deny', 'safe-mode', 'failure'])('ignores late healthy signals after %s', async action => {
-    const player = await loaded(custom)
-    const callbacks = mocks.create.mock.calls[0][0]
-    if (action === 'dispose') player.dispose()
-    else if (action === 'deny') setAvailability('custom', 'CUSTOM_RENDERING_DISABLED')
-    else if (action === 'failure') callbacks.onFailure('runtime')
-    else mocks.safeMode = true
-    callbacks.onHealthy()
-    expect(mocks.leases[0].confirmHealthy).not.toHaveBeenCalled()
   })
 
   it('disposes running direct controllers on global safe mode', async () => {

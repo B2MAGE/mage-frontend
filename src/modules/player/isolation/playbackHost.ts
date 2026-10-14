@@ -1,30 +1,33 @@
 import { DENIED_FEATURES, validateRendererUrl } from './rendererHost'
-import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_RESPONSES, sceneForBridge,
-  type CaptureRequest, type PlaybackPayloads, type PlaybackType } from './playbackProtocol'
+import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_RESPONSES, sceneForBridge, STARTUP_PHASES,
+  type CaptureRequest, type PlaybackPayloads, type PlaybackType, type StartupPhase } from './playbackProtocol'
 import { validateRasterCapture } from './capture'
 import { boundCaptureSize, type RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/renderRecoveryMonitor'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
+import { COMPILER_LIMITS } from '../../../isolated-renderer/compiler/protocol'
 
-type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout>; id: number; generation: number }
+type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> | undefined; id: number; generation: number }
 export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed'
 export type PlaybackHostDiagnostic =
   | { type: 'status'; at: number; status: PlaybackHostStatus }
   | { type: 'progress'; at: number }
   | { type: 'watchdog'; at: number; deltaMs: number; silenceMs: number; progressAgeMs: number
-    resetReason: 'closed' | 'not-loaded' | 'paused' | 'hidden' | 'invalid-clock' | 'parent-gap' | 'recent-progress' | 'none' }
+    resetReason: 'closed' | 'not-loaded' | 'paused' | 'hidden' | 'offscreen' | 'invalid-clock' | 'parent-gap' | 'recent-progress' | 'none' }
   | { type: 'failure'; at: number; reason: RenderFailure }
 export function createIsolatedPlaybackHost(options: {
   container: HTMLElement; rendererUrl: string; onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void; startupTimeoutMs?: number; progressTimeoutMs?: number
-  onHealthy?: () => void
+  downloadTimeoutMs?: number
   onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void
   decodeCapture?: typeof createImageBitmap
   useInlineFrameStyles?: boolean
 }) {
   const url = validateRendererUrl(options.rendererUrl)
   const startupMs = options.startupTimeoutMs ?? 15000, progressMs = options.progressTimeoutMs ?? 10000
+  const downloadMs = options.downloadTimeoutMs ?? 60000
   if (![startupMs, progressMs].every(v => Number.isFinite(v) && v >= 10 && v <= 30000)) throw new Error('Invalid renderer timeout.')
+  if (!Number.isFinite(downloadMs) || downloadMs < 10 || downloadMs > 120000) throw new Error('Invalid download timeout.')
   const frame = document.createElement('iframe')
   frame.title = 'Isolated scene player'
   frame.setAttribute('sandbox', 'allow-scripts'); frame.setAttribute('referrerpolicy', 'no-referrer')
@@ -35,8 +38,9 @@ export function createIsolatedPlaybackHost(options: {
   const session = crypto.randomUUID()
   let generation = 0, sequence = 0, lastFrame = -1, lastProgress = performance.now()
   let previousObservation = performance.now(), observedSilence = 0
-  let healthyProgressAt: number | null = null, healthyProgressMs = 0
   let pendingLoad: Pending<void> | null = null
+  let pendingLoadPhase: StartupPhase | null = null, startupObserved = 0, onscreen = true
+  let loadPhaseStep = -1, loadAttempt = 0
   let pendingCapabilities: Pending<PlaybackPayloads['capabilities-result']> | null = null
   let queuedAudioResponse: PlaybackPayloads['audio-response'] | null = null
   let queuedSceneSettings: SceneLiveSettings | null = null
@@ -67,6 +71,7 @@ export function createIsolatedPlaybackHost(options: {
       if (pending) { clearTimeout(pending.timer); pending.reject(new Error(reason)) }
     }
     pendingLoad = null; pendingCapture = null; pendingCapabilities = null
+    pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
   }
   function dispose(failure?: RenderFailure) {
     if (closed) return
@@ -74,6 +79,7 @@ export function createIsolatedPlaybackHost(options: {
     clearTimeout(startupTimer); clearInterval(inputTimer); clearInterval(progressTimer)
     frame.removeEventListener('load', connect); frame.removeEventListener('error', onFrameError)
     document.removeEventListener('visibilitychange', resetObservation)
+    intersection?.disconnect()
     window.removeEventListener('pagehide', onPageHide)
     try { port?.postMessage(playbackMessage('dispose', session, generation, ++sequence, null)) } catch { /* Removed frame is final boundary. */ }
     if (port) { port.onmessage = null; port.onmessageerror = null; port.close(); port = null }
@@ -85,24 +91,11 @@ export function createIsolatedPlaybackHost(options: {
       if (options.onDiagnostic) diagnose({ type: 'failure', at: performance.now(), reason: failure })
     }
   }
-  function onFrameError() { dispose('runtime') }
+  function onFrameError() { dispose(available ? 'runtime' : 'graphics-download') }
   function onPageHide() { dispose() }
-  function resetHealthyProgress() { healthyProgressAt = null; healthyProgressMs = 0 }
   function resetObservation() {
     previousObservation = performance.now(); observedSilence = 0; lastProgress = previousObservation
-    resetHealthyProgress()
-  }
-  function observeHealthyProgress(now: number) {
-    if (!loaded || !playing || document.visibilityState !== 'visible') { resetHealthyProgress(); return }
-    const delta = healthyProgressAt === null ? 0 : now - healthyProgressAt
-    if (delta < 0 || delta > 2000) resetHealthyProgress()
-    // Only time between fresh, increasing frame reports counts. Loading, a
-    // lone frame, silent waits and suspended browser time never establish health.
-    else healthyProgressMs += delta
-    healthyProgressAt = now
-    if (healthyProgressMs < 10000) return
-    healthyProgressMs = 0
-    try { options.onHealthy?.() } catch { /* Observers cannot interrupt rendering or its watchdog. */ }
+    startupObserved = 0
   }
   function send<T extends PlaybackType>(type: T, payload: PlaybackPayloads[T]) {
     if (closed || !available || !port) throw new Error('Isolated player is unavailable.')
@@ -123,9 +116,32 @@ export function createIsolatedPlaybackHost(options: {
       available = true; clearTimeout(startupTimer); resolveReady(); report('ready'); return
     }
     if (message.generation !== generation) return
+    if (message.type === 'load-phase') {
+      if (!pendingLoad || pendingLoad.id !== message.requestId) return
+      const { phase, attempt } = message.payload
+      const step = STARTUP_PHASES.indexOf(phase)
+      // Acknowledged compilation cannot return to a download wait or renew its
+      // deadline. Only its one explicit visibility interruption may restart.
+      if (attempt === loadAttempt && step === loadPhaseStep) return
+      if (attempt !== loadAttempt) {
+        if (loadAttempt !== 0 || attempt !== 1 || phase !== 'waiting-visible'
+          || (pendingLoadPhase !== 'compiler-startup' && pendingLoadPhase !== 'compiling')) return dispose('runtime')
+      } else if (step !== loadPhaseStep + 1 && !(loadPhaseStep === -1 && phase === 'compiler-download')) return dispose('runtime')
+      loadAttempt = attempt; loadPhaseStep = step
+      clearTimeout(pendingLoad.timer); pendingLoad.timer = undefined
+      pendingLoadPhase = phase; startupObserved = 0; previousObservation = performance.now()
+      if (phase === 'waiting-visible' || phase === 'graphics-startup') return
+      const failure = phase === 'compiling' ? 'compile-timeout' : phase
+      const limit = phase === 'compiling' ? COMPILER_LIMITS.deadlineMs + 1000
+        : phase === 'compiler-startup' ? COMPILER_LIMITS.startupDeadlineMs + 1000 : downloadMs
+      pendingLoad.timer = setTimeout(() => dispose(failure), limit)
+      return
+    }
     if (message.type === 'loaded') {
       if (!pendingLoad || pendingLoad.id !== message.requestId) return
+      if (loadPhaseStep !== -1 && pendingLoadPhase !== 'graphics-startup') return dispose('runtime')
       clearTimeout(pendingLoad.timer); pendingLoad.resolve(); pendingLoad = null
+      pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
       loaded = true
       try { send('playback', { playing }); send('synthetic', synthetic) } catch { return dispose('runtime') }
       queuedResize = lastResize
@@ -135,7 +151,6 @@ export function createIsolatedPlaybackHost(options: {
     if (message.type === 'progress') {
       if (message.requestId !== 0 || message.payload.frames <= lastFrame) return
       lastFrame = message.payload.frames; lastProgress = performance.now(); observedSilence = 0
-      observeHealthyProgress(lastProgress)
       if (options.onDiagnostic) diagnose({ type: 'progress', at: lastProgress })
       return
     }
@@ -148,7 +163,9 @@ export function createIsolatedPlaybackHost(options: {
       if (message.payload.code === 'capture' && pendingCapture?.id === message.requestId) {
         clearTimeout(pendingCapture.timer); pendingCapture.reject(new Error('Frame capture failed.')); pendingCapture = null; return
       }
-      dispose(message.payload.code === 'compile' && pendingLoad?.id === message.requestId ? 'compile' : 'runtime'); return
+      const code = message.payload.code
+      dispose(code === 'context-lost' ? 'context-lost'
+        : pendingLoad?.id === message.requestId && code !== 'render' && code !== 'protocol' && code !== 'capture' ? code : 'runtime'); return
     }
     if (message.type === 'captured') {
       const pending = pendingCapture
@@ -175,7 +192,13 @@ export function createIsolatedPlaybackHost(options: {
       frame.contentWindow.postMessage(playbackMessage('connect', session, 0, 0, null), '*', [channel.port2])
     } catch { channel.port2.close(); dispose('runtime') }
   }
-  const startupTimer = setTimeout(() => dispose('startup-timeout'), startupMs)
+  // No submitted source runs while the renderer document is downloading.
+  const startupTimer = setTimeout(() => dispose('graphics-download'), downloadMs)
+  const intersection = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+    const entry = entries.find(value => value.target === frame)
+    if (entry && onscreen !== entry.isIntersecting) { onscreen = entry.isIntersecting; resetObservation() }
+  }) : null
+  intersection?.observe(frame)
   function flushSceneSettings() {
     if (!queuedSceneSettings) return false
     send('scene-settings', queuedSceneSettings)
@@ -212,11 +235,16 @@ export function createIsolatedPlaybackHost(options: {
   const progressTimer = setInterval(() => {
     const now = performance.now(), delta = now - previousObservation
     previousObservation = now
-    if (closed || !loaded || !playing || document.visibilityState === 'hidden' || delta < 0 || delta > 2000) {
-      observedSilence = 0; resetHealthyProgress()
+    const observable = onscreen && document.visibilityState !== 'hidden' && delta >= 0 && delta <= 2000
+    if (pendingLoad && (pendingLoadPhase === 'graphics-startup' || pendingLoadPhase === 'waiting-visible')) {
+      startupObserved = observable ? startupObserved + delta : 0
+      if (startupObserved >= startupMs) return dispose(pendingLoadPhase === 'waiting-visible' ? 'interrupted' : 'startup-timeout')
+    }
+    if (closed || !loaded || !playing || !observable) {
+      observedSilence = 0
       if (options.onDiagnostic) diagnose({ type: 'watchdog', at: now, deltaMs: delta, silenceMs: observedSilence,
         progressAgeMs: now - lastProgress, resetReason: closed ? 'closed' : !loaded ? 'not-loaded' : !playing ? 'paused'
-          : document.visibilityState === 'hidden' ? 'hidden' : delta < 0 ? 'invalid-clock' : 'parent-gap' })
+          : document.visibilityState === 'hidden' ? 'hidden' : !onscreen ? 'offscreen' : delta < 0 ? 'invalid-clock' : 'parent-gap' })
       return
     }
     if (now - lastProgress < 500) observedSilence = 0
@@ -237,12 +265,12 @@ export function createIsolatedPlaybackHost(options: {
       const next = ++generation
       rejectWork('Scene changed.'); loaded = false; lastFrame = -1; queuedInput = null; queuedAudioResponse = null; queuedSceneSettings = null
       lastAudioResponseKey = lastSceneSettingsKey = null; nextQueuedCommand = 0
-      resetHealthyProgress()
       await ready
       if (closed || next !== generation) throw new Error('Scene changed.')
       return new Promise<void>((resolve, reject) => {
         const id = sequence + 1
-        pendingLoad = { id, generation, resolve, reject, timer: setTimeout(() => dispose('startup-timeout'), startupMs) }
+        pendingLoadPhase = 'compiler-download'
+        pendingLoad = { id, generation, resolve, reject, timer: setTimeout(() => dispose('compiler-download'), downloadMs) }
         report('loading')
         try { send('load', { scene: safeScene, profile }) } catch (error) { reject(error); dispose('runtime') }
       })

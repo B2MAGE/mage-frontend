@@ -71,7 +71,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   let lastSceneStartedAt = -Infinity
   let queuedScene: { timer: ReturnType<typeof setTimeout>; reject(error: Error): void } | null = null
   let currentScene: MageSceneBlob | null = null
-  let currentRecoveryKey: string | null = null
+  let currentRecoveryKey = sceneRecoveryKey(options.initialRecoverySceneBlob ?? initial, options.sceneKey)
   let lease: RecoveryLease | null = null
   const retiringLeases = new Set<RecoveryLease>()
   const permissionWaiters = new Map<'scene' | 'audio', { resolve(): void; reject(error: Error): void }>()
@@ -132,7 +132,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   function dispose() {
     try { disposeResources() } finally {
       if (cleanlyDisposed) { lease?.dispose(); lease = null; releaseRetired() }
-      else if (currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, sceneRecovery.getAutomaticBlock(currentRecoveryKey)?.reason ?? 'interrupted')
+      else if (currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, sceneRecovery.getBlock(currentRecoveryKey)?.reason ?? 'interrupted')
     }
   }
 
@@ -142,6 +142,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     lease = null
     try { disposeResources() } finally {
       failed?.fail(reason)
+      if (!failed && currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, reason)
       if (cleanlyDisposed) releaseRetired()
       else if (currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, reason)
     }
@@ -149,7 +150,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
 
   function onPageHide() { dispose() }
   function onAbort() {
-    try { dispose() } catch { /* The existing cleanup marker records failed disposal. */ }
+    try { dispose() } catch { /* Cleanup failure is contained in this page session. */ }
   }
 
   function assertUsable() {
@@ -207,7 +208,6 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       captureGeneration++
       if (status.code !== 'CHECKING') {
         denied = true
-        if (currentRecoveryKey) sceneRecovery.revokeRetry(currentRecoveryKey)
         dispose()
       } else if (!suspended) {
         suspended = true
@@ -245,13 +245,6 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       wheelZoom: options.mouseWheelZoom === true,
       pointerInteractions: options.mouseInteractions === true,
       onFailure: fail,
-      onHealthy() {
-        if (disposed || !loaded || suspended || viewSuspended || denied || playback !== 'playing') return
-        if (!sceneAvailabilityStore.isAllowed(target) || sceneRecovery.isSafeMode()) return
-        // Only this active retry can retire its original warning. The lease
-        // keeps its unfinished-render marker and rejects a newer failure.
-        lease?.confirmHealthy()
-      },
       onStatus: status => { if (status === 'disposed' && !disposed) dispose() },
     })
     // A synchronous observer may cancel while the bridge constructor is running.
