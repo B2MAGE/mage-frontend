@@ -117,3 +117,19 @@ and lint. The connection compatibility regression suites passed 100 tests, with
 diagnostics. The separate security-page suite's 11 tests passed after its mock was
 updated to read the current custom-scene envelope; its older mock threw before
 the baseline timing check. No production timing limits were changed for that fix.
+
+### Production artwork correction
+
+The final About-page smoke found a production-only artwork failure after the
+initial deployment. The optimized app bundle had removed Shader Park functions
+called dynamically by the fixed artwork (`setStepSize`, followed by `torus`).
+Development mode had retained them, so the earlier local check missed this.
+
+The app build now retains statements only in the engine's generated Shader Park
+compiler module. Other modules remain optimized; no runtime permissions, CSP,
+scene source boundary or renderer deployment settings change. The regression
+builds that compiler through the actual production Vite configuration and
+compiles the exact checked-in artwork. It failed before the correction and
+passed afterward. All 23 compiled-output tests, the production application
+build and lint passed. Final production browser verification is recorded with
+the follow-up deployment below.

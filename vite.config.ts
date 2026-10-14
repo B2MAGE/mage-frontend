@@ -9,6 +9,15 @@ const workspaceRoot = fileURLToPath(new URL('..', import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), retiredTestSurfacesPlugin(), {
+    name: 'fixed-artwork-compiler-dsl',
+    apply: 'build',
+    transform(code, id) {
+      if (!id.replaceAll('\\', '/').endsWith('/node_modules/@notrac/mage/dist/shader-park-compiler.generated.js')) return
+      // Fixed artwork compiles through the engine. Its Shader Park DSL is
+      // referenced by direct eval, so static tree-shaking removes valid calls.
+      return { code, map: null, moduleSideEffects: 'no-treeshake' }
+    },
+  }, {
     name: 'app-renderer-frame-policy',
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
