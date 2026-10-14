@@ -1,4 +1,4 @@
-# PL-01 / RF-04 local review
+# PL-01 / RF-04 verification and release
 
 Branch: `codex/pl01-rf04-session-playback`, based on `848c58a`.
 The implementation was reviewed locally, and the owner authorized merging and
@@ -80,8 +80,29 @@ that approval does not establish coverage of those conditions or untested browse
 
 ## Release status
 
-Release preparation is in progress. Source merge and production deployment must
-be verified independently of the local results above.
+Released on October 14, 2026 through [PR #322](https://github.com/B2MAGE/mage-frontend/pull/322),
+merged as `11e3b4e25d77949f84d81c02295aa247c104705d`. Coolify deployment
+`iq0ra1rk1dklk3tkam18mzcl` finished at that commit and serves
+`/assets/index-CZcoXTkd.js`. The backend and engine were not changed.
+
+The production renderer is `assets/renderer-B1GzPCY4.js`, built from
+`d033bd118759f0f20c5be5576fdc6b95429feb34` with SHA-256
+`7ea24653428cb178414bffbdc6c7c58a64921a6db431c2fbedef2579cab78979`.
+The `mage-isolated-renderer` stack reached `UPDATE_COMPLETE`, CloudFront reported
+`Deployed`, and the final template/document and completion token were verified.
+Both CloudShell and `renderer:verify:production` verified the exact final headers,
+bundle bytes and forbidden routes. Only the four expected hosting resources were
+modified; prior versioned artifacts remain available for rollback.
+
+Before the application update, the previous production frontend created a fresh
+iframe using the new renderer, played a generated 20-second WAV and captured a
+thumbnail without console errors. After the application update, production
+Create playback, capture, Stop/Resume, page-wide pause preserving manual Pause,
+reload clearing the current-page stop, and both Original/Selective controls with
+Simulate beat passed in desktop Chromium. The iframe still has exactly
+`sandbox="allow-scripts"`. Public API and asset checks passed; all 14 existing
+scene documents, revisions and thumbnails were unchanged. These checks do not
+establish physical Pixel, throttled-network or musical-quality coverage.
 
 The child renderer must deploy before the application. Updated parents explicitly
 request startup-phase reporting in the connection handshake. Existing parents

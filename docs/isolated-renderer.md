@@ -6,9 +6,9 @@ See [the PP-I03 release record](isolated-renderer-release.md) for the approved d
 
 > Current tooling: normal builds accept playback only. Public check routes are retired by the cleanup deployment; all manual pages require the explicit local harness. See [test tools and retirement instructions](test-tools-cleanup.md). Dated results below remain historical evidence.
 
-The source-level ownership and recovery notes below include the local PL-01/RF-04
-work. Its [review record](pl01-rf04-local-review.md) is separate from the deployed
-artifacts and dated results recorded in this document.
+The ownership and recovery notes below include PL-01/RF-04, deployed October 14,
+2026. Its [release record](pl01-rf04-local-review.md) identifies the current
+artifacts and verification limits separately from the historical results below.
 
 ## PP-I03 application boundary
 

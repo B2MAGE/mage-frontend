@@ -3,7 +3,7 @@
 Recovery is shared in memory by submitted-scene players on the current page:
 Home, Watch, editor previews and hover cards. It records observed failures and
 manual stops without changing server permission or classifying a scene as unsafe.
-The [PL-01/RF-04 review record](pl01-rf04-local-review.md) tracks this local change;
+The [PL-01/RF-04 release record](pl01-rf04-local-review.md) tracks this change;
 earlier release records describe their original artifacts.
 
 ## User actions
