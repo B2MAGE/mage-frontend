@@ -131,5 +131,17 @@ scene source boundary or renderer deployment settings change. The regression
 builds that compiler through the actual production Vite configuration and
 compiles the exact checked-in artwork. It failed before the correction and
 passed afterward. All 23 compiled-output tests, the production application
-build and lint passed. Final production browser verification is recorded with
-the follow-up deployment below.
+build and lint passed. The rebuilt full engine chunk produces the same compiled
+artwork as the unbundled compiler, and the local production preview visibly
+renders the rings.
+
+The correction merged in [PR #323](https://github.com/B2MAGE/mage-frontend/pull/323)
+as `280b4920b36af206234d1959d19f36d39adb1f5f`. Coolify deployment
+`sqeiw6dhy5a4r0iqh3zgck6f` finished its rolling update at
+2026-10-14 14:47:45 UTC, running that exact commit and serving
+`/assets/index-CtiYZw3J.js`. The live About artwork visibly rendered with a ready
+canvas. Fresh Create playback and thumbnail capture passed; Original and
+Selective both played with Simulate beat, with no console errors. Post-release
+API checks again confirmed all 14 scenes, revisions and thumbnails unchanged,
+working tags, rejected anonymous account/template access and retired diagnostic
+routes. The previously verified isolated renderer artifact remained unchanged.
