@@ -52,9 +52,10 @@ From the frontend checkout, provide the backend checkout being released:
 npm run contracts:check -- ../mage-backend-step1
 ```
 
-This read-only check compares the schema, rendering policy, scene resource
-policy, template catalog and both fixture files. It allows checkout line-ending
-differences but reports content drift or missing files.
+This read-only check compares seven files: the schema, rendering policy, scene
+resource policy, template catalog and three fixture files. It allows checkout
+line-ending differences but reports content drift or missing files. It is an
+explicit verification command, not an automatic CI or deployment gate.
 
 `fixtures.json` covers structural transport validity. The additional
 `current-round-trips.json` covers the full write boundary for all three current
@@ -62,6 +63,38 @@ document kinds, exact normalization and reopening. A structurally valid custom
 envelope can still fail write validation, for example when its shader is blank.
 The rendering workload assertions are frontend compiler expectations; they do
 not add a test-only field to the API.
+
+`builder-catalog.v1.fixtures.json` contains the editable catalog recipes. The
+frontend checks them against the current recipes and compiles them; the backend
+saves, edits and reopens them against disposable PostgreSQL. Together the three
+fixture files distinguish structural validity, full write validity and complete
+catalog persistence.
+
+## Contract change and release checklist
+
+1. Update the canonical schema/policy/catalog and their backend copies, then the
+   affected editor, API validator, compiler and renderer consumers. Extend the
+   relevant shared fixtures and focused tests. Keep Original (`legacy`) and
+   Selective (`mapped-v1`) audio as supported current choices.
+2. Run `npm run contracts:check -- <backend-checkout>` against the exact backend
+   revision being released. Run the affected frontend contract/compiler tests
+   and backend validator/persistence tests. Keep API validation, renderer input
+   validation and compiled-artifact validation independent.
+3. Deploy API support before the editor exposes new fields. When the change
+   affects the isolated renderer, build and deploy its matching artifact before
+   the frontend uses the new behavior, following the existing
+   [renderer rollout and rollback procedure](isolated-renderer-release.md).
+   Engine changes also follow the [package adoption workflow](engine-package.md).
+   Frontend-only presentation or documentation changes do not require a
+   renderer deployment.
+4. Verify representative create/update/reopen and playback behavior for the
+   changed contract, and record the actual deployed revisions. Roll back to
+   matching supported API/frontend/renderer artifacts when needed; do not add
+   automatic historical conversion to work around a mismatched deployment.
+
+The backend documents [current-format rejection and coordinated deployment](https://github.com/B2MAGE/mage-backend/blob/main/docs/scene-documents.md#owner-editing-and-coordinated-deployment).
+Unsupported historical documents remain unsupported; this workflow adds no
+version-negotiation or migration framework.
 
 ## Builder editing and recovery (SB-08)
 
