@@ -57,9 +57,9 @@ brand document. Import-boundary tests keep the exception narrow.
 
 | Harness | Path exercised |
 | --- | --- |
-| `scripts/isolated-playback-check.html`, deployed `/player-check/` | Normal isolated playback bridge, parent-owned audio, controls, capture and stop/retry |
+| `scripts/isolated-playback-check.html` (local only) | Normal isolated playback bridge, parent-owned audio, controls, capture and stop/retry; automated cleanup checks in `scripts/isolated-playback-ui.test.ts` |
 | `scripts/isolated-renderer-check.html` | Fixed v1 sample; `src/isolated-renderer/sample.ts` also compiles in a worker and loads a compiled artifact |
-| `scripts/isolated-worker-check.html`, deployed `/player-check/worker/` | Fixed compiler fixtures through the actual disposable worker; reports worker lifecycle and policy observations |
+| `scripts/isolated-worker-check.html` (local only) | Fixed compiler fixtures through the actual disposable worker; reports worker lifecycle and policy observations |
 | `scripts/quality-scene-capture.html`, `scripts/render-budget-check.mjs` | Isolated scene/capture path with resource limits; not direct parent engine compilation |
 | `scripts/audio-response-player-check.html` | Shared `createMagePlayer` facade |
 | Historical `/player-check/security/` | Earlier iframe probes retained for comparison; its legacy script tests are not proof of current worker behavior |
@@ -80,7 +80,7 @@ scoped. Test-only direct compiler calls are fixtures, not shipped runtime paths.
 | Repeated failure requires deliberate retry of the exact revision | `sceneRecovery.test.ts`, `MagePlayer.recovery.test.tsx`, `workerRecovery.integration.test.ts`; failure is local to the current page, explicit retry clears it, old lease callbacks cannot affect the replacement, and reload starts fresh |
 | Old WebGL context loss cannot stop a replacement | `playbackRuntime.test.ts` replaces the canvas and rejects stale callbacks; `playbackEngine.test.ts` covers context loss while paused |
 | Background, page exit and return | `playbackHost.test.ts`, `sceneAvailability.test.ts`, `MagePlayer.recovery.test.tsx` cover watchdog scheduling gaps, visibility, pagehide/BFCache and permission refresh |
-| Audio remains parent-owned through switching and controls | `isolatedPlayer.test.ts`, `isolatedController.test.ts`, `MagePlayer.audio.test.tsx`, `MagePlayer.audioAvailability.test.tsx`, `musicCheck.test.ts`; source changes do not send audio files or rerun source callbacks for numeric controls |
+| Audio remains parent-owned through switching and controls | `isolatedPlayer.test.ts`, `isolatedController.test.ts`, `MagePlayer.audio.test.tsx`, `MagePlayer.audioAvailability.test.tsx`, `scripts/isolated-playback-ui.test.ts`; source changes do not send audio files or rerun source callbacks for numeric controls |
 | Capture cleanup and stale responses | `playbackRuntime.test.ts`, `playbackHost.test.ts`, `playbackEngine.test.ts`, `SceneEditor.captureAvailability.test.tsx`; timeouts, generation ownership, permission withdrawal and retained saved thumbnails |
 | Editing/export and moderation remain separate from playback | `SceneEditor.recovery.test.tsx`, `SceneEditor.preview.test.tsx`, `sceneTransport.test.ts`, availability/admin tests; playback failure does not authorize rendering or discard the authoring document |
 

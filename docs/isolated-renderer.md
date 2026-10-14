@@ -97,7 +97,7 @@ the parent stays responsive. A positive timer control distinguishes a working
 delayed callback from a compiler callback correctly retired after completion.
 The same fixture checks thrown source, invalid syntax, cancellation after actual
 loop entry, and fresh globals across repeated compilation jobs. Run its automated
-checks with `npm run worker-check:test`; these also run before `npm test`.
+checks with `npm run test:tooling`; these also run as part of `npm test`.
 Reports retain exact browser information and bounded lifecycle/timing evidence;
 hidden or cancelled runs cannot pass. The original 11-check `fixed-worker-1`
 fixture did not test network denial. The deployed I03 `fixed-worker-2` update
@@ -316,7 +316,6 @@ The local server loads and verifies the complete build before listening, binds t
 Keep the existing app on **`http://127.0.0.1:5178`**. Use **`http://localhost:5181`** for the renderer. These distinct loopback hostnames provide a cross-site test without editing the operating system's hosts file. Do not open the parent as `localhost` when exercising this cross-site check.
 
 ```powershell
-npm run renderer:build
 npm run renderer:serve
 ```
 
@@ -324,7 +323,7 @@ In a second terminal:
 
 ```powershell
 npm run renderer:verify
-npm run renderer:test
+npm run test:tooling
 ```
 
 Open normal MAGE at `http://127.0.0.1:5178` to inspect the playback-only renderer. To run the old sample or fixed recovery faults, stop these servers and follow the [explicit diagnostics workflow](test-tools-cleanup.md#retained-development-checks); those protocols are deliberately absent from normal builds.
@@ -333,7 +332,11 @@ The renderer build defaults to allowing parent origins `http://127.0.0.1:5178` a
 
 ## Retired public verification pages
 
-The old `/player-check/`, `/player-check/security/` and `/player-check/worker/` pages are no longer part of the deployment contract. The check-service Dockerfile now builds a small 410 responder, and normal renderer artifacts exclude sample, worker-check and recovery-fault entry points. See [cleanup and deployment retirement](test-tools-cleanup.md) for the retained local tools and the required deployment sequence.
+The old `/player-check/`, `/player-check/security/` and `/player-check/worker/`
+pages are no longer part of the deployment contract. RF-08 removes their service,
+Dockerfile and hosted-page builders. The main app nginx still rejects the old
+URLs; normal renderer artifacts exclude diagnostic entry points. See
+[local tools and service removal](test-tools-cleanup.md) for the current workflow.
 
 The following dated records describe previous deployments. They do not instruct operators to recreate the public check service or run the retired routes.
 

@@ -1,59 +1,91 @@
-# Release test tools after PP-I03
+# Local diagnostics and retired test-service cleanup
 
-[Cleanup story #241](https://github.com/B2MAGE/mage-frontend/issues/241) separates manual release fixtures from ordinary MAGE. This document describes the cleanup implementation; it is not proof that production has been redeployed.
+Normal startup and verification are in the [README](../README.md#getting-started).
+RF-08 removes the dedicated HTTP 410 service, its Dockerfile/nginx configuration,
+the three hosted page builders and deployment-only entries. Local diagnostics
+retain current compiler, playback and recovery checks without a production mode.
 
 ## Normal application
 
-`npm run dev` serves the app and its API proxy. The former `/scripts/` browser checks, the security canary and `/player-check/` routes return HTTP 410 instead of loading a fixture or falling through to the app. The default renderer accepts normal playback connections only. Sample, worker-check and deliberate recovery-fault entry points belong to the explicit development build.
+`npm run dev` serves the app and API proxy at `http://127.0.0.1:5178`.
+`npm run renderer:serve` builds and starts the normal isolated renderer on 5181.
+Main app nginx and Vite exclude diagnostic URLs from the app: `/player-check`,
+`/scripts` and the security-canary prefix return HTTP 410. These small route
+exclusions do not need a separate container.
 
-The public check service is retained as a small retirement responder. After its updated image is deployed, `/player-check`, `/player-check/`, `/player-check/security/`, `/player-check/worker/`, old assets and canary requests return HTTP 410. It does not build or serve fixture files, collect canary observations or contact the backend. Its separate `/healthz` endpoint supports the container health check. The app's nginx configuration also reserves the old prefix with 410, so removing the dedicated proxy route later cannot expose an SPA fallback there.
+`npm run verify` runs lint, tests and both normal builds. `npm test` explicitly
+runs the application suite followed by tooling tests, without a hidden
+`pretest` chain. Tooling tests cover engine/compiler artifacts, hosting policy,
+contract comparison, local route/canary guards, worker termination and recovery.
+Current auth, scene saving, Builder compilation and Original/Selective tests stay.
+Real API auth verification is opt-in because it creates an account.
 
 ## Retained development checks
 
-Useful fixture sources, automated tests and exported release evidence are retained. Manual checks require deliberate setup:
+Use these for a targeted browser investigation, not ordinary startup.
 
-1. Stop the normal Vite server before reusing port 5178.
-2. Run `npm run manual-checks:dev`. This separate configuration serves only on loopback, with the fixture headers and bounded local canary.
-3. Run the matching local renderer or diagnostic child described below. Never publish a diagnostic renderer to the production bucket.
-4. Stop the manual services when finished and return to `npm run dev -- --host 127.0.0.1 --port 5178 --strictPort` plus the normal renderer.
+1. Stop your normal Vite process before reusing port 5178.
+2. Run `npm run manual-checks:dev`, which enables loopback-only diagnostic pages
+   and the bounded local canary.
+3. Start the appropriate child below. Do not run normal and diagnostic renderers
+   on 5181 at the same time.
+4. Stop diagnostic processes when done. Return to `npm run dev` and
+   `npm run renderer:serve`.
 
-The retained pages under `http://127.0.0.1:5178/scripts/` are:
+All page paths below are under `http://127.0.0.1:5178/scripts/`:
 
-| Page | Purpose |
+| Page | Purpose / child |
 | --- | --- |
-| `audio-response-browser-check.html` | Generated audio signal and response checks |
-| `audio-response-player-check.html` | Saved and temporary player audio settings |
-| `isolated-playback-check.html` | Isolated playback, music and capture |
-| `isolated-renderer-check.html` | Historical fixed-sample fixture; diagnostic child required |
-| `isolated-security-check.html` | Fixed recovery fixture; diagnostic child required; older probe groups remain historical |
-| `isolated-worker-check.html` | Compiler worker fixture; dedicated worker-check child required |
-| `quality-scene-capture.html` | Local rendering and capture inspection |
-| `render-budget-check.html` | Render workload ceilings |
-| `scene-availability-browser-check.html` | Simulated permission revocation |
-| `scene-focus-browser-check.html` | Audio continuity during permission rechecks |
+| `audio-response-browser-check.html` | Audio analysis; no child. |
+| `audio-response-player-check.html` | Saved/temporary audio settings; normal renderer. |
+| `builder-catalog-check.html` | Catalog visual comparison; normal renderer. |
+| `isolated-playback-check.html` | Playback, Original/Selective, capture and cleanup; normal renderer. |
+| `isolated-worker-check.html` | Compiler lifetime/boundary; worker child on 5182. |
+| `isolated-security-check.html` | Current fixed recovery; diagnostic renderer. Older probe groups are historical, not current worker proof. |
+| `isolated-renderer-check.html` | Historical fixed sample; diagnostic renderer, not a current-format acceptance gate. |
+| `quality-scene-capture.html`, `render-budget-check.html` | Rendering/capture and workload ceilings; normal renderer. |
+| `scene-availability-browser-check.html`, `scene-focus-browser-check.html` | Permission changes and audio continuity; normal renderer. |
 
-The worker child still uses `node scripts/build-worker-check.mjs` followed by `node scripts/serve-worker-check.mjs` on port 5182. Normal playback checks use `npm run renderer:build` and `npm run renderer:serve` on port 5181. The default renderer intentionally cannot run fixed sample or recovery-fault protocols.
+Worker child:
 
-For those two diagnostic fixtures, stop the normal renderer, run `npm run renderer:diagnostics:build`, then `npm run renderer:diagnostics:serve`. This type-checks the diagnostic entry, builds into `.local/diagnostics-renderer/` and serves only on loopback port 5181. It rejects production deployment arguments. Restore the normal renderer when done. The obsolete HTTPS sample configuration has been removed; retained manual fixtures use the fixed local HTTP pair.
+```sh
+node scripts/build-worker-check.mjs
+node scripts/serve-worker-check.mjs
+```
 
-Production-shaped fixture builders remain available for regression tests and archived artifact comparisons. Their output is not copied into either deployment image. They must not be used to recreate a public test service.
+Fixed recovery child (stop the normal renderer first):
+
+```sh
+npm run renderer:diagnostics:build
+npm run renderer:diagnostics:serve
+```
+
+Diagnostic builds write under `.local/`, reject production options and are
+excluded from deployment images. Their types and regression checks run in
+`npm run test:tooling`. An old report is not evidence about today's renderer.
 
 ## Deployment retirement
 
-1. Build and verify the normal production renderer. Preserve its current artifact and hosting manifest; deploy the new normal bundle and its matching CloudFront policy with the existing controlled transition procedure.
-2. Deploy the main frontend image from this cleanup revision. Check a normal template and custom scene, editor controls and capture.
-3. Deploy the existing `mage-player-check` Coolify service using `deployment/isolated-renderer/Dockerfile.player-check` from the same revision. Preserve its `/player-check` route prefix; the replacement responds with 410. The health check uses `/healthz` within the container, not the retired page.
-4. Verify all three former public pages, an old script URL and a canary request return 410. Verify normal app pages and `/api` still work. Record deployed revisions and observations on #241 before closing it.
+Source removal is separate from removing an existing Coolify resource. Do not
+rebuild that resource using the deleted Dockerfile. When releasing RF-08:
 
-No new AWS resource, domain or backend permission change is needed. Do not disable custom playback merely to retire testing pages. Keep the retired-route responder until the main nginx 410 rule is deployed; only then may the separate proxy/service be removed in a later deployment operation.
+1. Verify main frontend nginx reserves `/player-check` and subpaths.
+2. Remove the old `mage-player-check` public route and stop its retirement
+   container. Disable its automatic deployments. The ordinary frontend route
+   then owns the old URLs; no replacement responder is needed.
+3. Verify the prefix, security/worker pages, an old asset and canary URL return
+   410 through main nginx. Check the app, API and separate renderer still work.
+   Record actual operations in issue #305.
 
-## Other leftovers and evidence
+No database, account, scene, thumbnail, engine release or CloudFront renderer
+needs deleting. Keep ignored `.local/` reports and rollback evidence. Existing
+`dist-player-check/` remains ignored/excluded to avoid publishing stale local
+artifacts, but no current command creates it.
 
-- `.local/deployments/`, downloaded reports, screenshots and release records are evidence and rollback material. They are ignored by Git and excluded from Docker builds. Preserve them; they are not public endpoints.
-- Generated `dist-player-check/` and local diagnostic builds are disposable build outputs, also excluded from production images. Deleting a directory is not a substitute for retiring a running service.
-- The controlled custom-release database copy and original stopped backend/database contain saved scenes. They are not part of this cleanup. Preserve both until their contents are reconciled and a separate data cleanup is requested.
-- Saved walkthrough scenes can contain later edits. No account, saved scene, thumbnail, database, credential or release-approval record is deleted by this story.
-- Automated validation, moderation, worker termination, render limits, availability checks and recovery tests remain active. Historical failures remain recorded against their original artifacts.
+## Historical #241 evidence
+
+The following record predates RF-08, including its temporary retirement
+container. It does not claim RF-08 is deployed.
 
 ## Local implementation verification — October 5, 2026 UTC
 

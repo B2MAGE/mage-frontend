@@ -68,7 +68,7 @@ load path. Deploy the matching app and separate renderer builds together.
 
 ## Verification
 
-- Engine consumer tests run in `npm run test:compiled-output`: strict/atomic deltas,
+- Engine consumer tests run in `npm run test:tooling`: strict/atomic deltas,
   aggregate effects, reused pass/object references, rapid changes, paused refresh,
   and the existing compiled-output regressions.
 - Player tests cover structural identity, strict snapshots, live controller
