@@ -1,9 +1,9 @@
 # PL-01 / RF-04 local review
 
 Branch: `codex/pl01-rf04-session-playback`, based on `848c58a`.
-This is local implementation for review. It has not been merged or deployed, and
-these stories are not closed. Deployment records elsewhere describe earlier
-artifacts and do not establish verification of this branch.
+The implementation was reviewed locally, and the owner authorized merging and
+deployment on October 14, 2026. The verification below records the local checks;
+the release status at the end records production evidence separately.
 
 The earlier `codex/mobile-player-startup-recovery` branch at `0d90946` is already
 an ancestor of `848c58a`. Its changes are in this baseline; no separate branch
@@ -74,7 +74,25 @@ The local renderer build produced `renderer-DPw4Nf6J.js`, with integrity
 | Current server permission | Automated availability regressions passed; no new browser moderation/denial walkthrough was performed. |
 | Mobile cold-start incident | Not reproduced on a physical device. Real Pixel/network-throttle and other device/browser review remain open; the local desktop walkthrough does not resolve that incident. |
 
-The remaining user review includes the original physical-device/mobile-network
-conditions and response quality with the user's music. A local pass is not a deployment,
-release approval or claim about untested browsers. No merge, push, deployment or
-issue closure is part of this review task.
+The original physical-device/mobile-network conditions and response quality with
+the user's music remain unverified. The owner approved releasing the implementation;
+that approval does not establish coverage of those conditions or untested browsers.
+
+## Release status
+
+Release preparation is in progress. Source merge and production deployment must
+be verified independently of the local results above.
+
+The child renderer must deploy before the application. Updated parents explicitly
+request startup-phase reporting in the connection handshake. Existing parents
+continue receiving only their original response and error vocabulary, so open
+tabs can create another renderer during rollout. Roll back the parent before
+rolling back the child. The negotiated reporting does not change validation,
+sandbox permissions or compilation limits.
+
+Release preparation passed the rebuilt production application, production renderer
+and lint. The connection compatibility regression suites passed 100 tests, with
+20 fixed-recovery tests and TypeScript checks for the application, worker and
+diagnostics. The separate security-page suite's 11 tests passed after its mock was
+updated to read the current custom-scene envelope; its older mock threw before
+the baseline timing check. No production timing limits were changed for that fix.
