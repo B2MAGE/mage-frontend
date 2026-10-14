@@ -17,7 +17,7 @@ export type StartupPhase = typeof STARTUP_PHASES[number]
 export const PLAYBACK_ERRORS = ['render', 'protocol', 'capture', 'compile', 'compiler-download', 'graphics-download',
   'compiler-startup', 'compile-timeout', 'invalid-output', 'graphics-startup', 'context-lost', 'interrupted'] as const
 export type PlaybackPayloads = {
-  connect: null; ready: null; dispose: null
+  connect: null | { startupPhases: true }; ready: null; dispose: null
   load: { scene: Record<string, unknown>; profile: 'full' | 'preview' }
   loaded: null
   'load-phase': { phase: StartupPhase; attempt: 0 | 1 }
@@ -96,7 +96,9 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     || !uint(value.generation) || !uint(value.requestId) || typeof value.type !== 'string' || !allowed.includes(value.type)) return false
   const p = value.payload
   switch (value.type) {
-    case 'connect': case 'ready': return p === null && value.generation === 0 && value.requestId === 0
+    case 'connect': return (p === null || (record(p, ['startupPhases']) && p.startupPhases === true))
+      && value.generation === 0 && value.requestId === 0
+    case 'ready': return p === null && value.generation === 0 && value.requestId === 0
     case 'dispose': case 'loaded': case 'capabilities': return p === null
     case 'load-phase': return record(p, ['phase', 'attempt']) && STARTUP_PHASES.includes(p.phase as StartupPhase)
       && (p.attempt === 0 || p.attempt === 1) && numberIn(value.generation, 1, Number.MAX_SAFE_INTEGER)

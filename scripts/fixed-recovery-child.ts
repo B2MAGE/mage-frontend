@@ -77,6 +77,6 @@ export function installFixedRecoveryCheck(options: {
   }
   target.addEventListener('pagehide', stop, { once: true })
   runtime = installPlaybackRuntime({ ...options, targetWindow: target, loadScene: fixedLoader,
-    initialConnection: { source: event.source, origin: event.origin, ports: [port], data: playbackMessage('connect', connection.session, 0, 0, null) } as unknown as MessageEvent })
+    initialConnection: { source: event.source, origin: event.origin, ports: [port], data: playbackMessage('connect', connection.session, 0, 0, { startupPhases: true }) } as unknown as MessageEvent })
   return { dispose: stop }
 }

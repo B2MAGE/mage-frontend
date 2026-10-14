@@ -9,6 +9,7 @@ export function installPlaybackRuntime(options: {
   loadScene: PlaybackLoader; targetWindow?: Window; initialConnection?: MessageEvent
 }) {
   const target = options.targetWindow ?? window
+  const visibilityDocument = options.canvas.ownerDocument
   let activeCanvas = options.canvas
   let port: MessagePort | null = null
   let session = '', generation = 0, lastRequest = 0, frames = 0, lastProgress = -Infinity
@@ -20,6 +21,7 @@ export function installPlaybackRuntime(options: {
   let pendingAudioResponse: PlaybackPayloads['audio-response'] | null = null
   let pendingSceneSettings: PlaybackPayloads['scene-settings'] | null = null
   let playing = true
+  let reportStartupPhases = false
   let zoom = 1
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
@@ -45,18 +47,24 @@ export function installPlaybackRuntime(options: {
   }
   function fail(code: PlaybackPayloads['error']['code'], request = lastRequest) {
     if (closed) return
+    // Existing v2 parents reject every newly introduced response/error code.
+    // Keep their exact vocabulary until the connecting parent opts in.
+    if (!reportStartupPhases) {
+      if (['compiler-download', 'compiler-startup', 'compile-timeout', 'invalid-output', 'interrupted'].includes(code)) code = 'compile'
+      else if (code !== 'compile' && code !== 'capture' && code !== 'protocol') code = 'render'
+    }
     try { send('error', request, { code }) } catch { /* Parent may already have removed the frame. */ }
     dispose()
     display('This scene could not be displayed.')
   }
   function waitForVisible(signal: AbortSignal) {
     if (signal.aborted) return Promise.reject(new DOMException('Load cancelled.', 'AbortError'))
-    if (document.visibilityState !== 'hidden') return Promise.resolve()
+    if (visibilityDocument.visibilityState !== 'hidden') return Promise.resolve()
     return new Promise<void>((resolve, reject) => {
-      const cleanup = () => { document.removeEventListener('visibilitychange', check); signal.removeEventListener('abort', cancel) }
+      const cleanup = () => { visibilityDocument.removeEventListener('visibilitychange', check); signal.removeEventListener('abort', cancel) }
       const cancel = () => { cleanup(); reject(new DOMException('Load cancelled.', 'AbortError')) }
-      const check = () => { if (document.visibilityState !== 'hidden') { cleanup(); resolve() } }
-      document.addEventListener('visibilitychange', check)
+      const check = () => { if (visibilityDocument.visibilityState !== 'hidden') { cleanup(); resolve() } }
+      visibilityDocument.addEventListener('visibilitychange', check)
       signal.addEventListener('abort', cancel, { once: true })
     })
   }
@@ -84,9 +92,9 @@ export function installPlaybackRuntime(options: {
       let attempt: 0 | 1 = 0
       const phase = (value: PlaybackPayloads['load-phase']['phase']) => {
         currentPhase = value
-        if (active()) send('load-phase', message.requestId, { phase: value, attempt })
+        if (active() && reportStartupPhases) send('load-phase', message.requestId, { phase: value, attempt })
       }
-      if (document.visibilityState === 'hidden') { phase('waiting-visible'); await waitForVisible(abort.signal) }
+      if (visibilityDocument.visibilityState === 'hidden') { phase('waiting-visible'); await waitForVisible(abort.signal) }
       abort.signal.throwIfAborted()
       const prepare = () => options.loadScene({ canvas: activeCanvas, ...message.payload, signal: abort.signal,
         sceneRevision: message.generation,
@@ -177,6 +185,7 @@ export function installPlaybackRuntime(options: {
     if (closed || port || target.parent === target || event.source !== target.parent
       || !options.allowedParentOrigins.includes(event.origin) || event.ports.length !== 1
       || !isPlaybackMessage(event.data, ['connect'])) return
+    reportStartupPhases = event.data.type === 'connect' && event.data.payload?.startupPhases === true
     session = event.data.session; port = event.ports[0]
     target.removeEventListener('message', connect)
     port.onmessage = onCommand; port.onmessageerror = () => fail('protocol'); port.start()

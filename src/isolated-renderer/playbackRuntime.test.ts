@@ -26,7 +26,7 @@ function fixture() {
   releases.push(runtime.dispose)
   const port = { postMessage: vi.fn(), start: vi.fn(), close: vi.fn(), onmessage: null as ((event: MessageEvent) => void) | null }
   const bootstrap = (overrides: Partial<MessageEventInit> = {}) => target.dispatchEvent(new MessageEvent('message', {
-    data: playbackMessage('connect', session, 0, 0, null), source: target.parent, origin, ports: [port as unknown as MessagePort], ...overrides }))
+    data: playbackMessage('connect', session, 0, 0, { startupPhases: true }), source: target.parent, origin, ports: [port as unknown as MessagePort], ...overrides }))
   let request = 0
   const send = <T extends PlaybackType>(type: T, payload: PlaybackPayloads[T], generation = 1, requestId = ++request) =>
     port.onmessage?.(new MessageEvent('message', { data: playbackMessage(type, session, generation, requestId, payload) }))
@@ -36,6 +36,52 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('keeps an existing v2 parent playing without sending newly introduced phase responses', async () => {
+    const f = fixture()
+    f.loadScene.mockImplementation(async options => {
+      for (const phase of ['compiler-download', 'compiler-startup', 'compiling', 'graphics-download', 'graphics-startup'] as const) options.onPhase?.(phase)
+      options.onFrame()
+      return f.engine
+    })
+    f.bootstrap({ data: playbackMessage('connect', session, 0, 0, null) })
+    f.load(); await Promise.resolve()
+    f.send('playback', { playing: false }); f.send('capabilities', null)
+    f.send('capture', { width: 10, height: 10, type: 'image/png', quality: 0.9 }); await Promise.resolve()
+    // Frozen response vocabulary of the deployed pre-PL-01 v2 parent. That
+    // parent disposes the frame immediately for any response outside this set.
+    const legacyTypes = ['ready', 'loaded', 'captured', 'capabilities-result', 'progress', 'error']
+    for (const [message] of f.port.postMessage.mock.calls) {
+      expect(message.version).toBe(2)
+      expect(Object.keys(message).sort()).toEqual(['generation', 'payload', 'protocol', 'requestId', 'session', 'type', 'version'])
+      expect(legacyTypes).toContain(message.type)
+    }
+    expect(f.responses('load-phase')).toEqual([])
+    expect(f.responses('loaded')).toHaveLength(1)
+    expect(f.responses('captured')).toHaveLength(1)
+    expect(f.responses('capabilities-result')).toHaveLength(1)
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.port.close).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['compiler-download', 'compile'], ['graphics-download', 'render'], ['startup', 'compile'],
+    ['timeout', 'compile'], ['invalid-output', 'compile'], ['interrupted', 'compile'],
+    ['graphics-startup', 'render'], ['context-lost', 'render'],
+  ] as const)('maps %s to the original %s error for an existing parent', async (failure, expected) => {
+    const f = fixture()
+    f.loadScene.mockImplementation(async options => {
+      if (failure === 'compiler-download' || failure === 'graphics-download') throw new PlaybackDownloadError(failure)
+      if (failure === 'graphics-startup') { options.onPhase?.('graphics-startup'); throw new Error('Private detail') }
+      if (failure === 'context-lost') { options.onError('context-lost'); return f.engine }
+      throw new ShaderCompilationError(failure)
+    })
+    f.bootstrap({ data: playbackMessage('connect', session, 0, 0, null) })
+    f.load(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('load-phase')).toEqual([])
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: expected }])
+    expect(f.port.close).toHaveBeenCalledOnce()
+  })
+
   it('distinguishes graphics setup rejection from runtime rendering failure', async () => {
     const f = fixture()
     f.loadScene.mockImplementationOnce(async options => {

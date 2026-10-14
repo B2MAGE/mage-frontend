@@ -7,6 +7,19 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('negotiates startup reporting only through an exact opt-in while retaining the legacy connection', () => {
+    const message = playbackMessage('connect', session, 0, 0, { startupPhases: true })
+    expect(isPlaybackMessage(message, ['connect'])).toBe(true)
+    expect(isPlaybackMessage({ ...message, payload: null }, ['connect'])).toBe(true)
+    const getter = Object.defineProperty({}, 'startupPhases', { enumerable: true, get() { throw new Error('Must not execute') } })
+    for (const payload of [{}, { startupPhases: false }, { startupPhases: 1 }, { startupPhases: true, extra: true }, getter]) {
+      expect(isPlaybackMessage({ ...message, payload }, ['connect'])).toBe(false)
+    }
+    expect(isPlaybackMessage({ ...message, generation: 1 }, ['connect'])).toBe(false)
+    expect(isPlaybackMessage({ ...message, requestId: 1 }, ['connect'])).toBe(false)
+    expect(isPlaybackMessage({ ...message, type: 'ready' }, ['ready'])).toBe(false)
+  })
+
   it('allows only a finite integer audio reset marker', () => {
     const message = playbackMessage('input', session, 1, 2, { ...input, audioEpoch: 3 })
     expect(isPlaybackMessage(message, ['input'])).toBe(true)

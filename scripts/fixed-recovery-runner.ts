@@ -33,7 +33,7 @@ export async function runFixedRecoveryChecks(options: {
     let reason: RenderFailure | null = null, progress = 0, progressAfterAction = 0, actionAt: number | null = null
     const started = performance.now()
     const instance = createHost({ container: options.container, rendererUrl: options.rendererUrl, useInlineFrameStyles: false,
-      startupTimeoutMs: options.startupTimeoutMs, progressTimeoutMs: 5000,
+      startupTimeoutMs: options.startupTimeoutMs, downloadTimeoutMs: options.startupTimeoutMs, progressTimeoutMs: 5000,
       ...(fixedCase ? { fixedRecoveryCheck: { case: fixedCase, nonce: crypto.randomUUID().replaceAll('-', '') } } : {}),
       onFixedRecoveryMarker(marker) {
         if (options.signal.aborted || markers.length >= 8) return
@@ -66,7 +66,7 @@ export async function runFixedRecoveryChecks(options: {
       await missing.instance.ready.catch(() => {})
       live()
       const observed = missing.observation()
-      result('Missing startup reply expires', observed.reason === 'startup-timeout' && !observed.connected
+      result('Missing startup reply expires', observed.reason === 'graphics-download' && !observed.connected
         && observed.markers.includes('connected') ? 'PASS' : 'FAIL', evidence(observed))
     } finally { stop() }
 
@@ -89,7 +89,7 @@ export async function runFixedRecoveryChecks(options: {
         const unsupported = fixedCase === 'context-loss' && observed.markers.includes('unsupported')
         const passed = fixedCase === 'window-message'
           ? observed.markers.includes('action') && observed.reason === null && observed.connected && observed.progressAfterAction >= 2
-          : observed.markers.includes('action') && observed.reason === 'runtime' && !observed.connected
+          : observed.markers.includes('action') && observed.reason === (fixedCase === 'context-loss' ? 'context-lost' : 'runtime') && !observed.connected
             && (fixedCase !== 'context-loss' || observed.markers.includes('context-lost'))
         if (fixedCase === 'unknown-message') verifiedFailure = passed
         result(name, unsupported ? 'UNSUPPORTED' : passed ? 'PASS' : 'FAIL', evidence(observed))

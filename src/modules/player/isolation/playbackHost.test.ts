@@ -322,7 +322,7 @@ describe('isolated playback host',()=>{
   })
   it('sends bootstrap to the exact opaque frame with only a private port and session',async()=>{
     const s=setup();await s.host.ready
-    expect(s.post).toHaveBeenCalledWith(playbackMessage('connect',SESSION,0,0,null),'*',[channels[0].port2])
+    expect(s.post).toHaveBeenCalledWith(playbackMessage('connect',SESSION,0,0,{startupPhases:true}),'*',[channels[0].port2])
     expect(s.frame.getAttribute('sandbox')).toBe('allow-scripts')
     expect(s.frame.getAttribute('allow')).toContain("microphone 'none'")
     s.host.dispose();expect(s.frame.isConnected).toBe(false);expect(s.port.close).toHaveBeenCalled()
