@@ -1,12 +1,14 @@
+import type { RenderFailure } from '../src/modules/player/recovery/sceneRecovery'
+
 export const SECURITY_GROUP_CHECK_COUNTS: Readonly<{ boundary: 17; failures: 8; stall: 2; recovery: 7 }>
 export const SECURITY_DIAGNOSTIC_LIMIT: 256
 export const SECURITY_TEST_VERSION: 'fixed-security-3'
 export type DiagnosticPhase = 'baseline-startup' | 'baseline' | 'stall-startup' | 'stall' | 'recovery' | 'cleanup'
-type FailureReason = 'runtime' | 'context-lost' | 'startup-timeout' | 'progress-timeout' | 'compile'
+type FailureReason = RenderFailure
 export type SecurityDiagnostic = { phase: DiagnosticPhase; atMs: number } & (
   { type: 'phase' | 'progress' } |
   { type: 'status'; status: 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed' } |
-  { type: 'watchdog'; deltaMs: number; silenceMs: number; progressAgeMs: number; resetReason: 'closed' | 'not-loaded' | 'paused' | 'hidden' | 'invalid-clock' | 'parent-gap' | 'recent-progress' | 'none' } |
+  { type: 'watchdog'; deltaMs: number; silenceMs: number; progressAgeMs: number; resetReason: 'closed' | 'not-loaded' | 'paused' | 'hidden' | 'offscreen' | 'invalid-clock' | 'parent-gap' | 'recent-progress' | 'none' } |
   { type: 'failure'; reason: FailureReason } |
   { type: 'marker'; marker: 'queued' | 'scheduled' | 'start' | 'end'; childAtMs: number } |
   { type: 'parent-timer'; gapMs: number } |
@@ -15,7 +17,7 @@ export type SecurityDiagnostic = { phase: DiagnosticPhase; atMs: number } & (
 export type StallObservation = { elapsedMs: number; maxParentGapMs: number; failureReason: FailureReason | null; failureCallbackAtMs: number | null;
   iframeConnected: boolean; markerQueued: boolean; markerScheduled: boolean; markerStarted: boolean; markerEnded: boolean }
 export type StallObservations = { baseline: StallObservation | null; observation: StallObservation | null; recovery: StallObservation | null; beforeCleanup: StallObservation | null }
-export function createSecurityReport(options?: { now?: () => string; mode?: 'local' | 'deployed' }): {
+export function createSecurityReport(options?: { now?: () => string }): {
   start(group: keyof typeof SECURITY_GROUP_CHECK_COUNTS): number
   add(id: number, row: { name: string; outcome: 'PASS' | 'FAIL' | 'PENDING' | 'UNSUPPORTED'; evidence: string }): void
   markHidden(id: number): void

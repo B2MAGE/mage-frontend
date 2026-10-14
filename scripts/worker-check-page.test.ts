@@ -45,12 +45,10 @@ beforeEach(() => {
   canary.prepare.mockReset().mockResolvedValue(control); canary.read.mockReset().mockResolvedValue(zero)
   dom = new JSDOM(`<button id="start"></button><button id="stop"></button><button id="download"></button><button id="show-report"></button>
     <div id="player"></div><p id="status"></p><p id="summary"></p><p id="saved-runs"></p><pre id="report-json" hidden></pre>
-    <table><tbody id="results"></tbody></table>`, { url: 'https://mage.peterbucci.com/player-check/worker/' })
+    <table><tbody id="results"></tbody></table>`, { url: 'http://127.0.0.1:5178/scripts/isolated-worker-check.html' })
   Object.defineProperty(dom.window.document, 'visibilityState', { value: 'visible' })
   vi.stubGlobal('window', dom.window); vi.stubGlobal('document', dom.window.document)
   vi.stubGlobal('location', dom.window.location); vi.stubGlobal('navigator', dom.window.navigator)
-  vi.stubGlobal('__MAGE_WORKER_CHECK_SCOPE__', 'production'); vi.stubGlobal('__MAGE_WORKER_CHECK_PARENT__', 'https://mage.peterbucci.com')
-  vi.stubGlobal('__MAGE_WORKER_CHECK_PATH__', '/player-check/worker/'); vi.stubGlobal('__MAGE_WORKER_CHECK_CHILD__', 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html')
   vi.stubGlobal('MessageChannel', class {
     port1: Port = { onmessage: null, onmessageerror: null, start() {}, close() {}, postMessage: vi.fn() }
     port2 = {}
@@ -63,6 +61,14 @@ afterEach(() => {
 })
 
 describe('worker page bounded report acceptance', () => {
+  it('does not start a local child or canary requests from a retired deployed address', async () => {
+    dom.reconfigure({ url: 'https://mage.peterbucci.com/player-check/worker/' })
+    await open()
+    expect(button('start').disabled).toBe(true)
+    expect(canary.prepare).not.toHaveBeenCalled()
+    expect(document.querySelector('iframe')).toBeNull()
+  })
+
   it('does not create a child or pass when the canary positive control fails', async () => {
     canary.prepare.mockRejectedValueOnce(new Error('Private failure details must not be exported'))
     await open()
@@ -77,7 +83,7 @@ describe('worker page bounded report acceptance', () => {
     let finish!: (value: unknown) => void
     canary.prepare.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
     await open()
-    const signal = canary.prepare.mock.calls[0][3] as AbortSignal
+    const signal = canary.prepare.mock.calls[0][2] as AbortSignal
     button('stop').click(); finish(control); await flush()
     expect(signal.aborted).toBe(true)
     expect(document.querySelector('iframe')).toBeNull()

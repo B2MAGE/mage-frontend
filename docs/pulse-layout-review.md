@@ -4,11 +4,14 @@ The supplied HTML mockups are implemented as the MAGE Pulse theme. Shared color 
 
 ## Start locally
 
-1. From the sibling mage-backend repository, run scripts/start-pulse-local.ps1 as documented in its docs/pulse-local-review.md. This preserves the original database and seeds a dedicated local volume.
-2. Set VITE_HOME_FEATURED_SCENE_ID=1 in this repository's .env.local for the fresh seed. Leave VITE_API_BASE_URL unset to use the development proxy.
-3. Run npm install, then npm run dev -- --host 127.0.0.1. Open http://127.0.0.1:5173.
+Use the [current README startup sequence](../README.md#getting-started), including
+the renderer, and open `http://127.0.0.1:5178`. Ordinary startup preserves data.
+For optional reproducible demo scenes, use the backend's
+[current demo fixtures](https://github.com/B2MAGE/mage-backend/blob/main/scripts/demo/README.md).
+Set `VITE_HOME_FEATURED_SCENE_ID` only to a scene that exists in that database.
 
-Demo account: ari@pulse.local / PulseDemo2026!. These are disposable local fixture credentials, not production credentials.
+The October 2 review used an older isolated seed and disposable account. That
+historical seed is not required for current setup or evidence of today's data.
 
 ## Review routes
 
@@ -35,7 +38,10 @@ Thumbnail capture preserves the current live preview aspect ratio. If a thumbnai
 
 ## Verification
 
-Run npm test, npm run lint and npm run build. During this migration the real local API was also checked through browser registration/login, recovery, guest/authenticated homepage, save toggling, library pagination/filter recovery, scene creation/editing and public MinIO thumbnail uploads. Desktop and mobile layouts are compared with the original HTML mockups.
+Run `npm run verify`. During the original migration the real local API was also
+checked through browser registration/login, recovery, guest/authenticated home,
+save toggling, library filtering, scene creation/editing and MinIO uploads. Those
+dated checks are historical; review affected layouts again when changing the UI.
 
 ## Integration Acceptance — October 2, 2026
 

@@ -1,5 +1,10 @@
 # PP-I03 integration and release record
 
+This document preserves dated release evidence. For current startup and check
+commands, use the [README](../README.md#getting-started) and
+[local diagnostics guide](test-tools-cleanup.md). RF-08 removes the hosted check
+service and consolidates several commands recorded below.
+
 ## Status — October 5, 2026 UTC
 
 **Release approved; production custom playback is enabled.** After the recorded browser reports, live template walkthrough and controlled custom walkthrough, the release owner explicitly instructed "okay deploy it". The backend release approval and separate saved playback control are now on, and the production playback/disable/re-enable walkthrough passed. The approved evidence retains its recorded browser/device scope and limitations; it does not establish untested combinations.
@@ -357,7 +362,7 @@ The fixture sends only fixed test programs. Diagnostic messages contain a fresh 
 
 The Vite-only canary counts attempts at a local dummy endpoint, including WebSocket upgrades. It does not call a real account API, perform authenticated mutations, or log headers, bodies or secrets. Registrations require the exact parent origin and a 32-hex nonce, reject bodies/unknown fields, expire after five minutes, allow at most 32 sessions and saturate counts at 1,000. No production canary endpoint is installed. Repeat relevant boundary checks against controlled production-equivalent endpoints before approving public execution.
 
-Useful local commands (run from the frontend checkout):
+Historical local commands used for this verification (see the current guides above):
 
 ```powershell
 npm run test:isolation-security
@@ -366,7 +371,7 @@ npm run renderer:build
 npm run renderer:serve
 ```
 
-`npm test` also runs the 11 security tests through its `pretest` hook. The renderer server holds the verified build in memory. Restart it after rebuilding, then run `npm run renderer:verify`. The parent development server and child must contain matching protocol changes. See the architecture document for the production build/verifier and optional fixed-sample HTTPS setup.
+At this verification, `npm test` also ran the 11 security tests through its `pretest` hook. RF-08 replaces that hook with an explicit application/tooling test sequence. The renderer server holds the verified build in memory. Restart it after rebuilding, then run `npm run renderer:verify`. The parent development server and child must contain matching protocol changes. See the architecture document for the current build and verifier.
 
 ## Required release matrix
 

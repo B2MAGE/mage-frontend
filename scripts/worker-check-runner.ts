@@ -1,5 +1,5 @@
 import { compileInWorker, createCompilerWorker, type CompilerWorkerHandle } from '../src/isolated-renderer/compiler/client'
-import { fixedWorkerSource, positiveControlSource, readWorkerMarker, type WorkerCheckEvent, type WorkerCheckPhase, type WorkerCheckSummary, type WorkerCheckScope } from './worker-check-fixture'
+import { fixedWorkerSource, positiveControlSource, readWorkerMarker, type WorkerCheckEvent, type WorkerCheckPhase, type WorkerCheckSummary } from './worker-check-fixture'
 import { boundaryEventValue, boundaryProbeSource, emptyBoundaryEvidence, readBoundaryMarker, recordBoundaryMarker } from './worker-boundary'
 
 type Dependencies = { compile?: typeof compileInWorker; createCompiler?: () => CompilerWorkerHandle; createControl?: (source: string) => { worker: Worker; release: () => void } }
@@ -9,8 +9,8 @@ function controlWorker(source: string) {
   catch (error) { URL.revokeObjectURL(url); throw error }
 }
 /** Only the source-free fixed-check protocol can invoke this runner. Ordinary playback cannot select these sources. */
-export async function runFixedWorkerChecks(options: { signal: AbortSignal; nonce: string; scope?: WorkerCheckScope; emit: (event: WorkerCheckEvent) => void }, dependencies: Dependencies = {}): Promise<WorkerCheckSummary> {
-  const { signal, nonce, emit, scope = 'local' } = options, origin = performance.now()
+export async function runFixedWorkerChecks(options: { signal: AbortSignal; nonce: string; emit: (event: WorkerCheckEvent) => void }, dependencies: Dependencies = {}): Promise<WorkerCheckSummary> {
+  const { signal, nonce, emit } = options, origin = performance.now()
   const compile = dependencies.compile ?? compileInWorker
   const handles: Array<() => void> = []
   const summary: WorkerCheckSummary = { controlDelayed: false, scopeVerified: false, opaqueOriginObserved: false,
@@ -68,7 +68,7 @@ export async function runFixedWorkerChecks(options: { signal: AbortSignal; nonce
     signal.addEventListener('abort', abortJob, { once: true })
     cancelJob = phase === 'abort' ? abortJob : null
     try {
-      await compile(fixedWorkerSource(phase, nonce, scope), { signal: jobAbort.signal, maxRaymarchIterations: 48 }, {
+      await compile(fixedWorkerSource(phase, nonce), { signal: jobAbort.signal, maxRaymarchIterations: 48 }, {
         createWorker: () => createObserved(phase),
         observe(event) {
           record(phase, event.type, event.reason ?? null)
@@ -138,7 +138,7 @@ export async function runFixedWorkerChecks(options: { signal: AbortSignal; nonce
     // fixed worker shares its opaque owner and inherited CSP, but remains alive
     // long enough to observe asynchronous API results; it is not a lifetime test.
     record('policy', 'phase')
-    const policy = (dependencies.createControl ?? controlWorker)(boundaryProbeSource(scope, nonce, true))
+    const policy = (dependencies.createControl ?? controlWorker)(boundaryProbeSource(nonce, true))
     const policyReceive = (event: MessageEvent) => {
       const marker = readBoundaryMarker(event.data, nonce)
       if (!marker || signal.aborted) return

@@ -1,11 +1,14 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Blob as NativeBlob } from 'node:buffer'
-import { mountLiveMusicCheck } from './musicCheck'
-import { createTestRhythm } from './testRhythm'
-import type { createIsolatedPlayer } from '../isolatedPlayer'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { mountLocalMusicCheck } from './isolated-playback-ui'
+import { createTestRhythm } from './test-rhythm'
+import type { createIsolatedPlayer } from '../src/modules/player/isolation/isolatedPlayer'
 
 const disposers: Array<() => void> = []
-const rendererUrl = 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html'
+const rendererUrl = 'http://localhost:5181/index.html'
 const button = (id: string) => document.getElementById(id) as HTMLButtonElement
 const image = () => document.getElementById('capture') as HTMLImageElement
 function deferred<T>() {
@@ -13,7 +16,7 @@ function deferred<T>() {
   const promise = new Promise<T>(yes => { resolve = yes })
   return { promise, resolve }
 }
-function fixture(parentOrigin = window.location.origin, boundary = true) {
+function fixture(boundary = true) {
   const player = {
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
     ready: Promise.resolve(), loadScene: vi.fn(async () => {}), loadAudio: vi.fn<ReturnType<typeof createIsolatedPlayer>['loadAudio']>(async () => {}),
@@ -23,7 +26,7 @@ function fixture(parentOrigin = window.location.origin, boundary = true) {
   }
   const createPlayer = vi.fn<typeof createIsolatedPlayer>(() => player)
   const verifyBoundary = vi.fn(() => boundary)
-  const dispose = mountLiveMusicCheck({ parentOrigin, rendererUrl }, { createPlayer, verifyBoundary })
+  const dispose = mountLocalMusicCheck({ createPlayer, verifyBoundary })
   disposers.push(dispose)
   return { player, createPlayer, verifyBoundary, dispose, async start() {
     button('start').click()
@@ -33,15 +36,11 @@ function fixture(parentOrigin = window.location.origin, boundary = true) {
 
 beforeEach(() => {
   vi.useFakeTimers()
+  vi.stubEnv('DEV', true)
+  vi.stubGlobal('location', new URL('http://127.0.0.1:5178/scripts/isolated-playback-check.html'))
   vi.stubGlobal('Blob', NativeBlob)
   vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:test-capture'); static revokeObjectURL = vi.fn() })
-  document.body.innerHTML = `
-    ${['start','stop','switch','pause','reset','test-audio','clear','seek','capture-button','unavailable'].map(id => `<button id="${id}" disabled>${id}</button>`).join('')}
-    <input id="audio" type="file" disabled><input id="simulate" type="checkbox" disabled>
-    <input id="volume" type="range" value="0.4" min="0" max="1" step="0.1" disabled>
-    <select id="response" disabled><option value="mapped-v1">Selective</option><option value="legacy">Original</option></select>
-    <div id="player"></div><p id="status"></p><p id="boundary"></p><p id="audio-status"></p>
-    <p id="stop-result"></p><p id="retry-result"></p><code id="address"></code><img id="capture" hidden>`
+  document.documentElement.innerHTML = readFileSync(resolve('scripts/isolated-playback-check.html'), 'utf8')
 })
 afterEach(() => {
   disposers.splice(0).forEach(dispose => dispose())
@@ -49,15 +48,25 @@ afterEach(() => {
   vi.clearAllTimers()
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
-describe('production music check page', () => {
-  it('does not create a player or enable controls on an unexpected parent site', () => {
-    const f = fixture('https://mage.peterbucci.com')
+describe('local music check page', () => {
+  it.each(['https://mage.peterbucci.com/player-check/', 'http://127.0.0.1:5178/scripts/isolated-playback-check.html?renderer=other'])('does not create a player on an unexpected page: %s', url => {
+    vi.stubGlobal('location', new URL(url))
+    const f = fixture()
     button('start').click()
     expect(button('start').disabled).toBe(true)
     expect(f.createPlayer).not.toHaveBeenCalled()
-    expect(document.getElementById('status')?.textContent).toContain('Open this check from https://mage.peterbucci.com/player-check/')
+    expect(document.getElementById('status')?.textContent).toContain('Run npm run manual-checks:dev')
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('does not enable the fixture in a production build', () => {
+    vi.stubEnv('DEV', false)
+    const f = fixture()
+    button('start').click()
+    expect(f.createPlayer).not.toHaveBeenCalled()
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -76,11 +85,24 @@ describe('production music check page', () => {
   })
 
   it('removes a player if isolation cannot be verified', async () => {
-    const f = fixture(window.location.origin, false)
+    const f = fixture(false)
     button('start').click()
     await vi.waitFor(() => expect(f.player.dispose).toHaveBeenCalledOnce())
     expect(button('test-audio').disabled).toBe(true)
     expect(document.getElementById('status')?.textContent).toContain('Isolation could not be verified')
+  })
+
+  it.each([['legacy', 'Original'], ['mapped-v1', 'Selective']])('keeps %s available as %s', async (mode, label) => {
+    const f = fixture()
+    await f.start()
+    const select = document.getElementById('response') as HTMLSelectElement
+    expect(select.querySelector(`option[value="${mode}"]`)?.textContent).toBe(label)
+    select.value = mode
+    select.dispatchEvent(new Event('change'))
+    await vi.waitFor(() => expect(f.player.loadScene).toHaveBeenCalledTimes(2))
+    expect(f.player.loadScene).toHaveBeenLastCalledWith(expect.objectContaining({
+      scene: expect.objectContaining({ audioResponse: mode }),
+    }))
   })
 
   it('loads only local/generated blobs and preserves transport controls', async () => {

@@ -1,18 +1,18 @@
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostDiagnostic } from '../src/modules/player/isolation/playbackHost'
 import { boundedStallSource, readStallMarker, reportProbeSource as reportSource, type StallMarker } from './isolated-security-probes.mjs'
 import { createSecurityReport, SECURITY_TEST_VERSION, type DiagnosticPhase, type SecurityDiagnostic, type StallObservation } from './isolated-security-report.mjs'
-import { fixedSecurityCheckConfig, isSecurityCheckLocation, securityCanaryUrl, type SecurityCheckMode } from './isolated-security-config.mjs'
+import { fixedSecurityCheckConfig, isSecurityCheckLocation, securityCanaryUrl } from './isolated-security-config.mjs'
 import { runFixedRecoveryChecks } from './fixed-recovery-runner'
 
-export function mountIsolatedSecurityCheck(mode: SecurityCheckMode) {
-const config = fixedSecurityCheckConfig(mode)
+export function mountIsolatedSecurityCheck() {
+const config = fixedSecurityCheckConfig()
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const container = el('player'), results = el<HTMLTableSectionElement>('results'), status = el('status')
-const allowed = isSecurityCheckLocation(mode, window.location.href, import.meta.env.DEV)
+const allowed = isSecurityCheckLocation(window.location.href, import.meta.env.DEV)
 const renderer = config.rendererUrl
 type Outcome = 'PASS' | 'FAIL' | 'PENDING' | 'UNSUPPORTED'
 let run = 0, host: IsolatedPlaybackHost | null = null, activeCleanup: (() => void) | null = null
-const report = createSecurityReport({ mode })
+const report = createSecurityReport()
 let reportRun: number | null = null
 const reportSnapshot = () => report.snapshot({ userAgent: navigator.userAgent, parentOrigin: location.origin, rendererUrl: renderer })
 function updateSavedRuns() {
@@ -66,10 +66,10 @@ async function countRequests(nonce: string) {
   if (!Number.isInteger(value.requests) || value.requests < 0 || !value.kinds) throw new Error('Canary evidence is invalid.')
   return value
 }
-const canary = (nonce: string, kind: string) => securityCanaryUrl(mode, nonce, kind)
+const canary = (nonce: string, kind: string) => securityCanaryUrl(nonce, kind)
 type TestPlayer = { instance: IsolatedPlaybackHost; frame: HTMLIFrameElement; failed: () => boolean;
   failure: () => { reason: Extract<PlaybackHostDiagnostic, { type: 'failure' }>['reason']; at: number } | null }
-async function player(token: number, startupTimeoutMs = mode === 'deployed' ? 15000 : 5000,
+async function player(token: number, startupTimeoutMs = 5000,
   observer?: { diagnostic: (value: PlaybackHostDiagnostic) => void; created: (value: TestPlayer) => void }) {
   assertCurrent(token); host?.dispose(); host = null
   let failure: ReturnType<TestPlayer['failure']> = null
@@ -139,7 +139,7 @@ async function networkChecks(token: number) {
     try{const xhr=new XMLHttpRequest();xhr.open('GET',${url('xhr')});xhr.send()}catch(error){}
     try{navigator.sendBeacon(${url('beacon')})}catch(error){}
     const image=new Image();image.src=${url('image')};
-    try{const socket=new WebSocket(${JSON.stringify(securityCanaryUrl(mode, nonce, 'socket', true))});socket.onerror=()=>{};setTimeout(()=>socket.close(),250)}catch(error){}
+    try{const socket=new WebSocket(${JSON.stringify(securityCanaryUrl(nonce, 'socket', true))});socket.onerror=()=>{};setTimeout(()=>socket.close(),250)}catch(error){}
     const form=document.createElement('form');form.action=${JSON.stringify(`${config.parentOrigin}${config.canaryPrefix}canary`)};form.method='GET';
     for(const pair of [['nonce',${JSON.stringify(nonce)}],['kind','form']]){const field=document.createElement('input');field.name=pair[0];field.value=pair[1];form.append(field)}
     document.body.append(form);try{form.submit()}catch(error){}form.remove();
@@ -172,7 +172,7 @@ async function recoveryChecks(token: number) {
   activeCleanup = cleanup
   try {
     await runFixedRecoveryChecks({ container, rendererUrl: renderer, signal: controller.signal,
-      startupTimeoutMs: mode === 'deployed' ? 15000 : 5000,
+      startupTimeoutMs: 5000,
       result(value) { row(token, value.name, value.outcome, value.evidence) } })
   } finally { cleanup(); if (activeCleanup === cleanup) activeCleanup = null }
 }
@@ -244,7 +244,7 @@ async function boundedStall(token: number) {
   const observer = { diagnostic: hostDiagnostic, created: (value: TestPlayer) => { current = value } }
   try {
     setPhase('baseline-startup')
-    const baseline = await player(token, mode === 'deployed' ? 15000 : 1200, observer)
+    const baseline = await player(token, 1200, observer)
     await baseline.instance.loadScene(scene(''), 'preview'); assertCurrent(token)
     setPhase('baseline'); measure()
     await wait(1200); assertCurrent(token); sample()
@@ -252,7 +252,7 @@ async function boundedStall(token: number) {
     clearInterval(heartbeat!); heartbeat = null
     baseline.instance.dispose()
     setPhase('stall-startup')
-    const p = await player(token, mode === 'deployed' ? 15000 : 1200, observer)
+    const p = await player(token, 1200, observer)
     markerSource = p.frame.contentWindow
     setPhase('stall'); measure()
     void p.instance.loadScene(scene(boundedStallSource(nonce)), 'preview').catch(() => {})
@@ -302,7 +302,7 @@ el<HTMLButtonElement>('download').onclick = () => {
   const snapshot = reportSnapshot()
   const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2) + '\n'], { type: 'application/json' }))
   const link = document.createElement('a')
-  link.href = url; link.download = `mage-${mode}-isolation-${new Date().toISOString().replaceAll(':', '-')}.json`
+  link.href = url; link.download = `mage-local-isolation-${new Date().toISOString().replaceAll(':', '-')}.json`
   document.body.append(link); link.click(); link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

@@ -48,34 +48,60 @@ mage-frontend/
 
 ## Prerequisites
 
-Before running the frontend locally, make sure you have:
-
-- a recent Node.js and npm installation
-- the backend API running locally if you want full auth and scene flows
+- Node.js 22.13 or newer in the Node 22 line (or Node 24+) and npm 10+.
+- Git and network access to npm and the pinned B2MAGE engine release on GitHub.
+- Docker Desktop/Engine with Compose for the backend, PostgreSQL and MinIO.
+  Java 21 is needed only if running backend Maven commands outside Docker.
 
 ## Getting Started
 
-1. Install frontend dependencies:
+Use these three terminals. Normal startup preserves existing accounts and scenes;
+it does not reset the database or object storage.
 
-   ```bash
-   npm install
+1. In a current [backend checkout](https://github.com/B2MAGE/mage-backend), copy
+   `.env.example` to `.env` **once** if `.env` does not exist, then start the stack:
+
+   ```sh
+   docker compose -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.minio.yml up --build
    ```
 
-2. Start the backend on `http://localhost:8080`.
+   Wait for `http://localhost:8080/ready` to return 200. The MinIO override is
+   required for thumbnails. Its example values work locally without AWS credentials.
 
-3. Start the frontend dev server:
+2. In this frontend checkout, install the exact locked dependencies and start the app:
 
    ```bash
+   npm ci
    npm run dev
    ```
+
+3. In a second terminal in the **same frontend checkout**, start the renderer:
+
+   ```bash
+   npm run renderer:serve
+   ```
+
+   This builds the isolated renderer before serving it. Restart this command after
+   renderer/compiler changes; Vite handles ordinary frontend edits automatically.
 
 4. Open:
 
    ```text
-   http://localhost:5173
+   http://127.0.0.1:5178
    ```
 
-Manual browser fixtures are separate from the app. Use [the explicit local test workflow](docs/test-tools-cleanup.md) when needed; normal `npm run dev` does not serve check pages or canaries.
+The app uses port 5178 and the renderer uses the opposite loopback hostname on
+5181. Those addresses are part of the isolation policy. `npm run dev` fails if
+5178 is occupied instead of silently starting a player that cannot connect.
+Stop only your previous development server before restarting it.
+
+The engine is installed from a versioned release; no engine clone, dependency patch
+or global Vite install is needed. See [engine maintenance](docs/engine-package.md)
+when intentionally changing engine source.
+
+Manual browser diagnostics are optional and separate from ordinary startup.
+Use [the local diagnostic workflow](docs/test-tools-cleanup.md) for a targeted
+player investigation; normal development does not serve check pages or canaries.
 
 ## Configuration
 
@@ -106,13 +132,36 @@ VITE_HOME_FEATURED_SCENE_ID selects a real scene for the homepage feature. If un
 
 See [docs/deployment.md](./docs/deployment.md) for the deployment contract and the Coolify-oriented production notes.
 
-## Available Scripts
+## Verification
 
-- `npm run dev` starts the Vite development server
-- `npm run build` creates a production build
-- `npm run preview` serves the production build locally
-- `npm run lint` runs ESLint
-- `npm run test` runs the Vitest suite
+After `npm ci`, the normal contributor check is:
+
+```sh
+npm run verify
+```
+
+It runs lint, application tests, tooling/security tests, the production app build
+and the local renderer build. No running backend, credentials or browser is needed.
+It builds artifacts without deploying anything. Original and Selective are both
+covered by the retained audio tests.
+
+| Command | When to use it |
+| --- | --- |
+| `npm test` | All application and tooling tests, without lint/build. |
+| `npm run test:unit -- <test-file>` | Focused application Vitest checks. |
+| `npm run test:tooling` | Diagnostic type checks, Node build/hosting/contract tests, and compiler-worker/recovery harness tests. |
+| `npm run contracts:check -- ../mage-backend` | Compare all seven shared contract copies after editing either repository. |
+| `npm run auth:verify -- http://localhost:8080` | Real registration/login/API verification; creates a disposable account. See [auth verification](docs/auth-verification.md). |
+
+`npm run build` builds the app; `npm run renderer:build` builds the local isolated
+renderer. `npm run renderer:verify` checks a running local renderer against that
+build. Production renderer commands and required origin values are documented in
+[renderer deployment](docs/isolated-renderer.md). `npm run preview` only previews
+the built app; it is not a replacement for the local app/renderer development pair.
+
+The automatic checks do not prove WebGL output or physical-device behavior. Use
+the normal app to review playback, both music modes, editing, capture and saving
+when changing those features.
 
 ## Application Routes
 

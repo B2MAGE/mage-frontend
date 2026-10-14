@@ -42,6 +42,11 @@ export default defineConfig({
     },
   },
   server: {
+    // The local renderer boundary allows this exact app origin. Never silently
+    // move to another port and leave every preview unable to connect.
+    host: '127.0.0.1',
+    port: 5178,
+    strictPort: true,
     fs: {
       allow: [workspaceRoot],
     },

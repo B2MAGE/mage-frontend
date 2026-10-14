@@ -5,6 +5,12 @@ README covers setup, scripts, and the high-level project overview.
 
 ## Start Here
 
+- [../README.md#getting-started](../README.md#getting-started)
+  One local startup path and the `npm run verify` contributor check.
+
+- [test-tools-cleanup.md](./test-tools-cleanup.md)
+  Optional local diagnostics and removal of the retired public check service.
+
 - [frontend-architecture.md](./frontend-architecture.md)  
   Current frontend folder conventions, ownership rules, and dependency direction.
 

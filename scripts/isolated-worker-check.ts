@@ -3,10 +3,6 @@ import { exact, isCheckEvent, isSummary, isWorkerCheckLocation, time, workerChec
 import { prepareWorkerCanary, readWorkerCanary } from './worker-check-canary'
 import type { WorkerCanaryCounts } from './worker-boundary'
 
-declare const __MAGE_WORKER_CHECK_SCOPE__: string
-declare const __MAGE_WORKER_CHECK_PARENT__: string
-declare const __MAGE_WORKER_CHECK_PATH__: string
-declare const __MAGE_WORKER_CHECK_CHILD__: string
 
 type CheckRun = { id: number; startedAt: string; finishedAt: string | null; status: 'running' | 'passed' | 'failed' | 'cancelled';
   interruptedByHiddenPage: boolean; opaqueFrameVerified: boolean; parentStallMaxGapMs: number; diagnosticsTruncated: boolean;
@@ -15,16 +11,10 @@ type CheckRun = { id: number; startedAt: string; finishedAt: string | null; stat
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const runs: CheckRun[] = []
 let sequence = 0, dispose: (() => void) | null = null, active: CheckRun | null = null
-const scope = typeof __MAGE_WORKER_CHECK_SCOPE__ === 'undefined' ? 'local' : __MAGE_WORKER_CHECK_SCOPE__
-const config = workerCheckConfig(scope === 'production' ? 'production' : 'local')
-// Build settings cannot introduce a different host, renderer, or configurable URL.
-const configured = scope === 'local' || (scope === 'production'
-  && typeof __MAGE_WORKER_CHECK_PARENT__ !== 'undefined' && __MAGE_WORKER_CHECK_PARENT__ === config.parentOrigin
-  && typeof __MAGE_WORKER_CHECK_PATH__ !== 'undefined' && __MAGE_WORKER_CHECK_PATH__ === config.path
-  && typeof __MAGE_WORKER_CHECK_CHILD__ !== 'undefined' && __MAGE_WORKER_CHECK_CHILD__ === config.rendererUrl)
-const allowed = configured && isWorkerCheckLocation(scope === 'production' ? 'production' : 'local', location.href, import.meta.env.DEV)
+const config = workerCheckConfig()
+const allowed = isWorkerCheckLocation(location.href, import.meta.env.DEV)
 const snapshot = () => ({ version: 2, testVersion: WORKER_CHECK_VERSION, exportedAt: new Date().toISOString(),
-  scope: `${scope === 'production' ? 'Deployed' : 'Local'} fixed compiler capability/lifetime and API probes, plus a separate 600ms policy observation worker in the same opaque child CSP. CacheStorage not-exposed means the browser does not expose that API, not a denied opening. Network counters include an independent positive control. GPU, application and release verification are not performed.`,
+  scope: `Local fixed compiler capability/lifetime and API probes, plus a separate 600ms policy observation worker in the same opaque child CSP. CacheStorage not-exposed means the browser does not expose that API, not a denied opening. Network counters include an independent positive control. GPU, application and release verification are not performed.`,
   browserUserAgent: navigator.userAgent.slice(0, 512), parentOrigin: config.parentOrigin, rendererUrl: config.rendererUrl,
   parameters: { compilerDeadlineMs: 2000, finiteLoopMs: 3000, delayedCallbackMs: 250, callbackObservationMs: 600, parentTimerIntervalMs: 50, parentResponsivenessLimitMs: 1000 },
   expectedChecks: 19, eventLimit: 128, retainedRunLimit: 12, runs: structuredClone(runs) })
@@ -80,7 +70,7 @@ function start() {
       const summary = value.summary
       completing = true
       sample(); stall = false; current.worker = summary
-      void readWorkerCanary(scope === 'production' ? 'production' : 'local', nonce, requests.signal).then(counts => {
+      void readWorkerCanary(nonce, requests.signal).then(counts => {
         if (!isActive()) return
         current.canaryObserved = counts
         current.checks = [{ name: 'Separate child has an opaque origin', passed: current.opaqueFrameVerified }, ...workerCheckVerdicts(summary, current.parentStallMaxGapMs, counts, current.canaryControl !== null)]
@@ -112,7 +102,7 @@ function start() {
   }
   frame.addEventListener('load', load); frame.addEventListener('error', fail, { once: true })
   element('status').textContent = 'Verifying the fixed network counters…'
-  void prepareWorkerCanary(scope === 'production' ? 'production' : 'local', controlNonce, nonce, requests.signal).then(control => {
+  void prepareWorkerCanary(controlNonce, nonce, requests.signal).then(control => {
     if (!isActive()) return
     current.canaryControl = control
     frame.src = config.rendererUrl; element('player').append(frame)

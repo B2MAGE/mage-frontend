@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { JSDOM } from 'jsdom'
-import { renderSecurityCheckDocument } from '../deployment/isolated-renderer/security-check-page.mjs'
+import { readFileSync } from 'node:fs'
 import { mountIsolatedSecurityCheck } from './isolated-security-ui'
 import { createIsolatedPlaybackHost } from '../src/modules/player/isolation/playbackHost'
 import { runFixedRecoveryChecks } from './fixed-recovery-runner'
@@ -12,25 +12,25 @@ vi.mock('./fixed-recovery-runner', () => ({ runFixedRecoveryChecks: vi.fn() }))
 let dom: JSDOM | undefined
 afterEach(() => { dom?.window.document?.getElementById('stop')?.click(); dom?.window.close(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.clearAllMocks() })
 
-function open(url = 'https://mage.peterbucci.com/player-check/security/') {
-    dom = new JSDOM(renderSecurityCheckDocument({ scriptPath: 'assets/security-test.js', scriptIntegrity: `sha384-${'a'.repeat(64)}`,
-      stylePath: 'assets/security-test.css', styleIntegrity: `sha384-${'b'.repeat(64)}` }), { url, pretendToBeVisual: true })
+const fixtureHtml = readFileSync(new URL('./isolated-security-check.html', import.meta.url), 'utf8')
+function open(url = 'http://127.0.0.1:5178/scripts/isolated-security-check.html') {
+    dom = new JSDOM(fixtureHtml, { url, pretendToBeVisual: true })
     vi.stubGlobal('window', dom.window); vi.stubGlobal('document', dom.window.document)
     vi.stubGlobal('location', dom.window.location); vi.stubGlobal('navigator', dom.window.navigator)
-    mountIsolatedSecurityCheck('deployed')
+    mountIsolatedSecurityCheck()
     return dom.window.document
 }
 
-describe('fixed deployed security page initialization', () => {
-  it('enables fixed groups only after matching the deployed page without starting a player', () => {
-    const page = open('https://mage.peterbucci.com/player-check/security/')
+describe('local security page initialization', () => {
+  it('enables fixed groups only after matching the local development page without starting a player', () => {
+    const page = open()
     for (const id of ['boundary', 'failures', 'stall']) expect((page.getElementById(id) as HTMLButtonElement).disabled).toBe(false)
     expect(page.querySelector('iframe')).toBeNull()
     expect((page.getElementById('download') as HTMLButtonElement).disabled).toBe(true)
     expect(page.getElementById('status')?.textContent).toContain('Ready.')
   })
   it('leaves all groups disabled on another site or an address with configuration-like query input', () => {
-    for (const url of ['https://other.example/player-check/security/', 'https://mage.peterbucci.com/player-check/security/?renderer=other']) {
+    for (const url of ['https://mage.peterbucci.com/player-check/security/', 'https://other.example/scripts/isolated-security-check.html', 'http://127.0.0.1:5178/scripts/isolated-security-check.html?renderer=other']) {
       const page = open(url)
       for (const id of ['boundary', 'failures', 'stall']) expect((page.getElementById(id) as HTMLButtonElement).disabled).toBe(true)
       expect(page.querySelector('iframe')).toBeNull()
@@ -52,7 +52,7 @@ describe('current renderer recovery UI', () => {
     page.getElementById('failures')!.click()
     await vi.waitFor(() => expect(page.getElementById('status')!.textContent).toContain('Checks finished'))
     expect(runFixedRecoveryChecks).toHaveBeenCalledOnce()
-    expect(vi.mocked(runFixedRecoveryChecks).mock.calls[0][0]).toMatchObject({ rendererUrl: 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html', startupTimeoutMs: 15000 })
+    expect(vi.mocked(runFixedRecoveryChecks).mock.calls[0][0]).toMatchObject({ rendererUrl: 'http://localhost:5181/index.html', startupTimeoutMs: 5000 })
     const report = snapshot(page)
     expect(report.version).toBe(3)
     expect(report.runs[0]).toMatchObject({ group: 'recovery', fixtureVersion: 'fixed-renderer-recovery-1', coverage: 'current-renderer-recovery', status: 'passed' })

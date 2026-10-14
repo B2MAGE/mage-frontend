@@ -5,18 +5,12 @@ export const WORKER_CHECK_VERSION = 'fixed-worker-2'
 export const WORKER_CHECK_PARENT = 'http://127.0.0.1:5178'
 export const WORKER_CHECK_PATH = '/scripts/isolated-worker-check.html'
 export const WORKER_CHECK_CHILD = 'http://localhost:5182/index.html'
-export const WORKER_CHECK_PRODUCTION_PARENT = 'https://mage.peterbucci.com'
-export const WORKER_CHECK_PRODUCTION_PATH = '/player-check/worker/'
-export const WORKER_CHECK_PRODUCTION_CHILD = 'https://d2wwpgc7sgvmnm.cloudfront.net/index.html'
-export type WorkerCheckScope = 'local' | 'production'
-export function workerCheckConfig(scope: WorkerCheckScope) {
-  if (scope === 'local') return { parentOrigin: WORKER_CHECK_PARENT, path: WORKER_CHECK_PATH, rendererUrl: WORKER_CHECK_CHILD }
-  if (scope === 'production') return { parentOrigin: WORKER_CHECK_PRODUCTION_PARENT, path: WORKER_CHECK_PRODUCTION_PATH, rendererUrl: WORKER_CHECK_PRODUCTION_CHILD }
-  throw new Error('Unknown fixed worker-check scope.')
+export function workerCheckConfig() {
+  return { parentOrigin: WORKER_CHECK_PARENT, path: WORKER_CHECK_PATH, rendererUrl: WORKER_CHECK_CHILD }
 }
-export function isWorkerCheckLocation(scope: WorkerCheckScope, href: string, development: boolean) {
-  const config = workerCheckConfig(scope)
-  return (scope === 'production' || development) && href === `${config.parentOrigin}${config.path}`
+export function isWorkerCheckLocation(href: string, development: boolean) {
+  const config = workerCheckConfig()
+  return development === true && href === `${config.parentOrigin}${config.path}`
 }
 export const WORKER_CHECK_PROTOCOL = 'mage-fixed-worker-check'
 export const WORKER_CHECK_PHASES = ['control', 'normal', 'completion', 'throw', 'syntax', 'abort', 'repeat', 'stall', 'boundary', 'policy'] as const
@@ -71,10 +65,10 @@ export function markerSource(nonce: string, marker: WorkerCheckMarker) {
   if (!validNonce(nonce) || !WORKER_CHECK_MARKERS.includes(marker)) throw new Error('Invalid fixed worker probe.')
   return `globalThis.postMessage({type:'mage-worker-check-marker',nonce:${JSON.stringify(nonce)},marker:${JSON.stringify(marker)}});`
 }
-export function fixedWorkerSource(kind: Exclude<WorkerCheckPhase, 'control' | 'policy'>, nonce: string, scope: WorkerCheckScope = 'local') {
+export function fixedWorkerSource(kind: Exclude<WorkerCheckPhase, 'control' | 'policy'>, nonce: string) {
   const guard = `if(typeof globalThis.document!=='undefined'||typeof globalThis.parent!=='undefined'||typeof globalThis.window!=='undefined'||typeof globalThis.Worker!=='undefined'||typeof globalThis.SharedWorker!=='undefined')throw new Error('Worker scope unavailable');${markerSource(nonce, 'scope')}if(globalThis.location.origin==='null'){${markerSource(nonce, 'opaque-origin')}}`
   if (kind === 'normal') return `${guard}sphere(0.5);`
-  if (kind === 'boundary') return `${guard}${boundaryProbeSource(scope, nonce)}sphere(0.5);`
+  if (kind === 'boundary') return `${guard}${boundaryProbeSource(nonce)}sphere(0.5);`
   if (kind === 'throw') return `${guard}throw new Error('Fixed worker exception');`
   if (kind === 'syntax') return 'this is deliberately invalid worker shader source;'
   if (kind === 'repeat') return `${guard}if(typeof globalThis.__mageFixedWorkerState!=='undefined')throw new Error('Worker was reused');globalThis.__mageFixedWorkerState=1;sphere(0.5);`

@@ -22,15 +22,15 @@ for (const probe of BOUNDARY_PROBES) {
 summary.boundary.policy.observationTimer = true
 
 describe('fixed compiler-worker fixture evidence', () => {
-  it('binds live and local pages to their exact fixed addresses', () => {
-    const local = workerCheckConfig('local'), live = workerCheckConfig('production')
-    expect(isWorkerCheckLocation('local', local.parentOrigin + local.path, true)).toBe(true)
-    expect(isWorkerCheckLocation('local', local.parentOrigin + local.path, false)).toBe(false)
-    expect(isWorkerCheckLocation('production', live.parentOrigin + live.path, false)).toBe(true)
-    expect(live.rendererUrl).toBe('https://d2wwpgc7sgvmnm.cloudfront.net/index.html')
-    for (const href of [live.parentOrigin + live.path + '?source=arbitrary', live.parentOrigin + live.path + '#test',
-      live.parentOrigin + live.path + 'index.html', 'https://other.example/player-check/worker/', 'http://mage.peterbucci.com/player-check/worker/']) {
-      expect(isWorkerCheckLocation('production', href, false)).toBe(false)
+  it('binds the manual page to its exact local development address', () => {
+    const config = workerCheckConfig(), address = config.parentOrigin + config.path
+    expect(isWorkerCheckLocation(address, true)).toBe(true)
+    expect(isWorkerCheckLocation(address, false)).toBe(false)
+    expect(config.rendererUrl).toBe('http://localhost:5182/index.html')
+    for (const href of [address + '?source=arbitrary', address + '#test', address + '/index.html',
+      'https://mage.peterbucci.com/player-check/worker/', 'https://other.example/player-check/worker/',
+      address.replace('127.0.0.1', '192.168.1.1')]) {
+      expect(isWorkerCheckLocation(href, true)).toBe(false)
     }
     const connect = { protocol: WORKER_CHECK_PROTOCOL, version: 1, type: 'connect', nonce }
     expect(isWorkerCheckConnection(connect)).toBe(true)

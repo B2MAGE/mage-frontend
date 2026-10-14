@@ -74,7 +74,12 @@ async function fixture(t, configFile) {
 }
 
 test('normal Vite still serves app routes while retired paths cannot become SPA pages', async t => {
-  const send = await fixture(t, fileURLToPath(new URL('../vite.config.ts', import.meta.url)))
+  const configFile = fileURLToPath(new URL('../vite.config.ts', import.meta.url))
+  const resolved = await resolveConfig({ configFile, logLevel: 'silent' }, 'serve')
+  assert.equal(resolved.server.host, '127.0.0.1')
+  assert.equal(resolved.server.port, 5178, 'default app origin must match the renderer allowlist')
+  assert.equal(resolved.server.strictPort, true, 'do not silently move to an unsupported renderer origin')
+  const send = await fixture(t, configFile)
   for (const path of ['/', '/create-scene']) {
     const result = await send(path)
     assert.equal(result.status, 200)
