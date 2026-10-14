@@ -18,14 +18,10 @@ const owns = (value: unknown, keys: readonly string[]): value is Record<string, 
   return own.length === keys.length && own.every(key => typeof key === 'string' && keys.includes(key)
     && Object.hasOwn(Object.getOwnPropertyDescriptor(value, key) ?? {}, 'value'))
 }
-export function workerCanaryBase(scope: 'local' | 'production') {
-  if (scope === 'local') return 'http://127.0.0.1:5178/__isolated-security/'
-  if (scope === 'production') return 'https://mage.peterbucci.com/player-check/__isolated-security/'
-  throw new Error('Unknown worker verification scope.')
-}
-export function workerCanaryUrl(scope: 'local' | 'production', nonce: string, kind: NetworkProbe) {
+export function workerCanaryBase() { return 'http://127.0.0.1:5178/__isolated-security/' }
+export function workerCanaryUrl(nonce: string, kind: NetworkProbe) {
   if (!noncePattern.test(nonce) || !NETWORK_PROBES.includes(kind)) throw new Error('Invalid fixed worker canary.')
-  return `${workerCanaryBase(scope)}canary?nonce=${nonce}&kind=${kind}`
+  return `${workerCanaryBase()}canary?nonce=${nonce}&kind=${kind}`
 }
 export function emptyBoundaryEvidence(): BoundaryEvidence {
   return { valid: true, observationTimer: false, probes: Object.fromEntries(BOUNDARY_PROBES.map(probe =>
@@ -82,9 +78,9 @@ export function recordBoundaryMarker(evidence: BoundaryEvidence, marker: Boundar
 }
 
 /** Fixed API attempts only. Fresh sentinel names never enumerate or read existing storage. */
-export function boundaryProbeSource(scope: 'local' | 'production', nonce: string, observe = false) {
+export function boundaryProbeSource(nonce: string, observe = false) {
   if (!noncePattern.test(nonce)) throw new Error('Invalid worker boundary nonce.')
-  const urls = Object.fromEntries(NETWORK_PROBES.map(kind => [kind, workerCanaryUrl(scope, nonce, kind)]))
+  const urls = Object.fromEntries(NETWORK_PROBES.map(kind => [kind, workerCanaryUrl(nonce, kind)]))
   const sentinel = `mage-fixed-worker-${nonce}`
   return `(function(){
     var send=globalThis.postMessage.bind(globalThis);

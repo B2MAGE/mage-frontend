@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { hasVerifiedParentBoundary } from './boundaryCheck'
+import { hasVerifiedParentBoundary } from './isolated-playback-boundary'
 
 afterEach(() => document.body.replaceChildren())
 

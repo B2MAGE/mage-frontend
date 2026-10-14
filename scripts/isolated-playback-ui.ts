@@ -1,6 +1,9 @@
-import { createIsolatedPlayer, type IsolatedPlayer } from '../isolatedPlayer'
-import { hasVerifiedParentBoundary } from './boundaryCheck'
-import { createTestRhythm } from './testRhythm'
+import { createIsolatedPlayer, type IsolatedPlayer } from '../src/modules/player/isolation/isolatedPlayer'
+import { hasVerifiedParentBoundary } from './isolated-playback-boundary'
+import { createTestRhythm } from './test-rhythm'
+
+const checkUrl = 'http://127.0.0.1:5178/scripts/isolated-playback-check.html'
+const rendererUrl = 'http://localhost:5181/index.html'
 
 const controlIds = ['switch', 'pause', 'reset', 'test-audio', 'clear', 'audio', 'simulate', 'response', 'volume', 'seek', 'capture-button']
 
@@ -18,7 +21,7 @@ color(${alternate ? '0.12,0.7,0.65' : '0.45,0.16,0.9'}); ${alternate ? 'sphere(0
   } }
 }
 
-export function mountLiveMusicCheck(options: { parentOrigin: string; rendererUrl: string }, dependencies: {
+export function mountLocalMusicCheck(dependencies: {
   createPlayer?: typeof createIsolatedPlayer
   verifyBoundary?: typeof hasVerifiedParentBoundary
 } = {}) {
@@ -32,7 +35,7 @@ export function mountLiveMusicCheck(options: { parentOrigin: string; rendererUrl
   let generation = 0, alternate = false, paused = false, stopped = false
   let captureUrl: string | null = null
   let audioLoading = false, sceneLoading = false, capturePending = false
-  element('address').textContent = options.rendererUrl
+  element('address').textContent = rendererUrl
 
   function listen(target: EventTarget, event: string, handler: EventListener) {
     target.addEventListener(event, handler)
@@ -79,7 +82,7 @@ export function mountLiveMusicCheck(options: { parentOrigin: string; rendererUrl
     button('stop').disabled = false
     button('unavailable').disabled = true
     element('boundary').textContent = 'Isolation: waiting for the player.'
-    const url = new URL(options.rendererUrl)
+    const url = new URL(rendererUrl)
     if (unavailable) url.pathname = '/unavailable.html'
     try {
       const next = (dependencies.createPlayer ?? createIsolatedPlayer)({
@@ -158,8 +161,8 @@ export function mountLiveMusicCheck(options: { parentOrigin: string; rendererUrl
       element<HTMLInputElement>('audio').disabled = false
     }
   }
-  if (window.location.origin !== options.parentOrigin) {
-    status.textContent = `Open this check from ${options.parentOrigin}/player-check/ to test the live deployment.`
+  if (!import.meta.env.DEV || location.href !== checkUrl) {
+    status.textContent = `Run npm run manual-checks:dev and open ${checkUrl}.`
     return () => {}
   }
   enable(false)

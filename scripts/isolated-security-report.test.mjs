@@ -5,20 +5,19 @@ import { createSecurityReport, SECURITY_GROUP_CHECK_COUNTS, SECURITY_DIAGNOSTIC_
 const metadata = { userAgent: 'Fixture browser', parentOrigin: 'http://127.0.0.1:5178', rendererUrl: 'http://localhost:5181/index.html' }
 const addPassing = (report, id, count) => { for (let i = 0; i < count; i++) report.add(id, { name: `Fixed check ${i}`, outcome: 'PASS', evidence: 'Fixed check passed.' }) }
 
-test('deployed reports identify fixed-fixture evidence without granting release approval', () => {
-  const report = createSecurityReport({ mode: 'deployed' }).snapshot(metadata)
-  assert.match(report.scope, /^Deployed fixed-fixture checks only\./)
-  assert.match(report.scope, /Not full application verification or release approval\./)
+test('local reports identify fixed-fixture evidence without granting release approval', () => {
+  const report = createSecurityReport().snapshot(metadata)
+  assert.match(report.scope, /^Local fixed-fixture checks only\./)
+  assert.match(report.scope, /Not production verification or release approval\./)
   assert.equal(report.version, 3)
   assert.equal(report.testVersion, SECURITY_TEST_VERSION)
   assert.equal(report.stallParameters.fixtureProgressTimeoutMs, 1000)
   assert.equal(report.stallParameters.productionDefaultProgressTimeoutMs, 10000)
-  assert.equal(report.stallParameters.fixtureStartupTimeoutMs, 15000)
-  assert.throws(() => createSecurityReport({ mode: 'approved' }), /Unknown/)
+  assert.equal(report.stallParameters.fixtureStartupTimeoutMs, 1200)
 })
 
 test('retains the fixed compile reason without raw compiler data or new verification claims', () => {
-  const report = createSecurityReport({ mode: 'deployed' }), id = report.start('stall')
+  const report = createSecurityReport(), id = report.start('stall')
   const diagnostic = { type: 'failure', phase: 'stall-startup', atMs: 80, reason: 'compile' }
   const observation = { elapsedMs: 80, maxParentGapMs: 51, failureReason: 'compile', failureCallbackAtMs: 80,
     iframeConnected: false, markerQueued: false, markerScheduled: false, markerStarted: false, markerEnded: false }
@@ -35,7 +34,7 @@ test('retains the fixed compile reason without raw compiler data or new verifica
   assert.equal(run.status, 'failed')
   assert.deepEqual(snapshot.expectedChecks, { boundary: 17, failures: 8, stall: 2, recovery: 7 })
   assert.equal(snapshot.testVersion, 'fixed-security-3')
-  assert.match(snapshot.scope, /Not full application verification or release approval\./)
+  assert.match(snapshot.scope, /Not production verification or release approval\./)
   assert(!JSON.stringify(snapshot).includes('private'))
 })
 
@@ -59,6 +58,19 @@ test('stall diagnostic timeline rejects unknown fields and values, bounds number
   assert(!JSON.stringify(result).includes('excluded'))
   result.events[0].resetReason = 'edited'
   assert.equal(report.snapshot(metadata).runs[0].diagnostics.events[0].resetReason, 'parent-gap')
+})
+
+test('current startup failures and offscreen pauses remain visible in local diagnostic reports', () => {
+  const report = createSecurityReport(), id = report.start('stall')
+  const reasons = ['compiler-download', 'graphics-download', 'graphics-startup', 'compiler-startup',
+    'compile-timeout', 'invalid-output', 'interrupted']
+  for (const reason of reasons) report.diagnostic(id, { type: 'failure', phase: 'stall-startup', atMs: 20, reason })
+  report.diagnostic(id, { type: 'watchdog', phase: 'stall', atMs: 30, deltaMs: 10,
+    silenceMs: 0, progressAgeMs: 10, resetReason: 'offscreen' })
+  const diagnostics = report.snapshot(metadata).runs[0].diagnostics
+  assert.equal(diagnostics.rejectedEvents, 0)
+  assert.deepEqual(diagnostics.events.filter(event => event.type === 'failure').map(event => event.reason), reasons)
+  assert.equal(diagnostics.events.at(-1).resetReason, 'offscreen')
 })
 
 test('original observations and cancelled-run diagnostics cannot be revised by later recovery or another run', () => {

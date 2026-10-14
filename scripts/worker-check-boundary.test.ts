@@ -108,20 +108,20 @@ describe('fixed worker boundary evidence', () => {
     vi.stubGlobal('XMLHttpRequest', class { open = open; send = send; withCredentials = false })
     const importScripts = vi.fn(denied), indexedOpen = vi.fn(denied), cacheOpen = vi.fn(async () => { throw new Error('fixed') })
     vi.stubGlobal('importScripts', importScripts); vi.stubGlobal('indexedDB', { open: indexedOpen }); vi.stubGlobal('caches', { open: cacheOpen })
-    const artifact = compileShader(fixedWorkerSource('boundary', nonce, 'production'), { maxRaymarchIterations: 48 })
+    const artifact = compileShader(fixedWorkerSource('boundary', nonce), { maxRaymarchIterations: 48 })
     expect(normalizeCompiledShader(artifact, { maxRaymarchIterations: 48 }).frag.length).toBeGreaterThan(0)
     await Promise.resolve(); await Promise.resolve()
     const evidence = emptyBoundaryEvidence()
     messages.forEach(message => { const marker = readBoundaryMarker(message, nonce); if (marker) recordBoundaryMarker(evidence, marker) })
     expect(evidence.valid).toBe(true)
     expect(BOUNDARY_PROBES.every(probe => evidence.probes[probe].attempted && evidence.probes[probe].outcome === 'denied')).toBe(true)
-    expect(fetch).toHaveBeenCalledWith(workerCanaryUrl('production', nonce, 'fetch'), { mode: 'no-cors', credentials: 'omit', cache: 'no-store' })
-    expect(open).toHaveBeenCalledWith('GET', workerCanaryUrl('production', nonce, 'xhr'), false)
-    expect(importScripts).toHaveBeenCalledWith(workerCanaryUrl('production', nonce, 'import-script'))
+    expect(fetch).toHaveBeenCalledWith(workerCanaryUrl(nonce, 'fetch'), { mode: 'no-cors', credentials: 'omit', cache: 'no-store' })
+    expect(open).toHaveBeenCalledWith('GET', workerCanaryUrl(nonce, 'xhr'), false)
+    expect(importScripts).toHaveBeenCalledWith(workerCanaryUrl(nonce, 'import-script'))
     expect(indexedOpen).toHaveBeenCalledWith(`mage-fixed-worker-${nonce}`, 1)
     expect(cacheOpen).toHaveBeenCalledWith(`mage-fixed-worker-${nonce}`)
-    expect(() => boundaryProbeSource('production', 'invalid')).toThrow()
-    expect(() => workerCanaryUrl('production', nonce, 'socket' as never)).toThrow()
+    expect(() => boundaryProbeSource('invalid')).toThrow()
+    expect(() => workerCanaryUrl(nonce, 'socket' as never)).toThrow()
   })
 })
 
@@ -134,10 +134,10 @@ describe('worker canary positive control', () => {
       .mockResolvedValueOnce(response({ requests: 3, kinds: { fetch: 1, xhr: 1, 'import-script': 1 } }))
       .mockResolvedValueOnce(response({ registered: true }))
     const signal = new AbortController().signal
-    await expect(prepareWorkerCanary('production', controlNonce, nonce, signal, reads)).resolves.toMatchObject({ requests: 3 })
+    await expect(prepareWorkerCanary(controlNonce, nonce, signal, reads)).resolves.toMatchObject({ requests: 3 })
     expect(reads).toHaveBeenCalledTimes(6)
     for (const [url, options] of reads.mock.calls) {
-      expect(String(url)).toMatch(/^https:\/\/mage\.peterbucci\.com\/player-check\/__isolated-security\/(register|results|canary)\?/)
+      expect(String(url)).toMatch(/^http:\/\/127\.0\.0\.1:5178\/__isolated-security\/(register|results|canary)\?/)
       expect(options).toMatchObject({ credentials: 'omit', cache: 'no-store', signal })
     }
     expect(reads.mock.calls.at(-1)![0]).toContain(`register?nonce=${nonce}`)
@@ -146,24 +146,24 @@ describe('worker canary positive control', () => {
     for (const counts of [zero, { requests: 3, kinds: { fetch: 1, xhr: 0, 'import-script': 2 } }]) {
       const read = vi.fn<typeof fetch>().mockResolvedValue(response(counts))
       read.mockResolvedValueOnce(response({ registered: true }))
-      await expect(prepareWorkerCanary('local', controlNonce, nonce, new AbortController().signal, read)).rejects.toThrow(/positive control/)
+      await expect(prepareWorkerCanary(controlNonce, nonce, new AbortController().signal, read)).rejects.toThrow(/positive control/)
       expect(read.mock.calls.some(([url]) => String(url).includes(`register?nonce=${nonce}`))).toBe(false)
     }
-    await expect(readWorkerCanary('local', nonce, new AbortController().signal, vi.fn().mockResolvedValue(response(zero, false)))).rejects.toThrow()
+    await expect(readWorkerCanary(nonce, new AbortController().signal, vi.fn().mockResolvedValue(response(zero, false)))).rejects.toThrow()
     for (const value of [{ ...zero, requests: 1001 }, { ...zero, kinds: { ...zero.kinds, xhr: '0' } }]) {
-      await expect(readWorkerCanary('local', nonce, new AbortController().signal, vi.fn().mockResolvedValue(response(value)))).rejects.toThrow()
+      await expect(readWorkerCanary(nonce, new AbortController().signal, vi.fn().mockResolvedValue(response(value)))).rejects.toThrow()
     }
   })
   it.each([null, {}, { requests: 0 }, { kinds: zero.kinds }, { requests: 0, kinds: {} },
     { requests: 0, kinds: { fetch: 0, xhr: 0 } }, { requests: 0, kinds: { fetch: 0, 'import-script': 0 } },
     { requests: 0, kinds: { xhr: 0, 'import-script': 0 } }])('rejects missing or partial counter evidence: %j', async value => {
-    await expect(readWorkerCanary('production', nonce, new AbortController().signal,
+    await expect(readWorkerCanary(nonce, new AbortController().signal,
       vi.fn().mockResolvedValue(response(value)))).rejects.toThrow('Invalid fixed canary counts')
   })
   it('does not register the probe nonce when positive-control counts are partial', async () => {
     const read = vi.fn<typeof fetch>().mockResolvedValue(response({ requests: 3, kinds: { fetch: 1, xhr: 1 } }))
     read.mockResolvedValueOnce(response({ registered: true }))
-    await expect(prepareWorkerCanary('production', controlNonce, nonce, new AbortController().signal, read)).rejects.toThrow('Invalid fixed canary counts')
+    await expect(prepareWorkerCanary(controlNonce, nonce, new AbortController().signal, read)).rejects.toThrow('Invalid fixed canary counts')
     expect(read.mock.calls.some(([url]) => String(url).includes(`register?nonce=${nonce}`))).toBe(false)
   })
 })

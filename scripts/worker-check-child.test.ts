@@ -3,9 +3,9 @@ import { installFixedWorkerCheck } from './worker-check-child'
 import { WORKER_CHECK_PROTOCOL, type WorkerCheckSummary } from './worker-check-fixture'
 import type { runFixedWorkerChecks } from './worker-check-runner'
 
-const nonce = 'a'.repeat(32), origin = 'https://mage.peterbucci.com'
+const nonce = 'a'.repeat(32), origin = 'http://127.0.0.1:5178'
 const connection = { protocol: WORKER_CHECK_PROTOCOL, version: 1, type: 'connect', nonce }
-function fixture(opaque = true) {
+function fixture(opaque = true, allowedParentOrigins = [origin]) {
   const denied = () => { throw new DOMException('Fixed boundary', 'SecurityError') }
   const parent = { get document() { return denied() } }
   const target = Object.assign(new EventTarget(), { parent, document: { get cookie() { return opaque ? denied() : '' } } })
@@ -14,7 +14,7 @@ function fixture(opaque = true) {
   let resolve!: (value: WorkerCheckSummary) => void
   const run = vi.fn<typeof runFixedWorkerChecks>(() => new Promise<WorkerCheckSummary>(accept => { resolve = accept }))
   const install = (initialConnection?: MessageEvent) => installFixedWorkerCheck({ statusElement: status,
-    allowedParentOrigins: [origin], targetWindow: target as unknown as Window, initialConnection }, run)
+    allowedParentOrigins, targetWindow: target as unknown as Window, initialConnection }, run)
   const port = { onmessage: null as ((event: MessageEvent) => void) | null, onmessageerror: null,
     postMessage: vi.fn(), start: vi.fn(), close: vi.fn() }
   const event = (data: unknown = connection, source: unknown = parent, senderOrigin = origin, ports: unknown[] = [port]) =>
@@ -23,7 +23,13 @@ function fixture(opaque = true) {
   return { target, parent, status, run, port, event, send, install, complete: () => resolve({} as WorkerCheckSummary) }
 }
 
-describe('production fixed worker-check handler', () => {
+describe('local fixed worker-check handler', () => {
+  it('cannot enable the retired public parent through a supplied allowlist', () => {
+    const publicOrigin = 'https://mage.peterbucci.com', f = fixture(true, [publicOrigin])
+    f.install(); f.send(connection, f.parent, publicOrigin)
+    expect(f.run).not.toHaveBeenCalled()
+  })
+
   it('requires exact parent source/origin, one port, and a source-free fixed handshake', () => {
     const f = fixture(); f.install()
     f.send(connection, {}); f.send(connection, f.parent, 'https://other.example')
@@ -32,8 +38,7 @@ describe('production fixed worker-check handler', () => {
     expect(f.run).not.toHaveBeenCalled()
     f.send()
     expect(f.run).toHaveBeenCalledOnce()
-    expect(Object.keys(f.run.mock.calls[0][0]).sort()).toEqual(['emit', 'nonce', 'scope', 'signal'])
-    expect(f.run.mock.calls[0][0].scope).toBe('production')
+    expect(Object.keys(f.run.mock.calls[0][0]).sort()).toEqual(['emit', 'nonce', 'signal'])
     expect(f.port.postMessage).toHaveBeenCalledWith({ type: 'ready', nonce })
     f.send(); expect(f.run).toHaveBeenCalledOnce()
   })

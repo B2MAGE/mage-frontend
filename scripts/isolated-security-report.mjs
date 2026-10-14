@@ -5,9 +5,10 @@ const MAX_RUNS = 24
 const MAX_CHECKS = 32
 const bounded = (value, limit) => typeof value === 'string' ? value.slice(0, limit) : ''
 const phases = ['baseline-startup', 'baseline', 'stall-startup', 'stall', 'recovery', 'cleanup']
-// Current host diagnostics can report compilation rejection. Accepting this fixed
-// reason does not turn the historical window-thread probes into worker coverage.
-const failures = ['runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'compile']
+// Keep current host reasons without exporting raw errors or treating historical
+// window-thread probes as compiler-worker coverage.
+const failures = ['compiler-download', 'graphics-download', 'graphics-startup', 'compiler-startup',
+  'compile', 'compile-timeout', 'invalid-output', 'runtime', 'context-lost', 'startup-timeout', 'progress-timeout', 'interrupted']
 const time = value => Number.isFinite(value) && value >= 0 && value <= 86400000
 const signedTime = value => Number.isFinite(value) && Math.abs(value) <= 86400000
 const exact = (value, keys) => !!value && typeof value === 'object' && !Array.isArray(value)
@@ -20,7 +21,7 @@ function diagnostic(value) {
     status: { status: ['starting', 'ready', 'loading', 'playing', 'paused', 'error', 'disposed'].includes(value.status) },
     progress: {},
     watchdog: { deltaMs: signedTime(value.deltaMs), silenceMs: time(value.silenceMs), progressAgeMs: signedTime(value.progressAgeMs),
-      resetReason: ['closed', 'not-loaded', 'paused', 'hidden', 'invalid-clock', 'parent-gap', 'recent-progress', 'none'].includes(value.resetReason) },
+      resetReason: ['closed', 'not-loaded', 'paused', 'hidden', 'offscreen', 'invalid-clock', 'parent-gap', 'recent-progress', 'none'].includes(value.resetReason) },
     failure: { reason: failures.includes(value.reason) },
     marker: { marker: ['queued', 'scheduled', 'start', 'end'].includes(value.marker), childAtMs: time(value.childAtMs) },
     'parent-timer': { gapMs: time(value.gapMs) },
@@ -41,8 +42,7 @@ function stallObservation(value) {
 }
 
 /** Session-only, fixed-fixture evidence. Never collect page, account, storage or scene data. */
-export function createSecurityReport({ now = () => new Date().toISOString(), mode = 'local' } = {}) {
-  if (!['local', 'deployed'].includes(mode)) throw new Error('Unknown fixed report scope.')
+export function createSecurityReport({ now = () => new Date().toISOString() } = {}) {
   const runs = []
   let nextId = 0
   const current = id => runs.find(run => run.id === id && run.status === 'running')
@@ -96,20 +96,19 @@ export function createSecurityReport({ now = () => new Date().toISOString(), mod
       return {
         version: 3,
         testVersion: SECURITY_TEST_VERSION,
-        scope: mode === 'deployed' ? 'Deployed fixed-fixture checks only. Not full application verification or release approval.'
-          : 'Local fixed-fixture checks only. Not production verification or release approval.',
+        scope: 'Local fixed-fixture checks only. Not production verification or release approval.',
         exportedAt: now(),
         browserUserAgent: bounded(userAgent, 512),
         parentOrigin: safeOrigin(parentOrigin),
         rendererUrl: `${safeOrigin(rendererUrl)}/index.html`,
         retainedRunLimit: MAX_RUNS,
         expectedChecks: { ...SECURITY_GROUP_CHECK_COUNTS },
-        recoveryParameters: { fixtureVersion: 'fixed-renderer-recovery-1', missingReplyTimeoutMs: mode === 'deployed' ? 15000 : 5000,
+        recoveryParameters: { fixtureVersion: 'fixed-renderer-recovery-1', missingReplyTimeoutMs: 5000,
           actionDelayMs: 150, boundedFloodMessages: 50, progressTimeoutMs: 5000, observationMs: 4000,
           source: 'Fixed trusted actions only; no submitted code or URL controls.' },
         stallParameters: { baselineObservationMs: 1200, stallObservationMs: 3600, recoveryObservationMs: 1200,
           childDelayMs: 150, childLoopMs: 3000, parentTimerIntervalMs: 50, parentResponsivenessLimitMs: 1000,
-          fixtureProgressTimeoutMs: 1000, fixtureStartupTimeoutMs: mode === 'deployed' ? 15000 : 1200,
+          fixtureProgressTimeoutMs: 1000, fixtureStartupTimeoutMs: 1200,
           productionDefaultProgressTimeoutMs: 10000 },
         runs: structuredClone(runs),
       }
