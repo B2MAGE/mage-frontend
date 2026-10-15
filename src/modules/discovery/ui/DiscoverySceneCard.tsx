@@ -1,7 +1,9 @@
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { formatMetricLabel, formatRelativeTime } from '@shared/lib'
 import { AppIcon, CreatorProfileLink, UserAvatar } from '@shared/ui'
 import type { DiscoveryScene } from '../types'
+import { fetchDiscoveryPreview } from '../loaders'
 import { useSceneHoverPreview } from './useSceneHoverPreview'
 
 type DiscoverySceneCardProps = {
@@ -23,6 +25,10 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
   const creatorInitials = buildCreatorInitials(creatorName)
   const relativeTime = formatRelativeTime(scene.createdAt)
   const viewLabel = formatMetricLabel(scene.engagement.views, 'view')
+  const resolveSource = useCallback(async (signal: AbortSignal) => {
+    const detail = await fetchDiscoveryPreview(scene.sceneId, signal)
+    return detail.sceneId === scene.sceneId && detail.availability?.available !== false ? detail.sceneData : null
+  }, [scene.sceneId])
   const {
     onBlur,
     onFocus,
@@ -32,7 +38,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
     availabilityChecking,
     availabilityPaused,
     thumbnailRef,
-  } = useSceneHoverPreview({ sceneBlob: scene.sceneData, sceneId: scene.sceneId, seed: scene.sceneId })
+  } = useSceneHoverPreview({ sceneBlob: scene.sceneData, resolveSource: scene.sceneData === undefined ? resolveSource : undefined, sceneId: scene.sceneId, seed: scene.sceneId })
 
   return (
     <div
@@ -57,7 +63,7 @@ export function DiscoverySceneCard({ scene }: DiscoverySceneCardProps) {
             <span className="scene-card__preview-paused">Checking playback…</span>
           ) : availabilityPaused ? (
             <span className="scene-card__preview-paused">Playback unavailable</span>
-          ) : !scene.sceneData ? (
+          ) : scene.sceneData === null ? (
             <span className="scene-card__preview-paused">Open scene to play</span>
           ) : recoveryPaused ? (
             <span className="scene-card__preview-paused">Preview paused. Open scene to retry.</span>

@@ -238,48 +238,6 @@
 
 .profile-scenes__content { min-height: 300px; }
 
-.profile-scenes-pagination {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 32px;
-  padding-top: 20px;
-  border-top: 1px solid var(--ui-border);
-  color: var(--ui-text-secondary);
-  font-size: 12px;
-}
-
-.profile-scenes-pagination__size,
-.profile-scenes-pagination__controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.profile-scenes-pagination__size {
-  white-space: nowrap;
-}
-.profile-scenes-pagination__size .mage-select {
-  width: 72px;
-  height: 40px;
-  min-height: 40px;
-  font-size: 12px;
-}
-.profile-scenes-pagination__range {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.profile-scenes-pagination__page {
-  min-width: 76px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.profile-scenes-pagination__controls { gap: 8px; }
-.profile-scenes-pagination__button { flex: 0 0 auto; }
-
 .profile-scenes__tab-loading {
   width: 76px;
   height: 14px;
@@ -373,44 +331,11 @@ html[data-theme] .profile-page .scene-card__stats { margin-top: 4px; }
     min-width: 124px;
   }
   .profile-scenes__sort-loading { width: 124px; }
-  .profile-scenes-pagination {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px 14px;
-    margin-top: 24px;
-    padding-top: 16px;
-  }
-  .profile-scenes-pagination__size {
-    grid-column: 1;
-    grid-row: 1;
-    gap: 8px;
-  }
-  .profile-scenes-pagination__range {
-    grid-column: 1;
-    grid-row: 2;
-    margin-left: 0;
-  }
-  .profile-scenes-pagination__controls {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
   html[data-theme] .profile-page .scene-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 390px) {
   .profile-hero { padding: 16px; }
-  .profile-scenes-pagination__page { min-width: 68px; }
-  .profile-scenes-pagination__controls { gap: 6px; }
-  .profile-scenes-pagination__button {
-    width: 36px;
-    height: 36px;
-  }
-  .profile-scenes-pagination__size .mage-select {
-    width: 72px;
-    height: 36px;
-    min-height: 36px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

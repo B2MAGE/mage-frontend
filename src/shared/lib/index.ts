@@ -6,6 +6,7 @@ export {
   normalizeSceneListEngagement,
   normalizeSceneList,
   normalizeSceneListItem,
+  normalizeSceneSummaryItem,
   normalizeSceneAvailability,
   normalizeSceneMode,
 } from './api'
@@ -16,6 +17,7 @@ export type {
   SceneEngagementVoteState,
   SceneListEngagement,
   SceneListResponse,
+  SceneSummaryResponse,
   TagResponse,
 } from './api'
 export { parseApiError } from './apiErrors'

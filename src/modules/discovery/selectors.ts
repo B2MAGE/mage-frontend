@@ -1,6 +1,8 @@
-import type { DiscoveryScene, DiscoverySort, DiscoveryTag } from './types'
+import type { DiscoveryPageQuery, DiscoveryScene, DiscoverySort, DiscoveryTag } from './types'
 
 export const DEFAULT_DISCOVERY_SORT: DiscoverySort = 'descending'
+export const DISCOVERY_PAGE_SIZE_OPTIONS = [12, 24, 48] as const
+export const DEFAULT_DISCOVERY_PAGE_SIZE = DISCOVERY_PAGE_SIZE_OPTIONS[0]
 
 const DISCOVERY_SORT_VALUES = new Set<DiscoverySort>([
   'ascending',
@@ -21,6 +23,30 @@ export function readActiveDiscoverySort(searchParams: URLSearchParams): Discover
   return DISCOVERY_SORT_VALUES.has(sort as DiscoverySort)
     ? sort as DiscoverySort
     : DEFAULT_DISCOVERY_SORT
+}
+
+export function readDiscoveryQuery(searchParams: URLSearchParams): DiscoveryPageQuery {
+  const rawPage = searchParams.get('page') ?? '1'
+  const parsedPage = /^\d+$/.test(rawPage) ? Number(rawPage) : 0
+  const page = Number.isSafeInteger(parsedPage) && parsedPage > 0 && parsedPage <= 2147483647 ? parsedPage : 1
+  const parsedSize = Number(searchParams.get('size'))
+  const size = DISCOVERY_PAGE_SIZE_OPTIONS.find(value => value === parsedSize) ?? DEFAULT_DISCOVERY_PAGE_SIZE
+  return { page: page - 1, size, sort: readActiveDiscoverySort(searchParams), tag: readActiveDiscoveryTag(searchParams) }
+}
+
+export function normalizeDiscoverySearchParams(searchParams: URLSearchParams) {
+  const query = readDiscoveryQuery(searchParams)
+  const normalized = new URLSearchParams(searchParams)
+  for (const [key, value] of [['page', String(query.page + 1)], ['size', String(query.size)], ['sort', query.sort]] as const) {
+    if (searchParams.has(key) && (searchParams.getAll(key).length !== 1 || searchParams.get(key) !== value)) {
+      normalized.set(key, value)
+    }
+  }
+  if (searchParams.has('tag')) {
+    if (query.tag) normalized.set('tag', query.tag)
+    else normalized.delete('tag')
+  }
+  return normalized
 }
 
 function sceneCreationTime(scene: DiscoveryScene) {
@@ -54,7 +80,7 @@ function compareByPublishedDate(
     : right.sceneId - left.sceneId
 }
 
-export function sortDiscoveryScenes(scenes: DiscoveryScene[], sort: DiscoverySort) {
+export function sortDiscoveryScenes<T extends DiscoveryScene>(scenes: T[], sort: DiscoverySort): T[] {
   const publishedDateDirection = sort === 'ascending' ? 'ascending' : 'descending'
 
   return [...scenes].sort((left, right) => {

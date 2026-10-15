@@ -1,5 +1,6 @@
 import {
   availabilityTarget,
+  availabilityStatusTarget,
   createMagePlayer,
   sceneRecovery,
   sceneRecoveryKey,
@@ -13,11 +14,13 @@ const PREVIEW_FADE_MS = 180
 const PREVIEW_FRAME_COUNT = 2
 
 export type SceneHoverPreviewRegistration = {
-  sceneBlob: MageSceneBlob
+  sceneBlob: MageSceneBlob | null
+  resolveSource?: (signal: AbortSignal) => Promise<MageSceneBlob | null>
   sceneId: number
   seed: number
   target: HTMLElement
   shouldPreview: () => boolean
+  onRecoveryPause: () => void
 }
 
 type PreviewRegistrationId = symbol
@@ -53,7 +56,7 @@ class SceneHoverPreviewCoordinator {
 
   register(id: PreviewRegistrationId, registration: SceneHoverPreviewRegistration) {
     this.availabilitySubscriptions.get(id)?.()
-    const target = availabilityTarget(registration.sceneId, registration.sceneBlob)
+    const target = registration.sceneBlob ? availabilityTarget(registration.sceneId, registration.sceneBlob) : availabilityStatusTarget(registration.sceneId)
     this.registrations.set(id, { ...registration, availabilityTarget: target })
     this.availabilitySubscriptions.set(id, sceneAvailabilityStore.subscribe(target, this.handleRecoveryChange))
   }
@@ -77,6 +80,7 @@ class SceneHoverPreviewCoordinator {
   schedule(id: PreviewRegistrationId) {
     if (!this.canPreview(id) || this.active?.id === id || this.pendingId === id) return
     this.cancelPendingActivation()
+    this.stopActivePreview()
     this.pendingId = id
     this.pendingTimer = window.setTimeout(() => {
       this.pendingTimer = null
@@ -93,8 +97,13 @@ class SceneHoverPreviewCoordinator {
   private canPreview(id: PreviewRegistrationId) {
     const registration = this.registrations.get(id)
     if (!registration || !sceneAvailabilityStore.isAllowed(registration.availabilityTarget) || this.pageSuspended || document.visibilityState === 'hidden' || sceneRecovery.isSafeMode() || !registration.shouldPreview()) return false
+    if (!registration.sceneBlob) return !!registration.resolveSource
     const key = sceneRecoveryKey(registration.sceneBlob, registration.sceneId)
-    return !!key && !sceneRecovery.getBlock(key)
+    if (!key || sceneRecovery.getBlock(key)) {
+      registration.onRecoveryPause()
+      return false
+    }
+    return true
   }
 
   private readonly handleVisibilityChange = () => {
@@ -149,7 +158,40 @@ class SceneHoverPreviewCoordinator {
     registration.target.append(canvas)
 
     try {
-      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId, renderProfile: 'preview', initialSceneBlob: registration.sceneBlob, signal: activation.startup.signal })
+      let sceneBlob = registration.sceneBlob
+      if (!sceneBlob && registration.resolveSource) {
+        sceneBlob = await registration.resolveSource(activation.startup.signal)
+        if (this.active !== activation) return
+        if (!this.canPreview(id)) {
+          this.stopActivePreview(false)
+          return
+        }
+        const recoveryKey = sceneRecoveryKey(sceneBlob, registration.sceneId)
+        if (!sceneBlob || !recoveryKey || sceneRecovery.getBlock(recoveryKey)) {
+          if (sceneBlob) registration.onRecoveryPause()
+          this.stopActivePreview(false)
+          return
+        }
+        // A summary's status permits loading metadata, never executing source.
+        // Check the resolved document's full execution permission before giving
+        // it to the adapter, which still performs its own fresh startup check.
+        const target = availabilityTarget(registration.sceneId, sceneBlob)
+        const permission = await sceneAvailabilityStore.check(target)
+        if (this.active !== activation) return
+        if (!permission.allowed || !this.canPreview(id)) {
+          this.stopActivePreview(false)
+          return
+        }
+        registration.sceneBlob = sceneBlob
+        registration.availabilityTarget = target
+        this.availabilitySubscriptions.get(id)?.()
+        this.availabilitySubscriptions.set(id, sceneAvailabilityStore.subscribe(target, this.handleRecoveryChange))
+      }
+      if (!sceneBlob || !this.canPreview(id)) {
+        this.stopActivePreview(false)
+        return
+      }
+      const controller = await createMagePlayer(canvas, { sceneKey: registration.sceneId, renderProfile: 'preview', initialSceneBlob: sceneBlob, signal: activation.startup.signal })
       if (this.active !== activation || !this.canPreview(id)) {
         controller.dispose()
         if (this.active === activation) this.stopActivePreview(false)
@@ -157,7 +199,7 @@ class SceneHoverPreviewCoordinator {
       }
 
       activation.controller = controller
-      await controller.loadSceneBlob(registration.sceneBlob, { sceneKey: registration.sceneId })
+      await controller.loadSceneBlob(sceneBlob, { sceneKey: registration.sceneId })
       if (this.active !== activation || !this.canPreview(id)) {
         if (this.active === activation) this.stopActivePreview(false)
         return

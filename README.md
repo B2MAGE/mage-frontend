@@ -14,7 +14,7 @@ The current app includes:
 - guest and authenticated account flows
 - a reusable browser-based MAGE player
 - a persistent frontend theme system with multiple selectable themes
-- scene listing and scene detail pages
+- paged Explore scene summaries and scene detail pages
 - a multi-section create scene editor with direct-to-object-storage thumbnail uploads
 - shared auth session restore and protected routes
 

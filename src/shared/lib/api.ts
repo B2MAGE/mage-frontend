@@ -41,7 +41,7 @@ export function normalizeSceneMode(value: unknown): SceneMode | null {
   return value === 'legacy-custom' || value === 'custom-v1' || value === 'template-v1' || value === 'builder-v1' ? value : null
 }
 
-export type SceneListResponse = {
+export type SceneSummaryResponse = {
   sceneId: number
   ownerUserId: number
   creatorDisplayName: string
@@ -50,12 +50,15 @@ export type SceneListResponse = {
   creatorAvatarGradientEnd?: string | null
   name: string
   description?: string | null
-  sceneData: Record<string, unknown> | null
   availability?: SceneAvailability | null
   sceneMode?: SceneMode | null
   thumbnailRef: string | null
   createdAt: string
   engagement: SceneListEngagement
+}
+
+export type SceneListResponse = SceneSummaryResponse & {
+  sceneData: Record<string, unknown> | null
 }
 
 export type TagResponse = {
@@ -140,7 +143,7 @@ export function normalizeSceneListEngagement(engagement: unknown): SceneListEnga
   }
 }
 
-export function normalizeSceneListItem(item: unknown): SceneListResponse | null {
+export function normalizeSceneSummaryItem(item: unknown): SceneSummaryResponse | null {
   if (!isRecord(item)) {
     return null
   }
@@ -176,7 +179,6 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
       typeof item.description === 'string' && item.description.trim()
         ? item.description.trim()
         : null,
-    sceneData: availability?.available === false || !isRecord(item.sceneData) ? null : item.sceneData,
     availability,
     sceneMode: normalizeSceneMode(item.sceneMode),
     thumbnailRef:
@@ -185,6 +187,16 @@ export function normalizeSceneListItem(item: unknown): SceneListResponse | null 
         : null,
     createdAt: item.createdAt,
     engagement: normalizeSceneListEngagement(item.engagement),
+  }
+}
+
+export function normalizeSceneListItem(item: unknown): SceneListResponse | null {
+  const summary = normalizeSceneSummaryItem(item)
+  if (!summary || !isRecord(item)) return null
+
+  return {
+    ...summary,
+    sceneData: summary.availability?.available === false || !isRecord(item.sceneData) ? null : item.sceneData,
   }
 }
 
