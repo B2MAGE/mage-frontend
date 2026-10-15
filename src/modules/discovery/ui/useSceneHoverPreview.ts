@@ -7,7 +7,8 @@ import {
 } from './sceneHoverPreviewCoordinator'
 
 type UseSceneHoverPreviewOptions = {
-  sceneBlob: MageSceneBlob | null
+  sceneBlob: MageSceneBlob | null | undefined
+  resolveSource?: (signal: AbortSignal) => Promise<MageSceneBlob | null>
   sceneId: number
   seed: number
 }
@@ -24,34 +25,39 @@ function pointerPreviewIsAllowed() {
   return mediaQueryMatches('(hover: hover) and (pointer: fine)', true)
 }
 
-export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHoverPreviewOptions) {
+export function useSceneHoverPreview({ sceneBlob, resolveSource, sceneId, seed }: UseSceneHoverPreviewOptions) {
   const preferenceEnabled = useAnimatedSceneThumbnailsEnabled()
-  // Missing source needs only a badge/status query; it never registers a preview.
+  // Summaries use metadata-only status until deliberate preview intent loads
+  // their source. Explicit null remains withheld and must never be loaded here.
   const target = useMemo(() => sceneBlob ? availabilityTarget(sceneId, sceneBlob) : availabilityStatusTarget(sceneId), [sceneId, sceneBlob])
   const availability = useSceneAvailability(target)
   useSyncExternalStore(sceneRecovery.subscribe, sceneRecovery.getSnapshot, sceneRecovery.getSnapshot)
   const recoveryKey = useMemo(() => sceneRecoveryKey(sceneBlob, sceneId), [sceneBlob, sceneId])
-  const recoveryPaused = !recoveryKey || sceneRecovery.isSafeMode() || !!sceneRecovery.getBlock(recoveryKey)
+  const hasPreviewSource = !!sceneBlob || (sceneBlob === undefined && !!resolveSource)
+  const recoveryPaused = !hasPreviewSource || sceneRecovery.isSafeMode() || (!!sceneBlob && (!recoveryKey || !!sceneRecovery.getBlock(recoveryKey)))
   const registrationIdRef = useRef(createSceneHoverPreviewRegistrationId())
   const thumbnailRef = useRef<HTMLDivElement | null>(null)
   const pointerInsideRef = useRef(false)
   const focusedRef = useRef(false)
   const visibleRef = useRef(true)
+  const clearPreviewIntent = useCallback(() => {
+    pointerInsideRef.current = false
+    focusedRef.current = false
+  }, [])
 
   const previewIsWanted = useCallback(() =>
-    !!sceneBlob && availability.allowed &&
+    hasPreviewSource && availability.allowed &&
     preferenceEnabled &&
     motionIsAllowed() &&
     visibleRef.current &&
     (focusedRef.current || (pointerInsideRef.current && pointerPreviewIsAllowed())),
-  [preferenceEnabled, sceneBlob, availability.allowed])
+  [preferenceEnabled, hasPreviewSource, availability.allowed])
 
   const syncPreview = useCallback(() => {
     const id = registrationIdRef.current
     if (recoveryPaused) {
       // Clearing a block in another player must not restart a focused preview.
-      pointerInsideRef.current = false
-      focusedRef.current = false
+      clearPreviewIntent()
       sceneHoverPreviewCoordinator.cancel(id)
       return
     }
@@ -60,16 +66,16 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
     } else {
       sceneHoverPreviewCoordinator.cancel(id)
     }
-  }, [previewIsWanted, recoveryPaused])
+  }, [previewIsWanted, recoveryPaused, clearPreviewIntent])
 
   useEffect(() => {
     const target = thumbnailRef.current
-    if (!target || !sceneBlob) {
+    if (!target || !hasPreviewSource) {
       return
     }
 
     const id = registrationIdRef.current
-    sceneHoverPreviewCoordinator.register(id, { sceneBlob, sceneId, seed, target, shouldPreview: previewIsWanted })
+    sceneHoverPreviewCoordinator.register(id, { sceneBlob: sceneBlob ?? null, resolveSource, sceneId, seed, target, shouldPreview: previewIsWanted, onRecoveryPause: clearPreviewIntent })
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
     const finePointer = window.matchMedia?.('(hover: hover) and (pointer: fine)')
@@ -96,7 +102,7 @@ export function useSceneHoverPreview({ sceneBlob, sceneId, seed }: UseSceneHover
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       sceneHoverPreviewCoordinator.unregister(id)
     }
-  }, [sceneBlob, sceneId, seed, syncPreview, previewIsWanted])
+  }, [sceneBlob, resolveSource, hasPreviewSource, sceneId, seed, syncPreview, previewIsWanted, clearPreviewIntent])
 
   useEffect(() => {
     syncPreview()

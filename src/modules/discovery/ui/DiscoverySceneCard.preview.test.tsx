@@ -7,10 +7,14 @@ import type { DiscoveryScene } from '../types'
 import { DiscoverySceneCard } from './DiscoverySceneCard'
 import { buildAudioResponseController } from '@shared/test/audioResponseController'
 import { parseSceneDocument, sceneRecoveryKey } from '@modules/player'
+import type { SceneListResponse } from '@shared/lib'
 
 const engineMocks = vi.hoisted(() => ({
   createMagePlayer: vi.fn(),
 }))
+
+const previewMocks = vi.hoisted(() => ({ fetchDiscoveryPreview: vi.fn() }))
+vi.mock('../loaders', () => ({ fetchDiscoveryPreview: previewMocks.fetchDiscoveryPreview }))
 
 const availabilityMocks = vi.hoisted(() => ({
   snapshot: { allowed: true, code: 'AVAILABLE', message: '', checkedAt: 1 },
@@ -26,6 +30,7 @@ vi.mock('@modules/player/availability/sceneAvailability', () => {
   return { sceneAvailabilityStore: {
     getSnapshot,
     isAllowed: (target: unknown) => { availabilityMocks.checks.push(target); return getSnapshot(target).allowed },
+    check: async (target: unknown) => { availabilityMocks.checks.push(target); return getSnapshot(target) },
     subscribe: (target: unknown, listener: () => void) => {
       availabilityMocks.subscriptions.push(target)
       availabilityMocks.listeners.add(listener)
@@ -213,10 +218,152 @@ describe('DiscoverySceneCard animated preview', () => {
       window.clearTimeout(handle),
     )
     engineMocks.createMagePlayer.mockReset()
+    previewMocks.fetchDiscoveryPreview.mockReset()
+    previewMocks.fetchDiscoveryPreview.mockResolvedValue(scene)
   })
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('loads no playback source on summary mount or a fly-by hover', async () => {
+    const { container } = renderCard({ ...scene, sceneData: undefined })
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).not.toHaveBeenCalled()
+    expect(container.querySelector('.scene-card__play')).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: /signal bloom/i })
+    fireEvent.pointerEnter(link, { pointerType: 'mouse' })
+    await act(async () => { await vi.advanceTimersByTimeAsync(299) })
+    expect(previewMocks.fetchDiscoveryPreview).not.toHaveBeenCalled()
+    fireEvent.pointerLeave(link, { pointerType: 'mouse' })
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).not.toHaveBeenCalled()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+  })
+
+  it('loads summary playback on intentional keyboard focus and checks its real execution target', async () => {
+    availabilityMocks.customRenderingDisabled = true
+    previewMocks.fetchDiscoveryPreview.mockResolvedValue(templateScene)
+    const controller = buildMagePlayerController()
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    renderCard({ ...templateScene, sceneData: undefined })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).toHaveBeenCalledExactlyOnceWith(17, expect.any(AbortSignal))
+    expect(availabilityMocks.checks).toContain('template:17')
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(templateScene.sceneData, { sceneKey: 17 })
+    expect(controller.setSyntheticPreview).toHaveBeenCalledWith(true, 17)
+  })
+
+  it('does not turn a metadata-only permission into permission for custom source', async () => {
+    availabilityMocks.customRenderingDisabled = true
+    renderCard({ ...scene, sceneData: undefined })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).toHaveBeenCalledOnce()
+    expect(availabilityMocks.checks).toContain(17)
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Signal Bloom' })).toHaveAttribute('href', '/scenes/17')
+    expect(screen.queryByText(/retry/i)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['withheld source', { ...scene, sceneData: null }],
+    ['denied detail', { ...scene, availability: { sceneId: 17, available: false, code: 'SCENE_DISABLED' } }],
+    ['another scene', { ...scene, sceneId: 999 }],
+  ])('keeps the normal card when lazy detail returns %s', async (_label, detail) => {
+    previewMocks.fetchDiscoveryPreview.mockResolvedValue(detail)
+    const { container } = renderCard({ ...scene, sceneData: undefined })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    expect(container.querySelector('.scene-card__preview-canvas')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Thumbnail for Signal Bloom' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Signal Bloom' })).toHaveAttribute('href', '/scenes/17')
+    expect(screen.queryByText(/retry/i)).not.toBeInTheDocument()
+  })
+
+  it('leaves summary navigation available when fetching playback fails', async () => {
+    previewMocks.fetchDiscoveryPreview.mockRejectedValue(new Error('Network unavailable'))
+    const { container } = renderCard({ ...scene, sceneData: undefined })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    expect(container.querySelector('.scene-card__preview-canvas')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Signal Bloom' })).toHaveAttribute('href', '/scenes/17')
+    expect(screen.queryByText(/retry/i)).not.toBeInTheDocument()
+  })
+
+  it.each(['leave', 'unmount', 'pagehide', 'permission revoked'] as const)('aborts an unfinished summary source request on %s', async (cancel) => {
+    const pending = deferred<SceneListResponse>()
+    previewMocks.fetchDiscoveryPreview.mockReturnValue(pending.promise)
+    const view = renderCard({ ...scene, sceneData: undefined })
+    const link = screen.getByRole('link', { name: /signal bloom/i })
+    fireEvent.pointerEnter(link, { pointerType: 'mouse' })
+    await finishActivation()
+    const signal = previewMocks.fetchDiscoveryPreview.mock.calls[0][1] as AbortSignal
+    await act(async () => {
+      if (cancel === 'leave') fireEvent.pointerLeave(link, { pointerType: 'mouse' })
+      if (cancel === 'unmount') view.unmount()
+      if (cancel === 'pagehide') pageTransition('pagehide')
+      if (cancel === 'permission revoked') blockAvailability()
+    })
+    expect(signal.aborted).toBe(true)
+    await act(async () => { pending.resolve({ ...scene, sceneData: scene.sceneData ?? null }) })
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    if (cancel === 'pagehide') {
+      fireEvent.pointerLeave(link, { pointerType: 'mouse' })
+      await act(async () => { pageTransition('pageshow') })
+    }
+  })
+
+  it('cancels an old summary fetch immediately on new hover and ignores its late response', async () => {
+    const pending = deferred<SceneListResponse>()
+    const nextScene = { ...scene, sceneId: 18, name: 'Second Signal' }
+    const controller = buildMagePlayerController()
+    previewMocks.fetchDiscoveryPreview.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(nextScene)
+    engineMocks.createMagePlayer.mockResolvedValue(controller)
+    render(<MemoryRouter><DiscoverySceneCard scene={{ ...scene, sceneData: undefined }} /><DiscoverySceneCard scene={{ ...nextScene, sceneData: undefined }} /></MemoryRouter>)
+    fireEvent.pointerEnter(screen.getByRole('link', { name: /signal bloom/i }), { pointerType: 'mouse' })
+    await finishActivation()
+    const signal = previewMocks.fetchDiscoveryPreview.mock.calls[0][1] as AbortSignal
+    fireEvent.pointerEnter(screen.getByRole('link', { name: /second signal/i }), { pointerType: 'mouse' })
+    expect(signal.aborted).toBe(true)
+    await finishActivation()
+    await act(async () => { pending.resolve({ ...scene, sceneData: scene.sceneData ?? null }) })
+    expect(engineMocks.createMagePlayer).toHaveBeenCalledOnce()
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(nextScene.sceneData, { sceneKey: 18 })
+    expect(controller.dispose).not.toHaveBeenCalled()
+  })
+
+  it('checks the resolved revision against session recovery blocks', async () => {
+    recoveryMocks.blocks.add(sceneRecoveryKey(scene.sceneData, scene.sceneId)!)
+    renderCard({ ...scene, sceneData: undefined })
+    fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).toHaveBeenCalledOnce()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+    await act(async () => {
+      recoveryMocks.blocks.clear()
+      publishRecoveryChange()
+      pageTransition('pagehide')
+      pageTransition('pageshow')
+    })
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).toHaveBeenCalledOnce()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
+  })
+
+  it.each(['reduced motion', 'coarse pointer', 'preference disabled', 'safe mode'] as const)('does not fetch summary playback for %s', async (restriction) => {
+    if (restriction === 'reduced motion') reducedMotion = true
+    if (restriction === 'coarse pointer') finePointer = false
+    if (restriction === 'preference disabled') localStorage.setItem(ANIMATED_SCENE_THUMBNAILS_STORAGE_KEY, 'false')
+    if (restriction === 'safe mode') recoveryMocks.safeMode = true
+    renderCard({ ...scene, sceneData: undefined })
+    fireEvent.pointerEnter(screen.getByRole('link', { name: /signal bloom/i }), { pointerType: 'mouse' })
+    await finishActivation()
+    expect(previewMocks.fetchDiscoveryPreview).not.toHaveBeenCalled()
+    expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
   })
 
   it('checks and previews validated templates independently of the custom-rendering switch', async () => {
@@ -259,6 +406,7 @@ describe('DiscoverySceneCard animated preview', () => {
     fireEvent.focus(screen.getByRole('link', { name: /signal bloom/i }))
     await finishActivation()
     expect(new Set(availabilityMocks.subscriptions)).toEqual(new Set(['status:17']))
+    expect(previewMocks.fetchDiscoveryPreview).not.toHaveBeenCalled()
     expect(engineMocks.createMagePlayer).not.toHaveBeenCalled()
     await act(async () => blockAvailability())
     expect(screen.getByText('Playback unavailable')).toBeInTheDocument()

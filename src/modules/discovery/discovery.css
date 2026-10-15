@@ -28,6 +28,8 @@ html[data-theme] .scenes-page {
   gap: 16px;
 }
 
+.scenes-results { scroll-margin-top: calc(var(--nav-height, 70px) + 100px); }
+
 html[data-theme] .scenes-filter-rail {
   position: static;
   top: auto;
