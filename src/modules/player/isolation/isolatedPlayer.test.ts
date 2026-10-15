@@ -41,6 +41,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
   const host = {
     ready: boot.promise,
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
+    requestAudioInspector: vi.fn(async () => null),
     loadScene: vi.fn(async () => {}), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }

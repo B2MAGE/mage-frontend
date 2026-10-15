@@ -4,9 +4,10 @@ import type { BuilderUniform } from '../modules/player/templates/builderCompiler
 import { assertBuilderBindingManifest, type BuilderLiveBinding } from '../modules/player/templates/builderBindings'
 import { assertBuilderUniformManifest, type BuilderUniformValue } from '../modules/player/templates/builderUniformValues'
 import type { PlaybackPayloads } from '../modules/player/isolation/playbackProtocol'
+import { AUDIO_INSPECTOR_BANDS, AUDIO_INSPECTOR_HIT_SECONDS, emptyInspectorBands, type AudioInspectorBinding } from '../modules/player/audioInspector'
 
 type Input = PlaybackPayloads['input']
-type Channel = { binding: BuilderLiveBinding; index: number; mapper: AudioResponseMapper | null; pointerValue: number }
+type Channel = { binding: BuilderLiveBinding; index: number; mapper: AudioResponseMapper | null; pointerValue: number; signal: number }
 type SignalChannel = Omit<Channel, 'binding'> & { binding: Pick<BuilderLiveBinding, 'source' | 'attack' | 'release'> & { mode?: never; offset?: never; amount?: never } }
 const clamp = (value: number, minimum: number, maximum: number) => Math.max(minimum, Math.min(maximum, value))
 const key = (binding: BuilderLiveBinding) => `${binding.objectIndex}:${binding.target}`
@@ -20,13 +21,15 @@ export function createBuilderBindingController(
 ) {
   let channels: Channel[] = [], baseline: number[] = []
   const signalChannels: SignalChannel[] = manifest.flatMap((uniform, index) => uniform.target === 'driver-signal' ? [{
-    index, binding: { source: uniform.source, attack: 0.05, release: 0.2 }, pointerValue: 0,
+    index, binding: { source: uniform.source, attack: 0.05, release: 0.2 }, pointerValue: 0, signal: 0,
     mapper: uniform.source.startsWith('pointer-') ? null : new AudioResponseMapper({ version: 1, sensitivity: 1,
       mappings: [{ target: 'size', source: uniform.source, amount: 1, attack: 0.05, release: 0.2 }] }),
   }] : [])
   let disposed = false, playing = true, lastTick: number | null = null
   let receivedAt = now(), input: Input | null = null
   let frames: AudioAnalysisFrame[] = []
+  let lastFrame: AudioAnalysisFrame | null = null, lastValues: readonly number[] = []
+  const latestHits = new Map<AudioAnalysisFrame['hits'][number]['band'], AudioAnalysisFrame['hits'][number]>()
   let lastAudioTime: number | null = null
   let source: 'audio' | 'synthetic' | 'none' = 'none'
   let simulation: PlaybackPayloads['synthetic'] = { enabled: false, seed: 1, tempoScale: 1 }
@@ -34,6 +37,7 @@ export function createBuilderBindingController(
 
   function reset() {
     frames = []
+    lastFrame = null; latestHits.clear()
     for (const channel of [...channels, ...signalChannels]) { channel.mapper?.reset(); channel.pointerValue = 0 }
     lastTick = null
     lastAudioTime = null
@@ -57,8 +61,13 @@ export function createBuilderBindingController(
       for (const channel of [...channels, ...signalChannels]) channel.mapper?.reset()
       synthetic.configure(simulation.seed, simulation.tempoScale, audioTime)
       source = nextSource
+      lastFrame = null; latestHits.clear()
     }
     const sampled = source === 'audio' ? frames : source === 'synthetic' ? synthetic.process(audioTime) : []
+    if (sampled.length) lastFrame = sampled[sampled.length - 1]
+    // Retain at most one hit per band so the slower inspector can display short
+    // attacks. These are already-consumed frames, never a second analysis pass.
+    for (const frame of sampled) for (const hit of frame.hits) latestHits.set(hit.band, hit)
     frames = []
     const values = [...baseline]
     for (const channel of [...channels, ...signalChannels]) {
@@ -75,10 +84,12 @@ export function createBuilderBindingController(
         signal = channel.pointerValue
       }
       const uniform = manifest[index]
+      channel.signal = signal
       values[index] = binding.mode !== undefined
         ? clamp((binding.mode === 'add' ? baseline[index] : 0) + binding.offset + binding.amount * signal, uniform.minimum, uniform.maximum)
         : clamp(signal, uniform.minimum, uniform.maximum)
     }
+    lastValues = values
     write(values)
   }
 
@@ -94,7 +105,7 @@ export function createBuilderBindingController(
       if (old && envelopeKey(old.binding) === envelopeKey(binding)) return { ...old, binding: { ...binding }, index }
       const mapper = binding.source.startsWith('pointer-') ? null : new AudioResponseMapper({ version: 1, sensitivity: 1,
         mappings: [{ target: 'size', source: binding.source, amount: 1, attack: binding.attack, release: binding.release }] })
-      return { binding: { ...binding }, index, mapper, pointerValue: 0 }
+      return { binding: { ...binding }, index, mapper, pointerValue: 0, signal: 0 }
     })
     baseline = values.map(value => value.value)
     channels = next
@@ -105,6 +116,25 @@ export function createBuilderBindingController(
   return {
     configure,
     advance,
+    inspect() {
+      if (disposed) return null
+      const current = now(), fresh = lastTick !== null && current - lastTick <= 1
+      const currentSource = fresh ? source : 'none'
+      const audioTime = lastAudioTime === null ? current : lastAudioTime + Math.max(0, current - (lastTick ?? current))
+      const levels = currentSource !== 'none' && lastFrame && audioTime - lastFrame.time <= 1 ? { ...lastFrame.levels } : null
+      const hits = emptyInspectorBands()
+      if (currentSource !== 'none') for (const band of AUDIO_INSPECTOR_BANDS) {
+        const hit = latestHits.get(band)
+        if (hit && audioTime - hit.time <= AUDIO_INSPECTOR_HIT_SECONDS) hits[band] = hit.strength
+      }
+      const bindings: AudioInspectorBinding[] = channels.flatMap(channel => {
+        const uniform = manifest[channel.index]
+        return 'objectId' in uniform ? [{ objectId: uniform.objectId, target: channel.binding.target,
+          source: channel.binding.source, signal: channel.signal, value: lastValues[channel.index] }] : []
+      })
+      return { source: currentSource, levels, hits, bindings,
+        driverSignals: signalChannels.map(channel => ({ source: channel.binding.source, value: lastValues[channel.index] })) }
+    },
     input(value: Input) {
       if (disposed) return
       const previous = input
@@ -129,6 +159,6 @@ export function createBuilderBindingController(
       reset()
       advance()
     },
-    dispose() { disposed = true; channels = []; baseline = []; frames = []; input = null },
+    dispose() { disposed = true; channels = []; baseline = []; frames = []; lastValues = []; lastFrame = null; latestHits.clear(); input = null },
   }
 }

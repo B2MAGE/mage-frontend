@@ -289,6 +289,11 @@ describe('isolated playback engine', () => {
     player.input(sample)
     expect(uniforms.builder_o0_position_x.value).toBeCloseTo(1.8)
     expect(uniforms.builder_o1_scale_y.value).toBeCloseTo(1.5)
+    expect(player.audioInspector?.()).toMatchObject({ mode, source: 'audio', playing: true,
+      levels: { bass: 0.8, treble: 0.25 }, bindings: [
+        { objectId: 'bass', target: 'position.x', source: 'bass-level', signal: 0.8, value: 1.8 },
+        { objectId: 'highs', target: 'scale.y', source: 'treble-level', signal: 0.25, value: 1.5 },
+      ] })
     f.engine.setExternalAudioFrame.mockClear(); f.engine.setExternalClock.mockClear()
     f.engine.setAudioResponseMode.mockClear(); f.engine.play.mockClear(); f.engine.pause.mockClear()
     scene.objects[0].bindings[0].source = 'pointer-x'
@@ -509,6 +514,37 @@ describe('isolated playback engine', () => {
     control.synthetic({ enabled: true, seed: 8, tempoScale: 1.2 })
     expect(f.engine.setSyntheticPreview).toHaveBeenCalledWith(true, 8, 1.2)
     f.abort.abort(); control.playback(true); expect(f.engine.play).toHaveBeenCalledOnce()
+  })
+
+  it('observes real Original input and declared scene uniforms without driving or recompiling the engine', async () => {
+    const f = fixture(), control = await f.ready(), fields = f.engine.getEngineFields()
+    Object.assign(fields.visualizer, { mesh: { material: { uniforms: { size: { value: 0.62 }, privateName: { value: 9 } } } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    control.input({ time: 1, audioEpoch: 1, pointer: { x: 0, y: 0, down: false },
+      audio: { audioTime: 1, legacyAmplitude: 0.5, playing: true, loaded: true,
+        frame: { time: 1, sequence: 1, levels: { bass: 0.7, mid: 0.2, treble: 0.1, overall: 0.4 },
+          hits: [{ band: 'bass', time: 1, strength: 0.8 }] } } })
+    const calls = f.engine.setExternalAudioFrame.mock.calls.length
+    expect(control.audioInspector?.()).toEqual({ mode: 'legacy', source: 'audio', playing: true, audioLoaded: true,
+      levels: { bass: 0.7, mid: 0.2, treble: 0.1, overall: 0.4 }, hits: { bass: 0.8, mid: 0, treble: 0, overall: 0 },
+      sceneOutputs: { size: 0.62 }, bindings: [], driverSignals: [] })
+    control.audioInspector?.()
+    expect(f.engine.setExternalAudioFrame).toHaveBeenCalledTimes(calls)
+    expect(compileInWorker).toHaveBeenCalledOnce()
+    // Track transport may stop while the visualizer remains running (including
+    // an ended song). It must not look like a missing track or a silent sample.
+    control.input({ time: 1.1, audioEpoch: 2, pointer: { x: 0, y: 0, down: false },
+      audio: { audioTime: 1.1, legacyAmplitude: 0, playing: false, loaded: true, frame: null } })
+    expect(control.audioInspector?.()).toMatchObject({ source: 'none', playing: true, audioLoaded: true,
+      levels: null, hits: { bass: 0 } })
+    control.input({ time: 1.2, audioEpoch: 3, pointer: { x: 0, y: 0, down: false },
+      audio: { audioTime: 1.2, legacyAmplitude: 0, playing: true, loaded: true,
+        frame: { time: 1.2, sequence: 2, levels: { bass: 0, mid: 0, treble: 0, overall: 0 }, hits: [] } } })
+    expect(control.audioInspector?.()).toMatchObject({ source: 'audio', playing: true, audioLoaded: true,
+      levels: { bass: 0, mid: 0, treble: 0, overall: 0 }, hits: { bass: 0 } })
+    control.playback(false)
+    expect(control.audioInspector?.()).toMatchObject({ source: 'none', playing: false, levels: null, hits: { bass: 0 } })
+    control.dispose(); expect(control.audioInspector?.()).toBeNull()
   })
 
   it('preserves authored animation speed and saved time, including while paused', async () => {

@@ -1,5 +1,7 @@
 import type { InputState, MAGEEngineAPI, MAGEPreset } from '@notrac/mage'
-import { normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
+import { AUDIO_RESPONSE_TARGETS, normalizeAudioResponseConfig, normalizeAudioResponseMode } from '@notrac/mage/audio-response'
+import type { AudioAnalysisFrame } from '@notrac/mage/audio-analysis'
+import { AUDIO_INSPECTOR_BANDS, AUDIO_INSPECTOR_HIT_SECONDS, emptyInspectorBands, type AudioInspectorSnapshot } from '../modules/player/audioInspector'
 import { boundCaptureSize, getRenderBudget, type RenderProfile } from '../modules/player/policy/renderBudget'
 import { SCENE_POLICY, validateSceneForPlayback } from '../modules/player/policy/sceneValidation'
 import { resolveSceneForPlayback } from '../modules/player/templates/resolveScene'
@@ -23,6 +25,7 @@ export type PlaybackEngine = {
   audioResponse: (value: PlaybackPayloads['audio-response']) => void
   sceneSettings: (value: PlaybackPayloads['scene-settings']) => void
   capabilities: () => PlaybackPayloads['capabilities-result']
+  audioInspector?: () => AudioInspectorSnapshot | null
   zoom: (factor: number) => void
   capture: (value: CaptureRequest) => Promise<PlaybackPayloads['captured']>
 }
@@ -91,6 +94,11 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   const initialTime = typeof state?.time === 'number' ? state.time : 0
   let parentTime = 0, clockAnchorParent = 0, clockAnchorScene = initialTime
   let audioEpoch: number | undefined
+  let inspectorInput: PlaybackPayloads['input'] | null = null, inspectorReceivedAt = 0
+  let inspectorFrame: AudioAnalysisFrame | null = null
+  let simulated = false
+  const inspectorHits = new Map<AudioAnalysisFrame['hits'][number]['band'], AudioAnalysisFrame['hits'][number]>()
+  function clearInspectorInput() { inspectorFrame = null; inspectorHits.clear() }
   const boundTime = (time: number) => Math.min(BRIDGE_LIMITS.maxTime, Math.max(0, time))
   let appliedResponseMode = normalizeAudioResponseMode(resolved.audioResponse)
   let appliedResponseConfig = appliedResponseMode === 'mapped-v1'
@@ -137,6 +145,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     canvas.removeEventListener('webglcontextlost', onContextLost)
     orbit?.dispose(); deformation?.dispose(); orbit = deformation = null
     bindingController?.dispose(); bindingController = null
+    inspectorInput = null; clearInspectorInput()
     try { unsubscribe() } catch { /* Continue releasing graphics after listener cleanup. */ }
     try { engine.dispose() } catch { /* Removing the iframe is the final cleanup boundary. */ }
     rejectStartup(new Error('Rendering stopped.'))
@@ -189,6 +198,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       playback(value) {
         if (disposed) return
         playing = value
+        if (!value) clearInspectorInput()
         bindingController?.playback(value)
         engine.setExternalClock({ time: engine.getEngineTime(), rate: speed, playing })
         if (playing) engine.play(); else engine.pause()
@@ -201,6 +211,13 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         parentTime = value.time
         engine.setExternalClock({ time: boundTime(clockAnchorScene + (parentTime - clockAnchorParent) * speed), rate: speed, playing })
         const nextAudioEpoch = value.audioEpoch ?? 0
+        if (audioEpoch !== nextAudioEpoch || !value.audio.playing
+          || inspectorInput?.audio.playing !== value.audio.playing) clearInspectorInput()
+        inspectorInput = value; inspectorReceivedAt = performance.now() / 1000
+        if (value.audio.playing && value.audio.frame) {
+          inspectorFrame = value.audio.frame
+          for (const hit of value.audio.frame.hits) inspectorHits.set(hit.band, hit)
+        }
         if (audioEpoch !== undefined && audioEpoch !== nextAudioEpoch) {
           // The audio clock keeps advancing across seeks and song changes. Clear
           // old hit envelopes without reloading settings or detaching parent audio.
@@ -219,6 +236,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       },
       synthetic(value) {
         if (disposed) return
+        simulated = value.enabled
         engine.setSyntheticPreview(value.enabled, value.seed, value.tempoScale)
         bindingController?.synthetic(value)
       },
@@ -262,6 +280,32 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         appliedSettings = next
       },
       capabilities() { return { supportedTargets: engine.getAudioResponseCapabilities().supportedTargets } },
+      audioInspector() {
+        if (disposed) return null
+        const bound = bindingController?.inspect()
+        const age = Math.max(0, performance.now() / 1000 - inspectorReceivedAt)
+        const audio = inspectorInput?.audio
+        const source = !playing ? 'none' : audio?.loaded && audio.playing
+          ? age <= 1 ? 'audio' : 'none' : simulated ? 'synthetic' : 'none'
+        const audioTime = (audio?.audioTime ?? 0) + age
+        const hits = emptyInspectorBands()
+        if (source === 'audio') for (const band of AUDIO_INSPECTOR_BANDS) {
+          const hit = inspectorHits.get(band)
+          if (hit && audioTime - hit.time <= AUDIO_INSPECTOR_HIT_SECONDS) hits[band] = hit.strength
+        }
+        const material = engine.getEngineFields().visualizer.mesh?.material
+        const uniforms = material && !Array.isArray(material) ? material.uniforms : undefined
+        const sceneOutputs: AudioInspectorSnapshot['sceneOutputs'] = {}
+        for (const target of AUDIO_RESPONSE_TARGETS) {
+          const value = uniforms?.[target]?.value
+          if (typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= 1_000_000) sceneOutputs[target] = value
+        }
+        return { mode: appliedResponseMode, playing, audioLoaded: audio?.loaded ?? false, source: bound?.source ?? source,
+          levels: bound ? bound.levels : source === 'audio' && inspectorFrame && audioTime - inspectorFrame.time <= 1
+            ? { ...inspectorFrame.levels } : null,
+          hits: bound?.hits ?? hits, sceneOutputs,
+          bindings: bound?.bindings ?? [], driverSignals: bound?.driverSignals ?? [] }
+      },
       zoom(factor) {
         if (disposed || !Number.isFinite(factor)) return
         currentZoom = Math.min(2.5, Math.max(0.4, factor))

@@ -1,5 +1,5 @@
 import { DENIED_FEATURES, validateRendererUrl } from './rendererHost'
-import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_RESPONSES, sceneForBridge, STARTUP_PHASES,
+import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBACK_RESPONSES, record, sceneForBridge, STARTUP_PHASES,
   type CaptureRequest, type PlaybackPayloads, type PlaybackType, type StartupPhase } from './playbackProtocol'
 import { validateRasterCapture } from './capture'
 import { boundCaptureSize, type RenderProfile } from '../policy/renderBudget'
@@ -42,6 +42,7 @@ export function createIsolatedPlaybackHost(options: {
   let pendingLoadPhase: StartupPhase | null = null, startupObserved = 0, onscreen = true
   let loadPhaseStep = -1, loadAttempt = 0
   let pendingCapabilities: Pending<PlaybackPayloads['capabilities-result']> | null = null
+  let pendingInspector: Pending<PlaybackPayloads['audio-inspector-result']> | null = null
   let queuedAudioResponse: PlaybackPayloads['audio-response'] | null = null
   let queuedSceneSettings: SceneLiveSettings | null = null
   let lastAudioResponseKey: string | null = null, lastSceneSettingsKey: string | null = null
@@ -55,6 +56,7 @@ export function createIsolatedPlaybackHost(options: {
   const outputAllowed = messageRate(BRIDGE_LIMITS.responsesPerSecond)
   const commandAllowed = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const loadAllowed = messageRate(4), captureAllowed = messageRate(2)
+  const inspectorAllowed = messageRate(5)
   let resolveReady!: () => void, rejectReady!: (reason: Error) => void
   const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
   // Readiness can fail before a consumer begins waiting; callers still receive the rejection.
@@ -71,6 +73,7 @@ export function createIsolatedPlaybackHost(options: {
       if (pending) { clearTimeout(pending.timer); pending.reject(new Error(reason)) }
     }
     pendingLoad = null; pendingCapture = null; pendingCapabilities = null
+    if (pendingInspector) { clearTimeout(pendingInspector.timer); pendingInspector.resolve(null); pendingInspector = null }
     pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
   }
   function dispose(failure?: RenderFailure) {
@@ -97,17 +100,33 @@ export function createIsolatedPlaybackHost(options: {
     previousObservation = performance.now(); observedSilence = 0; lastProgress = previousObservation
     startupObserved = 0
   }
-  function send<T extends PlaybackType>(type: T, payload: PlaybackPayloads[T]) {
+  function send<T extends PlaybackType>(type: T, payload: PlaybackPayloads[T], optional = false) {
     if (closed || !available || !port) throw new Error('Isolated player is unavailable.')
     const message = playbackMessage(type, session, generation, ++sequence, payload)
     if (!isPlaybackMessage(message, [type])) throw new Error('Invalid player input.')
-    if (!commandAllowed()) { dispose('runtime'); throw new Error('Too many player commands.') }
+    if (!commandAllowed(performance.now(), optional ? 10 : 0)) {
+      if (optional) return null
+      dispose('runtime'); throw new Error('Too many player commands.')
+    }
     try { port.postMessage(message) } catch { dispose('runtime'); throw new Error('Player connection failed.') }
     return message.requestId
   }
   function receive(event: MessageEvent<unknown>) {
     if (closed) return
     if (!outputAllowed()) return dispose('runtime')
+    const candidate = event.data
+    // A malformed optional reading cannot stop usable playback. Authenticate
+    // its fixed envelope first; arbitrary data/getters never enter the UI.
+    if (record(candidate, ['protocol', 'version', 'session', 'generation', 'requestId', 'type', 'payload'])
+      && candidate.type === 'audio-inspector-result'
+      && isPlaybackMessage({ ...candidate, payload: null }, PLAYBACK_RESPONSES)) {
+      if (candidate.session !== session || candidate.generation !== generation || !pendingInspector
+        || pendingInspector.id !== candidate.requestId) return
+      const snapshot = isPlaybackMessage(candidate, PLAYBACK_RESPONSES) && candidate.type === 'audio-inspector-result'
+        ? candidate.payload : null
+      clearTimeout(pendingInspector.timer); pendingInspector.resolve(snapshot); pendingInspector = null
+      return
+    }
     if (!isPlaybackMessage(event.data, PLAYBACK_RESPONSES)) return dispose('runtime')
     const message = event.data
     if (message.session !== session) return
@@ -296,6 +315,24 @@ export function createIsolatedPlaybackHost(options: {
         try { send('capabilities', null) } catch (error) {
           if (pendingCapabilities) clearTimeout(pendingCapabilities.timer)
           pendingCapabilities = null; reject(error)
+        }
+      })
+    },
+    requestAudioInspector(): Promise<PlaybackPayloads['audio-inspector-result']> {
+      if (closed || !loaded || pendingInspector || document.visibilityState === 'hidden' || !inspectorAllowed()) return Promise.resolve(null)
+      return new Promise(resolve => {
+        const id = sequence + 1
+        pendingInspector = { id, generation, resolve, reject: () => resolve(null), timer: setTimeout(() => {
+          if (pendingInspector?.id !== id) return
+          pendingInspector = null; resolve(null)
+        }, 1000) }
+        try {
+          if (send('audio-inspector', null, true) === null) {
+            clearTimeout(pendingInspector.timer); pendingInspector = null; resolve(null)
+          }
+        } catch {
+          if (pendingInspector) clearTimeout(pendingInspector.timer)
+          pendingInspector = null; resolve(null)
         }
       })
     },

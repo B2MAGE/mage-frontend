@@ -345,6 +345,12 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         warnings: unsupportedTargets.map(target => `The active shader does not declare the ${target} input.`) }
     },
     getAudioState: () => audio.getState(),
+    requestAudioInspector() {
+      if (disposed || failed || !sceneLoaded || visualsSuspended()) return Promise.resolve(null)
+      const generation = sceneGeneration
+      return host!.requestAudioInspector().then(snapshot =>
+        disposed || failed || generation !== sceneGeneration || visualsSuspended() ? null : snapshot, () => null)
+    },
     capture(request?: Partial<CaptureRequest>) { assertActive(); return host!.capture(request) },
     dispose,
   }

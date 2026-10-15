@@ -7,6 +7,31 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('accepts only bounded numeric inspector readings and fixed identities, never code or arbitrary text', () => {
+    const snapshot = { mode: 'legacy', source: 'audio', playing: true, audioLoaded: true,
+      levels: { bass: 0.7, mid: 0.1, treble: 0.2, overall: 0.3 }, hits: { bass: 0.9, mid: 0, treble: 0, overall: 0 },
+      sceneOutputs: { size: 0.62 },
+      bindings: [{ objectId: 'shape-1', target: 'scale.x', source: 'bass-level', signal: 0.7, value: 1.7 }],
+      driverSignals: [{ source: 'pointer-y', value: -0.2 }] }
+    const message = { ...playbackMessage('audio-inspector-result', session, 1, 2, null), payload: snapshot }
+    expect(isPlaybackMessage(message, ['audio-inspector-result'])).toBe(true)
+    expect(isPlaybackMessage({ ...message, payload: null }, ['audio-inspector-result'])).toBe(true)
+    const getter = Object.defineProperty({}, 'size', { get() { throw new Error('Must not run') } })
+    for (const payload of [
+      { ...snapshot, levels: { ...snapshot.levels, bass: NaN } }, { ...snapshot, hits: { ...snapshot.hits, bass: 2 } },
+      { ...snapshot, sceneOutputs: { arbitraryUniform: 0 } }, { ...snapshot, sceneOutputs: getter },
+      { ...snapshot, message: 'private diagnostic' }, { ...snapshot, source: 'file:///music.wav' },
+      { ...snapshot, bindings: new Array(1) }, { ...snapshot, bindings: [snapshot.bindings[0], snapshot.bindings[0]] },
+      { ...snapshot, bindings: [{ ...snapshot.bindings[0], objectId: 'shape\n' }] },
+      { ...snapshot, bindings: [{ ...snapshot.bindings[0], value: -1 }] },
+      { ...snapshot, bindings: [{ ...snapshot.bindings[0], target: 'shader' }] },
+      { ...snapshot, bindings: [{ ...snapshot.bindings[0], source: 'unknown' }] },
+      { ...snapshot, driverSignals: [{ source: 'bass-level', value: -1 }] },
+      { ...snapshot, driverSignals: [snapshot.driverSignals[0], snapshot.driverSignals[0]] },
+      { ...snapshot, driverSignals: new Array(1) },
+    ]) expect(isPlaybackMessage({ ...message, payload }, ['audio-inspector-result'])).toBe(false)
+  })
+
   it('negotiates startup reporting only through an exact opt-in while retaining the legacy connection', () => {
     const message = playbackMessage('connect', session, 0, 0, { startupPhases: true })
     expect(isPlaybackMessage(message, ['connect'])).toBe(true)

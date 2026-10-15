@@ -34,6 +34,36 @@ function fixture(bindings: BuilderBinding[][]) {
 }
 
 describe('Builder object response controller', () => {
+  it('observes existing uniform outputs without advancing or consuming them, with stable object identities', () => {
+    const f = fixture([[response('bass-level')], [response('treble-level', 'scale.y', { amount: 2 })]])
+    f.input({ audio: f.audio(1, { bass: 0.7, treble: 0.2 }, [{ band: 'bass', time: 1, strength: 0.9 }]) })
+    const writes = f.write.mock.calls.length
+    expect(f.controller.inspect()).toMatchObject({ source: 'audio', levels: { bass: 0.7, treble: 0.2 }, hits: { bass: 0.9 },
+      bindings: [
+        { objectId: 'object-0', source: 'bass-level', target: 'position.x', signal: 0.7, value: 1.7 },
+        { objectId: 'object-1', source: 'treble-level', target: 'scale.y', signal: 0.2, value: 1.4 },
+      ] })
+    f.controller.inspect(); expect(f.write).toHaveBeenCalledTimes(writes)
+    f.time(1.3); expect(f.controller.inspect()?.hits.bass).toBe(0.9)
+    f.time(1.5); expect(f.controller.inspect()?.hits.bass).toBe(0)
+    f.time(2.1); expect(f.controller.inspect()).toMatchObject({ source: 'none', levels: null })
+    f.controller.playback(false)
+    expect(f.controller.inspect()).toMatchObject({ source: 'none', levels: null, hits: { bass: 0 },
+      bindings: [expect.objectContaining({ value: 1 }), expect.objectContaining({ value: 1 })] })
+    f.controller.dispose(); expect(f.controller.inspect()).toBeNull()
+  })
+
+  it('reports simulated bands from the same consumed frames, then replaces them with real audio and clears on seek', () => {
+    const f = fixture([[response('bass-level')]])
+    f.controller.synthetic({ enabled: true, seed: 24, tempoScale: 1 })
+    f.advance(1.1)
+    expect(f.controller.inspect()).toMatchObject({ source: 'synthetic', levels: expect.objectContaining({ bass: expect.any(Number) }) })
+    f.input({ audioEpoch: 1, audio: f.audio(1, { treble: 0.8 }, [{ band: 'treble', time: 1.1, strength: 1 }]) })
+    expect(f.controller.inspect()).toMatchObject({ source: 'audio', levels: { bass: 0, treble: 0.8 }, hits: { treble: 1 } })
+    f.time(1.12); f.input({ audioEpoch: 2, audio: f.audio(2, {}) })
+    expect(f.controller.inspect()).toMatchObject({ hits: { bass: 0, mid: 0, treble: 0, overall: 0 } })
+  })
+
   it('feeds shared driver inputs from mapped music and pointer data while constants remain live', () => {
     const document = parseSceneDocument({ schemaVersion: 1, kind: 'builder', builderVersion: 1,
       objects: ['first', 'second'].map(id => ({ id, operation: { type: 'sphere' }, drivers: [

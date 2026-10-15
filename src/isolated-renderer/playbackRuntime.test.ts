@@ -5,6 +5,7 @@ import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../mo
 import { PlaybackDownloadError, type PlaybackLoader } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
+import type { AudioInspectorSnapshot } from '../modules/player/audioInspector'
 
 const origin = 'https://mage.peterbucci.com', session = '4b50667d-27d8-4634-93e8-3a795e110123'
 const scene = customDocument({ visualizer: { shader: 'sphere(1);' } })
@@ -15,6 +16,7 @@ function fixture() {
   const target = Object.assign(new EventTarget(), { parent: {} }) as unknown as Window
   const engine = { dispose: vi.fn(), resize: vi.fn(), input: vi.fn(), playback: vi.fn(), synthetic: vi.fn(), zoom: vi.fn(),
     audioResponse: vi.fn(), sceneSettings: vi.fn(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
+    audioInspector: vi.fn<() => AudioInspectorSnapshot | null>(() => null),
     capture: vi.fn().mockResolvedValue({ bytes: new ArrayBuffer(12), type: 'image/png', width: 10, height: 10 }) }
   const loadScene = vi.fn<PlaybackLoader>().mockResolvedValue(engine)
   const statusElement = document.createElement('p')
@@ -36,6 +38,25 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('only reads inspector data on request, bounds reads and keeps observer errors out of playback recovery', async () => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    expect(f.engine.audioInspector).not.toHaveBeenCalled()
+    for (let index = 0; index < 8; index++) f.send('audio-inspector', null)
+    expect(f.engine.audioInspector).toHaveBeenCalledTimes(5)
+    expect(f.responses('audio-inspector-result')).toHaveLength(5)
+    expect(f.responses('error')).toHaveLength(0)
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
+
+  it('answers unavailable readings with null while playback remains usable', async () => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    f.engine.audioInspector.mockImplementation(() => { throw new Error('Unavailable observation') })
+    f.send('audio-inspector', null)
+    expect(f.responses('audio-inspector-result')[0].payload).toBeNull()
+    expect(f.responses('error')).toHaveLength(0)
+    f.send('playback', { playing: false })
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+  })
   it('keeps an existing v2 parent playing without sending newly introduced phase responses', async () => {
     const f = fixture()
     f.loadScene.mockImplementation(async options => {

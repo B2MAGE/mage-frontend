@@ -410,6 +410,8 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     getAudioResponseDiagnostics: () => null,
     getAudioResponseEvents: () => [],
     getEngineDiagnostics: () => null,
+    requestAudioInspector: () => loaded && !disposed && !suspended && !denied
+      ? bridge!.requestAudioInspector() : Promise.resolve(null),
     setAudioResponseSettings(mode, config) {
       assertAllowed()
       if (!currentScene || !loaded) throw new MagePlayerAdapterError('Load a scene before changing its audio response.')
