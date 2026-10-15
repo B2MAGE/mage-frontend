@@ -293,6 +293,9 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       update()
       playing = false
       audio.pause()
+      // Keep the reset visible even if a quick resume replaces the paused input
+      // before the bridge sends its next coalesced update.
+      audioEpoch++
       releasePointer()
       if (available && sceneLoaded) host!.setPlayback(false)
       update()

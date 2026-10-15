@@ -104,6 +104,23 @@ describe('isolated player parent integration', () => {
     expect(f.host.loadScene).toHaveBeenCalledOnce()
   })
 
+  it('marks a quick pause and resume even if the bridge coalesces away the paused sample', async () => {
+    const f = fixture()
+    await f.start()
+    await f.player.loadAudio(new Blob(['audio']))
+    f.player.seek(30)
+    const before = f.host.update.mock.calls.at(-1)![0]
+    f.player.pause()
+    await f.player.play()
+    await f.tick()
+    const resumed = f.host.update.mock.calls.at(-1)![0]
+    expect(resumed.audioEpoch).toBe(before.audioEpoch! + 1)
+    expect(resumed.audio).toMatchObject({ playing: true, loaded: true, frame: null })
+    expect(f.player.getAudioState().time).toBe(30)
+    expect(f.audio.load).toHaveBeenCalledOnce()
+    expect(f.host.loadScene).toHaveBeenCalledOnce()
+  })
+
   it('stages replacement with its cancellation and permission gate, using playback intent at commit', async () => {
     const f = fixture()
     await f.start()
