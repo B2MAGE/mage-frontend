@@ -80,15 +80,17 @@ describe('MyScenesPage states', () => {
     expect(screen.getByRole('link', { name: /create scene/i })).toHaveAttribute('href', '/create-scene')
   })
 
-  it('renders the authenticated users scenes and opens the scene detail route', async () => {
+  it('renders owner analytics with one scene-list request and no comment requests', async () => {
     storeMyScenesSession()
 
     const storedUser = buildMyScenesStoredUser()
     const auroraScene = buildMyScenesApiScene({
       engagement: {
+        comments: 3,
         currentUserSaved: false,
         currentUserVote: null,
         downvotes: 1,
+        likesRatio: 75,
         saves: 2,
         upvotes: 3,
         views: 777,
@@ -97,6 +99,16 @@ describe('MyScenesPage states', () => {
       sceneId: 12,
     })
     const signalScene = buildMyScenesApiScene({
+      engagement: {
+        comments: 0,
+        currentUserSaved: false,
+        currentUserVote: null,
+        downvotes: 0,
+        likesRatio: 0,
+        saves: 0,
+        upvotes: 0,
+        views: 0,
+      },
       id: 13,
       name: 'Signal Bloom',
       sceneId: 13,
@@ -113,48 +125,8 @@ describe('MyScenesPage states', () => {
         return Promise.resolve(jsonResponse([auroraScene, signalScene]))
       }
 
-      if (input === buildApiUrl('/scenes/12/comments')) {
-        return Promise.resolve(
-          jsonResponse([
-            {
-              commentId: 101,
-              replies: [
-                {
-                  commentId: 102,
-                  replies: [],
-                  replyCount: 0,
-                },
-              ],
-              replyCount: 1,
-            },
-            {
-              commentId: 103,
-              replies: [],
-              replyCount: 0,
-            },
-          ]),
-        )
-      }
-
-      if (input === buildApiUrl('/scenes/13/comments')) {
-        return Promise.resolve(
-          jsonResponse([
-            {
-              commentId: 201,
-              replies: [],
-              replyCount: 0,
-            },
-          ]),
-        )
-      }
-
-      if (input === buildApiUrl('/scenes/12')) {
-        return Promise.resolve(jsonResponse(auroraScene))
-      }
-
       throw new Error(`Unexpected request: ${String(input)}`)
     })
-    const user = userEvent.setup()
 
     renderMyScenesPage()
 
@@ -179,13 +151,12 @@ describe('MyScenesPage states', () => {
     expect(auroraRow).not.toBeNull()
     expect(signalRow).not.toBeNull()
     expect(within(auroraRow as HTMLElement).getByText('3')).toBeInTheDocument()
-    expect(within(signalRow as HTMLElement).getByText('1')).toBeInTheDocument()
-
-    await user.click(sceneLink)
-
-    expect(await screen.findByTestId('mage-player')).toHaveTextContent('player-ready')
-    expect(screen.getByRole('heading', { name: /aurora drift/i })).toBeInTheDocument()
-    expect(screen.getByText('Soft teal bloom with low-end drift.')).toBeInTheDocument()
+    expect(within(signalRow as HTMLElement).getAllByText('0')).toHaveLength(2)
+    expect(within(signalRow as HTMLElement).getByText('0%')).toBeInTheDocument()
+    expect(fetchSpy.mock.calls.map(([input]) => input)).toEqual([
+      buildApiUrl('/users/me'),
+      buildApiUrl('/users/8/scenes'),
+    ])
   })
 
   it('shows empty and error states using simple messages', async () => {

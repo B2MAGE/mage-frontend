@@ -22,7 +22,7 @@ const scene: DiscoveryScene = {
   sceneData: {},
   thumbnailRef: '/signal.png',
   createdAt: '2026-09-28T12:00:00Z',
-  engagement: { views: 18, upvotes: 4, downvotes: 0, saves: 2, currentUserVote: null, currentUserSaved: false },
+  engagement: { views: 18, comments: 0, likesRatio: 100, upvotes: 4, downvotes: 0, saves: 2, currentUserVote: null, currentUserSaved: false },
 }
 
 function LocationProbe() {

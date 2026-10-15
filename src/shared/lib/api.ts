@@ -68,6 +68,8 @@ export type SceneEngagementVoteState = 'up' | 'down'
 
 export type SceneListEngagement = {
   views: number
+  comments: number
+  likesRatio: number
   upvotes: number
   downvotes: number
   saves: number
@@ -116,6 +118,8 @@ export function normalizeSceneListEngagement(engagement: unknown): SceneListEnga
   if (!isRecord(engagement)) {
     return {
       views: 0,
+      comments: 0,
+      likesRatio: 0,
       upvotes: 0,
       downvotes: 0,
       saves: 0,
@@ -126,6 +130,8 @@ export function normalizeSceneListEngagement(engagement: unknown): SceneListEnga
 
   return {
     views: normalizeCount(engagement.views),
+    comments: normalizeCount(engagement.comments),
+    likesRatio: Math.min(100, normalizeCount(engagement.likesRatio)),
     upvotes: normalizeCount(engagement.upvotes),
     downvotes: normalizeCount(engagement.downvotes),
     saves: normalizeCount(engagement.saves),

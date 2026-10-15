@@ -19,6 +19,8 @@ function scene(sceneId: number, overrides: Partial<SceneListResponse> = {}): Sce
     sceneData: {},
     thumbnailRef: null,
     engagement: {
+      comments: 0,
+      likesRatio: 100,
       currentUserSaved: false,
       currentUserVote: null,
       downvotes: 0,

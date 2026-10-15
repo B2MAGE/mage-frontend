@@ -23,6 +23,8 @@ function scene(
     creatorHandle: 'aririvera',
     description: null,
     engagement: {
+      comments: 0,
+      likesRatio: upvotes > 0 ? 100 : 0,
       currentUserSaved: false,
       currentUserVote: null,
       downvotes: 0,

@@ -39,9 +39,11 @@ describe('MyScenesPage table behavior', () => {
     const mockScenes = [
       buildMyScenesApiScene({
         engagement: {
+          comments: 3,
           currentUserSaved: false,
           currentUserVote: null,
           downvotes: 1,
+          likesRatio: 75,
           saves: 0,
           upvotes: 3,
           views: 1200,
@@ -185,12 +187,12 @@ describe('MyScenesPage table behavior', () => {
     expect(screen.getByRole('link', { name: /aurora drift/i })).toBeInTheDocument()
   })
 
-  it('sorts the table when updated, views, and likes headers are clicked', async () => {
+  it('sorts server analytics and dates locally without additional requests', async () => {
     storeMyScenesSession()
 
     const storedUser = buildMyScenesStoredUser()
 
-    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
       if (input === buildApiUrl('/users/me')) {
         return Promise.resolve(jsonResponse(storedUser))
       }
@@ -272,6 +274,24 @@ describe('MyScenesPage table behavior', () => {
     ])
     expect(screen.getByText(/Highest likes ratio first/)).toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: /sort by comments descending/i }))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Solar Thread',
+      'Aurora Drift',
+      'Signal Bloom',
+    ])
+    expect(screen.getByText(/Most comments first/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /sort by comments ascending/i }))
+
+    expect(titleLinks().map((link) => link.textContent)).toEqual([
+      'Aurora Drift',
+      'Signal Bloom',
+      'Solar Thread',
+    ])
+    expect(screen.getByText(/Fewest comments first/)).toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: /sort by updated descending/i }))
     await user.click(screen.getByRole('button', { name: /sort by updated ascending/i }))
 
@@ -281,6 +301,10 @@ describe('MyScenesPage table behavior', () => {
       'Solar Thread',
     ])
     expect(screen.getByText(/Oldest items first/)).toBeInTheDocument()
+    expect(fetchSpy.mock.calls.map(([input]) => input)).toEqual([
+      buildApiUrl('/users/me'),
+      buildApiUrl('/users/8/scenes'),
+    ])
   })
 
   it('paginates the table and shows the footer controls', async () => {
