@@ -49,6 +49,8 @@ import { createBuilderScene } from "./builderEditor";
 import { builderGroups, builderOrderedNodes, builderParent, isBuilderGroup } from "./builderGroups";
 import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from "./builderBindings";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
+import { AudioInspectorPanel } from "./ui/AudioInspectorPanel";
+import { createAudioInspectorStore } from "./audioInspectorStore";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
 import type { EditorSectionId, SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
@@ -131,6 +133,8 @@ export function SceneEditorShell({
       : false
   ));
   const [previewPlaybackStatus, setPreviewPlaybackStatus] = useState<MagePlayerPlaybackStatus>("paused");
+  const [isAudioInspectorOpen, setIsAudioInspectorOpen] = useState(false);
+  const [audioInspectorStore] = useState(createAudioInspectorStore);
   const [isMusicAdvancedOpen, setIsMusicAdvancedOpen] = useState(false);
   const [passOrderAnnouncement, setPassOrderAnnouncement] = useState("");
   const [openReviewSection, setOpenReviewSection] = useState<ReviewSectionId | null>(null);
@@ -2083,6 +2087,7 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
+              <div className="scene-editor-preview__player-frame">
               {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {canPreviewScene ? 'The preview shows your last valid settings.' : 'Fix these settings before continuing.'}</p> : null}
               {canPreviewScene ? <MagePlayer
                 audioMode="single"
@@ -2095,9 +2100,14 @@ export function SceneEditorShell({
                 recoverySceneBlob={recoverySceneData ?? undefined}
                 posterUrl={thumbnailPreviewUrl}
                 onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
+                onAudioInspectorChange={isAudioInspectorOpen && !isPreviewCollapsed && !sceneDraftError ? audioInspectorStore.publish : undefined}
                 sceneKey={mode.type === 'edit' ? mode.sceneId : undefined}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               /> : null}
+              </div>
+              <AudioInspectorPanel document={isBuilder && !sceneDraftError ? builderDocument : null}
+                selectedObjectId={selectedBuilderObjectId} onSelectObject={setSelectedBuilderObjectId}
+                open={isAudioInspectorOpen} onOpenChange={setIsAudioInspectorOpen} store={audioInspectorStore} />
               </div>
             </section>
           </aside>

@@ -22,7 +22,7 @@ vi.mock('@modules/player', async (importOriginal) => {
   const capture = async () => 'data:image/png;base64,cHJldmlldw=='
   return {
     ...actual,
-    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, onAudioResponseCapabilitiesChange, audioMode }: import('@modules/player').MagePlayerProps) => {
+    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, onAudioResponseCapabilitiesChange, onAudioInspectorChange, audioMode }: import('@modules/player').MagePlayerProps) => {
       React.useEffect(() => {
         onCaptureFramePreviewChange?.(capture)
         return () => onCaptureFramePreviewChange?.(null)
@@ -33,7 +33,7 @@ vi.mock('@modules/player', async (importOriginal) => {
           capabilities: { mode: 'mapped-v1', signals: ['bass-hit', 'mid-level'], targets: ['size'], supportedTargets: ['size'], unsupportedTargets: [], warnings: [] },
         } : null)
       }, [sceneBlob, onAudioResponseCapabilitiesChange])
-      return <div data-testid="scene-preview" data-audio-mode={audioMode} data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
+      return <div data-testid="scene-preview" data-audio-mode={audioMode} data-inspecting={Boolean(onAudioInspectorChange)} data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
     },
   }
 })
@@ -74,6 +74,21 @@ function expectRetiredControlsAbsent() {
 }
 
 describe('scene editor presets and beat preview', () => {
+  it('opens the optional inspector without changing the authored scene, and stops reading when preview is hidden', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    renderCreateScenePage('mage-pulse')
+    const preview = await screen.findByTestId('scene-preview')
+    const before = preview.getAttribute('data-scene')
+    expect(preview).toHaveAttribute('data-inspecting', 'false')
+    fireEvent.click(screen.getByText('Audio inspector', { exact: true }))
+    await waitFor(() => expect(preview).toHaveAttribute('data-inspecting', 'true'))
+    expect(preview.getAttribute('data-scene')).toBe(before)
+    fireEvent.click(screen.getByRole('button', { name: 'Hide preview' }))
+    expect(preview).toHaveAttribute('data-inspecting', 'false')
+    expect(preview.getAttribute('data-scene')).toBe(before)
+  })
+
   it.each(['create', 'edit'] as const)('uses one replaceable song in the %s preview', async mode => {
     storeSceneEditorSession()
     mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')

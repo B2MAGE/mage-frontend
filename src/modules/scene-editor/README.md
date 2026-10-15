@@ -257,3 +257,18 @@ documents and moderator controls still follow their existing policy. Builder edi
 with the scene; signed-in users can also explicitly save a reusable Builder design using
 personal templates (frontend #314 and backend #167). The custom-code direction remains a
 future decision.
+
+## Audio inspector
+
+Live Preview has a collapsed-by-default Audio inspector. It shows the existing
+band levels and recent hits, identifies real audio versus simulated beats, and
+follows the selected Builder object by ID. Select a Music & pointer property to
+compare its authored settings with its actual smoothed input and response value.
+Animation inputs can also be inspected; their values precede the animation's
+amount/offset/combined expressions, which may vary across the rendered surface.
+
+Readings use a separate, bounded store and never enter the draft, history,
+personal template or saved scene. The player requests at most four snapshots per
+second while the panel and preview are open; hidden pages stop requesting them.
+The renderer reads existing measurements/uniforms without a second analyzer or
+preview compilation. Original and Selective retain their existing behavior.
