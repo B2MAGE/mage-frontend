@@ -46,6 +46,10 @@ All page paths below are under `http://127.0.0.1:5178/scripts/`:
 | `quality-scene-capture.html`, `render-budget-check.html` | Rendering/capture and workload ceilings; normal renderer. |
 | `scene-availability-browser-check.html`, `scene-focus-browser-check.html` | Permission changes and audio continuity; normal renderer. |
 
+[AR-10 audio verification](ar10-audio-review.md) documents the native sample-rate
+checks and the optional `scripts/check-audio-recording.mjs` local music audit.
+The recording tool needs ffmpeg; ordinary tests and application startup do not.
+
 Worker child:
 
 ```sh

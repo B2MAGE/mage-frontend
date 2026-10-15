@@ -31,19 +31,30 @@ button.addEventListener('click', async () => {
         await context.resume()
         if (!await session.connect({ context, getOutput: () => level })) throw new Error(JSON.stringify(session.snapshot(context.currentTime)))
         oscillator.start()
-        for (const fps of [30, 60, 120]) {
+        for (const fps of [15, 30, 60, 120]) {
           session.reset()
           const frames = []
-          const until = performance.now() + 600
-          while (performance.now() < until) {
+          const started = performance.now()
+          // Worklet startup and browser scheduling are not audio-clock samples.
+          // Collect a bounded sample window before checking its actual clock.
+          while (frames.length < 60 && performance.now() - started < 5000) {
             await new Promise(resolve => setTimeout(resolve, 1000 / fps))
             frames.push(...session.drain(context.currentTime))
           }
           const gaps = frames.slice(1).map((frame, i) => frame.time - frames[i].time)
-          const valid = frames.length >= 40 && gaps.every(gap => Math.abs(gap - 0.01) < 0.00001)
+          const valid = frames.length >= 60 && gaps.every(gap => Math.abs(gap - 0.01) < 0.00001)
           if (!valid) throw new Error(`Clock check failed at ${context.sampleRate} Hz / ${fps} FPS: ${frames.length} frames, ${Math.max(...gaps)} largest gap`)
-          results.textContent += `PASS · ${context.sampleRate} Hz · ${fps} FPS consumer · ${frames.length} measurements · 10 ms interval\n`
+          results.textContent += `PASS · ${context.sampleRate} Hz · ${fps} FPS consumer · ${frames.length} measurements · 10 ms interval · ${Math.round(performance.now() - started)} ms wall time\n`
         }
+        session.drain(context.currentTime)
+        const stallStart = context.currentTime
+        await new Promise(resolve => setTimeout(resolve, 350))
+        const stalledFrames = session.drain(context.currentTime)
+        if (context.currentTime - stallStart < 0.2 || stalledFrames.length < 15
+          || stalledFrames.slice(1).some((frame, i) => Math.abs(frame.time - stalledFrames[i].time - 0.01) > 0.00001)) {
+          throw new Error('Analysis did not continue while the visual consumer was idle')
+        }
+        results.textContent += `PASS · idle visual consumer retained ${stalledFrames.length} ordered audio measurements\n`
         for (const [band, frequency] of [['bass', 100], ['mid', 700], ['treble', 5000]]) {
           oscillator.frequency.value = frequency
           await new Promise(resolve => setTimeout(resolve, 250))
@@ -53,6 +64,13 @@ button.addEventListener('click', async () => {
           }
           results.textContent += `PASS · ${frequency} Hz tone → ${band} signal\n`
         }
+        level.gain.value = 0
+        await new Promise(resolve => setTimeout(resolve, 350))
+        const silent = session.snapshot(context.currentTime).frame
+        if (!silent || Object.values(silent.levels).some(value => value > 0.001) || silent.hits.length) {
+          throw new Error(`Silence retained a response: ${JSON.stringify(silent)}`)
+        }
+        results.textContent += 'PASS · silence returns all bands to rest\n'
         session.disconnect()
         if (session.drain(context.currentTime).length || session.snapshot(context.currentTime).frame) throw new Error('Stale measurements after disconnect')
         results.textContent += 'PASS · disconnect clears pending measurements\n'
