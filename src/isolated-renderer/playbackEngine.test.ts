@@ -374,6 +374,41 @@ describe('isolated playback engine', () => {
     control.dispose()
   })
 
+  it('clears Selective reactions from the previous song position when the parent audio epoch changes', async () => {
+    const config = normalizeAudioResponseConfig({ version: 1,
+      mappings: [{ target: 'size', source: 'bass-hit', amount: 1, attack: 0, release: 0.7 }] }).config
+    const f = fixture(), control = await f.ready(customDocument({ visualizer: { shader: 'sphere(1);' },
+      audioResponse: 'mapped-v1', audioResponseConfig: config }))
+    // Use the installed engine receiver and mapper so the check observes an old
+    // beat leaking into the new position, rather than just counting reset calls.
+    f.engine.setExternalAudioFrame.mockImplementation(responseMethod('setExternalAudioFrame').bind(f.response))
+    const mapper = f.response.audioMapper
+    const pointer = { x: 0, y: 0, down: false }
+    const audio = { audioTime: 1, legacyAmplitude: 0.4, playing: true, loaded: true,
+      frame: { sequence: 1, time: 1, levels: { bass: 0.8, mid: 0, treble: 0, overall: 0.4 },
+        hits: [{ band: 'bass' as const, time: 1, strength: 0.8 }] } }
+    control.input({ time: 1, audioEpoch: 1, audio, pointer })
+    expect(mapper.process(f.response.externalAudioFrames.splice(0), 1).size).toBeCloseTo(0.8)
+    control.input({ time: 1.1, audioEpoch: 1, audio: { ...audio, audioTime: 1.1, frame: null }, pointer })
+    expect(mapper.process(f.response.externalAudioFrames.splice(0), 1.1).size).toBeGreaterThan(0)
+
+    // Seeking or replacing a playing track keeps the AudioContext clock moving
+    // forward and can deliver silence before the first new analysis frame.
+    control.input({ time: 1.2, audioEpoch: 2, audio: { ...audio, audioTime: 1.2, frame: null }, pointer })
+    expect(mapper.process(f.response.externalAudioFrames.splice(0), 1.2).size).toBe(0)
+    expect(mapper.getEvents()).toEqual([])
+    expect(f.response.audioMapper).toBe(mapper)
+    expect(f.response.getAudioResponseConfig()).toEqual(config)
+    expect(f.response.externalAudio).toMatchObject({ playing: true, loaded: true, legacyAmplitude: 0.4 })
+    expect(f.engine.setAudioResponseMode).not.toHaveBeenCalled()
+    expect(f.engine.setAudioResponseConfig).not.toHaveBeenCalled()
+    expect(f.engine.pause).not.toHaveBeenCalled()
+    control.input({ time: 1.3, audioEpoch: 3, audio: { ...audio, audioTime: 1.3,
+      frame: { ...audio.frame, sequence: 2, time: 1.3, hits: [{ band: 'bass', time: 1.3, strength: 0.6 }] } }, pointer })
+    expect(mapper.process(f.response.externalAudioFrames.splice(0), 1.3).size).toBeCloseTo(0.6)
+    control.dispose()
+  })
+
   it('applies amount and sensitivity edits without reselecting the mode or replacing analysis/synthetic sessions', async () => {
     const f = fixture(), control = await f.ready(customDocument({ visualizer: { shader: 'sphere(1);' }, audioResponse: 'mapped-v1' }))
     const analysis = f.response.audioAnalysis, mapper = f.response.audioMapper, synthetic = f.response.syntheticAudioFrames

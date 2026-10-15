@@ -90,6 +90,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
   let speed = typeof intent?.time_multiplier === 'number' ? intent.time_multiplier : 1
   const initialTime = typeof state?.time === 'number' ? state.time : 0
   let parentTime = 0, clockAnchorParent = 0, clockAnchorScene = initialTime
+  let audioEpoch: number | undefined
   const boundTime = (time: number) => Math.min(BRIDGE_LIMITS.maxTime, Math.max(0, time))
   let appliedResponseMode = normalizeAudioResponseMode(resolved.audioResponse)
   let appliedResponseConfig = appliedResponseMode === 'mapped-v1'
@@ -199,6 +200,13 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
         if (value.time < parentTime) { clockAnchorParent = 0; clockAnchorScene = initialTime }
         parentTime = value.time
         engine.setExternalClock({ time: boundTime(clockAnchorScene + (parentTime - clockAnchorParent) * speed), rate: speed, playing })
+        const nextAudioEpoch = value.audioEpoch ?? 0
+        if (audioEpoch !== undefined && audioEpoch !== nextAudioEpoch) {
+          // The audio clock keeps advancing across seeks and song changes. Clear
+          // old hit envelopes without reloading settings or detaching parent audio.
+          engine.setExternalAudioFrame({ ...value.audio, frame: null, legacyAmplitude: 0, playing: false })
+        }
+        audioEpoch = nextAudioEpoch
         engine.setExternalAudioFrame(value.audio)
         bindingController?.input(value)
         const rect = canvas.getBoundingClientRect()
