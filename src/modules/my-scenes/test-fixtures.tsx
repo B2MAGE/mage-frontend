@@ -35,9 +35,11 @@ export function buildMyScenesApiScene(
       visualizer: { shader: 'nebula' },
     },
     engagement: {
+      comments: sceneId % 5,
       currentUserSaved: false,
       currentUserVote: null,
       downvotes: 100 - likesRatio,
+      likesRatio,
       saves: 0,
       upvotes: likesRatio,
       views: 18 + sceneId * 37,

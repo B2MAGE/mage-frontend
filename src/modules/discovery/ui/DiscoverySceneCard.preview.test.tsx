@@ -91,6 +91,8 @@ const scene: DiscoveryScene = {
   createdAt: '2026-09-28T12:00:00Z',
   engagement: {
     views: 18,
+    comments: 0,
+    likesRatio: 100,
     upvotes: 4,
     downvotes: 0,
     saves: 2,

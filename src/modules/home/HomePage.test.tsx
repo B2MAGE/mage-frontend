@@ -19,7 +19,7 @@ vi.mock('@modules/player',async original=>({ ...await original<typeof import('@m
 vi.mock('@modules/scene-artwork',()=>({
  BrandScene:({reactToBeat,className}:{reactToBeat?:boolean;className?:string})=> <div data-testid="welcome-brand-scene" className={className} data-react-to-beat={String(reactToBeat)} />,
 }))
-const engagement={views:18,upvotes:4,downvotes:0,saves:2,currentUserVote:null,currentUserSaved:false}
+const engagement={views:18,comments:0,likesRatio:100,upvotes:4,downvotes:0,saves:2,currentUserVote:null,currentUserSaved:false}
 const scene={sceneId:1,ownerUserId:1,creatorDisplayName:'Ari Rivera',creatorHandle:'aririvera',creatorAvatarGradientStart:'#ab6645',creatorAvatarGradientEnd:'#663d54',name:'Neon Bloom',description:'A reactive scene.',thumbnailRef:null,sceneData:{},createdAt:'2026-09-20T00:00:00Z',engagement}
 function show(themeId: AppThemeId = 'mage-pulse') {
  window.localStorage.setItem(APP_THEME_STORAGE_KEY, themeId)

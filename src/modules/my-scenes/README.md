@@ -15,11 +15,9 @@ Exports:
 - `MyScenesPage.tsx`
   Route-facing React boundary for the authenticated scene-library experience.
 - `loaders.ts`
-  Ownership-scene loading, DTO normalization, and sample-scene creation requests.
+  Owner-scene loading and DTO normalization, using analytics returned by the backend.
 - `selectors.ts`
   Sorting, filtering, pagination, and selection-derived board state.
-- `fixtures.ts`
-  Sample-scene payloads used by the temporary empty-state seeding helper.
 - `ui/`
   My-scenes-owned toolbar, table, and pagination behavior.
 
@@ -39,10 +37,13 @@ Access:
 
 Request flow:
 
-- `GET /api/users/:userId/scenes`
-- `POST /api/scenes` for the temporary demo-seeding helper
+- `GET /api/users/:userId/scenes`, restricted to the signed-in owner.
 
 Requests go through `authenticatedFetch()`, so the page depends on a valid restored auth session.
+The list includes `engagement.views`, `engagement.comments` (including replies), and
+`engagement.likesRatio` (the backend's rounded percentage, zero without votes).
+The page displays these values directly; it does not request comment threads for each
+scene or calculate its own vote ratio.
 
 User-facing behavior:
 
@@ -51,14 +52,16 @@ User-facing behavior:
 - shows dedicated restoring, loading, empty, and error states
 - supports sorting, status filtering, pagination, and row selection locally in the browser
 - prunes invalid selections when the loaded scene set changes
-- offers a temporary empty-state action to create sample scenes for the current account
+- links to scene previews and editing; the empty state links to Create scene
 
 Current limitations:
 
-- edit, delete, and bulk actions are not wired yet
-- visibility status, engagement counts, and some library metadata are frontend-derived placeholders
-- sample-scene seeding is a temporary helper and not a permanent product action
+- delete and bulk actions are not wired yet
+- visibility status is currently shown as Published; visibility management is separate work
+- the Updated sort currently uses the scene creation timestamp
 
 ## Tests
 
 Coverage lives in the colocated my-scenes specs under `src/modules/my-scenes/`.
+It verifies a single owner-list request, populated and zero analytics, authenticated
+loading and retry states, and local sorting without additional requests.

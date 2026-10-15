@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildApiUrl, fetchTags, normalizeSceneAvailability, normalizeSceneListItem } from './api'
+import { buildApiUrl, fetchTags, normalizeSceneAvailability, normalizeSceneListEngagement, normalizeSceneListItem } from './api'
 
 describe('buildApiUrl', () => {
   afterEach(() => {
@@ -31,6 +31,26 @@ describe('buildApiUrl', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://mage.example.com/api')
 
     expect(buildApiUrl('/scenes/12')).toBe('https://mage.example.com/api/scenes/12')
+  })
+})
+
+describe('scene analytics', () => {
+  it('preserves server comment totals and rounded percentages independently of vote fields', () => {
+    expect(normalizeSceneListEngagement({
+      views: 148, comments: 7, likesRatio: 67, upvotes: 2, downvotes: 1,
+    })).toMatchObject({ views: 148, comments: 7, likesRatio: 67 })
+    expect(normalizeSceneListEngagement({ likesRatio: 73, upvotes: 2, downvotes: 1 }).likesRatio)
+      .toBe(73)
+  })
+
+  it('preserves zero analytics and keeps malformed values out of table cells', () => {
+    expect(normalizeSceneListEngagement({ views: 0, comments: 0, likesRatio: 0 }))
+      .toMatchObject({ views: 0, comments: 0, likesRatio: 0 })
+    expect(normalizeSceneListEngagement({ comments: -1, likesRatio: Number.NaN }))
+      .toMatchObject({ comments: 0, likesRatio: 0 })
+    expect(normalizeSceneListEngagement({ comments: Number.POSITIVE_INFINITY, likesRatio: 101 }))
+      .toMatchObject({ comments: 0, likesRatio: 100 })
+    expect(normalizeSceneListEngagement(null)).toMatchObject({ comments: 0, likesRatio: 0 })
   })
 })
 
