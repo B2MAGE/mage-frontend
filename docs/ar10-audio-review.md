@@ -51,6 +51,10 @@ measurement. Wall-clock duration is printed separately; startup is not hidden.
 
 ## Local evidence — October 15, 2026
 
+- A separate clean checkout installed the lockfile with `npm ci` and passed
+  lint, all 3,111 application tests, 70 Node tooling tests and 89 diagnostic
+  tooling tests. The app, local renderer and production-configured renderer
+  builds passed. The production artifact was built only, not deployed.
 - Installed engine analysis and modes: 69 focused checks passed. Five new
   recording-tool checks and four PCM-to-Builder checks passed.
 - Transport/renderer/editor lifecycle: 182 focused checks passed, including the
@@ -62,6 +66,12 @@ measurement. Wall-clock duration is printed separately; startup is not hidden.
   rollback. Four committed-demo checks also passed. No backend changes needed.
 - Native browser AudioWorklet: both sample rates passed all four consumer
   cadences, idle-consumer retention, band routing, silence, and disconnect checks.
+- The editor and full player played the same local recording. Changing between
+  Original and Selective while paused retained 76.86 s; editing Selective's
+  amount and resuming advanced from that position. At a 390 × 844 viewport,
+  seeking to the beginning and pausing/resuming retained a working preview,
+  without a retry overlay or captured console errors. The viewport override
+  was removed afterward, and the existing browser draft was left untouched.
 - Actual music: two local 20-second excerpts (0–20 and 30–50 seconds) of the
   previously used `34910776-for-her-chill-upbeat-summel-travel-vlog-and-ig-music-royalty-free-use-202298.mp3`
   passed at both sample rates. Each excerpt yielded 2,000 measurements per rate.
@@ -98,6 +108,12 @@ The normal local app is `http://127.0.0.1:5178`, matching isolated renderer on
 5181 and backend on 8080. Existing local data is preserved. Docker's stale
 runtime socket directory was quarantined before normal startup; no database or
 object-storage reset was performed.
+
+The normal local server is running rather than the opt-in diagnostics server;
+manual-check routes return 410. The renderer's headers, integrity and route
+restrictions passed verification, and backend `/ready` reports application and
+database UP. Local renderer asset: `renderer-6gzCQKGC.js`. The separately built
+production asset is `renderer-BCdl3gmj.js` and has not been published.
 
 Physical Pixel Chrome, real device audio latency, app-switching and throttled
 network evidence still require a device review. A narrow desktop viewport does
