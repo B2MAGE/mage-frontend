@@ -59,26 +59,23 @@ is not saved with scenes or personal templates. Audio stays in browser memory.
   instead of animating layout height. Reduced-motion preferences disable both
   transitions.
 
-## Reproduce this local engine build
+## Reproduce the release build
 
-The frontend's released dependency pin is unchanged during review. The running
-local frontend uses the engine package built from the spectrum branch:
+The frontend pins the immutable B2MAGE engine release `v1.0.4-mage.4`, including
+the shared-analysis spectrum API. A clean install needs no local tarball override:
 
 ```powershell
-# In mage-engine-step1 (codex/ar09-inspector-spectrum)
-npm run build
-npm pack
-
-# In mage-frontend-step1 (codex/ar09-audio-inspector)
-npm install --no-save --ignore-scripts '@notrac/mage@file:../mage-engine-step1/b2mage-mage-engine-1.0.4-mage.4-local.0.tgz'
+# In the frontend checkout
+npm ci
 npm run renderer:build
 npm run dev -- --host 127.0.0.1 --port 5178 --strictPort --force
 ```
 
 Start the existing isolated renderer service on 5181 if it is not running.
-Before a future release, publish the reviewed engine and update the frontend
-dependency/lockfile to its immutable release package. Retain renderer-first
-deployment and frontend-first rollback. Nothing here has been merged or deployed.
+Production uses renderer-first deployment and frontend-first rollback. Retain
+the current and previous packages and exact hosting policies on the deployment
+computer; CloudShell uses temporary staging. Deployment identifiers and final
+live verification are recorded on [AR-09 #186](https://github.com/B2MAGE/mage-frontend/issues/186).
 
 ## Earlier verification baseline, 2026-10-16
 
@@ -127,6 +124,9 @@ baseline for the audio implementation, not confirmation of the current layout.
   native meters retain the latest raw readings. No spectrum trails appeared in
   the observed rising/falling samples; intermittent artifacts are not guaranteed
   reproducible. `mobile-smooth-meters.png` records the updated rendering.
+- Release review also checked Classic Blue with real audio at 390×844 and the
+  desktop host. The inspector remained readable, nonmodal and within the page
+  width. MAGE Pulse was restored after the check.
 
 Evidence: `../.local/ar09-inspector-redesign/` (not committed). Frontend and
 renderer serve the rebuilt local files. The backend/database and the user's
