@@ -3,6 +3,7 @@ import { compileShader } from '@notrac/mage/compiler'
 import { normalizeCompiledShader } from '@notrac/mage/compiled-shader'
 import engineSource from '@notrac/mage?raw'
 import { describe, expect, it, vi } from 'vitest'
+import { amplifiedShaderArtifact } from '@shared/test/shaderWorkload'
 
 // Exercise installed methods with only private-field spelling changed, as in
 // the existing engine lifecycle tests; actual shader/material creation is used.
@@ -30,6 +31,15 @@ function fixture() {
 }
 
 describe('installed compiled-artifact rendering', () => {
+  it.each([false, true])('independently rejects amplified artifacts before material allocation (forged budget: %s)', forgedBudget => {
+    const f = fixture(), artifact = amplifiedShaderArtifact(compileShader('sphere(0.5);')), sourceLoader = vi.spyOn(f.visualizer, 'load')
+    if (forgedBudget) Object.assign(artifact, { workload: { expandedCost: 0, fragmentCost: 0 } })
+    expect(() => f.loadCompiled.call(f.engine, { visualizer: { shader: 'sphere(0.5);' } }, artifact)).toThrow()
+    expect(sourceLoader).not.toHaveBeenCalled()
+    expect(f.visualizer.mesh).toBeNull()
+    expect(f.engine._updateVisualizer).not.toHaveBeenCalled()
+  })
+
   it('keeps source inert, preserves its metadata and updates trusted audio/time/pointer uniforms', () => {
     const f = fixture()
     const artifact = compileShader('let bass=input(0.2,0,1); let pointerDown=input(0); let builder_o0_position_x=input(0,-100,100); displace(builder_o0_position_x,0,0); sphere(0.5+bass+time*0.01);')

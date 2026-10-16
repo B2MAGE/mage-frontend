@@ -6,6 +6,7 @@ import { PlaybackDownloadError, type PlaybackLoader } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 import type { AudioInspectorSnapshot } from '../modules/player/audioInspector'
+import { SHADER_WORKLOAD_FAILURES } from '../modules/player/policy/shaderWorkloadFailure'
 
 const origin = 'https://mage.peterbucci.com', session = '4b50667d-27d8-4634-93e8-3a795e110123'
 const scene = customDocument({ visualizer: { shader: 'sphere(1);' } })
@@ -28,7 +29,7 @@ function fixture() {
   releases.push(runtime.dispose)
   const port = { postMessage: vi.fn(), start: vi.fn(), close: vi.fn(), onmessage: null as ((event: MessageEvent) => void) | null }
   const bootstrap = (overrides: Partial<MessageEventInit> = {}) => target.dispatchEvent(new MessageEvent('message', {
-    data: playbackMessage('connect', session, 0, 0, { startupPhases: true }), source: target.parent, origin, ports: [port as unknown as MessagePort], ...overrides }))
+    data: playbackMessage('connect', session, 0, 0, { startupPhases: true, workloadErrors: true }), source: target.parent, origin, ports: [port as unknown as MessagePort], ...overrides }))
   let request = 0
   const send = <T extends PlaybackType>(type: T, payload: PlaybackPayloads[T], generation = 1, requestId = ++request) =>
     port.onmessage?.(new MessageEvent('message', { data: playbackMessage(type, session, generation, requestId, payload) }))
@@ -38,6 +39,34 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it.each(SHADER_WORKLOAD_FAILURES)('reports only the bounded %s code for compiler and engine rejection', async failure => {
+    const f = fixture(), error = new ShaderCompilationError(failure)
+    error.message = 'private shader source and stack'
+    f.loadScene.mockRejectedValueOnce(error)
+    f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: failure }])
+    expect(JSON.stringify(f.port.postMessage.mock.calls)).not.toContain('private shader')
+    expect(f.port.close).toHaveBeenCalledOnce()
+    expect(f.engine.playback).not.toHaveBeenCalled()
+  })
+
+  it.each([null, { startupPhases: true }])('keeps existing parents on their supported compile error when their opt-in is %j', async payload => {
+    const f = fixture()
+    f.loadScene.mockRejectedValueOnce(new ShaderCompilationError('shader-workload-expanded-cost'))
+    f.bootstrap({ data: playbackMessage('connect', session, 0, 0, payload as PlaybackPayloads['connect']) })
+    f.load(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'compile' }])
+  })
+
+  it('classifies an independently thrown engine workload limit without transmitting its arbitrary message', async () => {
+    const f = fixture()
+    f.loadScene.mockRejectedValueOnce(Object.assign(new Error('private engine detail'), {
+      code: 'shader-workload-limit', limit: 'fragment-cost', actual: 9999999, maximum: 2,
+    }))
+    f.bootstrap(); f.load(); await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'shader-workload-fragment-cost' }])
+  })
+
   it('only reads inspector data on request, bounds reads and keeps observer errors out of playback recovery', async () => {
     const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
     expect(f.engine.audioInspector).not.toHaveBeenCalled()

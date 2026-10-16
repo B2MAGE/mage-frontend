@@ -3,8 +3,18 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { SceneRecoveryPanel } from './SceneRecoveryPanel'
 import type { RecoveryReason } from './sceneRecovery'
+import { SHADER_WORKLOAD_FAILURES, SHADER_WORKLOAD_MESSAGES } from '../policy/shaderWorkloadFailure'
 
 describe('SceneRecoveryPanel', () => {
+  it.each(SHADER_WORKLOAD_FAILURES)('explains the exceeded %s limit without suggesting an unchanged retry', reason => {
+    render(<SceneRecoveryPanel block={{ reason, at: 1 }} safeMode={false} onRetry={vi.fn()} onSafeModeChange={vi.fn()} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Scene needs changes')
+    expect(screen.getByText(SHADER_WORKLOAD_MESSAGES[reason])).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry scene' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Pause all scenes' })).not.toBeChecked()
+  })
+
   it.each([
     ['stopped', 'Resume scene', /you paused this scene/i],
     ['interrupted', 'Retry scene', /playback was interrupted/i],

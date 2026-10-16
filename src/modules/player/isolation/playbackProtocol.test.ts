@@ -35,9 +35,11 @@ describe('bounded playback messages', () => {
   it('negotiates startup reporting only through an exact opt-in while retaining the legacy connection', () => {
     const message = playbackMessage('connect', session, 0, 0, { startupPhases: true })
     expect(isPlaybackMessage(message, ['connect'])).toBe(true)
+    expect(isPlaybackMessage({ ...message, payload: { startupPhases: true, workloadErrors: true } }, ['connect'])).toBe(true)
     expect(isPlaybackMessage({ ...message, payload: null }, ['connect'])).toBe(true)
     const getter = Object.defineProperty({}, 'startupPhases', { enumerable: true, get() { throw new Error('Must not execute') } })
-    for (const payload of [{}, { startupPhases: false }, { startupPhases: 1 }, { startupPhases: true, extra: true }, getter]) {
+    for (const payload of [{}, { startupPhases: false }, { startupPhases: 1 }, { startupPhases: true, extra: true },
+      { workloadErrors: true }, { startupPhases: true, workloadErrors: false }, { startupPhases: true, workloadErrors: 'true' }, getter]) {
       expect(isPlaybackMessage({ ...message, payload }, ['connect'])).toBe(false)
     }
     expect(isPlaybackMessage({ ...message, generation: 1 }, ['connect'])).toBe(false)

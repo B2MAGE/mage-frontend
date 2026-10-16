@@ -34,7 +34,7 @@ describe('local recovery adapter', () => {
     const f = setup()
     expect(f.post.mock.calls).toEqual([
       [{ type: FIXED_RECOVERY_SETUP, case: 'context-loss', nonce }, '*', [channels[0].port2]],
-      [playbackMessage('connect', session, 0, 0, { startupPhases: true }), '*', [channels[1].port2]],
+      [playbackMessage('connect', session, 0, 0, { startupPhases: true, workloadErrors: true }), '*', [channels[1].port2]],
     ])
     f.host.dispose()
     expect(f.evidence.close).toHaveBeenCalledOnce(); expect(f.playback.close).toHaveBeenCalledOnce()

@@ -1,4 +1,6 @@
-export type RecoveryReason =
+import type { ShaderWorkloadFailure } from '../policy/shaderWorkloadFailure'
+
+export type RecoveryReason = ShaderWorkloadFailure
   | 'load'
   | 'compiler-download'
   | 'graphics-download'

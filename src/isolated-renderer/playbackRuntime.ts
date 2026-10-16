@@ -3,6 +3,7 @@ import { BRIDGE_LIMITS, isPlaybackMessage, messageRate, playbackMessage, PLAYBAC
 import type { PlaybackEngine, PlaybackLoader } from './playbackEngine'
 import { PlaybackDownloadError } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
+import { isShaderWorkloadFailure, shaderWorkloadFailure } from '../modules/player/policy/shaderWorkloadFailure'
 
 export function installPlaybackRuntime(options: {
   canvas: HTMLCanvasElement; statusElement: HTMLElement; allowedParentOrigins: readonly string[]
@@ -22,6 +23,7 @@ export function installPlaybackRuntime(options: {
   let pendingSceneSettings: PlaybackPayloads['scene-settings'] | null = null
   let playing = true
   let reportStartupPhases = false
+  let reportWorkloadErrors = false
   let zoom = 1
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
@@ -48,6 +50,7 @@ export function installPlaybackRuntime(options: {
   }
   function fail(code: PlaybackPayloads['error']['code'], request = lastRequest) {
     if (closed) return
+    if (!reportWorkloadErrors && isShaderWorkloadFailure(code)) code = 'compile'
     // Existing v2 parents reject every newly introduced response/error code.
     // Keep their exact vocabulary until the connecting parent opts in.
     if (!reportStartupPhases) {
@@ -130,11 +133,11 @@ export function installPlaybackRuntime(options: {
       options.statusElement.hidden = true
       send('loaded', message.requestId, null)
     } catch (error) {
-      if (active()) fail(error instanceof PlaybackDownloadError ? error.code
+      if (active()) fail(shaderWorkloadFailure(error) ?? (error instanceof PlaybackDownloadError ? error.code
         : error instanceof ShaderCompilationError ? error.code === 'timeout' ? 'compile-timeout'
           : error.code === 'startup' ? 'compiler-startup' : error.code === 'invalid-output' ? 'invalid-output'
-            : error.code === 'interrupted' ? 'interrupted' : 'compile'
-          : currentPhase === 'graphics-startup' ? 'graphics-startup' : 'render', message.requestId)
+            : error.code === 'interrupted' ? 'interrupted' : isShaderWorkloadFailure(error.code) ? error.code : 'compile'
+          : currentPhase === 'graphics-startup' ? 'graphics-startup' : 'render'), message.requestId)
     }
   }
   async function capture(message: PlaybackMessage<'capture'>) {
@@ -196,6 +199,7 @@ export function installPlaybackRuntime(options: {
       || !options.allowedParentOrigins.includes(event.origin) || event.ports.length !== 1
       || !isPlaybackMessage(event.data, ['connect'])) return
     reportStartupPhases = event.data.type === 'connect' && event.data.payload?.startupPhases === true
+    reportWorkloadErrors = event.data.type === 'connect' && event.data.payload?.workloadErrors === true
     session = event.data.session; port = event.ports[0]
     target.removeEventListener('message', connect)
     port.onmessage = onCommand; port.onmessageerror = () => fail('protocol'); port.start()

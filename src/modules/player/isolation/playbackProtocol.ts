@@ -7,6 +7,7 @@ import { getRenderBudget } from '../policy/renderBudget'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 import { AUDIO_INSPECTOR_BANDS, type AudioInspectorSnapshot } from '../audioInspector'
 import { BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, BUILDER_BINDING_RULES, BUILDER_LIMITS } from '../templates/builderDefinitions'
+import { SHADER_WORKLOAD_FAILURES } from '../policy/shaderWorkloadFailure'
 
 export const PLAYBACK_VERSION = 2
 export const CAPTURE_BUDGET = getRenderBudget('preview')
@@ -17,9 +18,9 @@ export type CaptureRequest = { width: number; height: number; type: 'image/png' 
 export const STARTUP_PHASES = ['waiting-visible', 'compiler-download', 'compiler-startup', 'compiling', 'graphics-download', 'graphics-startup'] as const
 export type StartupPhase = typeof STARTUP_PHASES[number]
 export const PLAYBACK_ERRORS = ['render', 'protocol', 'capture', 'compile', 'compiler-download', 'graphics-download',
-  'compiler-startup', 'compile-timeout', 'invalid-output', 'graphics-startup', 'context-lost', 'interrupted'] as const
+  'compiler-startup', 'compile-timeout', 'invalid-output', 'graphics-startup', 'context-lost', 'interrupted', ...SHADER_WORKLOAD_FAILURES] as const
 export type PlaybackPayloads = {
-  connect: null | { startupPhases: true }; ready: null; dispose: null
+  connect: null | { startupPhases: true; workloadErrors?: true }; ready: null; dispose: null
   load: { scene: Record<string, unknown>; profile: 'full' | 'preview' }
   loaded: null
   'load-phase': { phase: StartupPhase; attempt: 0 | 1 }
@@ -133,7 +134,7 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     || !uint(value.generation) || !uint(value.requestId) || typeof value.type !== 'string' || !allowed.includes(value.type)) return false
   const p = value.payload
   switch (value.type) {
-    case 'connect': return (p === null || (record(p, ['startupPhases']) && p.startupPhases === true))
+    case 'connect': return (p === null || ((record(p, ['startupPhases']) || record(p, ['startupPhases', 'workloadErrors']) && p.workloadErrors === true) && p.startupPhases === true))
       && value.generation === 0 && value.requestId === 0
     case 'ready': return p === null && value.generation === 0 && value.requestId === 0
     case 'dispose': case 'loaded': case 'capabilities': case 'audio-inspector': return p === null

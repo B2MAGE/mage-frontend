@@ -1,5 +1,6 @@
 import { compileShader } from '@notrac/mage/compiler'
 import { COMPILER_PROTOCOL, COMPILER_VERSION, isCompileRequest } from './protocol'
+import { shaderWorkloadFailure } from '../../modules/player/policy/shaderWorkloadFailure'
 
 type CompilerScope = {
   postMessage: (message: unknown) => void
@@ -38,9 +39,10 @@ scope.addEventListener('message', (event: MessageEvent<unknown>) => {
     send({ ...envelope, type: 'started' })
     const artifact = compileShader(source, { maxRaymarchIterations })
     send({ ...envelope, type: 'compiled', artifact })
-  } catch {
+  } catch (error) {
     // Do not send submitted source, stacks, arbitrary error objects or callbacks.
-    send({ ...envelope, type: 'error' })
+    const failure = shaderWorkloadFailure(error)
+    send({ ...envelope, type: 'error', ...(failure ? { failure } : {}) })
   } finally {
     // Close before queued timers run. The owner also calls terminate on every outcome.
     close()

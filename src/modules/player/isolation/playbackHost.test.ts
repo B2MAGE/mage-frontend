@@ -250,15 +250,16 @@ describe('isolated playback host',()=>{
     expect(messages.filter(m=>m.type==='playback').at(-1).payload.playing).toBe(false)
     s.host.dispose()
   })
-  it('removes a compiler-rejected frame and reports the fixed actionable reason without retrying',async()=>{
+  it.each(['compile', 'shader-workload-expanded-cost', 'shader-workload-fragment-cost', 'shader-workload-call-depth'] as const)(
+    'removes a %s rejected frame and reports the fixed actionable reason without retrying',async code=>{
     const s=setup()
     const promise=s.host.loadScene(customDocument({visualizer:{shader:'sphere(0.5);'}}))
     const rejected=expect(promise).rejects.toThrow('Isolated player stopped.')
     await Promise.resolve()
     const request=s.port.postMessage.mock.calls.at(-1)![0]
-    s.reply('error',{code:'compile'},request.generation,request.requestId)
+    s.reply('error',{code},request.generation,request.requestId)
     await rejected
-    expect(s.failure).toHaveBeenCalledExactlyOnceWith('compile')
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith(code)
     expect(s.frame.isConnected).toBe(false)
     expect(s.port.close).toHaveBeenCalledOnce()
     expect(s.status).toHaveBeenLastCalledWith('error')
@@ -370,7 +371,7 @@ describe('isolated playback host',()=>{
   })
   it('sends bootstrap to the exact opaque frame with only a private port and session',async()=>{
     const s=setup();await s.host.ready
-    expect(s.post).toHaveBeenCalledWith(playbackMessage('connect',SESSION,0,0,{startupPhases:true}),'*',[channels[0].port2])
+    expect(s.post).toHaveBeenCalledWith(playbackMessage('connect',SESSION,0,0,{startupPhases:true,workloadErrors:true}),'*',[channels[0].port2])
     expect(s.frame.getAttribute('sandbox')).toBe('allow-scripts')
     expect(s.frame.getAttribute('allow')).toContain("microphone 'none'")
     s.host.dispose();expect(s.frame.isConnected).toBe(false);expect(s.port.close).toHaveBeenCalled()
