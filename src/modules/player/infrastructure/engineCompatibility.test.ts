@@ -191,6 +191,9 @@ describe('installed MAGE engine compatibility', () => {
     const material = { dispose: vi.fn() }
     const controls = { dispose: vi.fn() }
     const renderTarget = { dispose: vi.fn() }
+    const background = { dispose: vi.fn() }
+    const composer = { dispose: vi.fn() }
+    const fx = { dispose: vi.fn() }
     const audio = { stop: vi.fn(), disconnect: vi.fn() }
     const reversedAudio = { stop: vi.fn(), disconnect: vi.fn() }
     const unsubscribe = vi.fn()
@@ -200,7 +203,8 @@ describe('installed MAGE engine compatibility', () => {
       isRunning: false,
       animationFrameId: null,
       renderer,
-      scene: { traverse: (visit: (object: unknown) => void) => visit({ geometry, material: [material] }) },
+      scene: { background, traverse: (visit: (object: unknown) => void) => visit({ geometry, material: [material] }) },
+      composer, fx,
       controls,
       renderTarget,
       audio,
@@ -211,12 +215,15 @@ describe('installed MAGE engine compatibility', () => {
       visualizer: { mesh: {}, shader: {}, shaders: ['shader'] },
       state: {},
       inputs: {},
+      _sceneResources: engineMethod('_sceneResources'),
+      _disposeSceneResources: engineMethod('_disposeSceneResources'),
+      _recordGraphicsEvent: vi.fn(),
     }
     const dispose = engineMethod('dispose')
     dispose.call(engine)
     dispose.call(engine)
 
-    for (const release of [renderer.dispose, renderer.forceContextLoss, geometry.dispose, material.dispose, controls.dispose, renderTarget.dispose, audio.stop, audio.disconnect, reversedAudio.stop, reversedAudio.disconnect, unsubscribe, inputBridge.detach]) {
+    for (const release of [renderer.dispose, renderer.forceContextLoss, geometry.dispose, material.dispose, controls.dispose, renderTarget.dispose, background.dispose, composer.dispose, fx.dispose, audio.stop, audio.disconnect, reversedAudio.stop, reversedAudio.disconnect, unsubscribe, inputBridge.detach]) {
       expect(release).toHaveBeenCalledOnce()
     }
     expect(engine).toMatchObject({ isDisposed: true, renderer: null, scene: null, controls: null, audio: null, reversedAudio: null, state: null, inputs: null })
@@ -621,7 +628,7 @@ describe('installed MAGE engine compatibility', () => {
     class Renderer { constructor() { return renderer } }
     const createRenderer = engineMethod('_createRenderer', { WebGLRenderer: Renderer, Color: class {}, SRGBColorSpace: 'srgb', window: { devicePixelRatio: 1.5 } })
     const syncViewport = vi.fn()
-    createRenderer.call({ _syncViewport: syncViewport, fx: { toneMapping: { exposure: 1 } } })
+    createRenderer.call({ _syncViewport: syncViewport, _recordGraphicsEvent: vi.fn(), fx: { toneMapping: { exposure: 1 } } })
     expect(syncViewport).toHaveBeenCalledExactlyOnceWith(true)
     expect(() => renderer.debug.onShaderError?.()).toThrow(/GPU program could not be compiled/)
   })

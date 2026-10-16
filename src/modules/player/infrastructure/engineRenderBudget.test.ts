@@ -61,6 +61,7 @@ function viewportFixture(budget: Budget = full) {
     renderTarget: { setSize: allocated },
     _getViewportSize: () => cssSize,
     _syncSobelResolution: vi.fn(),
+    _recordGraphicsEvent: vi.fn(),
   }
   engine._syncViewport = method('#_syncViewport')
   return { engine, canvas, allocations, resize: (width: number, height: number) => { cssSize = { width, height } } }
@@ -146,6 +147,7 @@ describe('installed MAGE render ceilings', () => {
     }
     method('#_createRenderer', { WebGLRenderer: Renderer, Color: class {}, SRGBColorSpace: 'srgb' }).call({
       canvas, renderBudget: preview, _syncViewport: vi.fn(), fx: { toneMapping: { exposure: 1 } },
+      _recordGraphicsEvent: vi.fn(),
     })
     expect(constructed).toHaveBeenCalledOnce()
   })

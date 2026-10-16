@@ -11,7 +11,7 @@ function installedMethod(name: string, dependencies: Record<string, unknown> = {
   const start = engineSource.indexOf(`\n\t${name}(`, classStart)
   const end = engineSource.indexOf('\n\t}', start)
   if (start < classStart || end <= start) throw new Error(`Missing installed engine method ${name}`)
-  const body = engineSource.slice(start + 2, end + 3).replaceAll('this.#', 'this.')
+  const body = engineSource.slice(start + 2, end + 3).replace(/^#/, '').replaceAll('this.#', 'this.')
   return new Function(...Object.keys(dependencies), `return function ${body}`)(...Object.values(dependencies)) as (this: Engine, ...args: unknown[]) => unknown
 }
 
@@ -66,6 +66,8 @@ function fixture() {
   const engine: Engine = {
     listener: { context }, audio: null, reversedAudio: null, audioLoadGeneration: 0,
     isDisposed: false, isRunning: false, animationFrameId: null,
+    _sceneResources: installedMethod('#_sceneResources'),
+    _disposeSceneResources: installedMethod('#_disposeSceneResources'),
   }
   return {
     engine, requests, decodes, readers, context, fileInput,

@@ -32,6 +32,7 @@ function fixture() {
     clock: { update() {}, getDelta: () => 1 / 60 }, controls: { update() {} }, viewportToast: { el: null },
     _syncViewport() {}, _updateViewportInteractionFromBridge() {}, renderLifecycleListeners: listeners,
     _notifyRenderLifecycle: method('#_notifyRenderLifecycle'),
+    _recordGraphicsEvent: vi.fn(),
   }
   return { engine, state, render, request, cancel, listeners, tick: () => { engine.lastRenderTime = null; createRender(request, cancel).call(engine) } }
 }
