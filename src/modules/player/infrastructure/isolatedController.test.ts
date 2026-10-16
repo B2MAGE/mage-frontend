@@ -57,6 +57,7 @@ function bridge() {
     clearAudio: vi.fn(() => { state.loaded = false; state.duration = 0; state.time = 0 }),
     reset: vi.fn(() => { state.time = 0; state.playing = false }), setSynthetic: vi.fn(), setRenderingSuspended: vi.fn(),
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getAudioResponseCapabilities: vi.fn(() => null),
+    setAudioInspectorEnabled: vi.fn(), requestAudioInspector: vi.fn(async () => null),
     getAudioState: () => ({ ...state }), capture: vi.fn<(request?: unknown) => Promise<Blob>>(async () => new Blob(['verified-raster'], { type: 'image/png' })),
     dispose: vi.fn(), state }
 }
@@ -91,6 +92,21 @@ afterEach(() => {
 })
 
 describe('isolated controller guards', () => {
+  it('opts into optional spectrum only for a loaded, available preview and safely disables after disposal', async () => {
+    const player = await create()
+    player.setAudioInspectorEnabled!(true)
+    expect(playerBridge.setAudioInspectorEnabled).toHaveBeenLastCalledWith(false)
+    await player.loadSceneBlob(template)
+    player.setAudioInspectorEnabled!(true)
+    expect(playerBridge.setAudioInspectorEnabled).toHaveBeenLastCalledWith(true)
+    await expect(player.requestAudioInspector!()).resolves.toBeNull()
+    expect(playerBridge.requestAudioInspector).toHaveBeenCalledOnce()
+    player.dispose()
+    player.setAudioInspectorEnabled!(false)
+    expect(playerBridge.setAudioInspectorEnabled).toHaveBeenLastCalledWith(false)
+    await expect(player.requestAudioInspector!()).resolves.toBeNull()
+    expect(playerBridge.requestAudioInspector).toHaveBeenCalledOnce()
+  })
   it('validates before checking permission or allocating the frame', async () => {
     await expect(create(customDocument({ ...custom.scene, intent: { fov: 400 } }))).rejects.toThrow(/fov/)
     await expect(createIsolatedMageController(document.createElement('div'), {})).rejects.toThrow(/initial scene/)

@@ -19,6 +19,10 @@ export function useAudioInspector({ playerRef, playerVersion, ready, sceneBlob, 
     let disposed = false
     let pending = false
     let generation = 0
+    const setEnabled = (enabled: boolean) => {
+      try { player.setAudioInspectorEnabled?.(enabled) }
+      catch { /* Optional spectrum resources cannot interrupt playback. */ }
+    }
     const publish = async () => {
       if (disposed || pending || document.hidden || playerRef.current !== player) return
       const requestGeneration = generation
@@ -31,14 +35,17 @@ export function useAudioInspector({ playerRef, playerVersion, ready, sceneBlob, 
     }
     const onVisibilityChange = () => {
       generation++
+      setEnabled(!document.hidden)
       onChange(null)
       if (!document.hidden) void publish()
     }
+    setEnabled(!document.hidden)
     void publish()
     const timer = window.setInterval(() => { void publish() }, 250)
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       disposed = true
+      setEnabled(false)
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       onChange(null)

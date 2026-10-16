@@ -260,12 +260,18 @@ future decision.
 
 ## Audio inspector
 
-Live Preview has a collapsed-by-default Audio inspector. It shows the existing
-band levels and recent hits, identifies real audio versus simulated beats, and
-follows the selected Builder object by ID. Select a Music & pointer property to
-compare its authored settings with its actual smoothed input and response value.
-Animation inputs can also be inspected; their values precede the animation's
-amount/offset/combined expressions, which may vary across the rendered surface.
+The Live Preview header opens a closed-by-default Audio inspector. On desktop
+it fills the sidebar below the player; on mobile it covers the editor below the
+player. It is nonmodal and leaves playback controls usable, with no backdrop.
+The covered mobile editor is inactive until the inspector closes.
+
+The inspector shows real frequency slices from the existing analyzer, band
+levels and recent hits, and distinguishes audio from simulated beats. Whole
+scene and object views trace actual sources to response properties. Music &
+pointer cards compare settings with the measured smoothed input and response.
+Animation cards identify configured object/parent connections; their available
+input values precede amount/offset/combined expressions, which may vary across
+the rendered surface. The inspector does not edit scene settings.
 
 Readings use a separate, bounded store and never enter the draft, history,
 personal template or saved scene. The player requests at most four snapshots per

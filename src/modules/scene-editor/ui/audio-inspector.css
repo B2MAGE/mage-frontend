@@ -1,34 +1,64 @@
-.audio-inspector { margin: 12px; min-width: 0; }
-.audio-inspector.builder-inspector-section > summary { grid-template-columns: minmax(0, 1fr) 16px; }
-.audio-inspector__content { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; font-size: 11px; line-height: 1.5; }
-.audio-inspector__status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
-.audio-inspector__status > span,
-.audio-inspector__section > p { color: var(--studio-muted); }
-.audio-inspector__section { min-width: 0; display: grid; gap: 10px; }
-.audio-inspector__section + .audio-inspector__section { padding-top: 12px; border-top: 1px solid var(--studio-border); }
-.audio-inspector__section > h5 { margin: 0; font-size: 11px; color: var(--studio-text); }
-.audio-inspector__section > p { margin: 0; }
-.audio-inspector__band-head,
-.audio-inspector__band { display: grid; grid-template-columns: 64px minmax(70px, 1fr) 60px; align-items: center; gap: 10px; }
-.audio-inspector__band-head { color: var(--studio-muted); font-size: 10px; }
-.audio-inspector__level { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.audio-inspector__level > span:last-child { min-width: 4.5ch; text-align: right; font-variant-numeric: tabular-nums; }
+.audio-inspector__content { min-width: 0; padding: 15px 15px 22px; color: var(--studio-text); font-size: 11px; line-height: 1.5; }
+.audio-inspector__section { min-width: 0; }
+.audio-inspector__section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.audio-inspector__section-head > h3 { margin: 0; color: var(--studio-text); font-size: 12px; font-weight: 650; }
+.audio-inspector__subheading { margin: 0 0 11px; color: var(--studio-muted); font-size: 10px; }
+.audio-inspector__status { display: flex; align-items: center; gap: 6px; color: var(--studio-muted); font-size: 10px; text-align: right; }
+.audio-inspector__status::before { content: ''; width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--studio-track); }
+.audio-inspector__status.is-active::before { background: var(--studio-success); }
+.audio-inspector__mode { color: var(--studio-accent); font-size: 10px; }
+.audio-inspector__spectrum { height: 92px; display: flex; align-items: flex-end; gap: 3px; padding: 10px 9px 6px; border: 1px solid var(--studio-border-strong); border-radius: 8px; overflow: hidden; background: var(--studio-field); }
+.audio-inspector__spectrum > i { flex: 1; min-width: 1px; height: 100%; border-radius: 2px 2px 0 0; background: var(--studio-accent-solid); transform-origin: center bottom; transition: transform 150ms linear; }
+.audio-inspector__spectrum > i:nth-child(n+13):nth-child(-n+24) { background: var(--studio-accent); }
+.audio-inspector__spectrum > i:nth-child(n+25) { background: var(--studio-success); }
+.audio-inspector__spectrum--empty { justify-content: center; align-items: center; color: var(--studio-muted); text-align: center; font-size: 10px; }
+.audio-inspector__frequencies { display: flex; justify-content: space-between; gap: 7px; margin: 5px 0 0; color: var(--studio-subtle); font-size: 9px; }
+.audio-inspector__meters { display: grid; gap: 9px; margin-top: 14px; }
+.audio-inspector__band { display: grid; grid-template-columns: 57px minmax(0, 1fr) 42px; align-items: center; gap: 8px; }
+.audio-inspector__band > strong { font-size: 10px; font-weight: 550; }
+.audio-inspector__number { text-align: right; font-variant-numeric: tabular-nums; font-size: 10px; color: var(--studio-muted); }
 .audio-inspector__empty-meter,
-.audio-inspector__level > meter { flex: 1; min-width: 12px; height: 7px; appearance: none; border: 0; border-radius: 4px; background: var(--studio-track); }
-.audio-inspector__level > meter::-webkit-meter-bar { height: 7px; border: 0; border-radius: 4px; background: var(--studio-track); }
-.audio-inspector__level > meter::-webkit-meter-optimum-value { border-radius: 4px; background: var(--studio-accent-solid); }
-.audio-inspector__level > meter::-moz-meter-bar { border-radius: 4px; background: var(--studio-accent-solid); }
-.audio-inspector__hit { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-.audio-inspector__hit-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--studio-track); }
-.audio-inspector__hit-dot.is-active { background: var(--studio-success); }
-.audio-inspector__settings { display: grid; gap: 5px; margin: 0; }
-.audio-inspector__settings > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 10px; }
-.audio-inspector__settings dt { color: var(--studio-muted); }
-.audio-inspector__settings dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.audio-inspector__result { padding: 9px; border: 1px solid var(--studio-border); border-radius: 7px; background: var(--studio-group); }
-.audio-inspector__result dd { font-weight: 650; }
-@media (max-width: 480px) {
-  .audio-inspector { margin: 8px; }
-  .audio-inspector__band-head,
-  .audio-inspector__band { grid-template-columns: 56px minmax(62px, 1fr) 56px; gap: 6px; }
-}
+.audio-inspector__meter { position: relative; width: 100%; min-width: 0; height: 5px; overflow: hidden; border-radius: 5px; background: var(--studio-track); }
+.audio-inspector__meter-fill { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--studio-accent-solid); transform-origin: left center; transition: transform 150ms linear; }
+.audio-inspector__band:nth-child(2) .audio-inspector__meter-fill { background: var(--studio-accent); }
+.audio-inspector__band:nth-child(3) .audio-inspector__meter-fill { background: var(--studio-success); }
+.audio-inspector__hits { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; color: var(--studio-muted); font-size: 9px; }
+.audio-inspector__hits > span { display: inline-flex; align-items: center; gap: 4px; }
+.audio-inspector__hits i { height: 5px; width: 5px; border-radius: 50%; background: var(--studio-track); }
+.audio-inspector__hits .is-active i { background: var(--studio-success); }
+.audio-inspector__hits .is-active { color: var(--studio-text); }
+.audio-inspector__visual-response { margin-top: 17px; padding-top: 16px; border-top: 1px solid var(--studio-border); }
+.audio-inspector__object-label { display: grid; gap: 7px; color: var(--studio-muted); font-size: 10px; font-weight: 550; }
+.audio-inspector__object-label > select { height: 38px; width: 100%; min-width: 0; padding: 0 11px; border: 1px solid var(--studio-border-strong); border-radius: 8px; color: var(--studio-text); background: var(--studio-field); font-size: 11px; }
+.audio-inspector__response-list { display: grid; gap: 8px; margin-top: 12px; }
+.audio-inspector__response { padding: 10px; border: 1px solid var(--studio-border); border-radius: 8px; background: var(--studio-control); }
+.audio-inspector__response-flow { display: grid; grid-template-columns: minmax(0, 1fr) 15px minmax(0, 1fr); align-items: center; gap: 8px; }
+.audio-inspector__response-flow > div { min-width: 0; overflow-wrap: anywhere; }
+.audio-inspector__response-flow > svg { color: var(--studio-accent); }
+.audio-inspector__response-flow strong { display: block; font-size: 11px; font-weight: 600; }
+.audio-inspector__response-flow small { display: block; margin-top: 4px; color: var(--studio-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.audio-inspector__response-note { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--studio-border); color: var(--studio-muted); font-size: 10px; }
+.audio-inspector__hint { margin: 10px 0 0; color: var(--studio-muted); font-size: 10px; }
+.audio-inspector__empty { margin: 10px 0 0; padding: 12px; border: 1px solid var(--studio-border); border-radius: 8px; background: var(--studio-control); color: var(--studio-muted); }
+.audio-inspector__details { margin-top: 15px; border: 1px solid var(--studio-border); border-radius: 7px; background: var(--studio-panel); }
+.audio-inspector__details > summary { padding: 11px; color: var(--studio-muted); font-size: 10px; font-weight: 600; cursor: pointer; }
+.audio-inspector__details > div { padding: 0 11px 12px; }
+.audio-inspector__details p { color: var(--studio-muted); font-size: 10px; }
+.audio-inspector__details h4 { margin: 14px 0 7px; font-size: 10px; }
+.audio-inspector__details table { width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+.audio-inspector__details th { text-align: left; font-weight: 500; color: var(--studio-muted); }
+.audio-inspector__details td { text-align: right; }
+.audio-inspector__details thead th:not(:first-child) { text-align: right; }
+.audio-inspector__input-details,
+.audio-inspector__mapping-details dl { display: grid; gap: 5px; margin: 0; }
+.audio-inspector__input-details > div,
+.audio-inspector__mapping-details dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; }
+.audio-inspector__input-details dt { color: var(--studio-muted); }
+.audio-inspector__input-details dd,
+.audio-inspector__mapping-details dd { margin: 0; font-variant-numeric: tabular-nums; }
+.audio-inspector__mapping-details { margin-top: 6px; }
+.audio-inspector__mapping-details summary { cursor: pointer; }
+.audio-inspector__mapping-details dl { padding-top: 7px; }
+.audio-inspector__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.audio-inspector__content :is(select, summary):focus-visible { outline: 2px solid var(--studio-focus-outline); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .audio-inspector__spectrum > i, .audio-inspector__meter-fill { transition: none; } }

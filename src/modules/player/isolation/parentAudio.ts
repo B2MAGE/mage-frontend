@@ -1,4 +1,5 @@
 import { AudioAnalysisSession, type AudioAnalysisFrame } from '@notrac/mage/audio-analysis'
+import type { AudioInspectorSpectrum } from '../audioInspector'
 
 export const MAX_PARENT_AUDIO_BYTES = 64 * 1024 * 1024
 const SAMPLE_INTERVAL = 1 / 30
@@ -6,7 +7,7 @@ const MAX_HITS = 16
 // Matches the bridge's bounded clock. A rollover resets the receiving mapper.
 const MAX_AUDIO_TIME = 604_800
 
-type Analysis = Pick<AudioAnalysisSession, 'connect' | 'reset' | 'dispose' | 'drain' | 'setSensitivity'>
+type Analysis = Pick<AudioAnalysisSession, 'connect' | 'reset' | 'dispose' | 'drain' | 'setSensitivity' | 'setSpectrumEnabled' | 'spectrum'>
 
 /** Injectable browser resources keep lifecycle tests independent of real speakers. */
 export type ParentAudioDependencies = {
@@ -129,12 +130,19 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
   let startedAt = 0
   let volume = 1
   let sensitivity = 1
+  let spectrumEnabled = false
   let sequence = 0
   let lastSampleAt = -Infinity
   let legacyAmplitude = 0
   let graph: ReturnType<typeof createGraph> | null = null
   let activeDecode: DecodeRequest | null = null
   let queuedDecode: DecodeRequest | null = null
+
+  function syncSpectrum() {
+    if (!graph?.analysisReady) return
+    try { graph.analysis.setSpectrumEnabled(spectrumEnabled && !!source && !disposed && graph.context.state === 'running') }
+    catch { /* Optional inspection must not interfere with playback or analysis. */ }
+  }
 
   function assertActive() {
     if (disposed) throw new Error('This audio session has been disposed.')
@@ -196,8 +204,10 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
     const analysis = dependencies.createAnalysis?.() ?? new AudioAnalysisSession()
     analysis.setSensitivity(sensitivity)
     const state = { context, input, gain, analyser, frequencies, analysis, ready: Promise.resolve(false), analysisReady: false }
+    context.addEventListener('statechange', syncSpectrum)
     state.ready = analysis.connect({ context, getOutput: () => input }).then(connected => {
       state.analysisReady = connected
+      syncSpectrum()
       return connected
     })
     return state
@@ -212,6 +222,7 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
     legacyAmplitude = 0
     // Resetting a worklet while its module is loading would cancel connection.
     if (graph?.analysisReady) graph.analysis.reset()
+    syncSpectrum()
   }
 
   function stopSource() {
@@ -249,6 +260,7 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
     resetAnalysis()
     startedAt = graph.context.currentTime
     source = next
+    syncSpectrum()
   }
 
   function cancelLoad() {
@@ -357,6 +369,16 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
       graph?.analysis.setSensitivity(sensitivity)
       lastSampleAt = -Infinity
     },
+    setSpectrumEnabled(enabled: boolean) {
+      if (disposed) return
+      spectrumEnabled = enabled === true
+      syncSpectrum()
+    },
+    spectrum(): AudioInspectorSpectrum | null {
+      if (disposed || !spectrumEnabled || !source || !graph?.analysisReady || graph.context.state !== 'running') return null
+      try { return graph.analysis.spectrum(graph.context.currentTime) }
+      catch { return null }
+    },
     getState(): ParentAudioState {
       return { time: currentTime(), duration: buffer?.duration ?? 0, loaded: !!buffer, playing: !!source, volume }
     },
@@ -389,6 +411,7 @@ export function createParentAudioSession(dependencies: ParentAudioDependencies =
       if (disposed) return
       clear()
       disposed = true
+      graph?.context.removeEventListener('statechange', syncSpectrum)
       graph?.analysis.dispose()
       graph?.input.disconnect()
       graph?.gain.disconnect()

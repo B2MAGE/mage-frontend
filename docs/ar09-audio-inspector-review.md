@@ -1,62 +1,133 @@
 # AR-09 audio inspector — local review
 
 Issue: [frontend #186](https://github.com/B2MAGE/mage-frontend/issues/186).
-Branch: `codex/ar09-audio-inspector`.
+Frontend branch: `codex/ar09-audio-inspector`.
+Engine branch: `codex/ar09-inspector-spectrum` in the B2MAGE fork.
 
 ## Try it
 
-1. Open `http://127.0.0.1:5178/create-scene` and expand **Audio inspector**
-   below Live Preview. It starts collapsed on each editor visit.
-2. Add a song to Live Preview, or enable **Motion → Simulate beat**. Playing
-   music takes priority. Inspect the level meters and recent-hit strengths.
-3. In Builder, select an object with **Music & pointer** responses. The inspector
-   follows that object; choose a property to see its settings, smoothed input,
-   and the value passed into the shader before Animation influences.
-4. For an object with Animation, choose an **Inspect Animation input** source.
-   This displays the actual input supplied to Animation, not a guessed final
-   value for expressions that can vary across a surface.
-5. Pause/resume, change objects, reorder/delete an object, and switch between
-   **Original** and **Selective**. Closing the inspector or hiding Live Preview
-   stops the diagnostic requests without changing the scene.
+1. Open `http://127.0.0.1:5178/create-scene` and select **Audio** in the
+   **Live Preview** header. The inspector starts closed and occupies no layout
+   space. Desktop places it below the player, filling the remaining preview
+   sidebar. At 960px and below it covers the editor below the player. Neither
+   layout darkens the page or covers the playback controls.
+2. Add a song in Live Preview. The spectrum shows 36 real frequency slices
+   from approximately 40 Hz to 8 kHz. Bass, Mid, Treble and Whole mix meters
+   retain the existing analysis values. Bars use a fixed −60 to 0 dB display
+   scale relative to the analyser's normalized maximum, not per-frame boosting.
+3. Choose **Whole scene** or a Builder object. The scene overview traces
+   Selective's configured source to its measured target. Original's size
+   response is identified separately from the modern Bass-level meter.
+4. Object cards show **Music & pointer** input and the measured value passed
+   into the shader before Animation. Animation cards list actual affected
+   properties and inputs, including parent groups. They say **Configured
+   Animation**, without inventing a final value for combined/surface expressions.
+   Available input values appear in cards and **Signal details**. Native scene
+   pointer and surface inputs are listed descriptively when not measured.
+5. Try **Motion → Simulate beat**. Playing music takes priority. Without a
+   playing track the inspector labels the source **Simulated beat**, displays
+   its existing level/hit diagnostics, and explicitly has no frequency spectrum.
+6. Pause/resume, switch Original/Selective, change objects, resize the window,
+   and close/reopen. Escape or Close returns focus to Audio. The inspector is
+   nonmodal in both layouts, so playback controls remain available. The covered
+   mobile editor is temporarily inactive while the inspector is open.
+   Hiding Live Preview closes the inspector and stops inspection.
 
-The inspector does not record or upload audio. Samples stay in memory, and its
-selection/open state is not saved with the scene or personal templates.
+The inspector contains no scene configuration controls. Its open/selection state
+is not saved with scenes or personal templates. Audio stays in browser memory.
 
 ## Runtime boundaries
 
-- Uses the existing audio-analysis frames, response envelopes and shader
-  uniforms; observing does not consume frames or advance the mapper.
-- Four requests per second maximum in the UI, one outstanding request at a time.
-  Hidden pages do not request readings. Scene changes/disposal discard late replies.
-- Strictly bounded numeric snapshots cross the existing isolated renderer bridge.
-  Diagnostic timeouts or unavailable readings do not pause the player.
-- Music & pointer output is measured **before Animation**. Group materials and
-  later animation can change the visible result; the panel labels those cases.
-- Scene-wide Original/Selective behavior and saved formats are unchanged.
-- For a later release, retain the existing **renderer-first deployment,
-  frontend-first rollback** sequence. The new optional request requires the
-  matching renderer; this work does not add general protocol negotiation.
+- Reuses the engine's existing 2,048-point FFT, with no second analyser.
+  Frequency slices are approximately logarithmic, each containing at least one
+  distinct FFT bin. There is no fabricated extra low-frequency resolution.
+- Spectrum aggregation/worklet transmission is opt-in and capped at 10 Hz.
+  It stops when the inspector is closed, page/preview hidden, real audio stopped,
+  scene unavailable, or AudioContext suspended. Reset/reconnect clears readings.
+- The UI requests diagnostics at most four times per second, one outstanding
+  request at a time. Only inspector contents subscribe to the snapshot store;
+  audio measurements are not editor draft state.
+- Spectrum stays in the parent page and is appended after the existing bounded
+  renderer reply. No spectrum arrays cross the isolated renderer bridge.
+- Reads never consume response frames or advance response mapping. Late replies
+  after replacement/close are ignored. Missing diagnostics do not pause playback.
+- Original's existing 64-point analyser/bin-2 path, Selective mappings, and
+  saved scene formats remain unchanged.
+- Spectrum and horizontal fills use 150ms CSS transform transitions. This is
+  display interpolation only: native meter values, numeric readings and audio
+  processing are unchanged. Fixed-size spectrum elements scale down to zero
+  instead of animating layout height. Reduced-motion preferences disable both
+  transitions.
 
-This branch is for local review; merging, issue closure and deployment wait for
-the user's review.
+## Reproduce this local engine build
 
-## Verified locally, 2026-10-15
+The frontend's released dependency pin is unchanged during review. The running
+local frontend uses the engine package built from the spectrum branch:
 
-- Lint, TypeScript, frontend build and renderer build passed.
-- Complete unit suite: **223 files / 3,133 tests passed**. Tooling: **70 Node
-  tests plus 89 Vitest tests passed**. The final unit run used the complete,
-  stable implementation after the inspector's recent-hit window was finalized.
-- Local renderer integrity, isolation headers and route restrictions passed.
-- Browser: real music and simulated beats in Original and Selective; music
-  taking priority over simulation; pause/resume and ended-track messaging;
-  selected Music & pointer output and actual Bass hits input supplied to
-  Animation. Structural edits still wait for an offscreen preview to become
-  visible, and the inspector shows a waiting state during that interval.
-- Both themes checked; narrow layouts at 320 and 390 CSS pixels had no page
-  overflow and kept the full scene aspect ratio. This is desktop browser
-  viewport testing, not a claim of physical Pixel testing.
-- Frontend and renderer restarted from this branch. Backend remained unchanged;
-  the existing 15 scenes and 2 accounts were preserved. Browser review changes
-  were not published, and the existing recoverable draft was left untouched.
+```powershell
+# In mage-engine-step1 (codex/ar09-inspector-spectrum)
+npm run build
+npm pack
 
-Local logs and screenshots: `../.local/ar09-20261015/` (not committed).
+# In mage-frontend-step1 (codex/ar09-audio-inspector)
+npm install --no-save --ignore-scripts '@notrac/mage@file:../mage-engine-step1/b2mage-mage-engine-1.0.4-mage.4-local.0.tgz'
+npm run renderer:build
+npm run dev -- --host 127.0.0.1 --port 5178 --strictPort --force
+```
+
+Start the existing isolated renderer service on 5181 if it is not running.
+Before a future release, publish the reviewed engine and update the frontend
+dependency/lockfile to its immutable release package. Retain renderer-first
+deployment and frontend-first rollback. Nothing here has been merged or deployed.
+
+## Earlier verification baseline, 2026-10-16
+
+These checks passed before the latest below-player placement change. They are a
+baseline for the audio implementation, not confirmation of the current layout.
+
+- Engine build and all 25 tests passed, including source/package sine-tone
+  localization, silence/stereo, identical response outputs and FFT counts with
+  inspection on/off, worklet transmission gating, and session lifecycle cases.
+- Frontend build, TypeScript, lint, renderer build and renderer isolation/header
+  verification passed. Tooling: 70 Node tests and 89 Vitest tests passed.
+- Complete frontend unit suite: **224 files / 3,152 tests passed**.
+- Focused tests cover response provenance, simulated/real presentation,
+  unchanged authored scenes, unsubscription, and 142
+  player/audio cases including externally suspended AudioContexts.
+- Browser checks: real MP3, Original/Selective, music priority, simulated beats
+  with no spectrum, pause/resume/end, object selection and inherited groups,
+  desktop/mobile open/closed and the 960/961px transition. No page
+  overflow at 320 or 390px. These are desktop viewport checks, not physical
+  Android-device testing.
+- Preview rectangles were identical before/after opening and closing at both
+  desktop and mobile sizes. Playback continued and the scene kept rendering.
+  Hiding preview removed the inspector completely. Escape handling worked.
+  No new browser errors were observed.
+
+## Below-player layout verification
+
+- All 28 focused editor, drawer and inspector tests passed. They cover nonmodal
+  operation in both hosts, mobile editor inactivity, available playback controls,
+  close/Escape focus restoration, closed-content cleanup, and preserved
+  readings/object selection when the responsive host changes.
+- TypeScript, production build and lint on the changed components/tests passed.
+- Browser checks at 390×844, 1280×720 and 1440×1000 confirmed that the inspector
+  starts directly below the player. Desktop fills the remaining sidebar height
+  and width; mobile exactly covers the editor workspace. Neither uses a modal
+  backdrop. Mobile player bounds were identical when open and closed.
+- Adding real audio and pausing/resuming worked while the mobile inspector was
+  open. The spectrum continued updating and the scene kept rendering. Closing
+  restored editor interaction. The 960/961px transition moved the single open
+  inspector to the correct host without horizontal page overflow.
+- Current screenshots: `desktop-below-player.png` and `mobile-below-player.png`
+  in the evidence directory below. Earlier expanded-sheet screenshots are
+  superseded. These are browser viewport checks, not physical-device testing.
+- Bar-animation follow-up: all 12 inspector tests, scoped lint and TypeScript
+  checks passed. Live audio confirmed intermediate visual fill positions while
+  native meters retain the latest raw readings. No spectrum trails appeared in
+  the observed rising/falling samples; intermittent artifacts are not guaranteed
+  reproducible. `mobile-smooth-meters.png` records the updated rendering.
+
+Evidence: `../.local/ar09-inspector-redesign/` (not committed). Frontend and
+renderer serve the rebuilt local files. The backend/database and the user's
+recoverable draft were left intact.

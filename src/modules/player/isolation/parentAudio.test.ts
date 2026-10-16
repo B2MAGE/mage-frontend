@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AudioAnalysisFrame, AudioAnalysisSession } from '@notrac/mage/audio-analysis'
 import { createParentAudioSession, MAX_PARENT_AUDIO_BYTES } from './parentAudio'
 import { BRIDGE_LIMITS, isAudioInput } from './playbackProtocol'
+import type { AudioInspectorSpectrum } from '../audioInspector'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -13,13 +14,18 @@ function deferred<T>() {
 
 function fixture() {
   let frames: AudioAnalysisFrame[] = []
+  let spectrum: AudioInspectorSpectrum | null = null
   const nodes: Array<ReturnType<typeof node>> = []
   const sources: Array<ReturnType<typeof bufferSource>> = []
   function node() { return { connect: vi.fn(), disconnect: vi.fn(), gain: { value: 1 } } }
   function bufferSource() { return { ...node(), buffer: null, onended: null as (() => void) | null, start: vi.fn(), stop: vi.fn() } }
   const analyser = { ...node(), fftSize: 0, frequencyBinCount: 32, getByteFrequencyData: vi.fn((data: Uint8Array) => { data[2] = 128 }) }
+  const contextEvents = new EventTarget()
   const context = {
     currentTime: 0, destination: {},
+    state: 'running' as AudioContextState,
+    addEventListener: vi.fn(contextEvents.addEventListener.bind(contextEvents)),
+    removeEventListener: vi.fn(contextEvents.removeEventListener.bind(contextEvents)),
     createGain: vi.fn(() => { const value = node(); nodes.push(value); return value }),
     createAnalyser: vi.fn(() => analyser),
     createBufferSource: vi.fn(() => { const value = bufferSource(); sources.push(value); return value }),
@@ -27,13 +33,18 @@ function fixture() {
     resume: vi.fn(async () => {}), close: vi.fn(async () => {}),
   }
   const analysis = {
-    connect: vi.fn(async () => true), reset: vi.fn(() => { frames = [] }), dispose: vi.fn(), setSensitivity: vi.fn(),
+    connect: vi.fn(async () => true), reset: vi.fn(() => { frames = []; spectrum = null }), dispose: vi.fn(), setSensitivity: vi.fn(),
+    setSpectrumEnabled: vi.fn((enabled: boolean) => { if (!enabled) spectrum = null }),
+    spectrum: vi.fn(() => spectrum ? structuredClone(spectrum) : null),
     drain: vi.fn(() => { const result = frames; frames = []; return result }),
   }
   const createContext = vi.fn(() => context as unknown as AudioContext)
   const fetchSource = vi.fn<typeof fetch>()
   const session = createParentAudioSession({ createContext, fetchSource, createAnalysis: () => analysis as unknown as AudioAnalysisSession })
-  return { session, createContext, context, nodes, sources, analysis, analyser, fetchSource, queue(values: AudioAnalysisFrame[]) { frames.push(...values) } }
+  return { session, createContext, context, nodes, sources, analysis, analyser, fetchSource,
+    queue(values: AudioAnalysisFrame[]) { frames.push(...values) },
+    changeContextState(state: AudioContextState) { context.state = state; contextEvents.dispatchEvent(new Event('statechange')) },
+    queueSpectrum(value: AudioInspectorSpectrum) { spectrum = value } }
 }
 
 function frame(time: number, count = 1): AudioAnalysisFrame {
@@ -410,6 +421,112 @@ describe('bounded parent-only audio loading', () => {
 })
 
 describe('bounded audio measurements for the renderer bridge', () => {
+  it('opts into real spectrum only while requested and playing, without consuming response frames or changing Original sampling', async () => {
+    const f = fixture()
+    f.session.setSpectrumEnabled(true)
+    expect(f.createContext).not.toHaveBeenCalled()
+    expect(f.session.spectrum()).toBeNull()
+    await f.session.load(new Blob(['music']))
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    expect(f.session.spectrum()).toBeNull()
+    expect(f.analysis.spectrum).not.toHaveBeenCalled()
+    await f.session.play()
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    f.context.currentTime = 1
+    const spectrum = { time: 1, minHz: 40, maxHz: 8000, values: Array.from({ length: 36 }, (_, index) => index / 36) }
+    f.queueSpectrum(spectrum)
+    f.queue([frame(1)])
+    expect(f.session.spectrum()).toEqual(spectrum)
+    expect(f.analysis.spectrum).toHaveBeenLastCalledWith(1)
+    expect(f.analysis.drain).not.toHaveBeenCalled()
+    expect(f.analyser.getByteFrequencyData).not.toHaveBeenCalled()
+    expect(f.session.sample()).toMatchObject({ legacyAmplitude: 128 / 255, frame: { levels: frame(1).levels } })
+    expect(f.analyser.fftSize).toBe(64)
+    expect(f.context.createAnalyser).toHaveBeenCalledOnce()
+    expect(f.analysis.connect).toHaveBeenCalledOnce()
+    f.session.setSpectrumEnabled(false)
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    f.analysis.spectrum.mockClear()
+    expect(f.session.spectrum()).toBeNull()
+    expect(f.analysis.spectrum).not.toHaveBeenCalled()
+    expect(f.session.getState().playing).toBe(true)
+  })
+
+  it('clears spectrum across pause, seek, replacement, end and disposal; reopening waits for a fresh sample', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['music']))
+    f.session.setSpectrumEnabled(true)
+    await f.session.play()
+    const spectrum = { time: 0, minHz: 40, maxHz: 8000, values: Array(36).fill(.4) }
+    f.queueSpectrum(spectrum)
+    expect(f.session.spectrum()).toEqual(spectrum)
+    f.session.pause()
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    expect(f.session.spectrum()).toBeNull()
+    await f.session.play()
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    expect(f.session.spectrum()).toBeNull()
+    f.queueSpectrum(spectrum)
+    f.session.seek(10)
+    expect(f.session.spectrum()).toBeNull()
+    f.queueSpectrum(spectrum)
+    await f.session.load(new Blob(['replacement']))
+    expect(f.session.spectrum()).toBeNull()
+    f.queueSpectrum(spectrum)
+    f.sources.at(-1)!.onended?.()
+    expect(f.session.spectrum()).toBeNull()
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    await f.session.play()
+    f.queueSpectrum(spectrum)
+    f.session.clear()
+    expect(f.session.spectrum()).toBeNull()
+    f.session.dispose()
+    f.analysis.setSpectrumEnabled.mockClear()
+    f.session.setSpectrumEnabled(true)
+    expect(f.session.spectrum()).toBeNull()
+    expect(f.analysis.setSpectrumEnabled).not.toHaveBeenCalled()
+  })
+
+  it('contains optional spectrum errors without stopping audio or changing analysis', async () => {
+    const f = fixture()
+    f.analysis.setSpectrumEnabled.mockImplementation(() => { throw new Error('Spectrum unavailable') })
+    f.analysis.spectrum.mockImplementation(() => { throw new Error('Spectrum unavailable') })
+    f.session.setSpectrumEnabled(true)
+    await f.session.load(new Blob(['music']))
+    await f.session.play()
+    expect(f.session.getState().playing).toBe(true)
+    expect(f.session.spectrum()).toBeNull()
+    f.queue([frame(0)])
+    expect(f.session.sample()).toMatchObject({ legacyAmplitude: 128 / 255, frame: { levels: frame(0).levels } })
+  })
+
+  it('disables spectrum when the browser suspends its audio clock and waits for fresh data after resume', async () => {
+    const f = fixture()
+    await f.session.load(new Blob(['music']))
+    f.session.setSpectrumEnabled(true)
+    await f.session.play()
+    const spectrum = { time: 0, minHz: 40, maxHz: 8000, values: Array(36).fill(.4) }
+    f.queueSpectrum(spectrum)
+    expect(f.session.spectrum()).toEqual(spectrum)
+    f.changeContextState('suspended')
+    expect(f.context.currentTime).toBe(0)
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    f.analysis.spectrum.mockClear()
+    expect(f.session.spectrum()).toBeNull()
+    expect(f.analysis.spectrum).not.toHaveBeenCalled()
+    expect(f.sources[0].stop).not.toHaveBeenCalled()
+    f.changeContextState('running')
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    expect(f.session.spectrum()).toBeNull()
+    f.queueSpectrum(spectrum)
+    expect(f.session.spectrum()).toEqual(spectrum)
+    f.changeContextState('closed')
+    expect(f.analysis.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    expect(f.session.spectrum()).toBeNull()
+    f.session.dispose()
+    expect(f.context.removeEventListener).toHaveBeenCalledWith('statechange', expect.any(Function))
+  })
+
   it('combines intervening hits at 30 Hz, uses the audio clock and does not repeat hit frames', async () => {
     const f = fixture()
     await f.session.load(new Blob(['music']))

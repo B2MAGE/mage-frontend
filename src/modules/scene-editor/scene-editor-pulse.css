@@ -46,6 +46,17 @@
 }
 .scene-editor-beat-preview { display: grid; min-width: 0; }
 html[data-theme] .scene-editor-page .scene-editor-preview__content { max-height: calc(100% - 48px); overflow-y: auto; }
+html[data-theme] .scene-editor-page .scene-editor-preview__player-frame { flex: 0 0 auto; }
+.scene-editor-preview__inspector-host { position: relative; flex: 1 1 0; min-height: 0; }
+.scene-editor-preview__inspector-host:empty { display: none; }
+.scene-editor-workspace__inspector-host { position: absolute; inset: 0; z-index: 4; }
+.scene-editor-workspace__inspector-host:empty { display: none; }
+.scene-editor-workspace__editor { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+@media (min-width: 961px) {
+  html[data-theme] .scene-editor-page .scene-editor-preview__content {
+    height: calc(100% - 48px); display: flex; flex-direction: column;
+  }
+}
 .scene-editor-stepper__number, .scene-field__meta { display: none; }
 html[data-theme]:has(.scene-editor-page) { height: 100%; overflow: hidden; }
 html[data-theme]:has(.scene-editor-page) body { height: 100dvh; min-height: 0; overflow: hidden; }

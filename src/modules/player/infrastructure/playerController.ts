@@ -64,6 +64,8 @@ export type MagePlayerController = {
   getEngineDiagnostics?: () => MageEngineDiagnostics | null
   /** A bounded, non-consuming reading; callers opt in only while the inspector is visible. */
   requestAudioInspector?: () => Promise<AudioInspectorSnapshot | null>
+  /** Enable optional parent-side spectrum sampling only while its UI is visible. */
+  setAudioInspectorEnabled?: (enabled: boolean) => void
   loadAudio: (options?: { sourceLabel?: string; sourcePath?: string; signal?: AbortSignal }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void | Promise<void>
   /** Apply supported settings to the loaded scene without changing its playback or audio transport. */

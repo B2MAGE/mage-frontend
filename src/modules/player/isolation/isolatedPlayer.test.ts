@@ -4,6 +4,7 @@ import { createIsolatedPlayer, type IsolatedPlayer } from './isolatedPlayer'
 import type { ParentAudioSession } from './parentAudio'
 import type { createIsolatedPlaybackHost } from './playbackHost'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
+import type { AudioInspectorSnapshot, AudioInspectorSpectrum } from '../audioInspector'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -32,6 +33,8 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
     seek: vi.fn((time: number) => { state.time = time }),
     setVolume: vi.fn((volume: number) => { state.volume = volume }),
     setSensitivity: vi.fn(),
+    setSpectrumEnabled: vi.fn(),
+    spectrum: vi.fn<() => AudioInspectorSpectrum | null>(() => null),
     getState: vi.fn(() => ({ ...state })),
     sample: vi.fn(() => ({ frame: null, legacyAmplitude: 0, audioTime: state.time, loaded: state.loaded, playing: state.playing })),
     clear: vi.fn(() => { state.loaded = false; state.playing = false; state.time = 0 }),
@@ -41,7 +44,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
   const host = {
     ready: boot.promise,
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
-    requestAudioInspector: vi.fn(async () => null),
+    requestAudioInspector: vi.fn<() => Promise<AudioInspectorSnapshot | null>>(async () => null),
     loadScene: vi.fn(async () => {}), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }
@@ -87,6 +90,73 @@ afterEach(() => {
 })
 
 describe('isolated player parent integration', () => {
+  const diagnostic: AudioInspectorSnapshot = { mode: 'legacy', source: 'audio', playing: true, audioLoaded: true,
+    levels: { bass: .5, mid: .2, treble: .1, overall: .3 }, hits: { bass: 0, mid: 0, treble: 0, overall: 0 },
+    bindings: [], driverSignals: [], sceneOutputs: {} }
+
+  it('adds spectrum to inspector readings only in the parent, never to renderer input or simulated readings', async () => {
+    const f = fixture()
+    await f.start()
+    f.host.requestAudioInspector.mockResolvedValue(diagnostic)
+    await expect(f.player.requestAudioInspector()).resolves.toBeNull()
+    expect(f.host.requestAudioInspector).not.toHaveBeenCalled()
+    f.player.setAudioInspectorEnabled(true)
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    const spectrum = { time: 0, minHz: 40, maxHz: 8000, values: Array(36).fill(.2) }
+    f.audio.spectrum.mockReturnValue(spectrum)
+    await expect(f.player.requestAudioInspector()).resolves.toEqual({ ...diagnostic, spectrum })
+    await f.tick()
+    for (const [input] of f.host.update.mock.calls) {
+      expect(input).not.toHaveProperty('spectrum')
+      expect(input.audio).not.toHaveProperty('spectrum')
+    }
+    f.audio.spectrum.mockClear()
+    f.host.requestAudioInspector.mockResolvedValue({ ...diagnostic, source: 'synthetic' })
+    await expect(f.player.requestAudioInspector()).resolves.toMatchObject({ source: 'synthetic', spectrum: null })
+    expect(f.audio.spectrum).not.toHaveBeenCalled()
+    f.player.setAudioInspectorEnabled(false)
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    await expect(f.player.requestAudioInspector()).resolves.toBeNull()
+  })
+
+  it('stops optional spectrum for hidden or inactive previews and resumes only while the panel remains open', async () => {
+    const f = fixture()
+    f.player.setAudioInspectorEnabled(true)
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    await f.start()
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    f.player.setRenderingSuspended(true)
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    f.player.setRenderingSuspended(false)
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(true)
+    f.player.setAudioInspectorEnabled(false)
+    f.player.setRenderingSuspended(true)
+    f.player.setRenderingSuspended(false)
+    expect(f.audio.setSpectrumEnabled).toHaveBeenLastCalledWith(false)
+  })
+
+  it.each(['seek', 'close', 'scene', 'dispose'] as const)('drops an old inspector reply after %s', async action => {
+    const f = fixture()
+    await f.start()
+    f.player.setAudioInspectorEnabled(true)
+    const pending = deferred<AudioInspectorSnapshot | null>()
+    f.host.requestAudioInspector.mockReturnValue(pending.promise)
+    const reading = f.player.requestAudioInspector()
+    if (action === 'seek') f.player.seek(12)
+    if (action === 'close') f.player.setAudioInspectorEnabled(false)
+    if (action === 'scene') await f.player.loadScene(scene)
+    if (action === 'dispose') f.player.dispose()
+    pending.resolve(diagnostic)
+    await expect(reading).resolves.toBeNull()
+    expect(f.audio.spectrum).not.toHaveBeenCalled()
+  })
+
   it('marks audio discontinuities without restarting the scene or its audio for binding edits', async () => {
     const f = fixture()
     await f.start()

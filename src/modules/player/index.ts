@@ -31,7 +31,7 @@ export { getRenderBudget, boundCaptureSize } from './policy/renderBudget'
 export type { RenderBudget, RenderProfile } from './policy/renderBudget'
 export type { MageSceneKey } from './scenePlaybackIdentity'
 export type { AudioResponseConfig, SceneAudioResponseMode } from '@shared/lib'
-export type { AudioInspectorSnapshot, AudioInspectorBinding, AudioInspectorBands } from './audioInspector'
+export type { AudioInspectorSnapshot, AudioInspectorBinding, AudioInspectorBands, AudioInspectorSpectrum } from './audioInspector'
 export { AUDIO_INSPECTOR_BANDS, emptyInspectorBands } from './audioInspector'
 export {
   buildScenePlaylistTrack,
