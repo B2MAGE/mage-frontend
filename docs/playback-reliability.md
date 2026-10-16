@@ -171,7 +171,64 @@ test settings. A snapshot taken before iframe disposal cannot prove driver memor
 reclamation after that iframe disappears. An offscreen verified frame is not a
 measurement of when the browser compositor presented it to the display.
 
-<!-- Release verification adds the exact before/after measurement table here. -->
+### Recorded local before/after measurements
+
+These are single local desktop-browser runs on 2026-10-16, not repeated benchmark
+trials. The baseline used engine `1.0.4-mage.5`; M2 measured the empty-start change
+before retained replacement, and M3 used the released `1.0.4-mage.6` engine from
+source commit `cd5a96f`. The maintained frontend pins that immutable release.
+Baseline and M2 rebuilt the context for each load; M3 retained it. The narrow
+viewport run uses the desktop browser at a smaller width, not a physical phone.
+
+The latency column is the parent-observed time from requesting a scene to its
+successful load acknowledgement, measured before the optional diagnostics request.
+Only successful loads enter the median/range. In M3, acknowledgement follows the
+verified candidate draw and activation; baseline acknowledgement followed its first
+submitted frame. This does not measure compositor presentation, and the additional
+verification makes this a lifecycle comparison rather than identical work.
+
+| Run / mode | Loaded / superseded | Contexts created / disposed before final teardown | Load latency: median (min–max), ms | Largest sampled parent frame gap, ms | Retry |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Baseline sequential / Original + test audio | 14 / 0 | 14 / 13 | 281.2 (247.2–1084.8) | 843.6 | 0 |
+| Baseline burst / Selective + test audio | 13 / 0 | 13 / 12 | 254.0 (240.1–470.9) | 117.4 | 0 |
+| M2 empty-start sequential / Original + test audio | 14 / 0 | 14 / 13 | 284.5 (245.7–441.7) | 128.4 | 0 |
+| M3 sequential / Original + test audio | 14 / 0 | 1 / 0 | 498.2 (325.4–1733.5) | 167.4 | 0 |
+| M3 burst / Selective + test audio | 7 / 6 | 1 / 0 | 389.1 (360.9–928.2) | 221.0 | 0 |
+| M3 sequential / Selective simulated beat, paused | 14 / 0 | 1 / 0 | 342.4 (284.7–666.4) | 169.8 | 0 |
+| M3 narrow burst / Selective simulated beat | 9 / 4 | 1 / 0 | 365.2 (317.4–611.1) | 159.4 | 0 |
+
+The clear improvement is context reuse: the fourteen-template sequence changed
+from **14 creations / 13 disposals to 1 / 0** while the final scene remained alive.
+These results do **not** show a load-speed improvement. Successful M3 activation
+was slower in both comparable real-audio runs, while more burst requests were
+superseded during preparation. The previous scene stayed available during that
+work. Parent frame-gap samples varied between runs and include browser/host
+scheduling; they are not a GPU stall attribution or a statistically established
+responsiveness gain.
+
+| Resource observation | Geometries | Textures | Programs |
+| --- | ---: | ---: | ---: |
+| Baseline/M2 largest sampled settled count | 3 | 3 | 3 |
+| M3 sequential final scene | 3 | 3 | 4 |
+| Other M3 runs' final scene | 2 | 3 | 4 |
+| M3 preparation peak in each recorded run | 4 | 6 | 6 |
+
+Baseline/M2 had no preparation-peak instrumentation, so their sampled settled
+counts must not be compared as equivalent peaks. The M3 peaks include overlapping
+active/candidate resources; all four M3 runs reported the parallel compilation
+path. The fallback was tested automatically, not forced in these browser runs.
+These are engine resource counts, **not GPU memory bytes**. The final snapshots
+were taken while playback still owned its context, so zero disposals is expected;
+they do not prove GPU-driver reclamation after final iframe removal.
+
+Raw bounded reports are kept with the local task evidence under
+`.local/pl08-reliability-20261016/`: `baseline-original-sequential.json`,
+`baseline-selective-burst.json`, `m2-empty-start-original-sequential.json`,
+`m3-original-sequential.json`, `m3-selective-burst.json`,
+`m3-selective-simulated-paused.json`, `m3-narrow-selective-burst.json`, and
+`m3-fixed-failure-checks.json`. They are local verification artifacts, not a
+production telemetry service. The final aggregate automated test count is recorded
+in the release verification report after the last changes are checked.
 
 The original intermittent Pixel/Chrome startup timeout has **not** been
 reproduced. The implementation fixes reproducible lifecycle and failure-handling
