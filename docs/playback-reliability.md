@@ -229,8 +229,16 @@ Raw bounded reports are kept with the local task evidence under
 `m3-original-sequential.json`, `m3-selective-burst.json`,
 `m3-selective-simulated-paused.json`, `m3-narrow-selective-burst.json`, and
 `m3-fixed-failure-checks.json`. They are local verification artifacts, not a
-production telemetry service. The final aggregate automated test count is recorded
-in the release verification report after the last changes are checked.
+production telemetry service.
+
+Final verification against the pinned engine release passed: **3,272 frontend
+unit tests** (one existing skipped test), **71 Node tooling/security tests**, and
+**108 manual-harness tests**. The engine release passed **62 engine tests** and
+**180 shader parse cases** from a clean merged checkout. Frontend lint, TypeScript,
+application/isolated-renderer builds, served renderer security headers/routes, and
+all seven scene-contract comparisons with backend `b126805` also passed. The
+measurement harness's conventional-median correction passed its eight focused
+checks afterward. Frontend review is tracked in PR #333; production is unchanged.
 
 The original intermittent Pixel/Chrome startup timeout has **not** been
 reproduced. The implementation fixes reproducible lifecycle and failure-handling
