@@ -4,6 +4,7 @@ import type { PlaybackEngine, PlaybackLoader } from './playbackEngine'
 import { PlaybackDownloadError } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 import { isShaderWorkloadFailure, shaderWorkloadFailure } from '../modules/player/policy/shaderWorkloadFailure'
+import { createStagedSceneLifecycle } from './stagedSceneLifecycle'
 
 export function installPlaybackRuntime(options: {
   canvas: HTMLCanvasElement; statusElement: HTMLElement; allowedParentOrigins: readonly string[]
@@ -24,6 +25,7 @@ export function installPlaybackRuntime(options: {
   let playing = true
   let reportStartupPhases = false
   let reportWorkloadErrors = false
+  let staged: ReturnType<typeof createStagedSceneLifecycle> | null = null
   let zoom = 1
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
@@ -34,8 +36,10 @@ export function installPlaybackRuntime(options: {
     pendingCapture?.cancel()
     pendingCapture = null
   }
-  function send<T extends PlaybackType>(type: T, request: number, payload: PlaybackPayloads[T], transfer: Transferable[] = []) {
-    if (!closed) port?.postMessage(playbackMessage(type, session, generation, request, payload), transfer)
+  const currentEngine = () => staged?.engine ?? engine
+  const activeGeneration = () => staged?.activeGeneration ?? generation
+  function send<T extends PlaybackType>(type: T, request: number, payload: PlaybackPayloads[T], transfer: Transferable[] = [], responseGeneration = generation) {
+    if (!closed) port?.postMessage(playbackMessage(type, session, responseGeneration, request, payload), transfer)
   }
   function dispose() {
     if (closed) return
@@ -44,6 +48,7 @@ export function installPlaybackRuntime(options: {
     target.removeEventListener('message', connect)
     target.removeEventListener('pagehide', dispose)
     loadAbort?.abort(); loadAbort = null
+    try { staged?.dispose() } catch { /* Continue closing the private channel. */ }
     try { engine?.dispose() } catch { /* Continue closing the private channel. */ }
     engine = null; pendingInput = pendingResize = pendingSynthetic = pendingAudioResponse = pendingSceneSettings = null
     port?.close(); port = null
@@ -58,7 +63,7 @@ export function installPlaybackRuntime(options: {
       if (['compiler-download', 'compiler-startup', 'compile-timeout', 'invalid-output', 'interrupted'].includes(code)) code = 'compile'
       else if (code !== 'compile' && code !== 'capture' && code !== 'protocol') code = 'render'
     }
-    try { send('error', request, { code }) } catch { /* Parent may already have removed the frame. */ }
+    try { send('error', request, { code }, [], activeGeneration() || generation) } catch { /* Parent may already have removed the frame. */ }
     dispose()
     display('This scene could not be displayed.')
   }
@@ -144,21 +149,22 @@ export function installPlaybackRuntime(options: {
     }
   }
   async function capture(message: PlaybackMessage<'capture'>) {
-    const source = engine, token = loadAbort
-    if (!source || pendingCapture) { send('error', message.requestId, { code: 'capture' }); return }
+    const source = currentEngine(), capturedGeneration = activeGeneration(), token = loadAbort
+    if (!source || pendingCapture) { send('error', message.requestId, { code: 'capture' }, [], message.generation); return }
     let expired = false
     const pending = { cancel: () => clearTimeout(timeout) }
     pendingCapture = pending
-    const active = () => !expired && !closed && pendingCapture === pending && engine === source && loadAbort === token && !token?.signal.aborted
+    const active = () => !expired && !closed && pendingCapture === pending && currentEngine() === source
+      && activeGeneration() === capturedGeneration && (staged !== null || loadAbort === token && !token?.signal.aborted)
     const timeout = setTimeout(() => {
       if (!active()) return
-      send('error', message.requestId, { code: 'capture' })
+      send('error', message.requestId, { code: 'capture' }, [], message.generation)
       expired = true
     }, BRIDGE_LIMITS.captureTimeoutMs)
     try {
       const result = await source.capture(message.payload)
-      if (active()) send('captured', message.requestId, result, [result.bytes])
-    } catch { if (active()) send('error', message.requestId, { code: 'capture' }) }
+      if (active()) send('captured', message.requestId, result, [result.bytes], message.generation)
+    } catch { if (active()) send('error', message.requestId, { code: 'capture' }, [], message.generation) }
     finally { pending.cancel(); if (pendingCapture === pending) pendingCapture = null }
   }
   function onCommand(event: MessageEvent) {
@@ -171,28 +177,36 @@ export function installPlaybackRuntime(options: {
       if (message.generation <= generation) return
       if (!withinLoadRate()) return fail('protocol', message.requestId)
       lastRequest = message.requestId
-      void load(message)
+      if (staged) {
+        generation = message.generation
+        if (!staged.activeGeneration) display('Loading scene…')
+        void staged.prepare(message.generation, message.requestId, message.payload)
+      } else void load(message)
       return
     }
-    if (message.generation !== generation) return
+    const candidateCommand = message.type === 'activate' || message.type === 'cancel-load'
+    if (message.type !== 'dispose' && message.generation !== (staged && !candidateCommand ? activeGeneration() || generation : generation)) return
     lastRequest = message.requestId
+    const activeEngine = currentEngine()
     try {
       switch (message.type) {
         case 'dispose': dispose(); break
+        case 'activate': if (!staged || !staged.activate(message.generation)) fail('protocol', message.requestId); break
         case 'cancel-load':
-          if (loading) { loading = false; loadAbort?.abort(); loadAbort = null; retireCapture() }
+          if (staged) staged.cancel(message.generation)
+          else if (loading) { loading = false; loadAbort?.abort(); loadAbort = null; retireCapture() }
           break
-        case 'resize': pendingResize = message.payload; engine?.resize(message.payload); break
-        case 'input': pendingInput = message.payload; engine?.input(message.payload); break
-        case 'synthetic': pendingSynthetic = message.payload; engine?.synthetic(message.payload); break
-        case 'audio-response': pendingAudioResponse = message.payload; engine?.audioResponse(message.payload); break
-        case 'scene-settings': pendingSceneSettings = message.payload; engine?.sceneSettings(message.payload); break
+        case 'resize': pendingResize = message.payload; activeEngine?.resize(message.payload); break
+        case 'input': pendingInput = message.payload; activeEngine?.input(message.payload); break
+        case 'synthetic': pendingSynthetic = message.payload; activeEngine?.synthetic(message.payload); break
+        case 'audio-response': pendingAudioResponse = message.payload; activeEngine?.audioResponse(message.payload); break
+        case 'scene-settings': pendingSceneSettings = message.payload; activeEngine?.sceneSettings(message.payload); break
         case 'capabilities': {
           // Metadata is optional. Missing support information must never retire
           // a renderer that is still producing healthy frames.
           let supported: PlaybackPayloads['capabilities-result'] = { supportedTargets: [] }
-          try { supported = engine?.capabilities() ?? supported } catch { /* Unavailable metadata. */ }
-          send('capabilities-result', message.requestId, supported)
+          try { supported = activeEngine?.capabilities() ?? supported } catch { /* Unavailable metadata. */ }
+          send('capabilities-result', message.requestId, supported, [], message.generation)
           break
         }
         case 'audio-inspector': {
@@ -200,23 +214,23 @@ export function installPlaybackRuntime(options: {
           // failure/recovery path. Older parents never request this response.
           if (!withinInspectorRate()) break
           let snapshot: PlaybackPayloads['audio-inspector-result'] = null
-          try { snapshot = engine?.audioInspector?.() ?? null } catch { /* An unavailable reading is not a playback failure. */ }
-          send('audio-inspector-result', message.requestId, snapshot)
+          try { snapshot = activeEngine?.audioInspector?.() ?? null } catch { /* An unavailable reading is not a playback failure. */ }
+          send('audio-inspector-result', message.requestId, snapshot, [], message.generation)
           break
         }
         case 'graphics-diagnostics': {
           if (!withinGraphicsRate()) break
           let snapshot: PlaybackPayloads['graphics-diagnostics-result'] = null
           try {
-            const measured = engine?.graphicsDiagnostics?.() ?? null
+            const measured = activeEngine?.graphicsDiagnostics?.() ?? null
             if (isPlaybackMessage(playbackMessage('graphics-diagnostics-result', session, generation, message.requestId, measured),
               ['graphics-diagnostics-result'])) snapshot = measured
           } catch { /* Optional measurement never changes graphics or playback state. */ }
-          send('graphics-diagnostics-result', message.requestId, snapshot)
+          send('graphics-diagnostics-result', message.requestId, snapshot, [], message.generation)
           break
         }
-        case 'playback': playing = message.payload.playing; engine?.playback(playing); break
-        case 'zoom': zoom = message.payload.factor; engine?.zoom(zoom); break
+        case 'playback': playing = message.payload.playing; activeEngine?.playback(playing); break
+        case 'zoom': zoom = message.payload.factor; activeEngine?.zoom(zoom); break
         case 'capture':
           if (!withinCaptureRate()) return fail('protocol', message.requestId)
           void capture(message); break
@@ -230,6 +244,33 @@ export function installPlaybackRuntime(options: {
     reportStartupPhases = event.data.type === 'connect' && event.data.payload?.startupPhases === true
     reportWorkloadErrors = event.data.type === 'connect' && event.data.payload?.workloadErrors === true
     session = event.data.session; port = event.ports[0]
+    if (event.data.type === 'connect' && event.data.payload?.stagedScenes === true) {
+      staged = createStagedSceneLifecycle({ canvas: activeCanvas, loadScene: options.loadScene,
+        phase: (generation, request, phase, attempt) => { if (reportStartupPhases) send('load-phase', request, { phase, attempt }, [], generation) },
+        prepared: (generation, request) => send('prepared', request, null, [], generation),
+        activated: (generation, request, engine) => {
+          retireCapture()
+          if (pendingResize) engine.resize(pendingResize)
+          if (pendingSynthetic) engine.synthetic(pendingSynthetic)
+          if (pendingInput) engine.input(pendingInput)
+          engine.playback(playing)
+          pendingAudioResponse = pendingSceneSettings = null
+          options.statusElement.hidden = true
+          send('loaded', request, null, [], generation)
+        },
+        failed: (generation, request, failure) => {
+          options.statusElement.hidden = failure.retained
+          if (!failure.retained) display('This scene could not be prepared.')
+          send('candidate-error', request, failure, [], generation)
+        },
+        sessionError: reason => fail(reason),
+        progress: generation => {
+          frames++
+          const now = performance.now()
+          if (now - lastProgress >= 500) { lastProgress = now; send('progress', 0, { frames }, [], generation) }
+        },
+      })
+    }
     target.removeEventListener('message', connect)
     port.onmessage = onCommand; port.onmessageerror = () => fail('protocol'); port.start()
     display('Ready for MAGE.')

@@ -2,10 +2,11 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlayer, type IsolatedPlayer } from './isolatedPlayer'
 import type { ParentAudioSession } from './parentAudio'
-import type { createIsolatedPlaybackHost } from './playbackHost'
+import type { createIsolatedPlaybackHost, IsolatedPlaybackHost } from './playbackHost'
 import type { GraphicsDiagnostics } from './playbackProtocol'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
 import type { AudioInspectorSnapshot, AudioInspectorSpectrum } from '../audioInspector'
+import { SceneReplacementError } from './sceneReplacement'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -47,11 +48,18 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
     requestAudioInspector: vi.fn<() => Promise<AudioInspectorSnapshot | null>>(async () => null),
     requestGraphicsDiagnostics: vi.fn<() => Promise<GraphicsDiagnostics | null>>(async () => null),
-    loadScene: vi.fn(async () => {}), cancelPendingLoad: vi.fn<() => number | null>(() => null), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
+    loadScene: vi.fn<IsolatedPlaybackHost['loadScene']>(async () => {}), cancelPendingLoad: vi.fn<() => number | null>(() => null), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }
   let hostOptions!: Parameters<typeof createIsolatedPlaybackHost>[0]
-  const createHost = vi.fn<typeof createIsolatedPlaybackHost>(options => { hostOptions = options; return host })
+  let automaticActivation = true
+  const createHost = vi.fn<typeof createIsolatedPlaybackHost>(options => {
+    hostOptions = options
+    return { ...host, async loadScene(...args) {
+      await host.loadScene(...args)
+      if (automaticActivation) { args[2]?.beforeActivate(); args[2]?.onActivated() }
+    } }
+  })
   const createAudio = vi.fn(() => audio)
   const onFailure = vi.fn(), onStatus = vi.fn(), onDiagnostic = vi.fn()
   let time = 0
@@ -67,6 +75,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
   return {
     player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, onDiagnostic, pointer,
     get hostOptions() { return hostOptions },
+    manualActivation() { automaticActivation = false },
     async start() { boot.resolve(); await player.ready; await player.loadScene(scene) },
     async tick(ms = 34) { time += ms; await vi.advanceTimersByTimeAsync(ms) },
   }
@@ -610,6 +619,49 @@ describe('isolated player parent integration', () => {
     await rejected
     expect(f.audio.play).not.toHaveBeenCalled()
     expect(f.audio.clear).toHaveBeenCalledOnce()
+  })
+
+  it('keeps active audio, response and elapsed time when replacement preparation fails', async () => {
+    const f = fixture(); await f.start()
+    await f.player.loadAudio(new Blob(['music']))
+    f.player.setAudioResponse('mapped-v1', { version: 1, sensitivity: 2, mappings: [] })
+    await f.tick(100)
+    const before = f.host.update.mock.calls.at(-1)![0].time
+    f.audio.setSensitivity.mockClear(); f.host.setAudioResponse.mockClear()
+    f.host.loadScene.mockRejectedValueOnce(new SceneReplacementError('compile', true))
+    const candidate = customDocument({ ...scene.scene, audioResponseConfig: { version: 1, sensitivity: 3, mappings: [] } })
+    await expect(f.player.loadScene(candidate)).rejects.toMatchObject({ retained: true, reason: 'compile' })
+    await f.tick()
+    expect(f.host.update.mock.calls.at(-1)![0].time).toBeGreaterThan(before)
+    expect(f.audio.setSensitivity).not.toHaveBeenCalled(); expect(f.host.setAudioResponse).not.toHaveBeenCalled()
+    expect(f.audio.pause).not.toHaveBeenCalled(); expect(f.audio.load).toHaveBeenCalledOnce()
+    expect(f.onFailure).not.toHaveBeenCalled(); expect(f.host.dispose).not.toHaveBeenCalled()
+    expect(f.player.getAudioState().playing).toBe(true)
+    expect(() => f.player.setSceneSettings(extractLiveSceneSettings(scene))).not.toThrow()
+  })
+
+  it('commits actual intermediate metadata after approval even when the next scene is queued', async () => {
+    const f = fixture(); await f.start(); f.manualActivation()
+    await f.player.loadAudio(new Blob(['music']))
+    const firstCommit = deferred<void>(), nextCommit = deferred<void>()
+    f.host.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => {
+      activation!.beforeActivate(); await firstCommit.promise; activation!.onActivated()
+    }).mockImplementationOnce(async (_scene, _profile, activation) => {
+      await firstCommit.promise; activation!.beforeActivate(); await nextCommit.promise; activation!.onActivated()
+    })
+    const first = f.player.loadScene(customDocument({ ...scene.scene, audioResponseConfig: { version: 1, sensitivity: 2, mappings: [] } }))
+    const obsolete = expect(first).rejects.toThrow('Scene changed')
+    await Promise.resolve()
+    f.player.cancelPendingScene()
+    const next = f.player.loadScene(customDocument({ ...scene.scene, audioResponseConfig: { version: 1, sensitivity: 3, mappings: [] } }))
+    await Promise.resolve()
+    firstCommit.resolve(); await obsolete
+    expect(f.audio.setSensitivity).toHaveBeenLastCalledWith(2)
+    expect(f.host.setAudioResponse).toHaveBeenLastCalledWith(expect.objectContaining({ config: expect.objectContaining({ sensitivity: 2 }) }))
+    nextCommit.resolve(); await next
+    expect(f.audio.setSensitivity).toHaveBeenLastCalledWith(3)
+    expect(f.audio.pause).not.toHaveBeenCalled(); expect(f.audio.load).toHaveBeenCalledOnce()
+    expect(f.onFailure).not.toHaveBeenCalled()
   })
 
   it('does not reapply old scene controls when an older load finishes late', async () => {

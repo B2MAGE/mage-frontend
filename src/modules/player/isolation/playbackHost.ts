@@ -6,10 +6,12 @@ import { boundCaptureSize, type RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/sceneRecovery'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 import { COMPILER_LIMITS } from '../../../isolated-renderer/compiler/protocol'
+import { SceneReplacementError, type SceneActivation } from './sceneReplacement'
 
 type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> | undefined; id: number; generation: number }
 type Operation = 'load' | 'capture' | 'capabilities' | 'audio-inspector' | 'graphics-diagnostics'
-type OperationPhase = 'requested' | StartupPhase | 'decoding' | 'completed' | 'failed' | 'cancelled'
+type PendingLoad = Pending<void> & { activation?: SceneActivation; activationSent: boolean; completion: Promise<void>; finishCommit(): void }
+type OperationPhase = 'requested' | StartupPhase | 'prepared' | 'activating' | 'decoding' | 'completed' | 'failed' | 'cancelled'
 type OperationReason = 'timeout' | 'unavailable' | 'invalid-result' | 'scene-changed' | 'disposed' | 'rate-limited'
 export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed'
 export type PlaybackHostDiagnostic =
@@ -27,6 +29,7 @@ export function createIsolatedPlaybackHost(options: {
   onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void
   decodeCapture?: typeof createImageBitmap
   useInlineFrameStyles?: boolean
+  stagedScenes?: boolean
 }) {
   const url = validateRendererUrl(options.rendererUrl)
   const startupMs = options.startupTimeoutMs ?? 15000, progressMs = options.progressTimeoutMs ?? 10000
@@ -41,9 +44,10 @@ export function createIsolatedPlaybackHost(options: {
   let closed = false, connected = false, available = false, loaded = false, playing = true
   let port: MessagePort | null = null
   const session = crypto.randomUUID()
-  let generation = 0, sequence = 0, lastFrame = -1, lastProgress = performance.now()
+  let generation = 0, activeGeneration = 0, sequence = 0, lastFrame = -1, lastProgress = performance.now()
   let previousObservation = performance.now(), observedSilence = 0
-  let pendingLoad: Pending<void> | null = null
+  let previousStartupObservation = performance.now()
+  let pendingLoad: PendingLoad | null = null
   let requestedLoadGeneration: number | null = null
   let activeRequestId: number | null = null
   let pendingLoadPhase: StartupPhase | null = null, startupObserved = 0, onscreen = true
@@ -81,15 +85,13 @@ export function createIsolatedPlaybackHost(options: {
     try { options.onStatus?.(status) } catch { /* Observers cannot block cleanup. */ }
     if (options.onDiagnostic) diagnose({ type: 'status', at: performance.now(), status })
   }
-  function rejectWork(reason: string, diagnosticReason: 'scene-changed' | 'disposed') {
-    if (pendingLoad) operation('load', pendingLoad, 'cancelled', diagnosticReason)
+  function rejectAuxiliary(reason: string, diagnosticReason: 'scene-changed' | 'disposed') {
     if (pendingCapture) operation('capture', pendingCapture, 'cancelled', diagnosticReason)
     if (pendingCapabilities) operation('capabilities', pendingCapabilities, 'cancelled', diagnosticReason)
-    for (const pending of [pendingLoad, pendingCapture, pendingCapabilities]) if (pending) {
+    for (const pending of [pendingCapture, pendingCapabilities]) if (pending) {
       clearTimeout(pending.timer); pending.reject(new Error(reason))
     }
-    pendingLoad = null; pendingCapture = null; pendingCapabilities = null
-    requestedLoadGeneration = null
+    pendingCapture = null; pendingCapabilities = null
     if (pendingInspector) {
       operation('audio-inspector', pendingInspector, 'cancelled', diagnosticReason)
       clearTimeout(pendingInspector.timer); pendingInspector.resolve(null); pendingInspector = null
@@ -98,7 +100,35 @@ export function createIsolatedPlaybackHost(options: {
       operation('graphics-diagnostics', pendingGraphics, 'cancelled', diagnosticReason)
       clearTimeout(pendingGraphics.timer); pendingGraphics.resolve(null); pendingGraphics = null
     }
-    pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
+  }
+  function rejectWork(reason: string, diagnosticReason: 'scene-changed' | 'disposed') {
+    if (pendingLoad) {
+      operation('load', pendingLoad, 'cancelled', diagnosticReason)
+      const pending = pendingLoad
+      finishLoad(pending); pending.reject(new Error(reason))
+    }
+    requestedLoadGeneration = null
+    rejectAuxiliary(reason, diagnosticReason)
+  }
+  function finishLoad(pending: PendingLoad) {
+    clearTimeout(pending.timer)
+    if (pendingLoad === pending) {
+      pendingLoad = null; pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
+    }
+    if (requestedLoadGeneration === pending.generation) requestedLoadGeneration = null
+    pending.finishCommit()
+  }
+  function rejectCandidate(reason: RenderFailure, notifyChild = true) {
+    const pending = pendingLoad
+    if (!pending) return
+    if (!options.stagedScenes) { dispose(reason); return }
+    if (notifyChild) {
+      if (pending.activationSent) { dispose(reason); return }
+      try { send('cancel-load', null, false, pending.generation) } catch { return }
+    }
+    operation('load', pending, 'failed', reason.endsWith('timeout') ? 'timeout' : 'unavailable')
+    finishLoad(pending); pending.reject(new SceneReplacementError(reason, loaded))
+    report(loaded ? playing ? 'playing' : 'paused' : 'ready')
   }
   function dispose(failure?: RenderFailure) {
     if (closed) return
@@ -126,10 +156,12 @@ export function createIsolatedPlaybackHost(options: {
   function resetObservation() {
     previousObservation = performance.now(); observedSilence = 0; lastProgress = previousObservation
     startupObserved = 0
+    previousStartupObservation = previousObservation
   }
-  function send<T extends PlaybackType>(type: T, payload: PlaybackPayloads[T], optional = false) {
+  function send<T extends PlaybackType>(type: T, payload: PlaybackPayloads[T], optional = false,
+    commandGeneration = options.stagedScenes && loaded ? activeGeneration : generation) {
     if (closed || !available || !port) throw new Error('Isolated player is unavailable.')
-    const message = playbackMessage(type, session, generation, ++sequence, payload)
+    const message = playbackMessage(type, session, commandGeneration, ++sequence, payload)
     if (!isPlaybackMessage(message, [type])) throw new Error('Invalid player input.')
     if (!commandAllowed(performance.now(), optional ? 10 : 0)) {
       if (optional) return null
@@ -145,7 +177,7 @@ export function createIsolatedPlaybackHost(options: {
     if (record(candidate, ['protocol', 'version', 'session', 'generation', 'requestId', 'type', 'payload'])
       && candidate.type === 'graphics-diagnostics-result'
       && isPlaybackMessage({ ...candidate, payload: null }, PLAYBACK_RESPONSES)) {
-      if (candidate.session !== session || candidate.generation !== generation || !pendingGraphics
+      if (candidate.session !== session || !pendingGraphics || candidate.generation !== pendingGraphics.generation
         || pendingGraphics.id !== candidate.requestId) return
       const valid = isPlaybackMessage(candidate, PLAYBACK_RESPONSES) && candidate.type === 'graphics-diagnostics-result'
       const snapshot = valid ? candidate.payload : null
@@ -159,7 +191,7 @@ export function createIsolatedPlaybackHost(options: {
     if (record(candidate, ['protocol', 'version', 'session', 'generation', 'requestId', 'type', 'payload'])
       && candidate.type === 'audio-inspector-result'
       && isPlaybackMessage({ ...candidate, payload: null }, PLAYBACK_RESPONSES)) {
-      if (candidate.session !== session || candidate.generation !== generation || !pendingInspector
+      if (candidate.session !== session || !pendingInspector || candidate.generation !== pendingInspector.generation
         || pendingInspector.id !== candidate.requestId) return
       const snapshot = isPlaybackMessage(candidate, PLAYBACK_RESPONSES) && candidate.type === 'audio-inspector-result'
         ? candidate.payload : null
@@ -170,7 +202,7 @@ export function createIsolatedPlaybackHost(options: {
     if (record(candidate, ['protocol', 'version', 'session', 'generation', 'requestId', 'type', 'payload'])
       && candidate.type === 'capabilities-result'
       && isPlaybackMessage({ ...candidate, payload: { supportedTargets: [] } }, PLAYBACK_RESPONSES)) {
-      if (candidate.session !== session || candidate.generation !== generation || !pendingCapabilities
+      if (candidate.session !== session || !pendingCapabilities || candidate.generation !== pendingCapabilities.generation
         || pendingCapabilities.id !== candidate.requestId) return
       const pending = pendingCapabilities
       clearTimeout(pending.timer); pendingCapabilities = null
@@ -188,9 +220,10 @@ export function createIsolatedPlaybackHost(options: {
       if (available) return dispose('runtime')
       available = true; clearTimeout(startupTimer); resolveReady(); report('ready'); return
     }
-    if (message.generation !== generation) return
+    if (message.generation !== (loaded ? activeGeneration : generation) && message.generation !== pendingLoad?.generation) return
     if (message.type === 'load-phase') {
-      if (!pendingLoad || pendingLoad.id !== message.requestId) return
+      if (!pendingLoad || pendingLoad.id !== message.requestId || pendingLoad.generation !== message.generation) return
+      if (pendingLoad.activationSent) return dispose('runtime')
       const { phase, attempt } = message.payload
       const step = STARTUP_PHASES.indexOf(phase)
       // Acknowledged compilation cannot return to a download wait or renew its
@@ -199,10 +232,16 @@ export function createIsolatedPlaybackHost(options: {
       if (attempt !== loadAttempt) {
         if (loadAttempt !== 0 || attempt !== 1 || phase !== 'waiting-visible'
           || (pendingLoadPhase !== 'compiler-startup' && pendingLoadPhase !== 'compiling')) return dispose('runtime')
-      } else if (step !== loadPhaseStep + 1 && !(loadPhaseStep === -1 && phase === 'compiler-download')) return dispose('runtime')
+      } else {
+        // A retained graphics session already owns the downloaded engine.
+        // Only this replacement transition can skip that download phase.
+        const retainedGraphics = options.stagedScenes && loaded && pendingLoadPhase === 'compiling' && phase === 'graphics-startup'
+        if (step !== loadPhaseStep + 1 && !(loadPhaseStep === -1 && phase === 'compiler-download') && !retainedGraphics) return dispose('runtime')
+      }
       loadAttempt = attempt; loadPhaseStep = step
       clearTimeout(pendingLoad.timer); pendingLoad.timer = undefined
-      pendingLoadPhase = phase; startupObserved = 0; previousObservation = performance.now()
+      pendingLoadPhase = phase; startupObserved = 0; previousStartupObservation = performance.now()
+      if (!loaded) previousObservation = previousStartupObservation
       operation('load', pendingLoad, phase)
       if (phase === 'waiting-visible' || phase === 'graphics-startup') return
       const failure = phase === 'compiling' ? 'compile-timeout' : phase
@@ -210,25 +249,57 @@ export function createIsolatedPlaybackHost(options: {
         : phase === 'compiler-startup' ? COMPILER_LIMITS.startupDeadlineMs + 1000 : downloadMs
       const pending = pendingLoad
       pending.timer = setTimeout(() => {
-        if (closed || pendingLoad !== pending || generation !== pending.generation) return
-        operation('load', pending, 'failed', 'timeout'); dispose(failure)
+        if (closed || pendingLoad !== pending) return
+        operation('load', pending, 'failed', 'timeout'); rejectCandidate(failure)
       }, limit)
       return
     }
+    if (message.type === 'prepared') {
+      const pending = pendingLoad
+      if (!pending || pending.id !== message.requestId || pending.generation !== message.generation) return
+      if (!options.stagedScenes || pending.activationSent || pendingLoadPhase !== 'graphics-startup') return dispose('runtime')
+      operation('load', pending, 'prepared')
+      try { pending.activation?.beforeActivate() } catch (error) {
+        if (!closed && pendingLoad === pending) {
+          send('cancel-load', null, false, pending.generation)
+          finishLoad(pending); pending.reject(error instanceof Error ? error : new Error('Scene activation was cancelled.'))
+          report(loaded ? playing ? 'playing' : 'paused' : 'ready')
+        }
+        return
+      }
+      if (closed || pendingLoad !== pending) return
+      pending.activationSent = true; startupObserved = 0; previousStartupObservation = performance.now()
+      operation('load', pending, 'activating')
+      send('activate', null, false, pending.generation)
+      return
+    }
+    if (message.type === 'candidate-error') {
+      if (!options.stagedScenes) return dispose('runtime')
+      if (!pendingLoad || pendingLoad.id !== message.requestId || pendingLoad.generation !== message.generation) return
+      if (message.payload.retained !== loaded) return dispose('runtime')
+      rejectCandidate(message.payload.code, false)
+      return
+    }
     if (message.type === 'loaded') {
-      if (!pendingLoad || pendingLoad.id !== message.requestId) return
+      if (!pendingLoad || pendingLoad.id !== message.requestId || pendingLoad.generation !== message.generation) return
+      if (options.stagedScenes && !pendingLoad.activationSent) return dispose('runtime')
       if (loadPhaseStep !== -1 && pendingLoadPhase !== 'graphics-startup') return dispose('runtime')
-      operation('load', pendingLoad, 'completed'); activeRequestId = pendingLoad.id
-      clearTimeout(pendingLoad.timer); pendingLoad.resolve(); pendingLoad = null
-      requestedLoadGeneration = null
-      pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
-      loaded = true
+      const pending = pendingLoad
+      operation('load', pending, 'completed'); activeRequestId = pending.id
+      rejectAuxiliary('Scene changed.', 'scene-changed')
+      activeGeneration = pending.generation; loaded = true
+      queuedInput = queuedAudioResponse = queuedSceneSettings = null
+      lastAudioResponseKey = lastSceneSettingsKey = null
+      finishLoad(pending)
+      try { pending.activation?.onActivated() } catch { pending.reject(new Error('Scene activation observer failed.')); return dispose('runtime') }
+      pending.resolve()
       try { send('playback', { playing }); send('synthetic', synthetic) } catch { return dispose('runtime') }
       queuedResize = lastResize
       queuedZoom = zoom
       resetObservation(); report(playing ? 'playing' : 'paused'); return
     }
     if (message.type === 'progress') {
+      if (options.stagedScenes && (!loaded || message.generation !== activeGeneration)) return
       if (message.requestId !== 0 || message.payload.frames <= lastFrame) return
       lastFrame = message.payload.frames; lastProgress = performance.now(); observedSilence = 0
       if (options.onDiagnostic) diagnose({ type: 'progress', at: lastProgress })
@@ -254,10 +325,10 @@ export function createIsolatedPlaybackHost(options: {
       pending.decoding = true; decoderBusy = true
       operation('capture', pending, 'decoding')
       void validateRasterCapture(message.payload, pending.request, options.decodeCapture).then(blob => {
-        if (closed || pendingCapture !== pending || generation !== pending.generation) return
+        if (closed || pendingCapture !== pending || (options.stagedScenes ? activeGeneration : generation) !== pending.generation) return
         operation('capture', pending, 'completed'); clearTimeout(pending.timer); pendingCapture = null; pending.resolve(blob)
       }, () => {
-        if (closed || pendingCapture !== pending || generation !== pending.generation) return
+        if (closed || pendingCapture !== pending || (options.stagedScenes ? activeGeneration : generation) !== pending.generation) return
         operation('capture', pending, 'failed', 'invalid-result')
         clearTimeout(pending.timer); pendingCapture = null; pending.reject(new Error('Frame capture could not be decoded.'))
       }).finally(() => { decoderBusy = false })
@@ -272,7 +343,8 @@ export function createIsolatedPlaybackHost(options: {
     try {
       // Opaque child cannot be addressed by an origin. Send only a fresh session and
       // private port to this exact frame; scene/audio data follows through the port.
-      frame.contentWindow.postMessage(playbackMessage('connect', session, 0, 0, { startupPhases: true, workloadErrors: true }), '*', [channel.port2])
+      frame.contentWindow.postMessage(playbackMessage('connect', session, 0, 0,
+        { startupPhases: true, workloadErrors: true, ...(options.stagedScenes ? { stagedScenes: true as const } : {}) }), '*', [channel.port2])
     } catch { channel.port2.close(); dispose('runtime') }
   }
   // No submitted source runs while the renderer document is downloading.
@@ -317,11 +389,16 @@ export function createIsolatedPlaybackHost(options: {
   }, 34)
   const progressTimer = setInterval(() => {
     const now = performance.now(), delta = now - previousObservation
+    const startupDelta = now - previousStartupObservation
     previousObservation = now
+    previousStartupObservation = now
     const observable = onscreen && document.visibilityState !== 'hidden' && delta >= 0 && delta <= 2000
     if (pendingLoad && (pendingLoadPhase === 'graphics-startup' || pendingLoadPhase === 'waiting-visible')) {
-      startupObserved = observable ? startupObserved + delta : 0
-      if (startupObserved >= startupMs) return dispose(pendingLoadPhase === 'waiting-visible' ? 'interrupted' : 'startup-timeout')
+      startupObserved = onscreen && document.visibilityState !== 'hidden' && startupDelta >= 0 && startupDelta <= 2000 ? startupObserved + startupDelta : 0
+      if (startupObserved >= startupMs) {
+        rejectCandidate(pendingLoadPhase === 'waiting-visible' ? 'interrupted' : 'startup-timeout')
+        if (closed) return
+      }
     }
     if (closed || !loaded || !playing || !observable) {
       observedSilence = 0
@@ -341,39 +418,56 @@ export function createIsolatedPlaybackHost(options: {
   frame.src = url.href; options.container.append(frame); report('starting')
   return {
     ready,
-    async loadScene(scene: unknown, profile: RenderProfile = 'full') {
+    async loadScene(scene: unknown, profile: RenderProfile = 'full', activation?: SceneActivation) {
       const safeScene = sceneForBridge(scene)
       if (!loadAllowed()) throw new Error('Scene changes are too frequent.')
       // Increment before waiting so only the latest load can cross the bootstrap.
       const next = ++generation
-      rejectWork('Scene changed.', 'scene-changed'); loaded = false; activeRequestId = null; lastFrame = -1; queuedInput = null; queuedAudioResponse = null; queuedSceneSettings = null
+      const committing = options.stagedScenes && pendingLoad?.activationSent ? pendingLoad.completion : null
+      if (!committing) {
+        if (options.stagedScenes && pendingLoad) send('cancel-load', null, false, pendingLoad.generation)
+        rejectWork('Scene changed.', 'scene-changed')
+      }
       requestedLoadGeneration = next
-      lastAudioResponseKey = lastSceneSettingsKey = null; nextQueuedCommand = 0
       await ready
+      if (committing) await committing
       if (closed || next !== generation) throw new Error('Scene changed.')
+      if (!options.stagedScenes) { loaded = false; activeRequestId = null; lastFrame = -1; queuedInput = null }
+      queuedAudioResponse = queuedSceneSettings = null
+      lastAudioResponseKey = lastSceneSettingsKey = null; nextQueuedCommand = 0
       return new Promise<void>((resolve, reject) => {
         const id = sequence + 1
         pendingLoadPhase = 'compiler-download'
-        const pending: Pending<void> = { id, generation, resolve, reject, timer: undefined }
+        let finishCommit!: () => void
+        const completion = new Promise<void>(resolve => { finishCommit = resolve })
+        const pending: PendingLoad = { id, generation: next, resolve, reject, timer: undefined,
+          activation, activationSent: false, completion, finishCommit }
         pendingLoad = pending
         pending.timer = setTimeout(() => {
-          if (closed || pendingLoad !== pending || generation !== pending.generation) return
-          operation('load', pending, 'failed', 'timeout'); dispose('compiler-download')
+          if (closed || pendingLoad !== pending) return
+          operation('load', pending, 'failed', 'timeout'); rejectCandidate('compiler-download')
         }, downloadMs)
         operation('load', pending, 'requested')
         report('loading')
-        try { send('load', { scene: safeScene, profile }) } catch (error) { reject(error); dispose('runtime') }
+        try { send('load', { scene: safeScene, profile }, false, next) } catch (error) { reject(error); dispose('runtime') }
       })
     },
     cancelPendingLoad(): number | null {
       if (closed || requestedLoadGeneration === null) return null
       const cancelled = requestedLoadGeneration
+      // A verified activation already posted to the child must be acknowledged
+      // before ownership can change again. Cancel only a queued newer request.
+      if (options.stagedScenes && pendingLoad?.activationSent) {
+        if (requestedLoadGeneration !== pendingLoad.generation) { generation++; requestedLoadGeneration = pendingLoad.generation }
+        return null
+      }
       // Retire the child job immediately, before a newer selection waits on
       // permission/coalescing. Keep the renderer session and its intent intact.
-      if (available && pendingLoad) send('cancel-load', null)
+      if (available && pendingLoad) send('cancel-load', null, false, pendingLoad.generation)
       generation++
       rejectWork('Scene changed.', 'scene-changed')
-      loaded = false; activeRequestId = null; resetObservation()
+      if (!options.stagedScenes) { loaded = false; activeRequestId = null; resetObservation() }
+      else report(loaded ? playing ? 'playing' : 'paused' : 'ready')
       return cancelled
     },
     setPlayback(shouldPlay: boolean) {
@@ -393,10 +487,10 @@ export function createIsolatedPlaybackHost(options: {
       if (closed || !loaded || pendingCapabilities) return Promise.reject(new Error('Capabilities are unavailable.'))
       return new Promise((resolve, reject) => {
         const id = sequence + 1
-        const pending: Pending<PlaybackPayloads['capabilities-result']> = { id, generation, resolve, reject, timer: undefined }
+        const pending: Pending<PlaybackPayloads['capabilities-result']> = { id, generation: options.stagedScenes ? activeGeneration : generation, resolve, reject, timer: undefined }
         pendingCapabilities = pending
         pending.timer = setTimeout(() => {
-          if (closed || pendingCapabilities !== pending || generation !== pending.generation) return
+          if (closed || pendingCapabilities !== pending) return
           operation('capabilities', pending, 'failed', 'timeout')
           pendingCapabilities = null; reject(new Error('Capabilities request timed out.'))
         }, startupMs)
@@ -411,10 +505,10 @@ export function createIsolatedPlaybackHost(options: {
       if (closed || !loaded || pendingInspector || document.visibilityState === 'hidden' || !inspectorAllowed()) return Promise.resolve(null)
       return new Promise(resolve => {
         const id = sequence + 1
-        const pending: Pending<PlaybackPayloads['audio-inspector-result']> = { id, generation, resolve, reject: () => resolve(null), timer: undefined }
+        const pending: Pending<PlaybackPayloads['audio-inspector-result']> = { id, generation: options.stagedScenes ? activeGeneration : generation, resolve, reject: () => resolve(null), timer: undefined }
         pendingInspector = pending
         pending.timer = setTimeout(() => {
-          if (closed || pendingInspector !== pending || generation !== pending.generation) return
+          if (closed || pendingInspector !== pending) return
           operation('audio-inspector', pending, 'failed', 'timeout')
           pendingInspector = null; resolve(null)
         }, 1000)
@@ -434,11 +528,11 @@ export function createIsolatedPlaybackHost(options: {
       if (closed || !loaded || pendingGraphics || !graphicsAllowed()) return Promise.resolve(null)
       return new Promise(resolve => {
         const pending: Pending<PlaybackPayloads['graphics-diagnostics-result']> = {
-          id: sequence + 1, generation, resolve, reject: () => resolve(null), timer: undefined,
+          id: sequence + 1, generation: options.stagedScenes ? activeGeneration : generation, resolve, reject: () => resolve(null), timer: undefined,
         }
         pendingGraphics = pending
         pending.timer = setTimeout(() => {
-          if (closed || pendingGraphics !== pending || generation !== pending.generation) return
+          if (closed || pendingGraphics !== pending) return
           operation('graphics-diagnostics', pending, 'failed', 'timeout')
           pendingGraphics = null; resolve(null)
         }, 1000)
@@ -476,19 +570,19 @@ export function createIsolatedPlaybackHost(options: {
       if (!isPlaybackMessage(playbackMessage('resize', session, generation, 1, payload), ['resize'])) throw new Error('Invalid player size.')
       if (!closed) { lastResize = payload; queuedResize = payload }
     },
-    capture(options: Partial<CaptureRequest> = {}): Promise<Blob> {
+    capture(requestOptions: Partial<CaptureRequest> = {}): Promise<Blob> {
       if (closed || !loaded || pendingCapture || decoderBusy) return Promise.reject(new Error('Capture is unavailable.'))
       if (!captureAllowed()) return Promise.reject(new Error('Captures are too frequent.'))
-      const size = boundCaptureSize(options.width ?? 640, options.height ?? 360)
-      const request: CaptureRequest = { ...size, type: options.type ?? 'image/png', quality: options.quality ?? 0.9 }
+      const size = boundCaptureSize(requestOptions.width ?? 640, requestOptions.height ?? 360)
+      const request: CaptureRequest = { ...size, type: requestOptions.type ?? 'image/png', quality: requestOptions.quality ?? 0.9 }
       return new Promise<Blob>((resolve, reject) => {
         // MessagePort order makes the capture observe the latest authored settings.
         try { flushSceneSettings(); flushAudioResponse() } catch (error) { reject(error); return }
         const id = sequence + 1
-        const pending: NonNullable<typeof pendingCapture> = { id, generation, request, decoding: false, resolve, reject, timer: undefined }
+        const pending: NonNullable<typeof pendingCapture> = { id, generation: options.stagedScenes ? activeGeneration : generation, request, decoding: false, resolve, reject, timer: undefined }
         pendingCapture = pending
         pending.timer = setTimeout(() => {
-          if (closed || pendingCapture !== pending || generation !== pending.generation) return
+          if (closed || pendingCapture !== pending) return
           operation('capture', pending, 'failed', 'timeout')
           pendingCapture = null; reject(new Error('Frame capture timed out.'))
         }, BRIDGE_LIMITS.captureTimeoutMs)

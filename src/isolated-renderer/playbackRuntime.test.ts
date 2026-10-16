@@ -2,7 +2,7 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { installPlaybackRuntime } from './playbackRuntime'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from '../modules/player/isolation/playbackProtocol'
-import { PlaybackDownloadError, type PlaybackLoader } from './playbackEngine'
+import { PlaybackDownloadError, type PlaybackLoader, type PlaybackEngine } from './playbackEngine'
 import { ShaderCompilationError } from './compiler/errors'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 import type { AudioInspectorSnapshot } from '../modules/player/audioInspector'
@@ -16,6 +16,8 @@ afterEach(() => { releases.splice(0).forEach(fn => fn()); vi.restoreAllMocks(); 
 function fixture() {
   const target = Object.assign(new EventTarget(), { parent: {} }) as unknown as Window
   const engine = { dispose: vi.fn(), resize: vi.fn(), input: vi.fn(), playback: vi.fn(), synthetic: vi.fn(), zoom: vi.fn(),
+    initialPreparedScene: { activate: vi.fn(), discard: vi.fn() },
+    prepareScene: vi.fn<NonNullable<PlaybackEngine['prepareScene']>>(async () => ({ activate: vi.fn(), discard: vi.fn() })),
     audioResponse: vi.fn(), sceneSettings: vi.fn(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
     audioInspector: vi.fn<() => AudioInspectorSnapshot | null>(() => null),
     graphicsDiagnostics: vi.fn<() => PlaybackPayloads['graphics-diagnostics-result']>(() => null),
@@ -40,6 +42,128 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  const flush = async () => { for (let index = 0; index < 6; index++) await Promise.resolve() }
+  const stagedConnect = () => playbackMessage('connect', session, 0, 0, { startupPhases: true, workloadErrors: true, stagedScenes: true })
+  async function activeStaged() {
+    const f = fixture(); f.bootstrap({ data: stagedConnect() }); f.load(); await flush(); f.send('activate', null)
+    return f
+  }
+
+  it('prepares initial graphics without activating until the authorized parent acknowledges readiness', async () => {
+    const f = fixture(); f.bootstrap({ data: stagedConnect() }); f.load(); await flush()
+    expect(f.loadScene).toHaveBeenCalledOnce()
+    expect(f.loadScene.mock.calls[0][0].deferActivation).toBe(true)
+    expect(f.engine.initialPreparedScene.activate).not.toHaveBeenCalled()
+    expect(f.responses('prepared')).toHaveLength(1); expect(f.responses('loaded')).toHaveLength(0)
+    f.send('activate', null)
+    expect(f.engine.initialPreparedScene.activate).toHaveBeenCalledOnce()
+    expect(f.responses('loaded')).toHaveLength(1); expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
+
+  it('replaces designs within one renderer while active progress remains separate from candidate readiness', async () => {
+    vi.spyOn(performance, 'now').mockReturnValue(0)
+    const f = await activeStaged(), active = f.loadScene.mock.calls[0][0]
+    const replacement = { activate: vi.fn(), discard: vi.fn() }
+    let finish!: (value: typeof replacement) => void
+    f.engine.prepareScene.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    active.onFrame(); f.load(2)
+    active.onFrame()
+    expect(f.responses('progress')[0].generation).toBe(1)
+    expect(f.responses('loaded')).toHaveLength(1)
+    expect(f.engine.prepareScene).toHaveBeenCalledOnce(); expect(f.loadScene).toHaveBeenCalledOnce()
+    expect(f.container.firstChild).toBe(f.canvas); expect(f.engine.dispose).not.toHaveBeenCalled()
+    f.send('input', input, 1); expect(f.engine.input).toHaveBeenCalledWith(input)
+    finish(replacement); await flush()
+    expect(replacement.activate).not.toHaveBeenCalled()
+    f.send('activate', null, 2)
+    expect(replacement.activate).toHaveBeenCalledOnce()
+    vi.spyOn(performance, 'now').mockReturnValue(1000); active.onFrame()
+    expect(f.responses('progress').at(-1).generation).toBe(2)
+    expect(f.responses('loaded').map(message => message.generation)).toEqual([1, 2])
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+    f.runtime.dispose(); expect(f.engine.dispose).toHaveBeenCalledOnce()
+  })
+
+  it.each(['compile', 'first-frame', 'activation'] as const)('preserves the previous design after a candidate %s failure', async failure => {
+    const f = await activeStaged()
+    const prepared = { activate: vi.fn(), discard: vi.fn() }
+    if (failure === 'activation') {
+      prepared.activate.mockImplementation(() => { throw new Error('Atomic activation rejected.') })
+      f.engine.prepareScene.mockResolvedValueOnce(prepared)
+    } else f.engine.prepareScene.mockRejectedValueOnce(failure === 'compile' ? new ShaderCompilationError('failed') : new Error('First-use draw failed.'))
+    f.load(2); await flush()
+    if (failure === 'activation') f.send('activate', null, 2)
+    expect(f.responses('candidate-error').at(-1).payload).toEqual({ code: failure === 'compile' ? 'compile' : 'graphics-startup', retained: true })
+    expect(f.responses('error')).toHaveLength(0); expect(f.engine.dispose).not.toHaveBeenCalled(); expect(f.port.close).not.toHaveBeenCalled()
+    f.send('playback', { playing: false }, 1); expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.engine.prepareScene).toHaveBeenCalledOnce()
+  })
+
+  it('cancels and discards obsolete candidates without touching the active scene or a newer candidate', async () => {
+    const f = await activeStaged(), discarded = { activate: vi.fn(), discard: vi.fn() }
+    let finish!: (value: typeof discarded) => void
+    f.engine.prepareScene.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    f.load(2)
+    const old = f.engine.prepareScene.mock.calls[0][0]
+    f.send('cancel-load', null, 2)
+    expect(old.signal.aborted).toBe(true)
+    f.load(3); await flush()
+    old.onPhase?.('graphics-startup')
+    finish(discarded); await flush()
+    expect(discarded.discard).toHaveBeenCalledOnce(); expect(discarded.activate).not.toHaveBeenCalled()
+    expect(f.responses('candidate-error')).toHaveLength(0); expect(f.responses('error')).toHaveLength(0)
+    f.send('activate', null, 3)
+    expect(f.responses('loaded').map(message => message.generation)).toEqual([1, 3])
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
+
+  it('retires an initial uncommitted renderer before reinitializing and ignores its delayed context events', async () => {
+    const f = fixture(); f.bootstrap({ data: stagedConnect() }); f.load(); await flush()
+    const old = f.loadScene.mock.calls[0][0]
+    f.send('cancel-load', null)
+    expect(f.engine.initialPreparedScene.discard).toHaveBeenCalledOnce()
+    expect(f.engine.dispose).toHaveBeenCalledOnce()
+    f.load(2); await flush()
+    const next = f.loadScene.mock.calls[1][0]
+    expect(next.canvas).not.toBe(old.canvas)
+    expect(next.canvas.id).toBe('renderer-canvas'); expect(next.canvas.style.width).toBe('500px')
+    expect(f.container.firstChild).toBe(next.canvas)
+    const nextContextLost = vi.fn(() => next.onError('context-lost'))
+    next.canvas.addEventListener('webglcontextlost', nextContextLost)
+    old.canvas.dispatchEvent(new Event('webglcontextlost'))
+    expect(nextContextLost).not.toHaveBeenCalled()
+    old.onError('context-lost'); old.onFrame()
+    expect(f.loadScene).toHaveBeenCalledTimes(2); expect(f.engine.prepareScene).not.toHaveBeenCalled()
+    expect(f.responses('error')).toHaveLength(0)
+    f.send('activate', null, 2)
+    expect(f.responses('loaded').map(message => message.generation)).toEqual([2])
+  })
+
+  it('keeps the session context-loss callback alive while replacements prepare', async () => {
+    const f = await activeStaged()
+    f.engine.prepareScene.mockReturnValueOnce(new Promise(() => {}))
+    f.load(2)
+    f.loadScene.mock.calls[0][0].onError('context-lost')
+    expect(f.responses('error').at(-1)).toMatchObject({ generation: 1, payload: { code: 'context-lost' } })
+    expect(f.engine.dispose).toHaveBeenCalledOnce(); expect(f.port.close).toHaveBeenCalledOnce()
+  })
+
+  it('preserves current pause and input intent at activation without reapplying old authored settings', async () => {
+    const f = await activeStaged()
+    f.send('input', input, 1)
+    f.send('audio-response', { mode: 'legacy', config: null }, 1)
+    f.send('scene-settings', extractLiveSceneSettings(scene), 1)
+    f.send('synthetic', { enabled: true, seed: 7, tempoScale: 1 }, 1)
+    f.load(2); await flush()
+    f.send('playback', { playing: false }, 1)
+    f.engine.audioResponse.mockClear(); f.engine.sceneSettings.mockClear()
+    f.send('activate', null, 2)
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.engine.synthetic).toHaveBeenLastCalledWith({ enabled: true, seed: 7, tempoScale: 1 })
+    expect(f.engine.input).toHaveBeenLastCalledWith(input)
+    expect(f.engine.audioResponse).not.toHaveBeenCalled(); expect(f.engine.sceneSettings).not.toHaveBeenCalled()
+  })
+
   it('reads graphics counters only when requested, bounds reads and preserves input/rendering', async () => {
     const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
     const measured = { contextsCreated: 1, contextsDisposed: 0, firstFrameMs: 20.5, geometries: 2, textures: 4, programs: 2 }

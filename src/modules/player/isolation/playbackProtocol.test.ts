@@ -25,6 +25,23 @@ describe('bounded playback messages', () => {
     Object.defineProperty(getter, 'textures', { get: () => { throw new Error('must not read') }, enumerable: true })
     expect(isPlaybackMessage({ ...response, payload: getter }, ['graphics-diagnostics-result'])).toBe(false)
   })
+  it('accepts optional bounded scene-preparation measurements without accepting partial or extra fields', () => {
+    const preparation = { peakGeometries: 8, peakTextures: 12, peakPrograms: 4,
+      candidatesPrepared: 3, candidatesActivated: 2, candidatesDiscarded: 1, mode: 'parallel' }
+    const payload = { contextsCreated: 1, contextsDisposed: 0, firstFrameMs: 54.2, geometries: 4, textures: 6, programs: 2, preparation }
+    const response = { ...playbackMessage('graphics-diagnostics-result', session, 1, 2, null), payload }
+    for (const mode of ['parallel', 'first-use', null]) {
+      expect(isPlaybackMessage({ ...response, payload: { ...payload, preparation: { ...preparation, mode } } }, ['graphics-diagnostics-result'])).toBe(true)
+    }
+    for (const change of [{ peakGeometries: -1 }, { peakTextures: 100_001 }, { peakPrograms: NaN },
+      { candidatesPrepared: 1.5 }, { candidatesActivated: Infinity }, { candidatesDiscarded: 1_000_001 },
+      { mode: 'synchronous' }, { source: 'private code' }]) {
+      expect(isPlaybackMessage({ ...response, payload: { ...payload, preparation: { ...preparation, ...change } } }, ['graphics-diagnostics-result'])).toBe(false)
+    }
+    for (const preparation of [null, undefined, { peakGeometries: 8 }]) {
+      expect(isPlaybackMessage({ ...response, payload: { ...payload, preparation } }, ['graphics-diagnostics-result'])).toBe(false)
+    }
+  })
   it('accepts only bounded numeric inspector readings and fixed identities, never code or arbitrary text', () => {
     const snapshot = { mode: 'legacy', source: 'audio', playing: true, audioLoaded: true,
       levels: { bass: 0.7, mid: 0.1, treble: 0.2, overall: 0.3 }, hits: { bass: 0.9, mid: 0, treble: 0, overall: 0 },
@@ -54,10 +71,13 @@ describe('bounded playback messages', () => {
     const message = playbackMessage('connect', session, 0, 0, { startupPhases: true })
     expect(isPlaybackMessage(message, ['connect'])).toBe(true)
     expect(isPlaybackMessage({ ...message, payload: { startupPhases: true, workloadErrors: true } }, ['connect'])).toBe(true)
+    expect(isPlaybackMessage({ ...message, payload: { startupPhases: true, workloadErrors: true, stagedScenes: true } }, ['connect'])).toBe(true)
+    expect(isPlaybackMessage({ ...message, payload: { startupPhases: true, stagedScenes: true } }, ['connect'])).toBe(true)
     expect(isPlaybackMessage({ ...message, payload: null }, ['connect'])).toBe(true)
     const getter = Object.defineProperty({}, 'startupPhases', { enumerable: true, get() { throw new Error('Must not execute') } })
     for (const payload of [{}, { startupPhases: false }, { startupPhases: 1 }, { startupPhases: true, extra: true },
-      { workloadErrors: true }, { startupPhases: true, workloadErrors: false }, { startupPhases: true, workloadErrors: 'true' }, getter]) {
+      { workloadErrors: true }, { startupPhases: true, workloadErrors: false }, { startupPhases: true, workloadErrors: 'true' },
+      { stagedScenes: true }, { startupPhases: true, stagedScenes: false }, { startupPhases: true, stagedScenes: 1 }, getter]) {
       expect(isPlaybackMessage({ ...message, payload }, ['connect'])).toBe(false)
     }
     expect(isPlaybackMessage({ ...message, generation: 1 }, ['connect'])).toBe(false)

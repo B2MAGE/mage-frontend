@@ -16,7 +16,9 @@ export const BRIDGE_LIMITS = Object.freeze({ messagesPerSecond: 90, responsesPer
 export type AudioInput = { frame: AudioAnalysisFrame | null; legacyAmplitude: number; audioTime: number; playing: boolean; loaded: boolean }
 export type CaptureRequest = { width: number; height: number; type: 'image/png' | 'image/jpeg' | 'image/webp'; quality: number }
 export type GraphicsDiagnostics = { contextsCreated: number; contextsDisposed: number; firstFrameMs: number | null
-  geometries: number; textures: number; programs: number }
+  geometries: number; textures: number; programs: number
+  preparation?: { peakGeometries: number; peakTextures: number; peakPrograms: number
+    candidatesPrepared: number; candidatesActivated: number; candidatesDiscarded: number; mode: 'parallel' | 'first-use' | null } }
 export const STARTUP_PHASES = ['waiting-visible', 'compiler-download', 'compiler-startup', 'compiling', 'graphics-download', 'graphics-startup'] as const
 export type StartupPhase = typeof STARTUP_PHASES[number]
 export const PLAYBACK_ERRORS = ['render', 'protocol', 'capture', 'compile', 'compiler-download', 'graphics-download',
@@ -77,8 +79,16 @@ const bool = (v: unknown) => typeof v === 'boolean'
 const unit = (v: unknown) => numberIn(v, 0, 1)
 function isGraphicsDiagnostics(value: unknown): value is GraphicsDiagnostics | null {
   if (value === null) return true
-  if (!record(value, ['contextsCreated', 'contextsDisposed', 'firstFrameMs', 'geometries', 'textures', 'programs'])) return false
+  const fields = ['contextsCreated', 'contextsDisposed', 'firstFrameMs', 'geometries', 'textures', 'programs']
+  if (!record(value, fields) && !record(value, [...fields, 'preparation'])) return false
   const count = (value: unknown, limit: number) => numberIn(value, 0, limit) && Number.isInteger(value)
+  if (Object.hasOwn(value, 'preparation')) {
+    const prepared = value.preparation
+    if (!record(prepared, ['peakGeometries', 'peakTextures', 'peakPrograms', 'candidatesPrepared', 'candidatesActivated', 'candidatesDiscarded', 'mode'])
+      || !count(prepared.peakGeometries, 100_000) || !count(prepared.peakTextures, 100_000) || !count(prepared.peakPrograms, 100_000)
+      || !count(prepared.candidatesPrepared, 1_000_000) || !count(prepared.candidatesActivated, 1_000_000)
+      || !count(prepared.candidatesDiscarded, 1_000_000) || ![null, 'parallel', 'first-use'].includes(prepared.mode as string | null)) return false
+  }
   return count(value.contextsCreated, 1_000_000) && count(value.contextsDisposed, 1_000_000)
     && (value.contextsDisposed as number) <= (value.contextsCreated as number)
     && (value.firstFrameMs === null || numberIn(value.firstFrameMs, 0, 120_000))

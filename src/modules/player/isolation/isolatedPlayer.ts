@@ -8,6 +8,7 @@ import { createParentAudioSession, type ParentAudioSession } from './parentAudio
 import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus, type PlaybackHostDiagnostic } from './playbackHost'
 import { BRIDGE_LIMITS, isAudioResponseSettings, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
+import type { SceneActivation } from './sceneReplacement'
 
 export type IsolatedPlayerOptions = {
   container: HTMLElement
@@ -36,7 +37,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   let disposed = false, failed = false, available = false, sceneLoaded = false, sceneLoading = false
   let playing = true, renderingSuspended = false, elapsed = 0, previousTick = now()
   const visualsSuspended = () => renderingSuspended || document.visibilityState === 'hidden'
-  let sceneGeneration = 0, audioGeneration = 0
+  let sceneGeneration = 0, activeSceneGeneration = 0, audioGeneration = 0
   let audioEpoch = 0
   let timer: ReturnType<typeof setInterval> | null = null
   let observer: ResizeObserver | null = null
@@ -192,6 +193,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   try {
     host = (dependencies.createHost ?? createIsolatedPlaybackHost)({
       container: options.container, rendererUrl: options.rendererUrl, useInlineFrameStyles: options.useInlineFrameStyles,
+      stagedScenes: true,
       onStatus(status) {
         if (status === 'disposed' && !disposed) dispose()
         try { options.onStatus?.(status) } catch { /* Observers cannot interfere with the bridge. */ }
@@ -238,40 +240,48 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
 
   return {
     ready,
-    async loadScene(scene: unknown, profile = options.profile ?? 'full'): Promise<void> {
+    async loadScene(scene: unknown, profile = options.profile ?? 'full', activation?: SceneActivation): Promise<void> {
       assertActive()
       const safeScene = sceneForBridge(scene)
       const resolved = resolveSceneForPlayback(safeScene).engineScene
-      response = { mode: normalizeAudioResponseMode(resolved.audioResponse),
+      const requestedResponse = { mode: normalizeAudioResponseMode(resolved.audioResponse),
         config: resolved.audioResponseConfig ? normalizeAudioResponseConfig(resolved.audioResponseConfig).config : null }
-      supportedTargets = null
       const current = ++sceneGeneration
-      sceneLoaded = false; sceneLoading = true
+      sceneLoading = true
       syncInspector()
       try {
         await ready
         assertActive()
         if (current !== sceneGeneration) throw new Error('Scene changed.')
-        await host!.loadScene(safeScene, profile)
+        await host!.loadScene(safeScene, profile, {
+          beforeActivate() {
+            assertActive()
+            if (current !== sceneGeneration) throw new Error('Scene changed.')
+            activation?.beforeActivate()
+          },
+          onActivated() {
+            assertActive()
+            // A newer selection may already be queued, but this bounded commit
+            // really happened. Keep ownership and response metadata truthful.
+            activeSceneGeneration = current; response = requestedResponse; supportedTargets = null
+            sceneLoaded = true
+            syncInspector()
+            elapsed = 0; zoom = 1; previousTick = now()
+            audio.setSensitivity(response.config?.sensitivity ?? 1)
+            host!.setAudioResponse(response)
+            host!.setPlayback(playing && !visualsSuspended())
+            host!.setZoom(zoom)
+            host!.setSynthetic(synthetic.enabled, synthetic.seed, synthetic.tempoScale)
+            resize(); update()
+            activation?.onActivated()
+            // Optional metadata never gates a successful first frame or audio.
+            void host!.getCapabilities().then(capabilities => {
+              if (!disposed && !failed && current === activeSceneGeneration) supportedTargets = capabilities.supportedTargets
+            }, () => { /* The failed observation is already recorded by the host. */ })
+          },
+        })
         assertActive()
         if (current !== sceneGeneration) throw new Error('Scene changed.')
-        sceneLoaded = true
-        syncInspector()
-        elapsed = 0
-        zoom = 1
-        previousTick = now()
-        audio.setSensitivity(response.config?.sensitivity ?? 1)
-        host!.setAudioResponse(response)
-        host!.setPlayback(playing && !visualsSuspended())
-        host!.setZoom(zoom)
-        host!.setSynthetic(synthetic.enabled, synthetic.seed, synthetic.tempoScale)
-        resize()
-        update()
-        // Optional metadata never gates a successful first frame or audio
-        // sampling. Unknown support stays null rather than inventing targets.
-        void host!.getCapabilities().then(capabilities => {
-          if (!disposed && !failed && current === sceneGeneration) supportedTargets = capabilities.supportedTargets
-        }, () => { /* The host records the failed operation; playback remains usable. */ })
       } finally {
         if (current === sceneGeneration) sceneLoading = false
       }
@@ -359,7 +369,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
     setSceneSettings(value: SceneLiveSettings) {
       assertActive()
       const next = validateLiveSceneSettings(value)
-      if (!available || !sceneLoaded) throw new Error('Load a scene before changing its settings.')
+      if (!available || !sceneLoaded || sceneLoading) throw new Error('Load a scene before changing its settings.')
       host!.setSceneSettings(next)
     },
     getAudioResponseCapabilities() {
@@ -372,9 +382,9 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
     getAudioState: () => audio.getState(),
     requestGraphicsDiagnostics() {
       if (disposed || failed || !sceneLoaded) return Promise.resolve(null)
-      const current = sceneGeneration
+      const current = activeSceneGeneration
       return host!.requestGraphicsDiagnostics().then(snapshot =>
-        !disposed && !failed && current === sceneGeneration ? snapshot : null, () => null)
+        !disposed && !failed && current === activeSceneGeneration ? snapshot : null, () => null)
     },
     setAudioInspectorEnabled(enabled: boolean) {
       inspectorEnabled = enabled === true
