@@ -47,6 +47,8 @@ function fixture(running = true) {
     externalClock: { time: 42, rate: 1, playing: running }, externalAudio: { audioTime: 27 },
     syntheticPreviewTime: 17, audio: { isPlaying: running }, animationFrameId: running ? 25 : null,
     renderLifecycleListeners: new Set([event => calls.frames.push(event.type)]),
+    // Graphics counters are covered by the engine's ownership tests; this harness isolates live edits.
+    _recordGraphicsEvent() {},
     _notifyRenderLifecycle: method('#_notifyRenderLifecycle'),
   }
   for (const name of ['#_applyCompactIntent', '#_applyCompactFx', '#_applyStatePatch', '#_setCameraUpFromTilt', '#_syncSobelResolution']) {
