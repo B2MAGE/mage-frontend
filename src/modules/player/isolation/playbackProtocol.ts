@@ -15,14 +15,21 @@ export const BRIDGE_LIMITS = Object.freeze({ messagesPerSecond: 90, responsesPer
   captureBytes: 1_048_576, captureTimeoutMs: 5_000, maxTime: 604_800, maxHits: 16 })
 export type AudioInput = { frame: AudioAnalysisFrame | null; legacyAmplitude: number; audioTime: number; playing: boolean; loaded: boolean }
 export type CaptureRequest = { width: number; height: number; type: 'image/png' | 'image/jpeg' | 'image/webp'; quality: number }
+export type GraphicsDiagnostics = { contextsCreated: number; contextsDisposed: number; firstFrameMs: number | null
+  geometries: number; textures: number; programs: number }
 export const STARTUP_PHASES = ['waiting-visible', 'compiler-download', 'compiler-startup', 'compiling', 'graphics-download', 'graphics-startup'] as const
 export type StartupPhase = typeof STARTUP_PHASES[number]
 export const PLAYBACK_ERRORS = ['render', 'protocol', 'capture', 'compile', 'compiler-download', 'graphics-download',
   'compiler-startup', 'compile-timeout', 'invalid-output', 'graphics-startup', 'context-lost', 'interrupted', ...SHADER_WORKLOAD_FAILURES] as const
+export const CANDIDATE_ERRORS = ['compile', 'compiler-download', 'graphics-download', 'compiler-startup', 'compile-timeout',
+  'invalid-output', 'graphics-startup', 'interrupted', ...SHADER_WORKLOAD_FAILURES] as const
 export type PlaybackPayloads = {
-  connect: null | { startupPhases: true; workloadErrors?: true }; ready: null; dispose: null
+  connect: null | { startupPhases: true; workloadErrors?: true; stagedScenes?: true }; ready: null; dispose: null
   load: { scene: Record<string, unknown>; profile: 'full' | 'preview' }
   loaded: null
+  prepared: null
+  activate: null
+  'candidate-error': { code: typeof CANDIDATE_ERRORS[number]; retained: boolean }
   'cancel-load': null
   'load-phase': { phase: StartupPhase; attempt: 0 | 1 }
   resize: { width: number; height: number; pixelRatio: number }
@@ -36,6 +43,8 @@ export type PlaybackPayloads = {
   'capabilities-result': { supportedTargets: AudioResponseTarget[] }
   'audio-inspector': null
   'audio-inspector-result': AudioInspectorSnapshot | null
+  'graphics-diagnostics': null
+  'graphics-diagnostics-result': GraphicsDiagnostics | null
   capture: CaptureRequest
   captured: { bytes: ArrayBuffer; type: CaptureRequest['type']; width: number; height: number }
   progress: { frames: number }
@@ -46,8 +55,8 @@ export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends P
   protocol: typeof RENDERER_PROTOCOL; version: typeof PLAYBACK_VERSION; session: string
   generation: number; requestId: number; type: T; payload: PlaybackPayloads[T]
 } : never
-export const PLAYBACK_COMMANDS = ['load', 'cancel-load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'audio-inspector', 'capture', 'dispose'] as const
-export const PLAYBACK_RESPONSES = ['ready', 'load-phase', 'loaded', 'captured', 'capabilities-result', 'audio-inspector-result', 'progress', 'error'] as const
+export const PLAYBACK_COMMANDS = ['load', 'cancel-load', 'activate', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'audio-inspector', 'graphics-diagnostics', 'capture', 'dispose'] as const
+export const PLAYBACK_RESPONSES = ['ready', 'load-phase', 'prepared', 'loaded', 'candidate-error', 'captured', 'capabilities-result', 'audio-inspector-result', 'graphics-diagnostics-result', 'progress', 'error'] as const
 export function playbackMessage<T extends PlaybackType>(type: T, session: string, generation: number,
   requestId: number, payload: PlaybackPayloads[T]): PlaybackMessage<T> {
   return { protocol: RENDERER_PROTOCOL, version: PLAYBACK_VERSION, type, session, generation, requestId, payload } as PlaybackMessage<T>
@@ -66,6 +75,15 @@ const uint = (v: unknown) => numberIn(v, 0, Number.MAX_SAFE_INTEGER) && Number.i
 const time = (v: unknown) => numberIn(v, 0, BRIDGE_LIMITS.maxTime)
 const bool = (v: unknown) => typeof v === 'boolean'
 const unit = (v: unknown) => numberIn(v, 0, 1)
+function isGraphicsDiagnostics(value: unknown): value is GraphicsDiagnostics | null {
+  if (value === null) return true
+  if (!record(value, ['contextsCreated', 'contextsDisposed', 'firstFrameMs', 'geometries', 'textures', 'programs'])) return false
+  const count = (value: unknown, limit: number) => numberIn(value, 0, limit) && Number.isInteger(value)
+  return count(value.contextsCreated, 1_000_000) && count(value.contextsDisposed, 1_000_000)
+    && (value.contextsDisposed as number) <= (value.contextsCreated as number)
+    && (value.firstFrameMs === null || numberIn(value.firstFrameMs, 0, 120_000))
+    && count(value.geometries, 100_000) && count(value.textures, 100_000) && count(value.programs, 100_000)
+}
 function isAudioInspector(value: unknown): value is AudioInspectorSnapshot | null {
   if (value === null) return true
   if (!record(value, ['mode', 'source', 'playing', 'audioLoaded', 'levels', 'hits', 'sceneOutputs', 'bindings', 'driverSignals'])
@@ -135,11 +153,16 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     || !uint(value.generation) || !uint(value.requestId) || typeof value.type !== 'string' || !allowed.includes(value.type)) return false
   const p = value.payload
   switch (value.type) {
-    case 'connect': return (p === null || ((record(p, ['startupPhases']) || record(p, ['startupPhases', 'workloadErrors']) && p.workloadErrors === true) && p.startupPhases === true))
+    case 'connect': return (p === null || ((record(p, ['startupPhases'])
+      || record(p, ['startupPhases', 'workloadErrors']) && p.workloadErrors === true
+      || record(p, ['startupPhases', 'stagedScenes']) && p.stagedScenes === true
+      || record(p, ['startupPhases', 'workloadErrors', 'stagedScenes']) && p.workloadErrors === true && p.stagedScenes === true) && p.startupPhases === true))
       && value.generation === 0 && value.requestId === 0
     case 'ready': return p === null && value.generation === 0 && value.requestId === 0
-    case 'dispose': case 'loaded': case 'capabilities': case 'audio-inspector': case 'cancel-load': return p === null
+    case 'dispose': case 'loaded': case 'prepared': case 'activate': case 'capabilities': case 'audio-inspector': case 'graphics-diagnostics': case 'cancel-load': return p === null
+    case 'candidate-error': return record(p, ['code', 'retained']) && CANDIDATE_ERRORS.includes(p.code as typeof CANDIDATE_ERRORS[number]) && bool(p.retained)
     case 'audio-inspector-result': return isAudioInspector(p)
+    case 'graphics-diagnostics-result': return isGraphicsDiagnostics(p)
     case 'load-phase': return record(p, ['phase', 'attempt']) && STARTUP_PHASES.includes(p.phase as StartupPhase)
       && (p.attempt === 0 || p.attempt === 1) && numberIn(value.generation, 1, Number.MAX_SAFE_INTEGER)
       && numberIn(value.requestId, 1, Number.MAX_SAFE_INTEGER)

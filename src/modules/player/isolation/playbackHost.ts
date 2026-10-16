@@ -8,7 +8,7 @@ import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneS
 import { COMPILER_LIMITS } from '../../../isolated-renderer/compiler/protocol'
 
 type Pending<T> = { resolve: (value: T) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> | undefined; id: number; generation: number }
-type Operation = 'load' | 'capture' | 'capabilities' | 'audio-inspector'
+type Operation = 'load' | 'capture' | 'capabilities' | 'audio-inspector' | 'graphics-diagnostics'
 type OperationPhase = 'requested' | StartupPhase | 'decoding' | 'completed' | 'failed' | 'cancelled'
 type OperationReason = 'timeout' | 'unavailable' | 'invalid-result' | 'scene-changed' | 'disposed' | 'rate-limited'
 export type PlaybackHostStatus = 'starting' | 'ready' | 'loading' | 'playing' | 'paused' | 'error' | 'disposed'
@@ -50,6 +50,7 @@ export function createIsolatedPlaybackHost(options: {
   let loadPhaseStep = -1, loadAttempt = 0
   let pendingCapabilities: Pending<PlaybackPayloads['capabilities-result']> | null = null
   let pendingInspector: Pending<PlaybackPayloads['audio-inspector-result']> | null = null
+  let pendingGraphics: Pending<PlaybackPayloads['graphics-diagnostics-result']> | null = null
   let queuedAudioResponse: PlaybackPayloads['audio-response'] | null = null
   let queuedSceneSettings: SceneLiveSettings | null = null
   let lastAudioResponseKey: string | null = null, lastSceneSettingsKey: string | null = null
@@ -64,6 +65,7 @@ export function createIsolatedPlaybackHost(options: {
   const commandAllowed = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const loadAllowed = messageRate(4), captureAllowed = messageRate(2)
   const inspectorAllowed = messageRate(5)
+  const graphicsAllowed = messageRate(2)
   let resolveReady!: () => void, rejectReady!: (reason: Error) => void
   const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
   // Readiness can fail before a consumer begins waiting; callers still receive the rejection.
@@ -91,6 +93,10 @@ export function createIsolatedPlaybackHost(options: {
     if (pendingInspector) {
       operation('audio-inspector', pendingInspector, 'cancelled', diagnosticReason)
       clearTimeout(pendingInspector.timer); pendingInspector.resolve(null); pendingInspector = null
+    }
+    if (pendingGraphics) {
+      operation('graphics-diagnostics', pendingGraphics, 'cancelled', diagnosticReason)
+      clearTimeout(pendingGraphics.timer); pendingGraphics.resolve(null); pendingGraphics = null
     }
     pendingLoadPhase = null; loadPhaseStep = -1; loadAttempt = 0
   }
@@ -136,6 +142,18 @@ export function createIsolatedPlaybackHost(options: {
     if (closed) return
     if (!outputAllowed()) return dispose('runtime')
     const candidate = event.data
+    if (record(candidate, ['protocol', 'version', 'session', 'generation', 'requestId', 'type', 'payload'])
+      && candidate.type === 'graphics-diagnostics-result'
+      && isPlaybackMessage({ ...candidate, payload: null }, PLAYBACK_RESPONSES)) {
+      if (candidate.session !== session || candidate.generation !== generation || !pendingGraphics
+        || pendingGraphics.id !== candidate.requestId) return
+      const valid = isPlaybackMessage(candidate, PLAYBACK_RESPONSES) && candidate.type === 'graphics-diagnostics-result'
+      const snapshot = valid ? candidate.payload : null
+      operation('graphics-diagnostics', pendingGraphics, snapshot === null ? 'failed' : 'completed',
+        snapshot === null ? valid ? 'unavailable' : 'invalid-result' : undefined)
+      clearTimeout(pendingGraphics.timer); pendingGraphics.resolve(snapshot); pendingGraphics = null
+      return
+    }
     // A malformed optional reading cannot stop usable playback. Authenticate
     // its fixed envelope first; arbitrary data/getters never enter the UI.
     if (record(candidate, ['protocol', 'version', 'session', 'generation', 'requestId', 'type', 'payload'])
@@ -409,6 +427,29 @@ export function createIsolatedPlaybackHost(options: {
         } catch {
           if (pendingInspector) clearTimeout(pendingInspector.timer)
           pendingInspector = null; resolve(null)
+        }
+      })
+    },
+    requestGraphicsDiagnostics(): Promise<PlaybackPayloads['graphics-diagnostics-result']> {
+      if (closed || !loaded || pendingGraphics || !graphicsAllowed()) return Promise.resolve(null)
+      return new Promise(resolve => {
+        const pending: Pending<PlaybackPayloads['graphics-diagnostics-result']> = {
+          id: sequence + 1, generation, resolve, reject: () => resolve(null), timer: undefined,
+        }
+        pendingGraphics = pending
+        pending.timer = setTimeout(() => {
+          if (closed || pendingGraphics !== pending || generation !== pending.generation) return
+          operation('graphics-diagnostics', pending, 'failed', 'timeout')
+          pendingGraphics = null; resolve(null)
+        }, 1000)
+        operation('graphics-diagnostics', pending, 'requested')
+        try {
+          if (send('graphics-diagnostics', null, true) === null) {
+            operation('graphics-diagnostics', pending, 'cancelled', 'rate-limited')
+            clearTimeout(pending.timer); pendingGraphics = null; resolve(null)
+          }
+        } catch {
+          clearTimeout(pending.timer); pendingGraphics = null; resolve(null)
         }
       })
     },

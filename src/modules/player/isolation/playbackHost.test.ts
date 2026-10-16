@@ -33,6 +33,51 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('measures graphics only on request, limits concurrent reads and keeps timeout local',async()=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],s=setup(undefined,true,1000,event=>diagnostics.push(event))
+    await expect(s.host.requestGraphicsDiagnostics()).resolves.toBeNull()
+    await s.load()
+    expect(s.port.postMessage.mock.calls.some(([message])=>message.type==='graphics-diagnostics')).toBe(false)
+    const reading=s.host.requestGraphicsDiagnostics(),request=s.port.postMessage.mock.calls.at(-1)![0]
+    await expect(s.host.requestGraphicsDiagnostics()).resolves.toBeNull()
+    await vi.advanceTimersByTimeAsync(1000);await expect(reading).resolves.toBeNull()
+    s.progress()
+    s.reply('graphics-diagnostics-result',null,request.generation,request.requestId)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    expect(diagnostics).toContainEqual({type:'operation',at:1000,operation:'graphics-diagnostics',requestId:request.requestId,
+      generation:1,phase:'failed',reason:'timeout'})
+    s.host.dispose()
+  })
+
+  it('validates graphics data and bounds read rate without changing playback',async()=>{
+    const s=setup();await s.load()
+    const measured={contextsCreated:3,contextsDisposed:2,firstFrameMs:45,geometries:2,textures:8,programs:4}
+    const first=s.host.requestGraphicsDiagnostics(),request=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('graphics-diagnostics-result',measured,request.generation,request.requestId)
+    await expect(first).resolves.toEqual(measured)
+    const second=s.host.requestGraphicsDiagnostics(),next=s.port.postMessage.mock.calls.at(-1)![0]
+    s.port.receive({...playbackMessage('graphics-diagnostics-result',SESSION,next.generation,next.requestId,null),
+      payload:{...measured,source:'untrusted shader source'}})
+    await expect(second).resolves.toBeNull()
+    const calls=s.port.postMessage.mock.calls.length
+    await expect(s.host.requestGraphicsDiagnostics()).resolves.toBeNull()
+    expect(s.port.postMessage).toHaveBeenCalledTimes(calls)
+    s.host.setPlayback(false)
+    expect(s.failure).not.toHaveBeenCalled();s.host.dispose()
+    await expect(s.host.requestGraphicsDiagnostics()).resolves.toBeNull()
+  })
+
+  it('drops graphics measurements on replacement and ignores old responses and deadlines',async()=>{
+    const s=setup();await s.load()
+    const reading=s.host.requestGraphicsDiagnostics(),request=s.port.postMessage.mock.calls.at(-1)![0]
+    await s.load();await expect(reading).resolves.toBeNull()
+    s.host.setPlayback(false)
+    s.reply('graphics-diagnostics-result',{contextsCreated:1,contextsDisposed:0,firstFrameMs:30,geometries:2,textures:4,programs:1},
+      request.generation,request.requestId)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true);s.host.dispose()
+  })
+
   it('keeps inspector requests optional, single-flight and nonfatal on timeout',async()=>{
     const s=setup();await s.load()
     expect(s.port.postMessage.mock.calls.some(([message])=>message.type==='audio-inspector')).toBe(false)

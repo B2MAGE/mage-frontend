@@ -190,6 +190,12 @@ async function boundedStall(token: number) {
     status.textContent = `CPU check: ${phase.replaceAll('-', ' ')}.`
   }
   function hostDiagnostic(value: PlaybackHostDiagnostic) {
+    // The historical security report keeps its own fixed schema and phases.
+    // Detailed scene-operation evidence belongs to playback diagnostics.
+    if (value.type === 'operation') return
+    if (value.type === 'failure') {
+      record({ type: 'failure', reason: value.reason, phase, atMs: value.at - origin }); return
+    }
     const { at, ...details } = value
     record({ ...details, phase, atMs: at - origin })
   }

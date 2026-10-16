@@ -16,7 +16,12 @@ import { assertBuilderUniformManifest, type BuilderUniformValue } from '../modul
 import { assertBuilderBindingManifest, type BuilderLiveBinding } from '../modules/player/templates/builderBindings'
 import { createBuilderBindingController } from './builderBindings'
 
+export type PreparedPlaybackScene = { activate(): void; discard(): void }
+export type PreparePlaybackSceneOptions = { scene: unknown; profile: RenderProfile; signal: AbortSignal
+  sceneRevision: number; onPhase?: (phase: StartupPhase) => void }
 export type PlaybackEngine = {
+  initialPreparedScene?: PreparedPlaybackScene
+  prepareScene?: (options: PreparePlaybackSceneOptions) => Promise<PreparedPlaybackScene>
   dispose: () => void
   resize: (value: PlaybackPayloads['resize']) => void
   input: (value: PlaybackPayloads['input']) => void
@@ -26,12 +31,14 @@ export type PlaybackEngine = {
   sceneSettings: (value: PlaybackPayloads['scene-settings']) => void
   capabilities: () => PlaybackPayloads['capabilities-result']
   audioInspector?: () => AudioInspectorSnapshot | null
+  graphicsDiagnostics?: () => PlaybackPayloads['graphics-diagnostics-result']
   zoom: (factor: number) => void
   capture: (value: CaptureRequest) => Promise<PlaybackPayloads['captured']>
 }
 export type PlaybackLoader = (options: {
   canvas: HTMLCanvasElement; scene: unknown; profile: RenderProfile; signal: AbortSignal
   sceneRevision?: number
+  deferActivation?: boolean
   onError: (reason?: 'context-lost') => void; onFrame: () => void; onPhase?: (phase: StartupPhase) => void
 }) => Promise<PlaybackEngine>
 
@@ -45,14 +52,20 @@ type Engine = Omit<MAGEEngineAPI, 'loadPreset' | 'loadCompiledPreset' | 'updateS
   loadCompiledPreset: (preset: MAGEPreset, artifact: CompiledShaderArtifact) => unknown
   setExternalClock: (value: { time: number; rate: number; playing: boolean } | null) => void
   getEngineFields: () => OrbitFields & { controlSettings: { active: boolean; integrated: boolean }; controls: { enabled: boolean };
+    renderer?: { info: { memory: { geometries: number; textures: number }; programs?: unknown[] } };
     visualizer: { render_tooltips: boolean; mesh: ViewerPointerMesh | null; getActiveShader: () => string | null } }
 }
 const silence = { frame: null, legacyAmplitude: 0, audioTime: 0, playing: false, loaded: false }
 const noShortcuts: InputState = { requestToggleUI: false, requestResetVisualizer: false,
   requestNextShader: false, requestPreviousShader: false, requestWheelDirection: 0 }
+// This module belongs to one disposable iframe. Counters include all scenes in
+// that session, and are read only on an explicit local diagnostic request.
+let contextsCreated = 0, contextsDisposed = 0
 
 /** Only validated scene data and numbers enter this engine; no media loader is exposed. */
 export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profile, signal, sceneRevision = 1, onError, onFrame, onPhase }) => {
+  const requestedAt = performance.now()
+  let firstFrameMs: number | null = null
   const document = validateSceneForPlayback(scene)
   const resolved = resolveSceneForPlayback(document).engineScene
   const builder = document.kind === 'builder' ? compileBuilderPreviewDocument(document) : null
@@ -81,6 +94,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     : 1
   const engine = initMAGE({ canvas, autoStart: false, log: false, pixelRatio: devicePixelRatio,
     withControls: { active: false, integrated: false }, renderBudget }) as unknown as Engine
+  contextsCreated++
   let disposed = false
   let unsubscribe = () => {}
   let rejectStartup: (error: Error) => void = () => {}
@@ -148,6 +162,7 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     inspectorInput = null; clearInspectorInput()
     try { unsubscribe() } catch { /* Continue releasing graphics after listener cleanup. */ }
     try { engine.dispose() } catch { /* Removing the iframe is the final cleanup boundary. */ }
+    finally { contextsDisposed++ }
     rejectStartup(new Error('Rendering stopped.'))
   }
   signal.addEventListener('abort', dispose, { once: true })
@@ -159,7 +174,10 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
       unsubscribe = engine.subscribeRenderLifecycle(event => {
         if (disposed) return
         if (event.type === 'error') { onError(); dispose(); reject(new Error('Rendering failed.')); return }
-        if (loaded) { bindingController?.advance(); onFrame(); resolve() }
+        if (loaded) {
+          firstFrameMs ??= Math.min(120_000, Math.max(0, performance.now() - requestedAt))
+          bindingController?.advance(); onFrame(); resolve()
+        }
       })
       // External silence prevents the renderer from ever starting its internal audio source.
       engine.setExternalAudioFrame(silence)
@@ -188,6 +206,12 @@ export const loadPlaybackEngine: PlaybackLoader = async ({ canvas, scene, profil
     })
     return {
       dispose,
+      graphicsDiagnostics() {
+        const info = engine.getEngineFields().renderer?.info
+        if (!info) return null
+        return { contextsCreated, contextsDisposed, firstFrameMs,
+          geometries: info.memory.geometries, textures: info.memory.textures, programs: info.programs?.length ?? 0 }
+      },
       resize(value) {
         if (disposed) return
         // The engine measures CSS size every frame and applies its immutable render ceilings.

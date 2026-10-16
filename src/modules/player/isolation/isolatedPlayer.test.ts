@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIsolatedPlayer, type IsolatedPlayer } from './isolatedPlayer'
 import type { ParentAudioSession } from './parentAudio'
 import type { createIsolatedPlaybackHost } from './playbackHost'
+import type { GraphicsDiagnostics } from './playbackProtocol'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
 import type { AudioInspectorSnapshot, AudioInspectorSpectrum } from '../audioInspector'
 
@@ -45,6 +46,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
     ready: boot.promise,
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
     requestAudioInspector: vi.fn<() => Promise<AudioInspectorSnapshot | null>>(async () => null),
+    requestGraphicsDiagnostics: vi.fn<() => Promise<GraphicsDiagnostics | null>>(async () => null),
     loadScene: vi.fn(async () => {}), cancelPendingLoad: vi.fn<() => number | null>(() => null), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }
@@ -303,6 +305,26 @@ describe('isolated player parent integration', () => {
       requestId: 4, generation: 1, phase: 'failed' as const, reason: 'timeout' as const }
     f.hostOptions.onDiagnostic?.(diagnostic)
     expect(f.onDiagnostic).toHaveBeenCalledExactlyOnceWith(diagnostic)
+  })
+
+  it('requests graphics measurements only explicitly and ignores measurements from replaced scenes', async () => {
+    const f = fixture()
+    await expect(f.player.requestGraphicsDiagnostics()).resolves.toBeNull()
+    await f.start(); await f.tick(1000)
+    expect(f.host.requestGraphicsDiagnostics).not.toHaveBeenCalled()
+    const measured: GraphicsDiagnostics = { contextsCreated: 1, contextsDisposed: 0, firstFrameMs: 40,
+      geometries: 3, textures: 4, programs: 5 }
+    f.host.requestGraphicsDiagnostics.mockResolvedValueOnce(measured)
+    await expect(f.player.requestGraphicsDiagnostics()).resolves.toEqual(measured)
+    const old = deferred<GraphicsDiagnostics | null>()
+    f.host.requestGraphicsDiagnostics.mockReturnValueOnce(old.promise)
+    const reading = f.player.requestGraphicsDiagnostics()
+    await f.player.loadScene(scene); old.resolve(measured)
+    await expect(reading).resolves.toBeNull()
+    f.host.requestGraphicsDiagnostics.mockRejectedValueOnce(new Error('Unavailable optional observation'))
+    await expect(f.player.requestGraphicsDiagnostics()).resolves.toBeNull()
+    expect(f.onFailure).not.toHaveBeenCalled(); expect(f.audio.pause).not.toHaveBeenCalled()
+    f.player.dispose(); await expect(f.player.requestGraphicsDiagnostics()).resolves.toBeNull()
   })
 
   it('retires a pending scene immediately without stopping or rewinding its music', async () => {

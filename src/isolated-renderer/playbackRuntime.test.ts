@@ -18,6 +18,7 @@ function fixture() {
   const engine = { dispose: vi.fn(), resize: vi.fn(), input: vi.fn(), playback: vi.fn(), synthetic: vi.fn(), zoom: vi.fn(),
     audioResponse: vi.fn(), sceneSettings: vi.fn(), capabilities: vi.fn(() => ({ supportedTargets: ['size' as const] })),
     audioInspector: vi.fn<() => AudioInspectorSnapshot | null>(() => null),
+    graphicsDiagnostics: vi.fn<() => PlaybackPayloads['graphics-diagnostics-result']>(() => null),
     capture: vi.fn().mockResolvedValue({ bytes: new ArrayBuffer(12), type: 'image/png', width: 10, height: 10 }) }
   const loadScene = vi.fn<PlaybackLoader>().mockResolvedValue(engine)
   const statusElement = document.createElement('p')
@@ -39,6 +40,33 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('reads graphics counters only when requested, bounds reads and preserves input/rendering', async () => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    const measured = { contextsCreated: 1, contextsDisposed: 0, firstFrameMs: 20.5, geometries: 2, textures: 4, programs: 2 }
+    f.engine.graphicsDiagnostics.mockReturnValue(measured)
+    expect(f.engine.graphicsDiagnostics).not.toHaveBeenCalled()
+    for (let index = 0; index < 5; index++) f.send('graphics-diagnostics', null)
+    expect(f.engine.graphicsDiagnostics).toHaveBeenCalledTimes(2)
+    expect(f.responses('graphics-diagnostics-result').map(message => message.payload)).toEqual([measured, measured])
+    f.send('input', input)
+    expect(f.engine.input).toHaveBeenCalledWith(input)
+    expect(f.responses('error')).toHaveLength(0); expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
+
+  it.each(['absent', 'throwing', 'invalid'] as const)('returns null for %s graphics measurements without stopping playback', async availability => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    if (availability === 'absent') Reflect.deleteProperty(f.engine, 'graphicsDiagnostics')
+    if (availability === 'throwing') f.engine.graphicsDiagnostics.mockImplementation(() => { throw new Error('Private WebGL details') })
+    if (availability === 'invalid') f.engine.graphicsDiagnostics.mockReturnValue({ contextsCreated: 1, contextsDisposed: 0,
+      firstFrameMs: 20, geometries: 1, textures: 1, programs: 1, source: 'private shader source' } as PlaybackPayloads['graphics-diagnostics-result'])
+    f.send('graphics-diagnostics', null)
+    expect(f.responses('graphics-diagnostics-result')[0].payload).toBeNull()
+    expect(JSON.stringify(f.port.postMessage.mock.calls)).not.toContain('private')
+    f.send('playback', { playing: false })
+    expect(f.engine.playback).toHaveBeenLastCalledWith(false)
+    expect(f.responses('error')).toHaveLength(0); expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
+
   it('keeps playback alive when capability metadata throws', async () => {
     const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
     f.engine.capabilities.mockImplementation(() => { throw new Error('optional metadata unavailable') })

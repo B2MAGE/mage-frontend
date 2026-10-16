@@ -7,6 +7,24 @@ const input: PlaybackPayloads['input'] = { time: 2, pointer: { x: 0, y: 0, down:
   audio: { audioTime: 2, legacyAmplitude: 0.5, playing: true, loaded: true,
     frame: { time: 2, sequence: 1, levels: { bass: 1, mid: 0, treble: 0, overall: 0.5 }, hits: [{ band: 'bass', time: 2, strength: 1 }] } } }
 describe('bounded playback messages', () => {
+  it('accepts only bounded graphics counters and nullable measured first-frame time', () => {
+    const payload = { contextsCreated: 3, contextsDisposed: 2, firstFrameMs: 54.2, geometries: 4, textures: 6, programs: 2 }
+    const request = playbackMessage('graphics-diagnostics', session, 1, 2, null)
+    const response = playbackMessage('graphics-diagnostics-result', session, 1, 2, payload)
+    expect(isPlaybackMessage(request, ['graphics-diagnostics'])).toBe(true)
+    expect(isPlaybackMessage({ ...request, payload: { source: 'shader' } }, ['graphics-diagnostics'])).toBe(false)
+    expect(isPlaybackMessage(response, ['graphics-diagnostics-result'])).toBe(true)
+    expect(isPlaybackMessage({ ...response, payload: null }, ['graphics-diagnostics-result'])).toBe(true)
+    expect(isPlaybackMessage({ ...response, payload: { ...payload, firstFrameMs: null } }, ['graphics-diagnostics-result'])).toBe(true)
+    for (const change of [{ contextsCreated: 1_000_001 }, { contextsDisposed: 4 }, { contextsCreated: -1 },
+      { contextsCreated: 1.5 }, { firstFrameMs: -1 }, { firstFrameMs: 120_001 }, { firstFrameMs: NaN },
+      { textures: Infinity }, { programs: 100_001 }, { geometries: 0.5 }, { source: 'private code' }]) {
+      expect(isPlaybackMessage({ ...response, payload: { ...payload, ...change } }, ['graphics-diagnostics-result'])).toBe(false)
+    }
+    const getter = { ...payload }
+    Object.defineProperty(getter, 'textures', { get: () => { throw new Error('must not read') }, enumerable: true })
+    expect(isPlaybackMessage({ ...response, payload: getter }, ['graphics-diagnostics-result'])).toBe(false)
+  })
   it('accepts only bounded numeric inspector readings and fixed identities, never code or arbitrary text', () => {
     const snapshot = { mode: 'legacy', source: 'audio', playing: true, audioLoaded: true,
       levels: { bass: 0.7, mid: 0.1, treble: 0.2, overall: 0.3 }, hits: { bass: 0.9, mid: 0, treble: 0, overall: 0 },

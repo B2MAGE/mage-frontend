@@ -28,6 +28,7 @@ export function installPlaybackRuntime(options: {
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
   const withinInspectorRate = messageRate(5)
+  const withinGraphicsRate = messageRate(2)
   const display = (text: string) => { options.statusElement.textContent = text; options.statusElement.hidden = false }
   function retireCapture() {
     pendingCapture?.cancel()
@@ -201,6 +202,17 @@ export function installPlaybackRuntime(options: {
           let snapshot: PlaybackPayloads['audio-inspector-result'] = null
           try { snapshot = engine?.audioInspector?.() ?? null } catch { /* An unavailable reading is not a playback failure. */ }
           send('audio-inspector-result', message.requestId, snapshot)
+          break
+        }
+        case 'graphics-diagnostics': {
+          if (!withinGraphicsRate()) break
+          let snapshot: PlaybackPayloads['graphics-diagnostics-result'] = null
+          try {
+            const measured = engine?.graphicsDiagnostics?.() ?? null
+            if (isPlaybackMessage(playbackMessage('graphics-diagnostics-result', session, generation, message.requestId, measured),
+              ['graphics-diagnostics-result'])) snapshot = measured
+          } catch { /* Optional measurement never changes graphics or playback state. */ }
+          send('graphics-diagnostics-result', message.requestId, snapshot)
           break
         }
         case 'playback': playing = message.payload.playing; engine?.playback(playing); break

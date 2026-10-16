@@ -64,6 +64,20 @@ function fixture(profile: 'full' | 'preview' = 'preview') {
 }
 
 describe('isolated playback engine', () => {
+  it('measures actual context ownership and requested-scene first frame without allocating observations', async () => {
+    const f = fixture(), fields = f.engine.getEngineFields()
+    Object.assign(fields, { renderer: { info: { memory: { geometries: 2, textures: 4 }, programs: [{}, {}] } } })
+    f.engine.getEngineFields.mockReturnValue(fields)
+    const control = await f.ready()
+    const before = control.graphicsDiagnostics!()!
+    expect(before).toMatchObject({ geometries: 2, textures: 4, programs: 2 })
+    expect(before.firstFrameMs).toBeGreaterThanOrEqual(0)
+    expect(before.contextsCreated).toBeGreaterThan(before.contextsDisposed)
+    control.graphicsDiagnostics!()
+    expect(initMAGE).toHaveBeenCalledOnce()
+    control.dispose(); control.dispose()
+    expect(control.graphicsDiagnostics!()!.contextsDisposed).toBe(before.contextsDisposed + 1)
+  })
   it('keeps cumulative wheel zoom continuous through camera setting edits', async () => {
     const f = fixture(), scene = customDocument({ visualizer: { shader: 'sphere(1);' } }), settings = extractLiveSceneSettings(scene)
     const fields = f.engine.getEngineFields()
