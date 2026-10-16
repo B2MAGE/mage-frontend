@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAGE playback reliability check</title>
+<style>
+body{margin:0;background:#0c0e13;color:#f5f5f7;font:15px system-ui,sans-serif}main{max-width:1100px;margin:24px auto;padding:0 20px}h1{font-size:26px}p{color:#b8bac7;line-height:1.5}button,select{border:1px solid #55596b;border-radius:6px;background:#222533;color:inherit;font:inherit;padding:8px 12px;cursor:pointer}button:disabled{opacity:.45;cursor:default}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}label{display:flex;gap:8px;align-items:center}#player{width:100%;height:360px;background:#141722;overflow:hidden;touch-action:none}#player iframe{display:block;width:100%;height:100%;border:0;pointer-events:none}#status{color:#d4ccff}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px;border-bottom:1px solid #333844;text-align:left}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#11141c;padding:14px;max-height:500px;overflow:auto}#capture{max-width:320px}a{color:#b9a7ff}@media(max-width:600px){main{padding:0 10px}#player{height:220px}th,td{padding:5px;font-size:11px}}
+</style></head><body><main>
+<h1>Playback reliability · local check</h1>
+<p>Run the same 14 built-in templates through one real isolated player. Each run starts a fresh session, then replaces scenes inside it. This page does not read accounts or change saved scenes, editor drafts, permissions or production settings.</p>
+<p>Use the dedicated loopback manual-check server. The normal application and production do not serve this page. Renderer: <code id="address"></code></p>
+<div class="actions"><label>Response <select id="response"><option value="legacy">Original</option><option value="mapped-v1">Selective</option></select></label><label><input id="rhythm" type="checkbox"> Play generated test rhythm during the run</label><label><input id="simulate" type="checkbox"> Simulated beat</label></div>
+<div class="actions"><button id="sequential" disabled>Run 14 templates sequentially</button><button id="burst" disabled>Run rapid replacement burst</button><button id="stop" disabled>Stop session</button><button id="pause" disabled>Pause</button><button id="capture-button" disabled>Capture frame</button><button id="export" disabled>Download report</button></div>
+<div id="player" aria-label="Reliability review scene"></div>
+<p id="status" role="status">Checking local harness.</p><p id="boundary"></p><p id="audio-status"></p><p id="summary"></p>
+<img id="capture" alt="Captured isolated scene" hidden>
+<table><thead><tr><th>Request</th><th>Template</th><th>Result</th><th>Load ms</th><th>Audio before / after</th></tr></thead><tbody id="results"></tbody></table>
+<details><summary>Bounded local evidence (JSON)</summary><pre id="report"></pre></details>
+<p>Load time includes compilation, validation, graphics preparation and the first-frame acknowledgment. Parent scheduling gaps are responsiveness evidence, not GPU frame timings. Context/resource counts are reported only when emitted by the renderer. No physical-phone result or automatic Retry is implied.</p>
+<a href="/">Back to MAGE</a>
+</main><script type="module" src="./playback-reliability-check.ts"></script></body></html>
