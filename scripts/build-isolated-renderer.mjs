@@ -47,7 +47,7 @@ export async function buildIsolatedRenderer({ production = false, diagnostics = 
   ])
   const diagnosticFiles = [
     `${sourcePrefix}modules/player/isolation/fixedRecoveryProtocol.ts`,
-    ...['diagnostics-renderer-main', 'worker-check-child', 'worker-check-runner', 'worker-check-fixture', 'worker-boundary', 'fixed-recovery-child'].map(name => `${rootPrefix}scripts/${name}.ts`),
+    ...['diagnostics-renderer-main', 'worker-check-child', 'worker-check-runner', 'worker-check-fixture', 'worker-boundary', 'fixed-recovery-child', 'staged-playback-fixture'].map(name => `${rootPrefix}scripts/${name}.ts`),
   ]
   if (diagnostics) for (const file of diagnosticFiles) allowedSharedFiles.add(file)
   let bundledModules = []

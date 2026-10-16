@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAGE staged playback checks</title>
+<style>body{margin:0;background:#0c0e13;color:#f5f5f7;font:15px system-ui}main{max-width:1000px;margin:24px auto;padding:0 20px}p{color:#b8bac7;line-height:1.5}button{font:inherit;color:inherit;background:#292c38;border:1px solid #55596b;border-radius:6px;padding:9px 14px;margin:6px}button:disabled{opacity:.4}#player{width:100%;height:300px;background:#11141c;overflow:hidden}#player iframe{width:100%;height:100%;border:0;pointer-events:none}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#11141c;padding:14px;max-height:650px;overflow:auto}</style>
+</head><body><main><h1>Staged playback · fixed local failures</h1>
+<p>Uses the real isolated engine and private playback bridge. Compiler rejection and WebGL context loss are real. First-use result rejection, delayed obsolete completion and dropped optional replies are deterministic diagnostics faults, never evidence that those failures occurred naturally.</p>
+<p>Requires the separate loopback manual-check server and diagnostics renderer. No accounts, saved scenes, editor drafts or production settings are read or changed.</p>
+<button id="run" disabled>Run five failure checks</button><button id="stop" disabled>Stop</button><button id="export" disabled>Download report</button>
+<p id="status" role="status">Checking local harness.</p><div id="player"></div><p id="summary"></p><pre id="report"></pre>
+<p>All resource snapshots precede final teardown. The context-loss case should require Retry; candidate and optional-operation failures should retain playback. These checks do not reproduce the user’s original intermittent phone timeout.</p>
+</main><script type="module" src="./staged-playback-check.ts"></script></body></html>

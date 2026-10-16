@@ -9,17 +9,22 @@ import { fixedRecoveryConnection, isFixedRecoveryCheck, isFixedRecoveryMarker, t
 import { installFixedWorkerCheck } from './worker-check-child'
 import { isWorkerCheckConnection } from './worker-check-fixture'
 import { installFixedRecoveryCheck } from './fixed-recovery-child'
+import { isStagedSetup, stagedPlaybackFixture, type StagedSetup } from './staged-playback-fixture'
 
 declare const __MAGE_RENDERER_PARENT_ORIGINS__: readonly string[]
 const canvas = document.getElementById('renderer-canvas'), statusElement = document.getElementById('renderer-status')
 if (!(canvas instanceof HTMLCanvasElement) || !statusElement) throw new Error('Renderer document is incomplete.')
 const origins = __MAGE_RENDERER_PARENT_ORIGINS__.filter(origin => ['localhost', '127.0.0.1'].includes(new URL(origin).hostname))
 let check: FixedRecoveryCheck | null = null, evidence: MessagePort | null = null
+let stagedCheck: StagedSetup | null = null
 const stopSelecting = () => { window.removeEventListener('message', select); evidence?.close(); evidence = null }
 function select(event: MessageEvent) {
   if (event.source !== window.parent || !origins.includes(event.origin) || event.ports.length !== 1) return
   const value = event.data
-  if (!check && value?.type === 'mage-local-recovery-setup' && Object.keys(value).length === 3
+  if (!check && !stagedCheck && isStagedSetup(value)) {
+    stagedCheck = value; evidence = event.ports[0]; evidence.start(); return
+  }
+  if (!check && !stagedCheck && value?.type === 'mage-local-recovery-setup' && Object.keys(value).length === 3
     && isFixedRecoveryCheck({ case: value.case, nonce: value.nonce })) {
     check = { case: value.case, nonce: value.nonce }; evidence = event.ports[0]; evidence.start(); return
   }
@@ -53,7 +58,8 @@ function select(event: MessageEvent) {
       } } as MessagePort
     installFixedRecoveryCheck({ ...shared, initialConnection: { source: event.source, origin: event.origin,
       ports: [port], data: fixedRecoveryConnection(value.session, check) } as unknown as MessageEvent })
-  } else if (workerCheck) installFixedWorkerCheck(shared)
+  } else if (stagedCheck && playback) installPlaybackRuntime({ ...shared, ...stagedPlaybackFixture(stagedCheck, evidence!, event, loadPlaybackEngine) })
+  else if (workerCheck) installFixedWorkerCheck(shared)
   else if (playback) installPlaybackRuntime({ ...shared, loadScene: loadPlaybackEngine })
   else installRendererRuntime({ ...shared, loadSample: loadKnownSample })
 }

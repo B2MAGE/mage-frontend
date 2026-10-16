@@ -9,6 +9,7 @@ export const MANUAL_CHECK_PAGES = Object.freeze([
   'isolated-playback-check.html', 'isolated-renderer-check.html',
   'isolated-security-check.html', 'isolated-worker-check.html',
   'playback-reliability-check.html',
+  'staged-playback-check.html',
   'quality-scene-capture.html', 'render-budget-check.html',
   'scene-availability-browser-check.html', 'scene-focus-browser-check.html',
 ])
