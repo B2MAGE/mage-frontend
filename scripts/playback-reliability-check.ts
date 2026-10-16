@@ -55,7 +55,7 @@ function render() {
   if (!report) return
   report.iframeStillConnected = Boolean(container.querySelector('iframe')?.isConnected)
   const times = report.loads.filter(row => row.outcome === 'loaded').map(row => row.elapsedMs!).sort((a,b) => a-b)
-  const median = times.length ? times[Math.floor(times.length / 2)] : null
+  const median = times.length ? round((times[Math.floor((times.length - 1) / 2)] + times[Math.floor(times.length / 2)]) / 2) : null
   element('summary').textContent = `${report.state} · ${times.length}/${report.loads.length} loads completed · ${report.loads.filter(row => row.outcome === 'superseded').length} superseded · ${report.retryRequired} Retry required · median load ${median ?? '—'} ms · max parent frame gap ${report.parentMaxFrameGapMs} ms`
   const rows = report.loads.map(row => {
     const tr = document.createElement('tr')
