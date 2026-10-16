@@ -46,11 +46,12 @@ accepted/rejected corpus. It covers finite amplification/overflow, cycles, unkno
 constructs, excessive nesting and configured march/reflection multipliers. Those
 cases are inspected as artifacts without sending them to the GPU.
 
-When this local work is approved for release, deploy the compatible renderer
+When deployment is approved, deploy the compatible renderer
 before the frontend. The frontend advertises the `workloadErrors` capability on
 connection; an older strict renderer rejects that new field. The updated renderer
 accepts older parents and retains their existing error vocabulary, allowing the
-renderer-first transition. This branch has not been merged or deployed.
+renderer-first transition. Merging the source and publishing the engine dependency
+do not deploy either hosted application. PL-03 deployment remains deferred.
 
 ## Compatibility corpus
 
@@ -103,23 +104,10 @@ template content was changed to obtain acceptance.
 
 ## Reproduce the measurements
 
-This review branch uses an unpublished local engine build. The committed frontend
-manifest and lockfile still reference released `v1.0.4-mage.4`; a fresh `npm ci`
-restores that release and must be followed by installing the local engine again.
-From `mage-engine-step1` on `codex/pl03-shader-workload`, run:
-
-```text
-npm run build
-npm pack --ignore-scripts --pack-destination ../.local/pl03-20261016
-```
-
-Then, from `mage-frontend-step1` on the same branch:
-
-```text
-npm install --no-save --ignore-scripts --offline --no-audit --no-fund "@notrac/mage@file:../.local/pl03-20261016/b2mage-mage-engine-1.0.4-mage.4.tgz"
-```
-
-No engine package is published as part of local review. After installing it, run:
+The frontend pins the fork's immutable `v1.0.4-mage.5` release asset and its
+lockfile integrity. A fresh `npm ci` includes PL-03 without a local package
+override. The original `.4` release remains available unchanged for rollback.
+After installing dependencies, run:
 
 ```text
 node scripts/report-shader-workload.mjs
@@ -161,5 +149,7 @@ version control.
   rejection. The cause of that intermittent timeout is not established. Inspection
   confirmed PL-03 changes neither watchdog timing nor per-frame audio/render work.
 
-The frontend and forked engine remain on `codex/pl03-shader-workload` for user
-review. Nothing has been merged, published or deployed.
+The checks above were completed on `codex/pl03-shader-workload` before integration.
+The user subsequently authorized committing and merging, with deployment deferred.
+The versioned engine dependency supports reproducible installs; it does not update
+the live website or isolated renderer.

@@ -27,7 +27,7 @@
     "auth:verify": "node scripts/run-auth-smoke.mjs"
   },
   "dependencies": {
-    "@notrac/mage": "https://github.com/B2MAGE/mage-engine/releases/download/v1.0.4-mage.4/b2mage-mage-engine-1.0.4-mage.4.tgz",
+    "@notrac/mage": "https://github.com/B2MAGE/mage-engine/releases/download/v1.0.4-mage.5/b2mage-mage-engine-1.0.4-mage.5.tgz",
     "lucide-react": "1.49.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
