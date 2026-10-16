@@ -25,6 +25,7 @@ export function installPlaybackRuntime(options: {
   let zoom = 1
   const withinRate = messageRate(BRIDGE_LIMITS.messagesPerSecond)
   const withinLoadRate = messageRate(4), withinCaptureRate = messageRate(2)
+  const withinInspectorRate = messageRate(5)
   const display = (text: string) => { options.statusElement.textContent = text; options.statusElement.hidden = false }
   function retireCapture() {
     pendingCapture?.cancel()
@@ -173,6 +174,15 @@ export function installPlaybackRuntime(options: {
         case 'audio-response': pendingAudioResponse = message.payload; engine?.audioResponse(message.payload); break
         case 'scene-settings': pendingSceneSettings = message.payload; engine?.sceneSettings(message.payload); break
         case 'capabilities': if (engine) send('capabilities-result', message.requestId, engine.capabilities()); break
+        case 'audio-inspector': {
+          // Optional observations neither advance the engine nor affect its
+          // failure/recovery path. Older parents never request this response.
+          if (!withinInspectorRate()) break
+          let snapshot: PlaybackPayloads['audio-inspector-result'] = null
+          try { snapshot = engine?.audioInspector?.() ?? null } catch { /* An unavailable reading is not a playback failure. */ }
+          send('audio-inspector-result', message.requestId, snapshot)
+          break
+        }
         case 'playback': playing = message.payload.playing; engine?.playback(playing); break
         case 'zoom': zoom = message.payload.factor; engine?.zoom(zoom); break
         case 'capture':

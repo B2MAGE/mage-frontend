@@ -49,6 +49,8 @@ import { createBuilderScene } from "./builderEditor";
 import { builderGroups, builderOrderedNodes, builderParent, isBuilderGroup } from "./builderGroups";
 import { BUILDER_BINDING_SOURCE_LABELS, BUILDER_BINDING_TARGET_LABELS } from "./builderBindings";
 import { BeatPreviewControls } from "./ui/BeatPreviewControls";
+import { AudioInspectorDrawer } from "./ui/AudioInspectorDrawer";
+import { createAudioInspectorStore } from "./audioInspectorStore";
 import { MusicResponseControls, type ClassicMusicResponseSettings } from "./ui/MusicResponseControls";
 import { supportedPreviewAudioTargets } from "./musicResponseCapabilities";
 import type { EditorSectionId, SceneEditorInitialState, SceneEditorSubmissionMode } from "./types";
@@ -127,10 +129,15 @@ export function SceneEditorShell({
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   const [isNarrowPreviewLayout, setIsNarrowPreviewLayout] = useState(() => (
     typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia("(max-width: 900px)").matches
+      ? window.matchMedia("(max-width: 960px)").matches
       : false
   ));
   const [previewPlaybackStatus, setPreviewPlaybackStatus] = useState<MagePlayerPlaybackStatus>("paused");
+  const [isAudioInspectorOpen, setIsAudioInspectorOpen] = useState(false);
+  const [audioInspectorStore] = useState(createAudioInspectorStore);
+  const audioInspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [audioInspectorPreviewHost, setAudioInspectorPreviewHost] = useState<HTMLDivElement | null>(null);
+  const [audioInspectorEditorHost, setAudioInspectorEditorHost] = useState<HTMLDivElement | null>(null);
   const [isMusicAdvancedOpen, setIsMusicAdvancedOpen] = useState(false);
   const [passOrderAnnouncement, setPassOrderAnnouncement] = useState("");
   const [openReviewSection, setOpenReviewSection] = useState<ReviewSectionId | null>(null);
@@ -151,7 +158,7 @@ export function SceneEditorShell({
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia("(max-width: 900px)");
+    const media = window.matchMedia("(max-width: 960px)");
     const syncLayout = () => setIsNarrowPreviewLayout(media.matches);
     syncLayout();
     media.addEventListener?.("change", syncLayout);
@@ -776,9 +783,10 @@ export function SceneEditorShell({
   }
 
   function hidePreview() {
+    setIsAudioInspectorOpen(false);
     setIsPreviewCollapsed(true);
     requestAnimationFrame(() => {
-      if (window.matchMedia?.("(min-width: 901px)").matches) {
+      if (window.matchMedia?.("(min-width: 961px)").matches) {
         previewRestoreButtonRef.current?.focus();
       }
     });
@@ -900,6 +908,7 @@ export function SceneEditorShell({
 
           <SceneEditorFieldErrorsProvider fields={isTemplate || isBuilder ? { ...templateFieldErrors, ...errors.fields } : {}} mode={isBuilder ? 'builder' : 'template'}>
           <div className="scene-editor-workspace">
+          <div className="scene-editor-workspace__editor" inert={isAudioInspectorOpen && !isPreviewCollapsed && isNarrowPreviewLayout}>
           <SceneDraftHeader
             canUndo={history.canUndo} canRedo={history.canRedo} canReset={history.canReset}
             onUndo={undoDraft} onRedo={redoDraft} onReset={resetDraft}
@@ -2029,6 +2038,8 @@ export function SceneEditorShell({
             ) : null}
           </div>
           </div>
+          <div className="scene-editor-workspace__inspector-host" ref={setAudioInspectorEditorHost} />
+          </div>
           </SceneEditorFieldErrorsProvider>
 
           <aside
@@ -2062,6 +2073,12 @@ export function SceneEditorShell({
                   <h2 id="scene-editor-live-preview-title">Live Preview</h2>
                 </div>
                 <div className="scene-editor-preview__actions">
+                  <button type="button" ref={audioInspectorTriggerRef} className="audio-inspector-trigger"
+                    aria-controls="scene-audio-inspector" aria-expanded={isAudioInspectorOpen && !isPreviewCollapsed}
+                    aria-label="Audio inspector" title="Show or hide audio inspector"
+                    onClick={() => { if (isPreviewCollapsed) showPreview(); setIsAudioInspectorOpen(value => !value); }}>
+                    <AppIcon name="audio-lines" size={15} /><span>Audio</span>
+                  </button>
                   <button
                     aria-controls="scene-editor-live-preview"
                     aria-expanded={!isPreviewCollapsed}
@@ -2083,6 +2100,7 @@ export function SceneEditorShell({
               </div>
 
               <div id="scene-editor-live-preview" className="scene-editor-preview__content">
+              <div className="scene-editor-preview__player-frame">
               {sceneDraftError ? <p className="field-error" role="status">{sceneDraftError} {canPreviewScene ? 'The preview shows your last valid settings.' : 'Fix these settings before continuing.'}</p> : null}
               {canPreviewScene ? <MagePlayer
                 audioMode="single"
@@ -2095,13 +2113,22 @@ export function SceneEditorShell({
                 recoverySceneBlob={recoverySceneData ?? undefined}
                 posterUrl={thumbnailPreviewUrl}
                 onAudioResponseCapabilitiesChange={setAudioResponseCapabilities}
+                onAudioInspectorChange={isAudioInspectorOpen && !isPreviewCollapsed && !sceneDraftError ? audioInspectorStore.publish : undefined}
                 sceneKey={mode.type === 'edit' ? mode.sceneId : undefined}
                 simulatedBeat={{ enabled: isBeatSimulated, bpm: previewBpm }}
               /> : null}
               </div>
+              <div className="scene-editor-preview__inspector-host" ref={setAudioInspectorPreviewHost} />
+              </div>
             </section>
           </aside>
 
+          <AudioInspectorDrawer id="scene-audio-inspector" document={isBuilder && !sceneDraftError ? builderDocument : null}
+            selectedObjectId={selectedBuilderObjectId} onSelectObject={setSelectedBuilderObjectId}
+            audioResponseConfig={sceneDraftError ? null : audioResponseConfig}
+            open={isAudioInspectorOpen && !isPreviewCollapsed}
+            host={isNarrowPreviewLayout ? audioInspectorEditorHost : audioInspectorPreviewHost}
+            onClose={() => setIsAudioInspectorOpen(false)} triggerRef={audioInspectorTriggerRef} store={audioInspectorStore} />
         </div>
         <button
           aria-controls="scene-editor-live-preview"

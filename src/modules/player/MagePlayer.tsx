@@ -29,6 +29,8 @@ import { useSceneAvailability } from './availability/useSceneAvailability'
 import { SceneAvailabilityPanel } from './availability/SceneAvailabilityPanel'
 import { validateSceneForPlayback } from './policy/sceneValidation'
 import { boundCaptureSize, type RenderProfile } from './policy/renderBudget'
+import type { AudioInspectorSnapshot } from './audioInspector'
+import { useAudioInspector } from './useAudioInspector'
 
 export type MagePlayerAudioResponseCapabilitiesSnapshot = {
   sceneBlob: MageSceneBlob
@@ -46,6 +48,7 @@ export type MagePlayerProps = {
   renderProfile?: RenderProfile
   onAudioResponseCapabilitiesChange?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
   onEngineDiagnosticsChange?: (diagnostics: MageEngineDiagnostics | null) => void
+  onAudioInspectorChange?: (snapshot: AudioInspectorSnapshot | null) => void
   onCaptureFramePreviewChange?: (
     captureFramePreview: (() => Promise<string | null>) | null,
   ) => void
@@ -276,6 +279,7 @@ function MagePlayerRenderer({
   renderProfile = 'full',
   onAudioResponseCapabilitiesChange,
   onEngineDiagnosticsChange,
+  onAudioInspectorChange,
   onCaptureFramePreviewChange,
   onPlaybackStatusChange,
   onRequestPlaylistOpen,
@@ -426,6 +430,9 @@ function MagePlayerRenderer({
   }, [onPlaybackStatusChange, publishedPlaybackStatus])
 
   const hasDiagnosticsCallback = Boolean(onEngineDiagnosticsChange)
+
+  useAudioInspector({ playerRef, playerVersion, sceneBlob, ready: status === 'ready' && !availabilityPending,
+    onChange: onAudioInspectorChange })
 
   useEffect(() => {
     if (!hasDiagnosticsCallback) return

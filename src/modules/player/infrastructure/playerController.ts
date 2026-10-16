@@ -1,6 +1,7 @@
 import type { MAGEEngineAPI } from '@notrac/mage'
 import type { AudioResponseConfig, SceneAudioResponseMode } from '@shared/lib'
 import type { RenderProfile } from '../policy/renderBudget'
+import type { AudioInspectorSnapshot } from '../audioInspector'
 
 export type MageSceneBlob = Record<string, unknown>
 
@@ -61,6 +62,10 @@ export type MagePlayerController = {
   /** Identity of a stopped renderer, so a different permitted revision can get a fresh instance. */
   getStoppedRecoveryKey?: () => string | null
   getEngineDiagnostics?: () => MageEngineDiagnostics | null
+  /** A bounded, non-consuming reading; callers opt in only while the inspector is visible. */
+  requestAudioInspector?: () => Promise<AudioInspectorSnapshot | null>
+  /** Enable optional parent-side spectrum sampling only while its UI is visible. */
+  setAudioInspectorEnabled?: (enabled: boolean) => void
   loadAudio: (options?: { sourceLabel?: string; sourcePath?: string; signal?: AbortSignal }) => Promise<MagePlayerAudioState>
   loadSceneBlob: (sceneBlob: unknown, options?: MageSceneLoadOptions) => void | Promise<void>
   /** Apply supported settings to the loaded scene without changing its playback or audio transport. */

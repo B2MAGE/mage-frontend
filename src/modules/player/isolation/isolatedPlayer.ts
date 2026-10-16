@@ -46,6 +46,13 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   let synthetic: PlaybackPayloads['synthetic'] = { enabled: false, seed: 1, tempoScale: 1 }
   let response: PlaybackPayloads['audio-response'] = { mode: 'legacy', config: null }
   let supportedTargets: AudioResponseTarget[] | null = null
+  let inspectorEnabled = false
+
+  function syncInspector() {
+    // Analysis stays parent-owned, and the optional spectrum does no work for
+    // a closed panel, hidden page, unavailable scene, or suspended preview.
+    audio.setSpectrumEnabled(inspectorEnabled && !disposed && !failed && sceneLoaded && !visualsSuspended())
+  }
 
   function assertActive() {
     if (disposed || failed) throw new Error('This isolated player has stopped.')
@@ -104,6 +111,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
     if (disposed || failed) return
     previousTick = now()
     if (document.visibilityState === 'hidden') leavePointer()
+    syncInspector()
     try {
       if (available && sceneLoaded) host!.setPlayback(playing && !visualsSuspended())
       update()
@@ -147,6 +155,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   function fail(reason: RenderFailure) {
     if (disposed || failed) return
     failed = true
+    syncInspector()
     playing = false
     audioGeneration++
     stopSampling()
@@ -236,6 +245,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       supportedTargets = null
       const current = ++sceneGeneration
       sceneLoaded = false
+      syncInspector()
       await ready
       assertActive()
       if (current !== sceneGeneration) throw new Error('Scene changed.')
@@ -247,6 +257,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       if (current !== sceneGeneration) throw new Error('Scene changed.')
       supportedTargets = capabilities.supportedTargets
       sceneLoaded = true
+      syncInspector()
       elapsed = 0
       zoom = 1
       previousTick = now()
@@ -281,6 +292,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
       if (suspended === renderingSuspended) return
       update()
       renderingSuspended = suspended
+      syncInspector()
       previousTick = now()
       // A hold cannot survive a hidden/checking/loading interval and activate
       // a different scene. Parent-owned music keeps its source and position.
@@ -345,6 +357,20 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         warnings: unsupportedTargets.map(target => `The active shader does not declare the ${target} input.`) }
     },
     getAudioState: () => audio.getState(),
+    setAudioInspectorEnabled(enabled: boolean) {
+      inspectorEnabled = enabled === true
+      syncInspector()
+    },
+    requestAudioInspector() {
+      if (disposed || failed || !sceneLoaded || !inspectorEnabled || visualsSuspended()) return Promise.resolve(null)
+      const generation = sceneGeneration
+      const epoch = audioEpoch
+      return host!.requestAudioInspector().then(snapshot => {
+        if (!snapshot || disposed || failed || !inspectorEnabled || generation !== sceneGeneration
+          || epoch !== audioEpoch || visualsSuspended()) return null
+        return { ...snapshot, spectrum: snapshot.source === 'audio' ? audio.spectrum() : null }
+      }, () => null)
+    },
     capture(request?: Partial<CaptureRequest>) { assertActive(); return host!.capture(request) },
     dispose,
   }

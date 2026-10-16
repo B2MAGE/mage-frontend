@@ -1,5 +1,5 @@
 import {
-  ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, Check,
+  ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, AudioLines, Check,
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   CircleAlert, Ellipsis, GripVertical, Heart, Images, Info, Layers, ListMusic,
   LogOut, Maximize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
@@ -17,6 +17,7 @@ const icons = {
   'arrow-up': ArrowUp,
   'arrow-up-down': ArrowUpDown,
   asterisk: Asterisk,
+  'audio-lines': AudioLines,
   check: Check,
   'chevron-down': ChevronDown,
   'chevron-left': ChevronLeft,

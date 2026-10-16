@@ -33,6 +33,54 @@ beforeEach(()=>{
 })
 afterEach(()=>{document.body.replaceChildren();vi.clearAllTimers();vi.useRealTimers();vi.restoreAllMocks();vi.unstubAllEnvs();vi.unstubAllGlobals()})
 describe('isolated playback host',()=>{
+  it('keeps inspector requests optional, single-flight and nonfatal on timeout',async()=>{
+    const s=setup();await s.load()
+    expect(s.port.postMessage.mock.calls.some(([message])=>message.type==='audio-inspector')).toBe(false)
+    const reading=s.host.requestAudioInspector()
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    expect(request.type).toBe('audio-inspector')
+    await expect(s.host.requestAudioInspector()).resolves.toBeNull()
+    await vi.advanceTimersByTimeAsync(1000)
+    await expect(reading).resolves.toBeNull()
+    expect(s.failure).not.toHaveBeenCalled()
+    s.reply('audio-inspector-result',null,request.generation,request.requestId)
+    s.host.setPlayback(false)
+    expect(s.port.postMessage.mock.calls.at(-1)![0]).toMatchObject({type:'playback',payload:{playing:false}})
+    s.host.dispose()
+  })
+
+  it('rejects stale inspector generations and skips hidden or disposed observations',async()=>{
+    const s=setup();await s.load()
+    const reading=s.host.requestAudioInspector(),request=s.port.postMessage.mock.calls.at(-1)![0]
+    const next=s.host.loadScene(customDocument({visualizer:{shader:'sphere(0.8);'}}))
+    await expect(reading).resolves.toBeNull()
+    await Promise.resolve();const load=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('audio-inspector-result',null,request.generation,request.requestId)
+    s.reply('loaded',null,load.generation,load.requestId);await next
+    vi.spyOn(document,'visibilityState','get').mockReturnValue('hidden')
+    const count=s.port.postMessage.mock.calls.length
+    await expect(s.host.requestAudioInspector()).resolves.toBeNull()
+    expect(s.port.postMessage).toHaveBeenCalledTimes(count)
+    s.host.dispose();await expect(s.host.requestAudioInspector()).resolves.toBeNull()
+    expect(s.failure).not.toHaveBeenCalled()
+  })
+
+  it('ignores malformed optional readings and reserves command capacity for playback',async()=>{
+    const s=setup();await s.load()
+    const reading=s.host.requestAudioInspector(),request=s.port.postMessage.mock.calls.at(-1)![0]
+    s.port.receive({...playbackMessage('audio-inspector-result',SESSION,request.generation,request.requestId,null),payload:{levels:'private text'}})
+    await expect(reading).resolves.toBeNull()
+    expect(s.failure).not.toHaveBeenCalled()
+    for(let index=0;index<78;index++)s.host.setPlayback(false)
+    const commands=s.port.postMessage.mock.calls.length
+    await expect(s.host.requestAudioInspector()).resolves.toBeNull()
+    expect(s.port.postMessage).toHaveBeenCalledTimes(commands)
+    s.host.setPlayback(true)
+    expect(s.failure).not.toHaveBeenCalled()
+    expect(s.port.postMessage.mock.calls.at(-1)![0]).toMatchObject({type:'playback',payload:{playing:true}})
+    s.host.dispose()
+  })
+
   it.each(['rewind','skip','early-loaded','invalid-restart'] as const)('closes an invalid startup phase transition: %s',async invalid=>{
     const s=setup(),rejected=expect(s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}}))).rejects.toThrow('stopped')
     await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]

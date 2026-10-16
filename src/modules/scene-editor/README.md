@@ -257,3 +257,24 @@ documents and moderator controls still follow their existing policy. Builder edi
 with the scene; signed-in users can also explicitly save a reusable Builder design using
 personal templates (frontend #314 and backend #167). The custom-code direction remains a
 future decision.
+
+## Audio inspector
+
+The Live Preview header opens a closed-by-default Audio inspector. On desktop
+it fills the sidebar below the player; on mobile it covers the editor below the
+player. It is nonmodal and leaves playback controls usable, with no backdrop.
+The covered mobile editor is inactive until the inspector closes.
+
+The inspector shows real frequency slices from the existing analyzer, band
+levels and recent hits, and distinguishes audio from simulated beats. Whole
+scene and object views trace actual sources to response properties. Music &
+pointer cards compare settings with the measured smoothed input and response.
+Animation cards identify configured object/parent connections; their available
+input values precede amount/offset/combined expressions, which may vary across
+the rendered surface. The inspector does not edit scene settings.
+
+Readings use a separate, bounded store and never enter the draft, history,
+personal template or saved scene. The player requests at most four snapshots per
+second while the panel and preview are open; hidden pages stop requesting them.
+The renderer reads existing measurements/uniforms without a second analyzer or
+preview compilation. Original and Selective retain their existing behavior.

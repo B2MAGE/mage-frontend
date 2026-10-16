@@ -5,6 +5,8 @@ import { validateSceneForPlayback, SCENE_LIMITS } from '../policy/sceneValidatio
 import { isSessionId, RENDERER_PROTOCOL } from './protocol'
 import { getRenderBudget } from '../policy/renderBudget'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
+import { AUDIO_INSPECTOR_BANDS, type AudioInspectorSnapshot } from '../audioInspector'
+import { BUILDER_BINDING_LIMIT, BUILDER_BINDING_RANGES, BUILDER_BINDING_RULES, BUILDER_LIMITS } from '../templates/builderDefinitions'
 
 export const PLAYBACK_VERSION = 2
 export const CAPTURE_BUDGET = getRenderBudget('preview')
@@ -30,6 +32,8 @@ export type PlaybackPayloads = {
   'scene-settings': SceneLiveSettings
   capabilities: null
   'capabilities-result': { supportedTargets: AudioResponseTarget[] }
+  'audio-inspector': null
+  'audio-inspector-result': AudioInspectorSnapshot | null
   capture: CaptureRequest
   captured: { bytes: ArrayBuffer; type: CaptureRequest['type']; width: number; height: number }
   progress: { frames: number }
@@ -40,8 +44,8 @@ export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends P
   protocol: typeof RENDERER_PROTOCOL; version: typeof PLAYBACK_VERSION; session: string
   generation: number; requestId: number; type: T; payload: PlaybackPayloads[T]
 } : never
-export const PLAYBACK_COMMANDS = ['load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'capture', 'dispose'] as const
-export const PLAYBACK_RESPONSES = ['ready', 'load-phase', 'loaded', 'captured', 'capabilities-result', 'progress', 'error'] as const
+export const PLAYBACK_COMMANDS = ['load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'audio-inspector', 'capture', 'dispose'] as const
+export const PLAYBACK_RESPONSES = ['ready', 'load-phase', 'loaded', 'captured', 'capabilities-result', 'audio-inspector-result', 'progress', 'error'] as const
 export function playbackMessage<T extends PlaybackType>(type: T, session: string, generation: number,
   requestId: number, payload: PlaybackPayloads[T]): PlaybackMessage<T> {
   return { protocol: RENDERER_PROTOCOL, version: PLAYBACK_VERSION, type, session, generation, requestId, payload } as PlaybackMessage<T>
@@ -60,6 +64,39 @@ const uint = (v: unknown) => numberIn(v, 0, Number.MAX_SAFE_INTEGER) && Number.i
 const time = (v: unknown) => numberIn(v, 0, BRIDGE_LIMITS.maxTime)
 const bool = (v: unknown) => typeof v === 'boolean'
 const unit = (v: unknown) => numberIn(v, 0, 1)
+function isAudioInspector(value: unknown): value is AudioInspectorSnapshot | null {
+  if (value === null) return true
+  if (!record(value, ['mode', 'source', 'playing', 'audioLoaded', 'levels', 'hits', 'sceneOutputs', 'bindings', 'driverSignals'])
+    || !['legacy', 'mapped-v1'].includes(value.mode as string)
+    || !['audio', 'synthetic', 'none'].includes(value.source as string) || !bool(value.playing) || !bool(value.audioLoaded)) return false
+  const bands = (item: unknown) => record(item, AUDIO_INSPECTOR_BANDS) && Object.values(item).every(unit)
+  if (value.levels !== null && !bands(value.levels) || !bands(value.hits)) return false
+  const outputs = value.sceneOutputs
+  if (!outputs || typeof outputs !== 'object' || Array.isArray(outputs)) return false
+  const targets = Reflect.ownKeys(outputs)
+  if (!record(outputs, targets.filter((key): key is string => typeof key === 'string')) || targets.length > AUDIO_RESPONSE_TARGETS.length
+    || !targets.every(target => AUDIO_RESPONSE_TARGETS.includes(target as AudioResponseTarget)
+      && numberIn(outputs[target as string], -1_000_000, 1_000_000))) return false
+  const sources = BUILDER_BINDING_RULES.source.enum as readonly string[]
+  if (!Array.isArray(value.bindings) || value.bindings.length > BUILDER_LIMITS.objects * BUILDER_BINDING_LIMIT
+    || !Array.isArray(value.driverSignals) || value.driverSignals.length > sources.length) return false
+  const addresses = new Set<string>(), signals = new Set<string>()
+  return Array.from(value.bindings).every(binding => {
+    if (!record(binding, ['objectId', 'target', 'source', 'signal', 'value']) || typeof binding.objectId !== 'string'
+      || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}(?![\s\S])/.test(binding.objectId)
+      || typeof binding.target !== 'string' || !Object.hasOwn(BUILDER_BINDING_RANGES, binding.target)
+      || typeof binding.source !== 'string' || !sources.includes(binding.source)
+      || !numberIn(binding.signal, binding.source === 'pointer-x' || binding.source === 'pointer-y' ? -1 : 0, 1)) return false
+    const range = BUILDER_BINDING_RANGES[binding.target as keyof typeof BUILDER_BINDING_RANGES]
+    const address = `${binding.objectId}:${binding.target}`
+    if (addresses.has(address) || !numberIn(binding.value, range.minimum, range.maximum)) return false
+    addresses.add(address); return true
+  }) && Array.from(value.driverSignals).every(signal => {
+    if (!record(signal, ['source', 'value']) || typeof signal.source !== 'string' || !sources.includes(signal.source)
+      || signals.has(signal.source) || !numberIn(signal.value, signal.source === 'pointer-x' || signal.source === 'pointer-y' ? -1 : 0, 1)) return false
+    signals.add(signal.source); return true
+  })
+}
 export function isAudioResponseSettings(value: unknown): value is PlaybackPayloads['audio-response'] {
   if (!record(value, ['mode', 'config']) || !['legacy', 'mapped-v1'].includes(value.mode as string)) return false
   const config = value.config
@@ -99,7 +136,8 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     case 'connect': return (p === null || (record(p, ['startupPhases']) && p.startupPhases === true))
       && value.generation === 0 && value.requestId === 0
     case 'ready': return p === null && value.generation === 0 && value.requestId === 0
-    case 'dispose': case 'loaded': case 'capabilities': return p === null
+    case 'dispose': case 'loaded': case 'capabilities': case 'audio-inspector': return p === null
+    case 'audio-inspector-result': return isAudioInspector(p)
     case 'load-phase': return record(p, ['phase', 'attempt']) && STARTUP_PHASES.includes(p.phase as StartupPhase)
       && (p.attempt === 0 || p.attempt === 1) && numberIn(value.generation, 1, Number.MAX_SAFE_INTEGER)
       && numberIn(value.requestId, 1, Number.MAX_SAFE_INTEGER)
@@ -149,8 +187,9 @@ export function sceneForBridge(value: unknown): Record<string, unknown> {
 /** A fixed one-second window bounds work without maintaining a message queue. */
 export function messageRate(limit: number) {
   let start = -Infinity, count = 0
-  return (now = performance.now()) => {
+  return (now = performance.now(), reserve = 0) => {
     if (now - start >= 1000) { start = now; count = 0 }
-    return ++count <= limit
+    if (count >= limit - reserve) return false
+    count++; return true
   }
 }

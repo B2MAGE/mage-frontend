@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildApiUrl, normalizeAudioResponseConfig } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
+import { mockNativeDialogs } from '@shared/test/nativeDialog'
 import { createDefaultSceneData, getSceneEditorModel, SHADER_SCENES, type SceneData } from './sceneEditor'
 import { buildEffectiveSceneData, editorSceneDocument, readEditableSceneData } from './utils'
 import { createTemplateScene } from './templateEditor'
@@ -16,13 +17,15 @@ import {
   storeSceneEditorSession,
 } from './test-fixtures'
 
+mockNativeDialogs()
+
 vi.mock('@modules/player', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@modules/player')>()
   const React = await import('react')
   const capture = async () => 'data:image/png;base64,cHJldmlldw=='
   return {
     ...actual,
-    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, onAudioResponseCapabilitiesChange, audioMode }: import('@modules/player').MagePlayerProps) => {
+    MagePlayer: ({ sceneBlob, simulatedBeat, onCaptureFramePreviewChange, onAudioResponseCapabilitiesChange, onAudioInspectorChange, audioMode }: import('@modules/player').MagePlayerProps) => {
       React.useEffect(() => {
         onCaptureFramePreviewChange?.(capture)
         return () => onCaptureFramePreviewChange?.(null)
@@ -33,7 +36,7 @@ vi.mock('@modules/player', async (importOriginal) => {
           capabilities: { mode: 'mapped-v1', signals: ['bass-hit', 'mid-level'], targets: ['size'], supportedTargets: ['size'], unsupportedTargets: [], warnings: [] },
         } : null)
       }, [sceneBlob, onAudioResponseCapabilitiesChange])
-      return <div data-testid="scene-preview" data-audio-mode={audioMode} data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
+      return <div data-testid="scene-preview" data-audio-mode={audioMode} data-inspecting={Boolean(onAudioInspectorChange)} data-scene={JSON.stringify(sceneBlob)} data-beat={JSON.stringify(simulatedBeat)} />
     },
   }
 })
@@ -74,6 +77,52 @@ function expectRetiredControlsAbsent() {
 }
 
 describe('scene editor presets and beat preview', () => {
+  it('opens the optional inspector without changing the authored scene, and stops reading when preview is hidden', async () => {
+    storeSceneEditorSession()
+    mockCreateScenePageFetch()
+    renderCreateScenePage('mage-pulse')
+    const preview = await screen.findByTestId('scene-preview')
+    const before = preview.getAttribute('data-scene')
+    expect(preview).toHaveAttribute('data-inspecting', 'false')
+    expect(screen.queryByRole('dialog', { name: 'Audio inspector' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Audio inspector' }))
+    await waitFor(() => expect(preview).toHaveAttribute('data-inspecting', 'true'))
+    expect(screen.getByRole('dialog', { name: 'Audio inspector' }).closest('.scene-editor-preview__inspector-host')).not.toBeNull()
+    expect(preview.getAttribute('data-scene')).toBe(before)
+    fireEvent.click(screen.getByRole('button', { name: 'Close audio inspector' }))
+    expect(preview).toHaveAttribute('data-inspecting', 'false')
+    expect(screen.queryByRole('dialog', { name: 'Audio inspector' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Audio inspector' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hide preview' }))
+    expect(preview).toHaveAttribute('data-inspecting', 'false')
+    expect(preview.getAttribute('data-scene')).toBe(before)
+  })
+
+  it('covers only the mobile editor and restores it when the inspector closes', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(max-width: 960px)', media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    try {
+      storeSceneEditorSession()
+      mockCreateScenePageFetch()
+      renderCreateScenePage('mage-pulse')
+      const preview = await screen.findByTestId('scene-preview')
+      const before = preview.getAttribute('data-scene')
+      const trigger = screen.getByRole('button', { name: 'Audio inspector' })
+      fireEvent.click(trigger)
+      const inspector = screen.getByRole('dialog', { name: 'Audio inspector' })
+      expect(inspector.closest('.scene-editor-workspace__inspector-host')).not.toBeNull()
+      expect(inspector).not.toHaveAttribute('aria-modal')
+      expect(document.querySelector('.scene-editor-workspace__editor')).toHaveAttribute('inert')
+      expect(preview.closest('[inert]')).toBeNull()
+      expect(trigger.closest('[inert]')).toBeNull()
+      fireEvent.click(trigger)
+      expect(screen.queryByRole('dialog', { name: 'Audio inspector' })).not.toBeInTheDocument()
+      expect(document.querySelector('.scene-editor-workspace__editor')).not.toHaveAttribute('inert')
+      expect(preview.getAttribute('data-scene')).toBe(before)
+      expect(preview).toHaveAttribute('data-inspecting', 'false')
+    } finally { vi.unstubAllGlobals() }
+  })
+
   it.each(['create', 'edit'] as const)('uses one replaceable song in the %s preview', async mode => {
     storeSceneEditorSession()
     mockCreateScenePageFetch(input => input === buildApiUrl('/scenes/12')
