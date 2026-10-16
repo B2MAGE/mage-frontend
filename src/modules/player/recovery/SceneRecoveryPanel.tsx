@@ -3,6 +3,7 @@ import { buildMagePlayerClassName } from '../magePlayerUtils'
 import { MagePlayerDisabledControls } from '../MagePlayerControls'
 import { PauseAllScenesToggle } from './PauseAllScenesToggle'
 import type { RecoveryBlock, RecoveryReason } from './sceneRecovery'
+import { isShaderWorkloadFailure, SHADER_WORKLOAD_MESSAGES } from '../policy/shaderWorkloadFailure'
 
 type Props = {
   className?: string
@@ -16,6 +17,7 @@ type Props = {
 }
 
 const recoveryMessages: Record<RecoveryReason, string> = {
+  ...SHADER_WORKLOAD_MESSAGES,
   load: 'This scene could not be loaded for playback. You can retry it.',
   'compiler-download': 'The scene compiler could not be downloaded. Check your connection, then retry.',
   'graphics-download': 'The scene player could not be downloaded. Check your connection, then retry.',
@@ -35,6 +37,7 @@ const recoveryMessages: Record<RecoveryReason, string> = {
 export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRetry, onSafeModeChange, audioMode, showPlaylistButton }: Props) {
   const messageId = useId()
   const stopped = block?.reason === 'stopped'
+  const needsChanges = !safeMode && isShaderWorkloadFailure(block?.reason)
   const message = safeMode ? 'All scenes and previews on this page are paused. Turn off Pause all scenes to resume playback.'
     : block ? recoveryMessages[block.reason] : 'This scene is paused. You can resume it.'
 
@@ -44,13 +47,13 @@ export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRe
       {posterUrl ? <img className="mage-player__recovery-poster" src={posterUrl} alt="" /> : null}
       <div className="mage-player__recovery-panel">
         <div role="status" aria-live="polite">
-          <strong>Playback paused</strong>
+          <strong>{needsChanges ? 'Scene needs changes' : 'Playback paused'}</strong>
           <p id={messageId}>{message}</p>
         </div>
         <div className="mage-player__recovery-actions">
-          <button type="button" disabled={safeMode} aria-describedby={messageId} onClick={onRetry}>
+          {!needsChanges && <button type="button" disabled={safeMode} aria-describedby={messageId} onClick={onRetry}>
             {safeMode || stopped ? 'Resume scene' : 'Retry scene'}
-          </button>
+          </button>}
           <PauseAllScenesToggle checked={safeMode} onChange={onSafeModeChange} />
         </div>
       </div>

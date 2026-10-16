@@ -208,7 +208,7 @@ export function createIsolatedPlaybackHost(options: {
     try {
       // Opaque child cannot be addressed by an origin. Send only a fresh session and
       // private port to this exact frame; scene/audio data follows through the port.
-      frame.contentWindow.postMessage(playbackMessage('connect', session, 0, 0, { startupPhases: true }), '*', [channel.port2])
+      frame.contentWindow.postMessage(playbackMessage('connect', session, 0, 0, { startupPhases: true, workloadErrors: true }), '*', [channel.port2])
     } catch { channel.port2.close(); dispose('runtime') }
   }
   // No submitted source runs while the renderer document is downloading.

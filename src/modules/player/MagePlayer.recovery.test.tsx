@@ -39,6 +39,22 @@ describe('MagePlayer recovery', () => {
     })
   })
 
+  it('keeps an over-budget scene out of graphics and allows a changed design to load', async () => {
+    const scene = buildMagePlayerSceneBlob(), key = identity(scene, 832)
+    sceneRecovery.block(key, 'shader-workload-expanded-cost')
+    const player = render(<MagePlayer sceneBlob={scene} sceneKey={832} />)
+    expect(screen.getByText('Scene needs changes')).toBeInTheDocument()
+    expect(screen.getByText(/expanded calculation limit/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry scene' })).not.toBeInTheDocument()
+    expect(player.container.querySelector('iframe,canvas')).toBeNull()
+    expect(createMagePlayer).not.toHaveBeenCalled()
+    const controller = buildMagePlayerController()
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const edited = buildMagePlayerSceneBlob({ visualizer: { shader: 'sphere(0.4);' } })
+    player.rerender(<MagePlayer sceneBlob={edited} sceneKey={832} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(edited, { sceneKey: 832 }))
+  })
+
   it('keeps compiler-rejected scenes static and actionable across mounts without automatic retries', () => {
     const scene = buildMagePlayerSceneBlob()
     const key = identity(scene, 831)

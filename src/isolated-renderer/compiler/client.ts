@@ -2,6 +2,7 @@ import { normalizeCompiledShader, type CompiledShaderArtifact } from '@notrac/ma
 import { COMPILER_LIMITS, COMPILER_PROTOCOL, COMPILER_VERSION, dataRecord, validCeiling, validSource, validRevision,
   type CompileRequest } from './protocol'
 import { ShaderCompilationError, type ShaderCompilationFailure } from './errors'
+import { isShaderWorkloadFailure, shaderWorkloadFailure } from '../../modules/player/policy/shaderWorkloadFailure'
 
 declare const __MAGE_COMPILER_WORKER_SOURCE__: string
 
@@ -87,7 +88,7 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
         if (performance.now() >= deadline) { finish('timeout'); return }
         const message: unknown = event.data
         const fields = ['protocol', 'version', 'jobId', 'channelId', 'sceneRevision', 'type']
-        if (!(dataRecord(message, fields) || dataRecord(message, [...fields, 'artifact']))
+        if (!(dataRecord(message, fields) || dataRecord(message, [...fields, 'artifact']) || dataRecord(message, [...fields, 'failure']))
           || message.protocol !== COMPILER_PROTOCOL || message.version !== COMPILER_VERSION || message.jobId !== jobId
           || message.channelId !== channelId || message.sceneRevision !== sceneRevision) {
           finish('error'); return
@@ -101,6 +102,11 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
           try { options.onStarted?.() } catch { /* Reporting cannot extend or strand compilation. */ }
           return
         }
+        // A worker may explain a rejection using this fixed vocabulary only.
+        // It cannot use a claimed budget or error to authorize GPU submission.
+        if (message.type === 'error' && started && dataRecord(message, [...fields, 'failure']) && isShaderWorkloadFailure(message.failure)) {
+          finish('error', undefined, message.failure); return
+        }
         if (message.type !== 'compiled' || !started || !dataRecord(message, [...fields, 'artifact'])) {
           finish('error'); return
         }
@@ -109,7 +115,7 @@ export function compileInWorker(source: string, options: { signal: AbortSignal; 
           if (performance.now() >= deadline) { finish('timeout'); return }
           observe({ type: 'validated' })
           finish('complete', artifact)
-        } catch { finish('error', undefined, 'invalid-output') }
+        } catch (error) { finish('error', undefined, shaderWorkloadFailure(error) ?? 'invalid-output') }
       }
       if (signal.aborted) { finish('abort'); return }
       const request: CompileRequest = { protocol: COMPILER_PROTOCOL, version: COMPILER_VERSION, jobId, channelId, sceneRevision,

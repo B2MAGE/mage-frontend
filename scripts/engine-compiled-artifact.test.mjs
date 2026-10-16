@@ -142,28 +142,39 @@ test('a fake, commented, macro-shadowed or unused iteration guard cannot authori
 
 test('GPU loops, directives, shell redefinitions and unexpected uniform declarations are rejected even in matching fragments', () => {
   const artifact = base()
-  const additions = [
+  const unsupportedAdditions = [
     'float extra(float x){for(int i=0;i<999999;i++){x=sin(x);}return x;}',
     'float extra(float x){while(x>0.0){x-=0.01;}return x;}',
     'float extra(float x){do{x-=0.01;}while(x>0.0);return x;}',
-    'float extra(float x){float scratch[1000000000];scratch[0]=x;return scratch[0];}',
-    'float extra(float scratch[1000000000]){return scratch[0];}',
+    'uniform sampler2D extraTexture;', 'uniform float injected;',
+  ]
+  const cyclicAdditions = [
     'float extra(float x){return extra(x);}',
     'float extraOne(float x){return extraTwo(x);} float extraTwo(float x){return extraOne(x);}',
+  ]
+  const invalidAdditions = [
+    'float extra(float x){float scratch[1000000000];scratch[0]=x;return scratch[0];}',
+    'float extra(float scratch[1000000000]){return scratch[0];}',
     '#define MAX_ITERATIONS 999999', '#undef MAX_REFLECTIONS', '#extension GL_EXT_draw_buffers : enable',
     '#include <common>', '#if 1\n#endif', '#define X \\\n999999',
     '// A CR-only line ending cannot hide the next directive.\r#define MAX_ITERATIONS 999999',
     'void main(){}', 'float intersect(vec3 a, vec3 b, float c){return 0.0;}',
     'float sin(float x){return x;}', 'float clamp(float x,float a,float b){return x;}',
-    'uniform sampler2D extraTexture;', 'uniform float injected;',
   ]
   for (const name of ['geoGLSL', 'colorGLSL']) {
-    for (const addition of additions) {
-      const changed = withSection(artifact, name, `${addition}\n${artifact[name]}`)
-      assert.throws(() => normalizeCompiledShader(changed), /Invalid compiled/, `${name}: ${addition}`)
+    for (const [additions, expected] of [
+      [unsupportedAdditions, { name: 'ShaderWorkloadError', code: 'shader-workload-unsupported', limit: 'unsupported' }],
+      [cyclicAdditions, { name: 'ShaderWorkloadError', code: 'shader-workload-unsupported', limit: 'cycles' }],
+      [invalidAdditions, /Invalid compiled/],
+    ]) {
+      for (const addition of additions) {
+        const changed = withSection(artifact, name, `${addition}\n${artifact[name]}`)
+        assert.throws(() => normalizeCompiledShader(changed), expected, `${name}: ${addition}`)
+      }
     }
   }
-  assert.throws(() => compileShader('let f=glslFunc("float expensive(float x){for(int i=0;i<999999;i++){x=sin(x);}return x;}"); sphere(f(time));'), /Invalid compiled/)
+  assert.throws(() => compileShader('let f=glslFunc("float expensive(float x){for(int i=0;i<999999;i++){x=sin(x);}return x;}"); sphere(f(time));'),
+    { name: 'ShaderWorkloadError', code: 'shader-workload-unsupported', limit: 'unsupported' })
   const ordinaryComment = withSection(artifact, 'geoGLSL', `// while and for remain harmless in a comment.\r${artifact.geoGLSL}`)
   assert.deepEqual(normalizeCompiledShader(ordinaryComment), ordinaryComment)
 })
@@ -177,7 +188,8 @@ test('geometry cannot recurse through trusted helpers while nonrecursive color s
     'length(calcNormal(p))',
   ]) {
     const changed = withSection(artifact, 'geoGLSL', `float surfaceDistance(vec3 p){return ${expression};}`)
-    assert.throws(() => normalizeCompiledShader(changed), /Invalid compiled/, expression)
+    assert.throws(() => normalizeCompiledShader(changed),
+      { name: 'ShaderWorkloadError', code: 'shader-workload-unsupported', limit: 'cycles' }, expression)
   }
   const color = artifact.colorGLSL.replace('ShadedMaterial shade(vec3 p, vec3 normal) {',
     'ShadedMaterial shade(vec3 p, vec3 normal) {\nfloat additionalShadow=shadow(p,normal,0.5);')

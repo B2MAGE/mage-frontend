@@ -59,10 +59,13 @@ test('compiler worker module boundary excludes the DOM engine, application code 
     modules: Object.fromEntries(paths.map(path => [resolve(root, path), {}])),
   } })
   assert.doesNotThrow(() => assertCompilerWorkerBundle(bundle(), root))
+  assert.doesNotThrow(() => assertCompilerWorkerBundle(bundle(['src/modules/player/policy/shaderWorkloadFailure.ts']), root))
   for (const path of [
     'src/isolated-renderer/playback.ts',
     'src/isolated-renderer/compiler/client.ts',
     'src/modules/auth/api.ts',
+    'src/modules/player/policy/sceneValidation.ts',
+    'src/modules/player/policy/shaderWorkloadFailure-extra.ts',
     'node_modules/@notrac/mage/dist/mage-engine.js',
     'node_modules/other-package/index.js',
     '../untrusted/compiler.js',

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { compileShader } from '@notrac/mage/compiler'
 import { compileInWorker, createCompilerWorker, type CompilerWorker, type CompilerLifecycleEvent } from './client'
 import { COMPILER_LIMITS, COMPILER_PROTOCOL, COMPILER_VERSION, type CompileRequest } from './protocol'
+import { SHADER_WORKLOAD_FAILURES, SHADER_WORKLOAD_MESSAGES } from '../../modules/player/policy/shaderWorkloadFailure'
+import { amplifiedShaderArtifact } from '@shared/test/shaderWorkload'
 
 const artifact = compileShader('sphere(0.5);')
 function fixture() {
@@ -24,6 +26,40 @@ function fixture() {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('disposable compiler owner', () => {
+  it('independently rejects finite call amplification returned as a successful worker result', async () => {
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'shader-workload-expanded-cost' })
+    f.started(); f.respond('compiled', { artifact: amplifiedShaderArtifact(artifact) })
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce(); expect(f.release).toHaveBeenCalledOnce()
+    expect(f.observe.mock.calls.some(([event]) => event.type === 'validated')).toBe(false)
+  })
+
+  it('cannot accept a claimed cheap workload attached to an expensive worker artifact', async () => {
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'invalid-output' })
+    f.started(); f.respond('compiled', { artifact: { ...amplifiedShaderArtifact(artifact), workload: { expandedCost: 0, fragmentCost: 0 } } })
+    await pending
+    expect(f.observe.mock.calls.some(([event]) => event.type === 'validated')).toBe(false)
+  })
+
+  it.each(SHADER_WORKLOAD_FAILURES)('retires a worker rejection with only the fixed %s explanation', async failure => {
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: failure, message: SHADER_WORKLOAD_MESSAGES[failure] })
+    f.started(); f.respond('error', { failure })
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce(); expect(f.release).toHaveBeenCalledOnce()
+    expect(f.observe.mock.calls.some(([event]) => event.type === 'validated')).toBe(false)
+  })
+
+  it.each([
+    { failure: 'shader-workload-expanded-cost', message: 'private source' },
+    { failure: 'private source' }, { failure: { code: 'shader-workload-expanded-cost' } },
+    { failure: 'shader-workload-expanded-cost', artifact },
+  ])('does not relay arbitrary or mixed worker diagnostics (%j)', async extra => {
+    const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'failed' })
+    f.started(); f.respond('error', extra)
+    await pending
+    expect(f.terminate).toHaveBeenCalledOnce()
+  })
+
   it.each([false, true])('retires compilation immediately on hide (acknowledged: %s)', async acknowledged => {
     vi.useFakeTimers()
     const f = fixture(), pending = expect(f.load()).rejects.toMatchObject({ code: 'interrupted' })

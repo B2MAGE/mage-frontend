@@ -12,6 +12,7 @@ import type { CompileRequest } from './compiler/protocol'
 import { extractLiveSceneSettings } from '../modules/player/liveSceneSettings'
 import { parseSceneDocument, type BuilderSceneDocument } from '../modules/player/templates/sceneContract'
 import { compileBuilderPreviewDocument } from '../modules/player/templates/builderCompiler'
+import { amplifiedShaderArtifact } from '@shared/test/shaderWorkload'
 
 type ResponseHarness = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 const engineClass = engineSource.slice(engineSource.indexOf('var MAGEEngine = class MAGEEngine {'))
@@ -334,14 +335,16 @@ describe('isolated playback engine', () => {
     expect(initMAGE).not.toHaveBeenCalled()
   })
 
-  it.each(['invalid-version', 'commented-limit', 'changed-vertex', 'sparse-uniforms'])(
+  it.each(['invalid-version', 'commented-limit', 'changed-vertex', 'sparse-uniforms', 'finite-amplification', 'forged-workload'])(
     'rejects %s through the real worker receiver before allocating graphics', async kind => {
       const { compileInWorker: receiveCompiled } = await vi.importActual<typeof import('./compiler/client')>('./compiler/client')
-      const artifact = compileShader('sphere(1);')
+      const base = compileShader('sphere(1);')
+      const artifact = kind === 'finite-amplification' || kind === 'forged-workload' ? amplifiedShaderArtifact(base) : base
       if (kind === 'invalid-version') Object.assign(artifact, { version: 2 })
       if (kind === 'commented-limit') artifact.frag = '// const int MAX_ITERATIONS = 200;\nvoid main() {}'
       if (kind === 'changed-vertex') artifact.vert = 'void main() { gl_Position = vec4(0.); }'
       if (kind === 'sparse-uniforms') artifact.uniforms.length++
+      if (kind === 'forged-workload') Object.assign(artifact, { workload: { expandedCost: 0, fragmentCost: 0 } })
       const terminate = vi.fn(), release = vi.fn()
       const worker: CompilerWorker = { onmessage: null, onerror: null, onmessageerror: null, terminate,
         postMessage: vi.fn((request: CompileRequest) => {
@@ -354,7 +357,7 @@ describe('isolated playback engine', () => {
       compileInWorker.mockImplementation((source, options) => receiveCompiled(source, options,
         { createWorker: () => ({ worker, release }) }))
       const f = fixture()
-      await expect(f.load()).rejects.toMatchObject({ code: 'invalid-output' })
+      await expect(f.load()).rejects.toMatchObject({ code: kind === 'finite-amplification' ? 'shader-workload-expanded-cost' : 'invalid-output' })
       expect(terminate).toHaveBeenCalledOnce()
       expect(release).toHaveBeenCalledOnce()
       expect(initMAGE).not.toHaveBeenCalled()

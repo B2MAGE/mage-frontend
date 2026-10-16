@@ -1,10 +1,13 @@
-export type ShaderCompilationFailure = 'failed' | 'invalid-output' | 'timeout' | 'startup' | 'interrupted' | 'unavailable'
+import { isShaderWorkloadFailure, SHADER_WORKLOAD_MESSAGES, type ShaderWorkloadFailure } from '../../modules/player/policy/shaderWorkloadFailure'
+
+export type ShaderCompilationFailure = 'failed' | 'invalid-output' | 'timeout' | 'startup' | 'interrupted' | 'unavailable' | ShaderWorkloadFailure
 
 /** Fixed host-owned messages only; never expose source or errors supplied by a worker. */
 export class ShaderCompilationError extends Error {
   readonly code: ShaderCompilationFailure
   constructor(code: ShaderCompilationFailure = 'failed') {
-    super(code === 'interrupted' ? 'Shader compilation was interrupted while the page was hidden.'
+    super(isShaderWorkloadFailure(code) ? SHADER_WORKLOAD_MESSAGES[code]
+      : code === 'interrupted' ? 'Shader compilation was interrupted while the page was hidden.'
       : code === 'startup' ? 'The shader compiler did not start. Try again when the browser is active.'
       : code === 'timeout'
       ? 'Shader compilation took too long. Simplify the shader or choose a template.'

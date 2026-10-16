@@ -35,7 +35,7 @@ function setup() {
 describe('production playback host has no recovery fixture protocol', () => {
   it('always sends the normal playback connection', () => {
     const f = setup()
-    expect(f.post).toHaveBeenCalledExactlyOnceWith(playbackMessage('connect', session, 0, 0, { startupPhases: true }), '*', [channels[0].port2])
+    expect(f.post).toHaveBeenCalledExactlyOnceWith(playbackMessage('connect', session, 0, 0, { startupPhases: true, workloadErrors: true }), '*', [channels[0].port2])
     f.host.dispose()
   })
   it('does not treat diagnostic markers as readiness or liveness', async () => {
