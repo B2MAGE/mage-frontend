@@ -1,4 +1,11 @@
 import type { PlaybackHostDiagnostic } from './playbackHost'
+import { PLAYBACK_VERSION } from './playbackProtocol'
+import { COMPILER_VERSION } from '../../../isolated-renderer/compiler/protocol'
+import { dependencies } from '../../../../package.json'
+
+// Identify the frontend's immutable engine requirement without collecting URLs.
+// This does not attest which renderer deployment the browser actually reached.
+const expectedEngineRelease = dependencies['@notrac/mage'].match(/\/releases\/download\/v([^/]+)\//)?.[1] ?? 'unknown'
 
 const MAX_SESSIONS = 8, MAX_EVENTS = 80
 type Report = { session: number; startedAt: string; events: PlaybackHostDiagnostic[]
@@ -23,7 +30,8 @@ export function createPlaybackDiagnostics() {
 }
 
 export function readPlaybackDiagnostics() {
-  return { version: 1, sessions: Array.from(reports.values(), report => ({ ...report,
+  return { version: 1, build: { expectedEngineRelease, playbackProtocol: PLAYBACK_VERSION, compilerProtocol: COMPILER_VERSION },
+    sessions: Array.from(reports.values(), report => ({ ...report,
     watchdog: report.watchdog ? { ...report.watchdog } : null, events: report.events.map(event => ({ ...event })) })) }
 }
 

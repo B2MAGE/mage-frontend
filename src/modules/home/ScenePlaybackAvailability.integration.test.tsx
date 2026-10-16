@@ -7,6 +7,7 @@ import { SceneDetailPage } from '../scene-detail/SceneDetailPage'
 import { sceneAvailabilityStore } from '../player/availability/sceneAvailability'
 import { sceneRecovery } from '../player/recovery/sceneRecovery'
 import type { createIsolatedPlaybackHost } from '../player/isolation/playbackHost'
+import type { SceneActivation } from '../player/isolation/sceneReplacement'
 
 const boundary = vi.hoisted(() => ({ host: vi.fn(), parentEngine: vi.fn() }))
 const auth = vi.hoisted(() => ({ isAuthenticated: false, isRestoringSession: false, user: null, authenticatedFetch: vi.fn() }))
@@ -24,7 +25,11 @@ function transport(options: Parameters<typeof createIsolatedPlaybackHost>[0]) {
   frame.title = 'Isolated scene player'
   frame.setAttribute('sandbox', 'allow-scripts')
   options.container.append(frame)
-  return { ready: Promise.resolve(), frame, loadScene: vi.fn(async (_scene: unknown) => { void _scene }),
+  return { ready: Promise.resolve(), frame, loadScene: vi.fn(async (_scene: unknown, _profile: unknown, activation?: SceneActivation) => {
+    void _scene; void _profile
+    activation?.beforeActivate()
+    activation?.onActivated()
+  }), cancelPendingLoad: vi.fn(),
     getCapabilities: vi.fn(async () => ({ supportedTargets: ['size'] })),
     resize: vi.fn(), setPlayback: vi.fn(), setSynthetic: vi.fn(), setAudioResponse: vi.fn(), setZoom: vi.fn(), update: vi.fn(),
     capture: vi.fn(async () => new Blob()), dispose: vi.fn(() => frame.remove()) }

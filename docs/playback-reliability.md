@@ -20,13 +20,165 @@ and do not delay audio or first-frame completion.
 Retry screens offer **Save playback report**. The report is kept only in page memory
 (eight sessions, eighty operation events per session, latest progress/watchdog
 sample). It contains fixed operation/phase/reason labels, generation/request IDs
-and timings. It contains no scene source, media, account details, or URLs and is not
-uploaded. Closing/reloading the page clears it.
+and timings. It also records the engine release expected by the frontend and the
+playback/compiler protocol versions. That engine reference is not proof of the
+renderer build actually reached during a mixed deployment. There is no frontend
+commit identifier available in the existing build. The report contains no scene
+source, media, account details, or URLs and is not uploaded. Closing/reloading the
+page clears it.
 
-Validation: 252 focused host, runtime, controller, player, recovery and diagnostic
-tests passed; TypeScript passed. These are regression checks, not proof of the
-original intermittent mobile timeout's cause. That cause remains unconfirmed.
+## Milestone 2: startup and graphics preparation
 
-New frontend cancellation commands require the matching renderer build. For a
+The isolated adapter starts the maintained engine with `initialScene: 'empty'`.
+The requested document is compiled and validated before graphics allocation; the
+engine no longer creates its unrelated default visual first. The engine's normal
+default startup remains available to its other consumers.
+
+The engine prepares a replacement's materials, background, post-processing and
+camera settings in an independently owned scene bundle. With
+`KHR_parallel_shader_compile`, it polls program readiness using cancellable,
+bounded polling. It deliberately does not use Three's uncancellable
+`compileAsync` polling after a candidate has been disposed. Without the extension,
+the supported fallback verifies the first graphics submission before activation.
+Preparation includes an offscreen draw and, where supported, a GPU fence. It is
+not a guarantee that a graphics driver never blocks during compilation or drawing.
+
+Optional graphics diagnostics expose cumulative context creation/disposal,
+load-to-verified-frame latency, current geometry/texture/program counts, candidate
+prepared/activated/discarded counts, peak resource counts and preparation mode.
+The request is single-flight, capped at two requests per second, and is never
+automatically polled by production playback. The browser stress harness requests
+it after successful loads and before disposal.
+
+## Milestone 3: retained renderer and staged replacement
+
+One isolated renderer session owns the canvas, WebGL renderer, progress
+supervision and current active scene. It can prepare at most one candidate scene.
+The parent owns audio, user playback intent, permissions and recovery leases.
+An ordinary replacement proceeds as follows:
+
+1. Keep the authorized active scene rendering and its audio playing.
+2. Check the requested scene's permission independently, compile it in a disposable
+   worker and validate the output independently before graphics use.
+3. Build candidate graphics and controls without changing active scene settings.
+4. Receive `prepared`, then synchronously check that this is still the newest
+   request and that permission is still granted.
+5. Send `activate`; the child synchronously draws and commits the prepared scene,
+   then acknowledges the exact activated generation.
+6. Adopt that actual scene's identity, audio-response metadata and recovery lease;
+   release the previous scene's resources.
+
+Only the newest pending request may reach preparation. Once activation has been
+sent, a newer selection waits for its bounded acknowledgement rather than
+pretending the commit was cancelled. The parent adopts an acknowledged
+intermediate scene even when the next selection is already queued. This keeps
+permission ownership and the visible scene consistent. Both the old active scene
+and an approved committing candidate remain watched until the acknowledgement.
+
+Compile, asset, candidate graphics and rollback-safe activation failures discard
+the candidate and preserve the healthy authorized active scene. The player shows
+a small update-failure notice with **Retry update**. Audio controls remain usable.
+Initial-load failure, context loss, broken protocol, lost activation acknowledgement
+or an active render/progress failure still retire the entire session. A new
+candidate never borrows permission from the previous scene, and permission
+revocation still stops the affected renderer.
+
+Pause and Stop are user intent, not scene defaults: a late activation cannot
+resume a paused or stopped player. Original and Selective retain their existing
+analysis and response behavior. The current audio source and position remain
+parent-owned across scene changes. Candidate controls include Builder inputs,
+pointer state and authored camera/animation settings before the first graphics
+check.
+
+During preparation or a failed replacement, the old image is not exposed as a
+capture of the new draft. Scene readiness and capture callbacks become available
+for that draft only after its activation or a validated live settings update.
+Editor text, saved thumbnails and exportable rejected drafts remain intact. The
+preview container and responsive dimensions are unchanged by the update notice.
+
+### Resource ownership and limits
+
+Session disposal still removes the isolated frame, aborts candidate work, disposes
+active and candidate resources, and releases the WebGL context. A candidate
+discard releases its own resources; normal activation releases the old scene
+without disposing the healthy renderer. Cancelling the first load replaces its
+canvas before trying again so a delayed old context-loss event cannot stop the
+new session.
+
+The combined bound is one active scene plus one candidate under the same host-owned
+render profile, with bounded scene structure/effects and unchanged shader workload
+limits. Both use the existing pixel, longest-edge, device-pixel-ratio, frame-rate
+and raymarch ceilings in `contracts/scenes/scene-limits.v1.json`. Preparation can
+temporarily approach two scene bundles' resources, plus shared renderer resources
+and caches. Geometry, texture and program counts are useful estimates, not GPU
+memory bytes or a universal memory ceiling. No cache of previous scenes is kept.
+
+### Existing and preparation deadlines
+
+| Work | Default bound | Failure scope |
+| --- | --- | --- |
+| Renderer/compiler/graphics downloads | 60 seconds per relevant wait | Initial session or current candidate |
+| Disposable compiler startup | 8 seconds; parent observes a 9-second ceiling | Current candidate |
+| Compiler execution after startup | 2 seconds; parent observes a 3-second ceiling | Current candidate |
+| Engine graphics preparation | 10 seconds, capped at 15 seconds by the engine API | Current candidate |
+| Observable graphics startup / activation acknowledgement | 15 seconds | Candidate before commit; session when commit is uncertain |
+| Active playback without progress | 10 seconds of observable silence | Session |
+| Capture | 5 seconds, with one child capture in flight | Capture only |
+| Capabilities | 15 seconds | Metadata request only |
+| Audio/graphics diagnostic request | 1 second | Optional request only |
+
+The progress watchdog does not count paused, hidden or offscreen playback, or a
+large gap in the parent's own scheduling, as observed renderer silence. Active
+progress remains supervised while a candidate is being prepared. Graphics-startup
+observation and active progress use separate timers. A compiler interrupted by a
+visibility transition has at most one explicit visibility retry; there is no
+indefinite automatic retry loop. These are execution bounds, not guarantees that
+browser timers can preempt a blocked GPU driver.
+
+## Validation and evidence
+
+The focused automated coverage includes auxiliary timeouts and invalid results,
+stale requests/timers, independent active/candidate permissions, newest-request
+selection, acknowledged intermediate commits, candidate cleanup, context loss,
+first-use failures, paused activation, capture ownership, retained audio, and
+safe renderer teardown. Engine tests cover parallel-program readiness and the
+extension fallback. Controller/hook/UI tests also cover recovering a valid draft
+after an invalid edit, retrying a replacement without recreating the renderer,
+and exporting rejected custom text without replacing a saved thumbnail.
+
+The loopback-only harness is
+`scripts/playback-reliability-check.html`, served by `npm run manual-checks:dev`.
+It uses the actual player and isolated renderer, with the full template catalog,
+sequential and rapid switching, Original/Selective, optional generated audio and
+simulated beat. Its bounded JSON distinguishes loads, superseded requests, session
+failures, Retry requirements, parent scheduling gaps and graphics measurements.
+It does not bypass scene validation or move untrusted execution into the parent.
+The diagnostics renderer provides separate local fault fixtures; those fixtures
+are excluded from the production renderer.
+
+On 2026-10-16, the local browser run completed all fourteen templates sequentially
+in Original mode with one graphics context and no Retry. The Selective rapid
+switching run activated seven requests, superseded six and required no Retry.
+Five local browser fault cases also passed: actual compiler rejection and actual
+`WEBGL_lose_context`, plus explicitly injected candidate first-use failure,
+dropped optional-operation replies and held obsolete preparation. The four
+recoverable cases kept one context and continued submitting frames; real context
+loss removed the frame and correctly required Retry. Injected failures test the
+handling path, not the prevalence of those failures on users' hardware.
+
+Measured browser results belong with their exact frontend/engine revisions and
+test settings. A snapshot taken before iframe disposal cannot prove driver memory
+reclamation after that iframe disappears. An offscreen verified frame is not a
+measurement of when the browser compositor presented it to the display.
+
+<!-- Release verification adds the exact before/after measurement table here. -->
+
+The original intermittent Pixel/Chrome startup timeout has **not** been
+reproduced. The implementation fixes reproducible lifecycle and failure-handling
+problems; it does not establish the root cause of that historical report or prove
+all mobile/network conditions are resolved. Page-wide playback scheduling remains
+PL-04's scope. Broader device/resource tuning remains PL-06's scope.
+
+New frontend cancellation/staged-activation commands require the matching renderer build. For a
 future approved production release, deploy the renderer before its frontend.
 No production deployment is included in this implementation task.

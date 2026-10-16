@@ -155,7 +155,9 @@ describe('scene editor recovery', () => {
     const draft = JSON.stringify({ schemaVersion: 1, kind: 'custom', scene: { visualizer: { shader: 'while (true) { sphere(0.7); }' } } }, null, 2) + '\n'
     vi.mocked(player.loadSceneBlob).mockRejectedValue(new Error('Shader compiler rejected this draft.'))
     fireEvent.change(screen.getByLabelText('Scene Data JSON'), { target: { value: draft } })
-    await screen.findByText('Shader compiler rejected this draft.')
+    expect(await screen.findByTitle('Shader compiler rejected this draft.')).toHaveTextContent('Could not update the scene. Showing the previous scene.')
+    expect(screen.getByRole('button', { name: 'Retry update' })).toBeEnabled()
+    expect(player.dispose).not.toHaveBeenCalled()
     expect(screen.getByLabelText('Scene Data JSON')).toHaveValue(draft)
 
     await user.click(screen.getByRole('button', { name: /^Details$/ }))

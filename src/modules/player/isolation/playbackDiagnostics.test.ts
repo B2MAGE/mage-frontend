@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { createPlaybackDiagnostics, readPlaybackDiagnostics } from './playbackDiagnostics'
 
 describe('local playback evidence', () => {
+  it('identifies the expected engine and protocol revisions without dependency URLs', () => {
+    const { build } = readPlaybackDiagnostics()
+    expect(build).toEqual({ expectedEngineRelease: expect.stringMatching(/^\d+\.\d+\.\d+-mage\.\d+$/),
+      playbackProtocol: 2, compilerProtocol: 2 })
+    expect(JSON.stringify(build)).not.toMatch(/https?:|github|source|token/i)
+  })
+
   it('bounds sessions and events, retaining the failing operation through inspector polling', () => {
     for (let session = 0; session < 12; session++) {
       const record = createPlaybackDiagnostics()
