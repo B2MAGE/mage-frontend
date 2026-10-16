@@ -56,14 +56,106 @@ function fixture(profile: 'full' | 'preview' = 'preview') {
       visualizer: { render_tooltips: true, mesh: null, getActiveShader: () => 'sphere(1);' } })),
     subscribeRenderLifecycle: vi.fn(callback => { listener = callback; return () => { listener = undefined } }) }
   initMAGE.mockReturnValue(engine)
+  const prepared = new Map<object, ReturnType<typeof engine.getEngineFields>>()
+  const prepareCompiledPreset = vi.fn(async (_preset: unknown, _artifact: unknown,
+    options: { configure(fields: ReturnType<typeof engine.getEngineFields>): void }) => {
+    const token = {}, fields = engine.getEngineFields()
+    options.configure(fields)
+    prepared.set(token, fields); return token
+  })
+  const activatePreparedPreset = vi.fn((token: object) => { if (!prepared.has(token)) throw new Error('Stale token'); prepared.delete(token) })
+  const discardPreparedPreset = vi.fn((token: object) => { prepared.delete(token) })
+  Object.assign(engine, { prepareCompiledPreset, activatePreparedPreset, discardPreparedPreset,
+    getPreparedSceneFields: (token: object) => { const fields = prepared.get(token); if (!fields) throw new Error('Stale token'); return fields } })
   const abort = new AbortController(), canvas = document.createElement('canvas'), onError = vi.fn(), onFrame = vi.fn()
   const load = (scene: unknown = customDocument({ visualizer: { shader: 'sphere(1);' } })) => loadPlaybackEngine({ canvas, signal: abort.signal, scene,
     profile, onError, onFrame })
   const ready = async (scene?: unknown) => { const loading = load(scene); await vi.waitFor(() => expect(engine.loadCompiledPreset).toHaveBeenCalledOnce()); listener?.({ type: 'frame' }); return loading }
-  return { engine, response, abort, canvas, onError, onFrame, load, ready, emit: (type: 'frame' | 'error') => listener?.({ type }) }
+  const staged = () => loadPlaybackEngine({ canvas, signal: abort.signal, scene: customDocument({ visualizer: { shader: 'sphere(1);' } }),
+    profile, onError, onFrame, deferActivation: true })
+  return { engine, response, abort, canvas, onError, onFrame, load, ready, staged, prepareCompiledPreset, activatePreparedPreset,
+    discardPreparedPreset, emit: (type: 'frame' | 'error') => listener?.({ type }) }
 }
 
 describe('isolated playback engine', () => {
+  it('prepares a scene without activation and reuses one engine through replacement', async () => {
+    const f = fixture(), control = await f.staged()
+    expect(initMAGE).toHaveBeenCalledWith(expect.objectContaining({ initialScene: 'empty' }))
+    expect(f.engine.loadCompiledPreset).not.toHaveBeenCalled()
+    expect(f.activatePreparedPreset).not.toHaveBeenCalled()
+    control.initialPreparedScene!.activate()
+    f.emit('frame')
+    const replacement = await control.prepareScene!({ scene: customDocument({ visualizer: { shader: 'box(0.5);' } }),
+      profile: 'preview', signal: new AbortController().signal, sceneRevision: 2 })
+    f.emit('frame')
+    expect(f.onFrame).toHaveBeenCalledTimes(2)
+    expect(f.activatePreparedPreset).toHaveBeenCalledTimes(1)
+    control.playback(false)
+    f.engine.play.mockClear()
+    replacement.activate()
+    expect(f.activatePreparedPreset).toHaveBeenCalledTimes(2)
+    expect(initMAGE).toHaveBeenCalledOnce()
+    expect(f.engine.play).not.toHaveBeenCalled()
+    expect(f.engine.pause).toHaveBeenCalled()
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+    control.dispose(); control.dispose()
+    expect(f.engine.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('retains healthy frames and audio after candidate compile or first-frame preparation fails', async () => {
+    const f = fixture(), control = await f.staged()
+    control.initialPreparedScene!.activate()
+    const options = { scene: customDocument({ visualizer: { shader: 'box(0.5);' } }),
+      profile: 'preview' as const, signal: new AbortController().signal, sceneRevision: 2 }
+    compileInWorker.mockRejectedValueOnce(new Error('Compile failed'))
+    await expect(control.prepareScene!(options)).rejects.toThrow('Compile failed')
+    f.prepareCompiledPreset.mockRejectedValueOnce(new Error('Candidate first frame failed'))
+    await expect(control.prepareScene!({ ...options, sceneRevision: 3 })).rejects.toThrow('Candidate first frame failed')
+    f.emit('frame')
+    expect(f.onFrame).toHaveBeenCalledOnce()
+    expect(f.onError).not.toHaveBeenCalled()
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+    expect(f.engine.setExternalAudioFrame).toHaveBeenCalledTimes(1)
+    control.dispose()
+  })
+
+  it('fails the session if an adapter fails after graphics activation has committed', async () => {
+    const f = fixture(), control = await f.staged()
+    f.engine.setExternalClock.mockImplementationOnce(() => { throw new Error('Clock unavailable') })
+    expect(() => control.initialPreparedScene!.activate()).toThrow('Clock unavailable')
+    expect(f.activatePreparedPreset).toHaveBeenCalledOnce()
+    expect(f.onError).toHaveBeenCalledOnce()
+    expect(f.engine.dispose).toHaveBeenCalledOnce()
+    control.dispose()
+    expect(f.engine.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('discards superseded candidate resources and rejects foreign render profiles before work', async () => {
+    const f = fixture(), control = await f.staged()
+    control.initialPreparedScene!.activate()
+    const abort = new AbortController()
+    const candidate = await control.prepareScene!({ scene: customDocument({ visualizer: { shader: 'box(0.5);' } }),
+      profile: 'preview', signal: abort.signal, sceneRevision: 2 })
+    abort.abort()
+    expect(() => candidate.activate()).toThrow()
+    expect(f.discardPreparedPreset).toHaveBeenCalledOnce()
+    await expect(control.prepareScene!({ scene: customDocument({ visualizer: { shader: 'box(0.5);' } }),
+      profile: 'full', signal: new AbortController().signal, sceneRevision: 3 })).rejects.toThrow('profile')
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+    control.dispose()
+  })
+
+  it('treats active context loss as a session failure even while a candidate waits', async () => {
+    const f = fixture(), control = await f.staged()
+    control.initialPreparedScene!.activate()
+    await control.prepareScene!({ scene: customDocument({ visualizer: { shader: 'box(0.5);' } }),
+      profile: 'preview', signal: new AbortController().signal, sceneRevision: 2 })
+    f.canvas.dispatchEvent(new Event('webglcontextlost'))
+    expect(f.onError).toHaveBeenCalledWith('context-lost')
+    expect(f.engine.dispose).toHaveBeenCalledOnce()
+    expect(f.discardPreparedPreset).toHaveBeenCalledOnce()
+    control.dispose()
+  })
   it('measures actual context ownership and requested-scene first frame without allocating observations', async () => {
     const f = fixture(), fields = f.engine.getEngineFields()
     Object.assign(fields, { renderer: { info: { memory: { geometries: 2, textures: 4 }, programs: [{}, {}] } } })
