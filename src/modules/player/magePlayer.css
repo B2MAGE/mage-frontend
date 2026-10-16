@@ -73,7 +73,17 @@ html[data-theme] .mage-player:fullscreen .mage-player__controls {
 
 .mage-player[data-availability-pending] .mage-player__render-host { pointer-events: none; }
 
-.mage-player__recovery-actions button {
+.mage-player__replacement-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mage-player__replacement-status button { pointer-events: auto; }
+
+.mage-player__recovery-actions button,
+.mage-player__replacement-status button {
   border: 1px solid var(--border, #383b45);
   border-radius: 6px;
   padding: 7px 10px;
@@ -84,11 +94,13 @@ html[data-theme] .mage-player:fullscreen .mage-player__controls {
   cursor: pointer;
 }
 
-.mage-player__recovery-actions button:enabled:hover {
+.mage-player__recovery-actions button:enabled:hover,
+.mage-player__replacement-status button:enabled:hover {
   background: var(--surface-soft, #292c36);
 }
 
-.mage-player__recovery-actions button:focus-visible {
+.mage-player__recovery-actions button:focus-visible,
+.mage-player__replacement-status button:focus-visible {
   outline: 2px solid var(--accent-light, #9e91ff);
   outline-offset: 2px;
 }

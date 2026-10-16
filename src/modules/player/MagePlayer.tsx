@@ -165,12 +165,26 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   const availability = useSceneAvailability(target)
   const sourceIdentity = useMemo(() => `${target}:${sceneRecoveryKey(props.sceneBlob, props.sceneKey)}:${recoveryKey}`,
     [props.sceneBlob, props.sceneKey, recoveryKey, target])
-  const [retainedSource, setRetainedSource] = useState<string | null>(null)
-  const onRendererReady = useCallback(() => setRetainedSource(sourceIdentity), [sourceIdentity])
-  // Keep the parent session while checking a replacement scene. Its renderer is
-  // paused until permission is confirmed; a denial still ends the entire session.
-  if (retainedSource !== null && !availability.allowed && availability.code !== 'CHECKING') setRetainedSource(null)
-  const availabilityPending = availability.code === 'CHECKING' && retainedSource !== null
+  const [retainedSource, setRetainedSource] = useState<{
+    instance: number; identity: string; target: ReturnType<typeof availabilityTarget>; recoveryKey: string | null
+  } | null>(null)
+  const hasRetainedSource = retainedSource?.instance === rendererInstance
+  const activeAvailability = useSceneAvailability(hasRetainedSource ? retainedSource.target : target)
+  const activeBlocked = hasRetainedSource && retainedSource.recoveryKey
+    ? sceneRecovery.getBlock(retainedSource.recoveryKey) : null
+  const retainForReplacement = hasRetainedSource && retainedSource.identity !== sourceIdentity && !safeMode && !activeBlocked
+    && (activeAvailability.allowed || activeAvailability.code === 'CHECKING')
+  const onRendererActivated = useCallback((scene: MageSceneBlob, key?: MageSceneKey, recoveryScene?: MageSceneBlob) => {
+    const actualTarget = availabilityTarget(key, scene)
+    const actualRecoveryKey = sceneRecoveryKey(recoveryScene ?? scene, key)
+    setRetainedSource({ instance: rendererInstance, target: actualTarget, recoveryKey: actualRecoveryKey,
+      identity: `${actualTarget}:${sceneRecoveryKey(scene, key)}:${actualRecoveryKey}` })
+  }, [rendererInstance])
+  const onRendererDisposed = useCallback(() => {
+    setRetainedSource(current => current?.instance === rendererInstance ? null : current)
+  }, [rendererInstance])
+  const availabilityPending = availability.code === 'CHECKING' && hasRetainedSource
+  const activeAvailabilityPending = hasRetainedSource && !activeAvailability.allowed
   const requiresAvailability = !!props.sceneBlob || target !== 'custom'
   const [reloadAttempt, setReloadAttempt] = useState(0)
   const [sourceError, setSourceError] = useState(false)
@@ -202,7 +216,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     return () => window.removeEventListener('pageshow', restorePage)
   }, [])
 
-  if (requiresAvailability && ((!availability.allowed && !availabilityPending) || !props.sceneBlob)) {
+  if (requiresAvailability && ((!availability.allowed && !availabilityPending && !retainForReplacement) || !props.sceneBlob)) {
     const checking = availability.code === 'CHECKING' || (availability.allowed && canRestoreSource && !sourceError)
     return <>
       <MagePlayerStatusReporter onChange={props.onPlaybackStatusChange} status={checking ? 'paused' : 'unavailable'} />
@@ -219,7 +233,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     </>
   }
 
-  if (props.sceneBlob && (block || safeMode)) {
+  if (props.sceneBlob && (safeMode || (block && !retainForReplacement))) {
     return <>
       <MagePlayerStatusReporter
         onChange={props.onPlaybackStatusChange}
@@ -242,7 +256,7 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
     </>
   }
 
-  if (validationError) {
+  if (validationError && !retainForReplacement) {
     return <>
       <MagePlayerStatusReporter onChange={props.onPlaybackStatusChange} status="unavailable" />
       <section className={buildMagePlayerClassName('mage-player', props.className)} data-state="error">
@@ -259,12 +273,22 @@ function MagePlayerSession(props: MagePlayerProps & SessionAudioProps) {
   return <MagePlayerRenderer key={rendererInstance} {...props}
     playbackIntentRef={playbackIntentRef}
     availabilityPending={availabilityPending}
-    onRendererReady={onRendererReady}
+    activeAvailabilityPending={activeAvailabilityPending}
+    onRendererActivated={onRendererActivated}
+    onRendererDisposed={onRendererDisposed}
+    onRetryReplacement={() => {
+      if (blockedRecoveryKey && sceneRecovery.getBlock(blockedRecoveryKey) && sceneAvailabilityStore.isAllowed(target)) {
+        sceneRecovery.retry(blockedRecoveryKey)
+      }
+    }}
     onReplaceRetiredRenderer={replaceRetiredRenderer}
     recoveryRevision={recoveryRevision}
     playlist={playlist}
     audioSelection={audioSelection}
     onStopRendering={recoveryKey ? () => {
+      if (hasRetainedSource && retainedSource.recoveryKey && retainedSource.recoveryKey !== recoveryKey) {
+        sceneRecovery.block(retainedSource.recoveryKey, 'stopped')
+      }
       sceneRecovery.block(recoveryKey, 'stopped')
     } : undefined}
     onSafeMode={() => sceneRecovery.setSafeMode(true)}
@@ -296,11 +320,17 @@ function MagePlayerRenderer({
   clearMusic,
   rendererAudioClearRef,
   availabilityPending,
-  onRendererReady,
+  activeAvailabilityPending,
+  onRendererActivated,
+  onRendererDisposed,
+  onRetryReplacement,
   playbackIntentRef,
   onReplaceRetiredRenderer,
   recoveryRevision,
-}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; availabilityPending: boolean; onRendererReady: () => void;
+}: MagePlayerProps & { onStopRendering?: () => void; onSafeMode: () => void; availabilityPending: boolean; activeAvailabilityPending: boolean;
+  onRendererActivated: (scene: MageSceneBlob, key?: MageSceneKey, recoveryScene?: MageSceneBlob) => void;
+  onRendererDisposed: () => void;
+  onRetryReplacement: () => void;
   playbackIntentRef: { current: SessionPlaybackIntent }; onReplaceRetiredRenderer: () => void; recoveryRevision: number } & SessionAudioProps) {
   const renderHostRef = useRef<HTMLDivElement | null>(null)
   const volumeControlRef = useRef<HTMLDivElement | null>(null)
@@ -329,9 +359,10 @@ function MagePlayerRenderer({
   const [activeAudioAction, setActiveAudioAction] = useState<'add' | 'load' | null>(null)
   const [isVolumeOpen, setIsVolumeOpen] = useState(false)
   const [trackLoadVersion, setTrackLoadVersion] = useState(0)
-  const { playerRef, latestSceneBlobRef, playerVersion, playbackIdentity, status, loadError, hasLoadedScene } = useMagePlayerScene({
+  const { playerRef, latestSceneBlobRef, playerVersion, playbackIdentity, status, loadError, hasLoadedScene, retryScene } = useMagePlayerScene({
     hostRef: renderHostRef, sceneBlob, recoverySceneBlob, sceneKey, renderProfile,
-    availabilityPending, recoveryRevision, playbackIntentRef, onReplaceRetiredRenderer,
+    availabilityPending, activeAvailabilityPending, recoveryRevision, playbackIntentRef, onReplaceRetiredRenderer,
+    onActivated: onRendererActivated,
     onCapabilities: onAudioResponseCapabilitiesChange,
     onCreated(player) {
       loadedTrackIdRef.current = null
@@ -343,12 +374,13 @@ function MagePlayerRenderer({
     onReady(player, liveUpdate) {
       setPlaybackState(player.getPlaybackState())
       setAudioState(player.getAudioState())
-      onRendererReady()
       if (!liveUpdate) { setAudioError(null); setActiveAudioAction(null) }
     },
     onError() { setAudioState(EMPTY_AUDIO_STATE) },
-    onDispose() { diagnosticsCallbackRef.current?.(null) },
+    onDispose() { diagnosticsCallbackRef.current?.(null); onRendererDisposed() },
   })
+
+  const activeSceneUsable = hasLoadedScene && !activeAvailabilityPending
 
   const { candidate: audioCandidate, accept: acceptAudioCandidate, reject: rejectAudioCandidate, cancelPending: cancelAudioSelection } = audioSelection
   // A stopped/disposed renderer cannot finish a file selection after Resume.
@@ -402,7 +434,7 @@ function MagePlayerRenderer({
   }, [sceneBlob])
 
   useEffect(() => {
-    if (requestedPlaybackRef.current.initialPlayback !== initialPlayback || requestedPlaybackRef.current.sceneKey !== sceneKey) {
+    if (requestedPlaybackRef.current.initialPlayback !== initialPlayback) {
       requestedPlaybackRef.current = { playback: initialPlayback, initialPlayback, sceneKey }
     }
     const requested = requestedPlaybackRef.current.playback
@@ -419,7 +451,7 @@ function MagePlayerRenderer({
     setAudioState(player.getAudioState())
   }, [initialPlayback, latestSceneBlobRef, playerRef, requestedPlaybackRef, sceneKey])
 
-  const publishedPlaybackStatus: MagePlayerPlaybackStatus = status === 'ready'
+  const publishedPlaybackStatus: MagePlayerPlaybackStatus = status === 'ready' || activeSceneUsable
     ? playbackState
     : status === 'loading'
       ? 'paused'
@@ -590,15 +622,15 @@ function MagePlayerRenderer({
   }, [isVolumeOpen])
 
   useEffect(() => {
-    if (status !== 'ready' || !audioState.isLoaded) {
+    if (!activeSceneUsable || !audioState.isLoaded) {
       setIsVolumeOpen(false)
     }
-  }, [audioState.isLoaded, status])
+  }, [activeSceneUsable, audioState.isLoaded])
 
   useEffect(() => {
     const player = playerRef.current
 
-    if (!player || status !== 'ready') {
+    if (!player || !activeSceneUsable) {
       return
     }
 
@@ -701,10 +733,10 @@ function MagePlayerRenderer({
     return () => {
       isCancelled = true
     }
-  }, [acceptAudioCandidate, audioCandidate, commitTrackDuration, currentTrack, playerRef, playerVersion, rejectAudioCandidate, requestedPlaybackRef, status, trackLoadVersion, tracks.length])
+  }, [acceptAudioCandidate, activeSceneUsable, audioCandidate, commitTrackDuration, currentTrack, playerRef, playerVersion, rejectAudioCandidate, requestedPlaybackRef, trackLoadVersion, tracks.length])
 
   useEffect(() => {
-    if (availabilityPending || audioMode === 'single' || audioCandidate) return
+    if (activeAvailabilityPending || audioMode === 'single' || audioCandidate) return
     if (!currentTrack) {
       completedTrackIdRef.current = null
       return
@@ -758,7 +790,7 @@ function MagePlayerRenderer({
 
     commitSelectedTrackId(nextTrack.id)
   }, [
-    availabilityPending,
+    activeAvailabilityPending,
     audioMode,
     audioCandidate,
     audioState.currentTime,
@@ -773,7 +805,7 @@ function MagePlayerRenderer({
     tracks,
   ])
 
-  const controlsBusy = availabilityPending || activeAudioAction !== null || audioSelection.adding
+  const controlsBusy = activeAvailabilityPending || activeAudioAction !== null || audioSelection.adding
   const audioProgressPercent =
     audioState.duration > 0
       ? `${Math.min((audioState.currentTime / audioState.duration) * 100, 100)}%`
@@ -787,7 +819,7 @@ function MagePlayerRenderer({
     const nextPlaybackState = playbackState === 'playing' ? 'paused' : 'playing'
     // Stopping audio never needs permission to render. A new Play request still
     // waits for the current scene and fresh availability.
-    if (nextPlaybackState === 'playing' && (status !== 'ready' || controlsBusy)) return
+    if (nextPlaybackState === 'playing' && (!activeSceneUsable || controlsBusy)) return
     requestedPlaybackRef.current.playback = nextPlaybackState
     setPlaybackState(player.setPlaybackState(nextPlaybackState))
     setAudioState(player.getAudioState())
@@ -796,7 +828,7 @@ function MagePlayerRenderer({
   }
 
   function handleOpenAudioPicker(event: ReactMouseEvent<HTMLButtonElement>) {
-    if (controlsBusy || status !== 'ready') {
+    if (controlsBusy || !activeSceneUsable) {
       return
     }
     audioSelection.open()
@@ -806,7 +838,7 @@ function MagePlayerRenderer({
   function handleSeekAudio(event: ChangeEvent<HTMLInputElement>) {
     const player = playerRef.current
 
-    if (!player || status !== 'ready' || controlsBusy || !audioState.isLoaded) {
+    if (!player || !activeSceneUsable || controlsBusy || !audioState.isLoaded) {
       return
     }
 
@@ -829,7 +861,7 @@ function MagePlayerRenderer({
   function handleVolumeChange(event: ChangeEvent<HTMLInputElement>) {
     const player = playerRef.current
 
-    if (!player || status !== 'ready' || controlsBusy) {
+    if (!player || !activeSceneUsable || controlsBusy) {
       return
     }
 
@@ -857,11 +889,16 @@ function MagePlayerRenderer({
   }
 
   return (
-    <section className={buildMagePlayerClassName('mage-player', className)} data-state={status} data-availability-pending={availabilityPending || undefined}>
+    <section className={buildMagePlayerClassName('mage-player', className)} data-state={status} data-availability-pending={activeAvailabilityPending || undefined}>
       <div className="mage-player__viewport" aria-busy={status === 'loading'}>
         <div aria-label={ariaLabel} className="mage-player__render-host" ref={renderHostRef} role="img" />
-        {availabilityPending ? (
+        {activeAvailabilityPending || (availabilityPending && !hasLoadedScene) ? (
           <div className="mage-player__availability-check" role="status">Checking whether this scene can play…</div>
+        ) : hasLoadedScene && status !== 'ready' ? (
+          <div className="mage-player__availability-check mage-player__replacement-status" role={status === 'error' ? 'alert' : 'status'}>
+            <span title={loadError ?? undefined}>{status === 'error' ? 'Could not update the scene. Showing the previous scene.' : 'Updating scene. Showing the previous scene.'}</span>
+            {status === 'error' ? <button type="button" onClick={() => { onRetryReplacement(); retryScene() }}>Retry update</button> : null}
+          </div>
         ) : status === 'loading' ? (
           <MagePlayerLoading />
         ) : status !== 'ready' ? (
@@ -877,7 +914,7 @@ function MagePlayerRenderer({
         {sceneBlob ? (
           <MagePlayerControls
             audioMode={audioMode}
-            disabled={status !== 'ready'}
+            disabled={!activeSceneUsable}
             allowStopWhileLoading={status === 'loading'}
             activeAudioAction={audioSelection.adding ? 'add' : activeAudioAction}
             audioError={audioSelection.error ?? audioError}
@@ -892,7 +929,7 @@ function MagePlayerRenderer({
             onToggleVolumePanel={handleToggleVolumePanel}
             onTrackSummaryClick={handleTrackSummaryClick}
             onVolumeChange={handleVolumeChange}
-            onStopScene={onStopRendering}
+            onStopScene={onStopRendering ? () => { playerRef.current?.stopRendering?.(); onStopRendering() } : undefined}
             onPauseAllScenes={onSafeMode}
             onClearMusic={clearMusic}
             playbackState={playbackState}

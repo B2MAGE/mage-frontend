@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MagePlayer } from './MagePlayer'
+import { SceneReplacementError } from './isolation/sceneReplacement'
 import { createMagePlayer } from './infrastructure/engineAdapter'
 import { parseSceneDocument } from './templates/sceneContract'
 import {
@@ -42,6 +43,34 @@ describe('MagePlayer', () => {
     expect(createMagePlayer).toHaveBeenCalledOnce()
   })
 
+  it('keeps a healthy scene and Pause usable during a failed replacement without exposing its old capture', async () => {
+    let rejectReplacement!: (error: Error) => void
+    const replacement = new Promise<void>((_resolve, reject) => { rejectReplacement = reject })
+    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn()
+      .mockReturnValueOnce(undefined).mockReturnValueOnce(replacement).mockReturnValueOnce(undefined) })
+    vi.mocked(createMagePlayer).mockResolvedValue(controller)
+    const first = buildMagePlayerSceneBlob()
+    const second = buildMagePlayerSceneBlob({ visualizer: { shader: 'box(0.4);' } })
+    const captureChanged = vi.fn()
+    const view = render(<MagePlayer sceneBlob={first} onCaptureFramePreviewChange={captureChanged} />)
+    await waitFor(() => expect(captureChanged).toHaveBeenLastCalledWith(expect.any(Function)))
+    view.rerender(<MagePlayer sceneBlob={second} onCaptureFramePreviewChange={captureChanged} />)
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2))
+    expect(captureChanged).toHaveBeenLastCalledWith(null)
+    expect(view.container.querySelector('.mage-player__overlay')).toBeNull()
+    expect(screen.getByText('Updating scene. Showing the previous scene.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Pause scene and audio playback' }))
+    await act(async () => { rejectReplacement(new SceneReplacementError('compile', true)) })
+    expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeEnabled()
+    expect(captureChanged).toHaveBeenLastCalledWith(null)
+    expect(controller.dispose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry update' }))
+    await waitFor(() => expect(captureChanged).toHaveBeenLastCalledWith(expect.any(Function)))
+    expect(createMagePlayer).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Play scene and audio playback' })).toBeEnabled()
+  })
+
   it('keeps an in-flight capture valid through a callback-only rerender', async () => {
     let finish!: (value: string) => void
     const controller = buildMagePlayerController({ captureFramePreview: vi.fn(() => new Promise<string>(resolve => { finish = resolve })) })
@@ -71,7 +100,7 @@ describe('MagePlayer', () => {
         renderProfile: 'full', initialSceneBlob: sceneBlob, mouseInteractions: true, mouseWheelZoom: true,
         signal: expect.any(AbortSignal),
       })
-      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob, expect.objectContaining({ onActivated: expect.any(Function) }))
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
     })
 
@@ -104,7 +133,7 @@ describe('MagePlayer', () => {
     const { rerender } = render(<MagePlayer sceneBlob={firstSceneBlob} />)
 
     await waitFor(() => {
-      expect(controller.loadSceneBlob).toHaveBeenCalledWith(firstSceneBlob)
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(firstSceneBlob, expect.objectContaining({ onActivated: expect.any(Function) }))
     })
 
     const initialCreateCount = vi.mocked(createMagePlayer).mock.calls.length
@@ -113,22 +142,25 @@ describe('MagePlayer', () => {
 
     await waitFor(() => {
       expect(vi.mocked(createMagePlayer).mock.calls.length).toBe(initialCreateCount)
-      expect(controller.loadSceneBlob).toHaveBeenCalledWith(secondSceneBlob)
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(secondSceneBlob, expect.objectContaining({ onActivated: expect.any(Function) }))
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('playing')
     })
   })
 
   it('validates versioned documents again instead of applying the legacy audio shortcut', async () => {
-    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn((value) => { parseSceneDocument(value) }) })
+    const controller = buildMagePlayerController({ loadSceneBlob: vi.fn((value) => {
+      try { parseSceneDocument(value) } catch { throw new SceneReplacementError('invalid-output', true) }
+    }) })
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const valid = { schemaVersion: 1, kind: 'template', templateId: 'embedded-scene-0', templateVersion: 1 }
     const { rerender } = render(<MagePlayer sceneBlob={valid} />)
-    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid))
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid, expect.objectContaining({ onActivated: expect.any(Function) })))
     const mixed = { ...valid, audioResponseConfig: { source: 'injected' } }
     rerender(<MagePlayer sceneBlob={mixed} />)
     expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(valid)
-    expect(controller.dispose).toHaveBeenCalled()
+    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(mixed, expect.objectContaining({ onActivated: expect.any(Function) }))
+    expect(controller.dispose).not.toHaveBeenCalled()
+    expect(screen.getByText('Could not update the scene. Showing the previous scene.')).toBeInTheDocument()
     expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
     rerender(<MagePlayer sceneBlob={{ ...valid }} />)
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
@@ -177,7 +209,7 @@ describe('MagePlayer', () => {
     rerender(<MagePlayer onPlaybackStatusChange={onPlaybackStatusChange} sceneBlob={validSceneBlob} />)
 
     await waitFor(() => {
-      expect(controller.loadSceneBlob).toHaveBeenCalledWith(validSceneBlob)
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(validSceneBlob, expect.objectContaining({ onActivated: expect.any(Function) }))
     })
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -196,7 +228,7 @@ describe('MagePlayer', () => {
     expect(screen.queryByRole('button', { name: /scene playback/i })).not.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob, expect.objectContaining({ onActivated: expect.any(Function) }))
       expect(controller.setPlaybackState).toHaveBeenLastCalledWith('paused')
       expect(onPlaybackStatusChange).toHaveBeenLastCalledWith('paused')
     })
@@ -231,7 +263,7 @@ describe('MagePlayer', () => {
     )
 
     await waitFor(() => {
-      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob)
+      expect(controller.loadSceneBlob).toHaveBeenCalledWith(sceneBlob, expect.objectContaining({ onActivated: expect.any(Function) }))
       expect(onCaptureFramePreviewChange).toHaveBeenCalledWith(
         expect.any(Function),
       )
@@ -281,7 +313,7 @@ describe('MagePlayer', () => {
     rerender(<MagePlayer sceneBlob={valid} renderProfile="preview" />)
     await waitFor(() => expect(createMagePlayer).toHaveBeenCalledWith(expect.any(HTMLDivElement),
       expect.objectContaining({ renderProfile: 'preview', initialSceneBlob: valid })))
-    expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid)
+    expect(controller.loadSceneBlob).toHaveBeenCalledWith(valid, expect.objectContaining({ onActivated: expect.any(Function) }))
   })
 
   it('opens a connected playlist even before audio has been selected', async () => {

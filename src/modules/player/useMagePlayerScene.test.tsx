@@ -5,6 +5,7 @@ import { customDocument } from '@shared/test/sceneDocument'
 import { buildAudioResponseController } from '@shared/test/audioResponseController'
 import type { MagePlayerController } from './infrastructure/playerController'
 import { useMagePlayerScene } from './useMagePlayerScene'
+import { SceneReplacementError } from './isolation/sceneReplacement'
 
 const mocks = vi.hoisted(() => ({ create: vi.fn() }))
 vi.mock('./infrastructure/engineAdapter', () => ({ createMagePlayer: mocks.create }))
@@ -30,7 +31,7 @@ function controller() {
     ...buildAudioResponseController(),
     dispose: vi.fn(), clearAudio: vi.fn(() => audio), getAudioState: vi.fn(() => audio),
     getPlaybackState: vi.fn(() => 'paused' as const), setPlaybackState: vi.fn(state => state),
-    loadSceneBlob: vi.fn(async () => {}), loadAudio: vi.fn(async () => audio),
+    loadSceneBlob: vi.fn<MagePlayerController['loadSceneBlob']>(async () => {}), loadAudio: vi.fn(async () => audio),
     resetPlayback: vi.fn(() => 'paused' as const), seekAudio: vi.fn(() => audio),
     setAudioVolume: vi.fn(() => audio), setSyntheticPreview: vi.fn(),
     setRenderingSuspended: vi.fn(), updateSceneSettings: vi.fn(),
@@ -42,7 +43,7 @@ function options(): Options {
     renderProfile: 'preview', availabilityPending: false, recoveryRevision: 0,
     playbackIntentRef: { current: { playback: 'paused', initialPlayback: 'paused', sceneKey: undefined } },
     onReplaceRetiredRenderer: vi.fn(), onCreated: vi.fn(), onReady: vi.fn(), onError: vi.fn(),
-    onDispose: vi.fn(), onCapabilities: vi.fn() }
+    onDispose: vi.fn(), onCapabilities: vi.fn(), onActivated: vi.fn() }
 }
 
 async function start() { await act(async () => { await vi.advanceTimersByTimeAsync(20) }) }
@@ -80,7 +81,7 @@ describe('useMagePlayerScene lifecycle ownership', () => {
     await start()
     rerender({ ...initial, sceneBlob: nextScene })
     await act(async () => { startup.resolve(player) })
-    expect(player.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(nextScene)
+    expect(player.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(nextScene, expect.objectContaining({ onActivated: expect.any(Function) }))
     expect(initial.onReady).toHaveBeenCalledExactlyOnceWith(player, false)
   })
 
@@ -105,7 +106,7 @@ describe('useMagePlayerScene lifecycle ownership', () => {
     mocks.create.mockResolvedValue(player)
     const { result, rerender } = renderHook(useMagePlayerScene, { initialProps: initial })
     await start()
-    expect(player.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(firstScene)
+    expect(player.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(firstScene, expect.objectContaining({ onActivated: expect.any(Function) }))
     rerender({ ...initial, sceneBlob: nextScene })
     await act(async () => {})
     expect(result.current.status).toBe('ready')
@@ -130,8 +131,52 @@ describe('useMagePlayerScene lifecycle ownership', () => {
     expect(player.loadSceneBlob).not.toHaveBeenCalled()
     rerender({ ...initial, sceneBlob: nextScene, availabilityPending: false })
     await act(async () => {})
-    expect(player.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(nextScene)
+    expect(player.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(nextScene, expect.objectContaining({ onActivated: expect.any(Function) }))
     expect(result.current.status).toBe('ready')
+  })
+
+  it('retains the active scene on replacement failure and retries without creating another renderer', async () => {
+    const initial = options(), player = controller()
+    mocks.create.mockResolvedValue(player)
+    const { result, rerender } = renderHook(useMagePlayerScene, { initialProps: initial })
+    await start()
+    expect(result.current.hasLoadedScene).toBe(true)
+    player.loadSceneBlob.mockRejectedValueOnce(new SceneReplacementError('compile', true))
+    rerender({ ...initial, sceneBlob: nextScene })
+    await act(async () => {})
+    expect(result.current.status).toBe('error')
+    expect(result.current.hasLoadedScene).toBe(true)
+    expect(initial.onError).not.toHaveBeenCalled()
+    expect(initial.onCapabilities).toHaveBeenLastCalledWith(null)
+    await act(async () => { result.current.retryScene() })
+    expect(result.current.status).toBe('ready')
+    expect(mocks.create).toHaveBeenCalledOnce()
+    expect(player.loadSceneBlob).toHaveBeenCalledTimes(3)
+    expect(player.dispose).not.toHaveBeenCalled()
+  })
+
+  it('reports the actual intermediate activation even after a newer editor selection', async () => {
+    const initial = options(), player = controller(), committing = deferred<void>(), newest = deferred<void>()
+    mocks.create.mockResolvedValue(player)
+    const { result, rerender } = renderHook(useMagePlayerScene, { initialProps: initial })
+    await start()
+    let activate!: () => void
+    player.loadSceneBlob.mockImplementationOnce((_scene, settings) => {
+      activate = settings!.onActivated!
+      return committing.promise
+    })
+    rerender({ ...initial, sceneBlob: nextScene })
+    await act(async () => {})
+    player.loadSceneBlob.mockReturnValueOnce(newest.promise)
+    rerender({ ...initial, sceneBlob: settingsRevision })
+    await act(async () => { activate(); committing.reject(new Error('Superseded after activation')) })
+    expect(initial.onActivated).toHaveBeenLastCalledWith(nextScene, undefined, undefined)
+    expect(result.current.hasLoadedScene).toBe(true)
+    expect(result.current.status).toBe('loading')
+    expect(initial.onError).not.toHaveBeenCalled()
+    await act(async () => { newest.reject(new SceneReplacementError('compile', true)) })
+    expect(result.current.hasLoadedScene).toBe(true)
+    expect(result.current.status).toBe('error')
   })
 
   it('cancels StrictMode’s retired animation frame and disposes the active renderer on unmount', async () => {

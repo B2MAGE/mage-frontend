@@ -3,6 +3,7 @@ import { sceneAvailabilityStore, type SceneAvailabilityTarget } from '../availab
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { createIsolatedPlayer, type IsolatedPlayer } from '../isolation/isolatedPlayer'
 import { createPlaybackDiagnostics } from '../isolation/playbackDiagnostics'
+import { isSceneReplacementError, SceneReplacementError } from '../isolation/sceneReplacement'
 import { getIsolatedRendererUrl } from '../isolation/rendererConfig'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
 import { boundCaptureSize } from '../policy/renderBudget'
@@ -74,8 +75,14 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   let currentScene: MageSceneBlob | null = null
   let currentRecoveryKey = sceneRecoveryKey(options.initialRecoverySceneBlob ?? initial, options.sceneKey)
   let lease: RecoveryLease | null = null
-  const retiringLeases = new Set<RecoveryLease>()
-  const permissionWaiters = new Map<'scene' | 'audio', { resolve(): void; reject(error: Error): void }>()
+  type Candidate = {
+    generation: number; target: SceneAvailabilityTarget; key: string
+    lease: RecoveryLease | null; committing: boolean; activated: boolean
+    release(): void; permission?: { resolve(): void; reject(error: Error): void }
+  }
+  const candidates = new Set<Candidate>()
+  let activeGeneration = 0
+  const permissionWaiters = new Map<'audio', { resolve(): void; reject(error: Error): void }>()
   let bridge: IsolatedPlayer | null = null
   let releaseAvailability = () => {}
   let releaseRecovery = () => {}
@@ -89,9 +96,13 @@ export async function createIsolatedMageController(container: HTMLElement, optio
   let savedConfig: AudioResponseConfig | null = null
   let override: AudioResponseConfig | null = null
 
-  function releaseRetired() {
-    for (const retired of retiringLeases) retired.dispose()
-    retiringLeases.clear()
+  function releaseCandidate(candidate: Candidate) {
+    candidate.release()
+    candidate.permission?.reject(changed())
+    candidate.permission = undefined
+    candidate.lease?.dispose()
+    candidate.lease = null
+    candidates.delete(candidate)
   }
 
   function cancelQueuedScene() {
@@ -124,6 +135,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     permissionWaiters.clear()
     releaseAvailability()
     releaseRecovery()
+    for (const candidate of candidates) releaseCandidate(candidate)
     options.signal?.removeEventListener('abort', onAbort)
     window.removeEventListener('pagehide', onPageHide)
     bridge?.dispose()
@@ -132,20 +144,24 @@ export async function createIsolatedMageController(container: HTMLElement, optio
 
   function dispose() {
     try { disposeResources() } finally {
-      if (cleanlyDisposed) { lease?.dispose(); lease = null; releaseRetired() }
+      if (cleanlyDisposed) { lease?.dispose(); lease = null }
       else if (currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, sceneRecovery.getBlock(currentRecoveryKey)?.reason ?? 'interrupted')
     }
   }
 
   function fail(reason: RecoveryReason) {
     if (disposed) return
-    const failed = lease
+    const initialCandidate = !loaded ? [...candidates].find(candidate => candidate.lease) : undefined
+    const failed = initialCandidate?.lease ?? lease
+    if (initialCandidate) {
+      initialCandidate.lease = null
+      currentRecoveryKey = initialCandidate.key
+    }
     lease = null
     try { disposeResources() } finally {
       failed?.fail(reason)
       if (!failed && currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, reason)
-      if (cleanlyDisposed) releaseRetired()
-      else if (currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, reason)
+      if (!cleanlyDisposed && currentRecoveryKey) sceneRecovery.block(currentRecoveryKey, reason)
     }
   }
 
@@ -190,12 +206,12 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     bridge?.setRenderingSuspended(true)
   }
 
-  async function waitForPermission(kind: 'scene' | 'audio') {
+  async function waitForPermission(kind: 'audio') {
     assertUsable()
     const status = sceneAvailabilityStore.getSnapshot(target)
     if (!status.allowed && status.code === 'CHECKING') {
-      // At most one scene completion and one audio completion may wait. Hidden
-      // tabs retain decoded audio; the availability store bounds visible checks.
+      // At most one audio completion may wait. Hidden tabs retain decoded audio;
+      // the availability store bounds visible checks.
       permissionWaiters.get(kind)?.reject(changed())
       await new Promise<void>((resolve, reject) => permissionWaiters.set(kind, { resolve, reject }))
     }
@@ -230,11 +246,54 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     releaseAvailability = sceneAvailabilityStore.subscribe(target, updateAvailability)
   }
 
+  function assertCandidate(candidate: Candidate, requireLatest = true) {
+    assertUsable()
+    if (!candidates.has(candidate) || (requireLatest && candidate.generation !== sceneGeneration)) throw changed()
+    if (!sceneAvailabilityStore.isAllowed(candidate.target)) {
+      throw new MagePlayerAdapterError('The replacement scene is unavailable. The previous scene is still playing.')
+    }
+    if (sceneRecovery.isSafeMode() || sceneRecovery.getBlock(candidate.key)) {
+      throw new MagePlayerAdapterError('Automatic rendering is paused for this scene. Choose Retry to try it again.')
+    }
+  }
+
+  function updateCandidateAvailability(candidate: Candidate) {
+    if (disposed || !candidates.has(candidate)) return
+    const status = sceneAvailabilityStore.getSnapshot(candidate.target)
+    if (status.allowed) {
+      candidate.permission?.resolve()
+      candidate.permission = undefined
+    } else if (candidate.committing) {
+      // Activation has crossed the frame boundary. Until its acknowledgement we
+      // must assume the new scene could already be visible, so revoke the session.
+      dispose()
+    } else if (status.code !== 'CHECKING') {
+      candidate.permission?.reject(new MagePlayerAdapterError('Scene playback is unavailable.'))
+      candidate.permission = undefined
+      if (candidate.generation === sceneGeneration) bridge?.cancelPendingScene()
+    }
+  }
+
+  async function waitForCandidatePermission(candidate: Candidate) {
+    assertUsable()
+    if (!candidates.has(candidate) || candidate.generation !== sceneGeneration) throw changed()
+    const status = sceneAvailabilityStore.getSnapshot(candidate.target)
+    if (!status.allowed && status.code === 'CHECKING') {
+      await new Promise<void>((resolve, reject) => { candidate.permission = { resolve, reject } })
+    }
+    assertCandidate(candidate)
+  }
+
   options.signal?.addEventListener('abort', onAbort, { once: true })
   window.addEventListener('pagehide', onPageHide)
   watch(target)
   releaseRecovery = sceneRecovery.subscribe(() => {
     if (!disposed && (sceneRecovery.isSafeMode() || (currentRecoveryKey && sceneRecovery.getBlock(currentRecoveryKey)))) dispose()
+    for (const candidate of candidates) {
+      if (!sceneRecovery.getBlock(candidate.key)) continue
+      if (candidate.committing) dispose()
+      else if (candidate.generation === sceneGeneration) bridge?.cancelPendingScene()
+    }
   })
   try {
     if (options.signal?.aborted) throw playerStartupCancelled()
@@ -295,7 +354,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
 
   function prepareSettingsUpdate(submitted: unknown, loadOptions: MageSceneLoadOptions) {
     assertAllowed()
-    if (!currentScene || !lease || !loaded) throw new MagePlayerAdapterError('Load a scene before updating its settings.')
+    if (!currentScene || !lease || !loaded || candidates.size > 0) throw new MagePlayerAdapterError('Load a scene before updating its settings.')
     const next = validateSceneForPlayback(submitted) as unknown as MageSceneBlob
     const nextKey = Object.hasOwn(loadOptions, 'sceneKey') ? loadOptions.sceneKey : sceneKey
     const identity = scenePlaybackIdentity(next, nextKey)
@@ -320,65 +379,93 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     currentRecoveryKey = key
     currentScene = next
     sceneKey = nextKey
+    activeGeneration = sceneGeneration
     if (previous !== nextLease) previous?.dispose()
   }
 
   return {
     async loadSceneBlob(submitted, loadOptions = {}) {
       assertUsable()
-      const next = validateSceneForPlayback(submitted) as unknown as MageSceneBlob
-      const nextSceneKey = Object.hasOwn(loadOptions, 'sceneKey') ? loadOptions.sceneKey : sceneKey
-      const nextTarget = availabilityTarget(nextSceneKey, next)
-      const recoverySource = Object.hasOwn(loadOptions, 'recoverySceneBlob') ? loadOptions.recoverySceneBlob : submitted
-      const key = sceneRecoveryKey(recoverySource, nextSceneKey)
-      if (!key) throw new MagePlayerAdapterError('Scene data cannot be safely identified for playback.')
       const generation = ++sceneGeneration
-      // Retire obsolete deadlines immediately, before permission checks and the
-      // latest-only dispatch interval. Their failure cannot belong to this draft.
+      // A command already sent for activation finishes its bounded acknowledgement.
+      // Its owner is adopted in onActivated, even when this request is newer.
       bridge!.cancelPendingScene()
+      for (const previous of candidates) if (!previous.committing) releaseCandidate(previous)
       if (audioLoadUsesScene) audioLoadAbort?.abort()
       cancelQueuedScene()
-      permissionWaiters.get('scene')?.reject(changed())
-      permissionWaiters.delete('scene')
       captureGeneration++
-      loaded = false
-      suspendRendering()
-      if (nextTarget !== target) { suspended = true; watch(nextTarget) }
-      await sceneAvailabilityStore.check(nextTarget)
-      assertUsable()
-      if (generation !== sceneGeneration || target !== nextTarget) throw changed()
-      updateAvailability()
-      suspended = false
-      assertAllowed()
-      // Slider drags and rapid draft changes keep only their latest source.
-      // The protocol's four-load limit remains a hard boundary, not UI pacing.
-      await waitForSceneSlot()
-      assertUsable()
-      if (generation !== sceneGeneration) throw changed()
-      await waitForPermission('scene')
-      if (generation !== sceneGeneration) throw changed()
-      const nextLease = sceneRecovery.begin(key)
-      if (!nextLease) throw new MagePlayerAdapterError('Automatic rendering is paused for this scene. Choose Retry to try it again.')
-      if (lease) retiringLeases.add(lease)
-      lease = nextLease
-      currentRecoveryKey = key
-      sceneKey = nextSceneKey
-      currentScene = next
-      readResponse(next)
-      override = null
+      let candidate: Candidate | undefined
       try {
+        const next = validateSceneForPlayback(submitted) as unknown as MageSceneBlob
+        const nextSceneKey = Object.hasOwn(loadOptions, 'sceneKey') ? loadOptions.sceneKey : sceneKey
+        const nextTarget = availabilityTarget(nextSceneKey, next)
+        const recoverySource = Object.hasOwn(loadOptions, 'recoverySceneBlob') ? loadOptions.recoverySceneBlob : submitted
+        const key = sceneRecoveryKey(recoverySource, nextSceneKey)
+        if (!key) throw new MagePlayerAdapterError('Scene data cannot be safely identified for playback.')
+        const work: Candidate = { generation, target: nextTarget, key,
+          lease: null, committing: false, activated: false, release: () => {} }
+        candidate = work
+        candidates.add(work)
+        work.release = sceneAvailabilityStore.subscribe(nextTarget, () => updateCandidateAvailability(work))
+        await sceneAvailabilityStore.check(nextTarget)
+        await waitForCandidatePermission(work)
+        // Slider drags keep only the newest source. Permission for the current
+        // scene and its transport stays independent of this preparation.
+        await waitForSceneSlot()
+        await waitForCandidatePermission(work)
+        work.lease = sceneRecovery.begin(key)
+        if (!work.lease) throw new MagePlayerAdapterError('Automatic rendering is paused for this scene. Choose Retry to try it again.')
         lastSceneStartedAt = performance.now()
-        await bridge!.loadScene(next, options.renderProfile)
+        await bridge!.loadScene(next, options.renderProfile, {
+          beforeActivate() {
+            assertCandidate(work)
+            work.committing = true
+          },
+          onActivated() {
+            // This is the actual scene acknowledged by the isolated renderer,
+            // not necessarily the latest scene requested by the editor.
+            assertCandidate(work, false)
+            const previousLease = lease
+            lease = work.lease
+            work.lease = null
+            currentRecoveryKey = key
+            currentScene = next
+            sceneKey = nextSceneKey
+            activeGeneration = generation
+            readResponse(next)
+            override = null
+            watch(nextTarget)
+            suspended = false
+            denied = false
+            loaded = true
+            work.activated = true
+            work.committing = false
+            releaseCandidate(work)
+            previousLease?.dispose()
+            resume()
+            loadOptions.onActivated?.()
+          },
+        })
         assertUsable()
         if (generation !== sceneGeneration) throw changed()
-        await waitForPermission('scene')
-        if (generation !== sceneGeneration) throw changed()
-        loaded = true
-        releaseRetired()
-        resume()
+        if (!work.activated) throw new MagePlayerAdapterError('The renderer did not confirm scene activation.')
       } catch (error) {
-        if (!disposed && generation === sceneGeneration) fail('load')
+        // A rejected acknowledgement cannot prove which scene is visible. The
+        // normal bridge reports that session failure itself; retain nothing if
+        // an adapter rejects after approval without reporting it.
+        if (candidate?.committing && isSceneReplacementError(error) && error.retained) candidate.committing = false
+        if (!disposed && candidate?.committing && !candidate.activated) fail('runtime')
+        const retained = loaded && !disposed && sceneAvailabilityStore.isAllowed(target)
+        if (!disposed && generation === sceneGeneration && !retained) {
+          fail(isSceneReplacementError(error) ? error.reason : 'load')
+        }
+        if (retained && generation === sceneGeneration) {
+          throw isSceneReplacementError(error) && error.retained ? error
+            : new SceneReplacementError('load', true, error instanceof Error ? error.message : 'The replacement scene could not be loaded.')
+        }
         throw error
+      } finally {
+        if (candidate && !candidate.committing) releaseCandidate(candidate)
       }
     },
     updateSceneSettings(submitted, loadOptions = {}) {
@@ -520,7 +607,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
     setSyntheticPreview(enabled, seed, tempoScale) { assertAllowed(); bridge!.setSynthetic(enabled, seed, tempoScale) },
     async captureFramePreview(capture = {}) {
       assertAllowed()
-      if (viewSuspended) return null
+      if (viewSuspended || activeGeneration !== sceneGeneration) return null
       if (!loaded) throw new MagePlayerAdapterError('Load a scene before capturing a thumbnail.')
       if (capturing) throw new MagePlayerAdapterError('A preview capture is already in progress.')
       capturing = true

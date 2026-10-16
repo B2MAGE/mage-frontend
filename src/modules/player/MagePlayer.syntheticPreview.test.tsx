@@ -61,7 +61,7 @@ describe('MagePlayer simulated beat preview', () => {
 
     rerender(<MagePlayer sceneBlob={secondScene} simulatedBeat={{ enabled: true, bpm: 150 }} />)
     await waitFor(() => expect(controller.setSyntheticPreview).toHaveBeenLastCalledWith(true, 24, 1.25))
-    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(secondScene)
+    expect(controller.loadSceneBlob).toHaveBeenLastCalledWith(secondScene, expect.objectContaining({ onActivated: expect.any(Function) }))
     expect(secondScene).toEqual(originalSecondScene)
     expect(secondScene).not.toHaveProperty('simulatedBeat')
     expect(createMagePlayer).toHaveBeenCalledTimes(1)

@@ -52,7 +52,7 @@ describe('MagePlayer recovery', () => {
     vi.mocked(createMagePlayer).mockResolvedValue(controller)
     const edited = buildMagePlayerSceneBlob({ visualizer: { shader: 'sphere(0.4);' } })
     player.rerender(<MagePlayer sceneBlob={edited} sceneKey={832} />)
-    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(edited, { sceneKey: 832 }))
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(edited, { sceneKey: 832, onActivated: expect.any(Function) }))
   })
 
   it('keeps compiler-rejected scenes static and actionable across mounts without automatic retries', () => {
@@ -87,7 +87,7 @@ describe('MagePlayer recovery', () => {
     render(<MagePlayer sceneBlob={{ ...scene }} sceneKey={801} />)
     expect(createMagePlayer).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Retry scene' }))
-    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 801 }))
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 801, onActivated: expect.any(Function) }))
     expect(sceneRecovery.getBlock(key)).toBeNull()
   })
 
@@ -124,7 +124,7 @@ describe('MagePlayer recovery', () => {
     expect(screen.getByRole('button', { name: 'Add audio tracks' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Playback options' })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
-    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 802 }))
+    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 802, onActivated: expect.any(Function) }))
     await waitFor(() => expect(resumed.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one', signal: expect.any(AbortSignal) }))
   })
 
@@ -185,7 +185,7 @@ describe('MagePlayer recovery', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
 
-    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(edits.at(-1), { sceneKey: 839 }))
+    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(edits.at(-1), { sceneKey: 839, onActivated: expect.any(Function) }))
     await waitFor(() => expect(resumed.loadAudio).toHaveBeenCalledExactlyOnceWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one', signal: expect.any(AbortSignal) }))
     expect(createMagePlayer).toHaveBeenCalledTimes(2)
     expect(resumed.updateSceneSettings).not.toHaveBeenCalled()
@@ -220,7 +220,7 @@ describe('MagePlayer recovery', () => {
     expect(retried.loadSceneBlob).not.toHaveBeenCalled()
     expect(sceneRecovery.getBlock(originalKey)?.reason).toBe('stopped')
     fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
-    await waitFor(() => expect(retried.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(revised, { sceneKey: 840 }))
+    await waitFor(() => expect(retried.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(revised, { sceneKey: 840, onActivated: expect.any(Function) }))
     expect(createMagePlayer).toHaveBeenCalledTimes(2)
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
   })
@@ -254,7 +254,7 @@ describe('MagePlayer recovery', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Resume scene' }))
 
-    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(repaired, { sceneKey: 841 }))
+    await waitFor(() => expect(resumed.loadSceneBlob).toHaveBeenCalledExactlyOnceWith(repaired, { sceneKey: 841, onActivated: expect.any(Function) }))
     expect(createMagePlayer).toHaveBeenCalledTimes(2)
     expect(sceneRecovery.getBlock(originalKey)).toBeNull()
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
@@ -383,7 +383,7 @@ describe('MagePlayer recovery', () => {
     expect(resumed.dispose).toHaveBeenCalledOnce()
 
     render(<MagePlayer sceneBlob={{ ...scene }} sceneKey={810} />)
-    await waitFor(() => expect(revisited.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 810 }))
+    await waitFor(() => expect(revisited.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 810, onActivated: expect.any(Function) }))
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
   })
 
@@ -399,7 +399,7 @@ describe('MagePlayer recovery', () => {
     expect(createMagePlayer).toHaveBeenCalledOnce()
 
     act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
-    await waitFor(() => expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 811 }))
+    await waitFor(() => expect(restored.loadSceneBlob).toHaveBeenCalledWith(scene, { sceneKey: 811, onActivated: expect.any(Function) }))
     await waitFor(() => expect(restored.loadAudio).toHaveBeenCalledWith({ sourceLabel: 'track-one.mp3', sourcePath: 'blob:track-one', signal: expect.any(AbortSignal) }))
     expect(first.dispose).toHaveBeenCalledOnce()
     expect(screen.queryByText('Playback paused')).not.toBeInTheDocument()
@@ -436,10 +436,10 @@ describe('MagePlayer recovery', () => {
     const { rerender } = render(<MagePlayer sceneBlob={original} sceneKey={804} />)
     expect(createMagePlayer).not.toHaveBeenCalled()
     rerender(<MagePlayer sceneBlob={revised} sceneKey={804} />)
-    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(revised, { sceneKey: 804 }))
+    await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledWith(revised, { sceneKey: 804, onActivated: expect.any(Function) }))
     rerender(<MagePlayer sceneBlob={original} sceneKey={804} />)
-    expect(screen.getByRole('button', { name: 'Retry scene' })).toBeInTheDocument()
-    expect(controller.dispose).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('button', { name: 'Retry update' })).toBeInTheDocument()
+    expect(controller.dispose).not.toHaveBeenCalled()
     expect(sceneRecovery.getBlock(originalKey)?.reason).toBe('load')
   })
 

@@ -21,7 +21,7 @@ const deferred = <T,>() => {
 }
 function fakeBridge() {
   const state = { time: 0, duration: 0, volume: 1, loaded: false, playing: false }
-  return { ready: Promise.resolve(), loadScene: vi.fn(async () => {}),
+  return { ready: Promise.resolve(), loadScene: vi.fn<IsolatedPlayer['loadScene']>(async (_scene, _profile, activation) => { activation?.beforeActivate(); activation?.onActivated() }), cancelPendingScene: vi.fn(),
     loadAudio: vi.fn<IsolatedPlayer['loadAudio']>(async (_source, _signal, beforeCommit) => {
       await beforeCommit?.()
       state.loaded = true; state.duration = 120
@@ -137,7 +137,7 @@ describe('isolated controller with the real availability polling store', () => {
     const player = await loaded({ initialSceneBlob: template })
     await expect(player.loadSceneBlob(source, { recoverySceneBlob: template })).rejects.toThrow()
     expect(bridges[0].loadScene).toHaveBeenCalledOnce()
-    expect(bridges[0].dispose).toHaveBeenCalledOnce()
+    expect(bridges[0].dispose).not.toHaveBeenCalled()
   })
 
   it('does not treat metadata-only permission as an empty custom controller grant', async () => {

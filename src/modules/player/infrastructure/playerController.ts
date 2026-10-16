@@ -43,6 +43,8 @@ export type MagePlayerCaptureFrameOptions = {
 
 export type MageSceneLoadOptions = {
   sceneKey?: string | number
+  /** Reports the actual renderer handoff, including a commit superseded by a newer request. */
+  onActivated?: () => void
   /** Original saved/editor document before host-side preview defaults. Identity only. */
   recoverySceneBlob?: MageSceneBlob
 }

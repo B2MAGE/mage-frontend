@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MagePlayerController } from './playerController'
 import type { IsolatedPlayer } from '../isolation/isolatedPlayer'
 import { normalizeAudioResponseConfig } from '@shared/lib'
+import { SceneReplacementError } from '../isolation/sceneReplacement'
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), check: vi.fn(), begin: vi.fn(), block: vi.fn(),
   statuses: new Map<unknown, { allowed: boolean; code: string }>(), availabilityListeners: new Map<unknown, Set<() => void>>(),
@@ -47,7 +48,7 @@ function setAvailability(target: unknown, code: string) {
 }
 function bridge() {
   const state = { time: 0, duration: 0, loaded: false, playing: false, volume: 1 }
-  return { ready: Promise.resolve(), loadScene: vi.fn<(scene: unknown, profile?: unknown) => Promise<void>>(async () => {}), cancelPendingScene: vi.fn(),
+  return { ready: Promise.resolve(), loadScene: vi.fn<IsolatedPlayer['loadScene']>(async (_scene, _profile, activation) => { activation?.beforeActivate(); activation?.onActivated() }), cancelPendingScene: vi.fn(),
     loadAudio: vi.fn<IsolatedPlayer['loadAudio']>(async (_source, _signal, beforeCommit) => {
       await beforeCommit?.()
       state.loaded = true; state.duration = 60
@@ -135,7 +136,7 @@ describe('isolated controller guards', () => {
 
   it('records recovery before sending source and waits for the child load', async () => {
     const work = deferred<void>()
-    playerBridge.loadScene.mockReturnValueOnce(work.promise)
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => { await work.promise; activation?.beforeActivate(); activation?.onActivated() })
     const player = await create()
     const pending = player.loadSceneBlob(template)
     await flush()
@@ -153,6 +154,16 @@ describe('isolated controller guards', () => {
     await expect(player.loadSceneBlob({ ...template, visualizer: custom.scene.visualizer })).rejects.toThrow()
     expect(playerBridge.pause).not.toHaveBeenCalled()
     expect(playerBridge.loadScene).not.toHaveBeenCalled()
+  })
+
+  it('restores capture after an invalid intermediate draft is repaired with a valid live update', async () => {
+    const player = await loaded(custom)
+    await expect(player.loadSceneBlob({ ...custom, unknown: true })).rejects.toThrow()
+    await expect(player.captureFramePreview!()).resolves.toBeNull()
+    player.updateSceneSettings!(customDocument({ ...custom.scene, intent: { fov: 80 } }))
+    await expect(player.captureFramePreview!()).resolves.toContain('data:image/png;base64,')
+    expect(playerBridge.capture).toHaveBeenCalledOnce()
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
   })
 
   it('suspends and resumes the same scene/audio after a permission recheck', async () => {
@@ -226,7 +237,8 @@ describe('isolated controller guards', () => {
     playerBridge.loadScene.mockClear()
     await expect(player.loadSceneBlob(custom)).rejects.toThrow(/unavailable|stopped/)
     expect(playerBridge.loadScene).not.toHaveBeenCalled()
-    expect(playerBridge.dispose).toHaveBeenCalledOnce()
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[0].fail).not.toHaveBeenCalled()
   })
 
   it('ignores stale permission completions during rapid scene switches', async () => {
@@ -244,7 +256,7 @@ describe('isolated controller guards', () => {
   it('cannot complete an old load into a newer generation', async () => {
     const player = await loaded(template)
     const work = deferred<void>()
-    playerBridge.loadScene.mockReturnValueOnce(work.promise)
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => { await work.promise; activation?.beforeActivate(); activation?.onActivated() })
     const stale = player.loadSceneBlob(custom)
     void Promise.resolve(stale).catch(() => {})
     await new Promise(resolve => setTimeout(resolve, 360))
@@ -289,11 +301,11 @@ describe('isolated controller guards', () => {
     await player.loadAudio({ sourcePath: 'blob:http://localhost/music' })
     player.seekAudio(42)
     const compilation = deferred<void>()
-    playerBridge.loadScene.mockReturnValueOnce(compilation.promise)
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => { await compilation.promise; activation?.beforeActivate(); activation?.onActivated() })
     const loading = player.loadSceneBlob(customDocument({ visualizer: { shader: 'box(0.5);' } }))
     await vi.advanceTimersByTimeAsync(350)
     expect(playerBridge.loadScene).toHaveBeenCalledTimes(2)
-    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(true)
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
     expect(playerBridge.pause).not.toHaveBeenCalled()
     expect(playerBridge.state).toMatchObject({ playing: true, time: 42 })
     player.setPlaybackState('paused')
@@ -329,6 +341,129 @@ describe('isolated controller guards', () => {
     expect(playerBridge.dispose).not.toHaveBeenCalled()
   })
 
+  it('preserves the authorized active scene, audio and recovery owner after candidate compilation failure', async () => {
+    vi.useFakeTimers()
+    const player = await loaded(template, 2)
+    await player.loadAudio({ sourcePath: 'blob:music' })
+    player.seekAudio(19)
+    const activeResponse = player.getAudioResponseState()
+    playerBridge.loadScene.mockRejectedValueOnce(new SceneReplacementError('compile', true))
+    const replacement = Promise.resolve(player.loadSceneBlob(custom, { sceneKey: 3 })).catch(error => error)
+    await vi.advanceTimersByTimeAsync(350)
+    expect(await replacement).toMatchObject({ reason: 'compile', retained: true })
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+    expect(playerBridge.pause).not.toHaveBeenCalled()
+    expect(playerBridge.clearAudio).not.toHaveBeenCalled()
+    expect(player.getAudioState()).toMatchObject({ currentTime: 19, isLoaded: true })
+    expect(player.getAudioResponseState()).toEqual(activeResponse)
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[1].dispose).toHaveBeenCalledOnce()
+    expect(mocks.leases.every(lease => lease.fail.mock.calls.length === 0)).toBe(true)
+    expect(mocks.availabilityListeners.get('template:2')?.size).toBe(1)
+    expect(mocks.availabilityListeners.get(3)?.size).toBe(0)
+    await expect(player.captureFramePreview!()).resolves.toBeNull()
+    expect(playerBridge.capture).not.toHaveBeenCalled()
+  })
+
+  it('retains the previous scene when an acknowledged atomic activation rejection confirms it is safe', async () => {
+    vi.useFakeTimers()
+    const player = await loaded(template)
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => {
+      activation?.beforeActivate()
+      throw new SceneReplacementError('runtime', true)
+    })
+    const replacement = Promise.resolve(player.loadSceneBlob(custom)).catch(error => error)
+    await vi.advanceTimersByTimeAsync(350)
+    expect(await replacement).toMatchObject({ retained: true })
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[1].dispose).toHaveBeenCalledOnce()
+    expect(mocks.availabilityListeners.get('custom')?.size).toBe(0)
+    expect(player.getStoppedRecoveryKey!()).toBeNull()
+  })
+
+  it('keeps old permission ownership while a different candidate is being checked', async () => {
+    const player = await loaded(template, 2)
+    const permission = deferred<{ allowed: boolean; code: string }>()
+    mocks.statuses.set(3, { allowed: false, code: 'CHECKING' })
+    mocks.check.mockReturnValueOnce(permission.promise)
+    const replacement = Promise.resolve(player.loadSceneBlob(custom, { sceneKey: 3 })).catch(error => error)
+    await flush()
+    expect(playerBridge.setRenderingSuspended).toHaveBeenLastCalledWith(false)
+    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+    expect(() => player.setAudioVolume(0.5)).not.toThrow()
+    setAvailability('template:2', 'SCENE_DISABLED')
+    expect(playerBridge.dispose).toHaveBeenCalledOnce()
+    permission.resolve({ allowed: true, code: 'ALLOWED' })
+    expect(await replacement).toBeInstanceOf(Error)
+    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+  })
+
+  it('checks the candidate again at activation without borrowing the active permission', async () => {
+    vi.useFakeTimers()
+    const player = await loaded(template)
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => {
+      setAvailability('custom', 'CUSTOM_RENDERING_DISABLED')
+      activation?.beforeActivate()
+      activation?.onActivated()
+    })
+    const replacement = Promise.resolve(player.loadSceneBlob(custom)).catch(error => error)
+    await vi.advanceTimersByTimeAsync(350)
+    expect(await replacement).toMatchObject({ retained: true })
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[0].dispose).not.toHaveBeenCalled()
+    expect(mocks.leases[1].dispose).toHaveBeenCalledOnce()
+  })
+
+  it('adopts an acknowledged intermediate scene while a newer request is waiting', async () => {
+    vi.useFakeTimers()
+    const player = await loaded(template, 2)
+    const acknowledge = deferred<void>(), newer = deferred<void>()
+    const activated = vi.fn()
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => {
+      activation?.beforeActivate()
+      await acknowledge.promise
+      activation?.onActivated()
+    })
+    const intermediate = Promise.resolve(player.loadSceneBlob(custom, { sceneKey: 3, onActivated: activated })).catch(error => error)
+    await vi.advanceTimersByTimeAsync(350)
+    playerBridge.loadScene.mockImplementationOnce(async () => { await newer.promise })
+    const newest = Promise.resolve(player.loadSceneBlob(template, { sceneKey: 4 })).catch(error => error)
+    acknowledge.resolve()
+    await flush()
+    expect(await intermediate).toBeInstanceOf(Error)
+    expect(activated).toHaveBeenCalledOnce()
+    expect(mocks.availabilityListeners.get('template:2')?.size).toBe(0)
+    expect(mocks.availabilityListeners.get(3)?.size).toBe(1)
+    expect(mocks.leases[0].dispose).toHaveBeenCalledOnce()
+    expect(mocks.leases[1].dispose).not.toHaveBeenCalled()
+    await expect(player.captureFramePreview!()).resolves.toBeNull()
+    // Actual committed content, not the older request, remains permission-bound.
+    setAvailability(3, 'SCENE_DISABLED')
+    expect(playerBridge.dispose).toHaveBeenCalledOnce()
+    newer.resolve()
+    await vi.advanceTimersByTimeAsync(350)
+    expect(await newest).toBeInstanceOf(Error)
+  })
+
+  it('retires the session if an approved candidate is revoked before activation acknowledgement', async () => {
+    vi.useFakeTimers()
+    const player = await loaded(template)
+    const acknowledge = deferred<void>()
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => {
+      activation?.beforeActivate()
+      await acknowledge.promise
+      activation?.onActivated()
+    })
+    const replacement = Promise.resolve(player.loadSceneBlob(custom, { sceneKey: 3 })).catch(error => error)
+    await vi.advanceTimersByTimeAsync(350)
+    setAvailability(3, 'SCENE_DISABLED')
+    expect(playerBridge.dispose).toHaveBeenCalledOnce()
+    acknowledge.resolve()
+    expect(await replacement).toBeInstanceOf(Error)
+    expect(mocks.leases.every(lease => lease.fail.mock.calls.length === 0)).toBe(true)
+  })
+
   it('quarantines child load failures and closes the frame', async () => {
     const player = await create()
     playerBridge.loadScene.mockRejectedValueOnce(new Error('Child failed'))
@@ -346,7 +481,7 @@ describe('isolated controller guards', () => {
 
   it('preserves compile rejection when the pending scene load subsequently rejects', async () => {
     const work = deferred<void>()
-    playerBridge.loadScene.mockReturnValueOnce(work.promise)
+    playerBridge.loadScene.mockImplementationOnce(async (_scene, _profile, activation) => { await work.promise; activation?.beforeActivate(); activation?.onActivated() })
     const player = await create(custom)
     const pending = player.loadSceneBlob(custom)
     const rejected = expect(pending).rejects.toThrow('Isolated player stopped.')

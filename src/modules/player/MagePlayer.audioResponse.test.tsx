@@ -100,8 +100,8 @@ describe('live scene audio response', () => {
     await waitFor(() => expect(controller.loadSceneBlob).toHaveBeenCalledOnce())
     rerender(<MagePlayer sceneBlob={withResponse(template, { audioResponseConfig: { version: 1, shader: 'untrusted()' } })} sceneKey="editor" />)
     expect(controller.setAudioResponseSettings).not.toHaveBeenCalled()
-    expect(controller.loadSceneBlob).toHaveBeenCalledOnce()
-    expect(controller.dispose).toHaveBeenCalledOnce()
+    expect(controller.loadSceneBlob).toHaveBeenCalledTimes(2)
+    expect(controller.dispose).not.toHaveBeenCalled()
   })
 
   it.each([

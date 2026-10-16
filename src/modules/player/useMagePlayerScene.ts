@@ -7,6 +7,8 @@ import { sceneAvailabilityStore } from './availability/sceneAvailability'
 import { availabilityTarget } from './availability/availabilityTarget'
 import { sceneRecovery, sceneRecoveryKey } from './recovery/sceneRecovery'
 import type { RenderProfile } from './policy/renderBudget'
+import { isSceneReplacementError } from './isolation/sceneReplacement'
+import { validateSceneForPlayback } from './policy/sceneValidation'
 
 export type SessionPlaybackIntent = {
   playback: MagePlayerPlaybackState
@@ -21,11 +23,14 @@ type Options = {
   sceneKey?: MageSceneKey
   renderProfile: RenderProfile
   availabilityPending: boolean
+  /** A replacement permission check must not suspend a different authorized scene. */
+  activeAvailabilityPending?: boolean
   recoveryRevision: number
   playbackIntentRef: RefObject<SessionPlaybackIntent>
   onReplaceRetiredRenderer(): void
   onCreated(player: MagePlayerController): void
   onReady(player: MagePlayerController, liveUpdate: boolean): void
+  onActivated?(scene: MageSceneBlob, sceneKey?: MageSceneKey, recoverySceneBlob?: MageSceneBlob): void
   onError(): void
   onDispose(): void
   onCapabilities?: (snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null) => void
@@ -48,6 +53,9 @@ export function useMagePlayerScene(options: Options) {
   const pending = useRef<{ player: MagePlayerController; sceneBlob: MageSceneBlob } | null>(null)
   const [playerVersion, setPlayerVersion] = useState(0)
   const [completion, setCompletion] = useState<Completion | null>(null)
+  const [activePlayer, setActivePlayer] = useState<MagePlayerController | null>(null)
+  const activePlayerRef = useRef<MagePlayerController | null>(null)
+  const [retryRevision, setRetryRevision] = useState(0)
   const [capabilities, setCapabilities] = useState<{
     player: MagePlayerController; identity: string | null; snapshot: MagePlayerAudioResponseCapabilitiesSnapshot | null
   } | null>(null)
@@ -71,8 +79,8 @@ export function useMagePlayerScene(options: Options) {
         && !sceneRecovery.isSafeMode() && !sceneRecovery.getBlock(requestedKey)) onReplaceRetiredRenderer()
       return
     }
-    player.setRenderingSuspended?.(availabilityPending)
-  }, [availabilityPending, onReplaceRetiredRenderer, playerVersion, recoveryRevision, recoverySceneBlob, sceneBlob, sceneKey])
+    player.setRenderingSuspended?.(options.activeAvailabilityPending ?? availabilityPending)
+  }, [availabilityPending, options.activeAvailabilityPending, onReplaceRetiredRenderer, playerVersion, recoveryRevision, recoverySceneBlob, sceneBlob, sceneKey])
 
   useEffect(() => {
     const host = hostRef.current
@@ -95,6 +103,8 @@ export function useMagePlayerScene(options: Options) {
             ...(initialKey === undefined ? {} : { sceneKey: initialKey }) })
           if (disposed) { dispose(); return }
           playerRef.current = created
+          setActivePlayer(null)
+          activePlayerRef.current = null
           applied.current = null
           pending.current = null
           created.setPlaybackState(playbackIntentRef.current.playback)
@@ -127,7 +137,7 @@ export function useMagePlayerScene(options: Options) {
   }, [hasScene, hostRef, playbackIntentRef, renderProfile])
 
   useEffect(() => {
-    if (availabilityPending) return
+    if (availabilityPending && activePlayerRef.current === null) return
     if (!sceneBlob) { applied.current = null; pending.current = null; return }
     const player = playerRef.current
     if (!player || player.getStoppedRecoveryKey?.()) return
@@ -138,18 +148,38 @@ export function useMagePlayerScene(options: Options) {
     const isCurrent = () => !cancelled && playerRef.current === player && latestSceneBlobRef.current === sceneBlob
     void (async () => {
       try {
+        let activated = false
+        const onActivated = () => {
+          if (playerRef.current !== player) return
+          activated = true
+          setActivePlayer(player)
+          activePlayerRef.current = player
+          applied.current = { player, identity: playbackIdentity, sceneBlob, recoverySceneBlob }
+          callbacks.current.onActivated?.(sceneBlob, sceneKey, recoverySceneBlob)
+        }
         const liveUpdate = pending.current?.player !== player && playbackIdentity !== null
           && applied.current?.player === player && applied.current.identity === playbackIdentity
           && typeof player.updateSceneSettings === 'function'
         if (liveUpdate) {
           player.updateSceneSettings!(sceneBlob, recoverySceneBlob === undefined ? { sceneKey } : { sceneKey, recoverySceneBlob })
+          onActivated()
         } else {
           const work = { player, sceneBlob }
           pending.current = work
           try {
-            if (recoverySceneBlob !== undefined) await player.loadSceneBlob(sceneBlob, { sceneKey, recoverySceneBlob })
-            else if (sceneKey === undefined) await player.loadSceneBlob(sceneBlob)
-            else await player.loadSceneBlob(sceneBlob, { sceneKey })
+            await player.loadSceneBlob(sceneBlob, { sceneKey, onActivated,
+              ...(recoverySceneBlob === undefined ? {} : { recoverySceneBlob }) })
+            // A completed load also confirms a handoff. The earlier notification
+            // is needed when a newer selection overtakes that acknowledgement.
+            if (!activated && isCurrent()) {
+              validateSceneForPlayback(sceneBlob)
+              const key = sceneRecoveryKey(recoverySceneBlob ?? sceneBlob, sceneKey)
+              if (!sceneAvailabilityStore.isAllowed(availabilityTarget(sceneKey, sceneBlob))
+                || sceneRecovery.isSafeMode() || (key && sceneRecovery.getBlock(key))) {
+                throw new Error('The requested scene cannot currently play.')
+              }
+              onActivated()
+            }
           } finally { if (pending.current === work) pending.current = null }
         }
         if (!isCurrent()) return
@@ -170,25 +200,35 @@ export function useMagePlayerScene(options: Options) {
         queueMicrotask(() => {
           if (!isCurrent()) return
           setCompletion({ version: playerVersion, identity: playbackIdentity, sceneBlob, error: readMagePlayerErrorMessage(error) })
-          callbacks.current.onError()
+          const retained = isSceneReplacementError(error) ? error.retained
+            : activePlayerRef.current === player && !player.getStoppedRecoveryKey?.()
+          if (!retained) {
+            setActivePlayer(null)
+            activePlayerRef.current = null
+            callbacks.current.onError()
+          }
         })
       }
     })()
     return () => { cancelled = true }
-  }, [availabilityPending, playbackIdentity, playerVersion, recoverySceneBlob, playbackIntentRef, sceneBlob, sceneKey])
+  }, [availabilityPending, playbackIdentity, playerVersion, recoverySceneBlob, playbackIntentRef, sceneBlob, sceneKey, retryRevision])
 
   const loadError = completion && completion.sceneBlob === sceneBlob ? completion.error : null
   const status: MagePlayerStatus = availabilityPending ? 'loading' : !sceneBlob ? 'empty' : loadError ? 'error'
-    : completion?.error === null && completion.version === playerVersion && completion.identity === playbackIdentity ? 'ready' : 'loading'
+    : completion?.error === null && completion.version === playerVersion && completion.identity === playbackIdentity
+      && (completion.sceneBlob === sceneBlob || (applied.current?.sceneBlob === sceneBlob && pending.current === null)) ? 'ready' : 'loading'
   const hasCapabilitiesCallback = Boolean(options.onCapabilities)
   useEffect(() => {
     if (!hasCapabilitiesCallback) return
     const matches = status === 'ready' && capabilities?.player === playerRef.current && capabilities.identity === playbackIdentity
     // Keep inspector controls mounted while a live settings update reaches the same shader.
+    if (status === 'loading' && capabilities?.identity === playbackIdentity
+      && applied.current?.sceneBlob === sceneBlob && pending.current === null) return
     if (matches && capabilities.snapshot && capabilities.snapshot.sceneBlob !== sceneBlob) return
     callbacks.current.onCapabilities?.(matches && capabilities.snapshot?.sceneBlob === sceneBlob ? capabilities.snapshot : null)
   }, [capabilities, hasCapabilitiesCallback, playbackIdentity, playerVersion, sceneBlob, status])
 
   return { playerRef, latestSceneBlobRef, playerVersion, playbackIdentity, status, loadError,
-    hasLoadedScene: completion !== null && completion.version === playerVersion && completion.error === null }
+    retryScene: () => { setCompletion(null); setRetryRevision(value => value + 1) },
+    hasLoadedScene: activePlayer !== null && activePlayer === playerRef.current && !activePlayer.getStoppedRecoveryKey?.() }
 }
