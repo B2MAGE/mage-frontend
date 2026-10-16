@@ -87,6 +87,20 @@ test('renderer-shared scene definitions only import checked-in contract data at 
   }
 })
 
+test('worker-shared workload diagnostics remain pure fixed data without application dependencies', () => {
+  const name = 'src/modules/player/policy/shaderWorkloadFailure.ts'
+  const source = readFileSync(resolve(root, name), 'utf8')
+  const ast = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true)
+  function visit(node) {
+    assert(!ts.isImportDeclaration(node), 'Workload diagnostics must not import application or runtime modules')
+    assert(!(ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword),
+      'Workload diagnostics must not dynamically import application or runtime modules')
+    ts.forEachChild(node, visit)
+  }
+  visit(ast)
+  assert.deepEqual(violations(source, name), [])
+})
+
 test('Builder uniform validation shares only audited numeric definitions and compiler metadata', () => {
   const name = 'src/modules/player/templates/builderUniformValues.ts'
   const source = readFileSync(resolve(root, name), 'utf8')

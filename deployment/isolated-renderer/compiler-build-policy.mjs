@@ -6,6 +6,7 @@ import { resolve } from 'node:path'
 export const COMPILER_WORKER_ALLOWED_MODULES = Object.freeze([
   'src/isolated-renderer/compiler/worker.ts',
   'src/isolated-renderer/compiler/protocol.ts',
+  'src/modules/player/policy/shaderWorkloadFailure.ts',
   'node_modules/@notrac/mage/dist/compiler.js',
   'node_modules/@notrac/mage/dist/compiled-shader.js',
   'node_modules/@notrac/mage/dist/compiled-shader-shell.generated.js',

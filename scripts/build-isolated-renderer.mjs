@@ -25,6 +25,7 @@ export async function buildIsolatedRenderer({ production = false, diagnostics = 
     `${sourcePrefix}modules/player/infrastructure/viewerPointerDeformation.ts`,
     `${sourcePrefix}modules/player/policy/renderBudget.ts`,
     `${sourcePrefix}modules/player/policy/sceneValidation.ts`,
+    `${sourcePrefix}modules/player/policy/shaderWorkloadFailure.ts`,
     `${sourcePrefix}modules/player/templates/resolveScene.ts`,
     `${sourcePrefix}modules/player/templates/builderCompiler.ts`,
     `${sourcePrefix}modules/player/templates/builderColor.ts`,
