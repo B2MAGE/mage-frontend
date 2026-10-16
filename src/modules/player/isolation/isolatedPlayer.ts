@@ -5,7 +5,7 @@ import { normalizeAudioResponseMode, type SceneAudioResponseMode as AudioRespons
 import type { RenderProfile } from '../policy/renderBudget'
 import type { RenderFailure } from '../recovery/sceneRecovery'
 import { createParentAudioSession, type ParentAudioSession } from './parentAudio'
-import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus } from './playbackHost'
+import { createIsolatedPlaybackHost, type IsolatedPlaybackHost, type PlaybackHostStatus, type PlaybackHostDiagnostic } from './playbackHost'
 import { BRIDGE_LIMITS, isAudioResponseSettings, sceneForBridge, type CaptureRequest, type PlaybackPayloads } from './playbackProtocol'
 import { validateLiveSceneSettings, type SceneLiveSettings } from '../liveSceneSettings'
 
@@ -18,6 +18,7 @@ export type IsolatedPlayerOptions = {
   useInlineFrameStyles?: boolean
   onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void
+  onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void
 }
 
 export type IsolatedPlayerDependencies = {
@@ -32,7 +33,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
   const now = dependencies.now ?? (() => performance.now())
   const previousUserSelect = options.container.style.userSelect
   if (options.pointerInteractions !== false) options.container.style.userSelect = 'none'
-  let disposed = false, failed = false, available = false, sceneLoaded = false
+  let disposed = false, failed = false, available = false, sceneLoaded = false, sceneLoading = false
   let playing = true, renderingSuspended = false, elapsed = 0, previousTick = now()
   const visualsSuspended = () => renderingSuspended || document.visibilityState === 'hidden'
   let sceneGeneration = 0, audioGeneration = 0
@@ -196,6 +197,7 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         try { options.onStatus?.(status) } catch { /* Observers cannot interfere with the bridge. */ }
       },
       onFailure: fail,
+      onDiagnostic: options.onDiagnostic,
     })
   } catch (error) {
     options.container.style.userSelect = previousUserSelect
@@ -244,30 +246,41 @@ export function createIsolatedPlayer(options: IsolatedPlayerOptions, dependencie
         config: resolved.audioResponseConfig ? normalizeAudioResponseConfig(resolved.audioResponseConfig).config : null }
       supportedTargets = null
       const current = ++sceneGeneration
-      sceneLoaded = false
+      sceneLoaded = false; sceneLoading = true
       syncInspector()
-      await ready
-      assertActive()
-      if (current !== sceneGeneration) throw new Error('Scene changed.')
-      await host!.loadScene(safeScene, profile)
-      assertActive()
-      if (current !== sceneGeneration) throw new Error('Scene changed.')
-      const capabilities = await host!.getCapabilities()
-      assertActive()
-      if (current !== sceneGeneration) throw new Error('Scene changed.')
-      supportedTargets = capabilities.supportedTargets
-      sceneLoaded = true
+      try {
+        await ready
+        assertActive()
+        if (current !== sceneGeneration) throw new Error('Scene changed.')
+        await host!.loadScene(safeScene, profile)
+        assertActive()
+        if (current !== sceneGeneration) throw new Error('Scene changed.')
+        sceneLoaded = true
+        syncInspector()
+        elapsed = 0
+        zoom = 1
+        previousTick = now()
+        audio.setSensitivity(response.config?.sensitivity ?? 1)
+        host!.setAudioResponse(response)
+        host!.setPlayback(playing && !visualsSuspended())
+        host!.setZoom(zoom)
+        host!.setSynthetic(synthetic.enabled, synthetic.seed, synthetic.tempoScale)
+        resize()
+        update()
+        // Optional metadata never gates a successful first frame or audio
+        // sampling. Unknown support stays null rather than inventing targets.
+        void host!.getCapabilities().then(capabilities => {
+          if (!disposed && !failed && current === sceneGeneration) supportedTargets = capabilities.supportedTargets
+        }, () => { /* The host records the failed operation; playback remains usable. */ })
+      } finally {
+        if (current === sceneGeneration) sceneLoading = false
+      }
+    },
+    cancelPendingScene() {
+      if (disposed || failed || !sceneLoading) return
+      sceneGeneration++; sceneLoading = false
+      host!.cancelPendingLoad()
       syncInspector()
-      elapsed = 0
-      zoom = 1
-      previousTick = now()
-      audio.setSensitivity(response.config?.sensitivity ?? 1)
-      host!.setAudioResponse(response)
-      host!.setPlayback(playing && !visualsSuspended())
-      host!.setZoom(zoom)
-      host!.setSynthetic(synthetic.enabled, synthetic.seed, synthetic.tempoScale)
-      resize()
-      update()
     },
     async loadAudio(source: Blob | string, signal?: AbortSignal, beforeCommit?: () => Promise<void>): Promise<void> {
       assertActive()

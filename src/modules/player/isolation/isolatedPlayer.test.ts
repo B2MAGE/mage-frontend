@@ -45,15 +45,15 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
     ready: boot.promise,
     setAudioResponse: vi.fn(), setSceneSettings: vi.fn(), getCapabilities: vi.fn(async () => ({ supportedTargets: ['size' as const] })),
     requestAudioInspector: vi.fn<() => Promise<AudioInspectorSnapshot | null>>(async () => null),
-    loadScene: vi.fn(async () => {}), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
+    loadScene: vi.fn(async () => {}), cancelPendingLoad: vi.fn<() => number | null>(() => null), setPlayback: vi.fn(), setSynthetic: vi.fn(), setZoom: vi.fn(), update: vi.fn(), resize: vi.fn(),
     capture: vi.fn(async () => new Blob(['image'], { type: 'image/png' })), dispose: vi.fn(),
   }
   let hostOptions!: Parameters<typeof createIsolatedPlaybackHost>[0]
   const createHost = vi.fn<typeof createIsolatedPlaybackHost>(options => { hostOptions = options; return host })
   const createAudio = vi.fn(() => audio)
-  const onFailure = vi.fn(), onStatus = vi.fn()
+  const onFailure = vi.fn(), onStatus = vi.fn(), onDiagnostic = vi.fn()
   let time = 0
-  const player = createIsolatedPlayer({ container, rendererUrl: 'http://localhost:5181/', onFailure, onStatus, wheelZoom, pointerInteractions }, {
+  const player = createIsolatedPlayer({ container, rendererUrl: 'http://localhost:5181/', onFailure, onStatus, onDiagnostic, wheelZoom, pointerInteractions }, {
     createHost, createAudio, now: () => time,
   })
   players.push(player)
@@ -63,7 +63,7 @@ function fixture(wheelZoom = false, pointerInteractions = true) {
     container.dispatchEvent(event)
   }
   return {
-    player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, pointer,
+    player, audio, state, host, boot, createHost, createAudio, container, onFailure, onStatus, onDiagnostic, pointer,
     get hostOptions() { return hostOptions },
     async start() { boot.resolve(); await player.ready; await player.loadScene(scene) },
     async tick(ms = 34) { time += ms; await vi.advanceTimersByTimeAsync(ms) },
@@ -258,6 +258,80 @@ describe('isolated player parent integration', () => {
     expect(f.host.loadScene).toHaveBeenCalledOnce()
     expect(f.audio.load).toHaveBeenCalledOnce()
     expect(f.player.getAudioResponseCapabilities()).toMatchObject({ mode: 'mapped-v1', supportedTargets: ['size'], unsupportedTargets: ['bass'] })
+  })
+
+  it('starts playback and audio sampling without waiting for optional capability metadata', async () => {
+    const f = fixture(), metadata = deferred<{ supportedTargets: 'size'[] }>()
+    f.host.getCapabilities.mockReturnValueOnce(metadata.promise)
+    await f.start()
+    await f.player.loadAudio(new Blob(['music']))
+    f.player.seek(42); f.player.setVolume(.4)
+    await f.tick()
+    expect(f.player.getAudioResponseCapabilities()).toBeNull()
+    expect(f.host.update.mock.calls.at(-1)![0]).toMatchObject({ audio: { loaded: true, playing: true, audioTime: 42 } })
+    metadata.reject(new Error('Capabilities request timed out.')); await Promise.resolve()
+    expect(f.onFailure).not.toHaveBeenCalled(); expect(f.audio.pause).not.toHaveBeenCalled(); expect(f.host.dispose).not.toHaveBeenCalled()
+    expect(f.player.getAudioState()).toMatchObject({ playing: true, time: 42, volume: .4 })
+    expect(f.player.getAudioResponseCapabilities()).toBeNull()
+  })
+
+  it('does not fail a scene or override pause when capability metadata is unavailable', async () => {
+    const f = fixture()
+    f.player.pause()
+    f.host.getCapabilities.mockRejectedValueOnce(new Error('Capabilities are unavailable.'))
+    await f.start(); await f.tick()
+    expect(f.onFailure).not.toHaveBeenCalled(); expect(f.host.dispose).not.toHaveBeenCalled()
+    expect(f.host.setPlayback).toHaveBeenLastCalledWith(false)
+    expect(f.player.getAudioResponseCapabilities()).toBeNull()
+    expect(f.host.update).toHaveBeenCalled()
+  })
+
+  it('ignores old capability responses after a newer scene has completed', async () => {
+    const f = fixture(), metadata = deferred<{ supportedTargets: 'size'[] }>()
+    f.host.getCapabilities.mockReturnValueOnce(metadata.promise)
+    await f.start()
+    await f.player.loadScene(scene)
+    expect(f.player.getAudioResponseCapabilities()?.supportedTargets).toEqual(['size'])
+    metadata.resolve({ supportedTargets: [] }); await Promise.resolve()
+    expect(f.player.getAudioResponseCapabilities()?.supportedTargets).toEqual(['size'])
+    expect(f.onFailure).not.toHaveBeenCalled()
+  })
+
+  it('forwards host diagnostics without adding scene or audio contents', async () => {
+    const f = fixture(); await f.start()
+    const diagnostic = { type: 'operation' as const, at: 1, operation: 'capture' as const,
+      requestId: 4, generation: 1, phase: 'failed' as const, reason: 'timeout' as const }
+    f.hostOptions.onDiagnostic?.(diagnostic)
+    expect(f.onDiagnostic).toHaveBeenCalledExactlyOnceWith(diagnostic)
+  })
+
+  it('retires a pending scene immediately without stopping or rewinding its music', async () => {
+    const f = fixture(); await f.start(); await f.player.loadAudio(new Blob(['music'])); f.player.seek(42)
+    const pending = deferred<void>()
+    f.host.loadScene.mockReturnValueOnce(pending.promise)
+    f.host.cancelPendingLoad.mockImplementationOnce(() => { pending.reject(new Error('Scene changed.')); return 2 })
+    const loading = f.player.loadScene(scene), rejected = expect(loading).rejects.toThrow(/Scene changed/)
+    await Promise.resolve()
+    f.player.cancelPendingScene(); await rejected
+    expect(f.host.cancelPendingLoad).toHaveBeenCalledOnce()
+    expect(f.audio.pause).not.toHaveBeenCalled(); expect(f.audio.clear).not.toHaveBeenCalled(); expect(f.audio.dispose).not.toHaveBeenCalled()
+    expect(f.player.getAudioState()).toMatchObject({ playing: true, time: 42 })
+    expect(f.onFailure).not.toHaveBeenCalled()
+    await f.player.loadScene(scene)
+    expect(f.host.setPlayback).toHaveBeenLastCalledWith(true)
+  })
+
+  it('cancels a selection awaiting startup and does nothing to a completed scene', async () => {
+    const f = fixture()
+    const loading = f.player.loadScene(scene), rejected = expect(loading).rejects.toThrow(/Scene changed/)
+    f.player.cancelPendingScene(); f.boot.resolve(); await rejected
+    expect(f.host.loadScene).not.toHaveBeenCalled()
+    expect(f.host.cancelPendingLoad).toHaveBeenCalledOnce()
+    await f.player.loadScene(scene)
+    f.host.cancelPendingLoad.mockClear(); f.host.setPlayback.mockClear()
+    f.player.cancelPendingScene()
+    expect(f.host.cancelPendingLoad).not.toHaveBeenCalled(); expect(f.host.setPlayback).not.toHaveBeenCalled()
+    await f.tick(); expect(f.host.update).toHaveBeenCalled()
   })
 
   it('leaves hover preview hosts noninteractive when pointer input is disabled', async () => {

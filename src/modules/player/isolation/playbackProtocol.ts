@@ -23,6 +23,7 @@ export type PlaybackPayloads = {
   connect: null | { startupPhases: true; workloadErrors?: true }; ready: null; dispose: null
   load: { scene: Record<string, unknown>; profile: 'full' | 'preview' }
   loaded: null
+  'cancel-load': null
   'load-phase': { phase: StartupPhase; attempt: 0 | 1 }
   resize: { width: number; height: number; pixelRatio: number }
   playback: { playing: boolean }
@@ -45,7 +46,7 @@ export type PlaybackMessage<T extends PlaybackType = PlaybackType> = T extends P
   protocol: typeof RENDERER_PROTOCOL; version: typeof PLAYBACK_VERSION; session: string
   generation: number; requestId: number; type: T; payload: PlaybackPayloads[T]
 } : never
-export const PLAYBACK_COMMANDS = ['load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'audio-inspector', 'capture', 'dispose'] as const
+export const PLAYBACK_COMMANDS = ['load', 'cancel-load', 'resize', 'playback', 'zoom', 'input', 'synthetic', 'audio-response', 'scene-settings', 'capabilities', 'audio-inspector', 'capture', 'dispose'] as const
 export const PLAYBACK_RESPONSES = ['ready', 'load-phase', 'loaded', 'captured', 'capabilities-result', 'audio-inspector-result', 'progress', 'error'] as const
 export function playbackMessage<T extends PlaybackType>(type: T, session: string, generation: number,
   requestId: number, payload: PlaybackPayloads[T]): PlaybackMessage<T> {
@@ -137,7 +138,7 @@ export function isPlaybackMessage(value: unknown, allowed: readonly string[]): v
     case 'connect': return (p === null || ((record(p, ['startupPhases']) || record(p, ['startupPhases', 'workloadErrors']) && p.workloadErrors === true) && p.startupPhases === true))
       && value.generation === 0 && value.requestId === 0
     case 'ready': return p === null && value.generation === 0 && value.requestId === 0
-    case 'dispose': case 'loaded': case 'capabilities': case 'audio-inspector': return p === null
+    case 'dispose': case 'loaded': case 'capabilities': case 'audio-inspector': case 'cancel-load': return p === null
     case 'audio-inspector-result': return isAudioInspector(p)
     case 'load-phase': return record(p, ['phase', 'attempt']) && STARTUP_PHASES.includes(p.phase as StartupPhase)
       && (p.attempt === 0 || p.attempt === 1) && numberIn(value.generation, 1, Number.MAX_SAFE_INTEGER)

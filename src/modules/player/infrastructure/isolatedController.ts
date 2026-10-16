@@ -2,6 +2,7 @@ import { normalizeAudioResponseConfig, normalizeAudioResponseMode, type AudioRes
 import { sceneAvailabilityStore, type SceneAvailabilityTarget } from '../availability/sceneAvailability'
 import { availabilityTarget } from '../availability/availabilityTarget'
 import { createIsolatedPlayer, type IsolatedPlayer } from '../isolation/isolatedPlayer'
+import { createPlaybackDiagnostics } from '../isolation/playbackDiagnostics'
 import { getIsolatedRendererUrl } from '../isolation/rendererConfig'
 import { extractLiveSceneSettings } from '../liveSceneSettings'
 import { boundCaptureSize } from '../policy/renderBudget'
@@ -246,6 +247,7 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       pointerInteractions: options.mouseInteractions === true,
       onFailure: fail,
       onStatus: status => { if (status === 'disposed' && !disposed) dispose() },
+      onDiagnostic: createPlaybackDiagnostics(),
     })
     // A synchronous observer may cancel while the bridge constructor is running.
     if (disposed || options.signal?.aborted) {
@@ -331,6 +333,9 @@ export async function createIsolatedMageController(container: HTMLElement, optio
       const key = sceneRecoveryKey(recoverySource, nextSceneKey)
       if (!key) throw new MagePlayerAdapterError('Scene data cannot be safely identified for playback.')
       const generation = ++sceneGeneration
+      // Retire obsolete deadlines immediately, before permission checks and the
+      // latest-only dispatch interval. Their failure cannot belong to this draft.
+      bridge!.cancelPendingScene()
       if (audioLoadUsesScene) audioLoadAbort?.abort()
       cancelQueuedScene()
       permissionWaiters.get('scene')?.reject(changed())

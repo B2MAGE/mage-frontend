@@ -47,7 +47,7 @@ function setAvailability(target: unknown, code: string) {
 }
 function bridge() {
   const state = { time: 0, duration: 0, loaded: false, playing: false, volume: 1 }
-  return { ready: Promise.resolve(), loadScene: vi.fn<(scene: unknown, profile?: unknown) => Promise<void>>(async () => {}),
+  return { ready: Promise.resolve(), loadScene: vi.fn<(scene: unknown, profile?: unknown) => Promise<void>>(async () => {}), cancelPendingScene: vi.fn(),
     loadAudio: vi.fn<IsolatedPlayer['loadAudio']>(async (_source, _signal, beforeCommit) => {
       await beforeCommit?.()
       state.loaded = true; state.duration = 60
@@ -314,6 +314,19 @@ describe('isolated controller guards', () => {
     await vi.advanceTimersByTimeAsync(500)
     expect(await pending).toBeInstanceOf(Error)
     expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+  })
+
+  it('retires obsolete work immediately while the replacement waits for authorization', async () => {
+    const player = await loaded(custom)
+    playerBridge.cancelPendingScene.mockClear()
+    const permission = deferred<{ allowed: boolean; code: string }>()
+    mocks.check.mockReturnValueOnce(permission.promise)
+    const next = player.loadSceneBlob(customDocument({ visualizer: { shader: 'box(0.5);' } }))
+    expect(playerBridge.cancelPendingScene).toHaveBeenCalledOnce()
+    expect(playerBridge.loadScene).toHaveBeenCalledOnce()
+    permission.resolve({ allowed: true, code: 'ALLOWED' })
+    await next
+    expect(playerBridge.dispose).not.toHaveBeenCalled()
   })
 
   it('quarantines child load failures and closes the frame', async () => {

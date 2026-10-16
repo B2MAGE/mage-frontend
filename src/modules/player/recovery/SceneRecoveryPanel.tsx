@@ -4,6 +4,7 @@ import { MagePlayerDisabledControls } from '../MagePlayerControls'
 import { PauseAllScenesToggle } from './PauseAllScenesToggle'
 import type { RecoveryBlock, RecoveryReason } from './sceneRecovery'
 import { isShaderWorkloadFailure, SHADER_WORKLOAD_MESSAGES } from '../policy/shaderWorkloadFailure'
+import { downloadPlaybackDiagnostics } from '../isolation/playbackDiagnostics'
 
 type Props = {
   className?: string
@@ -55,6 +56,7 @@ export function SceneRecoveryPanel({ className, posterUrl, block, safeMode, onRe
             {safeMode || stopped ? 'Resume scene' : 'Retry scene'}
           </button>}
           <PauseAllScenesToggle checked={safeMode} onChange={onSafeModeChange} />
+          {!safeMode && block && !stopped && <button type="button" onClick={downloadPlaybackDiagnostics}>Save playback report</button>}
         </div>
       </div>
     </div>

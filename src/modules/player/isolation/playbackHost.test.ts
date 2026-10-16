@@ -10,7 +10,7 @@ class Port {
   receive(data:unknown){this.onmessage?.({data} as MessageEvent)}
 }
 const channels:Array<{port1:Port;port2:Port}>=[]
-function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true, progressTimeoutMs = 1000, onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void) {
+function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = true, progressTimeoutMs = 1000, onDiagnostic?: (diagnostic: PlaybackHostDiagnostic) => void, acknowledgeReady = true) {
   const container=document.createElement('div');document.body.append(container)
   const failure=vi.fn(),status=vi.fn()
   const host=createIsolatedPlaybackHost({container,rendererUrl:'http://127.0.0.1:5181/',onFailure:failure,onStatus:status,startupTimeoutMs:100,progressTimeoutMs,decodeCapture,useInlineFrameStyles,onDiagnostic})
@@ -18,7 +18,7 @@ function setup(decodeCapture?: typeof createImageBitmap, useInlineFrameStyles = 
   frame.dispatchEvent(new Event('load'))
   const port=channels.at(-1)!.port1
   function reply<T extends PlaybackType>(type:T,payload:PlaybackPayloads[T],generation=1,requestId=0,session=SESSION){port.receive(playbackMessage(type,session,generation,requestId,payload))}
-  reply('ready',null,0)
+  if(acknowledgeReady)reply('ready',null,0)
   async function load(){const promise=host.loadScene(customDocument({visualizer:{shader:'sphere(0.5);'}}));await Promise.resolve();const m=port.postMessage.mock.calls.at(-1)![0];reply('loaded',null,m.generation,m.requestId);await promise}
   let frames=0
   const progress=(generation=1)=>reply('progress',{frames:++frames},generation)
@@ -281,7 +281,7 @@ describe('isolated playback host',()=>{
     s.reply('progress',{frames:2},0)
     s.reply('progress',{frames:2},1,99)
     s.host.dispose()
-    expect(diagnostics).toEqual([
+    expect(diagnostics.filter(diagnostic=>diagnostic.type!=='operation')).toEqual([
       {type:'status',at:0,status:'starting'},
       {type:'status',at:0,status:'ready'},
       {type:'status',at:0,status:'loading'},
@@ -310,7 +310,8 @@ describe('isolated playback host',()=>{
     ])
     expect(diagnostics.slice(-2)).toEqual([
       {type:'status',at:5500,status:'error'},
-      {type:'failure',at:5500,reason:'progress-timeout'},
+      {type:'failure',at:5500,reason:'progress-timeout',generation:1,requestId:1,phase:null,
+        pendingCapture:false,pendingCapabilities:false,pendingInspector:false},
     ])
     expect(s.failure).toHaveBeenCalledExactlyOnceWith('progress-timeout')
     expect(s.frame.isConnected).toBe(false)
@@ -434,11 +435,141 @@ describe('isolated playback host',()=>{
     await Promise.resolve();await Promise.resolve();await Promise.resolve()
     expect(close).toHaveBeenCalledOnce();s.host.dispose()
   })
-  it('does not queue replacement captures after a hung request timeout',async()=>{
-    const s=setup();await s.load();s.host.setPlayback(false)
-    const capture=s.host.capture(),rejected=expect(capture).rejects.toThrow(/stopped/)
-    await vi.advanceTimersByTimeAsync(5001);await rejected
+  it('fails a capabilities timeout without stopping healthy playback, and ignores its late result',async()=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],s=setup(undefined,true,1000,event=>diagnostics.push(event));await s.load()
+    const first=s.host.getCapabilities(),rejected=expect(first).rejects.toThrow(/timed out/)
+    const firstRequest=s.port.postMessage.mock.calls.at(-1)![0]
+    await vi.advanceTimersByTimeAsync(100);await rejected
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    expect(s.status).toHaveBeenLastCalledWith('playing')
+    const second=s.host.getCapabilities(),secondRequest=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('capabilities-result',{supportedTargets:['bass']},1,firstRequest.requestId)
+    s.reply('capabilities-result',{supportedTargets:['size']},1,secondRequest.requestId)
+    await expect(second).resolves.toEqual({supportedTargets:['size']})
+    expect(diagnostics).toContainEqual({type:'operation',at:100,operation:'capabilities',requestId:firstRequest.requestId,
+      generation:1,phase:'failed',reason:'timeout'})
+    s.host.dispose()
+  })
+  it('rejects invalid capability metadata without trusting it or stopping playback',async()=>{
+    const s=setup();await s.load()
+    const result=s.host.getCapabilities(),rejected=expect(result).rejects.toThrow(/unavailable/)
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    s.port.receive({...playbackMessage('capabilities-result',SESSION,1,request.requestId,{supportedTargets:[]}),
+      payload:{supportedTargets:['untrusted-target'],privateText:'not a diagnostic'}})
+    await rejected;expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    s.host.dispose()
+  })
+  it('times out capture locally while progress continues and ignores late capture errors',async()=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],s=setup(undefined,true,1000,event=>diagnostics.push(event));await s.load()
+    const capture=s.host.capture(),rejected=expect(capture).rejects.toThrow(/timed out/)
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    for(let tick=0;tick<10;tick++){await vi.advanceTimersByTimeAsync(500);s.progress()}
+    await rejected
+    s.reply('error',{code:'capture'},1,request.requestId)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    expect(s.status).toHaveBeenLastCalledWith('playing')
+    const next=s.host.capture(),failed=expect(next).rejects.toThrow('Frame capture failed.')
+    const nextRequest=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('error',{code:'capture'},1,request.requestId)
+    s.reply('error',{code:'capture'},1,nextRequest.requestId);await failed
+    expect(diagnostics).toContainEqual({type:'operation',at:5000,operation:'capture',requestId:request.requestId,
+      generation:1,phase:'failed',reason:'timeout'})
+    expect(s.failure).not.toHaveBeenCalled();s.host.dispose()
+  })
+  it('rejects undecodable capture bytes without stopping playback or leaking them into diagnostics',async()=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],decode=vi.fn(),s=setup(decode,true,1000,event=>diagnostics.push(event));await s.load()
+    const capture=s.host.capture(),rejected=expect(capture).rejects.toThrow(/could not be decoded/)
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    s.reply('captured',{bytes:new ArrayBuffer(10),type:'image/png',width:1,height:1},1,request.requestId)
+    await rejected
+    expect(decode).not.toHaveBeenCalled();expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    expect(diagnostics.filter(event=>event.type==='operation'&&event.operation==='capture')).toEqual([
+      {type:'operation',at:0,operation:'capture',requestId:request.requestId,generation:1,phase:'requested'},
+      {type:'operation',at:0,operation:'capture',requestId:request.requestId,generation:1,phase:'decoding'},
+      {type:'operation',at:0,operation:'capture',requestId:request.requestId,generation:1,phase:'failed',reason:'invalid-result'},
+    ])
+    s.host.dispose()
+  })
+  it('keeps a hung decoder single-flight after its request timeout without stopping playback',async()=>{
+    let finish!:(image:ImageBitmap)=>void
+    const decode=vi.fn().mockImplementation(()=>new Promise<ImageBitmap>(resolve=>{finish=resolve}))
+    const s=setup(decode,true,10000);await s.load()
+    const capture=s.host.capture({width:1,height:1}),rejected=expect(capture).rejects.toThrow(/timed out/)
+    const request=s.port.postMessage.mock.calls.at(-1)![0]
+    const bytes=new ArrayBuffer(33),a=new Uint8Array(bytes),v=new DataView(bytes)
+    a.set([137,80,78,71,13,10,26,10]);v.setUint32(8,13);a.set([73,72,68,82],12);v.setUint32(16,1);v.setUint32(20,1)
+    s.reply('captured',{bytes,type:'image/png',width:1,height:1},1,request.requestId)
+    await vi.advanceTimersByTimeAsync(5000);await rejected
     await expect(s.host.capture()).rejects.toThrow(/unavailable/)
-    expect(s.frame.isConnected).toBe(false)
+    expect(decode).toHaveBeenCalledOnce();expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    const close=vi.fn();finish({width:1,height:1,close} as unknown as ImageBitmap)
+    await vi.advanceTimersByTimeAsync(0);expect(close).toHaveBeenCalledOnce()
+    const next=s.host.capture(),stopped=expect(next).rejects.toThrow(/stopped/);s.host.dispose();await stopped
+  })
+  it.each(['capture','capabilities','audio-inspector'] as const)('cancels obsolete %s work without letting late replies or deadlines retire a newer scene',async operation=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],s=setup(undefined,true,1000,event=>diagnostics.push(event));await s.load()
+    const request=operation==='capture'?s.host.capture():operation==='capabilities'?s.host.getCapabilities():s.host.requestAudioInspector()
+    const settled=operation==='audio-inspector'?expect(request).resolves.toBeNull():expect(request).rejects.toThrow(/Scene changed/)
+    const old=s.port.postMessage.mock.calls.at(-1)![0]
+    await s.load();await settled;s.host.setPlayback(false)
+    s.reply('error',{code:'capture'},old.generation,old.requestId)
+    s.reply('captured',{bytes:new ArrayBuffer(10),type:'image/png',width:1,height:1},old.generation,old.requestId)
+    s.reply('capabilities-result',{supportedTargets:['size']},old.generation,old.requestId)
+    s.reply('audio-inspector-result',null,old.generation,old.requestId)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    expect(s.status).toHaveBeenLastCalledWith('paused')
+    expect(diagnostics).toContainEqual({type:'operation',at:0,operation,requestId:old.requestId,generation:1,phase:'cancelled',reason:'scene-changed'})
+    s.host.dispose()
+  })
+  it('does not let optional failures reset or suppress the independent playback watchdog',async()=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],s=setup(undefined,true,1000,event=>diagnostics.push(event));await s.load()
+    const capabilities=s.host.getCapabilities(),failed=expect(capabilities).rejects.toThrow(/timed out/)
+    const inspector=s.host.requestAudioInspector()
+    const capture=s.host.capture(),stopped=expect(capture).rejects.toThrow(/stopped/)
+    await vi.advanceTimersByTimeAsync(1250);await failed;await stopped;await expect(inspector).resolves.toBeNull()
+    expect(s.failure).toHaveBeenCalledExactlyOnceWith('progress-timeout')
+    expect(diagnostics.at(-1)).toEqual({type:'failure',at:1250,reason:'progress-timeout',generation:1,requestId:1,phase:null,
+      pendingCapture:true,pendingCapabilities:false,pendingInspector:false})
+  })
+  it('clears a superseded load deadline and records the newer load independently',async()=>{
+    const diagnostics:PlaybackHostDiagnostic[]=[],s=setup(undefined,true,1000,event=>diagnostics.push(event))
+    const old=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}})),rejected=expect(old).rejects.toThrow(/Scene changed/)
+    await Promise.resolve();const oldRequest=s.port.postMessage.mock.calls.at(-1)![0]
+    for(const phase of ['compiler-download','compiler-startup','compiling'] as const)
+      s.reply('load-phase',{phase,attempt:0},oldRequest.generation,oldRequest.requestId)
+    await s.load();await rejected;s.host.setPlayback(false)
+    await vi.advanceTimersByTimeAsync(60000)
+    s.reply('error',{code:'compile-timeout'},oldRequest.generation,oldRequest.requestId)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    expect(diagnostics).toContainEqual({type:'operation',at:0,operation:'load',requestId:oldRequest.requestId,generation:1,phase:'cancelled',reason:'scene-changed'})
+    expect(diagnostics.some(event=>event.type==='operation'&&event.operation==='load'&&event.generation===2&&event.phase==='completed')).toBe(true)
+    s.host.dispose()
+  })
+  it('cancels an obsolete child job immediately while the next selection is still waiting for permission',async()=>{
+    const s=setup(),old=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}})),rejected=expect(old).rejects.toThrow(/Scene changed/)
+    await Promise.resolve();const request=s.port.postMessage.mock.calls.at(-1)![0]
+    for(const phase of ['compiler-download','compiler-startup','compiling'] as const)
+      s.reply('load-phase',{phase,attempt:0},request.generation,request.requestId)
+    expect(s.host.cancelPendingLoad()).toBe(1);await rejected
+    expect(s.port.postMessage.mock.calls.at(-1)![0]).toMatchObject({type:'cancel-load',generation:1,payload:null})
+    expect(s.host.cancelPendingLoad()).toBeNull()
+    await vi.advanceTimersByTimeAsync(30000)
+    s.reply('error',{code:'compile-timeout'},request.generation,request.requestId)
+    expect(s.failure).not.toHaveBeenCalled();expect(s.frame.isConnected).toBe(true)
+    await s.load()
+    expect(s.port.postMessage.mock.calls.filter(([message])=>message.type==='load').at(-1)![0].generation).toBe(3)
+    expect(s.host.cancelPendingLoad()).toBeNull();expect(s.status).toHaveBeenLastCalledWith('playing')
+    s.host.dispose()
+  })
+  it('cancels a scene waiting for the frame bootstrap without sending it later',async()=>{
+    const s=setup(undefined,true,1000,undefined,false)
+    const old=s.host.loadScene(customDocument({visualizer:{shader:'sphere(1);'}})),rejected=expect(old).rejects.toThrow(/Scene changed/)
+    expect(s.host.cancelPendingLoad()).toBe(1)
+    expect(s.port.postMessage).not.toHaveBeenCalled()
+    s.reply('ready',null,0);await rejected
+    expect(s.port.postMessage.mock.calls.some(([message])=>message.type==='load')).toBe(false)
+    await s.load();expect(s.status).toHaveBeenLastCalledWith('playing')
+    s.host.dispose()
   })
 })

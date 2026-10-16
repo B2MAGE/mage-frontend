@@ -39,6 +39,39 @@ function fixture() {
 }
 
 describe('isolated playback runtime', () => {
+  it('keeps playback alive when capability metadata throws', async () => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    f.engine.capabilities.mockImplementation(() => { throw new Error('optional metadata unavailable') })
+    f.send('capabilities', null)
+    expect(f.responses('capabilities-result')[0].payload).toEqual({ supportedTargets: [] })
+    f.send('input', input)
+    expect(f.engine.input).toHaveBeenCalledWith(input)
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
+
+  it('cancels an obsolete load before the next source is dispatched and ignores its late errors', async () => {
+    const f = fixture()
+    let reject!: (error: Error) => void
+    f.loadScene.mockReturnValueOnce(new Promise((_, no) => { reject = no }))
+    f.bootstrap(); f.load()
+    const old = f.loadScene.mock.calls[0][0]
+    f.send('cancel-load', null)
+    expect(old.signal.aborted).toBe(true)
+    old.onError('context-lost')
+    reject(new Error('late failure'))
+    await Promise.resolve(); await Promise.resolve()
+    expect(f.responses('error')).toEqual([])
+    f.load(3); await Promise.resolve()
+    expect(f.responses('loaded').map(message => message.generation)).toEqual([3])
+    expect(f.port.close).not.toHaveBeenCalled()
+  })
+
+  it('ignores cancellation after a scene has activated', async () => {
+    const f = fixture(); f.bootstrap(); f.load(); await Promise.resolve()
+    f.send('cancel-load', null)
+    expect(f.loadScene.mock.calls[0][0].signal.aborted).toBe(false)
+    expect(f.engine.dispose).not.toHaveBeenCalled()
+  })
   it.each(SHADER_WORKLOAD_FAILURES)('reports only the bounded %s code for compiler and engine rejection', async failure => {
     const f = fixture(), error = new ShaderCompilationError(failure)
     error.message = 'private shader source and stack'
@@ -401,8 +434,12 @@ describe('isolated playback runtime', () => {
     expect(f.engine.capture).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(5001)
     expect(f.responses('error')).toHaveLength(2)
-    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }, { code: 'render' }])
-    expect(f.port.close).toHaveBeenCalledOnce()
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }, { code: 'capture' }])
+    expect(f.port.close).not.toHaveBeenCalled()
+    f.send('input', input)
+    expect(f.engine.input).toHaveBeenCalledWith(input)
+    f.send('capture', { width: 10, height: 10, quality: 0.8, type: 'image/png' })
+    expect(f.engine.capture).toHaveBeenCalledOnce()
   })
 
   it('captures a replacement scene without waiting for an abandoned capture to finish', async () => {
@@ -437,8 +474,8 @@ describe('isolated playback runtime', () => {
     expect(f.responses('captured')).toEqual([])
     expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }])
     await vi.advanceTimersByTimeAsync(5001)
-    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }, { code: 'render' }])
-    expect(f.port.close).toHaveBeenCalledOnce()
+    expect(f.responses('error').map(message => message.payload)).toEqual([{ code: 'capture' }, { code: 'capture' }])
+    expect(f.port.close).not.toHaveBeenCalled()
   })
 
   it('fails closed on malformed and excessive scene commands', async () => {

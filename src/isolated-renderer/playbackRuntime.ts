@@ -14,7 +14,7 @@ export function installPlaybackRuntime(options: {
   let activeCanvas = options.canvas
   let port: MessagePort | null = null
   let session = '', generation = 0, lastRequest = 0, frames = 0, lastProgress = -Infinity
-  let closed = false, loadAbort: AbortController | null = null, engine: PlaybackEngine | null = null
+  let closed = false, loading = false, loadAbort: AbortController | null = null, engine: PlaybackEngine | null = null
   let pendingCapture: { cancel: () => void } | null = null
   let pendingResize: PlaybackPayloads['resize'] | null = null
   let pendingInput: PlaybackPayloads['input'] | null = null
@@ -74,6 +74,7 @@ export function installPlaybackRuntime(options: {
   }
   async function load(message: PlaybackMessage<'load'>) {
     loadAbort?.abort()
+    loading = true
     retireCapture()
     try { engine?.dispose() } catch { /* Abort already retired the previous generation. */ }
     engine = null
@@ -123,6 +124,7 @@ export function installPlaybackRuntime(options: {
       }
       if (!active()) { loadedEngine.dispose(); return }
       engine = loadedEngine
+      loading = false
       if (pendingResize) engine.resize(pendingResize)
       if (pendingInput) engine.input(pendingInput)
       if (pendingSynthetic) engine.synthetic(pendingSynthetic)
@@ -143,10 +145,15 @@ export function installPlaybackRuntime(options: {
   async function capture(message: PlaybackMessage<'capture'>) {
     const source = engine, token = loadAbort
     if (!source || pendingCapture) { send('error', message.requestId, { code: 'capture' }); return }
+    let expired = false
     const pending = { cancel: () => clearTimeout(timeout) }
     pendingCapture = pending
-    const active = () => !closed && pendingCapture === pending && engine === source && loadAbort === token && !token?.signal.aborted
-    const timeout = setTimeout(() => { if (active()) fail('render', message.requestId) }, BRIDGE_LIMITS.captureTimeoutMs)
+    const active = () => !expired && !closed && pendingCapture === pending && engine === source && loadAbort === token && !token?.signal.aborted
+    const timeout = setTimeout(() => {
+      if (!active()) return
+      send('error', message.requestId, { code: 'capture' })
+      expired = true
+    }, BRIDGE_LIMITS.captureTimeoutMs)
     try {
       const result = await source.capture(message.payload)
       if (active()) send('captured', message.requestId, result, [result.bytes])
@@ -171,12 +178,22 @@ export function installPlaybackRuntime(options: {
     try {
       switch (message.type) {
         case 'dispose': dispose(); break
+        case 'cancel-load':
+          if (loading) { loading = false; loadAbort?.abort(); loadAbort = null; retireCapture() }
+          break
         case 'resize': pendingResize = message.payload; engine?.resize(message.payload); break
         case 'input': pendingInput = message.payload; engine?.input(message.payload); break
         case 'synthetic': pendingSynthetic = message.payload; engine?.synthetic(message.payload); break
         case 'audio-response': pendingAudioResponse = message.payload; engine?.audioResponse(message.payload); break
         case 'scene-settings': pendingSceneSettings = message.payload; engine?.sceneSettings(message.payload); break
-        case 'capabilities': if (engine) send('capabilities-result', message.requestId, engine.capabilities()); break
+        case 'capabilities': {
+          // Metadata is optional. Missing support information must never retire
+          // a renderer that is still producing healthy frames.
+          let supported: PlaybackPayloads['capabilities-result'] = { supportedTargets: [] }
+          try { supported = engine?.capabilities() ?? supported } catch { /* Unavailable metadata. */ }
+          send('capabilities-result', message.requestId, supported)
+          break
+        }
         case 'audio-inspector': {
           // Optional observations neither advance the engine nor affect its
           // failure/recovery path. Older parents never request this response.
