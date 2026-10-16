@@ -177,8 +177,10 @@ These are single local desktop-browser runs on 2026-10-16, not repeated benchmar
 trials. The baseline used engine `1.0.4-mage.5`; M2 measured the empty-start change
 before retained replacement, and M3 used the released `1.0.4-mage.6` engine from
 source commit `cd5a96f`. The maintained frontend pins that immutable release.
-Baseline and M2 rebuilt the context for each load; M3 retained it. The narrow
-viewport run uses the desktop browser at a smaller width, not a physical phone.
+Baseline and M2 rebuilt the context for each load; M3 retained it. All browser
+measurements used the desktop viewport. The attempted narrow override did not
+apply: the DOM remained 1280 × 720. The report named `m3-narrow-selective-burst`
+is therefore an additional desktop burst, not narrow-viewport or phone evidence.
 
 The latency column is the parent-observed time from requesting a scene to its
 successful load acknowledgement, measured before the optional diagnostics request.
@@ -195,7 +197,7 @@ verification makes this a lifecycle comparison rather than identical work.
 | M3 sequential / Original + test audio | 14 / 0 | 1 / 0 | 498.2 (325.4–1733.5) | 167.4 | 0 |
 | M3 burst / Selective + test audio | 7 / 6 | 1 / 0 | 389.1 (360.9–928.2) | 221.0 | 0 |
 | M3 sequential / Selective simulated beat, paused | 14 / 0 | 1 / 0 | 342.4 (284.7–666.4) | 169.8 | 0 |
-| M3 narrow burst / Selective simulated beat | 9 / 4 | 1 / 0 | 365.2 (317.4–611.1) | 159.4 | 0 |
+| M3 additional desktop burst / Selective simulated beat | 9 / 4 | 1 / 0 | 365.2 (317.4–611.1) | 159.4 | 0 |
 
 The clear improvement is context reuse: the fourteen-template sequence changed
 from **14 creations / 13 disposals to 1 / 0** while the final scene remained alive.
