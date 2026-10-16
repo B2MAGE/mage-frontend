@@ -143,3 +143,23 @@ array containing `sceneId` and `sceneData`) and writes diagnostics only when
 `PL03_SAVED_REPORT` is set. It refuses custom source because executing that source
 requires the disposable worker boundary. Keep user snapshots and reports outside
 version control.
+
+## Local review validation (2026-10-16)
+
+- Frontend: 3,197 tests passed; the optional saved-scene test was separately run
+  against all 15 local scenes. Lint and both application/isolated-renderer builds
+  passed.
+- Tooling: 71 Node tests and 89 tooling Vitest tests passed, including isolated
+  bundle boundaries, artifact rejection, protocol transport and type checks.
+- Engine: 41 tests and 180 generated-shader parse checks passed.
+- Fresh local servers passed renderer asset/header/route verification. All 14
+  catalog templates loaded individually in the editor. Original and Selective
+  both displayed measured track inputs and simulated-beat responses while the
+  preview continued rendering.
+- One rapid-switch sequence reached the existing playback-timeout screen. Retry
+  recovered it, and subsequent individual template loads passed without workload
+  rejection. The cause of that intermittent timeout is not established. Inspection
+  confirmed PL-03 changes neither watchdog timing nor per-frame audio/render work.
+
+The frontend and forked engine remain on `codex/pl03-shader-workload` for user
+review. Nothing has been merged, published or deployed.
