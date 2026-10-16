@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { customDocument } from '@shared/test/sceneDocument'
-import { createIsolatedPlaybackHost } from './playbackHost'
+import { createIsolatedPlaybackHost, type PlaybackHostDiagnostic } from './playbackHost'
 import { playbackMessage, type PlaybackPayloads, type PlaybackType } from './playbackProtocol'
 import { isSceneReplacementError, type SceneActivation } from './sceneReplacement'
 
@@ -14,8 +14,9 @@ let port: Port
 function setup(progressTimeoutMs = 1000) {
   const container = document.createElement('div'); document.body.append(container)
   const onFailure = vi.fn(), onStatus = vi.fn()
+  const diagnostics: PlaybackHostDiagnostic[] = []
   const host = createIsolatedPlaybackHost({ container, rendererUrl: 'http://127.0.0.1:5181/', stagedScenes: true,
-    startupTimeoutMs: 1000, progressTimeoutMs, onFailure, onStatus })
+    startupTimeoutMs: 1000, progressTimeoutMs, onFailure, onStatus, onDiagnostic: event => diagnostics.push(event) })
   const frame = container.querySelector('iframe')!
   const bootstrap = vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => {})
   frame.dispatchEvent(new Event('load'))
@@ -34,7 +35,7 @@ function setup(progressTimeoutMs = 1000) {
     const request = lastLoad(); prepared(request); reply('loaded', null, request.generation, request.requestId); await promise
     return request
   }
-  return { host, port, frame, bootstrap, onFailure, onStatus, reply, prepared, lastLoad, load }
+  return { host, port, frame, bootstrap, onFailure, onStatus, diagnostics, reply, prepared, lastLoad, load }
 }
 beforeEach(() => {
   vi.useFakeTimers(); vi.stubEnv('DEV', true); vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
@@ -67,6 +68,30 @@ describe('staged playback host', () => {
     f.reply('candidate-error', { code: 'compile', retained: true }, request.generation, request.requestId); await rejected
     expect(f.frame.isConnected).toBe(true); expect(f.onFailure).not.toHaveBeenCalled()
     expect(f.onStatus).toHaveBeenLastCalledWith('paused'); f.host.dispose()
+  })
+  it.each([false, true])('keeps exact candidate failure evidence for Retry/retention with active scene=%s', async active => {
+    const f = setup(); if (active) await f.load()
+    const loading = f.host.loadScene(scene), rejected = expect(loading).rejects.toMatchObject({ reason: 'compile-timeout', retained: active })
+    await Promise.resolve(); const request = f.lastLoad()
+    for (const phase of ['compiler-download', 'compiler-startup', 'compiling'] as const)
+      f.reply('load-phase', { phase, attempt: 0 }, request.generation, request.requestId)
+    f.reply('candidate-error', { code: 'compile-timeout', retained: active }, request.generation, request.requestId); await rejected
+    expect(f.diagnostics).toContainEqual(expect.objectContaining({ type: 'operation', operation: 'load', generation: request.generation,
+      requestId: request.requestId, phase: 'failed', reason: 'timeout', failureReason: 'compile-timeout', retained: active }))
+    expect(f.onFailure).not.toHaveBeenCalled(); f.host.dispose()
+  })
+  it.each(['context-lost', 'progress-timeout'] as const)('attributes %s to the active scene while retaining separate candidate evidence', async failure => {
+    const f = setup(), first = await f.load()
+    const replacement = f.host.loadScene(scene), rejected = expect(replacement).rejects.toThrow(/stopped/)
+    await Promise.resolve(); const candidate = f.lastLoad()
+    for (const phase of ['compiler-download', 'compiler-startup', 'compiling'] as const)
+      f.reply('load-phase', { phase, attempt: 0 }, candidate.generation, candidate.requestId)
+    if (failure === 'context-lost') f.reply('error', { code: failure }, first.generation, first.requestId)
+    else await vi.advanceTimersByTimeAsync(1250)
+    await rejected
+    expect(f.diagnostics.at(-1)).toMatchObject({ type: 'failure', reason: failure, generation: first.generation, requestId: first.requestId, phase: null,
+      activeGeneration: first.generation, activeRequestId: first.requestId, candidateGeneration: candidate.generation,
+      candidateRequestId: candidate.requestId, candidatePhase: 'compiling' })
   })
   it('permits an existing graphics session to skip only its already-completed engine download', async () => {
     const f = setup(); await f.load()

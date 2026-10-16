@@ -19,9 +19,12 @@ export type PlaybackHostDiagnostic =
   | { type: 'progress'; at: number }
   | { type: 'watchdog'; at: number; deltaMs: number; silenceMs: number; progressAgeMs: number
     resetReason: 'closed' | 'not-loaded' | 'paused' | 'hidden' | 'offscreen' | 'invalid-clock' | 'parent-gap' | 'recent-progress' | 'none' }
-  | { type: 'operation'; at: number; operation: Operation; requestId: number; generation: number; phase: OperationPhase; reason?: OperationReason }
+  | { type: 'operation'; at: number; operation: Operation; requestId: number; generation: number; phase: OperationPhase; reason?: OperationReason
+    failureReason?: RenderFailure; retained?: boolean }
   | { type: 'failure'; at: number; reason: RenderFailure; generation: number; requestId: number | null; phase: StartupPhase | null
-    pendingCapture: boolean; pendingCapabilities: boolean; pendingInspector: boolean }
+    pendingCapture: boolean; pendingCapabilities: boolean; pendingInspector: boolean
+    activeGeneration?: number | null; activeRequestId?: number | null
+    candidateGeneration?: number | null; candidateRequestId?: number | null; candidatePhase?: StartupPhase | null }
 export function createIsolatedPlaybackHost(options: {
   container: HTMLElement; rendererUrl: string; onStatus?: (status: PlaybackHostStatus) => void
   onFailure?: (reason: RenderFailure) => void; startupTimeoutMs?: number; progressTimeoutMs?: number
@@ -77,9 +80,10 @@ export function createIsolatedPlaybackHost(options: {
   const diagnose = (diagnostic: PlaybackHostDiagnostic) => {
     try { options.onDiagnostic?.(diagnostic) } catch { /* Diagnostics cannot interrupt rendering or cleanup. */ }
   }
-  const operation = (name: Operation, pending: Pick<Pending<unknown>, 'id' | 'generation'>, phase: OperationPhase, reason?: OperationReason) => {
+  const operation = (name: Operation, pending: Pick<Pending<unknown>, 'id' | 'generation'>, phase: OperationPhase, reason?: OperationReason,
+    failure?: { failureReason: RenderFailure; retained: boolean }) => {
     if (options.onDiagnostic) diagnose({ type: 'operation', at: performance.now(), operation: name,
-      requestId: pending.id, generation: pending.generation, phase, ...(reason ? { reason } : {}) })
+      requestId: pending.id, generation: pending.generation, phase, ...(reason ? { reason } : {}), ...failure })
   }
   const report = (status: PlaybackHostStatus) => {
     try { options.onStatus?.(status) } catch { /* Observers cannot block cleanup. */ }
@@ -126,15 +130,20 @@ export function createIsolatedPlaybackHost(options: {
       if (pending.activationSent) { dispose(reason); return }
       try { send('cancel-load', null, false, pending.generation) } catch { return }
     }
-    operation('load', pending, 'failed', reason.endsWith('timeout') ? 'timeout' : 'unavailable')
+    operation('load', pending, 'failed', reason.endsWith('timeout') ? 'timeout' : 'unavailable', { failureReason: reason, retained: loaded })
     finishLoad(pending); pending.reject(new SceneReplacementError(reason, loaded))
     report(loaded ? playing ? 'playing' : 'paused' : 'ready')
   }
-  function dispose(failure?: RenderFailure) {
+  function dispose(failure?: RenderFailure, source?: 'active' | 'candidate') {
     if (closed) return
     // Snapshot the failed generation before rejecting/clearing its operations.
-    const failureContext = { generation, requestId: pendingLoad?.id ?? activeRequestId, phase: pendingLoadPhase,
-      pendingCapture: pendingCapture !== null, pendingCapabilities: pendingCapabilities !== null, pendingInspector: pendingInspector !== null }
+    const activeFailure = options.stagedScenes && loaded && (source === 'active'
+      || source !== 'candidate' && (failure === 'context-lost' || failure === 'progress-timeout'))
+    const failureContext = { generation: activeFailure ? activeGeneration : pendingLoad?.generation ?? generation,
+      requestId: activeFailure ? activeRequestId : pendingLoad?.id ?? activeRequestId, phase: activeFailure ? null : pendingLoadPhase,
+      pendingCapture: pendingCapture !== null, pendingCapabilities: pendingCapabilities !== null, pendingInspector: pendingInspector !== null,
+      ...(options.stagedScenes ? { activeGeneration: loaded ? activeGeneration : null, activeRequestId,
+        candidateGeneration: pendingLoad?.generation ?? null, candidateRequestId: pendingLoad?.id ?? null, candidatePhase: pendingLoadPhase } : {}) }
     closed = true
     clearTimeout(startupTimer); clearInterval(inputTimer); clearInterval(progressTimer)
     frame.removeEventListener('load', connect); frame.removeEventListener('error', onFrameError)
@@ -317,7 +326,8 @@ export function createIsolatedPlaybackHost(options: {
       }
       const code = message.payload.code
       dispose(code === 'context-lost' ? 'context-lost'
-        : pendingLoad?.id === message.requestId && code !== 'render' && code !== 'protocol' ? code : 'runtime'); return
+        : pendingLoad?.id === message.requestId && code !== 'render' && code !== 'protocol' ? code : 'runtime',
+        loaded && message.generation === activeGeneration ? 'active' : 'candidate'); return
     }
     if (message.type === 'captured') {
       const pending = pendingCapture
