@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AuthenticatedFetch } from "@auth";
 import "./scene-editor-pulse.css";
+import { useStudioFocusMode } from "./useStudioFocusMode";
 import { AppIcon, AuthPage, AuthPageHeader, PendingButtonLabel, Toast, usePointerReorder } from "@shared/ui";
 import { BUILDER_OPERATIONS, builderOperationFields, MagePlayer, SCENE_LIMITS, availabilityTarget as getSceneAvailabilityTarget, listSceneTemplates, readTemplateShaderSource, sceneRecovery, sceneRecoveryKey, useSceneAvailability, type BuilderObject, type BuilderColor, type MagePlayerAudioResponseCapabilitiesSnapshot, type MagePlayerPlaybackStatus, type TemplateId } from "@modules/player";
 import { type AudioResponseTarget } from "@shared/lib";
@@ -127,6 +128,8 @@ export function SceneEditorShell({
 }: SceneEditorShellProps) {
   const isEditMode = mode.type === "edit";
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  useStudioFocusMode(isFocusMode);
   const [isNarrowPreviewLayout, setIsNarrowPreviewLayout] = useState(() => (
     typeof window !== "undefined" && typeof window.matchMedia === "function"
       ? window.matchMedia("(max-width: 960px)").matches
@@ -159,7 +162,10 @@ export function SceneEditorShell({
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const media = window.matchMedia("(max-width: 960px)");
-    const syncLayout = () => setIsNarrowPreviewLayout(media.matches);
+    const syncLayout = () => {
+      setIsNarrowPreviewLayout(media.matches);
+      if (!media.matches) setIsFocusMode(false);
+    };
     syncLayout();
     media.addEventListener?.("change", syncLayout);
     return () => media.removeEventListener?.("change", syncLayout);
@@ -2079,6 +2085,16 @@ export function SceneEditorShell({
                     onClick={() => { if (isPreviewCollapsed) showPreview(); setIsAudioInspectorOpen(value => !value); }}>
                     <AppIcon name="audio-lines" size={15} /><span>Audio</span>
                   </button>
+                  {isNarrowPreviewLayout ? <button
+                    aria-label={isFocusMode ? "Exit focus mode" : "Enter focus mode"}
+                    aria-pressed={isFocusMode}
+                    className="scene-editor-preview__icon-button scene-editor-preview__focus-button"
+                    onClick={() => setIsFocusMode(value => !value)}
+                    title={isFocusMode ? "Exit focus mode" : "Enter focus mode"}
+                    type="button"
+                  >
+                    <AppIcon name={isFocusMode ? "minimize" : "maximize"} size={15} />
+                  </button> : null}
                   <button
                     aria-controls="scene-editor-live-preview"
                     aria-expanded={!isPreviewCollapsed}

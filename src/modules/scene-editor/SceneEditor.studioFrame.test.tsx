@@ -1,9 +1,10 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppThemeId } from '@theme'
 import { buildApiUrl } from '@shared/lib'
 import { jsonResponse } from '@shared/test/http'
+import { mockNativeDialogs } from '@shared/test/nativeDialog'
 import {
   buildSceneEditorApiScene,
   mockCreateScenePageFetch,
@@ -13,6 +14,7 @@ import {
 } from './test-fixtures'
 
 const renderedPlayer = vi.fn()
+mockNativeDialogs()
 let playerInstance = 0
 
 vi.mock('@modules/player', async (importOriginal) => {
@@ -40,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   window.localStorage.clear()
 })
 
@@ -50,6 +53,60 @@ function mockEditor(mode: 'create' | 'edit') {
 }
 
 describe('responsive Scene Studio frame', () => {
+  it.each(['create', 'edit'] as const)('focus preserves the %s studio and exits on desktop or unmount', async mode => {
+    const media = new EventTarget() as MediaQueryList
+    Object.defineProperty(media, 'matches', { value: true, writable: true })
+    vi.stubGlobal('matchMedia', vi.fn(() => media))
+    const viewport = Object.assign(new EventTarget(), { height: 844, offsetTop: 0, scale: 1 })
+    vi.stubGlobal('visualViewport', viewport)
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    storeSceneEditorSession()
+    mockEditor(mode)
+    const view = mode === 'create' ? renderCreateScenePage('mage-pulse') : renderEditScenePage()
+    const user = userEvent.setup()
+    const name = await screen.findByLabelText('Scene Name')
+    await user.clear(name)
+    await user.type(name, 'Focus draft')
+    await user.click(screen.getByRole('button', { name: 'Scene' }))
+    const player = screen.getByTestId('studio-player')
+    const sceneBlob = renderedPlayer.mock.lastCall?.[0].sceneBlob
+    expect(document.body).not.toHaveClass('scene-studio-focused')
+    await user.click(screen.getByLabelText('Enter focus mode'))
+    expect(document.body).toHaveClass('scene-studio-focused')
+    expect(screen.getByLabelText('Exit focus mode')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('studio-player')).toBe(player)
+    expect(renderedPlayer.mock.lastCall?.[0].sceneBlob).toBe(sceneBlob)
+    expect(screen.getByRole('button', { name: 'Scene' })).toHaveAttribute('aria-current', 'step')
+    expect(within(screen.getByRole('navigation', { name: 'Section navigation' })).getAllByRole('button')).toHaveLength(7)
+    await user.click(screen.getByRole('button', { name: 'Hide preview' }))
+    expect(screen.getByLabelText('Exit focus mode')).toBeEnabled()
+    // JSDOM does not apply mobile media-query styles to the collapsed panel.
+    // Actual pointer reachability is covered by the responsive browser checks.
+    fireEvent.click(screen.getByLabelText('Show preview'))
+    await user.click(screen.getByRole('button', { name: 'Audio inspector' }))
+    expect(screen.getByRole('button', { name: 'Audio inspector' })).toHaveAttribute('aria-expanded', 'true')
+
+    act(() => { viewport.height = 400; viewport.offsetTop = 24; viewport.dispatchEvent(new Event('resize')) })
+    expect(document.documentElement.style.getPropertyValue('--studio-focus-height')).toBe('400px')
+    expect(document.documentElement.style.getPropertyValue('--studio-focus-top')).toBe('24px')
+    await user.click(screen.getByLabelText('Exit focus mode'))
+    expect(document.body).not.toHaveClass('scene-studio-focused')
+    expect(scrollTo).toHaveBeenCalled()
+    await user.click(screen.getByLabelText('Enter focus mode'))
+    act(() => { Object.assign(media, { matches: false }); media.dispatchEvent(new Event('change')) })
+    expect(document.body).not.toHaveClass('scene-studio-focused')
+    expect(document.documentElement.style.getPropertyValue('--studio-focus-height')).toBe('')
+    await user.click(screen.getByRole('button', { name: 'Details' }))
+    expect(screen.getByLabelText('Scene Name')).toHaveValue('Focus draft')
+    expect(screen.getByTestId('studio-player')).toBe(player)
+    act(() => { Object.assign(media, { matches: true }); media.dispatchEvent(new Event('change')) })
+    expect(document.body).not.toHaveClass('scene-studio-focused')
+    await user.click(screen.getByLabelText('Enter focus mode'))
+    view.unmount()
+    expect(document.body).not.toHaveClass('scene-studio-focused')
+    expect(document.documentElement.style.getPropertyValue('--studio-focus-height')).toBe('')
+  })
+
   it.each([
     ['create', 'mage-pulse'],
     ['create', 'classic-facebook'],

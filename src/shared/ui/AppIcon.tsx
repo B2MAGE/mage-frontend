@@ -2,7 +2,7 @@ import {
   ArrowBigDown, ArrowBigUp, ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, Asterisk, AudioLines, Check,
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   CircleAlert, Ellipsis, GripVertical, Heart, Images, Info, Layers, ListMusic,
-  LogOut, Maximize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
+  LogOut, Maximize, Minimize, Pause, Pencil, Play, Plus, Repeat, RotateCcw,
   Redo2, Search, Settings, Shuffle, Undo2, User, Volume2, VolumeX, X,
   type LucideProps,
 } from 'lucide-react'
@@ -33,6 +33,7 @@ const icons = {
   'list-music': ListMusic,
   'log-out': LogOut,
   maximize: Maximize,
+  minimize: Minimize,
   pause: Pause,
   pencil: Pencil,
   play: Play,

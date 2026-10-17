@@ -3007,3 +3007,41 @@ html[data-theme] .scene-editor-page :is(
     gap: 10px;
   }
 }
+
+/* Focus is a mobile layout state, not a second studio or browser fullscreen. */
+@media (max-width: 960px) {
+  html:has(body.scene-studio-focused),
+  body.scene-studio-focused { overflow: hidden; overscroll-behavior: none; }
+
+  html[data-theme] body.scene-studio-focused :is(.navbar, .pulse-footer),
+  html[data-theme] body.scene-studio-focused .scene-editor-page > .surface--editor > .auth-header { display: none; }
+
+  html[data-theme] body.scene-studio-focused .app-shell { padding: 0; margin: 0; min-height: 0; }
+
+  html[data-theme] body.scene-studio-focused .scene-editor-page {
+    position: fixed;
+    inset: var(--studio-focus-top, 0px) 0 auto;
+    width: 100%;
+    max-width: none;
+    height: var(--studio-focus-height, 100dvh);
+    margin: 0;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    background: var(--studio-panel);
+  }
+
+  html[data-theme] body.scene-studio-focused .scene-editor-page .scene-editor-layout {
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  html[data-theme] body.scene-studio-focused .scene-editor-page .scene-editor-workspace { min-height: 0; }
+
+  /* Leave room for navigation, both headers, audio and an editable form even
+     in landscape or with a keyboard. The viewport's existing contain sizing
+     preserves 16:9 and leaves the audio controls full-width. */
+  html[data-theme] body.scene-studio-focused .scene-editor-page .scene-editor-preview__player-frame {
+    height: calc(min(100cqw * 9 / 16, max(0px, var(--studio-focus-height, 100dvh) - 300px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))) + var(--player-inline-controls-height));
+  }
+}
