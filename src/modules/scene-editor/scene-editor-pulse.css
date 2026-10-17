@@ -2778,7 +2778,6 @@ html[data-theme] .scene-editor-page .scene-editor-preview-restore:hover {
 }
 
 @media (max-width: 640px) {
-  html[data-theme]:has(.scene-editor-page) { --nav-height: 56px; }
   html[data-theme]:has(.scene-editor-page) :is(.nav-create, .nav-signin, .nav-profile-trigger) { min-height: 38px; }
   html[data-theme]:has(.scene-editor-page) .pulse-footer { min-height: 36px; }
   html[data-theme]:has(.scene-editor-page) .pulse-footer__inner {
